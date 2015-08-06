@@ -339,19 +339,28 @@ class PilotLauncherWorker(threading.Thread):
 
                         # Agent configuration that is not part of the public API.
                         agent_config = compute_pilot['description']['_config']
+                        agent_layout = compute_pilot['description']['_layout']
 
                         if not agent_config:
-                            agent_config = os.environ.get('RADICAL_PILOT_CONFIG', "")
+                            agent_config = os.environ.get('RADICAL_PILOT_CFG', "")
+                        if not agent_layout:
+                            agent_layout = os.environ.get('RADICAL_PILOT_LAYOUT', "")
+
+
+                        # FIXME: variable names below are overloaded on type and
+                        # use
+                        # FIXME: CFG -> CONFIG, but collides with SAGA ini files
 
                         # The agent config can either be a config dict, or
                         # a string pointing to a config file.  If neither is
-                        # given, check if 'RADICAL_PILOT_CONFIG' is set.
+                        # given, check if 'RADICAL_PILOT_CFG' is set.
                         if isinstance(agent_config, dict):
                             # nothing to do
                             pass
                         elif isinstance(agent_config, basestring):
                             # read config as json file
                             try:
+                                logger.info("read config file: %s" % agent_config)
                                 agent_config = ru.read_json(agent_config)
                             except Exception as e:
                                 logger.warn("error reading config file: %s" % e)
@@ -362,6 +371,30 @@ class PilotLauncherWorker(threading.Thread):
                         # we *always* want an agent config
                         if not agent_config:
                             agent_config = dict()
+
+                        # The agent layout can either be a layout dict, or
+                        # a string pointing to a layout file.  If neither is
+                        # given, check if 'RADICAL_PILOT_LAYOUT' is set.
+                        if isinstance(agent_layout, dict):
+                            # nothing to do
+                            pass
+                        elif isinstance(agent_layout, basestring):
+                            # read layout as json file
+                            try:
+                                logger.info("read layout file: %s" % agent_layout)
+                                agent_layout = ru.read_json(agent_layout)
+                            except Exception as e:
+                                logger.warn("error reading layout file: %s" % e)
+                        elif agent_layout:
+                            # we can't handle this type
+                            raise TypeError('agent layout must be string or dict')
+
+                        # we *always* want an agent layout
+                        if not agent_layout:
+                            agent_layout = dict()
+
+                        # layout becomes part of the config
+                        ru.dict_merge (agent_config, agent_layout)
 
                         # we expand and exchange keys in the resource config,
                         # depending on the selected schema so better use a deep
@@ -412,8 +445,6 @@ class PilotLauncherWorker(threading.Thread):
 
                         # Create a host:port string for use by the bootstrapper.
                         db_url = saga.Url(agent_dburl)
-                        print db_url
-                        print db_url.port
                         if db_url.port:
                             db_hostport = "%s:%d" % (db_url.host, db_url.port)
                         else:
@@ -602,25 +633,26 @@ class PilotLauncherWorker(threading.Thread):
                         # set mandatory args
                         bootstrap_args  = ""
                         bootstrap_args += " -d '%s'" % sdists
-                        bootstrap_args += " -v '%s'" % virtenv
-                        bootstrap_args += " -p '%s'" % pilot_id
-                        bootstrap_args += " -s '%s'" % session_id
                         bootstrap_args += " -m '%s'" % virtenv_mode
+                        bootstrap_args += " -p '%s'" % pilot_id
                         bootstrap_args += " -r '%s'" % rp_version
+                        bootstrap_args += " -s '%s'" % session_id
+                        bootstrap_args += " -v '%s'" % virtenv
 
                         # set optional args
-                        if tunnel_bind_device:      bootstrap_args += " -t '%s'" % tunnel_bind_device
+                        if agent_type:              bootstrap_args += " -a '%s'" % agent_type
+                        if lrms == "CCM":           bootstrap_args += " -c"
                         if pre_bootstrap:           bootstrap_args += " -e '%s'" % "' -e '".join (pre_bootstrap)
                         if forward_tunnel_endpoint: bootstrap_args += " -f '%s'" % forward_tunnel_endpoint
                         if forward_tunnel_endpoint: bootstrap_args += " -h '%s'" % db_hostport
                         if python_interpreter:      bootstrap_args += " -i '%s'" % python_interpreter
+                        if tunnel_bind_device:      bootstrap_args += " -t '%s'" % tunnel_bind_device
                         if cleanup:                 bootstrap_args += " -x '%s'" % cleanup
-                        if lrms == "CCM":           bootstrap_args += " -c"
 
                         # set some agent configuration
                         agent_config['cores']              = number_cores
                         agent_config['debug']              = debug_level
-                        agent_config['db_url']             = str(agent_dburl)
+                        agent_config['mongodb_url']        = str(agent_dburl)
                         agent_config['lrms']               = lrms
                         agent_config['spawner']            = agent_spawner
                         agent_config['scheduler']          = agent_scheduler
@@ -687,7 +719,7 @@ class PilotLauncherWorker(threading.Thread):
                         jd.queue                 = queue
 
                         # inform the pilot about the location of the config file
-                        jd.environment = {'RADICAL_PILOT_CONFIG' : cf_env}
+                        jd.environment = {'RADICAL_PILOT_CFG' : cf_env}
 
                         # Set the SPMD variation only if required
                         if spmd_variation:
