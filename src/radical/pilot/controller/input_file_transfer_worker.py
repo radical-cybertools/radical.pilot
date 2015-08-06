@@ -184,10 +184,11 @@ class InputFileTransferWorker(threading.Thread):
                         # All IFTW staging done for this CU, push to Agent.
                         logger.debug("InputStagingController: %s : push to agent" % compute_unit_id)
                         um_col.update({'_id': compute_unit_id},
-                                      {'$set': {'state': PENDING_AGENT_INPUT_STAGING},
+                                      {'$set': {'state'  : AGENT_STAGING_INPUT_PENDING, 
+                                                'control': 'umgr'},
                                        '$push': {
                                            'statehistory': {
-                                               'state': PENDING_AGENT_INPUT_STAGING,
+                                               'state': AGENT_STAGING_INPUT_PENDING,
                                                'timestamp': ts},
                                            'log': {
                                                'timestamp': timestamp(),
