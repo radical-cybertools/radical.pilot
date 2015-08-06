@@ -4535,9 +4535,6 @@ class AgentStagingOutputComponent(rpu.Component):
 
         staging_area = os.path.join(self._workdir, self._config['staging_area'])
 
-        rpu.prof('get', msg="stageout_queue to StageoutWorker (%s)"
-                % cu['state'], uid=cu['_id'])
-
         sandbox = os.path.join(self._workdir, '%s' % cu['_id'])
 
         ## parked from unit state checker: unit postprocessing
