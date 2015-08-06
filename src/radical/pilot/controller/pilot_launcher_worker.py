@@ -717,16 +717,17 @@ class PilotLauncherWorker(threading.Thread):
                         jd.wall_time_limit       = runtime
                         jd.total_physical_memory = memory
                         jd.queue                 = queue
+                        jd.environment           = dict()
 
                         # inform the pilot about the location of the config file
-                        jd.environment = {'RADICAL_PILOT_CFG' : cf_env}
+                        jd.environment['RADICAL_PILOT_CFG'] = cf_env
 
                         # Set the SPMD variation only if required
                         if spmd_variation:
                             jd.spmd_variation = spmd_variation
 
                         if 'RADICAL_PILOT_PROFILE' in os.environ :
-                            jd.environment = {'RADICAL_PILOT_PROFILE' : 'TRUE'}
+                            jd.environment['RADICAL_PILOT_PROFILE'] = 'TRUE'
 
                         logger.debug("Bootstrap command line: %s %s" % (jd.executable, jd.arguments))
 
