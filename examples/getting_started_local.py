@@ -6,9 +6,6 @@ __license__   = "MIT"
 import os
 import sys
 import radical.pilot as rp
-import radical.utils as ru
-
-dh = ru.DebugHelper()
 
 # READ: The RADICAL-Pilot documentation: 
 #   http://radicalpilot.readthedocs.org/en/latest
@@ -111,14 +108,9 @@ if __name__ == "__main__":
         # after itself.
         pdesc = rp.ComputePilotDescription()
         pdesc.resource = "local.localhost"
-        pdesc.runtime  = 1 # minutes
+        pdesc.runtime  = 5 # minutes
         pdesc.cores    = 8
         pdesc.cleanup  = False
-        pdesc._config  = {
-                'exec_worker' : {
-                    'target_host' : '10.0.0.4'
-                    }
-                }
     
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -154,13 +146,13 @@ if __name__ == "__main__":
         #    /bin/cat $INPUT1 $INPUT2
         #
         cuds = []
-        for unit_count in range(1):
+        for unit_count in range(0, 14):
             cud = rp.ComputeUnitDescription()
             cud.name          = "unit_%03d" % unit_count
             cud.executable    = "/bin/sleep"
-            cud.pre_exec      = ["sleep 2"]
-            cud.post_exec     = ["sleep 2"]
-            cud.arguments     = ["2"]
+            cud.pre_exec      = ["sleep 5"]
+            cud.post_exec     = ["sleep 5"]
+            cud.arguments     = ["5"]
             cud.cores         = 1
     
             cuds.append(cud)
@@ -205,7 +197,7 @@ if __name__ == "__main__":
         # not.
         print "closing session"
         session.close ()
-  
+
         # the above is equivalent to
         #
         #   session.close (cleanup=True, terminate=True)
