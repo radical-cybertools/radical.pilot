@@ -12,7 +12,7 @@
         "default_remote_workdir"      : "$HOME",
         "lrms"                        : "YARN",
         "agent_type"                  : "multicore",
-        "agent_scheduler"             : "CONTINUOUS",
+        "agent_scheduler"             : "YARN",
         "agent_spawner"               : "SHELL",
         "task_launch_method"          : "YARN",
         "mpi_launch_method"           : "MPIEXEC",

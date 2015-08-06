@@ -1289,7 +1289,7 @@ class SchedulerYarn(Scheduler):
     def __init__(self, name, config, logger, lrms, schedule_queue, execution_queue,
                  update_queue):
 
-        Scheduler.__init__(self,name,config,logger,lrms,scheduler_queue,
+        Scheduler.__init__(self,name,config,logger,lrms,schedule_queue,
             execution_queue,update_queue)
 
 
@@ -1306,12 +1306,11 @@ class SchedulerYarn(Scheduler):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        raise NotImplementedError("_configure() not implemented for Scheduler '%s'." % self.name)
 
-
-    # --------------------------------------------------------------------------
-    #
-    def slot_status(self):
+        #-----------------------------------------------------------------------
+        # Find out how many applications you can submit to YARN. And also keep
+        # this check happened to update it accordingly
+        sample_time = rpu.timestamp()
         yarn_status = ul.urlopen('http://localhost:8088/ws/v1/cluster/scheduler')
 
         yarn_schedul_json = json.loads(yarn_status.read())
@@ -1319,19 +1318,57 @@ class SchedulerYarn(Scheduler):
         max_num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['maxApplications']
         num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['numApplications']
 
-        return 'Can accept {0} applications'.format(max_num_app-num_app)
+        #-----------------------------------------------------------------------
+        # Find out the cluster's resources
+        cluster_metrics = ul.urlopen('http://localhost:8088/ws/v1/cluster/metrics')
+
+        metrics = json.loads(cluster_metrics.read())
+        self._num_of_cores = metrics['clusterMetrics']['totalVirtualCores']
+        self._mem_size = metrics['clusterMetrics']['totalMB']
+
+        self.avail_app = {'apps':max_num_app - num_app,'timestamp':sample_time}
+
+        return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def slot_status(self):
+        """
+        Finds how many spots are left free in the YARN scheduler queue and also
+        updates if it is needed..
+        """
+        #-------------------------------------------------------------------------
+        # As it seems this part of the Scheduler is not according to the assumptions
+        # made about slot status. Keeping the code commented just in case it is
+        # needed later either as whole or art of it.
+        sample = rpu.timestamp()
+        yarn_status = ul.urlopen('http://localhost:8088/ws/v1/cluster/scheduler')
+        yarn_schedul_json = json.loads(yarn_status.read())
+
+        max_num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['maxApplications']
+        num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['numApplications']
+        if (self.avail_app['timestamp'] - sample).total_seconds()>60 and \
+           (self.avail_app['apps'] != max_num_app - num_app):
+            self.avail_app['apps'] = max_num_app - num_app 
+            self.avail_app['timestamp']=sample
+
+        return 'Can accept up to {0} applications per user'.format(self.avail_app['apps'])
 
 
     # --------------------------------------------------------------------------
     #
     def _allocate_slot(self, cores_requested):
-        cluster_metrics = ul.urlopen('http://localhost:8088/ws/v1/cluster/metrics')
+        """
+        In this implementation it checks if the number of cores and memory size
+        that exist in the YARN cluster are enough for an application to fit in it.
+        """
 
-        metrics = json.loads(cluster_metrics.read())
-        num_of_cores = metrics['clusterMetrics']['totalVirtualCores']
-        mem_size = metrics['clusterMetrics']['totalMB']
+        #-----------------------------------------------------------------------
+        # If the application requests resources that exist in the cluster, not
+        # necessarily free, then it returns true else it returns false
         #TODO: Add provision for memory request
-        if cores_requested <= num_of_cores:
+        if cores_requested <= self._num_of_cores:
             return True
         else:
             return False
@@ -1340,29 +1377,39 @@ class SchedulerYarn(Scheduler):
     # --------------------------------------------------------------------------
     #
     def _release_slot(self, opaque_slot):
-        raise NotImplementedError("_release_slot() not implemented for Scheduler '%s'." % self.name)
+        #-----------------------------------------------------------------------
+        # One application has finished, increase the number of available slots.
+        self.avail_app['apps']+=1
+        return True
+
 
 
     # --------------------------------------------------------------------------
     #
-    def _try_allocation(self, cu):        
+    def _try_allocation(self, cu):  
 
-        yarn_status = ul.urlopen('http://localhost:8088/ws/v1/cluster/scheduler')
-
-        yarn_schedul_json = json.loads(yarn_status.read())
-
-        max_num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['maxApplications']
-        num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['numApplications']
+        #-----------------------------------------------------------------------
+        # Check if the YARN scheduler queue has space to accept new CUs.
+        # Check about racing conditions in the case that you allowed an
+        # application to start executing and before the statistics in yarn have
+        # refreshed, to send another one that does not fit.
+        # Test 1: Stress the YARN scheduler queue and see how an application
+        # behaves.
+        # Test 2: Run test to find out how YARN behaves in the case that there
+        # is no more room
+        
 
         self._log.info(self.slot_status())
-
-        if num_app == max_num_app or not self._allocate_slot(cu['description']['cores']):
+        cu['opaque_slot']=['localhost:0']
+        if self.avail_app['apps']==0 or not self._allocate_slot(cu['description']['cores']):
             return False
 
         cu_list, cu_dropped = rpu.blowup(self._config, cu, EXECUTION_QUEUE)
         for _cu in cu_list :
-            rpu.prof('put', msg="Scheduler to execution_queue (%s)" % _cu['state'], uid=_cu['_id'])
-            self._execution_queue.put(_cu)
+            if self.avail_app['apps'] > 0:
+                self.avail_app['apps']-=1
+                rpu.prof('put', msg="Scheduler to execution_queue (%s)" % _cu['state'], uid=_cu['_id'])
+                self._execution_queue.put(_cu)
 
         # we need to free allocated cores for dropped CUs
         self.unschedule(cu_dropped)
@@ -4283,6 +4330,9 @@ class ExecWorker_SHELL(ExecWorker):
 
                 try:
 
+                    self._log.debug('Showing CU')
+                    self._log.debug(cu)
+
                     cu_list, _ = rpu.blowup(self._config, cu, EXEC_WORKER)
 
                     for _cu in cu_list :
@@ -4301,7 +4351,7 @@ class ExecWorker_SHELL(ExecWorker):
                                                           logger = self._log.error)
 
                         self._log.debug("ExecWorkerShell Launching unit with %s (%s).", launcher.name, launcher.launch_command)
-
+                        self._log.debug(_cu['opaque_slot'])
                         assert(_cu['opaque_slot']) # FIXME: no assert, but check
                         rpu.prof('ExecWorker unit launch', uid=_cu['_id'])
 
