@@ -4405,54 +4405,47 @@ class UpdateWorker(threading.Thread):
 
 # ==============================================================================
 #
-class StageinWorker(threading.Thread):
-    """An StageinWorker performs the agent side staging directives.
+class AgentStagingInputComponent(rpu.Component):
+    """
+    This component performs all agent side staging directives for compute units.
+    It gets units from the agent_staging_input_queue, in
+    AGENT_STAGING_INPUT_PENDING state, will advance them to AGENT_STAGING_INPUT
+    state while performing the staging, and then moves then to the
+    AGENT_SCHEDULING_PENDING state, into the agent_scheduling_queue.
     """
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, agent, execution_queue, schedule_queue,
-                 stagein_queue, update_queue, workdir):
+    def __init__(self, cfg):
 
-        threading.Thread.__init__(self)
-
-        self.name             = name
-        self._config          = config
-        self._log             = logger
-        self._agent           = agent
-        self._execution_queue = execution_queue
-        self._schedule_queue  = schedule_queue
-        self._stagein_queue   = stagein_queue
-        self._update_queue    = update_queue
-        self._workdir         = workdir
-        self._terminate       = threading.Event()
-
-        # run worker thread
-        self.start()
-
-    # --------------------------------------------------------------------------
-    #
-    def stop(self):
-
-        rpu.prof ('stop request')
-        rpu.flush_prof()
-        self._terminate.set()
+        rpu.ComponentBase.__init__(self, cfg=cfg)
 
 
     # --------------------------------------------------------------------------
     #
-    def run(self):
+    def initialize(self):
 
-        rpu.prof('run')
-        while not self._terminate.is_set():
+        self._workdir = self._cfg['workdir']
+
+        self.declare_input ('AGENT_STAGING_INPUT_PENDING', 'agent_staging_input_queue')
+        self.declare_worker('AGENT_STAGING_INPUT_PENDING', self.work)
+
+        self.declare_output('AGENT_SCHEDULING_PENDING', 'agent_scheduling_queue')
+
+        self.declare_publisher('state', 'agent_state_pubsub')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def work(self, unit):
+
+        if not unit:
+            rpu.prof('get_cmd', msg="stagein_queue to StageinWorker (wakeup)")
+            return # FXIME
+
+        else:
 
             try:
-
-                cu = self._stagein_queue.get()
-
-                if not cu:
-                    rpu.prof('get_cmd', msg="stagein_queue to StageinWorker (wakeup)")
-                    continue
 
                 cu['state'] = rp.AGENT_STAGING_INPUT
                 rpu.prof('get', msg="stagein_queue to StageinWorker (%s)" % cu['state'], uid=cu['_id'])
@@ -4544,7 +4537,6 @@ class StageinWorker(threading.Thread):
                 self._log.exception('worker died')
                 sys.exit(1)
 
-        rpu.prof ('stop')
 
 
 # ==============================================================================
