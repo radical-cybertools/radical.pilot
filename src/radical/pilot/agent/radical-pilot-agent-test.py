@@ -639,7 +639,7 @@ class AgentStagingOutputComponent(rpu.ComponentBase):
 
 # ==============================================================================
 #
-class Agent(mp.Process):
+class Agent(object):
 
     # --------------------------------------------------------------------------
     #
@@ -662,7 +662,6 @@ class Agent(mp.Process):
 
         self._initialize()  # get config, init up logger, db connection
         self._setup()       # create components
-        self._start()       # start pulling units
 
 
     # --------------------------------------------------------------------------
@@ -1051,6 +1050,9 @@ class Agent(mp.Process):
 
 # ==============================================================================
 #
+# Agent main code
+#
+# ==============================================================================
 def main():
     """
     This method continues where the bootstrapper left off, but will quickly pass
@@ -1073,6 +1075,7 @@ def main():
     _, mongo_db, _, _, _  = ru.mongodb_connect(mongodb_url)
     mongo_p  = mongo_db["%s.p" % cfg['session_id']]
 
+    # set up signal and exit handlers
     def exit_handler():
         print 'exit handler'
         rpu.flush_prof()
@@ -1096,8 +1099,7 @@ def main():
     try:
         print 'try'
         agent = Agent()
-        agent.start()
-        agent.join()
+        agent.run()
 
     except SystemExit:
         print 'sysexit'
@@ -1139,6 +1141,7 @@ if __name__ == "__main__":
     print
 
     sys.exit(main())
+
 #
 # ==============================================================================
 

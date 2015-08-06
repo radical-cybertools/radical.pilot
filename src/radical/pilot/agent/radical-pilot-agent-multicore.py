@@ -5460,132 +5460,95 @@ class Agent(object):
         return len(cu_uids)
 
 
+
 # ==============================================================================
 #
 # Agent main code
 #
 # ==============================================================================
 def main():
+    """
+    This method continues where the bootstrapper left off, but will quickly pass
+    control to the Agent class which will spawn the functional components.
+    """
 
-    mongo_p = None
-    # configure the agent logger
-    logger    = logging.getLogger  ('radical.pilot.agent')
-    handle    = logging.FileHandler("agent.log")
-    formatter = logging.Formatter  ('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # FIXME: signal handlers need mongo_p, but we won't have that until later
 
-    logger.setLevel('INFO')
-    handle.setFormatter(formatter)
-    logger.addHandler(handle)
+    # quickly set up a mongodb handle so that we can report errors.  We need to
+    # parse the config to get the url and some IDs.
+    # FIXME: should those be the things we pass as arg or env?
+    cfg = ru.read_json_str(os.environ['RADICAL_PILOT_CFG'])
 
-    logger.info("Using RADICAL-Utils version %s", rs.version)
-    logger.info("Using RADICAL-SAGA  version %s", rs.version)
-    logger.info("Using RADICAL-Pilot version %s (%s)", rp.version, git_ident)
+    pprint.pprint(cfg)
 
-    # --------------------------------------------------------------------------
-    # load the agent config
-    logger.info ("load config file")
-    cfg = ru.read_json_str(os.environ.get('RADICAL_PILOT_CFG', 'agent.cfg'))
-    ru.dict_merge(cfg, agent_config, policy='preserve')
+    mongodb_url = cfg['mongodb_url']
+    pilot_id    = cfg['pilot_id']
+    session_id  = cfg['session_id']
 
-    logger.info("\Agent config:\n%s\n\n" % pprint.pformat(cfg))
+    _, mongo_db, _, _, _  = ru.mongodb_connect(mongodb_url)
+    mongo_p  = mongo_db["%s.p" % cfg['session_id']]
 
-    if not 'cores'               in cfg: raise ValueError("Missing number of cores")
-    if not 'debug'               in cfg: raise ValueError("Missing DEBUG level")
-    if not 'lrms'                in cfg: raise ValueError("Missing LRMS")
-    if not 'mongodb_url'         in cfg: raise ValueError("Missing MongoDB URL")
-    if not 'pilot_id'            in cfg: raise ValueError("Missing pilot id")
-    if not 'runtime'             in cfg: raise ValueError("Missing or zero agent runtime")
-    if not 'scheduler'           in cfg: raise ValueError("Missing agent scheduler")
-    if not 'session_id'          in cfg: raise ValueError("Missing session id")
-    if not 'spawner'             in cfg: raise ValueError("Missing agent spawner")
-    if not 'mpi_launch_method'   in cfg: raise ValueError("Missing mpi launch method")
-    if not 'task_launch_method'  in cfg: raise ValueError("Missing unit launch method")
-
-    rpu.prof_init('agent.prof', 'start', uid=cfg['pilot_id'])
-
-    # configure the agent logger
-    logger.setLevel(cfg['debug'])
-
-    # --------------------------------------------------------------------------
-    #
+    # set up signal and exit handlers
+    def exit_handler():
+        print 'exit handler'
+        rpu.flush_prof()
+    
     def sigint_handler(signum, frame):
-        msg = 'Caught SIGINT. EXITING. (%s: %s)' % (signum, frame)
-        pilot_FAILED(mongo_p, cfg['pilot_id'], logger, msg)
-        rpu.flush_prof()
+        print 'sigint'
+        pilot_FAILED('Caught SIGINT. EXITING (%s)' % frame)
         sys.exit(2)
-    signal.signal(signal.SIGINT, sigint_handler)
 
-    # --------------------------------------------------------------------------
-    #
     def sigalarm_handler(signum, frame):
-        msg = 'Caught SIGALRM (Walltime limit reached?). EXITING (%s: %s)' \
-            % (signum, frame)
-        pilot_FAILED(mongo_p, cfg['pilot_id'], logger, msg)
-        rpu.flush_prof()
+        print 'sigalrm'
+        pilot_FAILED('Caught SIGALRM (Walltime limit?). EXITING (%s)' % frame)
         sys.exit(3)
+        
+    import atexit
+    atexit.register(exit_handler)
+    signal.signal(signal.SIGINT, sigint_handler)
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
-
+    agent = None
     try:
-        # ----------------------------------------------------------------------
-        # Establish database connection
-        rpu.prof('db setup')
-        _, mongo_db, _, _, _ = ru.mongodb_connect(cfg['mongodb_url'])
-        mongo_p  = mongo_db["%s.p" % cfg['session_id']]
-
-        # ----------------------------------------------------------------------
-        # Launch the agent thread
-        rpu.prof('Agent create')
-        agent = Agent(
-                name               = 'Agent',
-                config             = cfg,
-                logger             = logger,
-                lrms_name          = cfg['lrms'],
-                requested_cores    = cfg['cores'],
-                task_launch_method = cfg['task_launch_method'],
-                mpi_launch_method  = cfg['mpi_launch_method'],
-                spawner            = cfg['spawner'],
-                scheduler_name     = cfg['scheduler'],
-                runtime            = cfg['runtime'],
-                mongodb_url        = cfg['mongodb_url'],
-                pilot_id           = cfg['pilot_id'],
-                session_id         = cfg['session_id']
-        )
-
+        print 'try'
+        agent = Agent()
         agent.run()
-        rpu.prof('Agent done')
 
     except SystemExit:
-        logger.error("Caught keyboard interrupt. EXITING")
-        rpu.flush_prof()
-        return(6)
+        print 'sysexit'
+        print ru.get_trace() 
+        pilot_FAILED("Caught system exit. EXITING") 
+        sys.exit(6)
 
     except Exception as e:
-        error_msg = "Error running agent: %s" % str(e)
-        logger.exception(error_msg)
-        pilot_FAILED(mongo_p, cfg['pilot_id'], logger, error_msg)
-        rpu.flush_prof()
+        print 'exception: %s' % e
+        print ru.get_trace()
+        pilot_FAILED("Error running agent: %s" % str(e))
         sys.exit(7)
 
     finally:
+        # attempt to shut down the agent
+        if agent:
+            agent.terminate()
+            time.sleep(1)
         rpu.prof('stop', msg='finally clause')
-        rpu.flush_prof()
         sys.exit(8)
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
 if __name__ == "__main__":
 
     print "---------------------------------------------------------------------"
     print
-    print "PYTHONPATH: %s"   % sys.path
+    print "PYTHONPATH: %s"  % sys.path
     print "python: %s"      % sys.version
     print "utils : %-5s : %s" % (ru.version_detail, ru.__file__)
     print "saga  : %-5s : %s" % (rs.version_detail, rs.__file__)
     print "pilot : %-5s : %s" % (rp.version_detail, rp.__file__)
     print "        type  : multicore"
     print "        gitid : %s" % git_ident
+    print "        config: %s" % os.environ.get('RADICAL_PILOT_CFG')
     print
     print "---------------------------------------------------------------------"
     print
