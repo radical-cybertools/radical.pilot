@@ -4531,177 +4531,107 @@ class AgentStagingOutputComponent(rpu.Component):
     #
     def work(self, cu):
 
+        self.advance(cu, AGENT_STAGING_OUTPUT, publish=True, push=False)
+
         staging_area = os.path.join(self._workdir, self._config['staging_area'])
 
-        if True:
+        rpu.prof('get', msg="stageout_queue to StageoutWorker (%s)"
+                % cu['state'], uid=cu['_id'])
 
+        sandbox = os.path.join(self._workdir, '%s' % cu['_id'])
+
+        ## parked from unit state checker: unit postprocessing
+        if os.path.isfile(cu['stdout_file']):
+            with open(cu['stdout_file'], 'r') as stdout_f:
+                try:
+                    txt = unicode(stdout_f.read(), "utf-8")
+                except UnicodeDecodeError:
+                    txt = "unit stdout contains binary data -- use file staging directives"
+
+                cu['stdout'] += rpu.tail(txt)
+
+        if os.path.isfile(cu['stderr_file']):
+            with open(cu['stderr_file'], 'r') as stderr_f:
+                try:
+                    txt = unicode(stderr_f.read(), "utf-8")
+                except UnicodeDecodeError:
+                    txt = "unit stderr contains binary data -- use file staging directives"
+
+                cu['stderr'] += rpu.tail(txt)
+
+
+        if os.path.isfile("%s/PROF" % cu['workdir']):
             try:
-
-                cu = self._stageout_queue.get()
-
-                if not cu:
-                    rpu.prof('get_cmd', msg="stageout_queue to StageoutWorker (wakeup)")
-                    continue
-
-                cu['state'] = rp.AGENT_STAGING_OUTPUT
-
-                cu_list, _ = rpu.blowup(self._config, cu, STAGEOUT_WORKER)
-                for _cu in cu_list :
-
-                    rpu.prof('get', msg="stageout_queue to StageoutWorker (%s)" % _cu['state'], uid=_cu['_id'])
-
-                    sandbox = os.path.join(self._workdir, '%s' % _cu['_id'])
-
-                    ## parked from unit state checker: unit postprocessing
-
-                    if os.path.isfile(_cu['stdout_file']):
-                        with open(_cu['stdout_file'], 'r') as stdout_f:
-                            try:
-                                txt = unicode(stdout_f.read(), "utf-8")
-                            except UnicodeDecodeError:
-                                txt = "unit stdout contains binary data -- use file staging directives"
-
-                            _cu['stdout'] += rpu.tail(txt)
-
-                    if os.path.isfile(_cu['stderr_file']):
-                        with open(_cu['stderr_file'], 'r') as stderr_f:
-                            try:
-                                txt = unicode(stderr_f.read(), "utf-8")
-                            except UnicodeDecodeError:
-                                txt = "unit stderr contains binary data -- use file staging directives"
-
-                            _cu['stderr'] += rpu.tail(txt)
-
-
-                    if os.path.isfile("%s/PROF" % _cu['workdir']):
-                        with open("%s/PROF" % _cu['workdir'], 'r') as prof_f:
-                            try:
-                                txt = prof_f.read()
-                                for line in txt.split("\n"):
-                                    if line:
-                                        x1, x2, x3 = line.split()
-                                        rpu.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
-                            except Exception as e:
-                                self._log.error("Pre/Post profiling file read failed: `%s`" % e)
-
-                    for directive in _cu['Agent_Output_Directives']:
-
-                        rpu.prof('Agent output_staging', uid=_cu['_id'],
-                                 msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
-
-                        # Perform output staging
-                        self._log.info("unit output staging directives %s for cu: %s to %s",
-                                directive, _cu['_id'], sandbox)
-
-                        # Convert the target_url into a SAGA Url object
-                        target_url = rs.Url(directive['target'])
-
-                        # Handle special 'staging' scheme
-                        if target_url.scheme == self._config['staging_scheme']:
-                            self._log.info('Operating from staging')
-                            # Remove the leading slash to get a relative path from
-                            # the staging area
-                            rel2staging = target_url.path.split('/',1)[1]
-                            target = os.path.join(staging_area, rel2staging)
-                        else:
-                            self._log.info('Operating from absolute path')
-                            # FIXME: will this work for TRANSFER mode?
-                            target = target_url.path
-
-                        # Get the source from the directive and convert it to the location
-                        # in the sandbox
-                        source = str(directive['source'])
-                        abs_source = os.path.join(sandbox, source)
-
-                        # Create output directory in case it doesn't exist yet
-                        # FIXME: will this work for TRANSFER mode?
-                        rec_makedir(os.path.dirname(target))
-
-                        try:
-                            self._log.info("Going to '%s' %s to %s", directive['action'], abs_source, target)
-
-                            if directive['action'] == LINK:
-                                # This is probably not a brilliant idea, so at least give a warning
-                                os.symlink(abs_source, target)
-                            elif directive['action'] == COPY:
-                                shutil.copyfile(abs_source, target)
-                            elif directive['action'] == MOVE:
-                                shutil.move(abs_source, target)
-                            else:
-                                # FIXME: implement TRANSFER mode
-                                raise NotImplementedError('Action %s not supported' % directive['action'])
-
-                            log_message = "%s'ed %s to %s - success" %(directive['action'], abs_source, target)
-                            self._log.info(log_message)
-
-                        except Exception as e:
-                            # If we catch an exception, assume the staging failed
-                            log_message = "%s'ed %s to %s - failure (%s)" % \
-                                    (directive['action'], abs_source, target, e)
-                            self._log.exception(log_message)
-
-                            # If a staging directive fails, fail the CU also.
-                            _cu['state'] = rp.FAILED
-                            self._agent.update_unit_state(src    = 'StageoutWorker',
-                                                          uid    = _cu['_id'],
-                                                          state  = rp.FAILED,
-                                                          msg    = log_message)
-
-                    # Agent output staging is done.
-
-                    #rpu.prof('final', msg="stageout done", uid=_cu['_id'])
-                    _cu['state'] = rp.PENDING_OUTPUT_STAGING
-                    self._agent.update_unit_state(src    = 'StageoutWorker',
-                                                  uid    = _cu['_id'],
-                                                  state  = rp.PENDING_OUTPUT_STAGING,
-                                                  control= 'agent',
-                                                  msg    = 'Agent output staging completed',
-                                                  update = {
-                                                      '$set' : {
-                                                          'stdout'    : _cu['stdout'],
-                                                          'stderr'    : _cu['stderr'],
-                                                          'exit_code' : _cu['exit_code'],
-                                                          'started'   : _cu['started'],
-                                                          'finished'  : _cu['finished'],
-                                                          'slots'     : _cu['opaque_slot'],
-                                                      }
-                                                  })
-                    # NOTE: this is final, the cu is not touched anymore
-                    _cu = None
-
-                # make sure the CU is not touched anymore (see except below)
-                cu = None
-
+                with open("%s/PROF" % cu['workdir'], 'r') as prof_f:
+                    txt = prof_f.read()
+                    for line in txt.split("\n"):
+                        if line:
+                            x1, x2, x3 = line.split()
+                            rpu.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
             except Exception as e:
-                self._log.exception("Error in StageoutWorker loop (%s)", e)
+                self._log.error("Pre/Post profiling file read failed: `%s`" % e)
 
-                # check if we have any cu in operation.  If so, mark as final.
-                # This check relies on the pushes to the update queue to be the
-                # *last* actions of the loop above -- otherwise we may get
-                # invalid state transitions...
-                if cu:
-                    rpu.prof('final', msg="stageout failed", uid=cu['_id'])
-                    cu['state'] = rp.FAILED
-                    self._agent.update_unit_state(src    = 'StageoutWorker',
-                                                  uid    = cu['_id'],
-                                                  state  = rp.FAILED,
-                                                  msg    = 'output staging failed',
-                                                  update = {
-                                                      '$set' : {
-                                                          'stdout'    : cu['stdout'],
-                                                          'stderr'    : cu['stderr'],
-                                                          'exit_code' : cu['exit_code'],
-                                                          'started'   : cu['started'],
-                                                          'finished'  : cu['finished'],
-                                                          'slots'     : cu['opaque_slot'],
-                                                      }
-                                                  })
-                    # NOTE: this is final, the cu is not touched anymore
-                    cu = None
+        # NOTE: all units get here after execution, even those which did not
+        #       finish successfully.  We do that so that we can make 
+        #       stdout/stderr available for failed units.  But at this point we
+        #       don't need to advance those units anymore, but can make them
+        #       final.  
+        if cu['target_state'] != rp.DONE:
+            self.advance(cu, cu['target_state'], publish=True, push=False)
+            return
 
-                # forward the exception
-                raise
+        # all other units get their (expectedly valid) output files staged
+        for directive in cu['Agent_Output_Directives']:
 
+            rpu.prof('Agent output_staging', uid=cu['_id'],
+                     msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
+
+            # Perform output staging
+            self._log.info("unit output staging directives %s for cu: %s to %s",
+                    directive, cu['_id'], sandbox)
+
+            # Convert the target_url into a SAGA Url object
+            target_url = rs.Url(directive['target'])
+
+            # Handle special 'staging' scheme
+            if target_url.scheme == self._config['staging_scheme']:
+                self._log.info('Operating from staging')
+                # Remove the leading slash to get a relative path from
+                # the staging area
+                rel2staging = target_url.path.split('/',1)[1]
+                target = os.path.join(staging_area, rel2staging)
+            else:
+                self._log.info('Operating from absolute path')
+                # FIXME: will this work for TRANSFER mode?
+                target = target_url.path
+
+            # Get the source from the directive and convert it to the location
+            # in the sandbox
+            source = str(directive['source'])
+            abs_source = os.path.join(sandbox, source)
+
+            # Create output directory in case it doesn't exist yet
+            # FIXME: will this work for TRANSFER mode?
+            rec_makedir(os.path.dirname(target))
+
+            self._log.info("Going to '%s' %s to %s", directive['action'], abs_source, target)
+
+            if directive['action'] == LINK:
+                # This is probably not a brilliant idea, so at least give a warning
+                os.symlink(abs_source, target)
+            elif directive['action'] == COPY:
+                shutil.copyfile(abs_source, target)
+            elif directive['action'] == MOVE:
+                shutil.move(abs_source, target)
+            else:
+                # FIXME: implement TRANSFER mode
+                raise NotImplementedError('Action %s not supported' % directive['action'])
+
+            log_message = "%s'ed %s to %s - success" %(directive['action'], abs_source, target)
+            self._log.info(log_message)
+
+        # Agent output staging is done.
+        self.advance(cu, rp.PENDING_OUTPUT_STAGING, publish=True, push=False)
 
 
 # ==============================================================================
