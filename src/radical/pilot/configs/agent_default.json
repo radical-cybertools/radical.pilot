@@ -19,7 +19,7 @@
     "db_poll_sleeptime"    : 0.1,
 
     # time between checks of internal state and commands from mothership (seconds)
-    "heartbeat_interval"   : 300,
+    "heartbeat_interval"   : 10,
 
     "agent_layout" : {
         "agent.master"   : {
