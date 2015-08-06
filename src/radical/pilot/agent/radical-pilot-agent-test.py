@@ -961,6 +961,8 @@ class Agent(object):
              "$push": {"statehistory" : {"state"    : rp.ACTIVE,
                                          "timestamp": now}}
             })
+        # TODO: Check for return value, update should be true!
+        self._log.info("Database updated: %s", ret)
 
         while True:
 
@@ -984,6 +986,11 @@ class Agent(object):
         # record cancelation state
         pilot_CANCELED(self._p, self._pilot_id, self._log,
                 "Terminated (_terminate set).")
+
+        rpu.prof ('stop')
+        rpu.flush_prof()
+        sys.exit(0)
+
 
     # --------------------------------------------------------------------------
     #

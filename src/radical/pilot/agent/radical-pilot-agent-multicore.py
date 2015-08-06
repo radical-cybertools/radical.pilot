@@ -403,6 +403,7 @@ def rec_makedir(target):
 def pilot_FAILED(mongo_p, pilot_uid, logger, message):
 
     logger.error(message)
+    logger.error(ru.get_trace())
 
     now = rpu.timestamp()
     out = None
@@ -5486,16 +5487,13 @@ def main():
 
     # set up signal and exit handlers
     def exit_handler():
-        print 'exit handler'
         rpu.flush_prof()
     
     def sigint_handler(signum, frame):
-        print 'sigint'
         pilot_FAILED('Caught SIGINT. EXITING (%s)' % frame)
         sys.exit(2)
 
     def sigalarm_handler(signum, frame):
-        print 'sigalrm'
         pilot_FAILED('Caught SIGALRM (Walltime limit?). EXITING (%s)' % frame)
         sys.exit(3)
         
@@ -5506,19 +5504,14 @@ def main():
 
     agent = None
     try:
-        print 'try'
         agent = Agent()
         agent.run()
 
     except SystemExit:
-        print 'sysexit'
-        print ru.get_trace() 
         pilot_FAILED("Caught system exit. EXITING") 
         sys.exit(6)
 
     except Exception as e:
-        print 'exception: %s' % e
-        print ru.get_trace()
         pilot_FAILED("Error running agent: %s" % str(e))
         sys.exit(7)
 
