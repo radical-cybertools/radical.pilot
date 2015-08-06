@@ -4437,106 +4437,59 @@ class AgentStagingInputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def work(self, unit):
+    def work(self, cu):
 
-        if not unit:
-            rpu.prof('get_cmd', msg="stagein_queue to StageinWorker (wakeup)")
-            return # FXIME
+        self.advance(cu, AGENT_STAGING_INPUT, publish=True, push=False)
 
-        else:
+        sandbox      = os.path.join(self._workdir, '%s' % cu['_id'])
+        staging_area = os.path.join(self._workdir, self._cfg['staging_area'])
 
-            try:
+        for directive in cu['Agent_Input_Directives']:
 
-                cu['state'] = rp.AGENT_STAGING_INPUT
-                rpu.prof('get', msg="stagein_queue to StageinWorker (%s)" % cu['state'], uid=cu['_id'])
+            rpu.prof('Agent input_staging queue', uid=cu['_id'],
+                     msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
 
-                cu_list, _ = rpu.blowup(self._config, cu, STAGEIN_WORKER)
-                for _cu in cu_list :
+            # Perform input staging
+            self._log.info("unit input staging directives %s for cu: %s to %s",
+                           directive, cu['_id'], sandbox)
 
-                    sandbox      = os.path.join(self._workdir, '%s' % _cu['_id'])
-                    staging_area = os.path.join(self._workdir, self._config['staging_area'])
+            # Convert the source_url into a SAGA Url object
+            source_url = rs.Url(directive['source'])
 
-                    for directive in _cu['Agent_Input_Directives']:
+            # Handle special 'staging' scheme
+            if source_url.scheme == self._cfg['staging_scheme']:
+                self._log.info('Operating from staging')
+                # Remove the leading slash to get a relative path from the staging area
+                rel2staging = source_url.path.split('/',1)[1]
+                source = os.path.join(staging_area, rel2staging)
+            else:
+                self._log.info('Operating from absolute path')
+                source = source_url.path
 
-                        rpu.prof('Agent input_staging queue', uid=_cu['_id'],
-                                 msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
+            # Get the target from the directive and convert it to the location
+            # in the sandbox
+            target = directive['target']
+            abs_target = os.path.join(sandbox, target)
 
-                        if directive['state'] != rp.PENDING :
-                            # we ignore directives which need no action
-                            rpu.prof('Agent input_staging queue', uid=_cu['_id'], msg='ignored')
-                            continue
+            # Create output directory in case it doesn't exist yet
+            rec_makedir(os.path.dirname(abs_target))
+
+            self._log.info("Going to '%s' %s to %s", directive['action'], source, abs_target)
+
+            if   directive['action'] == LINK: os.symlink     (source, abs_target)
+            elif directive['action'] == COPY: shutil.copyfile(source, abs_target)
+            elif directive['action'] == MOVE: shutil.move    (source, abs_target)
+            else:
+                # FIXME: implement TRANSFER mode
+                raise NotImplementedError('Action %s not supported' % directive['action'])
+
+            log_message = "%s'ed %s to %s - success" % (directive['action'], source, abs_target)
+            self._log.info(log_message)
 
 
-                        # Perform input staging
-                        self._log.info("unit input staging directives %s for cu: %s to %s",
-                                       directive, _cu['_id'], sandbox)
+        rpu.prof('log', msg="no staging to do -- go to agent scheduling", uid=cu['_id'])
 
-                        # Convert the source_url into a SAGA Url object
-                        source_url = rs.Url(directive['source'])
-
-                        # Handle special 'staging' scheme
-                        if source_url.scheme == self._config['staging_scheme']:
-                            self._log.info('Operating from staging')
-                            # Remove the leading slash to get a relative path from the staging area
-                            rel2staging = source_url.path.split('/',1)[1]
-                            source = os.path.join(staging_area, rel2staging)
-                        else:
-                            self._log.info('Operating from absolute path')
-                            source = source_url.path
-
-                        # Get the target from the directive and convert it to the location
-                        # in the sandbox
-                        target = directive['target']
-                        abs_target = os.path.join(sandbox, target)
-
-                        # Create output directory in case it doesn't exist yet
-                        #
-                        rec_makedir(os.path.dirname(abs_target))
-
-                        try:
-                            self._log.info("Going to '%s' %s to %s", directive['action'], source, abs_target)
-
-                            if   directive['action'] == LINK: os.symlink     (source, abs_target)
-                            elif directive['action'] == COPY: shutil.copyfile(source, abs_target)
-                            elif directive['action'] == MOVE: shutil.move    (source, abs_target)
-                            else:
-                                # FIXME: implement TRANSFER mode
-                                raise NotImplementedError('Action %s not supported' % directive['action'])
-
-                            log_message = "%s'ed %s to %s - success" % (directive['action'], source, abs_target)
-                            self._log.info(log_message)
-
-                        except Exception as e:
-
-                            # If we catch an exception, assume the staging failed
-                            log_message = "%s'ed %s to %s - failure (%s)" % \
-                                    (directive['action'], source, abs_target, e)
-                            self._log.exception(log_message)
-
-                            # If a staging directive fails, fail the CU also.
-                            _cu['state'] = rp.FAILED
-                            self._agent.update_unit_state(src    = 'StageinWorker',
-                                                          uid    = _cu['_id'],
-                                                          state  = rp.FAILED,
-                                                          msg    = log_message)
-
-                    # Agent staging is all done, unit can go to ALLOCATING
-                    rpu.prof('log', msg="no staging to do -- go allocate", uid=_cu['_id'])
-                    _cu['state'] = rp.ALLOCATING
-                    self._agent.update_unit_state(src    = 'StageinWorker',
-                                                  uid    = _cu['_id'],
-                                                  state  = rp.ALLOCATING,
-                                                  msg    = 'agent input staging done')
-
-                    _cu_list, _ = rpu.blowup(self._config, _cu, SCHEDULE_QUEUE)
-                    for __cu in _cu_list :
-                        rpu.prof('put', msg="StageinWorker to schedule_queue (%s)" % __cu['state'], uid=__cu['_id'])
-                        self._schedule_queue.put([COMMAND_SCHEDULE, __cu])
-
-            except Exception as e:
-                self._log.exception('worker died')
-                sys.exit(1)
-
+        self.advance(cu, AGENT_SCHEDULING_PENDING, publish=True, push=True)
 
 
 # ==============================================================================
