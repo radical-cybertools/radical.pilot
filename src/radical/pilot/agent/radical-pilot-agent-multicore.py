@@ -4407,8 +4407,8 @@ class UpdateWorker(threading.Thread):
 #
 class AgentStagingInputComponent(rpu.Component):
     """
-    This component performs all agent side staging directives for compute units.
-    It gets units from the agent_staging_input_queue, in
+    This component performs all agent side input staging directives for compute
+    units.  It gets units from the agent_staging_input_queue, in
     AGENT_STAGING_INPUT_PENDING state, will advance them to AGENT_STAGING_INPUT
     state while performing the staging, and then moves then to the
     AGENT_SCHEDULING_PENDING state, into the agent_scheduling_queue.
@@ -4494,60 +4494,47 @@ class AgentStagingInputComponent(rpu.Component):
 
 # ==============================================================================
 #
-class StageoutWorker(threading.Thread):
+class AgentStagingOutputComponent(rpu.Component):
     """
-    An StageoutWorker performs the agent side staging directives.
+    This component performs all agent side output staging directives for compute
+    units.  It gets units from the agent_staging_output_queue, in
+    AGENT_STAGING_OUTPUT_PENDING state, will advance them to
+    AGENT_STAGING_OUTPUT state while performing the staging, and then moves then
+    to the UMGR_STAGING_OUTPUT_PENDING state, which at the moment requires the
+    state change to be published to MongoDB (no push into a queue).
 
-    It competes for units on the stageout queue, and handles all relevant
-    staging directives.  It also takes care of uploading stdout/stderr (which
+    Note that this component also collects stdout/stderr of the units (which
     can also be considered staging, really).
-
-    Upon completion, the units are moved into the respective final state.
-
-    Multiple StageoutWorker instances can co-exist -- this class needs to be
-    threadsafe.
     """
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, agent, execution_queue, 
-                 stageout_queue, update_queue, workdir):
+    def __init__(self, cfg):
 
-        threading.Thread.__init__(self)
-
-        self.name             = name
-        self._config          = config
-        self._log             = logger
-        self._agent           = agent
-        self._execution_queue = execution_queue
-        self._stageout_queue  = stageout_queue
-        self._update_queue    = update_queue
-        self._workdir         = workdir
-        self._terminate       = threading.Event()
-
-        # run worker thread
-        self.start()
-
-    # --------------------------------------------------------------------------
-    #
-    def stop(self):
-
-        rpu.prof ('stop request')
-        rpu.flush_prof()
-        self._terminate.set()
+        rpu.ComponentBase.__init__(self, cfg=cfg)
 
 
     # --------------------------------------------------------------------------
     #
-    def run(self):
+    def initialize(self):
 
-        rpu.prof('run')
+        self.declare_input ('AGENT_STAGING_OUTPUT_PENDING', 'agent_staging_output_queue')
+        self.declare_worker('AGENT_STAGING_OUTPUT_PENDING', self.work)
+
+        # we don't need an output queue -- units are picked up via mongodb
+        self.declare_output('PENDING_OUTPUT_STAGING', None) # drop units
+
+        self.declare_publisher('state', 'agent_state_pubsub')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def work(self, cu):
 
         staging_area = os.path.join(self._workdir, self._config['staging_area'])
 
-        while not self._terminate.is_set():
+        if True:
 
-            cu = None
             try:
 
                 cu = self._stageout_queue.get()
@@ -4715,7 +4702,6 @@ class StageoutWorker(threading.Thread):
                 # forward the exception
                 raise
 
-        rpu.prof ('stop')
 
 
 # ==============================================================================
