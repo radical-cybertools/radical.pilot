@@ -181,7 +181,13 @@ class InputFileTransferWorker(threading.Thread):
                         if state == CANCELED:
                             continue
 
-                        # All IFTW staging done for this CU, push to Agent.
+                        # All IFTW staging done for this CU.  Push it out, by
+                        # setting the state as 'AGENT_ATGING_INPUT_PENDING and
+                        # sending it to mongodb.  We mark the CU under 'umgr'
+                        # control -- once the agent picks it up, it will be
+                        # marked as under 'agent' control, before the
+                        # agent_stging_output_component passes control back in
+                        # a similar manner.
                         logger.debug("InputStagingController: %s : push to agent" % compute_unit_id)
                         um_col.update({'_id': compute_unit_id},
                                       {'$set': {'state'  : AGENT_STAGING_INPUT_PENDING, 

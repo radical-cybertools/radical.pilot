@@ -74,13 +74,21 @@ class OutputFileTransferWorker(threading.Thread):
             while not self._stop.is_set():
 
                 # See if we can find a ComputeUnit that is waiting for client output file transfer.
+                # FIXME: this method is not bulkable.  See agent pulling for
+                #        units for an approach to split the call into two bulkable 
+                #        ones.
                 ts = timestamp()
                 compute_unit = um_col.find_and_modify(
                     query={"unitmanager": self.unit_manager_id,
-                           "state": PENDING_OUTPUT_STAGING},
-                    update={"$set" : {"state": STAGING_OUTPUT},
-                            "$push": {"statehistory": {"state": STAGING_OUTPUT, "timestamp": ts}}}
-                )
+                           "state"      : PENDING_OUTPUT_STAGING,
+                           "control"    : 'agent'}
+                    update={"$set" : {"state"   : STAGING_OUTPUT,
+                                      "control" : 'umgr'},
+                            "$push": {"statehistory" : 
+                                         {"state"    : STAGING_OUTPUT, 
+                                          "timestamp": ts}
+                                     }
+                            })
 
                 if compute_unit is None:
                     # Sleep a bit if no new units are available.

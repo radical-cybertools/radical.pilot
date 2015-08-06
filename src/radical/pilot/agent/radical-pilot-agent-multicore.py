@@ -4873,6 +4873,7 @@ class StageoutWorker(threading.Thread):
                     self._agent.update_unit_state(src    = 'StageoutWorker',
                                                   uid    = _cu['_id'],
                                                   state  = rp.PENDING_OUTPUT_STAGING,
+                                                  control= 'agent',
                                                   msg    = 'Agent output staging completed',
                                                   update = {
                                                       '$set' : {
@@ -5373,8 +5374,9 @@ class Agent(object):
         # right here...  No idea how to avoid that roundtrip...
         # This also blocks us from using multiple ingest threads, or from doing
         # late binding by unit pull :/
-        cu_cursor = self._cu.find(spec  = {"pilot" : self._pilot_id,
-                                           'state' : rp.AGENT_STAGING_INPUT_PENDING})
+        cu_cursor = self._cu.find(spec  = {"pilot"   : self._pilot_id,
+                                           'state'   : rp.AGENT_STAGING_INPUT_PENDING, 
+                                           'control' : 'umgr'})
         if not cu_cursor.count():
             # no units whatsoever...
             return 0
@@ -5384,14 +5386,8 @@ class Agent(object):
         cu_uids = [_cu['_id'] for _cu in cu_list]
 
         self._cu.update(multi    = True,
-                        spec     = {"_id"   : {"$in"   : cu_uids}},
-                        document = {"$set"  : {"state" : rp.AGENT_STAGING_INPUT},
-                                    "$push" : {"statehistory":
-                                        {
-                                            "state"     : rp.AGENT_STAGING_INPUT,
-                                            "timestamp" : rpu.timestamp()
-                                        }
-                                   }})
+                        spec     = {"_id"   : {"$in"     : cu_uids}},
+                        document = {"$set"  : {"control" : 'agent'}})
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline)
