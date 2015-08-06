@@ -145,7 +145,6 @@ import Queue
 import pprint
 import signal
 import shutil
-import optparse
 import logging
 import hostlist
 import tempfile
@@ -236,57 +235,6 @@ UPDATE_QUEUE      = 'update_queue'
 UPDATE_WORKER     = 'UpdateWorker'
 
 
-# Number of worker threads
-NUMBER_OF_WORKERS = {
-        STAGEIN_WORKER   : 1,
-        EXEC_WORKER      : 1,
-        STAGEOUT_WORKER  : 1,
-        UPDATE_WORKER    : 1
-}
-
-# factor by which the number of units are increased at a certain step.  Value of
-# '1' will leave the units unchanged.  Any blowup will leave on unit as the
-# original, and will then create clones with an changed unit ID (see blowup()).
-BLOWUP_FACTOR = {
-        AGENT            : 1,
-        STAGEIN_QUEUE    : 1,
-        STAGEIN_WORKER   : 1,
-        SCHEDULE_QUEUE   : 1,
-        SCHEDULER        : 1,
-        EXECUTION_QUEUE  : 1,
-        EXEC_WORKER      : 1,
-        WATCH_QUEUE      : 1,
-        WATCHER          : 1,
-        STAGEOUT_QUEUE   : 1,
-        STAGEOUT_WORKER  : 1,
-        UPDATE_QUEUE     : 1,
-        UPDATE_WORKER    : 1
-}
-
-# flag to drop all blown-up units at some point in the pipeline.  The units
-# with the original IDs will again be left untouched, but all other units are
-# silently discarded.
-# 0: drop nothing
-# 1: drop clones
-# 2: drop everything
-DROP_CLONES = {
-        AGENT            : 1,
-        STAGEIN_QUEUE    : 1,
-        STAGEIN_WORKER   : 1,
-        SCHEDULE_QUEUE   : 1,
-        SCHEDULER        : 1,
-        EXECUTION_QUEUE  : 1,
-        EXEC_WORKER      : 1,
-        WATCH_QUEUE      : 1,
-        WATCHER          : 1,
-        STAGEOUT_QUEUE   : 1,
-        STAGEOUT_WORKER  : 1,
-        UPDATE_QUEUE     : 1,
-        UPDATE_WORKER    : 1
-}
-#
-# ------------------------------------------------------------------------------
-
 # ------------------------------------------------------------------------------
 # CONSTANTS
 #
@@ -355,32 +303,6 @@ RETRY    = 'RETRY'
 FREE     = 'Free'
 BUSY     = 'Busy'
 
-agent_config = {
-    # directory for staging files inside the agent sandbox
-    'staging_area'         : 'staging_area',
-    
-    # url scheme to indicate the use of staging_area
-    'staging_scheme'       : 'staging',
-    
-    # max number of cu out/err chars to push to db
-    'max_io_loglength'     : 1*1024,
-    
-    # max time period to collec db requests into bulks (seconds)
-    'bulk_collection_time' : 1.0,
-    
-    # time to sleep between queue polls (seconds)
-    'queue_poll_sleeptime' : 0.1,
-    
-    # time to sleep between database polls (seconds)
-    'db_poll_sleeptime'    : 0.1,
-    
-    # time between checks of internal state and commands from mothership (seconds)
-    'heartbeat_interval'   : 10,
-}
-agent_config['blowup_factor']     = BLOWUP_FACTOR
-agent_config['drop_clones']       = DROP_CLONES
-agent_config['number_of_workers'] = NUMBER_OF_WORKERS
-
 
 # ----------------------------------------------------------------------------------
 #
@@ -390,6 +312,7 @@ def rec_makedir(target):
 
     try:
         os.makedirs(target)
+
     except OSError as e:
         # ignore failure on existing directory
         if e.errno == errno.EEXIST and os.path.isdir(os.path.dirname(target)):
@@ -413,7 +336,7 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
     except : pass
     try    : err = open('./agent.err', 'r').read()
     except : pass
-    try    : log = open('./agent.log',    'r').read()
+    try    : log = open('./agent.log', 'r').read()
     except : pass
 
     msg = [{"message": message,          "timestamp": now},
@@ -3870,10 +3793,10 @@ class ExecWorker_POPEN (ExecWorker) :
                     # output data.  We always move to stageout, even if there are no
                     # directives -- at the very least, we'll upload stdout/stderr
 
-                    cu['state'] = rp.PENDING_AGENT_OUTPUT_STAGING
+                    cu['state'] = rp.AGENT_STAGING_OUTPUT_PENDING
                     self._agent.update_unit_state(src    = 'ExecWatcher',
                                                   uid    = cu['_id'],
-                                                  state  = rp.PENDING_AGENT_OUTPUT_STAGING,
+                                                  state  = rp.AGENT_STAGING_OUTPUT_PENDING,
                                                   msg    = "unit execution completed")
 
                     cu_list, _ = rpu.blowup(self._config, cu, STAGEOUT_QUEUE)
@@ -4386,10 +4309,10 @@ timestamp () {
             # advance the unit state
             self._schedule_queue.put ({'cmd' : COMMAND_UNSCHEDULE, 
                                        'cu'  : cu})
-            cu['state'] = rp.PENDING_AGENT_OUTPUT_STAGING,
+            cu['state'] = rp.AGENT_STAGING_OUTPUT_PENDING,
             self._agent.update_unit_state(src   = 'ExecWatcher',
                                           uid   = cu['_id'],
-                                          state = rp.PENDING_AGENT_OUTPUT_STAGING,
+                                          state = rp.AGENT_STAGING_OUTPUT_PENDING,
                                           msg   = "unit execution completed")
 
             cu_list, _ = rpu.blowup(self._config, cu, STAGEOUT_QUEUE)
@@ -4872,10 +4795,10 @@ class StageoutWorker(threading.Thread):
                     # Agent output staging is done.
 
                     #rpu.prof('final', msg="stageout done", uid=_cu['_id'])
-                    _cu['state'] = rp.PENDING_OUTPUT_STAGING
+                    _cu['state'] = rp.OUTPUT_STAGING_PENDING
                     self._agent.update_unit_state(src    = 'StageoutWorker',
                                                   uid    = _cu['_id'],
-                                                  state  = rp.PENDING_OUTPUT_STAGING,
+                                                  state  = rp.OUTPUT_STAGING_PENDING,
                                                   msg    = 'Agent output staging completed',
                                                   update = {
                                                       '$set' : {
@@ -5383,7 +5306,7 @@ class Agent(object):
         # This also blocks us from using multiple ingest threads, or from doing
         # late binding by unit pull :/
         cu_cursor = self._cu.find(spec  = {"pilot" : self._pilot_id,
-                                           'state' : rp.PENDING_AGENT_INPUT_STAGING})
+                                           'state' : rp.AGENT_STAGING_INPUT_PENDING})
         if not cu_cursor.count():
             # no units whatsoever...
             return 0
@@ -5476,25 +5399,6 @@ class Agent(object):
 # ==============================================================================
 def main():
 
-  # parser  = optparse.OptionParser()
-
-  # parser.add_option('-c', dest='cores',   type='int')
-  # parser.add_option('-d', dest='debug',   type='int')
-  # parser.add_option('-j', dest='task_launch_method')
-  # parser.add_option('-k', dest='mpi_launch_method')
-  # parser.add_option('-l', dest='lrms')
-  # parser.add_option('-m', dest='mongodb_url')
-  # parser.add_option('-o', dest='spawner')
-  # parser.add_option('-p', dest='pilot_id')
-  # parser.add_option('-q', dest='agent_scheduler')
-  # parser.add_option('-r', dest='runtime', type='int')
-  # parser.add_option('-s', dest='session_id')
-
-  # # parse the whole shebang
-  # (options, args) = parser.parse_args()
-
-  # if args : parser.error("Unused arguments '%s'" % args)
-
     # configure the agent logger
     logger    = logging.getLogger  ('radical.pilot.agent')
     handle    = logging.FileHandler("agent.log")
@@ -5513,7 +5417,7 @@ def main():
     try:
         logger.info ("load config file")
 
-        cfg_file = os.environ.get('RADICAL_PILOT_CONFIG', './agent.cfg')
+        cfg_file = os.environ.get('RADICAL_PILOT_CFG', './agent.cfg')
         cfg_dict = ru.read_json_str(cfg_file)
 
         cfg = agent_config
