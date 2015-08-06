@@ -152,7 +152,10 @@ class ResourceConfig(attributes.Attributes):
           rcf_name = str(os.path.basename (filename))
 
           if  rcf_name.endswith ('.json'):
-              rcf_name = rcf_name[0:-5]
+              rcf_name = rcf_name[:-5]
+
+          if  rcf_name.startswith ('resource_'):
+              rcf_name = rcf_name[9:]
 
           if  'aliases' in rcf_dict:
               # return empty list

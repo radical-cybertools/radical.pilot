@@ -42,6 +42,7 @@ RP_VERSION=
 PYTHON=
 SESSIONID=
 SANDBOX=`pwd`
+AGENT_TYPE='multicore'
 
 # flag which is set when a system level RP installation is found, triggers
 # '--upgrade' flag for pip
@@ -333,6 +334,7 @@ usage: $0 options
 This script launches a RADICAL-Pilot agent.
 
 OPTIONS:
+   -a   agent type (default: 'multicore')
    -c   ccm mode of agent startup
    -d   distribution source tarballs for radical stack install
    -e   execute commands before bootstrapping
@@ -1106,22 +1108,23 @@ env | sort
 echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
-while getopts "cd:e:f:h:i:m:p:r:s:t:v:x" OPTION; do
+while getopts "a:cd:e:f:h:i:m:p:r:s:t:v:x" OPTION; do
     case $OPTION in
+        a)  AGENT_TYPE="$OPTARG"  ;;
         c)  CCM='TRUE'  ;;
-        d)  SDISTS=$OPTARG  ;;
+        d)  SDISTS="$OPTARG"  ;;
         e)  preprocess "$OPTARG"  ;;
-        f)  FORWARD_TUNNEL_ENDPOINT=$OPTARG  ;;
-        h)  HOSTPORT=$OPTARG  ;;
-        i)  PYTHON=$OPTARG  ;;
-        m)  VIRTENV_MODE=$OPTARG  ;;
-        p)  PILOTID=$OPTARG  ;;
-        r)  RP_VERSION=$OPTARG  ;;
-        s)  SESSIONID=$OPTARG  ;;
-        t)  TUNNEL_BIND_DEVICE=$OPTARG ;;
-        v)  VIRTENV=$(eval echo $OPTARG)  ;;
-        x)  CLEANUP=$OPTARG  ;;
-        *)  usage "Unknown option: $OPTION=$OPTARG"  ;;
+        f)  FORWARD_TUNNEL_ENDPOINT="$OPTARG"  ;;
+        h)  HOSTPORT="$OPTARG"  ;;
+        i)  PYTHON="$OPTARG"  ;;
+        m)  VIRTENV_MODE="$OPTARG"  ;;
+        p)  PILOTID="$OPTARG"  ;;
+        r)  RP_VERSION="$OPTARG"  ;;
+        s)  SESSIONID="$OPTARG"  ;;
+        t)  TUNNEL_BIND_DEVICE="$OPTARG" ;;
+        v)  VIRTENV=$(eval echo "$OPTARG")  ;;
+        x)  CLEANUP="$OPTARG"  ;;
+        *)  usage "Unknown option: '$OPTION'='$OPTARG'"  ;;
     esac
 done
 
@@ -1222,16 +1225,16 @@ export _OLD_VIRTUAL_PS1
 #       from the imported rp modules __file__.
 if test "$RP_INSTALL_TARGET" = 'SANDBOX'
 then
-    PILOT_SCRIPT="$SANDBOX/rp_install/bin/radical-pilot-agent-multicore.py"
+    PILOT_SCRIPT="$SANDBOX/rp_install/bin/radical-pilot-agent-$AGENT_TYPE.py"
     if ! test -e "$PILOT_SCRIPT"
     then
-        PILOT_SCRIPT="$SANDBOX/rp_install/lib/python$python_version/site-packages/radical/pilot/agent/radical-pilot-agent-multicore.py"
+        PILOT_SCRIPT="$SANDBOX/rp_install/lib/python$PYTHON_VERSION/site-packages/radical/pilot/agent/radical-pilot-agent-$AGENT_TYPE.py"
     fi
 else
-    PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent-multicore.py"
+    PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent-$AGENT_TYPE.py"
     if ! test -e "$PILOT_SCRIPT"
     then
-        PILOT_SCRIPT="$VIRTENV/rp_install/lib/python$python_version/site-packages/radical/pilot/agent/radical-pilot-agent-multicore.py"
+        PILOT_SCRIPT="$VIRTENV/rp_install/lib/python$PYTHON_VERSION/site-packages/radical/pilot/agent/radical-pilot-agent-$AGENT_TYPE.py"
     fi
 fi
 

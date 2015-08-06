@@ -162,7 +162,7 @@ class Session (saga.Session, Object):
 
         # Loading all "default" resource configurations
         module_path  = os.path.dirname(os.path.abspath(__file__))
-        default_cfgs = "%s/configs/*.json" % module_path
+        default_cfgs = "%s/configs/resource_*.json" % module_path
         config_files = glob.glob(default_cfgs)
 
         for config_file in config_files:
@@ -178,7 +178,7 @@ class Session (saga.Session, Object):
                 logger.info("Load resource configurations for %s" % rc)
                 self._resource_configs[rc] = rcs[rc].as_dict() 
 
-        user_cfgs     = "%s/.radical/pilot/configs/*.json" % os.environ.get ('HOME')
+        user_cfgs     = "%s/.radical/pilot/configs/resource_*.json" % os.environ.get ('HOME')
         config_files  = glob.glob(user_cfgs)
 
         for config_file in config_files:
@@ -201,7 +201,7 @@ class Session (saga.Session, Object):
                     # new config -- add as is
                     self._resource_configs[rc] = rcs[rc].as_dict() 
 
-        default_aliases = "%s/configs/aliases.json" % module_path
+        default_aliases = "%s/configs/resource_aliases.json" % module_path
         self._resource_aliases = ru.read_json_str (default_aliases)['aliases']
 
         # create a new session
