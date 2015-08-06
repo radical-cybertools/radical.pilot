@@ -1,574 +1,326 @@
 #!/usr/bin/env python
 
 import os
-import zmq
+import sys
 import time
-import copy
-import Queue
 import pprint
+import signal
+import traceback
 import threading           as mt
 import multiprocessing     as mp
 import radical.utils       as ru
+import saga                as rs
+import radical.pilot       as rp
 import radical.pilot.utils as rpu
 
+# put git commit id into the logs so that we can pinpoint which exact version we
+# are running
+git_ident = "$Id$"
+
+# this should give us stack traces on haning pilots
 dh = ru.DebugHelper()
 
-POLL_DELAY = 0.001
+# we do a busy poll for units from mongodb.  POLL_DELAY defines the sleep time
+# between individual polls.
+POLL_DELAY = 0.01
 
-# TODO:
-#   - add profiling
-#   - add PENDING states
-#   - for notifications, change msg from [topic, unit] to [topic, msg]
-#   - components should not need to declare the state publisher?
+# we keep a global handle to the pilot collection in mongodb connection, so that
+# we can push pilot state updates to the db.  This is initialized in main().
+# Also keep the pilot_id and other essentials around globally, for the same
+# purpose.
+mongo_p     = None
+mongodb_url = None
+pilot_id    = None
+session_id  = None
+
+
+# ----------------------------------------------------------------------------------
+#
+def rec_makedir(target):
+
+    # recursive makedir which ignores errors if dir already exists
+
+    try:
+        os.makedirs(target)
+    except OSError as e:
+        # ignore failure on existing directory
+        if e.errno == errno.EEXIST and os.path.isdir(os.path.dirname(target)):
+            pass
+        else:
+            raise
+
+
+# ------------------------------------------------------------------------------
+#
+def pilot_FAILED(message, logger=None):
+
+    if logger: logger.error(message)
+    else     : print "ERROR: %s" % message
+
+    if not mongo_p:
+        if logger: logger.error("cannot log error state in database!")
+        else     : print "cannot log error state in database!"
+        return
+
+    now = rpu.timestamp()
+    out = None
+    err = None
+    log = None
+
+    try    : out = open('./agent.out', 'r').read()
+    except : pass
+    try    : err = open('./agent.err', 'r').read()
+    except : pass
+    try    : log = open('./agent.log', 'r').read()
+    except : pass
+
+    logentry = [{"message": message,          "timestamp": now},
+                {"message": rpu.get_rusage(), "timestamp": now}]
+
+    mongo_p.update({"_id": pilot_id},
+        {"$pushAll": {"log"         : logentry},
+         "$push"   : {"statehistory": {"state"     : rp.FAILED,
+                                       "timestamp" : now}},
+         "$set"    : {"state"       : rp.FAILED,
+                      "stdout"      : rpu.tail(out),
+                      "stderr"      : rpu.tail(err),
+                      "logfile"     : rpu.tail(log),
+                      "finished"    : now}
+        })
+
+
+# ------------------------------------------------------------------------------
+#
+def pilot_CANCELED(message, logger=None):
+
+    if logger: logger.warning(message)
+    else     : print "WARNING: %s" % message
+
+    if not mongo_p:
+        if logger: logger.error("cannot log cancellation in database!")
+        else     : print "cannot log cancellation in database!"
+        return
+
+    now = rpu.timestamp()
+    out = None
+    err = None
+    log = None
+
+    try    : out = open('./agent.out', 'r').read()
+    except : pass
+    try    : err = open('./agent.err', 'r').read()
+    except : pass
+    try    : log = open('./agent.log',    'r').read()
+    except : pass
+
+    logentry = [{"message": message,          "timestamp": now},
+                {"message": rpu.get_rusage(), "timestamp": now}]
+
+    mongo_p.update({"_id": pilot_id},
+        {"$pushAll": {"log"         : logentry},
+         "$push"   : {"statehistory": {"state"     : rp.CANCELED,
+                                       "timestamp" : now}},
+         "$set"    : {"state"       : rp.CANCELED,
+                      "stdout"      : rpu.tail(out),
+                      "stderr"      : rpu.tail(err),
+                      "logfile"     : rpu.tail(log),
+                      "finished"    : now}
+        })
+
+
+# ------------------------------------------------------------------------------
+#
+def pilot_DONE(logger=None):
+
+    if logger: logger.info("pilot %s is done" % pilot_id)
+    else     : print "INFO: pilot %s is done" % pilot_id
+
+    if not mongo_p:
+        if logger: logger.error("cannot log completion in database!")
+        else     : print "cannot log completion in database!"
+        return
+
+    now = rpu.timestamp()
+    out = None
+    err = None
+    log = None
+
+    try    : out = open('./agent.out', 'r').read()
+    except : pass
+    try    : err = open('./agent.err', 'r').read()
+    except : pass
+    try    : log = open('./agent.log',    'r').read()
+    except : pass
+
+    logentry = [{"message": "pilot done",     "timestamp": now},
+                {"message": rpu.get_rusage(), "timestamp": now}]
+
+    mongo_p.update({"_id": pilot_id},
+        {"$pushAll": {"log"         : logentry},
+         "$push"   : {"statehistory": {"state"    : rp.DONE,
+                                       "timestamp": now}},
+         "$set"    : {"state"       : rp.DONE,
+                      "stdout"      : rpu.tail(out),
+                      "stderr"      : rpu.tail(err),
+                      "logfile"     : rpu.tail(log),
+                      "finished"    : now}
+        })
+
+
 
 # ==============================================================================
 #
-class ComponentBase(mp.Process):
+class AgentUpdateWorker(rpu.ComponentBase):
     """
-    This class provides the basic structure for any RP component which operates
-    on stateful units.  It provides means to:
-
-      - define input channels on which to receive new units in certain states
-      - define work methods which operate on the units to advance their state
-      - define output channels to which to send the units after working on them
-      - define notification channels over which messages with other components
-        can be exchanged (publish/subscriber channels)
-
-    All low level communication is handled by the base class -- deriving classes
-    need only to declare the respective channels, valid state transitions, and
-    work methods.  When a unit is received, the component is assumed to have
-    full ownership over it, and that no other unit will change the unit state
-    during that time.
-
-    The main event loop of the component -- run() -- is executed as a separate
-    process.  Components inheriting this class should be fully self sufficient,
-    and should specifically attempt not to use shared resources.  That will
-    ensure that multiple instances of the component can coexist, for higher
-    overall system throughput.  Should access to shared resources be necessary,
-    it will require some locking mechanism across process boundaries.
-
-    This approach should ensure that
-
-      - units are always in a well defined state;
-      - components are simple and focus on the semantics of unit state
-        progression;
-      - no state races can occur on unit state progression;
-      - only valid state transitions can be enacted (given correct declaration
-        of the component's semantics);
-      - the overall system is performant and scalable.
-
-    Inheriting classes MUST overload the method:
-
-        initialize(self)
-
-    This method should be used to
-      - set up the component state for operation
-      - declare input/output/notification channels
-      - declare work methods
-      - declare callbacks to be invoked on state notification
-
-    Inheriting classes MUST call the constructor:
-
-        class StagingComponent(ComponentBase):
-            def __init__(self, args):
-                ComponentBase.__init__(self)
-
-    Further, the class must implement the declared work methods, with
-    a signature of:
-
-        work(self, unit)
-
-    The method is expected to change the unit state.  Units will not be pushed
-    to outgoing channels automatically -- to do so, the work method has to call 
-
-        self.advance(unit)
-
-    Until that method is called, the component is considered the sole owner of
-    the unit.  After that method is called, the unit is considered disowned by
-    the component.  It is the component's responsibility to call that method
-    exactly once per unit.
-
-    Having said that, components can return from the work methods without
-    calling advance, for two reasons.
-
-      - the unit may be in a final state, and is dropping out of the system (it
-        will never again advance in the state model)
-      - the component keeps ownership of the unit to advance it asynchronously
-        at a later point in time.
-
-    That implies that a component can collect ownership over an arbitrary number
-    of units over time.  Either way, at most one work method instance will ever
-    be active at any point in time.
+    An AgentUpdateWorker pushes CU and Pilot state updates to mongodb.  Its instances
+    compete for update requests on the update_queue.  Those requests will be
+    triplets of collection name, query dict, and update dict.  Update requests
+    will be collected into bulks over some time (BULK_COLLECTION_TIME), to
+    reduce number of roundtrips.
     """
 
     # --------------------------------------------------------------------------
     #
-    # FIXME: 
-    #  - *_PENDING -> *_QUEUED ?
-    #  - make state transitions more formal
-    # --------------------------------------------------------------------------
+    def __init__(self, name, cfg):
 
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, cfg):
-        """
-        This constructor MUST be called by inheriting classes.  
-        
-        Note that it is not executed in the process scope of the main event
-        loop -- initialization for the main event loop should be moved to the 
-        initialize() method.
-        """
+        rpu.ComponentBase.__init__(self, cfg=cfg)
 
-        self._cfg         = cfg
-        self._addr_map    = cfg.get('bridge_addresses', {})
-        self._name        = type(self).__name__
-        self._parent      = os.getpid() # pid of spawning process
-        self._inputs      = list()      # queues to get units from
-        self._outputs     = dict()      # queues to send units to
-        self._publishers  = dict()      # channels to send notifications to
-        self._subscribers = dict()      # callbacks for received notifications
-        self._workers     = dict()      # where units get worked upon
-        self._debug       = False
-
-        if 'RADICAL_DEBUG' in os.environ:
-            self._debug = True
-
-        # start the main event loop in a separate process.  At that point, the
-        # component will basically detach itself from the parent process, and
-        # will only maintain a handle to be used for shutdown
-        mp.Process.__init__(self)
-        self.start()
+        self._cfg           = cfg
+        self._session_id    = cfg['session_id']
 
 
     # --------------------------------------------------------------------------
     #
     def initialize(self):
-        """
-        This method MUST be overloaded by the components.  It is called *once*
-        in the context of the main run(), and should be used to set up component
-        state before units arrive
-        """
 
-        raise NotImplementedError("initialize() is not implemented by %s" % self._name)
+        _, db, _, _, _      = ru.mongodb_connect(mongodb_url)
+        self._mongo_db      = db
+        self._cinfo         = dict()  # collection cache
+
+        # get state notifications, because that is what we want to push out
+        self.declare_subscriber('state', 'agent_state_pubsub', self.state_cb)
+
+        # we run a separate thread which actually does the deed.  The main
+        # process will only collect units to push
+        self._stop   = mt.Event()
+        self._lock   = mt.RLock()
+        self._thread = mt.Thread(target=self._updater, args=[self._stop])
+        self._thread.start()
+
+        # FIXME: if the lock is slowing down too much, we need to use a simple
+        # queue or alternating buffer between state_cb and updater thread.
 
 
     # --------------------------------------------------------------------------
     #
     def finalize(self):
-        """
-        This method CAN be overloaded by the components.  It is called *once* in
-        the context of the main run(), and shuld be used to tear down component
-        states after units have been processed.
-        """
 
-        # FIXME: at the moment, finalize is not called, as the event loop is
-        #        forcefully killed.
-        pass
-
-
-    # --------------------------------------------------------------------------
-    #
-    def close(self):
-        """
-        Shut down the process hosting the event loop
-        """
-        try:
-            self.terminate()
-
-        except Exception as e:
-            print "error on closing %s: %s" % (self._name, e)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _log(self, msg):
-        """
-        Log messages to a file.  Log files are individually created for each
-        component instance.  Note that logging in any methods which are not
-        called from the main event lopp will happen in the scope of the main
-        process, and thus result in a separat log file (the process ID is part
-        of the logfile name).
-
-        NOTE:  This is a very inefficient log method: it will reopen/flush/close
-               the log file for every invokation.  Disabeling logging thus leads
-               to a significant speedup of the operatin.
-
-        FIXME: this should use proper python logging
-        """
-
-        if self._debug:
-            with open("component.%s.%d.log" % (self._name, os.getpid()), 'a') as f:
-                f.write("%15.5f: %-30s: %s\n" % (time.time(), self._name, msg))
-                f.flush()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def declare_input(self, states, input):
-        """
-        Using this method, the component can be connected to a queue on which
-        units are received to be worked upon.  The given set of states (which
-        can be a single state or a list of states) will trigger an assert check
-        upon unit arrival.
-
-        For each state specified by an declare_input() call, the component MUST
-        also declare an respective work method.
-        """
-
-        if not isinstance(states, list):
-            states = [states]
-
-        # check if a remote address is configured for the queue
-        addr = self._addr_map.get (input)
-        self._log("using addr %s for input %s" % (addr, input))
-
-        q = rpu.Queue.create(rpu.QUEUE_ZMQ, input, rpu.QUEUE_OUTPUT, addr)
-        self._inputs.append([q, states])
-
-
-    # --------------------------------------------------------------------------
-    #
-    def declare_output(self, states, output=None):
-        """
-        Using this method, the component can be connected to a queue to which
-        units are sent after being worked upon.  The given set of states (which
-        can be a single state or a list of states) will trigger an assert check
-        upon unit departure.
-
-        If a state but no output is specified, we assume that the state is
-        final, and the unit is then considered 'dropped' on calling advance() on
-        it.  The advance() will trigger a state notification though, and then
-        mark the drop in the log.  No other component should ever again work on
-        such a final unit.  It is the responsibility of the component to make
-        sure that the unit is in fact in a final state.
-        """
-
-        if not isinstance(states, list):
-            states = [states]
-
-        for state in states:
-
-            # we want a *unique* output queue for each state.
-            if state in self._outputs:
-                print "WARNING: %s replaces output for %s : %s -> %s" % (self._name, state, self._outputs[state], output)
-
-            if not output:
-                # this indicates a final state
-                self._outputs[state] = None
-            else:
-                # check if a remote address is configured for the queue
-                addr = self._addr_map.get (output)
-                self._log("using addr %s for output %s" % (addr, output))
-
-                # non-final state, ie. we want a queue to push to
-                self._outputs[state] = \
-                        rpu.Queue.create(rpu.QUEUE_ZMQ, output, rpu.QUEUE_INPUT, addr)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def declare_worker(self, states, worker):
-        """
-        This method will associate a unit state with a specific worker.  Upon
-        unit arrival, the unit state will be used to lookup the respective
-        worker, and the unit will be handed over.  Workers should call
-        self.advance(unit), in order to push the unit toward the next component.
-        If, for some reason, that is not possible before the worker returns, the
-        component will retain ownership of the unit, and should call advance()
-        asynchronously at a later point in time.
-
-        Worker invokation is synchronous, ie. the main event loop will only
-        check for the next unit once the worker method returns.
-        """
-
-        if not isinstance(states, list):
-            states = [states]
-
-        # we want exactly one worker associated with a state -- but a worker can
-        # be responsible for multiple states
-        for state in states:
-            if state in self._workers:
-                print "WARNING: %s replaces worker for %s (%s)" % (self._name, state, self._workers[state])
-            self._workers[state] = worker
-
-
-    # --------------------------------------------------------------------------
-    #
-    def declare_publisher(self, topic, pubsub):
-        """
-        Using this method, the compinent can declare certain notification topics
-        (where topic is a string).  For each topic, a pub/sub network will be
-        used to distribute the notifications to subscribers of that topic.  
-        
-        The same topic can be sent to multiple channels -- but that is
-        considered bad practice, and may trigger an error in later versions.
-        """
-
-        if topic not in self._publishers:
-            self._publishers[topic] = list()
-
-        # check if a remote address is configured for the queue
-        addr = self._addr_map.get (pubsub)
-        self._log("using addr %s for pubsub %s" % (addr, pubsub))
-
-        q = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, pubsub, rpu.PUBSUB_PUB, addr)
-        self._publishers[topic].append(q)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def declare_subscriber(self, topic, pubsub, cb):
-        """
-        This method is complementary to the declare_publisher() above: it
-        declares a subscription to a pubsub channel.  If a notification
-        with matching topic is received, the registered callback will be
-        invoked.  The callback MUST have the signature:
-
-          callback(topic, msg)
-
-        The subscription will be handled in a separate thread, which implies
-        that the callback invokation will also happen in that thread.  It is the
-        caller's responsibility to ensure thread safety during callback
-        invokation.
-        """
-
-      # # ----------------------------------------------------------------------
-      # class _Subscriber(mt.Thread):
-      #
-      #     def __init__ (self, q, cb):
-      #
-      #         self._q  = q
-      #         self._cb = cb
-      #         self._e  = mt.Event()
-      #
-      #         mt.Thread.__init__(self)
-      #
-      #     def stop(self):
-      #         self._e.set()
-      #
-      #     def run(self):
-      #
-      #         while not self._e.is_set():
-      #             topic, unit = self._q.get()
-      #             if topic and unit:
-      #                 self._cb (topic=topic, unit=unit)
-      # # ----------------------------------------------------------------------
-        def _subscriber(q, callback):
-
-            import cProfile
-            profile = cProfile.Profile()
-            profile.enable()
-            try:
-                self._log('create subscriber: %s - %s' % (mt.current_thread().name, os.getpid()))
-                i = 0
-                while i < 1000:
-                    i+= 1
-                    topic, unit = q.get()
-                    if topic and unit:
-                        self._log('%.5f: got sub [%s][%s]' % (time.time(), topic, unit))
-                        callback (topic=topic, unit=unit)
-            except:
-                pass
-            finally:
-                profile.disable()
-                profile.create_stats()
-                profile.dump_stats('prof.pstat')
-                profile.print_stats()
-        # ----------------------------------------------------------------------
-
-
-        # create a pubsub subscriber, and subscribe to the given topic
-        q = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, pubsub, rpu.PUBSUB_SUB)
-        q.subscribe(topic)
-
-        t = mt.Thread (target=_subscriber, args=[q,cb])
-        t.start()
-        # FIXME: shutdown: this should got to the finalize.
-
-
-    # --------------------------------------------------------------------------
-    #
-    def run(self):
-        """
-        This is the main routine of the component, as it runs in the component
-        process.  It will first initialize the component in the process context.
-        Then it will attempt to get new units from all input queues
-        (round-robin).  For each unit received, it will route that unit to the
-        respective worker method.  Once the unit is worked upon, the next
-        attempt ar getting a unit is up.
-        """
-
-        # Initialize() should declare all input and output channels, and all
-        # workers and notification callbacks
-        self._log('initialize')
-        self.initialize()
-
-        # perform a sanity check: for each declared input state, we expect
-        # a corresponding work method to be declared, too.
-        for input, states in self._inputs:
-            for state in states:
-                if not state in self._workers:
-                    raise RuntimeError("%s: no worker declared for input state %s" % self._name, state)
-
-        try:
-            # The main event loop will repeatedly iterate over all input
-            # channels, probing 
-            while True:
-
-                # FIXME: for the default case where we have only one input
-                #        channel, we can probably use a more efficient method to
-                #        pull for units -- such as blocking recv() (with some
-                #        timeout for eventual shutdown)
-                #
-                # FIXME: a simple, 1-unit caching mechanism would likely remove
-                #        the req/res overhead completely (for any non-trivial
-                #        worker).
-                for input, states in self._inputs:
-
-                    # FIXME: the timeouts have a large effect on throughput, but
-                    #        I am not yet sure how best to set them...
-                    unit = input.get_nowait(0.1)
-                    if not unit:
-                        time.sleep (0.01)
-                        continue
-
-                    # assert that the unit is in an expected state
-                    # FIXME: enact the *_PENDING -> * transition right here...
-                    state = unit['state']
-                    if state not in states:
-                        print "ERROR  : %s did not expect state %s: %s" % (self._name, state, unit)
-                        continue
-
-                    # notify unit arrival
-                    self.publish('state', unit)
-
-                    # check if we have a suitable worker (this should always be
-                    # the case, as per the assertion done before we started the
-                    # main loop.  But, hey... :P
-                    if not state in self._workers:
-                        print "ERROR  : %s cannot handle state %s: %s" % (self._name, state, unit)
-                        continue
-
-                    # we have an acceptable state and a matching worker -- hand
-                    # it over, wait for completion, and then pull for the next
-                    # unit
-                    self._workers[state](unit)
-
-        except Exception as e:
-            # We should see that exception only on process termination -- and of
-            # course on incorrect implementations of component workers.  We
-            # could in principle detect the latter within the loop -- - but
-            # since we don't know what to do with the units it operated on, we
-            # don't bother...
-            self._log("end main loop: %s" % e)
-
-        finally:
-            # shut the whole thing down...
-            self.finalize()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def advance(self, units):
-        """
-        Units which have been operated upon are pushed down into the queues
-        again, only to be picked up by the next component, according to their
-        state.  This method will inspect the unit state, and push it into the
-        output queue declared as target for that state.
-        """
-
-        if not isinstance(units, list):
-            units = [units]
-
-        for unit in units:
-            state = unit['state']
-
-            # send state notifications
-            self.publish('state', unit)
-
-            if state not in self._outputs:
-                # unknown target state -- error
-                print "ERROR  : %s can't route state %s (%s)" % (self._name, state, self._outputs.keys())
-                continue
-
-            if not self._outputs[state]:
-                # empty output -- drop unit
-                self._log('%s %s ===| %s' % ('state', unit['id'], unit['state']))
-                continue
-
-            # FIXME: we should assert that the unit is in a PENDING state.
-            #        Better yet, enact the *_PENDING transition right here...
-            #
-            # push the unit down the drain
-            self._outputs[state].put(unit)
-
-
-
-
-    # --------------------------------------------------------------------------
-    #
-    def publish(self, topic, units):
-        """
-        push information into a publication channel
-        """
-
-        if not isinstance(units, list):
-            units = [units]
-
-        if topic not in self._publishers:
-            print "ERROR  : %s can't route notification %s (%s)" % (self._name, topic, self._publishers.keys())
-            return
-
-        if not self._publishers[topic]:
-            print "ERROR  : %s no route for notification %s (%s)" % (self._name, topic, self._publishers.keys())
-            returreturn
-
-        for unit in units:
-            for p in self._publishers[topic]:
-                p.put (topic, unit)
-
-
-# ==============================================================================
-#
-class UpdateComponent(ComponentBase):
-    """
-    This component subscribes for state update messages, and prints them
-    """
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, cfg):
-
-        ComponentBase.__init__(self, cfg)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def initialize(self):
-
-      # self.declare_subscriber('state', 'agent_state_pubsub', self.state_cb)
-      pass
+        # make sure we collect the worker thread
+        self._stop.set()
+        self._thread.join()  # FIXME: timeout?
 
 
     # --------------------------------------------------------------------------
     #
     def state_cb(self, topic, unit):
+        """
+        we get state update requests, and push them onto bulks of similar
+        requests, so that the worker thread can pick them up to send out to
+        mongodb.
+        """
 
-        if self._debug:
-            print '%s %s ---> %s' % (topic, unit['id'], unit['state'])
-            pass
+        update_request = unit  # FIXME
+
+        # got a new request.  Add to bulk (create as needed),
+        # and push bulk if time is up.
+        uid         = update_request.get('_id')
+        state       = update_request.get('state', None)
+        cbase       = update_request.get('cbase', '.cu')
+        query_dict  = update_request.get('query', dict())
+        update_dict = update_request.get('update',dict())
+
+        if state :
+            rpu.prof('get', msg="update_queue to AgentUpdateWorker (%s)" % state, uid=uid)
+        else:
+            rpu.prof('get', msg="update_queue to AgentUpdateWorker", uid=uid)
+
+        cname = self._session_id + cbase
+
+        with self._lock:
+
+            if not cname in self._cinfo:
+                self._cinfo[cname] = {
+                        'coll' : self._mongo_db[cname],
+                        'bulk' : None,
+                        'last' : time.time(),  # time of last push
+                        'uids' : list()
+                        }
+
+            cinfo = self._cinfo[cname]
+
+            if not cinfo['bulk']:
+                cinfo['bulk']  = cinfo['coll'].initialize_ordered_bulk_op()
+
+            cinfo['uids'].append([uid, state])
+            cinfo['bulk'].find  (query_dict) \
+                         .update(update_dict)
+
+            rpu.prof('unit update bulked (%s)' % state, uid=uid)
 
 
     # --------------------------------------------------------------------------
     #
-    def finalize(self):
+    def updater(self, stop):
 
-        self._log('finalize')
+        while not stop.is_set():
+
+            # ------------------------------------------------------------------
+            try:
+
+                action = 0
+
+                with self._lock:
+
+                    for cname in self._cinfo:
+                        cinfo = self._cinfo[cname]
+
+                        if not cinfo['bulk']:
+                            return 0
+
+                        now = time.time()
+                        age = now - cinfo['last']
+
+                        if cinfo['bulk'] and age > self._cfg['bulk_collection_time']:
+
+                            res  = cinfo['bulk'].execute()
+                            self._log.debug("bulk update result: %s", res)
+
+                            rpu.prof('unit update bulk pushed (%d)' % len(cinfo['uids']))
+                            for entry in cinfo['uids']:
+                                uid   = entry[0]
+                                state = entry[1]
+                                if state:
+                                    rpu.prof('unit update pushed (%s)' % state, uid=uid)
+                                else:
+                                    rpu.prof('unit update pushed', uid=uid)
+
+                            cinfo['last'] = now
+                            cinfo['bulk'] = None
+                            cinfo['uids'] = list()
+                            action += 1
+
+                if not action:
+                    time.sleep(self._cfg['db_poll_sleeptime'])
+
+            except Exception as e:
+                self._log.exception("unit update failed (%s)", e)
+                # FIXME: should we fail the pilot at this point?
+                # FIXME: Are the strategies to recover?
 
 
 # ==============================================================================
 #
-class StagingInputComponent(ComponentBase):
+class AgentStagingInputComponent(rpu.ComponentBase):
     """
     This component will perform input staging for units in STAGING_INPUT state,
     and will advance them to SCHEDULING state.
@@ -578,17 +330,19 @@ class StagingInputComponent(ComponentBase):
     #
     def __init__(self, cfg):
 
-        ComponentBase.__init__(self, cfg)
+        rpu.ComponentBase.__init__(self, cfg=cfg)
 
 
     # --------------------------------------------------------------------------
     #
     def initialize(self):
 
-        self.declare_input ('STAGING_INPUT', 'agent_staging_input_queue')
-        self.declare_worker('STAGING_INPUT', self.work)
+        self._workdir = self._cfg['workdir']
 
-        self.declare_output('SCHEDULING', 'agent_scheduling_queue')
+        self.declare_input ('AGENT_STAGING_INPUT_PENDING', 'agent_staging_input_queue')
+        self.declare_worker('AGENT_STAGING_INPUT_PENDING', self.work)
+
+        self.declare_output('AGENT_SCHEDULING_PENDING', 'agent_scheduling_queue')
 
         self.declare_publisher('state', 'agent_state_pubsub')
 
@@ -597,14 +351,93 @@ class StagingInputComponent(ComponentBase):
     #
     def work(self, unit):
 
-        unit['state'] = 'SCHEDULING'
-        self.advance(unit)
+        if not unit:
+            rpu.prof('get_cmd', msg="stagein_queue to StageinWorker (wakeup)")
+            return # FXIME
 
+        # FIXME
+        unit['state'] = rp.AGENT_STAGING_INPUT
+        rpu.prof('get', msg="stagein_queue to StageinWorker (%s)" % unit['state'], uid=unit['_id'])
+
+        sandbox      = os.path.join(self._workdir, unit['_id'])
+        staging_area = os.path.join(self._workdir, self._config['staging_area'])
+
+        unit['workdir']     = sandbox
+        unit['stdout']      = ''
+        unit['stderr']      = ''
+        unit['opaque_clot'] = None
+
+        stdout_file = unit['description'].get('stdout')
+        if not stdout_file:
+            stdout_file = 'STDOUT'
+        unit['stdout_file'] = os.path.join(sandbox, stdout_file)
+
+        stderr_file = unit['description'].get('stderr')
+        if not stderr_file:
+            stderr_file = 'STDERR'
+        unit['stderr_file'] = os.path.join(sandbox, stderr_file)
+
+        rpu.prof('Agent get unit meta', uid=unit['_id'])
+        # create unit sandbox
+        rec_makedir(sandbox)
+        rpu.prof('Agent get unit mkdir', uid=unit['_id'])
+
+        for directive in unit['Agent_Input_Directives']:
+
+            rpu.prof('Agent input_staging queue', uid=unit['_id'],
+                     msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
+
+            if directive['state'] != rp.PENDING :
+                # we ignore directives which need no action
+                rpu.prof('Agent input_staging queue', uid=unit['_id'], msg='ignored')
+                continue
+
+
+            # Perform input staging
+            self._log.info("unit input staging directives %s for unit: %s to %s",
+                           directive, unit['_id'], sandbox)
+
+            # Convert the source_url into a SAGA Url object
+            source_url = rs.Url(directive['source'])
+
+            # Handle special 'staging' scheme
+            if source_url.scheme == self._config['staging_scheme']:
+                self._log.info('Operating from staging')
+                # Remove the leading slash to get a relative path from the staging area
+                rel2staging = source_url.path.split('/',1)[1]
+                source = os.path.join(staging_area, rel2staging)
+            else:
+                self._log.info('Operating from absolute path')
+                source = source_url.path
+
+            # Get the target from the directive and convert it to the location
+            # in the sandbox
+            target = directive['target']
+            abs_target = os.path.join(sandbox, target)
+
+            # Create output directory in case it doesn't exist yet
+            #
+            rec_makedir(os.path.dirname(abs_target))
+
+            self._log.info("Going to '%s' %s to %s", directive['action'], source, abs_target)
+
+            if   directive['action'] == LINK: os.symlink     (source, abs_target)
+            elif directive['action'] == COPY: shutil.copyfile(source, abs_target)
+            elif directive['action'] == MOVE: shutil.move    (source, abs_target)
+            else:
+                # FIXME: implement TRANSFER mode
+                raise NotImplementedError('Action %s not supported' % directive['action'])
+
+            log_message = "%s'ed %s to %s - success" % (directive['action'], source, abs_target)
+            self._log.info(log_message)
+
+        # Agent staging is all done, unit can go to ALLOCATING
+        self.advance(unit, AGENT_SCHEDULING_PENDING, publish=True, push=True)
 
 
 # ==============================================================================
 #
-class SchedulingComponent(ComponentBase):
+class AgentSchedulingComponent(rpu.ComponentBase):
     """
     This component will assign a limited, shared resource (cores) to units it
     receives.  It will do so asynchronously, ie. whenever it receives either
@@ -617,7 +450,14 @@ class SchedulingComponent(ComponentBase):
     #
     def __init__(self, cfg):
 
-        ComponentBase.__init__(self, cfg)
+        rpu.ComponentBase.__init__(self, cfg=cfg)
+
+        # schedulers need LRMS
+        self._lrms = LRMS.create(
+                name            = lrms_name,
+                cfg             = self._cfg,
+                logger          = self._log,
+                requested_cores = requested_cores)
 
 
     # --------------------------------------------------------------------------
@@ -635,7 +475,7 @@ class SchedulingComponent(ComponentBase):
 
         # we need unschedule updates to learn about units which free their
         # allocated cores.  Those updates need to be issued after execution, ie.
-        # by the ExecutionComponent.
+        # by the AgentExecutionComponent.
         self.declare_publisher ('state',      'agent_state_pubsub')
         self.declare_subscriber('unschedule', 'agent_unschedule_pubsub', self.unschedule_cb)
 
@@ -717,7 +557,7 @@ class SchedulingComponent(ComponentBase):
 
 # ==============================================================================
 #
-class ExecutionComponent(ComponentBase):
+class AgentExecutionComponent(rpu.ComponentBase):
     """
     This component expectes scheduled units (in EXECUTING state), and will
     execute their workload.  After execution, it will publish an unschedule
@@ -728,7 +568,7 @@ class ExecutionComponent(ComponentBase):
     #
     def __init__(self, cfg):
 
-        ComponentBase.__init__(self, cfg)
+        rpu.ComponentBase.__init__(self, cfg=cfg)
 
 
     # --------------------------------------------------------------------------
@@ -762,7 +602,7 @@ class ExecutionComponent(ComponentBase):
 
 # ==============================================================================
 #
-class StagingOutputComponent(ComponentBase):
+class AgentStagingOutputComponent(rpu.ComponentBase):
     """
     This component will perform output staging for units in STAGING_OUTPUT state,
     and will advance them to the final DONE state.
@@ -772,7 +612,7 @@ class StagingOutputComponent(ComponentBase):
     #
     def __init__(self, cfg):
 
-        ComponentBase.__init__(self, cfg)
+        rpu.ComponentBase.__init__(self, cfg=cfg)
 
 
     # --------------------------------------------------------------------------
@@ -799,185 +639,506 @@ class StagingOutputComponent(ComponentBase):
 
 # ==============================================================================
 #
-def agent(cfg):
-    """
-    This method will instantiate all communitation and notification channels,
-    and all components.  It will then feed a set of units to the lead-in queue
-    (staging_input).  A state notification callback will then register all units
-    which reached a final state (DONE).  Once all units are accounted for, it
-    will tear down all created objects.
+class Agent(mp.Process):
 
-    The agent accepts a config, which will specifcy 
-      - what bridges should be started
-      - what components should be started
-      - what are the endpoints for bridges which are not started
-    """
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self):
 
-    try:
+        rpu.prof('Agent init')
 
-        startup_cfg          = cfg.get('startup', {})
-        startup_units        = cfg.get('units', 0)
-        start_components     = startup_cfg.get('components', {})
-        start_bridges        = startup_cfg.get('bridges',    {})
-        start_queue_bridges  = start_bridges.get('queue',   {})
-        start_pubsub_bridges = start_bridges.get('pubsub', {})
+        self._debug_helper          = ru.DebugHelper()
 
-        # keep track of objects we need to close in the finally clause
-        bridges    = list()
-        components = list()
+        self.name                   = 'agent.master'
+        self._cfg                   = None
+        self._log                   = None
+        self._pilot_id              = None
+        self._session_id            = None
+        self._runtime               = None
 
-        # two shortcuts for bridge creation
-        def _create_queue_bridge(qname):
-            return rpu.Queue.create(rpu.QUEUE_ZMQ, qname, rpu.QUEUE_BRIDGE)
+        self._terminate             = mt.Event()
+        self._starttime             = time.time()
+        self._workdir               = os.getcwd()
 
-        def _create_pubsub_bridge(pname):
-            return rpu.Pubsub.create(rpu.PUBSUB_ZMQ, pname, rpu.PUBSUB_BRIDGE)
+        self._initialize()  # get config, init up logger, db connection
+        self._setup()       # create components
+        self._start()       # start pulling units
 
 
-        # create all communication bridges we need.  Use the default addresses,
-        # ie. they will bind to localhost to ports 10.000++.  We don't start
-        # bridges where the config contains an address, but instead pass that
-        # address to the component configuration.
-        bridge_addresses = dict() 
-        pprint.pprint(start_queue_bridges)
-        for qname, qaddr in start_queue_bridges.iteritems():
+    # --------------------------------------------------------------------------
+    #
+    def _initialize(self):
+        """
+        Read the configuration file, setup logging and mongodb connection.
+        This prepares the stage for the component setup (self._setup()).
+        """
 
-            if not qaddr:
-                # start new bridge
-                bridge = _create_queue_bridge(qname)
-                bridge_addresses[qname] = bridge.addr
-                bridges.append(bridge)
-            else:
-                # use the bridge at the given address
-                bridge_addresses[qname] = qaddr
+        # find out what agent instance name we have
+        if len(sys.argv) == 1:
+            # we are master
+            self.name = 'agent.master'
 
-      # bridges.append(_create_queue_bridge('agent_staging_input_queue') )
-      # bridges.append(_create_queue_bridge('agent_scheduling_queue')    )
-      # bridges.append(_create_queue_bridge('agent_executing_queue')     )
-      # bridges.append(_create_queue_bridge('agent_staging_output_queue'))
+        # configure the agent logger
+        self._log = rpu.get_logger(name='rp.agent', target='agent.log', level='INFO')
+        self._log.info('git ident: %s' % git_ident)
 
-        # create all pubsub channels we need (state update notifications,
-        # unit unschedule notifications).  Use default addresses, ie. they will
-        # bind to to ports 20.000++. We don't start bridges where the config
-        # contains an address, but instead pass that address to the component
-        # configuration.
-        for pname, paddr in start_pubsub_bridges.iteritems():
+        # --------------------------------------------------------------------------
+        # load the agent config, and overload the config dicts
 
-            if not paddr:
-                # start new bridge
-                bridge = _create_pubsub_bridge(pname)
-                bridge_addresses[pname] = bridge.addr
-                bridges.append(bridge)
-            else:
-                # use the bridge at the given address
-                bridge_addresses[pname] = paddr
+        if not 'RADICAL_PILOT_CFG' in os.environ:
+            raise RuntimeError('RADICAL_PILOT_CFG is not set - abort')
 
-      # bridges.append(_create_pubsub_bridge('agent_unschedule_pubsub'))
-      # bridges.append(_create_pubsub_bridge('agent_state_pubsub')     )
+        self._log.info ("load config file %s" % os.environ['RADICAL_PILOT_CFG'])
+        self._cfg = ru.read_json_str(os.environ['RADICAL_PILOT_CFG'])
 
-        # Based on the bridge setup, we pass a component config to the
-        # components we create -- they need that config to set up communication
-        # channels correctly.
-        ccfg = {
-                'bridge_addresses' : bridge_addresses
+        self._log.info("\Agent config:\n%s\n\n" % pprint.pformat(self._cfg))
+
+        self._cfg['workdir'] = os.getcwd()
+
+        if not 'cores'               in self._cfg: raise ValueError("Missing number of cores")
+        if not 'debug'               in self._cfg: raise ValueError("Missing DEBUG level")
+        if not 'lrms'                in self._cfg: raise ValueError("Missing LRMS")
+        if not 'mongodb_url'         in self._cfg: raise ValueError("Missing MongoDB URL")
+        if not 'pilot_id'            in self._cfg: raise ValueError("Missing pilot id")
+        if not 'runtime'             in self._cfg: raise ValueError("Missing or zero agent runtime")
+        if not 'scheduler'           in self._cfg: raise ValueError("Missing agent scheduler")
+        if not 'session_id'          in self._cfg: raise ValueError("Missing session id")
+        if not 'spawner'             in self._cfg: raise ValueError("Missing agent spawner")
+        if not 'mpi_launch_method'   in self._cfg: raise ValueError("Missing mpi launch method")
+        if not 'task_launch_method'  in self._cfg: raise ValueError("Missing unit launch method")
+        if not 'agent_layout'        in self._cfg: raise ValueError("Missing agent layout")
+
+        # prepare profiler
+        rpu.prof_init('agent.prof', 'start', uid=self._cfg['pilot_id'])
+
+        # configure the agent logger
+        self._log.setLevel(self._cfg['debug'])
+
+        # set up db connection
+        _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
+
+        self._p  = mongo_db["%s.p"  % self._session_id]
+        self._cu = mongo_db["%s.cu" % self._session_id]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _setup(self):
+        """
+        This method will instantiate all communitation and notification channels,
+        and all components.  It will then feed a set of units to the lead-in queue
+        (staging_input).  A state notification callback will then register all units
+        which reached a final state (DONE).  Once all units are accounted for, it
+        will tear down all created objects.
+
+        The agent accepts a config, which will specifcy 
+          - what bridges should be started
+          - what components should be started
+          - what are the endpoints for bridges which are not started
+        """
+
+        # NOTE: we don't do sanity checks on the agent layout (too lazy) -- but
+        #       we would hiccup badly over ill-formatted or incomplete layouts...
+        # we pick the layout according to our role (name)
+        if not self.name in self._cfg['agent_layout']:
+            raise RuntimeError("no agent layout section for %s" % self.name)
+
+        try:
+            layout = self._cfg['agent_layout'][self.name]
+
+            start_components     = layout.get('components', {})
+            start_bridges        = layout.get('bridges',    {})
+            start_queue_bridges  = start_bridges.get('queue',    {})
+            start_pubsub_bridges = start_bridges.get('pubsub',   {})
+
+            # keep track of objects we need to close in the finally clause
+            self._bridges    = list()
+            self._components = list()
+
+            # two shortcuts for bridge creation
+            def _create_queue_bridge(qname):
+                return rpu.Queue.create(rpu.QUEUE_ZMQ, qname, rpu.QUEUE_BRIDGE)
+
+            def _create_pubsub_bridge(pname):
+                return rpu.Pubsub.create(rpu.PUBSUB_ZMQ, pname, rpu.PUBSUB_BRIDGE)
+
+            # create all queue bridges we need.  Use the default addresses,
+            # ie. they will bind to localhost to ports 10.000++.  We don't start
+            # bridges where the config contains an address, but instead pass that
+            # address to the component configuration.
+            bridge_addresses = dict() 
+            for qname, qaddr in start_queue_bridges.iteritems():
+                if qaddr == 'local':
+                    # start new bridge locally
+                    bridge = _create_queue_bridge(qname)
+                    bridge_addresses[qname] = bridge.addr
+                    self._bridges.append(bridge)
+                else:
+                    # use the bridge at the given address
+                    bridge_addresses[qname] = qaddr
+
+            # same procedure for the pubsub bridges
+            for pname, paddr in start_pubsub_bridges.iteritems():
+                if paddr == 'local':
+                    # start new bridge locally
+                    bridge = _create_pubsub_bridge(pname)
+                    bridge_addresses[pname] = bridge.addr
+                    self._bridges.append(bridge)
+                else:
+                    # use the bridge at the given address
+                    bridge_addresses[pname] = paddr
+
+            # FIXME: we now have the bridge addresses.  Those need to be corrected
+            #        in the agent config before we pass that config on to (a) the
+            #        components we create below, and (b) to any other agent instance
+            #        we intent to spawn.
+
+            # Based on the bridge setup, we pass a component config to the
+            # components we create -- they need that config to set up communication
+            # channels correctly.
+            ccfg = {
+                    'bridge_addresses' : bridge_addresses
+                    }
+
+            # create all the component types we need. create n instances for each
+            # type.
+            # We use a static map from component names to class types for now --
+            # a factory might be more appropriate (FIXME)
+            cmap = {
+                "agent_update_worker"            : AgentUpdateWorker,
+                "agent_staging_input_component"  : AgentStagingInputComponent,
+                "agent_scheduling_component"     : AgentSchedulingComponent,
+                "agent_executing_component"      : AgentExecutionComponent,
+                "agent_staging_output_component" : AgentStagingOutputComponent
                 }
 
-        # create all the component types we need. create n instances for each
-        # type.
-        # We use a static map from component names to class types for now --
-        # a factory might be more appropriate (FIXME)
-        cmap = {
-            "UpdateComponent"        : UpdateComponent,
-            "StagingInputComponent"  : StagingInputComponent,
-            "SchedulingComponent"    : SchedulingComponent,
-            "ExecutionComponent"     : ExecutionComponent,
-            "StagingOutputComponent" : StagingOutputComponent
-            }
-
-        for cname, cnum in start_components.iteritems():
-            for i in range(cnum):
-                print 'create %s' % cname
-                components.append(cmap[cname](ccfg))
-
-      # components.append(StagingInputComponent() )
-      # components.append(SchedulingComponent()    )
-      # components.append(ExecutionComponent()    )
-      # components.append(StagingOutputComponent())
-      # components.append(UpdateComponent()       )
-
-        # to watch unit advancement, we also create a state pubsub subscriber
-        # and count unit state changes.  We only do that for the initial agent
-        # though...
-        if startup_units:
-            # ----------------------------------------------------------------------
-            def count(q, n):
-
-                count = 0
-                while True:
-                    topic, unit = q.get()
-                    if unit['state'] == 'DONE':
-                      # print ' ---> %5d : %s' % (count, unit['state'])
-                        count += 1
-                        if count >= n:
-                            return
-            # ----------------------------------------------------------------------
-            q = rpu.Pubsub.create(rpu.PUBSUB_ZMQ, 'agent_state_pubsub', rpu.PUBSUB_SUB)
-            q.subscribe('state')
-            t = mt.Thread(target=count, args=[q,startup_units])
-            t.start()
+            for cname, cnum in start_components.iteritems():
+                for i in range(cnum):
+                    print 'create %s' % cname
+                    comp = cmap[cname](ccfg)
+                    self._components.append(comp)
 
             # FIXME: make sure all communication channels are in place.  This could
             # be replaced with a proper barrier, but not sure if that is worth it...
             time.sleep (1)
 
-            # feed a couple of fresh compute units into the system.  This is what
-            # needs to come from the client module / MongoDB.  So, we create a new
-            # input to the StagingInput queue, and send units.  The StagingInput
-            # components will pull from it and start the pipeline.
-            start = time.time()
-            intake = rpu.Queue.create(rpu.QUEUE_ZMQ, 'agent_staging_input_queue', rpu.QUEUE_INPUT)
-            for i in range(startup_units):
-                intake.put({'state' : 'STAGING_INPUT', 'id' : i})
-            stop = time.time()
-            print "intake : %4.2f (%8.2f)" % (stop-start, startup_units/(stop-start))
 
-            # wait for the monitoring thread to complete
-            t.join()
-            stop = time.time()
-            print "process: %4.2f (%8.1f)" % (stop-start, startup_units/(stop-start))
+        except Exception as e:
+            raise
 
-        else:
-            # otherwith (non-intake), we wait forever (FIXME)
-            time.sleep(100)
+        finally:
+
+            # FIXME: let logfiles settle before killing the components
+            time.sleep(1)
+            os.system('sync')
+
+            # burn the bridges, burn EVERYTHING
+            for c in self._components:
+                c.close()
+
+            for b in self._bridges:
+                b.close()
+
+        # ######################################################################
+        # ######################################################################
+        # create component instances
+
+        self._scheduler = Scheduler.create(
+                name            = scheduler_name,
+                cfg             = self._cfg,
+                logger          = self._log)
+        self.worker_list.append(self._scheduler)
+
+        # FIXME: move to AgentExecutingComponent
+        self._task_launcher = LaunchMethod.create(
+                name            = task_launch_method,
+                cfg             = self._cfg,
+                logger          = self._log,
+                scheduler       = self._scheduler)
+
+        self._mpi_launcher = LaunchMethod.create(
+                name            = mpi_launch_method,
+                cfg             = self._cfg,
+                logger          = self._log,
+                scheduler       = self._scheduler)
+
+        for n in range(self._cfg['number_of_workers'][STAGEIN_WORKER]):
+            stagein_worker = StageinWorker(
+                name            = "StageinWorker-%d" % n,
+                cfg             = self._cfg,
+                logger          = self._log,
+                agent           = self,
+                workdir         = self._workdir
+            )
+            self.worker_list.append(stagein_worker)
 
 
-    except RuntimeError as e:
-  # except Exception as e:
+        for n in range(self._cfg['number_of_workers'][EXEC_WORKER]):
+            exec_worker = ExecWorker.create(
+                name            = "ExecWorker-%d" % n,
+                cfg             = self._cfg,
+                spawner         = spawner,
+                logger          = self._log,
+                agent           = self,
+                scheduler       = self._scheduler,
+                task_launcher   = self._task_launcher,
+                mpi_launcher    = self._mpi_launcher,
+                pilot_id        = self._pilot_id,
+                number          = n,
+                session_id      = self._session_id
+            )
+            self.worker_list.append(exec_worker)
 
-        print "Exception: %s" % e
+
+        for n in range(self._cfg['number_of_workers'][STAGEOUT_WORKER]):
+            stageout_worker = StageoutWorker(
+                name            = "StageoutWorker-%d" % n,
+                cfg             = self._cfg,
+                agent           = self,
+                logger          = self._log,
+                workdir         = self._workdir
+            )
+            self.worker_list.append(stageout_worker)
+
+
+        for n in range(self._cfg['number_of_workers'][UPDATE_WORKER]):
+            update_worker = AgentUpdateWorker(
+                name            = "AgentUpdateWorker-%d" % n,
+                cfg             = self._cfg,
+                logger          = self._log,
+                agent           = self,
+                session_id      = self._session_id,
+                mongodb_url     = mongodb_url
+            )
+            self.worker_list.append(update_worker)
+
+
+        hbmon = HeartbeatMonitor(
+                name            = "HeartbeatMonitor",
+                cfg             = self._cfg,
+                logger          = self._log,
+                agent           = self,
+                p               = self._p,
+                starttime       = self._starttime,
+                runtime         = self._runtime,
+                pilot_id        = self._pilot_id)
+        self.worker_list.append(hbmon)
+
+        # FIXME
+        rpu.prof('Agent init done')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def stop(self):
+        """
+        Terminate the agent main loop.  The workers will be pulled down once the
+        main loop finishes (see run())
+        """
+        # FIXME: who calls this?  ever?
+
+        rpu.prof ('stop request')
+        rpu.flush_prof()
+        self.terminate()
+        self.wait()
+
+        # FIXME: signal the other agents, and shot down all components and
+        #        bridges.
+
+
+    # --------------------------------------------------------------------------
+    #
+    def run(self):
+
+        rpu.prof('run')
+
+        # first order of business: set the start time and state of the pilot
+        self._log.info("Agent %s for pilot %s starting ...", (self.name, self._pilot_id))
+        now = rpu.timestamp()
+        ret = self._p.update(
+            {"_id": self._pilot_id},
+            {"$set" : {"state"        : rp.ACTIVE,
+                       "started"      : now},
+             "$push": {"statehistory" : {"state"    : rp.ACTIVE,
+                                         "timestamp": now}}
+            })
+
+        while True:
+
+            try:
+                # check for new units
+                action = self._check_units()
+
+                # if no units have been seen, then wait for juuuust a little...
+                # FIXME: use some mongodb notification mechanism to avoid busy
+                # polling.  Tailed cursors or whatever...
+                if not action:
+                    time.sleep(self._cfg['db_poll_sleeptime'])
+
+            except Exception as e:
+                # exception in the main loop is fatal
+                pilot_FAILED(self._p, self._pilot_id, self._log,
+                    "ERROR in agent main loop: %s. %s" % (e, traceback.format_exc()))
+                rpu.flush_prof()
+                sys.exit(1)
+
+        # record cancelation state
+        pilot_CANCELED(self._p, self._pilot_id, self._log,
+                "Terminated (_terminate set).")
+
+    # --------------------------------------------------------------------------
+    #
+    def _check_units(self):
+
+        # Check if there are compute units waiting for input staging
+        # and log that we pulled it.
+        #
+        # FIXME: Unfortunately, 'find_and_modify' is not bulkable, so we have
+        # to use 'find'.  To avoid finding the same units over and over again,
+        # we update the state *before* running the next find -- so we do it
+        # right here...  No idea how to avoid that roundtrip...
+        # This also blocks us from using multiple ingest threads, or from doing
+        # late binding by unit pull :/
+        cu_cursor = self._cu.find(spec  = {"pilot"   : self._pilot_id,
+                                           'state'   : rp.AGENT_STAGING_INPUT_PENDING, 
+                                           'control' : 'umgr'})
+        if not cu_cursor.count():
+            # no units whatsoever...
+            return 0
+
+        # update the unit states to avoid pulling them again next time.
+        cu_list = list(cu_cursor)
+        cu_uids = [_cu['_id'] for _cu in cu_list]
+
+        self._cu.update(multi    = True,
+                        spec     = {"_id"   : {"$in"     : cu_uids}},
+                        document = {"$set"  : {"control" : 'agent'}})
+
+        # now we really own the CUs, and can start working on them (ie. push
+        # them into the pipeline)
+        if cu_list:
+            rpu.prof('Agent get units', msg="bulk size: %d" % cu_cursor.count(),
+                 logger=self._log.info)
+
+        for cu in cu_list:
+
+            rpu.prof('get', msg="MongoDB to Agent (%s)" % cu['state'], uid=cu['_id'], logger=self._log.info)
+
+            _cu_list, _ = rpu.blowup(self._cfg, cu, AGENT)
+            for _cu in _cu_list :
+
+                try:
+                    self._stagein_queue.put(__cu)
+
+                except Exception as e:
+                    # if any unit sorting step failed, the unit did not end up in
+                    # a queue (its always the last step).  We set it to FAILED
+                    msg = "could not sort unit (%s)" % e
+                    rpu.prof('error', msg=msg, uid=_cu['_id'], logger=self._log.exception)
+                    _cu['state'] = rp.FAILED
+                    self.update_unit_state(src    = 'Agent',
+                                           uid    = _cu['_id'],
+                                           state  = rp.FAILED,
+                                           msg    = msg)
+                    # NOTE: this is final, the unit will not be touched
+                    # anymore.
+                    _cu = None
+
+        # indicate that we did some work (if we did...)
+        return len(cu_uids)
+
+
+
+# ==============================================================================
+#
+def main():
+    """
+    This method continues where the bootstrapper left off, but will quickly pass
+    control to the Agent class which will spawn the functional components.
+    """
+
+    # FIXME: signal handlers need mongo_p, but we won't have that until later
+
+    # quickly set up a mongodb handle so that we can report errors.  We need to
+    # parse the config to get the url and some IDs.
+    # FIXME: should those be the things we pass as arg or env?
+    cfg = ru.read_json_str(os.environ['RADICAL_PILOT_CFG'])
+
+    pprint.pprint(cfg)
+
+    mongodb_url = cfg['mongodb_url']
+    pilot_id    = cfg['pilot_id']
+    session_id  = cfg['session_id']
+
+    _, mongo_db, _, _, _  = ru.mongodb_connect(mongodb_url)
+    mongo_p  = mongo_db["%s.p" % cfg['session_id']]
+
+    def exit_handler():
+        print 'exit handler'
+        rpu.flush_prof()
+    
+    def sigint_handler(signum, frame):
+        print 'sigint'
+        pilot_FAILED('Caught SIGINT. EXITING (%s)' % frame)
+        sys.exit(2)
+
+    def sigalarm_handler(signum, frame):
+        print 'sigalrm'
+        pilot_FAILED('Caught SIGALRM (Walltime limit?). EXITING (%s)' % frame)
+        sys.exit(3)
+        
+    import atexit
+    atexit.register(exit_handler)
+    signal.signal(signal.SIGINT, sigint_handler)
+    signal.signal(signal.SIGALRM, sigalarm_handler)
+
+    agent = None
+    try:
+        print 'try'
+        agent = Agent()
+        agent.start()
+        agent.join()
+
+    except SystemExit:
+        print 'sysexit'
+        print ru.get_trace() 
+        pilot_FAILED("Caught system exit. EXITING") 
+        sys.exit(6)
+
+    except Exception as e:
+        print 'exception: %s' % e
+        print ru.get_trace()
+        pilot_FAILED("Error running agent: %s" % str(e))
+        sys.exit(7)
 
     finally:
-
-        # FIXME: let logfiles settle before killing the components
-        time.sleep(1)
-        os.system('sync')
-
-        # burn the bridges, burn EVERYTHING
-        for c in components:
-            c.close()
-
-        for b in bridges:
-            b.close()
+        # attempt to shut down the agent
+        if agent:
+            agent.terminate()
+            time.sleep(1)
+        rpu.prof('stop', msg='finally clause')
+        sys.exit(8)
 
 
 # ==============================================================================
 #
 if __name__ == "__main__":
-    
-    cfg = ru.read_json(os.environ.get('RADICAL_PILOT_CFG', 'agent.cfg'))
-    pprint.pprint (cfg)
 
-    agent(cfg)
+    print "---------------------------------------------------------------------"
+    print
+    print "PYTHONPATH: %s"  % sys.path
+    print "python: %s"      % sys.version
+    print "utils : %-5s : %s" % (ru.version_detail, ru.__file__)
+    print "saga  : %-5s : %s" % (rs.version_detail, rs.__file__)
+    print "pilot : %-5s : %s" % (rp.version_detail, rp.__file__)
+    print "        type  : test"
+    print "        gitid : %s" % git_ident
+    print "        config: %s" % os.environ.get('RADICAL_PILOT_CFG')
+    print
+    print "---------------------------------------------------------------------"
+    print
+
+    sys.exit(main())
 #
 # ==============================================================================
 
