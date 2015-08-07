@@ -596,7 +596,7 @@ class AgentSchedulingComponent(rpu.Component):
                 self.advance(cu, rp.EXECUTING_PENDING, publish=True, push=True)
 
                 # remove it from the wait queue
-                with self._wait_queue_lock :
+                with self._wait_lock :
                     self._wait_pool.remove(cu)
                     rpu.prof('unqueue', msg="re-allocation done", uid=cu['_id'])
 
@@ -650,7 +650,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         else:
             # No resources available, put in wait queue
-            with self._wait_queue_lock :
+            with self._wait_lock :
                 self._wait_pool.append(cu)
 
             rpu.prof('schedule', msg="allocation failed", uid=cu['_id'])
@@ -4626,26 +4626,19 @@ class AgentHeartbeatWorker(rpu.Worker):
         self._session_id    = self._cfg['session_id']
         self._mongodb_url   = self._cfg['mongodb_url']
 
-        _, db, _, _, _      = ru.mongodb_connect(self._mongodb_url)
-        self._mongo_db      = db
-        self._cinfo         = dict()            # collection cache
-        self._lock          = threading.RLock() # protect _cinfo
-
         self.declare_publisher('command', rp.AGENT_COMMAND_PUBSUB)
         self.declare_idle_cb(self.idle_cb, self._cfg.get('heartbeat_interval'))
 
-        self._pilot_id        = self._cfg['pilot_id']
-        self._runtime         = self._cfg['runtime']
+        self._pilot_id      = self._cfg['pilot_id']
+        self._session_id    = self._cfg['session_id']
+        self._runtime       = self._cfg['runtime']
+        self._starttime     = time.time()
 
+        # set up db connection
+        _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
 
-    # --------------------------------------------------------------------------
-    #
-    def stop(self):
-
-        rpu.prof ('stop request')
-        rpu.flush_prof()
-        self._terminate.set()
-        self._agent.stop()
+        self._p  = mongo_db["%s.p"  % self._session_id]
+        self._cu = mongo_db["%s.cu" % self._session_id]
 
 
     # --------------------------------------------------------------------------
@@ -4703,14 +4696,15 @@ class AgentHeartbeatWorker(rpu.Worker):
     #
     def _check_state(self):
 
-        # Check the workers periodically. If they have died, we
-        # exit as well. this can happen, e.g., if the worker
-        # process has caught an exception
-        for c in self._components:
-            if not c.is_alive():
-                msg = 'component %s died' % str(c)
-                self.publish('command', {'cmd' : 'failed', 
-                                         'msg' : 'timeout'})
+      # # FIXME: only the AgentWorker can do this:
+      # # Check the workers periodically. If they have died, we
+      # # exit as well. this can happen, e.g., if the worker
+      # # process has caught an exception
+      # for c in self._components:
+      #     if not c.is_alive():
+      #         msg = 'component %s died' % str(c)
+      #         self.publish('command', {'cmd' : 'failed', 
+      #                                  'msg' : 'timeout'})
 
         # Make sure that we haven't exceeded the agent runtime. if
         # we have, terminate.
@@ -4772,7 +4766,6 @@ class AgentWorker(rpu.Worker):
         This prepares the stage for the component setup (self._setup()).
         """
 
-        self._starttime      = time.time()
         self._cfg['workdir'] = os.getcwd() # this better be on a shared FS!
 
         # sanity check on config settings
@@ -4939,9 +4932,13 @@ class AgentWorker(rpu.Worker):
                 "agent_staging_input_component"  : AgentStagingInputComponent,
                 "agent_scheduling_component"     : AgentSchedulingComponent,
                 "agent_executing_component"      : AgentExecutingComponent,
-                "agent_staging_output_component" : AgentStagingOutputComponent
+                "agent_staging_output_component" : AgentStagingOutputComponent,
+                "agent_heartbeat_worker"         : AgentHeartbeatWorker
                 }
 
+            # we always start o heartbeat worker
+            if "agent_heartbeat_worker" not in start_components:
+                start_components["agent_heartbeat_worker"] = 1
 
             for cname, cnum in start_components.iteritems():
                 for i in range(cnum):
@@ -4963,27 +4960,25 @@ class AgentWorker(rpu.Worker):
             self._log.exception("Agent setup error: %s" % e)
             raise
 
-      # FIXME: this needs to go into shutdown
-      #
-      # finally:
-      #
-      #     self._log.info("Agent setup finalization: %s" % e)
-      #
-      #     # FIXME: let logfiles settle before killing the components
-      #     time.sleep(1)
-      #     os.system('sync')
-      #
-      #     # burn the bridges, burn EVERYTHING
-      #     for c in self._components:
-      #         c.close()
-      #
-      #     for b in self._bridges:
-      #         b.close()
-
         rpu.prof('Agent setup done', logger=self._log.debug)
 
         # FIXME: signal the other agents, and shot down all components and
         #        bridges.
+
+    def finalize(self):
+
+        self._log.info("Agent finalizes")
+      
+        # FIXME: let logfiles settle before killing the components
+        time.sleep(1)
+        os.system('sync')
+      
+        # burn the bridges, burn EVERYTHING
+        for c in self._components:
+            c.close()
+      
+        for b in self._bridges:
+            b.close()
 
 
     # --------------------------------------------------------------------------

@@ -119,7 +119,7 @@ if __name__ == "__main__":
         # a UnitManager object.
         umgr = rp.UnitManager(
             session=session,
-            scheduler=rp.SCHED_BACKFILLING)
+            scheduler=rp.SCHED_DIRECT)
     
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
@@ -146,13 +146,13 @@ if __name__ == "__main__":
         #    /bin/cat $INPUT1 $INPUT2
         #
         cuds = []
-        for unit_count in range(0, 14):
+        for unit_count in range(0, 140):
             cud = rp.ComputeUnitDescription()
             cud.name          = "unit_%03d" % unit_count
             cud.executable    = "/bin/sleep"
-            cud.pre_exec      = ["sleep 2"]
-            cud.post_exec     = ["sleep 2"]
-            cud.arguments     = ["2"]
+            cud.pre_exec      = ["sleep 0"]
+            cud.post_exec     = ["sleep 0"]
+            cud.arguments     = ["0"]
             cud.cores         = 1
     
             cuds.append(cud)

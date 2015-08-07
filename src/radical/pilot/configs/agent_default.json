@@ -26,12 +26,12 @@
             "workers"    : [],
             "components" : {
                 # how many instances of the respective components should be started
-                "agent_staging_input_component"  : 1,
+                "agent_staging_input_component"  : 3,
                 "agent_scheduling_component"     : 1,
-                "agent_executing_component"      : 1,
-                "agent_staging_output_component" : 1,
-                "agent_staging_output_component" : 1,
-                "agent_update_worker"            : 1
+                "agent_executing_component"      : 3,
+                "agent_staging_output_component" : 3,
+                "agent_staging_output_component" : 3,
+                "agent_update_worker"            : 2
             },
             "bridges" : {
                 # which bridges (and what type) should be started locally 
