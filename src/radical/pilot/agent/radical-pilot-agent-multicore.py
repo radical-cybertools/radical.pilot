@@ -430,6 +430,20 @@ class AgentSchedulingComponent(rpu.Component):
 
         rpu.Component.__init__(self, cfg)
 
+        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def command_cb(self, topic, command):
+
+        if command['cmd'] == 'shutdown':
+            self._log.error("shutdown command (%s)" % command['msg'])
+            self.terminate()
+
+        else:
+            self._log.error("unknown command '%s'" % command)
+
 
     # --------------------------------------------------------------------------
     #
@@ -3170,6 +3184,21 @@ class AgentExecutingComponent(rpu.Component):
 
         rpu.Component.__init__(self, cfg)
 
+        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def command_cb(self, topic, command):
+
+        if command['cmd'] == 'shutdown':
+            self._log.error("shutdown command (%s)" % command['msg'])
+            self.terminate()
+
+        else:
+            self._log.error("unknown command '%s'" % command)
+
+
 
     # --------------------------------------------------------------------------
     #
@@ -4106,6 +4135,21 @@ class AgentUpdateWorker(rpu.Worker):
 
         rpu.Worker.__init__(self, cfg)
 
+        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def command_cb(self, topic, command):
+
+        if command['cmd'] == 'shutdown':
+            self._log.error("shutdown command (%s)" % command['msg'])
+            self.terminate()
+
+        else:
+            self._log.error("unknown command '%s'" % command)
+
+
 
     # --------------------------------------------------------------------------
     #
@@ -4266,6 +4310,21 @@ class AgentStagingInputComponent(rpu.Component):
 
         rpu.Component.__init__(self, cfg)
 
+        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def command_cb(self, topic, command):
+
+        if command['cmd'] == 'shutdown':
+            self._log.error("shutdown command (%s)" % command['msg'])
+            self.terminate()
+
+        else:
+            self._log.error("unknown command '%s'" % command)
+
+
 
     # --------------------------------------------------------------------------
     #
@@ -4382,6 +4441,21 @@ class AgentStagingOutputComponent(rpu.Component):
     def __init__(self, cfg):
 
         rpu.Component.__init__(self, cfg)
+
+        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def command_cb(self, topic, command):
+
+        if command['cmd'] == 'shutdown':
+            self._log.error("shutdown command (%s)" % command['msg'])
+            self.terminate()
+
+        else:
+            self._log.error("unknown command '%s'" % command)
+
 
 
     # --------------------------------------------------------------------------
@@ -4510,7 +4584,7 @@ class AgentStagingOutputComponent(rpu.Component):
 
 # ==============================================================================
 #
-class AgentHeartbeatMonitor(threading.Thread):
+class AgentHeartbeatWorker(rpu.Worker):
     """
     The HeartbeatMonitor watches the command queue for heartbeat updates (and
     other commands).
@@ -4518,23 +4592,51 @@ class AgentHeartbeatMonitor(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, agent, command_queue, p, pilot_id, starttime, runtime):
+    def __init__(self, cfg):
 
-        threading.Thread.__init__(self)
+        rpu.Worker.__init__(self, cfg)
 
-        self.name             = name
-        self._cfg             = config
-        self._log             = logger
-        self._agent           = agent
-        self._command_queue   = command_queue
-        self._p               = p
-        self._pilot_id        = pilot_id
-        self._starttime       = starttime
-        self._runtime         = runtime
-        self._terminate       = threading.Event()
+        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
 
-        # run worker thread
-        self.start()
+
+    # --------------------------------------------------------------------------
+    #
+    def command_cb(self, topic, command):
+
+        if command['cmd'] == 'shutdown':
+            self._log.error("shutdown command (%s)" % command['msg'])
+            self.terminate()
+
+        else:
+            self._log.error("unknown command '%s'" % command)
+
+
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def create(cls, cfg):
+        return cls(cfg)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def initialize(self):
+
+        self._session_id    = self._cfg['session_id']
+        self._mongodb_url   = self._cfg['mongodb_url']
+
+        _, db, _, _, _      = ru.mongodb_connect(self._mongodb_url)
+        self._mongo_db      = db
+        self._cinfo         = dict()            # collection cache
+        self._lock          = threading.RLock() # protect _cinfo
+
+        self.declare_publisher('command', rp.AGENT_COMMAND_PUBSUB)
+        self.declare_idle_cb(self.idle_cb, self._cfg.get('heartbeat_interval'))
+
+        self._pilot_id        = self._cfg['pilot_id']
+        self._runtime         = self._cfg['runtime']
+
 
     # --------------------------------------------------------------------------
     #
@@ -4548,22 +4650,16 @@ class AgentHeartbeatMonitor(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def run(self):
+    def idle_cb(self):
 
-        rpu.prof('run')
-        while not self._terminate.is_set():
+        try:
+            rpu.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!')
+            self._check_commands()
+            self._check_state   ()
 
-            try:
-                rpu.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!')
-                self._check_commands()
-                self._check_state   ()
-                time.sleep(self._cfg['heartbeat_interval'])
-
-            except Exception as e:
-                self._log.exception('error in heartbeat monitor (%s)', e)
-                self.stop()
-
-        rpu.prof ('stop')
+        except Exception as e:
+            self._log.exception('heartbeat died - cancel')
+            self.publish('command', 'cancel')
 
 
     # --------------------------------------------------------------------------
@@ -4587,20 +4683,16 @@ class AgentHeartbeatMonitor(threading.Thread):
             rpu.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s)" % command_str)
 
             if command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT:
-                self.stop()
-                pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
-                rpu.flush_prof()
-                sys.exit(1)
+                self.publish('command', {'cmd' : 'cancel', 
+                                         'arg' : 'timeout'})
 
             elif command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
-                self._log.info("Received Cancel Compute Unit command for: %s", command[COMMAND_ARG])
-                rpu.prof('put_cmd', msg="HeartbeatMonitor to command_queue (%s)" % command_str,
-                        uid=command[COMMAND_ARG])
-                # Put it on the command queue of the ExecWorker
-                self._command_queue.put(command)
+                self.publish('command', {'cmd' : 'cancel_unit', 
+                                         'arg' : command})
 
             elif command[COMMAND_TYPE] == COMMAND_KEEP_ALIVE:
-                self._log.info("Received KeepAlive command.")
+                self.publish('command', {'cmd' : 'heartbeat', 
+                                         'msg' : 'keepalive'})
 
             else:
                 self._log.error("Received unknown command: %s with arg: %s.",
@@ -4617,14 +4709,15 @@ class AgentHeartbeatMonitor(threading.Thread):
         for c in self._components:
             if not c.is_alive():
                 msg = 'component %s died' % str(c)
-                pilot_FAILED(self._p, self._pilot_id, self._log, msg)
+                self.publish('command', {'cmd' : 'failed', 
+                                         'msg' : 'timeout'})
 
         # Make sure that we haven't exceeded the agent runtime. if
         # we have, terminate.
         if time.time() >= self._starttime + (int(self._runtime) * 60):
             self._log.info("Agent has reached runtime limit of %s seconds.", self._runtime*60)
-            self.stop()
-            pilot_DONE(self._p, self._pilot_id)
+            self.publish('command', {'cmd' : 'shutdown', 
+                                     'msg' : 'timeout'})
 
 
 
@@ -4645,6 +4738,30 @@ class AgentWorker(rpu.Worker):
             cfg['name'] = sys.argv[1]
 
         rpu.Worker.__init__(self, cfg)
+
+        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def command_cb(self, topic, command):
+
+        if command['cmd'] == 'shutdown':
+            self._log.error("shutdown command (%s)" % command['msg'])
+            self.terminate()
+
+            if msg == 'timeout':
+                pilot_DONE(self._p, self._pilot_id, self._log, "TIMEOUT received. Terminating.")
+
+            if msg == 'cancel':
+                pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
+
+            else:
+                pilot_FAILED(self._p, self._pilot_id, self._log, "TERMINATE(%s) received" % command['msg'])
+
+        else:
+            self._log.error("unknown command '%s'" % command)
+
 
 
     # --------------------------------------------------------------------------
