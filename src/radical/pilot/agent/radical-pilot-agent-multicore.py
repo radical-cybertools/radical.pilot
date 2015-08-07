@@ -446,23 +446,30 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def __init__(self, cfg):
 
-        rpu.Component.__init__(self, cfg=cfg)
+        rpu.Component.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
     #
     def initialize(self):
 
-        self.declare_input ('SCHEDULING', 'agent_scheduling_queue')
-        self.declare_worker('SCHEDULING', self.work_schedule)
+      # self.declare_input (rp.AGENT_SCHEDULING_PENDING, rp.AGENT_SCHEDULING_QUEUE)
+      # self.declare_worker(rp.AGENT_SCHEDULING_PENDING, self.work)
 
-        self.declare_output('EXECUTING',  'agent_executing_queue')
+        self.declare_input (rp.ALLOCATING_PENDING, rp.AGENT_SCHEDULING_QUEUE)
+        self.declare_worker(rp.ALLOCATING_PENDING, self.work)
+
+        self.declare_output(rp.EXECUTING_PENDING,  rp.AGENT_EXECUTING_QUEUE)
 
         # we need unschedule updates to learn about units which free their
         # allocated cores.  Those updates need to be issued after execution, ie.
         # by the AgentExecutionComponent.
-        self.declare_publisher ('state',      'agent_state_pubsub')
-        self.declare_subscriber('unschedule', 'agent_unschedule_pubsub', self.unschedule_cb)
+        self.declare_publisher ('state',      rp.AGENT_STATE_PUBSUB)
+        self.declare_subscriber('unschedule', rp.AGENT_UNSCHEDULE_PUBSUB, self.unschedule_cb)
+
+        # we create a pubsub pair for reschedule trigger
+        self.declare_publisher ('reschedule', rp.AGENT_RESCHEDULE_PUBSUB)
+        self.declare_subscriber('reschedule', rp.AGENT_RESCHEDULE_PUBSUB, self.reschedule_cb)
 
         # The scheduler needs the LRMS, so configure it here
         # FIXME: the LRMS relies on environment settings which are likely only
@@ -1232,7 +1239,7 @@ class LaunchMethod(object):
     def __init__(self, name, config, logger, scheduler):
 
         self.name       = name
-        self._config    = config
+        self._cfg       = config
         self._log       = logger
         self._scheduler = scheduler
 
@@ -2032,7 +2039,7 @@ class LRMS(object):
     def __init__(self, name, config, logger, requested_cores):
 
         self.name            = name
-        self._config         = config
+        self_cfg             = config
         self._log            = logger
         self.requested_cores = requested_cores
 
@@ -3800,7 +3807,6 @@ class ExecWorker_SHELL(AgentExecutingComponent):
     #
     def run(self):
 
-        rpu.prof('run')
 
         # Mimic what virtualenv's "deactivate" would do
         self._deactivate = "# deactivate pilot virtualenv\n"
@@ -4452,7 +4458,7 @@ class AgentStagingInputComponent(rpu.Component):
     #
     def __init__(self, cfg):
 
-        rpu.Component.__init__(self, cfg=cfg)
+        rpu.Component.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -4461,12 +4467,16 @@ class AgentStagingInputComponent(rpu.Component):
 
         self._workdir = self._cfg['workdir']
 
-        self.declare_input ('AGENT_STAGING_INPUT_PENDING', 'agent_staging_input_queue')
-        self.declare_worker('AGENT_STAGING_INPUT_PENDING', self.work)
+    # --------------------------------------------------------------------------
+    #
+    def initialize(self):
 
-        self.declare_output('AGENT_SCHEDULING_PENDING', 'agent_scheduling_queue')
+        self.declare_input (rp.AGENT_STAGING_INPUT_PENDING, rp.AGENT_STAGING_INPUT_QUEUE)
+        self.declare_worker(rp.AGENT_STAGING_INPUT_PENDING, self.work)
 
-        self.declare_publisher('state', 'agent_state_pubsub')
+        self.declare_output(rp.ALLOCATING_PENDING, rp.AGENT_SCHEDULING_QUEUE)
+
+        self.declare_publisher('state', rp.AGENT_STATE_PUBSUB)
 
 
     # --------------------------------------------------------------------------
@@ -4521,9 +4531,10 @@ class AgentStagingInputComponent(rpu.Component):
             self._log.info(log_message)
 
 
-        rpu.prof('log', msg="no staging to do -- go to agent scheduling", uid=cu['_id'])
+        rpu.prof('log', msg="toward agent scheduling", uid=cu['_id'])
 
-        self.advance(cu, AGENT_SCHEDULING_PENDING, publish=True, push=True)
+      # self.advance(cu, rp.AGENT_SCHEDULING_PENDING, publish=True, push=True)
+        self.advance(cu, rp.ALLOCATING_PENDING, publish=True, push=True)
 
 
 # ==============================================================================
@@ -4545,31 +4556,38 @@ class AgentStagingOutputComponent(rpu.Component):
     #
     def __init__(self, cfg):
 
-        rpu.Component.__init__(self, cfg=cfg)
+        rpu.Component.__init__(self, cfg)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def create(cls, cfg):
+        return cls(cfg)
 
 
     # --------------------------------------------------------------------------
     #
     def initialize(self):
 
-        self.declare_input ('AGENT_STAGING_OUTPUT_PENDING', 'agent_staging_output_queue')
-        self.declare_worker('AGENT_STAGING_OUTPUT_PENDING', self.work)
+        self.declare_input (rp.AGENT_STAGING_OUTPUT_PENDING, rp.AGENT_STAGING_OUTPUT_QUEUE)
+        self.declare_worker(rp.AGENT_STAGING_OUTPUT_PENDING, self.work)
 
         # we don't need an output queue -- units are picked up via mongodb
-        self.declare_output('PENDING_OUTPUT_STAGING', None) # drop units
+        self.declare_output(rp.PENDING_OUTPUT_STAGING, None) # drop units
 
-        self.declare_publisher('state', 'agent_state_pubsub')
+        self.declare_publisher('state', rp.AGENT_STATE_PUBSUB)
 
 
     # --------------------------------------------------------------------------
     #
     def work(self, cu):
 
-        self.advance(cu, AGENT_STAGING_OUTPUT, publish=True, push=False)
+        self.advance(cu, rp.AGENT_STAGING_OUTPUT, publish=True, push=False)
 
-        staging_area = os.path.join(self._workdir, self._config['staging_area'])
+        staging_area = os.path.join(self._cfg['workdir'], self._cfg['staging_area'])
 
-        sandbox = os.path.join(self._workdir, '%s' % cu['_id'])
+        workdir = cu['workdir']
 
         ## parked from unit state checker: unit postprocessing
         if os.path.isfile(cu['stdout_file']):
@@ -4619,13 +4637,13 @@ class AgentStagingOutputComponent(rpu.Component):
 
             # Perform output staging
             self._log.info("unit output staging directives %s for cu: %s to %s",
-                    directive, cu['_id'], sandbox)
+                    directive, cu['_id'], workdir)
 
             # Convert the target_url into a SAGA Url object
             target_url = rs.Url(directive['target'])
 
             # Handle special 'staging' scheme
-            if target_url.scheme == self._config['staging_scheme']:
+            if target_url.scheme == self._cfg['staging_scheme']:
                 self._log.info('Operating from staging')
                 # Remove the leading slash to get a relative path from
                 # the staging area
@@ -4637,9 +4655,9 @@ class AgentStagingOutputComponent(rpu.Component):
                 target = target_url.path
 
             # Get the source from the directive and convert it to the location
-            # in the sandbox
+            # in the workdir
             source = str(directive['source'])
-            abs_source = os.path.join(sandbox, source)
+            abs_source = os.path.join(workdir, source)
 
             # Create output directory in case it doesn't exist yet
             # FIXME: will this work for TRANSFER mode?
@@ -4680,7 +4698,7 @@ class AgentHeartbeatMonitor(threading.Thread):
         threading.Thread.__init__(self)
 
         self.name             = name
-        self._config          = config
+        self._cfg             = config
         self._log             = logger
         self._agent           = agent
         self._command_queue   = command_queue
@@ -4714,7 +4732,7 @@ class AgentHeartbeatMonitor(threading.Thread):
                 rpu.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!')
                 self._check_commands()
                 self._check_state   ()
-                time.sleep(self._config['heartbeat_interval'])
+                time.sleep(self._cfg['heartbeat_interval'])
 
             except Exception as e:
                 self._log.exception('error in heartbeat monitor (%s)', e)
@@ -4845,13 +4863,16 @@ class Agent(object):
         if not 'task_launch_method'  in self._cfg: raise ValueError("Missing unit launch method")
         if not 'agent_layout'        in self._cfg: raise ValueError("Missing agent layout")
 
-        self._pilot_id       = self._cfg['pilot_id']
+        self._pilot_id   = self._cfg['pilot_id']
+        self._session_id = self._cfg['session_id']
+        self._runtime    = self._cfg['runtime']
 
         # prepare profiler
         rpu.prof_init('agent.prof', 'start', uid=self._cfg['pilot_id'])
 
         # configure the agent logger
         self._log.setLevel(self._cfg['debug'])
+        self._log.info('git ident: %s' % git_ident)
 
         # set up db connection
         _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
@@ -5151,7 +5172,7 @@ def main():
         raise RuntimeError('RADICAL_PILOT_CFG is not set - abort')
 
     cfg = ru.read_json_str(os.environ['RADICAL_PILOT_CFG'])
-    print "\Agent config (%s):\n%s\n\n" % \
+    print "Agent config (%s):\n%s\n\n" % \
             (os.environ['RADICAL_PILOT_CFG'], pprint.pformat(cfg))
 
     mongodb_url = cfg['mongodb_url']
@@ -5180,8 +5201,10 @@ def main():
 
     agent = None
     try:
-        agent = Agent(cfg)
-        agent.run()
+        agent = AgentWorker(cfg)
+
+        # FIXME: we want to wait until cancel or done...
+        time.sleep(10)
 
     except SystemExit:
         pilot_FAILED(msg="Caught system exit. EXITING") 
@@ -5254,7 +5277,7 @@ if __name__ == "__main__":
 ##              '%s/agent/radical-pilot-spawner.sh' % srcdir,
 ##              workbase,
 ##              str(portbase),
-##              str(self._config['number_of_workers'][EXEC_WORKER])
+##              str(self._cfg['number_of_workers'][EXEC_WORKER])
 ##          ])
 ##
 ##      # we need to give the above command some time to actually start the

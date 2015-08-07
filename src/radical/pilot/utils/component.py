@@ -2,7 +2,11 @@
 import os
 import time
 
+import threading       as mt
 import multiprocessing as mp
+import radical.utils   as ru
+
+from radical.pilot.states import *
 
 from .logger import get_logger   as rpu_get_logger
 from .misc   import prof_init    as rpu_prof_init
@@ -126,28 +130,29 @@ class Component(mp.Process):
         if not cfg : cfg  = dict()
 
         self._cfg         = cfg
+        self._name        = cfg.get('name', type(self).__name__)
         self._addr_map    = cfg.get('bridge_addresses', {})
-        self._name        = type(self).__name__
         self._parent      = os.getpid() # pid of spawning process
         self._inputs      = list()      # queues to get units from
         self._outputs     = dict()      # queues to send units to
         self._publishers  = dict()      # channels to send notifications to
         self._subscribers = dict()      # callbacks for received notifications
         self._workers     = dict()      # where units get worked upon
+        self._idlers      = list()      # idle_callback registry
         self._debug       = False
 
         if 'RADICAL_DEBUG' in os.environ:
             self._debug = True
 
         # configure the component's logger
-        target    = "%s.log" % self._name
+        target    = "component_%s.log" % self._name
         level     = self._cfg.get('debug', 'INFO')
         self._log = rpu_get_logger(self._name, target, level)
 
         # start the main event loop in a separate process.  At that point, the
         # component will basically detach itself from the parent process, and
         # will only maintain a handle to be used for shutdown
-        mp.Process.__init__(self)
+        mp.Process.__init__(self, name=self._name)
         self.start()
 
 
@@ -282,6 +287,16 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
+    def declare_idle_cb(self, cb, timeout=0.0):
+
+        self._idlers.append({
+            'cb'      : cb,       # call this whenever we are idle
+            'last'    : 0.0,      # was never called before
+            'timeout' : timeout}) # call no more often than this many seconds
+
+
+    # --------------------------------------------------------------------------
+    #
     def declare_publisher(self, topic, pubsub):
         """
         Using this method, the compinent can declare certain notification topics
@@ -342,16 +357,16 @@ class Component(mp.Process):
       #                 self._cb (topic=topic, unit=unit)
         # ----------------------------------------------------------------------
         def _subscriber(q, callback):
-            # FIXME: use timeout on get (to allow for shurdown signals)
+            # FIXME: use timeout on get (to allow for shutdown signals)
             # FIXME: use shutdown signals :P
             try:
                 self._log.debug('create subscriber: %s - %s' % (mt.current_thread().name, os.getpid()))
                 while True:
                     topic, unit = q.get()
                     if topic and unit:
-                        self._log.debug('%.5f: got sub [%s][%s]' % (time.time(), topic, unit))
+                      # self._log.debug('%.5f: got sub [%s][%s]' % (time.time(), topic, unit))
                         callback (topic=topic, unit=unit)
-            except:
+            except Exception as e:
                 self._log.exception('subscriber failed: %s' % e)
         # ----------------------------------------------------------------------
 
@@ -377,8 +392,10 @@ class Component(mp.Process):
         attempt ar getting a unit is up.
         """
 
-        rpu_prof_init()
-        rpu_prof('run')
+        dh = ru.DebugHelper()
+
+        rpu_prof_init(target="component_%s.prof" % self._name)
+        rpu_prof('run %s' % self._name)
 
         # Initialize() should declare all input and output channels, and all
         # workers and notification callbacks
@@ -397,7 +414,8 @@ class Component(mp.Process):
             # channels, probing 
             while True:
        
-                rpu_prof('loop')
+                # if no ation occurs in this iteration, invoke idle callbacks
+                active = False 
 
                 # FIXME: for the default case where we have only one input
                 #        channel, we can probably use a more efficient method to
@@ -412,15 +430,16 @@ class Component(mp.Process):
                     #        I am not yet sure how best to set them...
                     unit = input.get_nowait(0.1)
                     if not unit:
-                        time.sleep (0.01)
                         continue
+
+                    active = True
 
                     # assert that the unit is in an expected state
                     state = unit['state']
                     if state not in states:
                         self.advance(unit, FAILED, publish=True, push=False)
-                        rpu_prof(event='failed', msg="unexpected state %s" % state,
-                                uid=unit.uid, logger=self._log.error)
+                        rpu_prof(etype='failed', msg="unexpected state %s" % state,
+                                uid=unit['_id'], logger=self._log.error)
                         continue
 
                     # notify unit arrival
@@ -437,14 +456,36 @@ class Component(mp.Process):
                     # it over, wait for completion, and then pull for the next
                     # unit
                     try:
-                        rpu_prof(event='work', msg='state %s' % state, uid=unit.uid)
+                        rpu_prof(etype='work', msg='state %s' % state, uid=unit['_id'])
                         self._workers[state](unit)
-                        rpu_prof(event='work done', msg='state %s' % state, uid=unit.uid)
+                        rpu_prof(etype='work done', msg='state %s' % state, uid=unit['_id'])
 
                     except Exception as e:
                         self.advance(unit, FAILED, publish=True, push=False)
-                        rpu_prof(event='failed', msg=str(e), uid=unit.uid,
+                        rpu_prof(etype='failed', msg=str(e), uid=unit['_id'],
                                 logger=self._log.exception)
+
+
+                # if nothing happened, we can call the idle callbacks.  Don't
+                # call them more frequently than what they specified as sleep
+                # time though!
+                if not active:
+
+                    now = time.time()
+
+                    for idler in self._idlers:
+
+                        if (now - idler['last']) > idler['timeout']:
+
+                            if idler['cb']():
+                                # something happend!
+                                idler['last'] = now
+                                active = True
+
+                if not active:
+                    # FIXME: make configurable
+                    time.sleep(0.1)
+
 
 
         except Exception as e:
@@ -453,7 +494,7 @@ class Component(mp.Process):
             # could in principle detect the latter within the loop -- - but
             # since we don't know what to do with the units it operated on, we
             # don't bother...
-            rpu_prof("end loop", msg=str(e), logger=self._log.exception)
+            rpu_prof("loop error", msg=str(e), logger=self._log.exception)
 
         finally:
             # shut the whole thing down...
@@ -484,13 +525,13 @@ class Component(mp.Process):
 
             if state:
                 unit['state'] = state
-                rpu_prof('state', uid=unit['uid'], msg=state)
+                rpu_prof('state', uid=unit['_id'], msg=state)
 
 
             if publish:
                 # send state notifications
                 self.publish('state', unit)
-                rpu_prof('pub', uid=unit['uid'])
+                rpu_prof('pub', uid=unit['_id'])
 
             if push:
                 state = unit['state']
@@ -509,7 +550,7 @@ class Component(mp.Process):
                 #
                 # push the unit down the drain
                 self._outputs[state].put(unit)
-                rpu_prof('put', uid=unit['uid'], msg=self._outputs[state].name)
+                rpu_prof('put', uid=unit['_id'], msg=self._outputs[state].name)
 
 
     # --------------------------------------------------------------------------
@@ -534,4 +575,38 @@ class Component(mp.Process):
             for p in self._publishers[topic]:
                 p.put (topic, unit)
 
+
+
+# ==============================================================================
+#
+class Worker(Component):
+    """
+    A Worker is a Component which cannot change the state of the unit it
+    handles.  Workers are emplyed as helper classes to mediate between
+    components, between components and database, and between components and
+    notification channels.
+    """
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, cfg):
+
+        Component.__init__(self, cfg)
+
+    # --------------------------------------------------------------------------
+    #
+    # we overload state changing methods from component and assert neutrality
+    # FIXME: we should insert hooks around callback invocations, too
+    #
+    def advance(self, units, state=None, publish=True, push=False):
+
+        if state:
+            raise RuntimeError("worker %s cannot advance state (%s)"
+                    % (self.name, state))
+
+        Component.advance(self, units, state, publish, push)
+
+
+
+# ------------------------------------------------------------------------------
 

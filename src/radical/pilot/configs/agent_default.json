@@ -45,6 +45,7 @@
                 },
                 "pubsub" : {
                     "agent_unschedule_pubsub"    : "local",
+                    "agent_reschedule_pubsub"    : "local",
                     "agent_state_pubsub"         : "local"
                 }
             }
