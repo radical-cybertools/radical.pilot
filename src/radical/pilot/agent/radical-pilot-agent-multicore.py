@@ -191,24 +191,6 @@ import radical.pilot.utils as rpu
 #     there.
 #
 
-# FIXME: static switch between thread and process rendering of exec worker.
-AGENT_THREADS   = 'threading'
-AGENT_PROCESSES = 'multiprocessing'
-
-AGENT_MODE      = AGENT_PROCESSES
-
-if AGENT_MODE == AGENT_THREADS :
-    COMPONENT_MODE = threading
-    COMPONENT_TYPE = threading.Thread
-    QUEUE_TYPE     = multiprocessing.Queue
-elif AGENT_MODE == AGENT_PROCESSES :
-    COMPONENT_MODE = multiprocessing
-    COMPONENT_TYPE = multiprocessing.Process
-    QUEUE_TYPE     = multiprocessing.Queue
-else:
-    raise Exception('Unknown Agent Mode')
-
-
 # this needs git attribute 'ident' set for this file
 git_ident = "$Id$"
 
