@@ -487,6 +487,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         self._wait_pool = list()            # set of units which wait for the resource
         self._wait_lock = threading.RLock() # look on the above set
+        self._slot_lock = threading.RLock() # look for slot allocation/deallocation
 
         # configure the scheduler instance
         self._configure()
@@ -497,13 +498,14 @@ class AgentSchedulingComponent(rpu.Component):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, name, cfg):
+    def create(cls, cfg):
 
         # Make sure that we are the base-class!
-        if cls != Scheduler:
+        if cls != AgentSchedulingComponent:
             raise TypeError("Scheduler Factory only available to base class!")
 
         try:
+            name = cfg['scheduler']
             implementation = {
                 SCHEDULER_NAME_CONTINUOUS : SchedulerContinuous,
                 SCHEDULER_NAME_SCATTERED  : SchedulerScattered,
@@ -551,7 +553,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # needs to be locked as we try to acquire slots, but slots are freed
         # in a different thread.  But we keep the lock duration short...
-        with self._lock :
+        with self._slot_lock :
 
             # schedule this unit, and receive an opaque handle that has meaning to
             # the LRMS, Scheduler and LaunchMethod.
@@ -562,23 +564,27 @@ class AgentSchedulingComponent(rpu.Component):
             return False
 
         # got an allocation, go off and launch the process
-        rpu.prof('schedule', msg="allocated", uid=cu['_id'], logger=self._log.warn)
+        rpu.prof('schedule', msg="allocated", uid=cu['_id'])
         self._log.info (self.slot_status())
 
-        cu_list, cu_dropped = rpu.blowup(self._config, cu, EXECUTION_QUEUE)
-        for _cu in cu_list :
-            rpu.prof('put', msg="Scheduler to execution_queue (%s)" % _cu['state'], uid=_cu['_id'])
-            self._execution_queue.put(_cu)
-
-        # we need to free allocated cores for dropped CUs
-        self.unschedule(cu_dropped)
-
+        # FIXME: if allocation succeeded, then the unit will likely advance to
+        #        executing soon.  Advance will do a blowup before puching -- but
+        #        that will also *drop* units.  We need to unschedule those.
+        #        self.unschedule(cu_dropped), ad should probably do that right
+        #        here?  Not sure if this is worth a dropping-hook on component
+        #        level...
         return True
 
 
     # --------------------------------------------------------------------------
     #
-    def _reschedule(self):
+    def reschedule_cb(self, topic, unit):
+        # we ignore any passed CU.  In principle the cu info could be used to
+        # determine which slots have been freed.  No need for that optimization
+        # right now.  This will become interesting once reschedule becomes too
+        # expensive.
+
+        cu = unit
 
         rpu.prof('reschedule')
         self._log.info("slot status before reschedule: %s" % self.slot_status())
@@ -589,7 +595,11 @@ class AgentSchedulingComponent(rpu.Component):
         for cu in self._wait_pool[:]:
 
             if self._try_allocation(cu):
-                # NOTE: this is final, remove it from the wait queue
+
+                # allocated cu -- advance it
+                self.advance(cu, rp.EXECUTING_PENDING, publish=True, push=True)
+
+                # remove it from the wait queue
                 with self._wait_queue_lock :
                     self._wait_pool.remove(cu)
                     rpu.prof('unqueue', msg="re-allocation done", uid=cu['_id'])
@@ -600,117 +610,55 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def unschedule(self, cus):
-        # release (for whatever reason) all slots allocated to this CU
+    def unschedule_cb(self, topic, unit):
+        """
+        release (for whatever reason) all slots allocated to this CU
+        """
+
+        cu = unit
+        rpu.prof('unschedule', uid=cu['_id'])
+
+        if not cu['opaque_slot']:
+            # Nothing to do -- how come?
+            self._log.warn("cannot unschedule: %s" % cu)
+            return
+        
+        self._log.info("slot status before unschedule: %s" % self.slot_status ())
 
         # needs to be locked as we try to release slots, but slots are acquired
         # in a different thread....
-        with self._lock :
+        with self._slot_lock :
+            self._release_slot(cu['opaque_slot'])
 
-            rpu.prof('unschedule')
-            self._log.info("slot status before unschedule: %s" % self.slot_status ())
+        # notify the scheduling thread, ie. trigger a reschedule to utilize
+        # the freed slots
+        # FIXME: we don't have a reschedule pubsub, yet.  A local queue
+        #        should in principle suffice though.
+        self.publish('reschedule', cu)
 
-            slots_released = False
-
-            if not isinstance(cus, list):
-                cus = [cus]
-
-            for cu in cus:
-                if cu['opaque_slot']:
-                    self._release_slot(cu['opaque_slot'])
-                    slots_released = True
-
-            # notify the scheduling thread of released slots
-            if slots_released:
-                rpu.prof('put_cmd', msg="Scheduler to schedule_queue (%s)" % COMMAND_RESCHEDULE)
-                self._schedule_queue.put(COMMAND_RESCHEDULE)
-
-            self._log.info("slot status after  unschedule: %s" % self.slot_status ())
-            rpu.prof('unschedule done - reschedule')
+        self._log.info("slot status after  unschedule: %s" % self.slot_status ())
 
 
     # --------------------------------------------------------------------------
     #
-    def run(self):
+    def work(self, cu):
 
-        rpu.prof('run')
-        if True:
+      # self.advance(cu, rp.AGENT_SCHEDULING, publish=True, push=False)
+        self.advance(cu, rp.ALLOCATING      , publish=True, push=False)
 
-            try:
+        # we got a new unit to schedule.  Either we can place it
+        # straight away and move it to execution, or we have to
+        # put it on the wait queue.
+        if self._try_allocation(cu):
+            self.advance(cu, rp.EXECUTING_PENDING, publish=True, push=True)
 
-                request = self._schedule_queue.get()
+        else:
+            # No resources available, put in wait queue
+            with self._wait_queue_lock :
+                self._wait_pool.append(cu)
 
-                if not isinstance(request, list):
-                    # command only, no cu
-                    request = [request, None]
+            rpu.prof('schedule', msg="allocation failed", uid=cu['_id'])
 
-                # shutdown signal
-                if not request:
-                    rpu.prof('get_cmd', msg="schedule_queue to Scheduler (wakeup)")
-                    continue
-
-                command = request[0]
-                cu      = request[1]
-
-                rpu.prof('get_cmd', msg="schedule_queue to Scheduler (%s)" % command)
-
-                if command == COMMAND_WAKEUP:
-
-                    # nothing to do (other then testing self._terminate)
-                    rpu.prof('get_cmd', msg="schedule_queue to Scheduler (wakeup)")
-                    continue
-
-
-                elif command == COMMAND_RESCHEDULE:
-
-                    # reschedule is done over all units in the wait queue
-                    assert (cu == None) 
-                    self._reschedule()
-
-
-                elif command == COMMAND_SCHEDULE:
-
-                    rpu.prof('get', msg="schedule_queue to Scheduler (%s)" % cu['state'], uid=cu['_id'])
-
-                    # FIXME: this state update is not recorded?
-                    cu['state'] = rp.ALLOCATING
-
-                    cu_list, _  = rpu.blowup(self._config, cu, SCHEDULER)
-                    for _cu in cu_list:
-
-                        # we got a new unit to schedule.  Either we can place it
-                        # straight away and move it to execution, or we have to
-                        # put it on the wait queue.
-                        if not self._try_allocation(_cu):
-                            # No resources available, put in wait queue
-                            with self._wait_queue_lock :
-                                self._wait_pool.append(_cu)
-                            rpu.prof('schedule', msg="allocation failed", uid=_cu['_id'])
-
-
-                elif command == COMMAND_UNSCHEDULE :
-
-                    # we got a finished unit, and can re-use its cores
-                    #
-                    # FIXME: we may want to handle this type of requests
-                    # with higher priority, so it might deserve a separate
-                    # queue.  Measure first though, then optimize...
-                    #
-                    # NOTE: unschedule() runs re-schedule, which probably
-                    # should be delayed until this bulk has been worked
-                    # on...
-                    rpu.prof('schedule', msg="unit deallocation", uid=cu['_id'])
-                    self.unschedule(cu)
-
-                else :
-                    raise ValueError ("cannot handle scheduler command '%s'", command)
-
-            except Exception as e:
-                self._log.exception('Error in scheduler loop: %s', e)
-                raise
-
-            finally:
-                rpu.prof ('stop')
 
 
 # ==============================================================================
@@ -719,13 +667,11 @@ class SchedulerContinuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, lrms, scheduler_queue,
-                 execution_queue, update_queue):
+    def __init__(self, cfg):
 
         self.slots = None
 
-        Scheduler.__init__(self, name, config, logger, lrms, scheduler_queue,
-                execution_queue, update_queue)
+        AgentSchedulingComponent.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -825,9 +771,7 @@ class SchedulerContinuous(AgentSchedulingComponent):
     #
     def _acquire_slots(self, cores_requested, single_node, continuous):
 
-        #
         # Switch between searching for continuous or scattered slots
-        #
         # Switch between searching for single or multi-node
         if single_node:
             if continuous:
@@ -1008,14 +952,12 @@ class SchedulerTorus(AgentSchedulingComponent):
 
 
     # --------------------------------------------------------------------------
-    def __init__(self, name, config, logger, lrms, scheduler_queue,
-                 execution_queue, update_queue):
+    def __init__(self, cfg):
 
         self.slots            = None
         self._cores_per_node  = None
 
-        Scheduler.__init__(self, name, config, logger, lrms, scheduler_queue,
-                execution_queue, update_queue)
+        AgentSchedulingComponent.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
