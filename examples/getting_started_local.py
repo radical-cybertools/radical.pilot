@@ -150,9 +150,9 @@ if __name__ == "__main__":
             cud = rp.ComputeUnitDescription()
             cud.name          = "unit_%03d" % unit_count
             cud.executable    = "/bin/sleep"
-            cud.pre_exec      = ["sleep 5"]
-            cud.post_exec     = ["sleep 5"]
-            cud.arguments     = ["5"]
+            cud.pre_exec      = ["sleep 2"]
+            cud.post_exec     = ["sleep 2"]
+            cud.arguments     = ["2"]
             cud.cores         = 1
     
             cuds.append(cud)
@@ -196,7 +196,7 @@ if __name__ == "__main__":
         # always clean up the session, no matter if we caught an exception or
         # not.
         print "closing session"
-        session.close ()
+        session.close (cleanup=False)
 
         # the above is equivalent to
         #
