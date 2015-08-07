@@ -340,28 +340,19 @@ class Component(mp.Process):
       #             topic, unit = self._q.get()
       #             if topic and unit:
       #                 self._cb (topic=topic, unit=unit)
-      # # ----------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         def _subscriber(q, callback):
-
-            import cProfile
-            profile = cProfile.Profile()
-            profile.enable()
+            # FIXME: use timeout on get (to allow for shurdown signals)
+            # FIXME: use shutdown signals :P
             try:
                 self._log.debug('create subscriber: %s - %s' % (mt.current_thread().name, os.getpid()))
-                i = 0
-                while i < 1000:
-                    i+= 1
+                while True:
                     topic, unit = q.get()
                     if topic and unit:
                         self._log.debug('%.5f: got sub [%s][%s]' % (time.time(), topic, unit))
                         callback (topic=topic, unit=unit)
             except:
-                pass
-            finally:
-                profile.disable()
-                profile.create_stats()
-                profile.dump_stats('prof.pstat')
-                profile.print_stats()
+                self._log.exception('subscriber failed: %s' % e)
         # ----------------------------------------------------------------------
 
 
@@ -371,7 +362,7 @@ class Component(mp.Process):
 
         t = mt.Thread (target=_subscriber, args=[q,cb])
         t.start()
-        # FIXME: shutdown: this should got to the finalize.
+        # FIXME: thread shutdown should go to finalize.
 
 
     # --------------------------------------------------------------------------
@@ -386,9 +377,12 @@ class Component(mp.Process):
         attempt ar getting a unit is up.
         """
 
+        rpu.prof_init()
+        rpu.prof('run')
+
         # Initialize() should declare all input and output channels, and all
         # workers and notification callbacks
-        self._log.debug('initialize')
+        rpu.prof('initialize')
         self.initialize()
 
         # perform a sanity check: for each declared input state, we expect
@@ -402,6 +396,8 @@ class Component(mp.Process):
             # The main event loop will repeatedly iterate over all input
             # channels, probing 
             while True:
+       
+                rpu.prof('loop')
 
                 # FIXME: for the default case where we have only one input
                 #        channel, we can probably use a more efficient method to
@@ -420,10 +416,11 @@ class Component(mp.Process):
                         continue
 
                     # assert that the unit is in an expected state
-                    # FIXME: enact the *_PENDING -> * transition right here...
                     state = unit['state']
                     if state not in states:
-                        print "ERROR  : %s did not expect state %s: %s" % (self._name, state, unit)
+                        self.advance(unit, FAILED, publish=True, push=False)
+                        rpu.prof(event='failed', msg="unexpected state %s" % state,
+                                uid=unit.uid, logger=self._log.error)
                         continue
 
                     # notify unit arrival
@@ -440,12 +437,14 @@ class Component(mp.Process):
                     # it over, wait for completion, and then pull for the next
                     # unit
                     try:
-                        # FIXME: log and profile
+                        rpu.prof(event='work', msg='state %s' % state, uid=unit.uid)
                         self._workers[state](unit)
+                        rpu.prof(event='work done', msg='state %s' % state, uid=unit.uid)
 
                     except Exception as e:
-                        # FIXME: log and profile
-                        advance(unit, FAILED, publish=True, push=False)
+                        self.advance(unit, FAILED, publish=True, push=False)
+                        rpu.prof(event='failed', msg=str(e), uid=unit.uid,
+                                logger=self._log.exception)
 
 
         except Exception as e:
@@ -454,11 +453,13 @@ class Component(mp.Process):
             # could in principle detect the latter within the loop -- - but
             # since we don't know what to do with the units it operated on, we
             # don't bother...
-            self._log.debug("end main loop: %s" % e)
+            rpu.prof("end loop", msg=str(e), logger=self._log.exception)
 
         finally:
             # shut the whole thing down...
+            rpu.prof("finalize", logger=self._log.info)
             self.finalize()
+            rpu.prof("finalized", logger=self._log.info)
 
 
     # --------------------------------------------------------------------------
