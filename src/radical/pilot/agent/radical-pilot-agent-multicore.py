@@ -4109,7 +4109,7 @@ timestamp () {
 
 # ==============================================================================
 #
-class AgentUpdateWorker(threading.Thread):
+class AgentUpdateWorker(rpu.Worker):
     """
     An UpdateWorker pushes CU and Pilot state updates to mongodb.  Its instances
     compete for update requests on the update_queue.  Those requests will be
@@ -4120,56 +4120,33 @@ class AgentUpdateWorker(threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, agent, session_id,
-                 update_queue, mongodb_url):
+    def __init__(self, cfg):
 
-        threading.Thread.__init__(self)
+        rpu.Worker.__init__(self, cfg)
 
-        self.name           = name
-        self._config        = config
-        self._log           = logger
-        self._agent         = agent
-        self._session_id    = session_id
-        self._update_queue  = update_queue
-        self._terminate     = threading.Event()
 
-        _, db, _, _, _      = ru.mongodb_connect(mongodb_url)
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def create(cls, cfg):
+        return cls(cfg)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def initialize(self):
+
+        self._session_id    = self._cfg['session_id']
+        self._mongodb_url   = self._cfg['mongodb_url']
+
+        _, db, _, _, _      = ru.mongodb_connect(self._mongodb_url)
         self._mongo_db      = db
-        self._cinfo         = dict()  # collection cache
+        self._cinfo         = dict()            # collection cache
+        self._lock          = threading.RLock() # protect _cinfo
 
-        # run worker thread
-        self.start()
+        self.declare_subscriber('state', 'agent_state_pubsub', self.state_cb)
+        self.declare_idle_cb(self.idle_cb, self._cfg.get('bulk_collection_time'))
 
-    # --------------------------------------------------------------------------
-    #
-    def stop(self):
-
-        rpu.prof ('stop request')
-        rpu.flush_prof()
-        self._terminate.set()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def run(self):
-
-        rpu.prof('run')
-        while not self._terminate.is_set():
-
-            # ------------------------------------------------------------------
-            def timed_bulk_execute(cinfo):
-
-                # returns number of bulks pushed (0 or 1)
-                if not cinfo['bulk']:
-                    return 0
-
-                now = time.time()
-                age = now - cinfo['last']
-
-                if cinfo['bulk'] and age > self._config['bulk_collection_time']:
-
-                    res  = cinfo['bulk'].execute()
-                    self._log.debug("bulk update result: %s", res)
 
                     rpu.prof('unit update bulk pushed (%d)' % len(cinfo['uids']))
                     for entry in cinfo['uids']:
