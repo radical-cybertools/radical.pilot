@@ -5,6 +5,8 @@ import time
 import multiprocessing as mp
 
 from .logger import get_logger   as rpu_get_logger
+from .misc   import prof_init    as rpu_prof_init
+from .misc   import prof         as rpu_prof
 
 from .queue  import Queue        as rpu_Queue
 from .queue  import QUEUE_ZMQ    as rpu_QUEUE_ZMQ
@@ -112,7 +114,7 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name=None, cfg=None):
+    def __init__(self, cfg=None):
         """
         This constructor MUST be called by inheriting classes.  
         
@@ -121,15 +123,13 @@ class Component(mp.Process):
         initialize() method.
         """
 
-        if not name: name = type(self).__name__
         if not cfg : cfg  = dict()
-
 
         self._cfg         = cfg
         self._addr_map    = cfg.get('bridge_addresses', {})
-        self._name        = name
+        self._name        = type(self).__name__
         self._parent      = os.getpid() # pid of spawning process
-        self._inputs      = list()      # queues to get units frrpu.om
+        self._inputs      = list()      # queues to get units from
         self._outputs     = dict()      # queues to send units to
         self._publishers  = dict()      # channels to send notifications to
         self._subscribers = dict()      # callbacks for received notifications
@@ -140,9 +140,9 @@ class Component(mp.Process):
             self._debug = True
 
         # configure the component's logger
-        target    = "%s.log" % name
+        target    = "%s.log" % self._name
         level     = self._cfg.get('debug', 'INFO')
-        self._log = rpu_get_logger(name, target, level)
+        self._log = rpu_get_logger(self._name, target, level)
 
         # start the main event loop in a separate process.  At that point, the
         # component will basically detach itself from the parent process, and
@@ -377,12 +377,12 @@ class Component(mp.Process):
         attempt ar getting a unit is up.
         """
 
-        rpu.prof_init()
-        rpu.prof('run')
+        rpu_prof_init()
+        rpu_prof('run')
 
         # Initialize() should declare all input and output channels, and all
         # workers and notification callbacks
-        rpu.prof('initialize')
+        rpu_prof('initialize')
         self.initialize()
 
         # perform a sanity check: for each declared input state, we expect
@@ -397,7 +397,7 @@ class Component(mp.Process):
             # channels, probing 
             while True:
        
-                rpu.prof('loop')
+                rpu_prof('loop')
 
                 # FIXME: for the default case where we have only one input
                 #        channel, we can probably use a more efficient method to
@@ -419,7 +419,7 @@ class Component(mp.Process):
                     state = unit['state']
                     if state not in states:
                         self.advance(unit, FAILED, publish=True, push=False)
-                        rpu.prof(event='failed', msg="unexpected state %s" % state,
+                        rpu_prof(event='failed', msg="unexpected state %s" % state,
                                 uid=unit.uid, logger=self._log.error)
                         continue
 
@@ -437,13 +437,13 @@ class Component(mp.Process):
                     # it over, wait for completion, and then pull for the next
                     # unit
                     try:
-                        rpu.prof(event='work', msg='state %s' % state, uid=unit.uid)
+                        rpu_prof(event='work', msg='state %s' % state, uid=unit.uid)
                         self._workers[state](unit)
-                        rpu.prof(event='work done', msg='state %s' % state, uid=unit.uid)
+                        rpu_prof(event='work done', msg='state %s' % state, uid=unit.uid)
 
                     except Exception as e:
                         self.advance(unit, FAILED, publish=True, push=False)
-                        rpu.prof(event='failed', msg=str(e), uid=unit.uid,
+                        rpu_prof(event='failed', msg=str(e), uid=unit.uid,
                                 logger=self._log.exception)
 
 
@@ -453,13 +453,13 @@ class Component(mp.Process):
             # could in principle detect the latter within the loop -- - but
             # since we don't know what to do with the units it operated on, we
             # don't bother...
-            rpu.prof("end loop", msg=str(e), logger=self._log.exception)
+            rpu_prof("end loop", msg=str(e), logger=self._log.exception)
 
         finally:
             # shut the whole thing down...
-            rpu.prof("finalize", logger=self._log.info)
+            rpu_prof("finalize", logger=self._log.info)
             self.finalize()
-            rpu.prof("finalized", logger=self._log.info)
+            rpu_prof("finalized", logger=self._log.info)
 
 
     # --------------------------------------------------------------------------
@@ -484,13 +484,13 @@ class Component(mp.Process):
 
             if state:
                 unit['state'] = state
-                rpu.prof('state', uid=unit['uid'], msg=state)
+                rpu_prof('state', uid=unit['uid'], msg=state)
 
 
             if publish:
                 # send state notifications
                 self.publish('state', unit)
-                rpu.prof('pub', uid=unit['uid'])
+                rpu_prof('pub', uid=unit['uid'])
 
             if push:
                 state = unit['state']
@@ -509,7 +509,7 @@ class Component(mp.Process):
                 #
                 # push the unit down the drain
                 self._outputs[state].put(unit)
-                rpu.prof('put', uid=unit['uid'], msg=self._outputs[state].name)
+                rpu_prof('put', uid=unit['uid'], msg=self._outputs[state].name)
 
 
     # --------------------------------------------------------------------------

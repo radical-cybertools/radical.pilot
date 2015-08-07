@@ -438,34 +438,51 @@ def pilot_DONE(mongo_p, pilot_uid):
 #
 # ==============================================================================
 #
-class Scheduler(threading.Thread):
+class AgentSchedulingComponent(rpu.Component):
 
     # FIXME: clarify what can be overloaded by Scheduler classes
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, lrms, schedule_queue, execution_queue,
-                 update_queue):
+    def __init__(self, cfg):
 
-        threading.Thread.__init__(self)
+        rpu.Component.__init__(self, cfg=cfg)
 
-        self.name             = name
-        self._config          = config
-        self._log             = logger
-        self._lrms            = lrms
-        self._schedule_queue  = schedule_queue
-        self._execution_queue = execution_queue
-        self._update_queue    = update_queue
 
-        self._terminate       = threading.Event()
-        self._lock            = threading.RLock()
-        self._wait_pool       = list()
-        self._wait_queue_lock = threading.RLock()
+    # --------------------------------------------------------------------------
+    #
+    def initialize(self):
 
-        rpu.prof('start')
+        self.declare_input ('SCHEDULING', 'agent_scheduling_queue')
+        self.declare_worker('SCHEDULING', self.work_schedule)
 
+        self.declare_output('EXECUTING',  'agent_executing_queue')
+
+        # we need unschedule updates to learn about units which free their
+        # allocated cores.  Those updates need to be issued after execution, ie.
+        # by the AgentExecutionComponent.
+        self.declare_publisher ('state',      'agent_state_pubsub')
+        self.declare_subscriber('unschedule', 'agent_unschedule_pubsub', self.unschedule_cb)
+
+        # The scheduler needs the LRMS, so configure it here
+        # FIXME: the LRMS relies on environment settings which are likely only
+        #        available in the scope of the agent.master.  So the scheduler
+        #        component needs to be colocated to that agent at the moment.
+        #        This should not be a problem, as we can only have one Scheduler
+        #        component anyway (it has a global, exclusive view on the shared
+        #        resources / cores).
+        self._cores = self._cfg['cores']
+        self._lrms = LRMS.create(
+                name            = self._cfg['lrms'],
+                config          = self._cfg,
+                logger          = self._log,
+                requested_cores = self._cores)
+
+        self._wait_pool = list()            # set of units which wait for the resource
+        self._wait_lock = threading.RLock() # look on the above set
+
+        # configure the scheduler instance
         self._configure()
-
 
 
     # --------------------------------------------------------------------------
@@ -473,8 +490,7 @@ class Scheduler(threading.Thread):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, name, config, logger, lrms, schedule_queue, execution_queue,
-               update_queue):
+    def create(cls, name, cfg):
 
         # Make sure that we are the base-class!
         if cls != Scheduler:
@@ -487,23 +503,11 @@ class Scheduler(threading.Thread):
                 SCHEDULER_NAME_TORUS      : SchedulerTorus
             }[name]
 
-            impl = implementation(name, config, logger, lrms, schedule_queue,
-                                  execution_queue, update_queue)
-
-            impl.start()
+            impl = implementation(cfg)
             return impl
 
         except KeyError:
             raise ValueError("Scheduler '%s' unknown!" % name)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def stop(self):
-        
-        rpu.prof ('stop request')
-        rpu.flush_prof()
-        self._terminate.set()
 
 
     # --------------------------------------------------------------------------
@@ -623,7 +627,7 @@ class Scheduler(threading.Thread):
     def run(self):
 
         rpu.prof('run')
-        while not self._terminate.is_set():
+        if True:
 
             try:
 
@@ -704,7 +708,7 @@ class Scheduler(threading.Thread):
 
 # ==============================================================================
 #
-class SchedulerContinuous(Scheduler):
+class SchedulerContinuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
@@ -975,14 +979,14 @@ class SchedulerContinuous(Scheduler):
 
 # ==============================================================================
 #
-class SchedulerScattered(Scheduler):
+class SchedulerScattered(AgentSchedulingComponent):
     # FIXME: implement
     pass
 
 
 # ==============================================================================
 #
-class SchedulerTorus(Scheduler):
+class SchedulerTorus(AgentSchedulingComponent):
 
     # TODO: Ultimately all BG/Q specifics should move out of the scheduler
 
