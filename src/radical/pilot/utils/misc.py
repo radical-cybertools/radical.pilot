@@ -105,7 +105,10 @@ def prof(etype, uid="", msg="", logger=None, timestamp=None):
     # record a timed event.  We record the thread ID, the uid of the affected
     # object, an event type, and a log message.
     if logger:
-        logger("%s (%10s) : %s", etype, msg, uid)
+        if msg:
+            logger("%s (%10s) : %s", etype, msg, uid)
+        else:
+            logger("%s : %s", etype, uid)
 
     # FIXME: these calls should be very fast -- but they are also very frequent.
     #        Is there a way to cache them, possibly by some thread-local memory 

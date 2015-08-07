@@ -81,7 +81,7 @@ class OutputFileTransferWorker(threading.Thread):
                 compute_unit = um_col.find_and_modify(
                     query={"unitmanager": self.unit_manager_id,
                            "state"      : PENDING_OUTPUT_STAGING,
-                           "control"    : 'agent'}
+                           "control"    : 'agent'},
                     update={"$set" : {"state"   : STAGING_OUTPUT,
                                       "control" : 'umgr'},
                             "$push": {"statehistory" : 

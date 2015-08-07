@@ -147,6 +147,7 @@ import signal
 import shutil
 import logging
 import hostlist
+import threading
 import tempfile
 import traceback
 import threading
@@ -299,27 +300,35 @@ def rec_makedir(target):
 
 # ------------------------------------------------------------------------------
 #
-def pilot_FAILED(mongo_p, pilot_uid, logger, message):
+def pilot_FAILED(mongo_p=None, pilot_uid=None, logger=None, msg=None):
 
-    logger.error(message)
-    logger.error(ru.get_trace())
+    if logger:
+        logger.error(msg)
+        logger.error(ru.get_trace())
 
-    now = rpu.timestamp()
-    out = None
-    err = None
-    log = None
+    print msg
+    print ru.get_trace()
 
-    try    : out = open('./agent.out', 'r').read()
-    except : pass
-    try    : err = open('./agent.err', 'r').read()
-    except : pass
-    try    : log = open('./agent.log', 'r').read()
-    except : pass
+    with open("%s-%s.trace" % (os.getpid(), threading.current_thread().name), "w") as f:
+        f.write ("\n%s\n" % ru.get_trace())
 
-    msg = [{"message": message,          "timestamp": now},
-           {"message": rpu.get_rusage(), "timestamp": now}]
+    if mongo_p and pilot_uid:
 
-    if mongo_p:
+        now = rpu.timestamp()
+        out = None
+        err = None
+        log = None
+
+        try    : out = open('./agent.out', 'r').read()
+        except : pass
+        try    : err = open('./agent.err', 'r').read()
+        except : pass
+        try    : log = open('./agent.log', 'r').read()
+        except : pass
+
+        msg = [{"message": msg,              "timestamp": now},
+               {"message": rpu.get_rusage(), "timestamp": now}]
+
         mongo_p.update({"_id": pilot_uid},
             {"$pushAll": {"log"         : msg},
              "$push"   : {"statehistory": {"state"     : rp.FAILED,
@@ -332,73 +341,94 @@ def pilot_FAILED(mongo_p, pilot_uid, logger, message):
             })
 
     else:
-        logger.error("cannot log error state in database!")
+        if logger:
+            logger.error("cannot log error state in database!")
+
+        print "cannot log error state in database!"
 
 
 # ------------------------------------------------------------------------------
 #
-def pilot_CANCELED(mongo_p, pilot_uid, logger, message):
+def pilot_CANCELED(mongo_p, pilot_uid, logger, msg):
 
-    logger.warning(message)
-    logger.warning(mongo_p)
-    logger.warning(pilot_uid)
+    if logger:
+        logger.warning(msg)
 
-    now = rpu.timestamp()
-    out = None
-    err = None
-    log = None
+    print msg
 
-    try    : out = open('./agent.out', 'r').read()
-    except : pass
-    try    : err = open('./agent.err', 'r').read()
-    except : pass
-    try    : log = open('./agent.log',    'r').read()
-    except : pass
 
-    msg = [{"message": message,          "timestamp": now},
-           {"message": rpu.get_rusage(), "timestamp": now}]
+    if mongo_p and pilot_uid:
 
-    mongo_p.update({"_id": pilot_uid},
-        {"$pushAll": {"log"         : msg},
-         "$push"   : {"statehistory": {"state"     : rp.CANCELED,
-                                       "timestamp" : now}},
-         "$set"    : {"state"       : rp.CANCELED,
-                      "stdout"      : rpu.tail(out),
-                      "stderr"      : rpu.tail(err),
-                      "logfile"     : rpu.tail(log),
-                      "finished"    : now}
-        })
+        now = rpu.timestamp()
+        out = None
+        err = None
+        log = None
+
+        try    : out = open('./agent.out', 'r').read()
+        except : pass
+        try    : err = open('./agent.err', 'r').read()
+        except : pass
+        try    : log = open('./agent.log',    'r').read()
+        except : pass
+
+        msg = [{"message": msg,              "timestamp": now},
+               {"message": rpu.get_rusage(), "timestamp": now}]
+
+        mongo_p.update({"_id": pilot_uid},
+            {"$pushAll": {"log"         : msg},
+             "$push"   : {"statehistory": {"state"     : rp.CANCELED,
+                                           "timestamp" : now}},
+             "$set"    : {"state"       : rp.CANCELED,
+                          "stdout"      : rpu.tail(out),
+                          "stderr"      : rpu.tail(err),
+                          "logfile"     : rpu.tail(log),
+                          "finished"    : now}
+            })
+
+    else:
+        if logger:
+            logger.error("cannot log cancel state in database!")
+
+        print "cannot log cancel state in database!"
 
 
 # ------------------------------------------------------------------------------
 #
 def pilot_DONE(mongo_p, pilot_uid):
 
-    now = rpu.timestamp()
-    out = None
-    err = None
-    log = None
+    if mongo_p and pilot_uid:
 
-    try    : out = open('./agent.out', 'r').read()
-    except : pass
-    try    : err = open('./agent.err', 'r').read()
-    except : pass
-    try    : log = open('./agent.log',    'r').read()
-    except : pass
+        now = rpu.timestamp()
+        out = None
+        err = None
+        log = None
 
-    msg = [{"message": "pilot done",     "timestamp": now},
-           {"message": rpu.get_rusage(), "timestamp": now}]
+        try    : out = open('./agent.out', 'r').read()
+        except : pass
+        try    : err = open('./agent.err', 'r').read()
+        except : pass
+        try    : log = open('./agent.log',    'r').read()
+        except : pass
 
-    mongo_p.update({"_id": pilot_uid},
-        {"$pushAll": {"log"         : msg},
-         "$push"   : {"statehistory": {"state"    : rp.DONE,
-                                       "timestamp": now}},
-         "$set"    : {"state"       : rp.DONE,
-                      "stdout"      : rpu.tail(out),
-                      "stderr"      : rpu.tail(err),
-                      "logfile"     : rpu.tail(log),
-                      "finished"    : now}
-        })
+        msg = [{"message": "pilot done",     "timestamp": now},
+               {"message": rpu.get_rusage(), "timestamp": now}]
+
+        mongo_p.update({"_id": pilot_uid},
+            {"$pushAll": {"log"         : msg},
+             "$push"   : {"statehistory": {"state"    : rp.DONE,
+                                           "timestamp": now}},
+             "$set"    : {"state"       : rp.DONE,
+                          "stdout"      : rpu.tail(out),
+                          "stderr"      : rpu.tail(err),
+                          "logfile"     : rpu.tail(log),
+                          "finished"    : now}
+            })
+
+    else:
+        if logger:
+            logger.error("cannot log cancel state in database!")
+
+        print "cannot log cancel state in database!"
 
 
 
@@ -4697,18 +4727,13 @@ class HeartbeatMonitor(threading.Thread):
         retdoc = self._p.find_and_modify(
                     query  = {"_id"  : self._pilot_id},
                     update = {"$set" : {COMMAND_FIELD: []}}, # Wipe content of array
-                    fields = [COMMAND_FIELD, 'state']
+                    fields = [COMMAND_FIELD]
                     )
 
         if not retdoc:
             return
 
-
-        commands = retdoc[COMMAND_FIELD]
-        state    = retdoc['state']
-
-
-        for command in commands:
+        for command in retdoc[COMMAND_FIELD]:
 
             command_str = '%s:%s' % (command[COMMAND_TYPE], command[COMMAND_ARG])
 
@@ -4717,12 +4742,6 @@ class HeartbeatMonitor(threading.Thread):
             if command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT:
                 self.stop()
                 pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
-                rpu.flush_prof()
-                sys.exit(1)
-
-            elif state == rp.CANCELING:
-                self.stop()
-                pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL implied. Terminating.")
                 rpu.flush_prof()
                 sys.exit(1)
 
@@ -4748,10 +4767,9 @@ class HeartbeatMonitor(threading.Thread):
         # Check the workers periodically. If they have died, we
         # exit as well. this can happen, e.g., if the worker
         # process has caught an exception
-        for worker in self._agent.worker_list:
-            if not worker.is_alive():
-                self.stop()
-                msg = 'worker %s died' % str(worker)
+        for c in self._components:
+            if not c.is_alive():
+                msg = 'component %s died' % str(c)
                 pilot_FAILED(self._p, self._pilot_id, self._log, msg)
 
         # Make sure that we haven't exceeded the agent runtime. if
@@ -4769,259 +4787,246 @@ class Agent(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, lrms_name, requested_cores,
-            task_launch_method, mpi_launch_method, spawner,
-            scheduler_name, runtime,
-            mongodb_url, pilot_id, session_id):
+    def __init__(self, cfg):
 
         rpu.prof('Agent init')
 
-        self.name                   = name
-        self._config                = config
-        self._log                   = logger
         self._debug_helper          = ru.DebugHelper()
-        self._pilot_id              = pilot_id
-        self._runtime               = runtime
+
+        self.name                   = 'agent.master'
+        self._cfg                   = cfg
+        self._log                   = None
+        self._pilot_id              = None
+        self._session_id            = None
+        self._runtime               = None
+
         self._terminate             = threading.Event()
         self._starttime             = time.time()
         self._workdir               = os.getcwd()
-        self._session_id            = session_id
-        self._pilot_id              = pilot_id
 
-        self.worker_list            = list()
+        self._initialize()  # get config, init up logger, db connection
+        self._setup()       # create components
 
-        # we want to own all queues -- that simplifies startup and shutdown
-        self._schedule_queue        = QUEUE_TYPE()
-        self._stagein_queue         = QUEUE_TYPE()
-        self._execution_queue       = QUEUE_TYPE()
-        self._stageout_queue        = QUEUE_TYPE()
-        self._update_queue          = QUEUE_TYPE()
-        self._command_queue         = QUEUE_TYPE()
+
+    # --------------------------------------------------------------------------
+    #
+    def _initialize(self):
+        """
+        Read the configuration file, setup logging and mongodb connection.
+        This prepares the stage for the component setup (self._setup()).
+        """
+
+        # find out what agent instance name we have
+        if len(sys.argv) == 1:
+            # we are master
+            self.name = 'agent.master'
+
+        # configure the agent logger
+        self._log = rpu.get_logger(name='rp.agent', target='agent.log', level='INFO')
+        self._log.info('git ident: %s' % git_ident)
+
+        self._cfg['workdir'] = self._workdir
+
+        # sanity check on config settings
+        if not 'cores'               in self._cfg: raise ValueError("Missing number of cores")
+        if not 'debug'               in self._cfg: raise ValueError("Missing DEBUG level")
+        if not 'lrms'                in self._cfg: raise ValueError("Missing LRMS")
+        if not 'mongodb_url'         in self._cfg: raise ValueError("Missing MongoDB URL")
+        if not 'pilot_id'            in self._cfg: raise ValueError("Missing pilot id")
+        if not 'runtime'             in self._cfg: raise ValueError("Missing or zero agent runtime")
+        if not 'scheduler'           in self._cfg: raise ValueError("Missing agent scheduler")
+        if not 'session_id'          in self._cfg: raise ValueError("Missing session id")
+        if not 'spawner'             in self._cfg: raise ValueError("Missing agent spawner")
+        if not 'mpi_launch_method'   in self._cfg: raise ValueError("Missing mpi launch method")
+        if not 'task_launch_method'  in self._cfg: raise ValueError("Missing unit launch method")
+        if not 'agent_layout'        in self._cfg: raise ValueError("Missing agent layout")
+
+        self._pilot_id       = self._cfg['pilot_id']
+
+        # prepare profiler
+        rpu.prof_init('agent.prof', 'start', uid=self._cfg['pilot_id'])
+
+        # configure the agent logger
+        self._log.setLevel(self._cfg['debug'])
 
         # set up db connection
-        _, mongo_db, _, _, _  = ru.mongodb_connect(mongodb_url)
+        _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
 
         self._p  = mongo_db["%s.p"  % self._session_id]
         self._cu = mongo_db["%s.cu" % self._session_id]
 
-        # create component instances
-        self._lrms = LRMS.create(
-                name            = lrms_name,
-                config          = self._config,
-                logger          = self._log,
-                requested_cores = requested_cores)
-
-        self._scheduler = Scheduler.create(
-                name            = scheduler_name,
-                config          = self._config,
-                logger          = self._log,
-                lrms            = self._lrms,
-                schedule_queue  = self._schedule_queue,
-                execution_queue = self._execution_queue,
-                update_queue    = self._update_queue)
-        self.worker_list.append(self._scheduler)
-
-        self._task_launcher = LaunchMethod.create(
-                name            = task_launch_method,
-                config          = self._config,
-                logger          = self._log,
-                scheduler       = self._scheduler)
-
-        self._mpi_launcher = LaunchMethod.create(
-                name            = mpi_launch_method,
-                config          = self._config,
-                logger          = self._log,
-                scheduler       = self._scheduler)
-
-        for n in range(self._config['number_of_workers'][STAGEIN_WORKER]):
-            stagein_worker = StageinWorker(
-                name            = "StageinWorker-%d" % n,
-                config          = self._config,
-                logger          = self._log,
-                agent           = self,
-                execution_queue = self._execution_queue,
-                schedule_queue  = self._schedule_queue,
-                stagein_queue   = self._stagein_queue,
-                update_queue    = self._update_queue,
-                workdir         = self._workdir
-            )
-            self.worker_list.append(stagein_worker)
-
-
-        for n in range(self._config['number_of_workers'][EXEC_WORKER]):
-            exec_worker = ExecWorker.create(
-                name            = "ExecWorker-%d" % n,
-                config          = self._config,
-                spawner         = spawner,
-                logger          = self._log,
-                agent           = self,
-                scheduler       = self._scheduler,
-                task_launcher   = self._task_launcher,
-                mpi_launcher    = self._mpi_launcher,
-                command_queue   = self._command_queue,
-                execution_queue = self._execution_queue,
-                stageout_queue  = self._stageout_queue,
-                update_queue    = self._update_queue,
-                schedule_queue  = self._schedule_queue,
-                pilot_id        = self._pilot_id,
-                session_id      = self._session_id
-            )
-            self.worker_list.append(exec_worker)
-
-
-        for n in range(self._config['number_of_workers'][STAGEOUT_WORKER]):
-            stageout_worker = StageoutWorker(
-                name            = "StageoutWorker-%d" % n,
-                config          = self._config,
-                agent           = self,
-                logger          = self._log,
-                execution_queue = self._execution_queue,
-                stageout_queue  = self._stageout_queue,
-                update_queue    = self._update_queue,
-                workdir         = self._workdir
-            )
-            self.worker_list.append(stageout_worker)
-
-
-        for n in range(self._config['number_of_workers'][UPDATE_WORKER]):
-            update_worker = UpdateWorker(
-                name            = "UpdateWorker-%d" % n,
-                config          = self._config,
-                logger          = self._log,
-                agent           = self,
-                session_id      = self._session_id,
-                update_queue    = self._update_queue,
-                mongodb_url     = mongodb_url
-            )
-            self.worker_list.append(update_worker)
-
-
-        hbmon = HeartbeatMonitor(
-                name            = "HeartbeatMonitor",
-                config          = self._config,
-                logger          = self._log,
-                agent           = self,
-                command_queue   = self._command_queue,
-                p               = self._p,
-                starttime       = self._starttime,
-                runtime         = self._runtime,
-                pilot_id        = self._pilot_id)
-        self.worker_list.append(hbmon)
-
-        rpu.prof('Agent init done')
-
 
     # --------------------------------------------------------------------------
     #
-    def stop(self):
+    def _setup(self):
         """
-        Terminate the agent main loop.  The workers will be pulled down once the
-        main loop finishes (see run())
+        This method will instantiate all communitation and notification channels,
+        and all components.  It will then feed a set of units to the lead-in queue
+        (staging_input).  A state notification callback will then register all units
+        which reached a final state (DONE).  Once all units are accounted for, it
+        will tear down all created objects.
+
+        The agent accepts a config, which will specifcy 
+          - what bridges should be started
+          - what components should be started
+          - what are the endpoints for bridges which are not started
         """
 
-        rpu.prof ('stop request')
-        rpu.flush_prof()
-        self._terminate.set()
+        # NOTE: we don't do sanity checks on the agent layout (too lazy) -- but
+        #       we would hiccup badly over ill-formatted or incomplete layouts...
+        # we pick the layout according to our role (name)
+        if not self.name in self._cfg['agent_layout']:
+            raise RuntimeError("no agent layout section for %s" % self.name)
+
+        try:
+            layout = self._cfg['agent_layout'][self.name]
+
+            start_components     = layout.get('components', {})
+            start_bridges        = layout.get('bridges',    {})
+            start_queue_bridges  = start_bridges.get('queue',    {})
+            start_pubsub_bridges = start_bridges.get('pubsub',   {})
+
+            # keep track of objects we need to close in the finally clause
+            self._bridges    = list()
+            self._components = list()
+
+            # two shortcuts for bridge creation
+            def _create_queue_bridge(qname):
+                return rpu.Queue.create(rpu.QUEUE_ZMQ, qname, rpu.QUEUE_BRIDGE)
+
+            def _create_pubsub_bridge(pname):
+                return rpu.Pubsub.create(rpu.PUBSUB_ZMQ, pname, rpu.PUBSUB_BRIDGE)
+
+            # create all queue bridges we need.  Use the default addresses,
+            # ie. they will bind to localhost to ports 10.000++.  We don't start
+            # bridges where the config contains an address, but instead pass that
+            # address to the component configuration.
+            bridge_addresses = dict() 
+            for qname, qaddr in start_queue_bridges.iteritems():
+                if qaddr == 'local':
+                    # start new bridge locally
+                    bridge = _create_queue_bridge(qname)
+                    bridge_addresses[qname] = bridge.addr
+                    self._bridges.append(bridge)
+                else:
+                    # use the bridge at the given address
+                    bridge_addresses[qname] = qaddr
+
+            # same procedure for the pubsub bridges
+            for pname, paddr in start_pubsub_bridges.iteritems():
+                if paddr == 'local':
+                    # start new bridge locally
+                    bridge = _create_pubsub_bridge(pname)
+                    bridge_addresses[pname] = bridge.addr
+                    self._bridges.append(bridge)
+                else:
+                    # use the bridge at the given address
+                    bridge_addresses[pname] = paddr
+
+            self._log.debug("bridges started")
+
+            # we now have the bridge addresses.  Those need to be corrected in
+            # the agent config before we pass that config on to (a) the
+            # components we create below, and (b) to any other agent instance we
+            # intent to spawn.  So we do that for all workers we have configures
+            workers = layout.get('workers', [])
+            for worker in workers:
+                worker_config  = copy.deepcopy(self._cfg)
+                worker_layout  = worker_config['agent_layout'][worker]
+                worker_pubsubs = worker_layout['bridges']['pubsub']
+                worker_queues  = worker_layout['bridges']['queue']
+
+                for wp in worker_pubsubs:
+                    if wb in bridge_addresses and \
+                        worker_pubsubs[wp] == 'agent.master':
+                        worker_pubsubs[wp] = bridge_addresses[wp]
+
+                for wq in worker_queues:
+                    if wq in bridge_addresses and \
+                        worker_queues[wq] == 'agent.master':
+                        worker_queues[wq] = bridge_addresses[wq]
+
+                # we can now write the worker config
+                rpu.write_json('./%s.cfg' % worker, worker_config)
+        
+            self._log.debug("worker configs written")
+
+            # create all the component types we need. create n instances for each
+            # type.
+            # We use a static map from component names to class types for now --
+            # a factory might be more appropriate (FIXME)
+            cmap = {
+                "agent_update_worker"            : AgentUpdateWorker,
+                "agent_staging_input_component"  : AgentStagingInputComponent,
+                "agent_scheduling_component"     : AgentSchedulingComponent,
+                "agent_executing_component"      : AgentExecutingComponent,
+                "agent_staging_output_component" : AgentStagingOutputComponent
+                }
 
 
-    # --------------------------------------------------------------------------
-    #
-    def update_unit(self, src, uid, state=None, msg=None, query=None, update=None):
+            for cname, cnum in start_components.iteritems():
+                for i in range(cnum):
+                    print 'create %s' % cname
+                    comp = cmap[cname](self._cfg)
+                    self._components.append(comp)
 
-        if not query  : query  = dict()
-        if not update : update = dict()
-
-        query_dict  = dict()
-        update_dict = update
-
-        query_dict['_id'] = uid
-
-        for key,val in query.iteritems():
-            query_dict[key] = val
+            # FIXME: make sure all communication channels are in place.  This could
+            # be replaced with a proper barrier, but not sure if that is worth it...
+            time.sleep (1)
 
 
-        if msg:
-            if not '$push' in update_dict:
-                update_dict['$push'] = dict()
+        except Exception as e:
+            self._log.exception("Agent setup error: %s" % e)
+            raise
 
-            update_dict['$push']['log'] = {'message'   : msg,
-                                           'timestamp' : rpu.timestamp()}
+      # FIXME: this needs to go into shutdown
+      #
+      # finally:
+      #
+      #     self._log.info("Agent setup finalization: %s" % e)
+      #
+      #     # FIXME: let logfiles settle before killing the components
+      #     time.sleep(1)
+      #     os.system('sync')
+      #
+      #     # burn the bridges, burn EVERYTHING
+      #     for c in self._components:
+      #         c.close()
+      #
+      #     for b in self._bridges:
+      #         b.close()
 
-        if state:
-            rpu.prof('put', msg="%s to update_queue (%s)" % (src, state), uid=query_dict['_id'])
-        else:
-            rpu.prof('put', msg="%s to update_queue" % src, uid=query_dict['_id'])
+        rpu.prof('Agent setup done', logger=self._log.debug)
 
-        query_list, _ = rpu.blowup(self._config, query_dict, UPDATE_QUEUE)
+        # FIXME: signal the other agents, and shot down all components and
+        #        bridges.
 
-        for _query_dict in query_list :
-            self._update_queue.put({'_id'    : _query_dict['_id'],
-                                    'state'  : state,
-                                    'cbase'  : '.cu',
-                                    'query'  : _query_dict,
-                                    'update' : update_dict})
-
-
-    # --------------------------------------------------------------------------
-    #
-    def update_unit_state(self, src, uid, state, msg=None, query=None, update=None,
-            logger=None):
-
-        if not query  : query  = dict()
-        if not update : update = dict()
-
-        if  logger and msg:
-            logger("unit '%s' state change (%s)" % (uid, msg))
-
-        # we alter update, so rather use a copy of the dict...
-
-        now = rpu.timestamp()
-        update_dict = {'$set' : {'state': state},
-                       '$push': {'statehistory': {
-                                     'state': state,
-                                     'timestamp': now
-                                }}
-                      }
-
-        if '$set' in update:
-            for key,val in update['$set'].iteritems():
-                update_dict['$set'][key] = val
-
-        if '$push' in update:
-            for key,val in update['$push'].iteritems():
-                update_dict['$push'][key] = val
-
-        self.update_unit(src    = src,
-                         uid    = uid,
-                         state  = state,
-                         msg    = msg,
-                         query  = query,
-                         update = update_dict)
 
     # --------------------------------------------------------------------------
     #
     def run(self):
+        """
+        This method will be driving all other agent components, in the sense
+        that it will manage the conncection to MongoDB to retrieve units, and
+        then feed them to the respective component queues.
+        """
 
-        rpu.prof('run')
+        rpu.prof('run', logger=self._log.debug)
 
         # first order of business: set the start time and state of the pilot
-        self._log.info("Agent %s starting ...", self._pilot_id)
+        self._log.info("Agent %s for pilot %s starting ...", self.name, self._pilot_id)
         now = rpu.timestamp()
         ret = self._p.update(
             {"_id": self._pilot_id},
-            {"$set": {"state"          : rp.ACTIVE,
-                      # TODO: The two fields below are currently scheduler
-                      #       specific!
-                      "nodes"          : self._lrms.node_list,
-                      "cores_per_node" : self._lrms.cores_per_node,
-                      "started"        : now},
-             "$push": {"statehistory": {"state"    : rp.ACTIVE,
-                                        "timestamp": now}}
+            {"$set" : {"state"        : rp.ACTIVE,
+                       "started"      : now},
+             "$push": {"statehistory" : {"state"    : rp.ACTIVE,
+                                         "timestamp": now}}
             })
         # TODO: Check for return value, update should be true!
         self._log.info("Database updated: %s", ret)
 
-        while not self._terminate.is_set():
+        while True:
 
             try:
                 # check for new units
@@ -5031,37 +5036,20 @@ class Agent(object):
                 # FIXME: use some mongodb notification mechanism to avoid busy
                 # polling.  Tailed cursors or whatever...
                 if not action:
-                    time.sleep(self._config['db_poll_sleeptime'])
+                    time.sleep(self._cfg['db_poll_sleeptime'])
+
+                # FIXME: also check if the heartbeat monitor picked up any
+                #        commands, specifically shutdown...
 
             except Exception as e:
                 # exception in the main loop is fatal
-                self.stop()
                 pilot_FAILED(self._p, self._pilot_id, self._log,
                     "ERROR in agent main loop: %s. %s" % (e, traceback.format_exc()))
                 rpu.flush_prof()
                 sys.exit(1)
 
-        # main loop terminated, so self._terminate was set
-        # we need to signal shut down to all workers
-        for worker in self.worker_list:
-            worker.stop()
-
-        # to make sure that threads are not stuck waiting on a queue, we send
-        # a signal on each queue
-        self._schedule_queue.put (COMMAND_WAKEUP)
-        self._execution_queue.put(None)
-        self._update_queue.put   (None)
-        self._stagein_queue.put  (None)
-        self._stageout_queue.put (None)
-
-        # and wait for them to actually finish
-        # FIXME: make sure this works when stop was initialized by heartbeat monitor
-        for worker in self.worker_list:
-            worker.join()
-
         # record cancelation state
-        pilot_CANCELED(self._p, self._pilot_id, self._log,
-                "Terminated (_terminate set).")
+        pilot_CANCELED(self._p, self._pilot_id, self._log, "Terminated.")
 
         rpu.prof ('stop')
         rpu.flush_prof()
@@ -5071,6 +5059,8 @@ class Agent(object):
     # --------------------------------------------------------------------------
     #
     def _check_units(self):
+
+        self._log.info("check units")
 
         # Check if there are compute units waiting for input staging
         # and log that we pulled it.
@@ -5086,6 +5076,7 @@ class Agent(object):
                                            'control' : 'umgr'})
         if not cu_cursor.count():
             # no units whatsoever...
+            self._log.info("no units found")
             return 0
 
         # update the unit states to avoid pulling them again next time.
@@ -5175,14 +5166,22 @@ def main():
     control to the Agent class which will spawn the functional components.
     """
 
+    rpu.prof_init()
+
     # FIXME: signal handlers need mongo_p, but we won't have that until later
 
     # quickly set up a mongodb handle so that we can report errors.  We need to
     # parse the config to get the url and some IDs.
     # FIXME: should those be the things we pass as arg or env?
-    cfg = ru.read_json_str(os.environ['RADICAL_PILOT_CFG'])
+    # --------------------------------------------------------------------------
+    # load the agent config, and overload the config dicts
 
-    pprint.pprint(cfg)
+    if not 'RADICAL_PILOT_CFG' in os.environ:
+        raise RuntimeError('RADICAL_PILOT_CFG is not set - abort')
+
+    cfg = ru.read_json_str(os.environ['RADICAL_PILOT_CFG'])
+    print "\Agent config (%s):\n%s\n\n" % \
+            (os.environ['RADICAL_PILOT_CFG'], pprint.pformat(cfg))
 
     mongodb_url = cfg['mongodb_url']
     pilot_id    = cfg['pilot_id']
@@ -5196,11 +5195,11 @@ def main():
         rpu.flush_prof()
     
     def sigint_handler(signum, frame):
-        pilot_FAILED('Caught SIGINT. EXITING (%s)' % frame)
+        pilot_FAILED(msg='Caught SIGINT. EXITING (%s)' % frame)
         sys.exit(2)
 
     def sigalarm_handler(signum, frame):
-        pilot_FAILED('Caught SIGALRM (Walltime limit?). EXITING (%s)' % frame)
+        pilot_FAILED(msg='Caught SIGALRM (Walltime limit?). EXITING (%s)' % frame)
         sys.exit(3)
         
     import atexit
@@ -5210,22 +5209,22 @@ def main():
 
     agent = None
     try:
-        agent = Agent()
+        agent = Agent(cfg)
         agent.run()
 
     except SystemExit:
-        pilot_FAILED("Caught system exit. EXITING") 
+        pilot_FAILED(msg="Caught system exit. EXITING") 
         sys.exit(6)
 
     except Exception as e:
-        pilot_FAILED("Error running agent: %s" % str(e))
+        pilot_FAILED(msg="Error running agent: %s" % str(e))
         sys.exit(7)
 
     finally:
         # attempt to shut down the agent
-        if agent:
-            agent.terminate()
-            time.sleep(1)
+      # if agent:
+      #     agent.terminate()
+      #     time.sleep(1)
         rpu.prof('stop', msg='finally clause')
         sys.exit(8)
 

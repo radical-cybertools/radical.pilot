@@ -377,18 +377,19 @@ class AgentStagingInputComponent(rpu.ComponentBase):
             stderr_file = 'STDERR'
         unit['stderr_file'] = os.path.join(sandbox, stderr_file)
 
-        rpu.prof('Agent get unit meta', uid=unit['_id'])
         # create unit sandbox
         rec_makedir(sandbox)
-        rpu.prof('Agent get unit mkdir', uid=unit['_id'])
+        rpu.prof('unit mkdir', uid=unit['_id'])
 
         for directive in unit['Agent_Input_Directives']:
 
-            rpu.prof('Agent input_staging queue', uid=unit['_id'],
+            rpu.prof('agent_input_staging ', uid=unit['_id'],
                      msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
 
             if directive['state'] != rp.PENDING :
+
                 # we ignore directives which need no action
+                # FIXME: can this still happen?  Who would set them to PENDING?
                 rpu.prof('Agent input_staging queue', uid=unit['_id'], msg='ignored')
                 continue
 
@@ -416,7 +417,6 @@ class AgentStagingInputComponent(rpu.ComponentBase):
             abs_target = os.path.join(sandbox, target)
 
             # Create output directory in case it doesn't exist yet
-            #
             rec_makedir(os.path.dirname(abs_target))
 
             self._log.info("Going to '%s' %s to %s", directive['action'], source, abs_target)
@@ -428,8 +428,8 @@ class AgentStagingInputComponent(rpu.ComponentBase):
                 # FIXME: implement TRANSFER mode
                 raise NotImplementedError('Action %s not supported' % directive['action'])
 
-            log_message = "%s'ed %s to %s - success" % (directive['action'], source, abs_target)
-            self._log.info(log_message)
+            self._log.info("%s'ed %s to %s - success", \
+                    (directive['action'], source, abs_target))
 
         # Agent staging is all done, unit can go to ALLOCATING
         self.advance(unit, AGENT_SCHEDULING_PENDING, publish=True, push=True)
@@ -948,6 +948,11 @@ class Agent(object):
     # --------------------------------------------------------------------------
     #
     def run(self):
+        """
+        This method will be driving all other agent components, in the sense
+        that it will manage the conncection to MongoDB to retrieve units, and
+        then feed them to the respective component queues.
+        """
 
         rpu.prof('run')
 

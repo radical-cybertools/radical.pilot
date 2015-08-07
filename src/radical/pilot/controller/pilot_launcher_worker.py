@@ -675,7 +675,7 @@ class PilotLauncherWorker(threading.Thread):
                         logentries.append(Logentry (msg, logger=logger.debug))
                         ru.write_json(agent_config, cf_tmp_file)
 
-                        cf_env = "%s/agent.cfg" % pilot_sandbox # this is what the pilot sees
+                        cf_env = saga.Url("%s/agent.cfg" % pilot_sandbox).path # this is what the pilot sees
                         cf_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, cf_tmp_file))
                         msg = "Copying agent configuration file '%s' to sandbox (%s)." % (cf_url, pilot_sandbox)
                         logentries.append(Logentry (msg, logger=logger.debug))

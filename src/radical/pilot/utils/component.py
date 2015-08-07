@@ -1,5 +1,6 @@
 
 import os
+import time
 
 import multiprocessing as mp
 
@@ -24,7 +25,7 @@ from .pubsub import PUBSUB_SUB   as rpu_PUBSUB_SUB
 
 # ==============================================================================
 #
-class ComponentBase(mp.Process):
+class Component(mp.Process):
     """
     This class provides the basic structure for any RP component which operates
     on stateful units.  It provides means to:
@@ -444,7 +445,7 @@ class ComponentBase(mp.Process):
 
                     except Exception as e:
                         # FIXME: log and profile
-                        advance_unit(unit, FAILED, publish=True, push=False)
+                        advance(unit, FAILED, publish=True, push=False)
 
 
         except Exception as e:

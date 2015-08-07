@@ -1,11 +1,11 @@
 #from radical.pilot.utils.logger import logger
 import os
-from radical.pilot import Url
+import saga
 
 # The Staging Directives are specified using a dict in the following form:
 #   staging_directive = {
-#       'source':   None, # radical.pilot.Url() or string
-#       'target':   None, # radical.pilot.Url() or string
+#       'source':   None, # saga.Url() or string
+#       'target':   None, # saga.Url() or string
 #       'action':   None, # See 'Action operators' below
 #       'flags':    None, # See 'Flags' below
 #       'priority': 0     # Control ordering of actions
@@ -113,7 +113,7 @@ def expand_staging_directive(staging_directive, logger):
                 # Set target to None, as inferring it depends on the type of source
                 target = None
 
-            if isinstance(source, basestring) or isinstance(source, Url):
+            if isinstance(source, basestring) or isinstance(source, saga.Url):
 
                 if target:
                     # Detect asymmetry in source and target length
@@ -123,7 +123,7 @@ def expand_staging_directive(staging_directive, logger):
                     # We had no target specified, assume the basename of source
                     if isinstance(source, basestring):
                         target = os.path.basename(source)
-                    elif isinstance(source, Url):
+                    elif isinstance(source, saga.Url):
                         target = os.path.basename(source.path)
                     else:
                         raise Exception("Source %s is neither a string nor a Url (%s)!" %
@@ -172,7 +172,7 @@ def expand_staging_directive(staging_directive, logger):
 
                         if isinstance(source, basestring):
                             target = os.path.basename(src_entry),
-                        elif isinstance(source, Url):
+                        elif isinstance(source, saga.Url):
                             target = os.path.basename(src_entry.path),
                         else:
                             raise Exception("Source %s is neither a string nor a Url (%s)!" %
