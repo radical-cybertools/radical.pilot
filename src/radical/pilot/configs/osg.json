@@ -19,11 +19,13 @@
     },
     "lrms": "FORK",
     "agent_type": "multicore",
+    "shared_filesystem": false,
+    "health_check": false,
     "agent_scheduler": "CONTINUOUS",
-    "agent_spawner": "POPEN",
+    "agent_spawner": "SHELL",
     "task_launch_method": "FORK",
     "pre_bootstrap": [
-      "module avail python",
+      "source /cvmfs/oasis.opensciencegrid.org/osg/modules/lmod/current/init/bash",
       "module load python/2.7"
     ],
     "rp_version": "debug",
@@ -50,11 +52,13 @@
     },
     "lrms": "FORK",
     "agent_type": "multicore",
+    "shared_filesystem": false,
+    "health_check": false,
     "agent_scheduler": "CONTINUOUS",
-    "agent_spawner": "POPEN",
+    "agent_spawner": "SHELL",
     "task_launch_method": "FORK",
     "pre_bootstrap": [
-      "module avail python",
+      "source /cvmfs/oasis.opensciencegrid.org/osg/modules/lmod/current/init/bash",
       "module load python/2.7"
     ],
     "rp_version": "debug",
