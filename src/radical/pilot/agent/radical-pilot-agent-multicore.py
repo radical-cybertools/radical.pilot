@@ -3225,7 +3225,7 @@ class ForkLRMS(LRMS):
 #
 # ==============================================================================
 #
-class ExecWorker(COMPONENT_TYPE):
+class AgentExecutingComponent(COMPONENT_TYPE):
     """
     Manage the creation of CU processes, and watch them until they are completed
     (one way or the other).  The spawner thus moves the unit from
@@ -3332,7 +3332,7 @@ class ExecWorker(COMPONENT_TYPE):
 
 # ==============================================================================
 #
-class ExecWorker_POPEN (ExecWorker) :
+class ExecWorker_POPEN (AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
@@ -3778,7 +3778,7 @@ class ExecWorker_POPEN (ExecWorker) :
 
 # ==============================================================================
 #
-class ExecWorker_SHELL(ExecWorker):
+class ExecWorker_SHELL(AgentExecutingComponent):
 
 
     # --------------------------------------------------------------------------
@@ -4287,7 +4287,7 @@ timestamp () {
 
 # ==============================================================================
 #
-class UpdateWorker(threading.Thread):
+class AgentUpdateWorker(threading.Thread):
     """
     An UpdateWorker pushes CU and Pilot state updates to mongodb.  Its instances
     compete for update requests on the update_queue.  Those requests will be
@@ -4452,7 +4452,7 @@ class AgentStagingInputComponent(rpu.Component):
     #
     def __init__(self, cfg):
 
-        rpu.ComponentBase.__init__(self, cfg=cfg)
+        rpu.Component.__init__(self, cfg=cfg)
 
 
     # --------------------------------------------------------------------------
@@ -4545,7 +4545,7 @@ class AgentStagingOutputComponent(rpu.Component):
     #
     def __init__(self, cfg):
 
-        rpu.ComponentBase.__init__(self, cfg=cfg)
+        rpu.Component.__init__(self, cfg=cfg)
 
 
     # --------------------------------------------------------------------------
@@ -4667,7 +4667,7 @@ class AgentStagingOutputComponent(rpu.Component):
 
 # ==============================================================================
 #
-class HeartbeatMonitor(threading.Thread):
+class AgentHeartbeatMonitor(threading.Thread):
     """
     The HeartbeatMonitor watches the command queue for heartbeat updates (and
     other commands).
@@ -5101,44 +5101,11 @@ class Agent(object):
 
             rpu.prof('get', msg="MongoDB to Agent (%s)" % cu['state'], uid=cu['_id'], logger=self._log.info)
 
-            _cu_list, _ = rpu.blowup(self._config, cu, AGENT)
+            _cu_list, _ = rpu.blowup(self._cfg, cu, AGENT)
             for _cu in _cu_list :
 
                 try:
-                    cud     = _cu['description']
-                    workdir = "%s/%s" % (self._workdir, _cu['_id'])
-
-                    _cu['workdir']     = workdir
-                    _cu['stdout']      = ''
-                    _cu['stderr']      = ''
-                    _cu['opaque_clot'] = None
-
-                    stdout_file = cud.get('stdout')
-                    if not stdout_file:
-                        stdout_file = 'STDOUT'
-                    _cu['stdout_file'] = os.path.join(workdir, stdout_file)
-
-                    stderr_file = cud.get('stderr')
-                    if not stderr_file:
-                        stderr_file = 'STDERR'
-                    _cu['stderr_file'] = os.path.join(workdir, stderr_file)
-
-                    rpu.prof('Agent get unit meta', uid=_cu['_id'])
-                    # create unit sandbox
-                    rec_makedir(workdir)
-                    rpu.prof('Agent get unit mkdir', uid=_cu['_id'])
-
-                    # and send to staging 
-                    _cu['state'] = rp.AGENT_STAGING_INPUT
-                    self.update_unit_state(src    = 'Agent',
-                                           uid    = _cu['_id'],
-                                           state  = rp.AGENT_STAGING_INPUT,
-                                           msg    = 'unit needs input staging')
-
-                    _cu_list, _ = rpu.blowup(self._config, _cu, STAGEIN_QUEUE)
-                    for __cu in _cu_list :
-                        rpu.prof('put', msg="Agent to stagein_queue (%s)" % __cu['state'], uid=__cu['_id'])
-                        self._stagein_queue.put(__cu)
+                    self._stagein_queue.put(__cu)
 
                 except Exception as e:
                     # if any unit sorting step failed, the unit did not end up in
