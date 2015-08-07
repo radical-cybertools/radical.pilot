@@ -4148,92 +4148,123 @@ class AgentUpdateWorker(rpu.Worker):
         self.declare_idle_cb(self.idle_cb, self._cfg.get('bulk_collection_time'))
 
 
-                    rpu.prof('unit update bulk pushed (%d)' % len(cinfo['uids']))
-                    for entry in cinfo['uids']:
-                        uid   = entry[0]
-                        state = entry[1]
-                        if state:
-                            rpu.prof('unit update pushed (%s)' % state, uid=uid)
-                        else:
-                            rpu.prof('unit update pushed', uid=uid)
+    # ------------------------------------------------------------------
+    #
+    def _timed_bulk_execute(self, cinfo):
 
-                    cinfo['last'] = now
-                    cinfo['bulk'] = None
-                    cinfo['uids'] = list()
-                    return 1
+        # is there any bulk to look at?
+        if not cinfo['bulk']:
+            return False
 
-                else:
-                    return 0
-            # ------------------------------------------------------------------
+        now = time.time()
+        age = now - cinfo['last']
 
-            try:
+        # only push if collection time has been exceeded
+        if not age > self._cfg['bulk_collection_time']:
+            return False
 
-                try:
-                    update_request = self._update_queue.get_nowait()
-                    uid   = update_request.get('_id',   None)
-                    state = update_request.get('state', None)
+        res = cinfo['bulk'].execute()
+        self._log.debug("bulk update result: %s", res)
 
-                except Queue.Empty:
+        rpu.prof('unit update bulk pushed (%d)' % len(cinfo['uids']))
+        for entry in cinfo['uids']:
+            uid   = entry[0]
+            state = entry[1]
+            if state:
+                rpu.prof('unit update pushed (%s)' % state, uid=uid)
+            else:
+                rpu.prof('unit update pushed', uid=uid)
 
-                    # no new requests: push any pending bulks
-                    action = 0
-                    for cname in self._cinfo:
-                        action += timed_bulk_execute(self._cinfo[cname])
+        cinfo['last'] = now
+        cinfo['bulk'] = None
+        cinfo['uids'] = list()
 
-                    if not action:
-                        time.sleep(self._config['db_poll_sleeptime'])
-
-                    continue
+        return True
 
 
-                uid   = update_request.get('_id')
-                state = update_request.get('state', None)
+    # --------------------------------------------------------------------------
+    #
+    def idle_cb(self):
 
-                if state :
-                    rpu.prof('get', msg="update_queue to UpdateWorker (%s)" % state, uid=uid)
-                else:
-                    rpu.prof('get', msg="update_queue to UpdateWorker", uid=uid)
+        action = 0
+        with self._lock:
+            for cname in self._cinfo:
+                action += self._timed_bulk_execute(self._cinfo[cname])
 
-                update_request_list, _ = rpu.blowup(self._config, update_request, UPDATE_WORKER)
+        return bool(action)
 
-                for _update_request in update_request_list :
 
-                    # got a new request.  Add to bulk (create as needed),
-                    # and push bulk if time is up.
-                    uid         = _update_request.get('_id')
-                    state       = _update_request.get('state', None)
-                    cbase       = _update_request.get('cbase', '.cu')
-                    query_dict  = _update_request.get('query', dict())
-                    update_dict = _update_request.get('update',dict())
+    # --------------------------------------------------------------------------
+    #
+    def state_cb(self, topic, unit):
 
-                    cname = self._session_id + cbase
+        cu = unit
 
-                    if not cname in self._cinfo:
-                        self._cinfo[cname] = {
-                                'coll' : self._mongo_db[cname],
-                                'bulk' : None,
-                                'last' : time.time(),  # time of last push
-                                'uids' : list()
-                                }
+        # we don't have a good fallback on error, as the 'advance to fail' would
+        # create an infinite loop.  We can thus *never* fail!  So we try/catch
+        # and just log any errors.
+        #
+        # FIXME: should we send shutdown signals on errors?
+        #
+        # FIXME: at the moment, the update worker only operates on units.
+        #        Should it accept other updates, eg. for pilot states?
+        #
+        try:
+            # got a new request.  Add to bulk (create as needed),
+            # and push bulk if time is up.
+            uid   = cu['_id']
+            state = cu.get('state')
 
-                    cinfo = self._cinfo[cname]
+            rpu.prof('get', msg="update unit state to %s" % state, uid=uid)
 
-                    if not cinfo['bulk']:
-                        cinfo['bulk']  = cinfo['coll'].initialize_ordered_bulk_op()
+            cbase       = cu.get('cbase',  '.cu')
+            query_dict  = cu.get('query')
+            update_dict = cu.get('update')
 
-                    cinfo['uids'].append([uid, state])
-                    cinfo['bulk'].find  (query_dict) \
-                                 .update(update_dict)
+            if not query_dict:
+                query_dict  = {'_id'  : uid} # make sure unit is not final?
+            if not update_dict:
+                update_dict = {'$set' : {'state': state},
+                               '$push': {'statehistory': {
+                                             'state': state,
+                                             'timestamp': rpu.timestamp()}}}
 
-                    timed_bulk_execute(cinfo)
-                    rpu.prof('unit update bulked (%s)' % state, uid=uid)
+            # check if we handled the collection before.  If not, initialize
+            cname = self._session_id + cbase
 
-            except Exception as e:
-                self._log.exception("unit update failed (%s)", e)
-                # FIXME: should we fail the pilot at this point?
-                # FIXME: Are the strategies to recover?
+            with self._lock:
+                if not cname in self._cinfo:
+                    self._cinfo[cname] = {
+                            'coll' : self._mongo_db[cname],
+                            'bulk' : None,
+                            'last' : time.time(),  # time of last push
+                            'uids' : list()
+                            }
 
-        rpu.prof ('stop')
+
+                # check if we have an active bulk for the collection.  If not,
+                # create one.
+                cinfo = self._cinfo[cname]
+
+                if not cinfo['bulk']:
+                    cinfo['bulk'] = cinfo['coll'].initialize_ordered_bulk_op()
+
+
+                # push the update request onto the bulk
+                cinfo['uids'].append([uid, state])
+                cinfo['bulk'].find  (query_dict) \
+                             .update(update_dict)
+
+                # attempt a timed update
+                self._timed_bulk_execute(cinfo)
+                rpu.prof('unit update bulked (%s)' % state, uid=uid)
+
+
+        except Exception as e:
+            self._log.exception("unit update failed (%s)", e)
+            # FIXME: should we fail the pilot at this point?
+            # FIXME: Are the strategies to recover?
+
 
 
 # ==============================================================================
@@ -4256,9 +4287,10 @@ class AgentStagingInputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self):
+    @classmethod
+    def create(cls, cfg):
+        return cls(cfg)
 
-        self._workdir = self._cfg['workdir']
 
     # --------------------------------------------------------------------------
     #
