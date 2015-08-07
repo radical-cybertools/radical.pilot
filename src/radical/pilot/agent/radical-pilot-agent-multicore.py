@@ -3174,7 +3174,7 @@ class ForkLRMS(LRMS):
 #
 # ==============================================================================
 #
-class AgentExecutingComponent(COMPONENT_TYPE):
+class AgentExecutingComponent(rpu.Component):
     """
     Manage the creation of CU processes, and watch them until they are completed
     (one way or the other).  The spawner thus moves the unit from
@@ -3184,32 +3184,9 @@ class AgentExecutingComponent(COMPONENT_TYPE):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, agent, scheduler,
-                 task_launcher, mpi_launcher, command_queue,
-                 execution_queue, stageout_queue, update_queue, 
-                 schedule_queue, pilot_id, session_id):
+    def __init__(self, cfg):
 
-        rpu.prof('ExecWorker init')
-
-        COMPONENT_TYPE.__init__(self)
-        self._terminate = COMPONENT_MODE.Event()
-
-        self.name              = name
-        self._config           = config
-        self._log              = logger
-        self._agent            = agent
-        self._scheduler        = scheduler
-        self._task_launcher    = task_launcher
-        self._mpi_launcher     = mpi_launcher
-        self._command_queue    = command_queue
-        self._execution_queue  = execution_queue
-        self._stageout_queue   = stageout_queue
-        self._update_queue     = update_queue
-        self._schedule_queue   = schedule_queue
-        self._pilot_id         = pilot_id
-        self._session_id       = session_id
-
-        self.configure ()
+        rpu.Component.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -3217,65 +3194,24 @@ class AgentExecutingComponent(COMPONENT_TYPE):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, name, config, logger, spawner, agent, scheduler,
-               task_launcher, mpi_launcher, command_queue,
-               execution_queue, update_queue, schedule_queue, 
-               stageout_queue, pilot_id, session_id):
+    def create(cls, cfg):
 
         # Make sure that we are the base-class!
-        if cls != ExecWorker:
-            raise TypeError("ExecWorker Factory only available to base class!")
+        if cls != AgentExecutingComponent:
+            raise TypeError("Factory only available to base class!")
 
         try:
+            name = cfg['spawner']
             implementation = {
                 SPAWNER_NAME_POPEN : ExecWorker_POPEN,
                 SPAWNER_NAME_SHELL : ExecWorker_SHELL
-            }[spawner]
+            }[name]
 
-            impl = implementation(name, config, logger, agent, scheduler,
-                                  task_launcher, mpi_launcher, command_queue,
-                                  execution_queue, stageout_queue, update_queue, 
-                                  schedule_queue, pilot_id, session_id)
-            impl.start ()
+            impl = implementation(cfg)
             return impl
 
         except KeyError:
-            raise ValueError("ExecWorker '%s' unknown!" % name)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def __del__ (self):
-        self.close ()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def stop(self):
-
-        rpu.prof ('stop request')
-        rpu.flush_prof()
-        self._terminate.set()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def configure(self):
-        # hook for initialization
-        pass
-
-
-    # --------------------------------------------------------------------------
-    #
-    def close(self):
-        # hook for shutdown
-        pass
-
-
-    # --------------------------------------------------------------------------
-    #
-    def spawn(self, launcher, cu):
-        raise NotImplementedError("spawn() not implemented for ExecWorker '%s'." % self.name)
+            raise ValueError("AgentExecutingComponent '%s' unknown!" % name)
 
 
 
@@ -3285,24 +3221,31 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, agent, scheduler,
-                 task_launcher, mpi_launcher, command_queue,
-                 execution_queue, stageout_queue, update_queue, 
-                 schedule_queue, pilot_id, session_id):
+    def __init__(self, cfg):
 
-        rpu.prof('ExecWorker init')
+        AgentExecutingComponent.__init__ (self, cfg)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def initialize(self, cfg):
+
+      # self.declare_input (rp.AGENT_EXECUTING_PENDING, rp.AGENT_EXECUTING_QUEUE)
+      # self.declare_worker(rp.AGENT_EXECUTING_PENDING, self.work)
+
+        self.declare_input (rp.EXECUTING_PENDING, rp.AGENT_EXECUTING_QUEUE)
+        self.declare_worker(rp.EXECUTING_PENDING, self.work)
+
+        self.declare_output(rp.AGENT_STAGING_OUTPUT_PENDING, rp.AGENT_STAGING_OUTPUT_QUEUE)
+
+        self.declare_publisher('unschedule', rp.AGENT_UNSCHEDULE_PUBSUB)
+        self.declare_publisher('state',      rp.AGENT_STATE_PUBSUB)
+
 
         self._cus_to_watch   = list()
         self._cus_to_cancel  = list()
         self._watch_queue    = QUEUE_TYPE ()
         self._cu_environment = self._populate_cu_environment()
-
-
-        ExecWorker.__init__ (self, name, config, logger, agent, scheduler,
-                 task_launcher, mpi_launcher, command_queue,
-                 execution_queue, stageout_queue, update_queue, 
-                 schedule_queue, pilot_id, session_id)
-
 
         # run watcher thread
         watcher_name  = self.name.replace ('ExecWorker', 'ExecWatcher')
@@ -3732,22 +3675,22 @@ class ExecWorker_SHELL(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, agent, scheduler,
-                 task_launcher, mpi_launcher, command_queue,
-                 execution_queue, stageout_queue, update_queue,
-                 schedule_queue, pilot_id, session_id):
+    def __init__(self, cfg):
 
-        rpu.prof('ExecWorker init')
-
-        ExecWorker.__init__ (self, name, config, logger, agent, scheduler,
-                 task_launcher, mpi_launcher, command_queue,
-                 execution_queue, stageout_queue, update_queue,
-                 schedule_queue, pilot_id, session_id)
+        AgentExecutingComponent.__init__ (self, cfg)
 
 
     # --------------------------------------------------------------------------
     #
-    def run(self):
+    def initialize(self):
+
+        self.declare_input (rp.EXECUTING_PENDING, rp.AGENT_EXECUTING_QUEUE)
+        self.declare_worker(rp.EXECUTING_PENDING, self.work)
+
+        self.declare_output(rp.AGENT_STAGING_OUTPUT_PENDING, rp.AGENT_STAGING_OUTPUT_QUEUE)
+
+        self.declare_publisher('unschedule', rp.AGENT_UNSCHEDULE_PUBSUB)
+        self.declare_publisher('state',      rp.AGENT_STATE_PUBSUB)
 
 
         # Mimic what virtualenv's "deactivate" would do
