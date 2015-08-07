@@ -3315,81 +3315,42 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def run(self):
+    def work(self, cu):
 
-        rpu.prof('run')
-        try:
-            # report initial slot status
-            # TODO: Where does this abstraction belong?  Scheduler!
-            self._log.debug(self._scheduler.slot_status())
+      # self.advance(cu, rp.AGENT_EXECUTING, publish=True, push=False)
+        self.advance(cu, rp.EXECUTING, publish=True, push=False)
 
-            while not self._terminate.is_set():
+        try: 
+            if cu['description']['mpi']:
+                launcher = self._mpi_launcher
+            else :
+                launcher = self._task_launcher
 
-                cu = self._execution_queue.get()
+            if not launcher:
+                raise RuntimeError("no launcher (mpi=%s)" % cu['description']['mpi'])
 
-                if not cu :
-                    rpu.prof('get_cmd', msg="execution_queue to ExecWorker (wakeup)")
-                    # 'None' is the wakeup signal
-                    continue
+            self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
-                cu['state'] = rp.EXECUTING
+            assert(cu['opaque_slot']) # FIXME: no assert, but check
+            rpu.prof('ExecWorker unit launch', uid=cu['_id'])
 
-                rpu.prof('get', msg="executing_queue to ExecutionWorker (%s)" % cu['state'], uid=cu['_id'])
-
-                try:
-
-                    cu_list, _ = rpu.blowup(self._config, cu, EXEC_WORKER)
-                    for _cu in cu_list:
-
-                        if _cu['description']['mpi']:
-                            launcher = self._mpi_launcher
-                        else :
-                            launcher = self._task_launcher
-
-                        if not launcher:
-                            _cu['state'] = rp.FAILED
-                            self._agent.update_unit_state(src    = 'ExecWorker',
-                                                          uid    = _cu['_id'],
-                                                          state  = rp.FAILED,
-                                                          msg    = "no launcher (mpi=%s)" % _cu['description']['mpi'],
-                                                          logger = self._log.error)
-
-                        self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
-
-                        assert(_cu['opaque_slot']) # FIXME: no assert, but check
-                        rpu.prof('ExecWorker unit launch', uid=_cu['_id'])
-
-                        # Start a new subprocess to launch the unit
-                        # TODO: This is scheduler specific
-                        self.spawn(launcher=launcher, cu=_cu)
-
-
-                except Exception as e:
-                    # append the startup error to the units stderr.  This is
-                    # not completely correct (as this text is not produced
-                    # by the unit), but it seems the most intuitive way to
-                    # communicate that error to the application/user.
-                    cu['stderr'] += "\nPilot cannot start compute unit:\n%s\n%s" \
-                                    % (str(e), traceback.format_exc())
-                    cu['state']   = rp.FAILED
-                    cu['stderr'] += "\nPilot cannot start compute unit: '%s'" % e
-
-                    # Free the Slots, Flee the Flots, Ree the Frots!
-                    if cu['opaque_slot']:
-                        self._scheduler.unschedule(cu)
-
-                    cu['state'] = rp.FAILED
-                    self._agent.update_unit_state(src    = 'ExecWorker',
-                                                  uid    = cu['_id'],
-                                                  state  = rp.FAILED,
-                                                  msg    = "unit execution failed",
-                                                  logger = self._log.exception)
-
+            # Start a new subprocess to launch the unit
+            self.spawn(launcher=launcher, cu=cu)
 
         except Exception as e:
-            self._log.exception("Error in ExecWorker loop (%s)" % e)
+            # append the startup error to the units stderr.  This is
+            # not completely correct (as this text is not produced
+            # by the unit), but it seems the most intuitive way to
+            # communicate that error to the application/user.
+            self._log.exception("error running CU")
+            cu['stderr'] += "\nPilot cannot start compute unit:\n%s\n%s" \
+                            % (str(e), traceback.format_exc())
 
-        rpu.prof ('stop')
+            # Free the Slots, Flee the Flots, Ree the Frots!
+            if cu['opaque_slot']:
+                self.publish('unschedule', cu)
+
+            self.advance(cu, rp.FAILED, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -3513,20 +3474,9 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
         rpu.prof('spawning passed to popen', uid=cu['_id'])
 
         cu['started'] = rpu.timestamp()
-        cu['state']   = rp.EXECUTING
         cu['proc']    = proc
 
-        # register for state update and watching
-        cu['state'] = rp.EXECUTING
-        self._agent.update_unit_state(src    = 'ExecWorker',
-                                      uid    = cu['_id'],
-                                      state  = rp.EXECUTING,
-                                      msg    = "unit execution start")
-
-        cu_list, _ = rpu.blowup(self._config, cu, WATCH_QUEUE)
-        for _cu in cu_list :
-            rpu.prof('put', msg="ExecWorker to watcher (%s)" % _cu['state'], uid=_cu['_id'])
-            self._watch_queue.put(_cu)
+        self._watch_queue.put(cu)
 
 
     # --------------------------------------------------------------------------
@@ -3577,17 +3527,14 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                 for cu in cus :
                     
                     rpu.prof('get', msg="ExecWatcher picked up unit", uid=cu['_id'])
-                    cu_list, _ = rpu.blowup(self._config, cu, WATCHER)
-
-                    for _cu in cu_list :
-                        self._cus_to_watch.append (_cu)
+                    self._cus_to_watch.append (cu)
 
                 # check on the known cus.
                 action = self._check_running()
 
                 if not action and not cus :
                     # nothing happend at all!  Zzz for a bit.
-                    time.sleep(self._config['queue_poll_sleeptime'])
+                    time.sleep(self._cfg['queue_poll_sleeptime'])
 
         except Exception as e:
             self._log.exception("Error in ExecWorker watch loop (%s)" % e)
@@ -3621,16 +3568,11 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                     action += 1
                     cu['proc'].kill()
                     self._cus_to_cancel.remove(cu['_id'])
-                    self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
 
-                    cu['state'] = rp.CANCELED
-                    self._agent.update_unit_state(src    = 'ExecWatcher',
-                                                  uid    = cu['_id'],
-                                                  state  = rp.CANCELED,
-                                                  msg    = "unit execution canceled")
                     rpu.prof('final', msg="execution canceled", uid=cu['_id'])
-                    # NOTE: this is final, cu will not be touched anymore
-                    cu = None
+
+                    self.publish('unschedule', cu)
+                    self.advance(cu, rp.CANCELED, publish=True, push=False)
 
             else:
                 rpu.prof('execution complete', uid=cu['_id'])
@@ -3644,7 +3586,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
 
                 # Free the Slots, Flee the Flots, Ree the Frots!
                 self._cus_to_watch.remove(cu)
-                self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
+                self.publish('unschedule', cu)
 
                 if os.path.isfile("%s/PROF" % cu['workdir']):
                     with open("%s/PROF" % cu['workdir'], 'r') as prof_f:
@@ -3658,32 +3600,18 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                             self._log.error("Pre/Post profiling file read failed: `%s`" % e)
 
                 if exit_code != 0:
-
-                    # The unit failed, no need to deal with its output data.
-                    cu['state'] = rp.FAILED
-                    self._agent.update_unit_state(src    = 'ExecWatcher',
-                                                  uid    = cu['_id'],
-                                                  state  = rp.FAILED,
-                                                  msg    = "unit execution failed")
+                    # The unit failed - fail after staging output
                     rpu.prof('final', msg="execution failed", uid=cu['_id'])
-                    # NOTE: this is final, cu will not be touched anymore
-                    cu = None
+                    cu['target_state'] = rp.FAILED
 
                 else:
                     # The unit finished cleanly, see if we need to deal with
                     # output data.  We always move to stageout, even if there are no
                     # directives -- at the very least, we'll upload stdout/stderr
+                    rpu.prof('final', msg="execution succeeded", uid=cu['_id'])
+                    cu['target_state'] = rp.DONE
 
-                    cu['state'] = rp.AGENT_STAGING_OUTPUT_PENDING
-                    self._agent.update_unit_state(src    = 'ExecWatcher',
-                                                  uid    = cu['_id'],
-                                                  state  = rp.AGENT_STAGING_OUTPUT_PENDING,
-                                                  msg    = "unit execution completed")
-
-                    cu_list, _ = rpu.blowup(self._config, cu, STAGEOUT_QUEUE)
-                    for _cu in cu_list :
-                        rpu.prof('put', msg="ExecWatcher to stageout_queue (%s)" % _cu['state'], uid=_cu['_id'])
-                        self._stageout_queue.put(_cu)
+                self.advance(cu, rp.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
 
         return action
 
@@ -3774,81 +3702,77 @@ class ExecWorker_SHELL(AgentExecutingComponent):
                                            name   = "%s.watcher" % self.name)
         self._watcher.start ()
 
-        rpu.prof('run setup done')
+
+        # FIXME: 
+        #
+        # The AgentExecutingComponent needs the LaunchMethods to construct
+        # commands.  Those need the scheduler for some lookups and helper
+        # methods, and the scheduler needs the LRMS.  The LRMS can in general
+        # only initialized in the original agent environment -- which ultimately
+        # limits our ability to place the CU execution on other nodes.  
+        #
+        # As a temporary workaround we pass a None-Scheduler -- this will only
+        # work for some launch methods, and specifically not for ORTE, DPLACE
+        # and RUNJOB.  
+        #
+        # The clean solution seems to be to make sure that, on 'allocating', the
+        # scheduler derives all information needed to use the allocation and
+        # attaches them to the CU, so that the launch methods don't need to look
+        # them up again.  This will make the 'opaque_slots' more opaque -- but
+        # that is the reason of their existence (and opaqueness) in the first
+        # place...
+
+        self._task_launcher = LaunchMethod.create(
+                name            = self._cfg['task_launch_method'],
+                config          = self._cfg,
+                logger          = self._log,
+                scheduler       = None)  # FIXME: self._scheduler)
+
+        self._mpi_launcher = LaunchMethod.create(
+                name            = self._cfg['mpi_launch_method'],
+                config          = self._cfg,
+                logger          = self._log,
+                scheduler       = None)  # FIXME: self._scheduler)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def work(self, cu):
+
+      # self.advance(cu, rp.AGENT_EXECUTING, publish=True, push=False)
+        self.advance(cu, rp.EXECUTING, publish=True, push=False)
 
         try:
-            # report initial slot status
-            # TODO: Where does this abstraction belong?  Scheduler!
-            self._log.debug(self._scheduler.slot_status())
+            if cu['description']['mpi']:
+                launcher = self._mpi_launcher
+            else :
+                launcher = self._task_launcher
 
-            while not self._terminate.is_set():
+            if not launcher:
+                raise RuntimeError("no launcher (mpi=%s)" % cu['description']['mpi'])
 
-              # rpu.prof('ExecWorker pull cu from queue')
-                cu = self._execution_queue.get()
+            self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
-                if not cu :
-                    rpu.prof('get_cmd', msg="execution_queue to ExecWorker (wakeup)")
-                    # 'None' is the wakeup signal
-                    continue
+            assert(cu['opaque_slot']) # FIXME: no assert, but check
+            rpu.prof('ExecWorker unit launch', uid=cu['_id'])
 
-                cu['state'] = rp.EXECUTING
-
-                rpu.prof('get', msg="executing_queue to ExecutionWorker (%s)" % cu['state'], uid=cu['_id'])
-
-                try:
-
-                    cu_list, _ = rpu.blowup(self._config, cu, EXEC_WORKER)
-
-                    for _cu in cu_list :
-
-                        if _cu['description']['mpi']:
-                            launcher = self._mpi_launcher
-                        else :
-                            launcher = self._task_launcher
-
-                        if not launcher:
-                            _cu['state'] = rp.FAILED
-                            self._agent.update_unit_state(src    = 'ExecWorker',
-                                                          uid    = _cu['_id'],
-                                                          state  = rp.FAILED,
-                                                          msg    = "no launcher (mpi=%s)" % _cu['description']['mpi'],
-                                                          logger = self._log.error)
-
-                        self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
-
-                        assert(_cu['opaque_slot']) # FIXME: no assert, but check
-                        rpu.prof('ExecWorker unit launch', uid=_cu['_id'])
-
-                        # Start a new subprocess to launch the unit
-                        # TODO: This is scheduler specific
-                        self.spawn(launcher=launcher, cu=_cu)
-
-
-                except Exception as e:
-                    # append the startup error to the units stderr.  This is
-                    # not completely correct (as this text is not produced
-                    # by the unit), but it seems the most intuitive way to
-                    # communicate that error to the application/user.
-                    cu['stderr'] += "\nPilot cannot start compute unit:\n%s\n%s" \
-                                    % (str(e), traceback.format_exc())
-                    cu['state']   = rp.FAILED
-                    cu['stderr'] += "\nPilot cannot start compute unit: '%s'" % e
-
-                    # Free the Slots, Flee the Flots, Ree the Frots!
-                    if cu['opaque_slot']:
-                        self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
-
-                    cu['state'] = rp.FAILED
-                    self._agent.update_unit_state(src    = 'ExecWorker',
-                                                  uid    = cu['_id'],
-                                                  state  = rp.FAILED,
-                                                  msg    = "unit execution failed",
-                                                  logger = self._log.exception)
+            # Start a new subprocess to launch the unit
+            self.spawn(launcher=launcher, cu=cu)
 
         except Exception as e:
-            self._log.exception("Error in ExecWorker loop (%s)" % e)
+            # append the startup error to the units stderr.  This is
+            # not completely correct (as this text is not produced
+            # by the unit), but it seems the most intuitive way to
+            # communicate that error to the application/user.
+            self._log.exception("error running CU")
+            cu['stderr'] += "\nPilot cannot start compute unit:\n%s\n%s" \
+                            % (str(e), traceback.format_exc())
 
-        rpu.prof ('stop')
+            # Free the Slots, Flee the Flots, Ree the Frots!
+            if cu['opaque_slot']:
+                self.publish('unschedule', cu)
+
+            self.advance(cu, rp.FAILED, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -4033,12 +3957,6 @@ timestamp () {
         with self._registry_lock :
             self._registry[pid] = cu
 
-        cu['state'] = rp.EXECUTING
-        self._agent.update_unit_state(src    = 'ExecWorker',
-                                      uid    = cu['_id'],
-                                      state  = rp.EXECUTING,
-                                      msg    = "unit execution started")
-
 
     # --------------------------------------------------------------------------
     #
@@ -4160,6 +4078,9 @@ timestamp () {
                              pid, state, data)
             return
 
+        # for final states, we can free the slots.
+        self.publish('unschedule', cu)
+
         # record timestamp, exit code on final states
         cu['finished'] = rpu.timestamp()
 
@@ -4167,29 +4088,18 @@ timestamp () {
         else    : cu['exit_code'] = None
 
         if rp_state in [rp.FAILED, rp.CANCELED] :
-            # final state - no further state transition needed
-            self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
-            cu['state'] = rp_state
-            self._agent.update_unit_state(src   = 'ExecWatcher',
-                                          uid   = cu['_id'],
-                                          state = rp_state,
-                                          msg   = "unit execution finished")
+            # The unit failed - fail after staging output
+            rpu.prof('final', msg="execution failed", uid=cu['_id'])
+            cu['target_state'] = rp.FAILED
 
-        elif rp_state in [rp.DONE] :
-            rpu.prof('execution complete', uid=cu['_id'])
-            # advance the unit state
-            self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
-            cu['state'] = rp.AGENT_STAGING_OUTPUT_PENDING,
-            self._agent.update_unit_state(src   = 'ExecWatcher',
-                                          uid   = cu['_id'],
-                                          state = rp.AGENT_STAGING_OUTPUT_PENDING,
-                                          msg   = "unit execution completed")
+        else:
+            # The unit finished cleanly, see if we need to deal with
+            # output data.  We always move to stageout, even if there are no
+            # directives -- at the very least, we'll upload stdout/stderr
+            rpu.prof('final', msg="execution succeeded", uid=cu['_id'])
+            cu['target_state'] = rp.DONE
 
-            cu_list, _ = rpu.blowup(self._config, cu, STAGEOUT_QUEUE)
-
-            for _cu in cu_list :
-                rpu.prof('put', msg="ExecWatcher to stageout_queue (%s)" % _cu['state'], uid=_cu['_id'])
-                self._stageout_queue.put(_cu)
+        self.advance(cu, rp.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
 
         # we don't need the cu in the registry anymore
         with self._registry_lock :
