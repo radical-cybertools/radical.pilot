@@ -4846,8 +4846,13 @@ class AgentWorker(rpu.Worker):
 
             for cname, cnum in start_components.iteritems():
                 for i in range(cnum):
-                    print 'create %s' % cname
-                    comp = cmap[cname](self._cfg)
+
+                    # each component gets its own copy, which specifically has
+                    # no 'name' entru set -- name will then be the component
+                    # class name.
+                    ccfg = copy.deepcopy(self._cfg)
+                    del(ccfg['name'])
+                    comp = cmap[cname].create(ccfg)
                     self._components.append(comp)
 
             # FIXME: make sure all communication channels are in place.  This could
