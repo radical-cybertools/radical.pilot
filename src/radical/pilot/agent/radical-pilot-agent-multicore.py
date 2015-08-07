@@ -4648,49 +4648,33 @@ class AgentHeartbeatMonitor(threading.Thread):
 
 # ==============================================================================
 #
-class Agent(object):
+class AgentWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg):
 
-        rpu.prof('Agent init')
+        # find out what agent instance name we have
+        if len(sys.argv) == 1:
+            # we are master
+            cfg['name'] = 'agent.master'
+        else:
+            # we are given a name
+            cfg['name'] = sys.argv[1]
 
-        self._debug_helper          = ru.DebugHelper()
-
-        self.name                   = 'agent.master'
-        self._cfg                   = cfg
-        self._log                   = None
-        self._pilot_id              = None
-        self._session_id            = None
-        self._runtime               = None
-
-        self._terminate             = threading.Event()
-        self._starttime             = time.time()
-        self._workdir               = os.getcwd()
-
-        self._initialize()  # get config, init up logger, db connection
-        self._setup()       # create components
+        rpu.Worker.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
     #
-    def _initialize(self):
+    def initialize(self):
         """
         Read the configuration file, setup logging and mongodb connection.
         This prepares the stage for the component setup (self._setup()).
         """
 
-        # find out what agent instance name we have
-        if len(sys.argv) == 1:
-            # we are master
-            self.name = 'agent.master'
-
-        # configure the agent logger
-        self._log = rpu.get_logger(name='rp.agent', target='agent.log', level='INFO')
-        self._log.info('git ident: %s' % git_ident)
-
-        self._cfg['workdir'] = self._workdir
+        self._starttime      = time.time()
+        self._cfg['workdir'] = os.getcwd() # this better be on a shared FS!
 
         # sanity check on config settings
         if not 'cores'               in self._cfg: raise ValueError("Missing number of cores")
@@ -4722,6 +4706,29 @@ class Agent(object):
 
         self._p  = mongo_db["%s.p"  % self._session_id]
         self._cu = mongo_db["%s.cu" % self._session_id]
+
+        # first order of business: set the start time and state of the pilot
+        now = rpu.timestamp()
+        ret = self._p.update(
+            {"_id": self._pilot_id},
+            {"$set" : {"state"        : rp.ACTIVE,
+                       "started"      : now},
+             "$push": {"statehistory" : {"state"    : rp.ACTIVE,
+                                         "timestamp": now}}
+            })
+        # TODO: Check for return value, update should be true!
+        self._log.info("Database updated: %s", ret)
+
+
+        # create components
+        self._setup()       
+
+        # register the stagiing_input_queue as this is what we want to push to
+        self.declare_output(rp.AGENT_STAGING_INPUT_PENDING, rp.AGENT_STAGING_INPUT_QUEUE)
+
+        # register idle callback -- which is the only action we have to perform,
+        # really
+        self.declare_idle_cb(self.idle_cb, self._cfg['db_poll_sleeptime'])
 
 
     # --------------------------------------------------------------------------
@@ -4799,7 +4806,12 @@ class Agent(object):
             # intent to spawn.  So we do that for all workers we have configures
             workers = layout.get('workers', [])
             for worker in workers:
+
+                # each worker gets its own copy, which specifically sets the
+                # name to the worker ID, so that it can pick up the correct
+                # layout section
                 worker_config  = copy.deepcopy(self._cfg)
+                worker_config['name'] = worker
                 worker_layout  = worker_config['agent_layout'][worker]
                 worker_pubsubs = worker_layout['bridges']['pubsub']
                 worker_queues  = worker_layout['bridges']['queue']
@@ -4872,56 +4884,40 @@ class Agent(object):
 
     # --------------------------------------------------------------------------
     #
-    def run(self):
+    def idle_cb(self):
         """
         This method will be driving all other agent components, in the sense
         that it will manage the conncection to MongoDB to retrieve units, and
         then feed them to the respective component queues.
         """
 
-        rpu.prof('run', logger=self._log.debug)
+        try:
+            # check for new units
+            action = self._check_units()
 
-        # first order of business: set the start time and state of the pilot
-        self._log.info("Agent %s for pilot %s starting ...", self.name, self._pilot_id)
-        now = rpu.timestamp()
-        ret = self._p.update(
-            {"_id": self._pilot_id},
-            {"$set" : {"state"        : rp.ACTIVE,
-                       "started"      : now},
-             "$push": {"statehistory" : {"state"    : rp.ACTIVE,
-                                         "timestamp": now}}
-            })
-        # TODO: Check for return value, update should be true!
-        self._log.info("Database updated: %s", ret)
-
-        while True:
-
-            try:
-                # check for new units
-                action = self._check_units()
-
-                # if no units have been seen, then wait for juuuust a little...
-                # FIXME: use some mongodb notification mechanism to avoid busy
-                # polling.  Tailed cursors or whatever...
-                if not action:
-                    time.sleep(self._cfg['db_poll_sleeptime'])
-
+            if not action:
                 # FIXME: also check if the heartbeat monitor picked up any
                 #        commands, specifically shutdown...
+              # # record cancelation state
+              # pilot_CANCELED(self._p, self._pilot_id, self._log, "Terminated.")
+                pass
 
-            except Exception as e:
-                # exception in the main loop is fatal
-                pilot_FAILED(self._p, self._pilot_id, self._log,
-                    "ERROR in agent main loop: %s. %s" % (e, traceback.format_exc()))
-                rpu.flush_prof()
-                sys.exit(1)
+            return action
 
-        # record cancelation state
-        pilot_CANCELED(self._p, self._pilot_id, self._log, "Terminated.")
+        except Exception as e:
+            # exception in the main loop is fatal
+            pilot_FAILED(self._p, self._pilot_id, self._log,
+                "ERROR in agent main loop: %s. %s" % (e, traceback.format_exc()))
+            rpu.flush_prof()
+            sys.exit(1)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
 
         rpu.prof ('stop')
         rpu.flush_prof()
-        sys.exit(0)
 
 
     # --------------------------------------------------------------------------
@@ -4949,7 +4945,7 @@ class Agent(object):
 
         # update the unit states to avoid pulling them again next time.
         cu_list = list(cu_cursor)
-        cu_uids = [_cu['_id'] for _cu in cu_list]
+        cu_uids = [cu['_id'] for cu in cu_list]
 
         self._cu.update(multi    = True,
                         spec     = {"_id"   : {"$in"     : cu_uids}},
@@ -4958,35 +4954,14 @@ class Agent(object):
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline)
         if cu_list:
-            rpu.prof('Agent get units', msg="bulk size: %d" % cu_cursor.count(),
+            rpu.prof('Agent get units', msg="bulk size: %d" % len(cu_list),
                  logger=self._log.info)
 
-        for cu in cu_list:
-
-            rpu.prof('get', msg="MongoDB to Agent (%s)" % cu['state'], uid=cu['_id'], logger=self._log.info)
-
-            _cu_list, _ = rpu.blowup(self._cfg, cu, AGENT)
-            for _cu in _cu_list :
-
-                try:
-                    self._stagein_queue.put(__cu)
-
-                except Exception as e:
-                    # if any unit sorting step failed, the unit did not end up in
-                    # a queue (its always the last step).  We set it to FAILED
-                    msg = "could not sort unit (%s)" % e
-                    rpu.prof('error', msg=msg, uid=_cu['_id'], logger=self._log.exception)
-                    _cu['state'] = rp.FAILED
-                    self.update_unit_state(src    = 'Agent',
-                                           uid    = _cu['_id'],
-                                           state  = rp.FAILED,
-                                           msg    = msg)
-                    # NOTE: this is final, the unit will not be touched
-                    # anymore.
-                    _cu = None
+        print 'advancing %s' % cu_uids
+        self.advance(cu_list, publish=True, push=True)
 
         # indicate that we did some work (if we did...)
-        return len(cu_uids)
+        return len(cu_list)
 
 
 
