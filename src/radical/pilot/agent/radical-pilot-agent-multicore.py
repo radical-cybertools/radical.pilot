@@ -3244,25 +3244,45 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
 
         self._cus_to_watch   = list()
         self._cus_to_cancel  = list()
-        self._watch_queue    = QUEUE_TYPE ()
+        self._watch_queue    = queue.Queue ()
         self._cu_environment = self._populate_cu_environment()
 
         # run watcher thread
-        watcher_name  = self.name.replace ('ExecWorker', 'ExecWatcher')
-        self._watcher = threading.Thread(target = self._watch,
-                                         name   = watcher_name)
+        self._terminate = threading.Event()
+        self._watcher   = threading.Thread(target = self._watch,
+                                           name   = "%s.watcher" % self.name)
         self._watcher.start ()
 
+        # FIXME: 
+        #
+        # The AgentExecutingComponent needs the LaunchMethods to construct
+        # commands.  Those need the scheduler for some lookups and helper
+        # methods, and the scheduler needs the LRMS.  The LRMS can in general
+        # only initialized in the original agent environment -- which ultimately
+        # limits our ability to place the CU execution on other nodes.  
+        #
+        # As a temporary workaround we pass a None-Scheduler -- this will only
+        # work for some launch methods, and specifically not for ORTE, DPLACE
+        # and RUNJOB.  
+        #
+        # The clean solution seems to be to make sure that, on 'allocating', the
+        # scheduler derives all information needed to use the allocation and
+        # attaches them to the CU, so that the launch methods don't need to look
+        # them up again.  This will make the 'opaque_slots' more opaque -- but
+        # that is the reason of their existence (and opaqueness) in the first
+        # place...
 
-    # --------------------------------------------------------------------------
-    #
-    def close(self):
+        self._task_launcher = LaunchMethod.create(
+                name            = self._cfg['task_launch_method'],
+                config          = self._cfg,
+                logger          = self._log,
+                scheduler       = None)  # FIXME: self._scheduler)
 
-        # shut down the watcher thread
-        rpu.prof ('stop request')
-        rpu.flush_prof()
-        self._terminate.set()
-        self._watcher.join()
+        self._mpi_launcher = LaunchMethod.create(
+                name            = self._cfg['mpi_launch_method'],
+                config          = self._cfg,
+                logger          = self._log,
+                scheduler       = None)  # FIXME: self._scheduler)
 
 
     # --------------------------------------------------------------------------
@@ -3734,23 +3754,24 @@ class ExecWorker_SHELL(AgentExecutingComponent):
         #tmp = tempfile.gettempdir()
         # Moving back to shared file system again, until it reaches maturity,
         # as this breaks launch methods with a hop, e.g. ssh.
-        tmp = os.getcwd() # FIXME: see #658
+        tmp      = os.getcwd() # FIXME: see #658
+        pilot_id = self._cfg['pilot_id']
         ret, out, _  = self.launcher_shell.run_sync \
                            ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
-                           % (os.path.dirname (rp.__file__), tmp, self._pilot_id, self.name))
+                           % (os.path.dirname (rp.__file__), tmp, pilot_id, self.name))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
 
         ret, out, _  = self.monitor_shell.run_sync \
                            ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
-                           % (os.path.dirname (rp.__file__), tmp, self._pilot_id, self.name))
+                           % (os.path.dirname (rp.__file__), tmp, pilot_id, self.name))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
 
         # run watcher thread
-        watcher_name  = self.name.replace ('ExecWorker', 'ExecWatcher')
-        self._watcher = threading.Thread(target = self._watch,
-                                         name   = watcher_name)
+        self._terminate = threading.Event()
+        self._watcher   = threading.Thread(target = self._watch,
+                                           name   = "%s.watcher" % self.name)
         self._watcher.start ()
 
         rpu.prof('run setup done')
