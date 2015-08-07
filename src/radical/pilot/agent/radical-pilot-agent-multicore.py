@@ -4308,10 +4308,28 @@ class AgentStagingInputComponent(rpu.Component):
     #
     def work(self, cu):
 
-        self.advance(cu, AGENT_STAGING_INPUT, publish=True, push=False)
+        self.advance(cu, rp.AGENT_STAGING_INPUT, publish=True, push=False)
+        self._log.info('handle %s' % cu['_id'])
 
-        sandbox      = os.path.join(self._workdir, '%s' % cu['_id'])
-        staging_area = os.path.join(self._workdir, self._cfg['staging_area'])
+        workdir      = os.path.join(self._cfg['workdir'], '%s' % cu['_id'])
+        staging_area = os.path.join(self._cfg['workdir'], self._cfg['staging_area'])
+
+        cu['workdir']     = workdir
+        cu['stdout']      = ''
+        cu['stderr']      = ''
+        cu['opaque_clot'] = None
+
+        stdout_file       = cu['description'].get('stdout')
+        stdout_file       = stdout_file if stdout_file else 'STDOUT'
+        stderr_file       = cu['description'].get('stderr')
+        stderr_file       = stderr_file if stderr_file else 'STDERR'
+
+        cu['stdout_file'] = os.path.join(workdir, stdout_file)
+        cu['stderr_file'] = os.path.join(workdir, stderr_file)
+
+        # create unit workdir
+        rec_makedir(workdir)
+        rpu.prof('unit mkdir', uid=cu['_id'])
 
         for directive in cu['Agent_Input_Directives']:
 
@@ -4320,7 +4338,7 @@ class AgentStagingInputComponent(rpu.Component):
 
             # Perform input staging
             self._log.info("unit input staging directives %s for cu: %s to %s",
-                           directive, cu['_id'], sandbox)
+                           directive, cu['_id'], workdir)
 
             # Convert the source_url into a SAGA Url object
             source_url = rs.Url(directive['source'])
@@ -4336,9 +4354,9 @@ class AgentStagingInputComponent(rpu.Component):
                 source = source_url.path
 
             # Get the target from the directive and convert it to the location
-            # in the sandbox
+            # in the workdir
             target = directive['target']
-            abs_target = os.path.join(sandbox, target)
+            abs_target = os.path.join(workdir, target)
 
             # Create output directory in case it doesn't exist yet
             rec_makedir(os.path.dirname(abs_target))
