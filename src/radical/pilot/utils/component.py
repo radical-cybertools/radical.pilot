@@ -1,6 +1,8 @@
 
 import os
+import sys
 import time
+import signal
 
 import threading       as mt
 import multiprocessing as mp
@@ -173,11 +175,11 @@ class Component(mp.Process):
     #
     def finalize(self):
         """
-        This method MUST be overloaded by the components.  It is called *once* in
+        This method MAY be overloaded by the components.  It is called *once* in
         the context of the main run(), and shuld be used to tear down component
         states after units have been processed.
         """
-        raise NotImplementedError("finalize() is not implemented by %s" % self._name)
+        self._log.debug('base finalize (NOOP)')
 
 
     # --------------------------------------------------------------------------
@@ -392,6 +394,13 @@ class Component(mp.Process):
 
         dh = ru.DebugHelper()
 
+        # registering a sigterm handler will allow us to call an exit when the
+        # parent calls terminate -- which is excepted in the loop below, and we
+        # can then cleanly call finalize...
+        def sigterm_handler(signum, frame):
+            sys.exit()
+        signal.signal(signal.SIGTERM, sigterm_handler)
+
         rpu_prof_init(target="component_%s.prof" % self._name)
         rpu_prof('run %s' % self._name)
 
@@ -500,7 +509,7 @@ class Component(mp.Process):
             # tear down all subscriber threads
             self._terminate.set()
             for t in self._threads:
-                self._log.debug('joining subscriber thread %s' % s)
+                self._log.debug('joining subscriber thread %s' % t)
                 t.join()
             self._log.debug('all threads joined')
 

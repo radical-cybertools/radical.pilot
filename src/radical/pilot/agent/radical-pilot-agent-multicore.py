@@ -4611,16 +4611,6 @@ class AgentHeartbeatWorker(rpu.Worker):
     #
     def _check_state(self):
 
-      # # FIXME: only the AgentWorker can do this:
-      # # Check the workers periodically. If they have died, we
-      # # exit as well. this can happen, e.g., if the worker
-      # # process has caught an exception
-      # for c in self._components:
-      #     if not c.is_alive():
-      #         msg = 'component %s died' % str(c)
-      #         self.publish('command', {'cmd' : 'failed', 
-      #                                  'msg' : 'timeout'})
-
         # Make sure that we haven't exceeded the agent runtime. if
         # we have, terminate.
         if time.time() >= self._starttime + (int(self._runtime) * 60):
@@ -4668,10 +4658,6 @@ class AgentWorker(rpu.Worker):
 
         cmd = msg['cmd']
         arg = msg['arg']
-
-        self._log.debug(dir(self))
-        self._log.debug(self._cfg)
-        self._log.debug(self._p)
 
         if cmd == 'shutdown':
             self._log.error("shutdown command (%s)" % arg)
@@ -4903,8 +4889,12 @@ class AgentWorker(rpu.Worker):
     #
     def finalize(self):
 
+
         self._log.info("Agent finalizes")
       
+        rpu.prof ('stop')
+        rpu.flush_prof()
+
         # FIXME: let logfiles settle before killing the components
         time.sleep(1)
         os.system('sync')
@@ -4936,14 +4926,6 @@ class AgentWorker(rpu.Worker):
                 "ERROR in agent main loop: %s. %s" % (e, traceback.format_exc()))
             rpu.flush_prof()
             sys.exit(1)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize(self):
-
-        rpu.prof ('stop')
-        rpu.flush_prof()
 
 
     # --------------------------------------------------------------------------
@@ -5047,9 +5029,7 @@ def main():
     agent = None
     try:
         agent = AgentWorker(cfg)
-
-        # FIXME: we want to wait until cancel or done...
-        time.sleep(10)
+        agent.join()
 
     except SystemExit:
         pilot_FAILED(msg="Caught system exit. EXITING") 
