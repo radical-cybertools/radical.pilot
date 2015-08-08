@@ -430,20 +430,6 @@ class AgentSchedulingComponent(rpu.Component):
 
         rpu.Component.__init__(self, cfg)
 
-        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def command_cb(self, topic, command):
-
-        if command['cmd'] == 'shutdown':
-            self._log.error("shutdown command (%s)" % command['msg'])
-            self.terminate()
-
-        else:
-            self._log.error("unknown command '%s'" % command)
-
 
     # --------------------------------------------------------------------------
     #
@@ -574,13 +560,13 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def reschedule_cb(self, topic, unit):
+    def reschedule_cb(self, topic, msg):
         # we ignore any passed CU.  In principle the cu info could be used to
         # determine which slots have been freed.  No need for that optimization
         # right now.  This will become interesting once reschedule becomes too
         # expensive.
 
-        cu = unit
+        cu = msg
 
         rpu.prof('reschedule')
         self._log.info("slot status before reschedule: %s" % self.slot_status())
@@ -606,12 +592,12 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def unschedule_cb(self, topic, unit):
+    def unschedule_cb(self, topic, msg):
         """
         release (for whatever reason) all slots allocated to this CU
         """
 
-        cu = unit
+        cu = msg
         rpu.prof('unschedule', uid=cu['_id'])
 
         if not cu['opaque_slot']:
@@ -825,8 +811,8 @@ class SchedulerContinuous(AgentSchedulingComponent):
             slot_cores_offset = self._find_cores_cont(slot_cores, cores_requested, FREE)
 
             if slot_cores_offset is not None:
-                self._log.info('Node %s satisfies %d cores at offset %d',
-                              slot_node, cores_requested, slot_cores_offset)
+              # self._log.info('Node %s satisfies %d cores at offset %d',
+              #               slot_node, cores_requested, slot_cores_offset)
                 return ['%s:%d' % (slot_node, core) for core in
                         range(slot_cores_offset, slot_cores_offset + cores_requested)]
 
@@ -3184,21 +3170,6 @@ class AgentExecutingComponent(rpu.Component):
 
         rpu.Component.__init__(self, cfg)
 
-        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def command_cb(self, topic, command):
-
-        if command['cmd'] == 'shutdown':
-            self._log.error("shutdown command (%s)" % command['msg'])
-            self.terminate()
-
-        else:
-            self._log.error("unknown command '%s'" % command)
-
-
 
     # --------------------------------------------------------------------------
     #
@@ -4135,20 +4106,6 @@ class AgentUpdateWorker(rpu.Worker):
 
         rpu.Worker.__init__(self, cfg)
 
-        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def command_cb(self, topic, command):
-
-        if command['cmd'] == 'shutdown':
-            self._log.error("shutdown command (%s)" % command['msg'])
-            self.terminate()
-
-        else:
-            self._log.error("unknown command '%s'" % command)
-
 
     # --------------------------------------------------------------------------
     #
@@ -4221,9 +4178,9 @@ class AgentUpdateWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def state_cb(self, topic, unit):
+    def state_cb(self, topic, msg):
 
-        cu = unit
+        cu = msg
 
         # we don't have a good fallback on error, as the 'advance to fail' would
         # create an infinite loop.  We can thus *never* fail!  So we try/catch
@@ -4308,21 +4265,6 @@ class AgentStagingInputComponent(rpu.Component):
     def __init__(self, cfg):
 
         rpu.Component.__init__(self, cfg)
-
-        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def command_cb(self, topic, command):
-
-        if command['cmd'] == 'shutdown':
-            self._log.error("shutdown command (%s)" % command['msg'])
-            self.terminate()
-
-        else:
-            self._log.error("unknown command '%s'" % command)
-
 
 
     # --------------------------------------------------------------------------
@@ -4440,21 +4382,6 @@ class AgentStagingOutputComponent(rpu.Component):
     def __init__(self, cfg):
 
         rpu.Component.__init__(self, cfg)
-
-        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def command_cb(self, topic, command):
-
-        if command['cmd'] == 'shutdown':
-            self._log.error("shutdown command (%s)" % command['msg'])
-            self.terminate()
-
-        else:
-            self._log.error("unknown command '%s'" % command)
-
 
 
     # --------------------------------------------------------------------------
@@ -4595,21 +4522,6 @@ class AgentHeartbeatWorker(rpu.Worker):
 
         rpu.Worker.__init__(self, cfg)
 
-        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def command_cb(self, topic, command):
-
-        if command['cmd'] == 'shutdown':
-            self._log.error("shutdown command (%s)" % command['msg'])
-            self.terminate()
-
-        else:
-            self._log.error("unknown command '%s'" % command)
-
-
 
     # --------------------------------------------------------------------------
     #
@@ -4671,28 +4583,28 @@ class AgentHeartbeatWorker(rpu.Worker):
 
         for command in retdoc[COMMAND_FIELD]:
 
-            command_str = '%s:%s' % (command[COMMAND_TYPE], command[COMMAND_ARG])
+            cmd = command[COMMAND_TYPE]
+            arg = command[COMMAND_ARG]
 
-            rpu.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s)" % command_str)
+            rpu.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" % (cmd, arg))
 
-            if command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT:
+            if cmd == COMMAND_CANCEL_PILOT:
                 self._log.info('cancel pilot cmd')
-                self.publish('command', {'cmd' : 'cancel', 
-                                         'arg' : 'timeout'})
+                self.publish('command', {'cmd' : 'shutdown', 
+                                         'arg' : 'cancel'})
 
-            elif command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
+            elif cmd == COMMAND_CANCEL_COMPUTE_UNIT:
                 self._log.info('cancel unit cmd')
                 self.publish('command', {'cmd' : 'cancel_unit', 
                                          'arg' : command})
 
-            elif command[COMMAND_TYPE] == COMMAND_KEEP_ALIVE:
+            elif cmd == COMMAND_KEEP_ALIVE:
                 self._log.info('keepalive pilot cmd')
                 self.publish('command', {'cmd' : 'heartbeat', 
                                          'msg' : 'keepalive'})
 
             else:
-                self._log.error("Received unknown command: %s with arg: %s.",
-                                command[COMMAND_TYPE], command[COMMAND_ARG])
+                self._log.error("Received unknown command: %s with arg: %s.", cmd, arg)
 
 
     # --------------------------------------------------------------------------
@@ -4736,28 +4648,46 @@ class AgentWorker(rpu.Worker):
 
         rpu.Worker.__init__(self, cfg)
 
+        # everything which comes after the worker init is limited in scope to
+        # the current process, and will not be available in the worker process.
+        self._pilot_id   = self._cfg['pilot_id']
+        self._session_id = self._cfg['session_id']
+
+        # set up db connection for the command cb (the worker process gets its
+        # own db handle)
+        _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
+        self._p  = mongo_db["%s.p"  % self._session_id]
+
+        # subscribe for commands from the heartbeat worker, mostly for shutdown
         self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
 
 
     # --------------------------------------------------------------------------
     #
-    def command_cb(self, topic, command):
+    def command_cb(self, topic, msg):
 
-        if command['cmd'] == 'shutdown':
-            self._log.error("shutdown command (%s)" % command['msg'])
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        self._log.debug(dir(self))
+        self._log.debug(self._cfg)
+        self._log.debug(self._p)
+
+        if cmd == 'shutdown':
+            self._log.error("shutdown command (%s)" % arg)
             self.terminate()
 
-            if msg == 'timeout':
+            if arg == 'timeout':
                 pilot_DONE(self._p, self._pilot_id, self._log, "TIMEOUT received. Terminating.")
 
-            if msg == 'cancel':
+            if arg == 'cancel':
                 pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
 
             else:
-                pilot_FAILED(self._p, self._pilot_id, self._log, "TERMINATE(%s) received" % command['msg'])
+                pilot_FAILED(self._p, self._pilot_id, self._log, "TERMINATE(%s) received" % arg)
 
         else:
-            self._log.error("unknown command '%s'" % command)
+            self._log.error("unknown command '%s'" % msg)
 
 
 
@@ -4968,6 +4898,9 @@ class AgentWorker(rpu.Worker):
         # FIXME: signal the other agents, and shot down all components and
         #        bridges.
 
+
+    # --------------------------------------------------------------------------
+    #
     def finalize(self):
 
         self._log.info("Agent finalizes")
@@ -5127,10 +5060,6 @@ def main():
         sys.exit(7)
 
     finally:
-        # attempt to shut down the agent
-      # if agent:
-      #     agent.terminate()
-      #     time.sleep(1)
         rpu.prof('stop', msg='finally clause')
         sys.exit(8)
 

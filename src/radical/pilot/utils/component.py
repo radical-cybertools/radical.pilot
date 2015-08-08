@@ -139,6 +139,8 @@ class Component(mp.Process):
         self._subscribers = dict()      # callbacks for received notifications
         self._workers     = dict()      # where units get worked upon
         self._idlers      = list()      # idle_callback registry
+        self._threads     = list()      # subscriber threads
+        self._terminate   = mt.Event()  # signal for thread termination
         self._debug       = False
 
         if 'RADICAL_DEBUG' in os.environ:
@@ -164,7 +166,6 @@ class Component(mp.Process):
         in the context of the main run(), and should be used to set up component
         state before units arrive
         """
-
         raise NotImplementedError("initialize() is not implemented by %s" % self._name)
 
 
@@ -172,14 +173,11 @@ class Component(mp.Process):
     #
     def finalize(self):
         """
-        This method CAN be overloaded by the components.  It is called *once* in
+        This method MUST be overloaded by the components.  It is called *once* in
         the context of the main run(), and shuld be used to tear down component
         states after units have been processed.
         """
-
-        # FIXME: at the moment, finalize is not called, as the event loop is
-        #        forcefully killed.
-        pass
+        raise NotImplementedError("finalize() is not implemented by %s" % self._name)
 
 
     # --------------------------------------------------------------------------
@@ -352,20 +350,20 @@ class Component(mp.Process):
       #     def run(self):
       #
       #         while not self._e.is_set():
-      #             topic, unit = self._q.get()
-      #             if topic and unit:
-      #                 self._cb (topic=topic, unit=unit)
+      #             topic, msg = self._q.get()
+      #             if topic and msg:
+      #                 self._cb (topic=topic, msg=msg)
         # ----------------------------------------------------------------------
         def _subscriber(q, callback):
             # FIXME: use timeout on get (to allow for shutdown signals)
             # FIXME: use shutdown signals :P
             try:
                 self._log.debug('create subscriber: %s - %s' % (mt.current_thread().name, os.getpid()))
-                while True:
-                    topic, unit = q.get()
-                    if topic and unit:
-                      # self._log.debug('%.5f: got sub [%s][%s]' % (time.time(), topic, unit))
-                        callback (topic=topic, unit=unit)
+                while not self._terminate.is_set():
+                    topic, msg = q.get()
+                    if topic and msg:
+                      # self._log.debug('%.5f: got sub [%s][%s]' % (time.time(), topic, msg))
+                        callback (topic=topic, msg=msg)
             except Exception as e:
                 self._log.exception('subscriber failed: %s' % e)
         # ----------------------------------------------------------------------
@@ -377,7 +375,7 @@ class Component(mp.Process):
 
         t = mt.Thread (target=_subscriber, args=[q,cb])
         t.start()
-        # FIXME: thread shutdown should go to finalize.
+        self._threads.append(t)
 
 
     # --------------------------------------------------------------------------
@@ -495,11 +493,22 @@ class Component(mp.Process):
             # don't bother...
             rpu_prof("loop error", msg=str(e), logger=self._log.exception)
 
+
         finally:
-            # shut the whole thing down...
-            rpu_prof("finalize", logger=self._log.info)
+            self._log.info('shut down component')
+
+            # tear down all subscriber threads
+            self._terminate.set()
+            for t in self._threads:
+                self._log.debug('joining subscriber thread %s' % s)
+                t.join()
+            self._log.debug('all threads joined')
+
+            # call finalizer
+            self._log.debug('finalize')
             self.finalize()
-            rpu_prof("finalized", logger=self._log.info)
+            self._log.debug('finalize complete')
+            rpu_prof("final")
 
 
     # --------------------------------------------------------------------------
@@ -554,13 +563,13 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def publish(self, topic, units):
+    def publish(self, topic, msg):
         """
         push information into a publication channel
         """
 
-        if not isinstance(units, list):
-            units = [units]
+        if not isinstance(msg, list):
+            msg = [msg]
 
         if topic not in self._publishers:
             print "ERROR  : %s can't route notification %s (%s)" % (self._name, topic, self._publishers.keys())
@@ -570,9 +579,9 @@ class Component(mp.Process):
             print "ERROR  : %s no route for notification %s (%s)" % (self._name, topic, self._publishers.keys())
             returreturn
 
-        for unit in units:
+        for m in msg:
             for p in self._publishers[topic]:
-                p.put (topic, unit)
+                p.put (topic, m)
 
 
 
