@@ -13,6 +13,7 @@ import radical.pilot as rp
 # Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
 # you want to see what happens behind the scences!
 
+CNT=0
 
 #------------------------------------------------------------------------------
 #
@@ -34,16 +35,16 @@ def pilot_state_cb (pilot, state):
 def unit_state_cb (unit, state):
     """ this callback is invoked on all unit state changes """
 
-    print "[Callback]: ComputeUnit  '%s: %s' (on %s) state: %s." \
-        % (unit.name, unit.uid, unit.pilot_id, state)
+    if state == rp.DONE:
+        global CNT
+        CNT += 1
+
+        print "[Callback]: ComputeUnit %05d '%s: %s' (on %s) state: %s." \
+            % (CNT, unit.name, unit.uid, unit.pilot_id, state)
 
     if state == rp.FAILED:
         print "stderr: %s" % unit.stderr
         sys.exit (1)
-
-    if state in [rp.DONE, rp.FAILED, rp.CANCELED]:
-        for cb in unit.callback_history:
-            print cb
 
 
 #------------------------------------------------------------------------------
