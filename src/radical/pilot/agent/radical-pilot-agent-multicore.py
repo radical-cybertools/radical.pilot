@@ -561,7 +561,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # got an allocation, go off and launch the process
         rpu.prof('schedule', msg="allocated", uid=cu['_id'])
-        self._log.info (self.slot_status())
+        self._log.info("slot status after allocated  : %s" % self.slot_status ())
 
         # FIXME: if allocation succeeded, then the unit will likely advance to
         #        executing soon.  Advance will do a blowup before puching -- but
@@ -4150,7 +4150,6 @@ class AgentUpdateWorker(rpu.Worker):
             self._log.error("unknown command '%s'" % command)
 
 
-
     # --------------------------------------------------------------------------
     #
     @classmethod
@@ -4649,6 +4648,7 @@ class AgentHeartbeatWorker(rpu.Worker):
             rpu.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!')
             self._check_commands()
             self._check_state   ()
+            return True
 
         except Exception as e:
             self._log.exception('heartbeat died - cancel')
@@ -4676,14 +4676,17 @@ class AgentHeartbeatWorker(rpu.Worker):
             rpu.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s)" % command_str)
 
             if command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT:
+                self._log.info('cancel pilot cmd')
                 self.publish('command', {'cmd' : 'cancel', 
                                          'arg' : 'timeout'})
 
             elif command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
+                self._log.info('cancel unit cmd')
                 self.publish('command', {'cmd' : 'cancel_unit', 
                                          'arg' : command})
 
             elif command[COMMAND_TYPE] == COMMAND_KEEP_ALIVE:
+                self._log.info('keepalive pilot cmd')
                 self.publish('command', {'cmd' : 'heartbeat', 
                                          'msg' : 'keepalive'})
 
@@ -4992,16 +4995,7 @@ class AgentWorker(rpu.Worker):
 
         try:
             # check for new units
-            action = self._check_units()
-
-            if not action:
-                # FIXME: also check if the heartbeat monitor picked up any
-                #        commands, specifically shutdown...
-              # # record cancelation state
-              # pilot_CANCELED(self._p, self._pilot_id, self._log, "Terminated.")
-                pass
-
-            return action
+            return self._check_units()
 
         except Exception as e:
             # exception in the main loop is fatal
@@ -5023,8 +5017,6 @@ class AgentWorker(rpu.Worker):
     #
     def _check_units(self):
 
-        self._log.info("check units")
-
         # Check if there are compute units waiting for input staging
         # and log that we pulled it.
         #
@@ -5039,8 +5031,8 @@ class AgentWorker(rpu.Worker):
                                            'control' : 'umgr'})
         if not cu_cursor.count():
             # no units whatsoever...
-            self._log.info("no units found")
-            return 0
+            self._log.info("units found:    0")
+            return False
 
         # update the unit states to avoid pulling them again next time.
         cu_list = list(cu_cursor)
@@ -5052,15 +5044,18 @@ class AgentWorker(rpu.Worker):
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline)
-        if cu_list:
-            rpu.prof('Agent get units', msg="bulk size: %d" % len(cu_list),
-                 logger=self._log.info)
+        if not cu_list:
+            self._log.info("units found:    0")
+            return False
+
+        rpu.prof('get', msg="bulk size: %d" % len(cu_list))
+        self._log.info("units found: %4d"   % len(cu_list))
 
         print 'advancing %s' % cu_uids
         self.advance(cu_list, publish=True, push=True)
 
         # indicate that we did some work (if we did...)
-        return len(cu_list)
+        return True
 
 
 

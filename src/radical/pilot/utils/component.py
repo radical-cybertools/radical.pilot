@@ -487,7 +487,6 @@ class Component(mp.Process):
                     time.sleep(0.1)
 
 
-
         except Exception as e:
             # We should see that exception only on process termination -- and of
             # course on incorrect implementations of component workers.  We
