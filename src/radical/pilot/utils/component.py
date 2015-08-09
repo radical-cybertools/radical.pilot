@@ -184,6 +184,27 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
+    def _finalize(self):
+        """
+        this is called from the run thread and from the dtor, so that is is
+        called from both the parent and child processes, to clean up all
+        subscribers etc.
+        """
+
+        self._log.info('shut down component %s - %s(%d threads)' \
+                % (self._name, os.getpid(), len(self._threads)))
+
+        # tear down all subscriber threads
+        self._terminate.set()
+        for t in self._threads:
+            self._log.debug('joining subscriber thread %s - %s' % (t, os.getpid()))
+            t.join()
+        self._log.debug('all threads joined')
+        self._threads = []
+
+
+    # --------------------------------------------------------------------------
+    #
     def close(self):
         """
         Shut down the process hosting the event loop
@@ -356,26 +377,25 @@ class Component(mp.Process):
       #             if topic and msg:
       #                 self._cb (topic=topic, msg=msg)
         # ----------------------------------------------------------------------
-        def _subscriber(q, callback):
-            # FIXME: use timeout on get (to allow for shutdown signals)
-            # FIXME: use shutdown signals :P
+        def _subscriber(q, callback,topic):
             try:
-                self._log.debug('create subscriber: %s - %s' % (mt.current_thread().name, os.getpid()))
                 while not self._terminate.is_set():
-                    topic, msg = q.get_nowait(0.1) # FIXME timout
-                    if topic and msg:
+                    _topic, _msg = q.get_nowait(0.1) # FIXME timout
+                    if _topic and _msg:
                       # self._log.debug('%.5f: got sub [%s][%s]' % (time.time(), topic, msg))
-                        callback (topic=topic, msg=msg)
+                        callback (topic=_topic, msg=_msg)
             except Exception as e:
                 self._log.exception('subscriber failed: %s' % e)
         # ----------------------------------------------------------------------
 
 
         # create a pubsub subscriber, and subscribe to the given topic
+        self._log.debug('create subscriber: %s - %s [%s]' \
+                        % (mt.current_thread().name, os.getpid(), topic))
         q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB)
         q.subscribe(topic)
 
-        t = mt.Thread (target=_subscriber, args=[q,cb])
+        t = mt.Thread (target=_subscriber, args=[q,cb,topic])
         t.start()
         self._threads.append(t)
 
@@ -504,16 +524,9 @@ class Component(mp.Process):
 
 
         finally:
-            self._log.info('shut down component')
-
-            # tear down all subscriber threads
-            self._terminate.set()
-            for t in self._threads:
-                self._log.debug('joining subscriber thread %s' % t)
-                t.join()
-            self._log.debug('all threads joined')
-
-            # call finalizer
+            # call finalizers
+            self._log.debug('_finalize')
+            self._finalize()
             self._log.debug('finalize')
             self.finalize()
             self._log.debug('finalize complete')

@@ -392,11 +392,11 @@ class PubsubZMQ(Pubsub):
 
             if _USE_MULTIPART:
                 topic, data = self._q.recv_multipart(flags=zmq.NOBLOCK)
-       
+
             else:
                 raw = self._q.recv()
                 topic, data = raw.split(' ', 1)
-       
+
             msg = json.loads(data)
             self._log(">> %s" % str([topic, pprint.pformat(msg)]))
             return [topic, msg]

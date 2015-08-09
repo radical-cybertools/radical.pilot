@@ -4660,7 +4660,9 @@ class AgentWorker(rpu.Worker):
         arg = msg['arg']
 
         if cmd == 'shutdown':
-            self._log.error("shutdown command (%s)" % arg)
+
+            self._log.info("shutdown command (%s)" % arg)
+            self._log.info("terminate")
             self.terminate()
 
             if arg == 'timeout':
@@ -4674,7 +4676,6 @@ class AgentWorker(rpu.Worker):
 
         else:
             self._log.error("unknown command '%s'" % msg)
-
 
 
     # --------------------------------------------------------------------------
@@ -4901,10 +4902,15 @@ class AgentWorker(rpu.Worker):
       
         # burn the bridges, burn EVERYTHING
         for c in self._components:
+            self._log.info("closing component %s", c._name)
             c.close()
       
         for b in self._bridges:
+            self._log.info("closing bridge %s", b._name)
             b.close()
+
+        self._log.info("Agent finalized")
+        sys.exit()
 
 
     # --------------------------------------------------------------------------
@@ -5030,6 +5036,7 @@ def main():
     try:
         agent = AgentWorker(cfg)
         agent.join()
+        agent._finalize()
 
     except SystemExit:
         pilot_FAILED(msg="Caught system exit. EXITING") 
