@@ -1957,6 +1957,31 @@ class LaunchMethodPOE(LaunchMethod):
 # ==============================================================================
 #
 class LRMS(object):
+    """
+    The Local Resource Manager (LRMS -- where does the 's' come from, actually?)
+    provide two findamental information:
+
+      LRMS.node_list     : a list of node names
+      LRMS.cores_per_node: the number of cores each node has available
+
+    Schedulers can rely on these information to be available.  Specific LRMS
+    incarnation may have additional information available -- but schedulers
+    relying in those are invariably bound to the specific LRMS.  An example is
+    the Torus Scheduler which relies on detailed torus layout information from
+    the LoadLevelerLRMS (which describes the BG/Q).
+    """
+
+    # TODO: Core counts dont have to be the same number for all hosts.
+
+    # TODO: We might not have reserved the whole node.
+
+    # TODO: Given that the Agent can determine the real core count, in
+    #       principle we could just ignore the config and use as many as we
+    #       have to our availability (taken into account that we might not
+    #       have the full node reserved of course)
+    #       Answer: at least on Yellowstone this doesnt work for MPI,
+    #               as you can't spawn more tasks then the number of slots.
+
 
     # --------------------------------------------------------------------------
     #
@@ -1991,17 +2016,6 @@ class LRMS(object):
     #
     @classmethod
     def create(cls, name, config, logger, requested_cores):
-
-        # TODO: Core counts dont have to be the same number for all hosts.
-
-        # TODO: We might not have reserved the whole node.
-
-        # TODO: Given that the Agent can determine the real core count, in
-        #       principle we could just ignore the config and use as many as we
-        #       have to our availability (taken into account that we might not
-        #       have the full node reserved of course)
-        #       Answer: at least on Yellowstone this doesnt work for MPI,
-        #               as you can't spawn more tasks then the number of slots.
 
         # Make sure that we are the base-class!
         if cls != LRMS:
