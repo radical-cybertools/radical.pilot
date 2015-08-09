@@ -152,6 +152,7 @@ class Component(mp.Process):
         target    = "component_%s.log" % self._name
         level     = self._cfg.get('debug', 'INFO')
         self._log = rpu_get_logger(self._name, target, level)
+        self._log.debug('init %s - %s' % (self._name, os.getpid()))
 
         # start the main event loop in a separate process.  At that point, the
         # component will basically detach itself from the parent process, and
@@ -368,12 +369,12 @@ class Component(mp.Process):
         # ----------------------------------------------------------------------
 
         # create a pubsub subscriber, and subscribe to the given topic
-        self._log.debug('create subscriber: %s - %s [%s]' \
+        self._log.debug('create subscriber: %s - %s' \
                         % (mt.current_thread().name, os.getpid()))
         q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB)
         q.subscribe(topic)
 
-        t = mt.Thread (target=_subscriber, args=[q,cb,topic])
+        t = mt.Thread (target=_subscriber, args=[q,cb])
         t.start()
         self._threads.append(t)
 
