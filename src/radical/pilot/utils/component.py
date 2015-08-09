@@ -356,42 +356,20 @@ class Component(mp.Process):
         invokation.
         """
 
-      # # ----------------------------------------------------------------------
-      # class _Subscriber(mt.Thread):
-      #
-      #     def __init__ (self, q, cb):
-      #
-      #         self._q  = q
-      #         self._cb = cb
-      #         self._e  = mt.Event()
-      #
-      #         mt.Thread.__init__(self)
-      #
-      #     def stop(self):
-      #         self._e.set()
-      #
-      #     def run(self):
-      #
-      #         while not self._e.is_set():
-      #             topic, msg = self._q.get()
-      #             if topic and msg:
-      #                 self._cb (topic=topic, msg=msg)
         # ----------------------------------------------------------------------
-        def _subscriber(q, callback,topic):
+        def _subscriber(q, callback):
             try:
                 while not self._terminate.is_set():
-                    _topic, _msg = q.get_nowait(0.1) # FIXME timout
-                    if _topic and _msg:
-                      # self._log.debug('%.5f: got sub [%s][%s]' % (time.time(), topic, msg))
-                        callback (topic=_topic, msg=_msg)
+                    topic, msg = q.get_nowait(0.1) # FIXME timout
+                    if topic and msg:
+                        callback (topic=topic, msg=msg)
             except Exception as e:
                 self._log.exception('subscriber failed: %s' % e)
         # ----------------------------------------------------------------------
 
-
         # create a pubsub subscriber, and subscribe to the given topic
         self._log.debug('create subscriber: %s - %s [%s]' \
-                        % (mt.current_thread().name, os.getpid(), topic))
+                        % (mt.current_thread().name, os.getpid()))
         q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB)
         q.subscribe(topic)
 
