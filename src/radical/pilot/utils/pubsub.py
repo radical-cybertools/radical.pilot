@@ -383,26 +383,26 @@ class PubsubZMQ(Pubsub):
 
     # --------------------------------------------------------------------------
     #
-    def get_nowait(self):
+    def get_nowait(self, timeout=None):
 
         if not self._role == PUBSUB_SUB:
             raise RuntimeError("channel %s (%s) can't get_nowait()" % (self._channel, self._role))
 
-            try:
-                self._log("check rec")
-                if _USE_MULTIPART:
-                    topic, data = self._q.recv_multipart(flags=zmq.NOBLOCK)
+        if self._q.poll (flags=zmq.POLLIN, timeout=timeout):
 
-                else:
-                    raw = self._q.recv(flags=zmq.NOBLOCK)
-                    topic, data = raw.split(' ', 1)
+            if _USE_MULTIPART:
+                topic, data = self._q.recv_multipart(flags=zmq.NOBLOCK)
+       
+            else:
+                raw = self._q.recv()
+                topic, data = raw.split(' ', 1)
+       
+            msg = json.loads(data)
+            self._log(">> %s" % str([topic, pprint.pformat(msg)]))
+            return [topic, msg]
 
-                msg = json.loads(data)
-                self._log(">> %s" % str([topic, pprint.pformat(msg)]))
-                return [topic, msg]
-
-            except zmq.Again:
-                return [None, None]
+        else:
+            return [None, None]
 
 
 # ------------------------------------------------------------------------------

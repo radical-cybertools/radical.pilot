@@ -522,6 +522,9 @@ class QueueZMQ(Queue):
                 self._log("<< %s" % pprint.pformat(msg))
                 return msg
 
+            else:
+                return None
+
 
 # ------------------------------------------------------------------------------
 

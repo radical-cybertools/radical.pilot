@@ -362,7 +362,7 @@ class Component(mp.Process):
             try:
                 self._log.debug('create subscriber: %s - %s' % (mt.current_thread().name, os.getpid()))
                 while not self._terminate.is_set():
-                    topic, msg = q.get()
+                    topic, msg = q.get_nowait(0.1) # FIXME timout
                     if topic and msg:
                       # self._log.debug('%.5f: got sub [%s][%s]' % (time.time(), topic, msg))
                         callback (topic=topic, msg=msg)
@@ -435,7 +435,7 @@ class Component(mp.Process):
 
                     # FIXME: the timeouts have a large effect on throughput, but
                     #        I am not yet sure how best to set them...
-                    unit = input.get_nowait(0.1)
+                    unit = input.get_nowait(0.1) # FIXME: timeout
                     if not unit:
                         continue
 
