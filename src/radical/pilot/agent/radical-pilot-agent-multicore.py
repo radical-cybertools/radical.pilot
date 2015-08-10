@@ -520,7 +520,7 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _release_slot(self, opaque_slot):
+    def _release_slot(self, opaque_slots):
         raise NotImplementedError("_release_slot() not implemented for Scheduler '%s'." % self.name)
 
 
@@ -538,9 +538,9 @@ class AgentSchedulingComponent(rpu.Component):
 
             # schedule this unit, and receive an opaque handle that has meaning to
             # the LRMS, Scheduler and LaunchMethod.
-            cu['opaque_slot'] = self._allocate_slot(cu['description']['cores'])
+            cu['opaque_slots'] = self._allocate_slot(cu['description']['cores'])
 
-        if not cu['opaque_slot']:
+        if not cu['opaque_slots']:
             # signal the CU remains unhandled
             return False
 
@@ -599,9 +599,9 @@ class AgentSchedulingComponent(rpu.Component):
         cu = msg
         rpu.prof('unschedule', uid=cu['_id'])
 
-        if not cu['opaque_slot']:
+        if not cu['opaque_slots']:
             # Nothing to do -- how come?
-            self._log.warn("cannot unschedule: %s" % cu)
+            self._log.warn("cannot unschedule: %s (no slots)" % cu)
             return
         
         self._log.info("slot status before unschedule: %s" % self.slot_status ())
@@ -609,7 +609,7 @@ class AgentSchedulingComponent(rpu.Component):
         # needs to be locked as we try to release slots, but slots are acquired
         # in a different thread....
         with self._slot_lock :
-            self._release_slot(cu['opaque_slot'])
+            self._release_slot(cu['opaque_slots'])
 
         # notify the scheduling thread, ie. trigger a reschedule to utilize
         # the freed slots
@@ -685,24 +685,6 @@ class SchedulerContinuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    # Convert a set of slots into an index into the global slots list
-    #
-    def slots2offset(self, task_slots):
-        # TODO: This assumes all hosts have the same number of cores
-
-        first_slot = task_slots[0]
-        # Get the host and the core part
-        [first_slot_host, first_slot_core] = first_slot.split(':')
-        # Find the entry in the the all_slots list based on the host
-        slot_entry = (slot for slot in self.slots if slot["node"] == first_slot_host).next()
-        # Transform it into an index in to the all_slots list
-        all_slots_slot_index = self.slots.index(slot_entry)
-
-        return all_slots_slot_index * self._lrms.cores_per_node + int(first_slot_core)
-
-
-    # --------------------------------------------------------------------------
-    #
     def slot_status(self):
         """Returns a multi-line string corresponding to slot status.
         """
@@ -751,13 +733,39 @@ class SchedulerContinuous(AgentSchedulingComponent):
         if task_slots is not None:
             self._change_slot_states(task_slots, BUSY)
 
-        return task_slots
+        task_offsets = self.slots2offset(task_slots)
+
+        return {'task_slots'   : task_slots, 
+                'task_offsets' : task_offsets}
 
 
     # --------------------------------------------------------------------------
     #
-    def _release_slot(self, (task_slots)):
-        self._change_slot_states(task_slots, FREE)
+    # Convert a set of slots into an index into the global slots list
+    #
+    def slots2offset(self, task_slots):
+        # TODO: This assumes all hosts have the same number of cores
+
+        first_slot = task_slots[0]
+        # Get the host and the core part
+        [first_slot_host, first_slot_core] = first_slot.split(':')
+        # Find the entry in the the all_slots list based on the host
+        slot_entry = (slot for slot in self.slots if slot["node"] == first_slot_host).next()
+        # Transform it into an index in to the all_slots list
+        all_slots_slot_index = self.slots.index(slot_entry)
+
+        return all_slots_slot_index * self._lrms.cores_per_node + int(first_slot_core)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _release_slot(self, opaque_slots):
+
+        if not 'task_slots' in opaque_slots:
+            raise RuntimeError('insufficient information to release slots via %s: %s' \
+                    % (self.name, opaque_slots))
+
+        self._change_slot_states(opaque_slots['task_slots'], FREE)
 
 
     # --------------------------------------------------------------------------
@@ -1148,12 +1156,11 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, scheduler):
+    def __init__(self, name, config, logger):
 
         self.name       = name
         self._cfg       = config
         self._log       = logger
-        self._scheduler = scheduler
 
         self.launch_command = None
         self._configure()
@@ -1164,12 +1171,13 @@ class LaunchMethod(object):
 
         logger.info("Discovered launch command: '%s'.", self.launch_command)
 
+
     # --------------------------------------------------------------------------
     #
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, name, config, logger, scheduler):
+    def create(cls, name, config, logger):
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
@@ -1192,7 +1200,7 @@ class LaunchMethod(object):
                 LAUNCH_METHOD_RUNJOB        : LaunchMethodRUNJOB,
                 LAUNCH_METHOD_SSH           : LaunchMethodSSH
             }[name]
-            return implementation(name, config, logger, scheduler)
+            return implementation(name, config, logger)
 
         except KeyError:
             logger.exception("LaunchMethod '%s' unknown!" % name)
@@ -1211,7 +1219,7 @@ class LaunchMethod(object):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, opaque_slot):
+                          launch_script_hop, opaque_slots):
         raise NotImplementedError("construct_command() not implemented for LaunchMethod: %s." % self.name)
 
 
@@ -1262,9 +1270,9 @@ class LaunchMethodFORK(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, scheduler):
+    def __init__(self, name, config, logger):
 
-        LaunchMethod.__init__(self, name, config, logger, scheduler)
+        LaunchMethod.__init__(self, name, config, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1277,7 +1285,7 @@ class LaunchMethodFORK(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, opaque_slot):
+                          launch_script_hop, opaque_slots):
 
         if task_args:
             command = " ".join([task_exec, task_args])
@@ -1294,9 +1302,9 @@ class LaunchMethodMPIRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, scheduler):
+    def __init__(self, name, config, logger):
 
-        LaunchMethod.__init__(self, name, config, logger, scheduler)
+        LaunchMethod.__init__(self, name, config, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1313,7 +1321,13 @@ class LaunchMethodMPIRUN(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, (task_slots)):
+                          launch_script_hop, opaque_slots):
+
+        if not 'task_slots' in opaque_slots:
+            raise RuntimeError('insufficient information to launch via %s: %s' \
+                    % (self.name, opaque_slots))
+
+        task_slots = opaque_slots['task_slots']
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1337,9 +1351,9 @@ class LaunchMethodSSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, scheduler):
+    def __init__(self, name, config, logger):
 
-        LaunchMethod.__init__(self, name, config, logger, scheduler)
+        LaunchMethod.__init__(self, name, config, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1368,7 +1382,13 @@ class LaunchMethodSSH(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, (task_slots)):
+                          launch_script_hop, opaque_slots):
+
+        if not 'task_slots' in opaque_slots:
+            raise RuntimeError('insufficient information to launch via %s: %s' \
+                    % (self.name, opaque_slots))
+
+        task_slots = opaque_slots['task_slots']
 
         if not launch_script_hop :
             raise ValueError ("LaunchMethodSSH.construct_command needs launch_script_hop!")
@@ -1395,9 +1415,9 @@ class LaunchMethodMPIEXEC(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, scheduler):
+    def __init__(self, name, config, logger):
 
-        LaunchMethod.__init__(self, name, config, logger, scheduler)
+        LaunchMethod.__init__(self, name, config, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1413,7 +1433,13 @@ class LaunchMethodMPIEXEC(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, (task_slots)):
+                          launch_script_hop, opaque_slots):
+
+        if not 'task_slots' in opaque_slots:
+            raise RuntimeError('insufficient information to launch via %s: %s' \
+                    % (self.name, opaque_slots))
+
+        task_slots = opaque_slots['task_slots']
 
         # Construct the hosts_string
         hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
@@ -1436,9 +1462,9 @@ class LaunchMethodAPRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, scheduler):
+    def __init__(self, name, config, logger):
 
-        LaunchMethod.__init__(self, name, config, logger, scheduler)
+        LaunchMethod.__init__(self, name, config, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1453,7 +1479,7 @@ class LaunchMethodAPRUN(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, opaque_slot):
+                          launch_script_hop, opaque_slots):
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1472,9 +1498,9 @@ class LaunchMethodCCMRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, scheduler):
+    def __init__(self, name, config, logger):
 
-        LaunchMethod.__init__(self, name, config, logger, scheduler)
+        LaunchMethod.__init__(self, name, config, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1487,7 +1513,7 @@ class LaunchMethodCCMRUN(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, opaque_slot):
+                          launch_script_hop, opaque_slots):
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1507,9 +1533,9 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, scheduler):
+    def __init__(self, name, config, logger):
 
-        LaunchMethod.__init__(self, name, config, logger, scheduler)
+        LaunchMethod.__init__(self, name, config, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1526,7 +1552,13 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, (task_slots)):
+                          launch_script_hop, opaque_slots):
+
+        if not 'task_slots' in opaque_slots:
+            raise RuntimeError('insufficient information to launch via %s: %s' \
+                    % (self.name, opaque_slots))
+
+        task_slots = opaque_slots['task_slots']
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1553,9 +1585,9 @@ class LaunchMethodRUNJOB(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, scheduler):
+    def __init__(self, name, config, logger):
 
-        LaunchMethod.__init__(self, name, config, logger, scheduler)
+        LaunchMethod.__init__(self, name, config, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1563,6 +1595,8 @@ class LaunchMethodRUNJOB(LaunchMethod):
     def _configure(self):
         # runjob: job launcher for IBM BG/Q systems, e.g. Joule
         self.launch_command= self._which('runjob')
+
+        raise NotImplementedError('RUNJOB LM needs to be decoupled from the scheduler/LRMS')
 
 
     # --------------------------------------------------------------------------
@@ -1617,10 +1651,11 @@ class LaunchMethodDPLACE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, scheduler):
+    def __init__(self, name, config, logger):
 
-        LaunchMethod.__init__(self, name, config, logger, scheduler)
+        LaunchMethod.__init__(self, name, config, logger)
 
+        raise NotImplementedError('RUNJOB LM needs to be decoupled from the scheduler/LRMS')
 
     # --------------------------------------------------------------------------
     #
@@ -1632,14 +1667,20 @@ class LaunchMethodDPLACE(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, (task_slots)):
+                          launch_script_hop, opaque_slots):
+
+        if 'task_offsets' not in opaque_slots :
+            raise RuntimeError('insufficient information to launch via %s: %s' \
+                    % (self.name, opaque_slots))
+
+        task_offsets = opaque_slots['task_offsets']
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
         else:
             task_command = task_exec
 
-        dplace_offset = self._scheduler.slots2offset(task_slots)
+        dplace_offset = task_offsets
 
         dplace_command = "%s -c %d-%d %s" % (
             self.launch_command, dplace_offset,
@@ -1654,9 +1695,9 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, scheduler):
+    def __init__(self, name, config, logger):
 
-        LaunchMethod.__init__(self, name, config, logger, scheduler)
+        LaunchMethod.__init__(self, name, config, logger)
 
     # --------------------------------------------------------------------------
     #
@@ -1674,7 +1715,13 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, (task_slots)):
+                          launch_script_hop, opaque_slots):
+
+        if not 'task_slots' in opaque_slots:
+            raise RuntimeError('insufficient information to launch via %s: %s' \
+                    % (self.name, opaque_slots))
+
+        task_slots = opaque_slots['task_slots']
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1699,9 +1746,9 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, scheduler):
+    def __init__(self, name, config, logger):
 
-        LaunchMethod.__init__(self, name, config, logger, scheduler)
+        LaunchMethod.__init__(self, name, config, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1715,14 +1762,20 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, (task_slots)):
+                          launch_script_hop, opaque_slots):
+
+        if not 'task_offsets' in opaque_slots:
+            raise RuntimeError('insufficient information to launch via %s: %s' \
+                    % (self.name, opaque_slots))
+
+        task_offsets = opaque_slots['task_offsets']
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
         else:
             task_command = task_exec
 
-        dplace_offset = self._scheduler.slots2offset(task_slots)
+        dplace_offset = task_offsets
 
         mpirun_dplace_command = "%s -np %d %s -c %d-%d %s" % \
             (self.mpirun_command, task_numcores, self.launch_command,
@@ -1740,9 +1793,9 @@ class LaunchMethodIBRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, scheduler):
+    def __init__(self, name, config, logger):
 
-        LaunchMethod.__init__(self, name, config, logger, scheduler)
+        LaunchMethod.__init__(self, name, config, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1755,14 +1808,20 @@ class LaunchMethodIBRUN(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, (task_slots)):
+                          launch_script_hop, opaque_slots):
+
+        if not 'task_offsets' in opaque_slots:
+            raise RuntimeError('insufficient information to launch via %s: %s' \
+                    % (self.name, opaque_slots))
+
+        task_offsets = opaque_slots['task_offsets']
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
         else:
             task_command = task_exec
 
-        ibrun_offset = self._scheduler.slots2offset(task_slots)
+        ibrun_offset = task_offsets
 
         ibrun_command = "%s -n %s -o %d %s" % \
                         (self.launch_command, task_numcores,
@@ -1780,14 +1839,16 @@ class LaunchMethodORTE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, scheduler):
+    def __init__(self, name, config, logger):
 
-        LaunchMethod.__init__(self, name, config, logger, scheduler)
+        LaunchMethod.__init__(self, name, config, logger)
 
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
+
+        raise NotImplementedError('ORTE LM needs to be decoupled from the scheduler/LRMS')
 
         self.launch_command = self._which('orte-submit')
 
@@ -1868,7 +1929,13 @@ class LaunchMethodORTE(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, (task_slots)):
+                          launch_script_hop, opaque_slots):
+
+        if not 'task_slots' in opaque_slots:
+            raise RuntimeError('insufficient information to launch via %s: %s' \
+                    % (self.name, opaque_slots))
+
+        task_slots = opaque_slots['task_slots']
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1893,9 +1960,9 @@ class LaunchMethodPOE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, scheduler):
+    def __init__(self, name, config, logger):
 
-        LaunchMethod.__init__(self, name, config, logger, scheduler)
+        LaunchMethod.__init__(self, name, config, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1908,7 +1975,13 @@ class LaunchMethodPOE(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, (task_slots)):
+                          launch_script_hop, opaque_slots):
+
+        if not 'task_slots' in opaque_slots:
+            raise RuntimeError('insufficient information to launch via %s: %s' \
+                    % (self.name, opaque_slots))
+
+        task_slots = opaque_slots['task_slots']
 
         # Count slots per host in provided slots description.
         hosts = {}
@@ -3312,14 +3385,12 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
         self._task_launcher = LaunchMethod.create(
                 name            = self._cfg['task_launch_method'],
                 config          = self._cfg,
-                logger          = self._log,
-                scheduler       = None)  # FIXME: self._scheduler)
+                logger          = self._log)
 
         self._mpi_launcher = LaunchMethod.create(
                 name            = self._cfg['mpi_launch_method'],
                 config          = self._cfg,
-                logger          = self._log,
-                scheduler       = None)  # FIXME: self._scheduler)
+                logger          = self._log)
 
 
     # --------------------------------------------------------------------------
@@ -3368,7 +3439,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
 
             self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
-            assert(cu['opaque_slot']) # FIXME: no assert, but check
+            assert(cu['opaque_slots']) # FIXME: no assert, but check
             rpu.prof('ExecWorker unit launch', uid=cu['_id'])
 
             # Start a new subprocess to launch the unit
@@ -3384,7 +3455,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                             % (str(e), traceback.format_exc())
 
             # Free the Slots, Flee the Flots, Ree the Frots!
-            if cu['opaque_slot']:
+            if cu['opaque_slots']:
                 self.publish('unschedule', cu)
 
             self.advance(cu, rp.FAILED, publish=True, push=False)
@@ -3454,7 +3525,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                                                task_args_string,
                                                cu['description']['cores'],
                                                launch_script_hop,
-                                               cu['opaque_slot'])
+                                               cu['opaque_slots'])
                 if hop_cmd : cmdline = hop_cmd
                 else       : cmdline = launch_script_name
 
@@ -3762,14 +3833,12 @@ class ExecWorker_SHELL(AgentExecutingComponent):
         self._task_launcher = LaunchMethod.create(
                 name            = self._cfg['task_launch_method'],
                 config          = self._cfg,
-                logger          = self._log,
-                scheduler       = None)  # FIXME: self._scheduler)
+                logger          = self._log)
 
         self._mpi_launcher = LaunchMethod.create(
                 name            = self._cfg['mpi_launch_method'],
                 config          = self._cfg,
-                logger          = self._log,
-                scheduler       = None)  # FIXME: self._scheduler)
+                logger          = self._log)
 
 
     # --------------------------------------------------------------------------
@@ -3790,7 +3859,7 @@ class ExecWorker_SHELL(AgentExecutingComponent):
 
             self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
-            assert(cu['opaque_slot']) # FIXME: no assert, but check
+            assert(cu['opaque_slots']) # FIXME: no assert, but check
             rpu.prof('ExecWorker unit launch', uid=cu['_id'])
 
             # Start a new subprocess to launch the unit
@@ -3806,7 +3875,7 @@ class ExecWorker_SHELL(AgentExecutingComponent):
                             % (str(e), traceback.format_exc())
 
             # Free the Slots, Flee the Flots, Ree the Frots!
-            if cu['opaque_slot']:
+            if cu['opaque_slots']:
                 self.publish('unschedule', cu)
 
             self.advance(cu, rp.FAILED, publish=True, push=False)
@@ -3897,11 +3966,11 @@ class ExecWorker_SHELL(AgentExecutingComponent):
         cmd, hop_cmd  = launcher.construct_command(descr['executable'], args,
                                                    descr['cores'],
                                                    '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
-                                                   cu['opaque_slot'])
+                                                   cu['opaque_slots'])
 
 
         script = """
-# timestamp utility: seconds since epocj
+# timestamp utility: seconds since epoch
 timestamp () {
   TIMESTAMP=`awk 'BEGIN{srand(); print srand()}'`
 }
