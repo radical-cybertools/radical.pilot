@@ -14,4 +14,5 @@
   - make sure all profile entries exist, merge from module profiling branch
   - merge from devel / osgng :/
   - forward tunnel endpoint from bootstrap_1 to agent
+  - make sure opaque_slot is a dict
 
