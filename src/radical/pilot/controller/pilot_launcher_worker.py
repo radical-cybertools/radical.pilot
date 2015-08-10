@@ -450,12 +450,6 @@ class PilotLauncherWorker(threading.Thread):
                         else:
                             db_hostport = "%s:" % db_url.host
 
-                      # if not db_url.scheme: db_url.scheme = 'mongodb'
-                      # if not db_url.host  : db_url.host   = 'localhost'
-                      # if not db_url.port  : db_url.port   = 27017
-                      # if not database_name: database_name = 'radicalpilot'
-
-
                         # Open the remote sandbox
                         sandbox_tgt = saga.filesystem.Directory(pilot_sandbox,
                                                                 session=self._session,

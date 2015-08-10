@@ -1253,14 +1253,6 @@ echo "# -------------------------------------------------------------------"
 echo "# Launching radical-pilot-agent "
 echo "# CMDLINE: $AGENT_CMD"
 
-# enable DebugHelper in agent
-export RADICAL_DEBUG=TRUE
-
-export SAGA_VERBOSE=DEBUG
-export RADIAL_VERBOSE=DEBUG
-export RADIAL_UTIL_VERBOSE=DEBUG
-export RADIAL_PILOT_VERBOSE=DEBUG
-
 # before we start the agent proper, we'll create a bootstrap_2 script to do
 # so.  For a single agent this is not needed -- but in the case where we spawn
 # out additional agent instances later, that script can be reused to get proper
@@ -1278,6 +1270,20 @@ export RADIAL_PILOT_VERBOSE=DEBUG
 # preprocessing commands
 $PREPROCESSING
 
+# actiavte virtenv
+. $VIRTENV/bin/activate
+
+# make sure rp_install is used
+export PYTHONPATH=$PYTHONPATH
+
+# run agent in debug mode
+export RADICAL_DEBUG=TRUE
+export SAGA_VERBOSE=DEBUG
+export RADIAL_VERBOSE=DEBUG
+export RADIAL_UTIL_VERBOSE=DEBUG
+export RADIAL_PILOT_VERBOSE=DEBUG
+
+# start agent, forward arguments
 $AGENT_CMD "\$@"
 EOT
 
@@ -1286,7 +1292,8 @@ chmod 0755 bootstrap_2.sh
 
 profile_event 'agent start'
 
-sh bootstrap_2.sh
+# start the master agent instance (zero)
+sh bootstrap_2.sh 'agent.0'
 AGENT_EXITCODE=$?
 
 profile_event 'cleanup start'
