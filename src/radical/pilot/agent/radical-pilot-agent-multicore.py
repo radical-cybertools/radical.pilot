@@ -1000,8 +1000,8 @@ class SchedulerTorus(AgentSchedulingComponent):
         sub_block_shape     = sub_block_shape_table[num_nodes]
         sub_block_shape_str = self._lrms.shape2str(sub_block_shape)
         corner              = block[offset][self.TORUS_BLOCK_COOR]
-        corner_offset       = self._scheduler.corner2offset(self._scheduler._lrms.torus_block, corner)
-        corner_node         = self._scheduler._lrms.torus_block[corner_offset][self.TORUS_BLOCK_NAME]
+        corner_offset       = self.corner2offset(self._lrms.torus_block, corner)
+        corner_node         = self._lrms.torus_block[corner_offset][self.TORUS_BLOCK_NAME]
 
         end = self.get_last_node(corner, sub_block_shape)
         self._log.debug('Allocating sub-block of %d node(s) with dimensions %s'
