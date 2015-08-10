@@ -22,16 +22,17 @@
     "heartbeat_interval"   : 10,
 
     "agent_layout" : {
-        "agent.master"   : {
-            "workers"    : [],
+        "agent.0"   : {
+            "target"     : "local",
+            "workers"    : ["agent.1"],
+            "pull_units" : 0,
             "components" : {
                 # how many instances of the respective components should be started
-                "agent_staging_input_component"  : 3,
-                "agent_scheduling_component"     : 1,
-                "agent_executing_component"      : 3,
-                "agent_staging_output_component" : 3,
-                "agent_staging_output_component" : 3,
-                "agent_update_worker"            : 2
+                "agent_staging_input_component"  : 1,
+                "agent_scheduling_component"     : 0,
+                "agent_executing_component"      : 1,
+                "agent_staging_output_component" : 0,
+                "agent_update_worker"            : 1
             },
             "bridges" : {
                 # which bridges (and what type) should be started locally 
@@ -48,6 +49,37 @@
                     "agent_reschedule_pubsub"    : "local",
                     "agent_command_pubsub"       : "local",
                     "agent_state_pubsub"         : "local"
+                }
+            }
+        },
+        "agent.1"   : {
+          # "target"     : "nodelist[0]",
+            "target"     : "10.0.2.15",
+            "workers"    : [],
+            "pull_units" : 1,
+            "components" : {
+                # how many instances of the respective components should be started
+                "agent_staging_input_component"  : 0,
+                "agent_scheduling_component"     : 1,
+                "agent_executing_component"      : 0,
+                "agent_staging_output_component" : 1,
+                "agent_update_worker"            : 0
+            },
+            "bridges" : {
+                # which bridges (and what type) should be started locally 
+                # (keyword 'local'), and what endpoints are expected 
+                # elsewhere (zmq address like 'tcp://10.0.0.1/').
+                "queue" : {
+                    "agent_staging_input_queue"  : "agent.0",
+                    "agent_scheduling_queue"     : "agent.0",
+                    "agent_executing_queue"      : "agent.0",
+                    "agent_staging_output_queue" : "agent.0"
+                },
+                "pubsub" : {
+                    "agent_unschedule_pubsub"    : "agent.0",
+                    "agent_reschedule_pubsub"    : "agent.0",
+                    "agent_command_pubsub"       : "agent.0",
+                    "agent_state_pubsub"         : "agent.0"
                 }
             }
         }

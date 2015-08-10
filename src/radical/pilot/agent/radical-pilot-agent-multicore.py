@@ -4832,10 +4832,10 @@ class AgentWorker(rpu.Worker):
             raise RuntimeError("no agent layout section for %s" % self.name)
 
         try:
-            layout = self._cfg['agent_layout'][self.name]
+            self._priv_cfg = self._cfg['agent_layout'][self.name]
 
-            start_components     = layout.get('components', {})
-            start_bridges        = layout.get('bridges',    {})
+            start_components     = self._priv_cfg.get('components', {})
+            start_bridges        = self._priv_cfg.get('bridges',    {})
             start_queue_bridges  = start_bridges.get('queue',    {})
             start_pubsub_bridges = start_bridges.get('pubsub',   {})
 
@@ -4890,7 +4890,7 @@ class AgentWorker(rpu.Worker):
             # the agent config before we pass that config on to (a) the
             # components we create below, and (b) to any other agent instance we
             # intent to spawn.  So we do that for all workers we have configures
-            workers = layout.get('workers', [])
+            workers = self._priv_cfg.get('workers', [])
             for worker in workers:
 
                 # each worker gets its own copy, which specifically sets the
@@ -4915,6 +4915,17 @@ class AgentWorker(rpu.Worker):
                 # we can now write the worker config
                 self._log.debug(pprint.pformat(worker_config))
                 ru.write_json(worker_config, './%s.cfg' % worker)
+
+                # now we can start the sub-agent instances.
+                # FIXME: this will need
+                #   - information from LRMS which nodes to start the agents on
+                #   - some agent launch method
+                # For now this is hard coded, but is probably something we want
+                # to make *slightly* more flexible / encapsulated
+                rpu.prof("start", msg=worker, logger=self._log.info)
+                cmd = "/bin/sh bootstrap_2.sh %(w)s 1>%(w)s.out 2>%(w)s.err </dev/null &" % {'w' : worker}
+                os.system(cmd)
+                self._log.info("sub-agent %s started (%s)" % (worker, cmd))
         
             self._log.debug("worker configs written")
 
@@ -4997,6 +5008,11 @@ class AgentWorker(rpu.Worker):
         then feed them to the respective component queues.
         """
 
+        # only do something if we are configured to do so
+        if not self._priv_cfg.get('pull_units'):
+            self._log.debug('not configured to pull for units')
+            return 0
+
         try:
             # check for new units
             return self._check_units()
@@ -5057,10 +5073,10 @@ class AgentWorker(rpu.Worker):
 
 # ==============================================================================
 #
-# Agent bootstrapper stage 3
+# Agent bootstrap stage 3
 #
 # ==============================================================================
-def bootstrapper_3():
+def bootstrap_3():
     """
     This method continues where the bootstrapper left off, but will quickly pass
     control to the Agent class which will spawn the functional components.
@@ -5148,7 +5164,7 @@ if __name__ == "__main__":
     print
 
     dh = ru.DebugHelper()
-    sys.exit(bootstrapper_3())
+    sys.exit(bootstrap_3())
 
 #
 # ------------------------------------------------------------------------------

@@ -14,17 +14,15 @@
 # use a different RADICAL stack if needed, by rerouting the PYTHONPATH, w/o the
 # need to create a new virtualenv from scratch.
 #
-# Arguments passed to the bootstrapper should be required by the bootstrapper
-# itself, and not only to be passed down to the agent.
-# Configuration only used by the agent should go in the agent config file,
-# and not be passed as an argument to the bootstrapper.
-# Configuration used by both should be passed to the bootstrapper and
-# consecutively passed to the agent. Only in cases where it is justified, that
-# information can be "duplicated" in the agent config.
-# The rationale for this is:
-# 1) that the bootstrapper can't (easily) read from MongoDB, so it needs to
+# Arguments passed to bootstrap_1 should be required by bootstrap_1 itself,
+# and *not* be passed down to the agent.  Configuration used by the agent should
+# go in the agent config file, and *not( be passed as an argument to 
+# bootstrap_1.  Only parameters used by both should be passed to the bootstrap_1
+# and  consecutively passed to the agent. It is rarely justified to duplicate
+# information as parameters and agent config entries.  Exceptions would be:
+# 1) the shell scripts can't (easily) read from MongoDB, so they need to
 #    to get the information as arguments;
-# 2) that the agent needs information that goes beyond what can be put in
+# 2) the agent needs information that goes beyond what can be put in
 #    arguments, both qualitative and quantitatively.
 #
 # ------------------------------------------------------------------------------
@@ -92,7 +90,7 @@ profile_event()
         NOW=$((TIMESTAMP-TIME_ZERO))
         # Format: time, component, uid, event, message"
         printf "%.4f,%s,%s,%s,%s\n" \
-            "$NOW" "Bootstrapper" "$PILOTID" "$@" "" >> $PROFILE_LOG
+            "$NOW" "bootstrap_1" "$PILOTID" "$@" "" >> $PROFILE_LOG
     fi
 }
 
@@ -371,7 +369,7 @@ EOF
 #   'recreate': delete if it exists, otherwise create, then use
 #
 # create and update ops will be locked and thus protected against concurrent
-# bootstrapper invokations.
+# bootstrap_1 invokations.
 #
 # (private + location in pilot sandbox == old behavior)
 #
@@ -1101,9 +1099,9 @@ preprocess()
 # Report where we are, as this is not always what you expect ;-)
 # Print environment, useful for debugging
 echo "# -------------------------------------------------------------------"
-echo "# Bootstrapper running on host: `hostname -f`."
-echo "# Bootstrapper started as     : '$0 $@'"
-echo "# Environment of bootstrapper process:"
+echo "# bootstrap_1 running on host: `hostname -f`."
+echo "# bootstrap_1 started as     : '$0 $@'"
+echo "# Environment of bootstrap_1 process:"
 echo "#"
 echo "#"
 env | sort
@@ -1191,7 +1189,7 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
     fi
     ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$HOSTPORT -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST &
 
-    # Kill ssh process when bootstrapper dies, to prevent lingering ssh's
+    # Kill ssh process when bootstrap_1 dies, to prevent lingering ssh's
     trap 'jobs -p | xargs kill' EXIT
 
     # Overwrite HOSTPORT
@@ -1263,10 +1261,10 @@ export RADIAL_VERBOSE=DEBUG
 export RADIAL_UTIL_VERBOSE=DEBUG
 export RADIAL_PILOT_VERBOSE=DEBUG
 
-# before we start the agent proper, we'll create a small startup script to do
+# before we start the agent proper, we'll create a bootstrap_2 script to do
 # so.  For a single agent this is not needed -- but in the case where we spawn
 # out additional agent instances later, that script can be reused to get proper
-# env settings etc, w/o running through the bootstrapper again.  That includes
+# env settings etc, w/o running through bootstrap_1 again.  That includes
 # pre_exec commands, virtualenv settings and sourcing (again), and startup
 # command).  We don't include any error checking right now, assuming that if the
 # commands worked once to get to this point, they should work again for the next
@@ -1283,12 +1281,12 @@ $PREPROCESSING
 $AGENT_CMD "\$@"
 EOT
 
-)> bootstrapper_2.sh
-chmod 0755 bootstrapper_2.sh
+)> bootstrap_2.sh
+chmod 0755 bootstrap_2.sh
 
 profile_event 'agent start'
 
-sh bootstrapper_2.sh
+sh bootstrap_2.sh
 AGENT_EXITCODE=$?
 
 profile_event 'cleanup start'

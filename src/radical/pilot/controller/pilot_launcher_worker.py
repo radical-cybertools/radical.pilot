@@ -443,7 +443,7 @@ class PilotLauncherWorker(threading.Thread):
                             virtenv = global_virtenv
                             virtenv_mode = 'use'
 
-                        # Create a host:port string for use by the bootstrapper.
+                        # Create a host:port string for use by the bootstrap_1.
                         db_url = saga.Url(agent_dburl)
                         if db_url.port:
                             db_hostport = "%s:%d" % (db_url.host, db_url.port)
@@ -461,7 +461,7 @@ class PilotLauncherWorker(threading.Thread):
                                                                 session=self._session,
                                                                 flags=saga.filesystem.CREATE_PARENTS)
 
-                        BOOTSTRAPPER_SCRIPT = "bootstrapper_1.sh"
+                        BOOTSTRAPPER_SCRIPT = "bootstrap_1.sh"
                         LOCAL_SCHEME = 'file'
 
                         # ------------------------------------------------------
