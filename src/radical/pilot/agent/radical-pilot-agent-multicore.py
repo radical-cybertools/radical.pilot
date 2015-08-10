@@ -487,13 +487,13 @@ class AgentSchedulingComponent(rpu.Component):
 
         try:
             name = cfg['scheduler']
-            implementation = {
+            impl = {
                 SCHEDULER_NAME_CONTINUOUS : SchedulerContinuous,
                 SCHEDULER_NAME_SCATTERED  : SchedulerScattered,
                 SCHEDULER_NAME_TORUS      : SchedulerTorus
             }[name]
 
-            impl = implementation(cfg)
+            impl = impl(cfg)
             return impl
 
         except KeyError:
@@ -736,7 +736,8 @@ class SchedulerContinuous(AgentSchedulingComponent):
         task_offsets = self.slots2offset(task_slots)
 
         return {'task_slots'   : task_slots, 
-                'task_offsets' : task_offsets}
+                'task_offsets' : task_offsets, 
+                'lm_info'      : self._lrms.lm_info}
 
 
     # --------------------------------------------------------------------------
@@ -1012,7 +1013,8 @@ class SchedulerTorus(AgentSchedulingComponent):
         return {'cores_per_node'      : self._lrms.cores_per_node, 
                 'loadl_bg_block'      : self._lrms.loadl_bg_block,
                 'sub_block_shape_str' : sub_block_shape_str,
-                'corner_node'         : corner_node}
+                'corner_node'         : corner_node,
+                'lm_info'             : self._lrms.lm_info}
 
 
     # --------------------------------------------------------------------------
@@ -1190,7 +1192,7 @@ class LaunchMethod(object):
             raise TypeError("LaunchMethod factory only available to base class!")
 
         try:
-            implementation = {
+            impl = {
                 LAUNCH_METHOD_APRUN         : LaunchMethodAPRUN,
                 LAUNCH_METHOD_CCMRUN        : LaunchMethodCCMRUN,
                 LAUNCH_METHOD_DPLACE        : LaunchMethodDPLACE,
@@ -1206,7 +1208,7 @@ class LaunchMethod(object):
                 LAUNCH_METHOD_RUNJOB        : LaunchMethodRUNJOB,
                 LAUNCH_METHOD_SSH           : LaunchMethodSSH
             }[name]
-            return implementation(name, config, logger)
+            return impl(name, config, logger)
 
         except KeyError:
             logger.exception("LaunchMethod '%s' unknown!" % name)
@@ -1215,6 +1217,48 @@ class LaunchMethod(object):
             logger.exception("LaunchMethod cannot be used: %s!" % e)
 
         return None
+
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def lrms_config_hook(cls, name, config, lrms, logger):
+        """
+        This hook will allow the LRMS to perform launch methods specific
+        configuration steps.  The LRMS layer MUST ensure that this hook is
+        called exactly once (globally).  This will be a NOOP for LMs which do
+        not overload this method.  Exceptions fall through to the LRMS.
+        """
+
+        # Make sure that we are the base-class!
+        if cls != LaunchMethod:
+            raise TypeError("LaunchMethod config hook only available to base class!")
+
+        impl = {
+          # LAUNCH_METHOD_APRUN         : LaunchMethodAPRUN,
+          # LAUNCH_METHOD_CCMRUN        : LaunchMethodCCMRUN,
+          # LAUNCH_METHOD_DPLACE        : LaunchMethodDPLACE,
+          # LAUNCH_METHOD_FORK          : LaunchMethodFORK,
+          # LAUNCH_METHOD_IBRUN         : LaunchMethodIBRUN,
+          # LAUNCH_METHOD_MPIEXEC       : LaunchMethodMPIEXEC,
+          # LAUNCH_METHOD_MPIRUN_CCMRUN : LaunchMethodMPIRUNCCMRUN,
+          # LAUNCH_METHOD_MPIRUN_DPLACE : LaunchMethodMPIRUNDPLACE,
+          # LAUNCH_METHOD_MPIRUN        : LaunchMethodMPIRUN,
+          # LAUNCH_METHOD_MPIRUN_RSH    : LaunchMethodMPIRUNRSH,
+            LAUNCH_METHOD_ORTE          : LaunchMethodORTE,
+          # LAUNCH_METHOD_POE           : LaunchMethodPOE,
+          # LAUNCH_METHOD_RUNJOB        : LaunchMethodRUNJOB,
+          # LAUNCH_METHOD_SSH           : LaunchMethodSSH
+        }.get(name)
+
+        if not impl:
+            logger.info('no LRMS config hook defined for LaunchMethod %s' % name)
+            return None
+
+        logger.info('call LRMS config hook for LaunchMethod %s: %s' % (name, impl))
+        return impl.lrms_config_hook(name, config, lrms, logger)
+
+
 
 
     # --------------------------------------------------------------------------
@@ -1231,7 +1275,8 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def _find_executable(self, names):
+    @classmethod
+    def _find_executable(cls, names):
         """Takes a (list of) name(s) and looks for an executable in the path.
         """
 
@@ -1239,7 +1284,7 @@ class LaunchMethod(object):
             names = [names]
 
         for name in names:
-            ret = self._which(name)
+            ret = cls._which(name)
             if ret is not None:
                 return ret
 
@@ -1248,7 +1293,8 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def _which(self, program):
+    @classmethod
+    def _which(cls, program):
         """Finds the location of an executable.
         Taken from:
         http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
@@ -1669,7 +1715,6 @@ class LaunchMethodDPLACE(LaunchMethod):
 
         LaunchMethod.__init__(self, name, config, logger)
 
-        raise NotImplementedError('RUNJOB LM needs to be decoupled from the scheduler/LRMS')
 
     # --------------------------------------------------------------------------
     #
@@ -1860,13 +1905,18 @@ class LaunchMethodORTE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
+    @classmethod
+    def lrms_config_hook(cls, name, config, lrms, logger):
+        """
+        FIXME: this config hook will manipulate the LRMS nodelist.  Not a nice
+               thing to do, but hey... :P
+               What really should be happening is that the LRMS digs information
+               on node reservation out of the config and configures the node
+               list accordingly.  This config hook should be limited to starting
+               the DVM.
+        """
 
-        raise NotImplementedError('ORTE LM needs to be decoupled from the scheduler/LRMS')
-
-        self.launch_command = self._which('orte-submit')
-
-        dvm_command = self._which('orte-dvm')
+        dvm_command = cls._which('orte-dvm')
         if not dvm_command:
             raise Exception("Couldn't find orte-dvm")
 
@@ -1875,94 +1925,115 @@ class LaunchMethodORTE(LaunchMethod):
         # without waiting for orte-dvm to complete.
         # The command seems to be generally available on our Cray's,
         # if not, we can code some home-coooked pty stuff.
-        stdbuf_cmd =  self._find_executable(['stdbuf', 'gstdbuf'])
+        stdbuf_cmd =  cls._find_executable(['stdbuf', 'gstdbuf'])
         if not stdbuf_cmd:
             raise Exception("Couldn't find (g)stdbuf")
         stdbuf_arg = "-oL"
 
         # Reserve compute nodes to offload agent too
         reserved_size = 1 # TODO: make configurable
-        vm_size = len(self._scheduler._lrms.node_list) - reserved_size
-        self._scheduler.reserved_nodes = sorted(self._scheduler._lrms.node_list)[-reserved_size:]
-        self._log.info("Reserving nodes: %s" % self._scheduler.reserved_nodes)
+        vm_size = len(lrms.node_list) - reserved_size
+        lrms.reserved_nodes = sorted(lrms.node_list)[-reserved_size:]
+        logger.info("Reserving nodes: %s" % self.lrms.reserved_nodes)
 
-        # Mark the reserved node slots BUSY
-        for node in self._scheduler.reserved_nodes:
-            slots = []
-            for c in range(32):
-                slots.append('%s:%d' % (node, c))
-            self._scheduler._change_slot_states(slots, BUSY)
+      # # Mark the reserved node slots BUSY
+      # # NOTE: we don't need that anymore, as the nodelist is manipulated on
+      # LRMS level, before it reaches the scheduler
+      # for node in self._scheduler.reserved_nodes:
+      #     slots = []
+      #     for c in range(32):
+      #         slots.append('%s:%d' % (node, c))
+      #     self._scheduler._change_slot_states(slots, BUSY)
 
-        self._log.info("Starting ORTE DVM on %d nodes ..." % vm_size)
+        logger.info("Starting ORTE DVM on %d nodes ..." % vm_size)
 
-        self._dvm_process = subprocess.Popen(
+        dvm_process = subprocess.Popen(
             [stdbuf_cmd, stdbuf_arg, dvm_command,
              '--mca', 'orte_max_vm_size', str(vm_size)],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT
         )
 
-        self._dvmuri = None
         while True:
 
-            line = self._dvm_process.stdout.readline().strip()
+            line = dvm_process.stdout.readline().strip()
 
             if line.startswith('VMURI:'):
 
                 if len(line.split(' ')) != 2:
                     raise Exception("Unknown VMURI format: %s" % line)
 
-                label, self._dvmuri = line.split(' ', 1)
+                label, dvmuri = line.split(' ', 1)
 
                 if label != 'VMURI:':
                     raise Exception("Unknown VMURI format: %s" % line)
 
-                self._log.info("ORTE DVM URI: %s" % self._dvmuri)
+                logger.info("ORTE DVM URI: %s" % dvmuri)
 
             elif line == 'DVM ready':
 
-                if not self._dvmuri:
+                if not dvmuri:
                     raise Exception("VMURI not found!")
 
-                self._log.info("ORTE DVM startup successful!")
+                logger.info("ORTE DVM startup successful!")
                 break
 
             else:
 
                 # Check if the process is still around,
                 # and log output in debug mode.
-                if not self._dvm_process.poll():
-                    self._log.debug("ORTE: %s" % line)
+                if not dvm_process.poll():
+                    logger.debug("ORTE: %s" % line)
                 else:
                     # Process is gone: fatal!
                     raise Exception("ORTE DVM process disappeared")
 
+        # we need to inform the actual LM instance about the DVM URI.  So we
+        # pass it back to the LRMS which will keep it in an 'lm_info', which
+        # will then be passed as part of the opaque_slots via the scheduler
+        lm_info = {'dvmuri' : dvmuri}
+        return lm_info
 
     # TODO: Create teardown() function for LaunchMethod's (in this case to terminate the dvm)
     #subprocess.Popen([self.launch_command, "--hnp", orte_vm_uri_filename, "--terminate"])
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _configure(self):
+
+        self.launch_command = self._which('orte-submit')
+
 
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_hop, opaque_slots):
 
-        if not 'task_slots' in opaque_slots:
+        if  'task_slots' not in opaque_slots or \
+            'dvm_url'    not in opaque_slots or \
+            'lm_info'    not in opaque_slots :
             raise RuntimeError('insufficient information to launch via %s: %s' \
                     % (self.name, opaque_slots))
 
+        if  not opaque_slots['lm_info'] or \
+            'dvmuri' not in opaque_slots['lm_info'] :
+            raise RuntimeError('lm_info missing for %s: %s' \
+                    % (self.name, opaque_slots))
+
         task_slots = opaque_slots['task_slots']
+        dvm_uri    = opaque_slots['lm_info']['dvm_uri']
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
         else:
             task_command = task_exec
 
-        # Construct the hosts_string
+        # Construct the hosts_string, env vars
         hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
-
-        export_vars = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
+        export_vars  = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
         orte_command = '%s --hnp "%s" %s -np %s -host %s %s' % (
-            self.launch_command, self._dvmuri, export_vars, task_numcores, hosts_string, task_command)
+            self.launch_command, dvm_uri, export_vars, task_numcores, hosts_string, task_command)
 
         return orte_command, None
 
@@ -2076,6 +2147,7 @@ class LRMS(object):
 
         self._log.info("Configuring LRMS %s.", self.name)
 
+        self.lm_info   = {}
         self.slot_list = []
         self.node_list = []
         self.cores_per_node = None
@@ -2083,6 +2155,30 @@ class LRMS(object):
         self._configure()
 
         logger.info("Discovered execution environment: %s", self.node_list)
+
+        # after LRMS configuration, we call any existing config hooks on the
+        # launch methods.  Those hooks may need to adjust the LRMS settings
+        # (hello ORTE).  
+        task_lm = config.get('task_launch_method')
+        mpi_lm  = config.get('mpi_launch_method')
+
+        # make sure we call the config hook just once
+        if task_lm == mpi_lm:
+            mpi_lm = None
+
+        if task_lm:
+            task_lm_info = LaunchMethod.lrms_config_hook(task_lm, self._cfg, self, self._log)
+        if task_lm:
+            mpi_lm_info  = LaunchMethod.lrms_config_hook(mpi_lm,  self._cfg, self, self._log)
+
+        # FIXME: this is not clean, but we'll only fix it once we have more than
+        #        one LM implemening a config hook
+
+        if task_lm_info:
+            self.lm_info = task_lm_info
+
+        if mpi_lm_info:
+            ru.dict_merge(self.lm_info, mpi_lm_info)
 
         # For now assume that all nodes have equal amount of cores
         cores_avail = len(self.node_list) * self.cores_per_node
@@ -2104,7 +2200,7 @@ class LRMS(object):
             raise TypeError("LRMS Factory only available to base class!")
 
         try:
-            implementation = {
+            impl = {
                 LRMS_NAME_CCM         : CCMLRMS,
                 LRMS_NAME_FORK        : ForkLRMS,
                 LRMS_NAME_LOADLEVELER : LoadLevelerLRMS,
@@ -2114,7 +2210,7 @@ class LRMS(object):
                 LRMS_NAME_SLURM       : SLURMLRMS,
                 LRMS_NAME_TORQUE      : TORQUELRMS
             }[name]
-            return implementation(name, config, logger)
+            return impl(name, config, logger)
         except KeyError:
             raise RuntimeError("LRMS type '%s' unknown!" % name)
 
@@ -3326,12 +3422,12 @@ class AgentExecutingComponent(rpu.Component):
 
         try:
             name = cfg['spawner']
-            implementation = {
+            impl = {
                 SPAWNER_NAME_POPEN : ExecWorker_POPEN,
                 SPAWNER_NAME_SHELL : ExecWorker_SHELL
             }[name]
 
-            impl = implementation(cfg)
+            impl = impl(cfg)
             return impl
 
         except KeyError:
