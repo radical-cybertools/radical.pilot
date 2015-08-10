@@ -455,7 +455,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # The scheduler needs the LRMS, so configure it here
         # FIXME: the LRMS relies on environment settings which are likely only
-        #        available in the scope of the agent.master.  So the scheduler
+        #        available in the scope of the agent.0.  So the scheduler
         #        component needs to be colocated to that agent at the moment.
         #        This should not be a problem, as we can only have one Scheduler
         #        component anyway (it has a global, exclusive view on the shared
@@ -464,8 +464,7 @@ class AgentSchedulingComponent(rpu.Component):
         self._lrms = LRMS.create(
                 name            = self._cfg['lrms'],
                 config          = self._cfg,
-                logger          = self._log,
-                requested_cores = self._cores)
+                logger          = self._log)
 
         self._wait_pool = list()            # set of units which wait for the resource
         self._wait_lock = threading.RLock() # look on the above set
@@ -1959,7 +1958,7 @@ class LaunchMethodPOE(LaunchMethod):
 class LRMS(object):
     """
     The Local Resource Manager (LRMS -- where does the 's' come from, actually?)
-    provide two findamental information:
+    provide two fundamental information:
 
       LRMS.node_list     : a list of node names
       LRMS.cores_per_node: the number of cores each node has available
@@ -1969,6 +1968,11 @@ class LRMS(object):
     relying in those are invariably bound to the specific LRMS.  An example is
     the Torus Scheduler which relies on detailed torus layout information from
     the LoadLevelerLRMS (which describes the BG/Q).
+
+    Additionally, the LRMS can inform the agent about the current hostname
+    (LRMS.hostname) and ip (LRMS.hostip).  Once we start to spread the agent
+    over some compute nodes, we may want to block the respective nodes on LRMS
+    level, so that is only reports the remaining nodes to the scheduler.
     """
 
     # TODO: Core counts dont have to be the same number for all hosts.
@@ -1985,12 +1989,14 @@ class LRMS(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, requested_cores):
+    def __init__(self, name, config, logger):
 
         self.name            = name
-        self_cfg             = config
+        self._cfg            = config
         self._log            = logger
-        self.requested_cores = requested_cores
+        self._hostname       = None
+        self._hostip         = None
+        self.requested_cores = self._cfg['cores']
 
         self._log.info("Configuring LRMS %s.", self.name)
 
@@ -2015,7 +2021,7 @@ class LRMS(object):
     # This class-method creates the appropriate sub-class for the LRMS.
     #
     @classmethod
-    def create(cls, name, config, logger, requested_cores):
+    def create(cls, name, config, logger):
 
         # Make sure that we are the base-class!
         if cls != LRMS:
@@ -2032,7 +2038,7 @@ class LRMS(object):
                 LRMS_NAME_SLURM       : SLURMLRMS,
                 LRMS_NAME_TORQUE      : TORQUELRMS
             }[name]
-            return implementation(name, config, logger, requested_cores)
+            return implementation(name, config, logger)
         except KeyError:
             raise RuntimeError("LRMS type '%s' unknown!" % name)
 
@@ -2043,15 +2049,61 @@ class LRMS(object):
         raise NotImplementedError("_Configure not implemented for LRMS type: %s." % self.name)
 
 
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def hostname(self):
+
+        # if a deriving class set a hostname, use that
+        if self._hostname:
+            return self._hostname
+
+        # otherwise try to find hostname ourself
+        import socket
+        return socket.getfqdn()
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def hostip(self):
+
+        # if a deriving class set a hostip, use that
+        if self._hostip:
+            return self._hostip
+
+      # # otherwise try to find hostip ourself
+        import socket
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.setblocking(False)
+            s.settimeout(1.0)
+            s.connect(('8.8.8.8', 0))
+            return s.getsockname()[0]
+        except Exception as e:
+            self._log.warn("use fallback IP detection (%s)" % e)
+
+        # fallback:
+        try:
+            iplist = socket.gethostbyaddr(self.hostname)[3]
+            if isinstance(iplist, list):
+                return iplist[0]
+            return iplist
+        except Exception as e:
+            self._log.exception("IP detection failed (%s)" % e)
+
+        raise RuntimeError("could not detect local IP")
+
+
 
 # ==============================================================================
 #
 class CCMLRMS(LRMS):
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, requested_cores):
+    def __init__(self, name, config, logger):
 
-        LRMS.__init__(self, name, config, logger, requested_cores)
+        LRMS.__init__(self, name, config, logger)
 
 
     # --------------------------------------------------------------------------
@@ -2099,9 +2151,9 @@ class TORQUELRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, requested_cores):
+    def __init__(self, name, config, logger):
 
-        LRMS.__init__(self, name, config, logger, requested_cores)
+        LRMS.__init__(self, name, config, logger)
 
 
     # --------------------------------------------------------------------------
@@ -2185,9 +2237,9 @@ class PBSProLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, requested_cores):
+    def __init__(self, name, config, logger):
 
-        LRMS.__init__(self, name, config, logger, requested_cores)
+        LRMS.__init__(self, name, config, logger)
 
 
     # --------------------------------------------------------------------------
@@ -2331,9 +2383,9 @@ class SLURMLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, requested_cores):
+    def __init__(self, name, config, logger):
 
-        LRMS.__init__(self, name, config, logger, requested_cores)
+        LRMS.__init__(self, name, config, logger)
 
 
     # --------------------------------------------------------------------------
@@ -2401,9 +2453,9 @@ class SGELRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, requested_cores):
+    def __init__(self, name, config, logger):
 
-        LRMS.__init__(self, name, config, logger, requested_cores)
+        LRMS.__init__(self, name, config, logger)
 
 
     # --------------------------------------------------------------------------
@@ -2443,9 +2495,9 @@ class LSFLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, requested_cores):
+    def __init__(self, name, config, logger):
 
-        LRMS.__init__(self, name, config, logger, requested_cores)
+        LRMS.__init__(self, name, config, logger)
 
 
     # --------------------------------------------------------------------------
@@ -2630,14 +2682,14 @@ class LoadLevelerLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, requested_cores):
+    def __init__(self, name, config, logger):
 
         self.torus_block            = None
         self.loadl_bg_block         = None
         self.shape_table            = None
         self.torus_dimension_labels = None
 
-        LRMS.__init__(self, name, config, logger, requested_cores)
+        LRMS.__init__(self, name, config, logger)
 
     # --------------------------------------------------------------------------
     #
@@ -3130,9 +3182,9 @@ class ForkLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, requested_cores):
+    def __init__(self, name, config, logger):
 
-        LRMS.__init__(self, name, config, logger, requested_cores)
+        LRMS.__init__(self, name, config, logger)
 
 
     # --------------------------------------------------------------------------
@@ -4645,7 +4697,7 @@ class AgentWorker(rpu.Worker):
         # find out what agent instance name we have
         if len(sys.argv) == 1:
             # we are master
-            cfg['name'] = 'agent.master'
+            cfg['name'] = 'agent.0'
         else:
             # we are given a name
             cfg['name'] = sys.argv[1]
@@ -4826,6 +4878,14 @@ class AgentWorker(rpu.Worker):
 
             self._log.debug("bridges started")
 
+            # the workers will need the hostnames or ip addresses to connect to
+            # the bridges.  Its likely that we started the bridges in
+            # auto-listening mode, using something like 'tcp://*:1234', where
+            # zmq will listen on all interfaces.  Before we communicate those
+            # endpoints to the worker agents, we need to replace that '*' with
+            # our real hostname or IP.  Who could better do that than the LRMS?
+            lrms = LRMS.create(self._cfg['lrms'], self._cfg, self._log)
+
             # we now have the bridge addresses.  Those need to be corrected in
             # the agent config before we pass that config on to (a) the
             # components we create below, and (b) to any other agent instance we
@@ -4843,17 +4903,18 @@ class AgentWorker(rpu.Worker):
                 worker_queues  = worker_layout['bridges']['queue']
 
                 for wp in worker_pubsubs:
-                    if wb in bridge_addresses and \
-                        worker_pubsubs[wp] == 'agent.master':
-                        worker_pubsubs[wp] = bridge_addresses[wp]
+                    if wp in bridge_addresses and \
+                        worker_pubsubs[wp] == 'agent.0':
+                        worker_pubsubs[wp] = str(bridge_addresses[wp]).replace('*', lrms.hostip)
 
                 for wq in worker_queues:
                     if wq in bridge_addresses and \
-                        worker_queues[wq] == 'agent.master':
-                        worker_queues[wq] = bridge_addresses[wq]
+                        worker_queues[wq] == 'agent.0':
+                        worker_queues[wq] = str(bridge_addresses[wq]).replace('*', lrms.hostip)
 
                 # we can now write the worker config
-                rpu.write_json('./%s.cfg' % worker, worker_config)
+                self._log.debug(pprint.pformat(worker_config))
+                ru.write_json(worker_config, './%s.cfg' % worker)
         
             self._log.debug("worker configs written")
 
@@ -4996,10 +5057,10 @@ class AgentWorker(rpu.Worker):
 
 # ==============================================================================
 #
-# Agent main code
+# Agent bootstrapper stage 3
 #
 # ==============================================================================
-def main():
+def bootstrapper_3():
     """
     This method continues where the bootstrapper left off, but will quickly pass
     control to the Agent class which will spawn the functional components.
@@ -5048,9 +5109,12 @@ def main():
 
     agent = None
     try:
+        # ----------------------------------------------------------------------
+        # des Pudels Kern
         agent = AgentWorker(cfg)
         agent.join()
         agent._finalize()
+        # ----------------------------------------------------------------------
 
     except SystemExit:
         pilot_FAILED(msg="Caught system exit. EXITING") 
@@ -5083,7 +5147,8 @@ if __name__ == "__main__":
     print "---------------------------------------------------------------------"
     print
 
-    sys.exit(main())
+    dh = ru.DebugHelper()
+    sys.exit(bootstrapper_3())
 
 #
 # ------------------------------------------------------------------------------

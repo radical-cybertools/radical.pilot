@@ -101,21 +101,21 @@ class PilotLauncherWorker(threading.Thread):
             MAX_IO_LOGLENGTH = 10240    # 10k should be enough for anybody...
 
             try :
-                f_out = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent.out'))
+                f_out = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent.0.out'))
                 out   = f_out.read()[-MAX_IO_LOGLENGTH:]
                 f_out.close ()
             except :
                 pass
 
             try :
-                f_err = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent.err'))
+                f_err = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent.0.err'))
                 err   = f_err.read()[-MAX_IO_LOGLENGTH:]
                 f_err.close ()
             except :
                 pass
 
             try :
-                f_log = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent.log'))
+                f_log = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent.0.log'))
                 log   = f_log.read()[-MAX_IO_LOGLENGTH:]
                 f_log.close ()
             except :
@@ -461,15 +461,14 @@ class PilotLauncherWorker(threading.Thread):
                                                                 session=self._session,
                                                                 flags=saga.filesystem.CREATE_PARENTS)
 
-                        BOOTSTRAPPER_SCRIPT = "default_bootstrapper.sh"
-                        AGENT_SCRIPT = 'radical-pilot-agent.py'
+                        BOOTSTRAPPER_SCRIPT = "bootstrapper_1.sh"
                         LOCAL_SCHEME = 'file'
 
                         # ------------------------------------------------------
                         # Copy the bootstrap shell script.  This also creates
                         # the sandbox. We use always "default_bootstrapper.sh"
                         # TODO: Is this still configurable and/or in the resource configs?
-                        bootstrapper = BOOTSTRAPPER_SCRIPT
+                        bootstrapper = "default_bootstrapper.sh"
                         bootstrapper_path = os.path.abspath("%s/../bootstrapper/%s" \
                                 % (mod_dir, bootstrapper))
 
@@ -675,11 +674,11 @@ class PilotLauncherWorker(threading.Thread):
                         logentries.append(Logentry (msg, logger=logger.debug))
                         ru.write_json(agent_config, cf_tmp_file)
 
-                        cf_env = saga.Url("%s/agent.cfg" % pilot_sandbox).path # this is what the pilot sees
+                        cf_env = saga.Url("%s/agent.0.cfg" % pilot_sandbox).path # this is what the pilot sees
                         cf_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, cf_tmp_file))
                         msg = "Copying agent configuration file '%s' to sandbox (%s)." % (cf_url, pilot_sandbox)
                         logentries.append(Logentry (msg, logger=logger.debug))
-                        sandbox_tgt.copy(cf_url, 'agent.cfg')
+                        sandbox_tgt.copy(cf_url, 'agent.0.cfg')
 
                         # close and remove temp file
                         os.close(cfg_tmp_handle)
@@ -710,8 +709,8 @@ class PilotLauncherWorker(threading.Thread):
                         jd.arguments             = ["-l %s" % BOOTSTRAPPER_SCRIPT, bootstrap_args]
                         jd.working_directory     = saga.Url(pilot_sandbox).path
                         jd.project               = project
-                        jd.output                = "agent.out"
-                        jd.error                 = "agent.err"
+                        jd.output                = "agent.0.out"
+                        jd.error                 = "agent.0.err"
                         jd.total_cpu_count       = number_cores
                         jd.processes_per_host    = cores_per_node
                         jd.wall_time_limit       = runtime

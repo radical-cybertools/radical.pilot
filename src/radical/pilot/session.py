@@ -190,7 +190,7 @@ class Session (saga.Session, Object):
                 continue
 
             for rc in rcs:
-                logger.info("Loaded resource configurations for %s" % rc)
+                logger.info("Load resource configurations for %s" % rc)
 
                 if  rc in self._resource_configs :
                     # config exists -- merge user config into it
@@ -597,7 +597,6 @@ class Session (saga.Session, Object):
                 # merge schema specific resource keys into the
                 # resource config
                 resource_cfg[key] = resource_cfg[schema][key]
-
 
         return resource_cfg
 

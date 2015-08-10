@@ -43,6 +43,7 @@ PYTHON=
 SESSIONID=
 SANDBOX=`pwd`
 AGENT_TYPE='multicore'
+PREPROCESS=""
 
 # flag which is set when a system level RP installation is found, triggers
 # '--upgrade' flag for pip
@@ -82,7 +83,7 @@ fi
 
 # ------------------------------------------------------------------------------
 #
-PROFILE_LOG="agent.prof"
+PROFILE_LOG="agent.0.prof"
 profile_event()
 {
     if ! test -z "$RADICAL_PILOT_PROFILE"
@@ -1080,7 +1081,7 @@ find_available_port()
 #
 preprocess()
 {
-    cmd=$@
+    cmd="$@"
     run_cmd "Running pre-process command" "$cmd"
 
     if test $? -ne 0
@@ -1088,6 +1089,7 @@ preprocess()
         echo "#ABORT"
         exit 1
     fi
+    PREPROCESS="$PREPROCESS\n$cmd"
 }
 
 
@@ -1261,9 +1263,32 @@ export RADIAL_VERBOSE=DEBUG
 export RADIAL_UTIL_VERBOSE=DEBUG
 export RADIAL_PILOT_VERBOSE=DEBUG
 
+# before we start the agent proper, we'll create a small startup script to do
+# so.  For a single agent this is not needed -- but in the case where we spawn
+# out additional agent instances later, that script can be reused to get proper
+# env settings etc, w/o running through the bootstrapper again.  That includes
+# pre_exec commands, virtualenv settings and sourcing (again), and startup
+# command).  We don't include any error checking right now, assuming that if the
+# commands worked once to get to this point, they should work again for the next
+# agent.  Famous last words, I know...
+# Arguments to that script are passed on to the agent, which is specifically
+# done to distinguish agent instances.
+#
+(cat <<EOT
+#!/bin/sh
+
+# preprocessing commands
+$PREPROCESSING
+
+$AGENT_CMD "\$@"
+EOT
+
+)> bootstrapper_2.sh
+chmod 0755 bootstrapper_2.sh
+
 profile_event 'agent start'
 
-$AGENT_CMD
+sh bootstrapper_2.sh
 AGENT_EXITCODE=$?
 
 profile_event 'cleanup start'
