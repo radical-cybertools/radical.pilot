@@ -722,8 +722,6 @@ class SchedulerContinuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    # (Temporary?) wrapper for acquire_slots
-    #
     def _allocate_slot(self, cores_requested):
 
         # TODO: single_node should be enforced for e.g. non-message passing
@@ -736,21 +734,6 @@ class SchedulerContinuous(AgentSchedulingComponent):
         # Given that we are the continuous scheduler, this is fixed.
         # TODO: Argument can be removed altogether?
         continuous = True
-
-        # TODO: Now we rely on "None", maybe throw an exception?
-        return self._acquire_slots(cores_requested, single_node=single_node,
-                continuous=continuous)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _release_slot(self, (task_slots)):
-        self._change_slot_states(task_slots, FREE)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _acquire_slots(self, cores_requested, single_node, continuous):
 
         # Switch between searching for continuous or scattered slots
         # Switch between searching for single or multi-node
@@ -769,6 +752,12 @@ class SchedulerContinuous(AgentSchedulingComponent):
             self._change_slot_states(task_slots, BUSY)
 
         return task_slots
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _release_slot(self, (task_slots)):
+        self._change_slot_states(task_slots, FREE)
 
 
     # --------------------------------------------------------------------------
