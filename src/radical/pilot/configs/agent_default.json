@@ -1,7 +1,6 @@
 
 # this is the default agent config which is used if no other config is 
-# specified for a resource.  A resource config can partially or completely 
-# overwrite these settings.
+# specified for an agent.  
 {
     # directory for staging files inside the agent sandbox
     "staging_area"         : "staging_area",
@@ -23,15 +22,15 @@
 
     "agent_layout" : {
         "agent.0"   : {
-            "target"     : "nodelist[0]",
+            "target"     : "local",
             "workers"    : ["agent.1"],
             "pull_units" : 1,
             "components" : {
                 # how many instances of the respective components should be started
-                "agent_staging_input_component"  : 2,
+                "agent_staging_input_component"  : 0,
                 "agent_scheduling_component"     : 1,
-                "agent_executing_component"      : 2,
-                "agent_staging_output_component" : 2
+                "agent_executing_component"      : 0,
+                "agent_staging_output_component" : 0
             },
             "bridges" : {
                 # which bridges (and what type) should be started locally 
@@ -52,7 +51,7 @@
             }
         },
         "agent.1"   : {
-            "target"     : "nodelist[1]",
+            "target"     : "agent_node[1]",
             "workers"    : [],
             "pull_units" : 0,
             "components" : {

@@ -453,18 +453,13 @@ class AgentSchedulingComponent(rpu.Component):
         self.declare_publisher ('reschedule', rp.AGENT_RESCHEDULE_PUBSUB)
         self.declare_subscriber('reschedule', rp.AGENT_RESCHEDULE_PUBSUB, self.reschedule_cb)
 
-        # The scheduler needs the LRMS, so configure it here
-        # FIXME: the LRMS relies on environment settings which are likely only
-        #        available in the scope of the agent.0.  So the scheduler
-        #        component needs to be colocated to that agent at the moment.
-        #        This should not be a problem, as we can only have one Scheduler
-        #        component anyway (it has a global, exclusive view on the shared
-        #        resources / cores).
+        # The scheduler needs the LRMS information which have been collected
+        # during agent startup.  We dig them out of the config at this point.
         self._cores = self._cfg['cores']
-        self._lrms = LRMS.create(
-                name            = self._cfg['lrms'],
-                config          = self._cfg,
-                logger          = self._log)
+        self._lrms_lm_info        = self._cfg['lrms_info']['lm_info']
+        self._lrms_node_list      = self._cfg['lrms_info']['node_list']
+        self._lrms_cores_per_node = self._cfg['lrms_info']['cores_per_node']
+        # FIXME: this information is insufficient for the torus scheduler!
 
         self._wait_pool = list()            # set of units which wait for the resource
         self._wait_lock = threading.RLock() # look on the above set
@@ -658,10 +653,10 @@ class SchedulerContinuous(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        if not self._lrms.node_list:
+        if not self._lrms_node_list:
             raise RuntimeError("LRMS %s didn't _configure node_list." % self._lrms.name)
 
-        if not self._lrms.cores_per_node:
+        if not self._lrms_cores_per_node:
             raise RuntimeError("LRMS %s didn't _configure cores_per_node." % self._lrms.name)
 
         # Slots represents the internal process management structure.
@@ -674,12 +669,12 @@ class SchedulerContinuous(AgentSchedulingComponent):
         # We put it in a list because we care about (and make use of) the order.
         #
         self.slots = []
-        for node in self._lrms.node_list:
+        for node in self._lrms_node_list:
             self.slots.append({
                 'node': node,
                 # TODO: Maybe use the real core numbers in the case of
                 # non-exclusive host reservations?
-                'cores': [FREE for _ in range(0, self._lrms.cores_per_node)]
+                'cores': [FREE for _ in range(0, self._lrms_cores_per_node)]
             })
 
 
@@ -708,7 +703,7 @@ class SchedulerContinuous(AgentSchedulingComponent):
 
         # TODO: single_node should be enforced for e.g. non-message passing
         #       tasks, but we don't have that info here.
-        if cores_requested <= self._lrms.cores_per_node:
+        if cores_requested <= self._lrms_cores_per_node:
             single_node = True
         else:
             single_node = False
@@ -739,7 +734,7 @@ class SchedulerContinuous(AgentSchedulingComponent):
 
         return {'task_slots'   : task_slots, 
                 'task_offsets' : task_offsets, 
-                'lm_info'      : self._lrms.lm_info}
+                'lm_info'      : self._lrms_lm_info}
 
 
     # --------------------------------------------------------------------------
@@ -757,7 +752,7 @@ class SchedulerContinuous(AgentSchedulingComponent):
         # Transform it into an index in to the all_slots list
         all_slots_slot_index = self.slots.index(slot_entry)
 
-        return all_slots_slot_index * self._lrms.cores_per_node + int(first_slot_core)
+        return all_slots_slot_index * self._lrms_cores_per_node + int(first_slot_core)
 
 
     # --------------------------------------------------------------------------
@@ -825,7 +820,7 @@ class SchedulerContinuous(AgentSchedulingComponent):
     def _find_slots_multi_cont(self, cores_requested):
 
         # Convenience aliases
-        cores_per_node = self._lrms.cores_per_node
+        cores_per_node = self._lrms_cores_per_node
         all_slots = self.slots
 
         # Glue all slot core lists together
@@ -944,10 +939,10 @@ class SchedulerTorus(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        if not self._lrms.cores_per_node:
+        if not self._lrms_cores_per_node:
             raise RuntimeError("LRMS %s didn't _configure cores_per_node." % self._lrms.name)
 
-        self._cores_per_node = self._lrms.cores_per_node
+        self._cores_per_node = self._lrms_cores_per_node
 
         # TODO: get rid of field below
         self.slots = 'bogus'
@@ -963,9 +958,9 @@ class SchedulerTorus(AgentSchedulingComponent):
         for slot in self._lrms.torus_block:
             slot_matrix += "|"
             if slot[self.TORUS_BLOCK_STATUS] == FREE:
-                slot_matrix += "-" * self._lrms.cores_per_node
+                slot_matrix += "-" * self._lrms_cores_per_node
             else:
-                slot_matrix += "+" * self._lrms.cores_per_node
+                slot_matrix += "+" * self._lrms_cores_per_node
         slot_matrix += "|"
         return {'timestamp': rpu.timestamp(),
                 'slotstate': slot_matrix}
@@ -985,13 +980,13 @@ class SchedulerTorus(AgentSchedulingComponent):
 
         self._log.info("Trying to allocate %d core(s).", cores_requested)
 
-        if cores_requested % self._lrms.cores_per_node:
-            num_cores = int(math.ceil(cores_requested / float(self._lrms.cores_per_node))) \
-                        * self._lrms.cores_per_node
+        if cores_requested % self._lrms_cores_per_node:
+            num_cores = int(math.ceil(cores_requested / float(self._lrms_cores_per_node))) \
+                        * self._lrms_cores_per_node
             self._log.error('Core not multiple of %d, increasing to %d!',
-                           self._lrms.cores_per_node, num_cores)
+                           self._lrms_cores_per_node, num_cores)
 
-        num_nodes = cores_requested / self._lrms.cores_per_node
+        num_nodes = cores_requested / self._lrms_cores_per_node
 
         offset = self._alloc_sub_block(block, num_nodes)
 
@@ -1012,11 +1007,11 @@ class SchedulerTorus(AgentSchedulingComponent):
                         num_nodes, sub_block_shape_str, offset,
                         self._lrms.loc2str(corner), self._lrms.loc2str(end))
 
-        return {'cores_per_node'      : self._lrms.cores_per_node, 
+        return {'cores_per_node'      : self._lrms_cores_per_node, 
                 'loadl_bg_block'      : self._lrms.loadl_bg_block,
                 'sub_block_shape_str' : sub_block_shape_str,
                 'corner_node'         : corner_node,
-                'lm_info'             : self._lrms.lm_info}
+                'lm_info'             : self._lrms_lm_info}
 
 
     # --------------------------------------------------------------------------
@@ -2107,16 +2102,23 @@ class LaunchMethodPOE(LaunchMethod):
 class LRMS(object):
     """
     The Local Resource Manager (LRMS -- where does the 's' come from, actually?)
-    provide two fundamental information:
+    provide three fundamental information:
 
-      LRMS.node_list     : a list of node names
-      LRMS.cores_per_node: the number of cores each node has available
+      LRMS.node_list      : a list of node names
+      LRMS.agent_node_list: the list of nodes reserved for agent execution
+      LRMS.cores_per_node : the number of cores each node has available
 
     Schedulers can rely on these information to be available.  Specific LRMS
     incarnation may have additional information available -- but schedulers
-    relying in those are invariably bound to the specific LRMS.  An example is
+    relying on those are invariably bound to the specific LRMS.  An example is
     the Torus Scheduler which relies on detailed torus layout information from
     the LoadLevelerLRMS (which describes the BG/Q).
+
+    The LRMS will reserve nodes for the agent execution, by deriving the
+    respectively required node count from the config's agent_layout section.
+    Those nodes will be listed in LRMS.agent_node_list. Schedulers MUST NOT use
+    the agent_node_list to place compute units -- CUs are limited to the nodes
+    in LRMS.node_list.
 
     Additionally, the LRMS can inform the agent about the current hostname
     (LRMS.hostname) and ip (LRMS.hostip).  Once we start to spread the agent
@@ -2149,38 +2151,71 @@ class LRMS(object):
 
         self._log.info("Configuring LRMS %s.", self.name)
 
-        self.lm_info   = {}
-        self.slot_list = []
-        self.node_list = []
-        self.cores_per_node = None
+        self.lm_info         = dict()
+        self.slot_list       = list()
+        self.node_list       = list()
+        self.agent_nodes     = dict()
+        self.cores_per_node  = None
 
+        # the LRMS will need to reserve nodes for the agent, according to the
+        # agent layout.  We dig out the repsective requirements from the config
+        # right here.
+        self._agent_reqs = set()  # using set will avoid duplicates
+        layout = self._cfg['agent_layout']
+        for worker in layout:
+            target = layout[worker].get('target')
+            # make sure that the target either 'local', which we will ignore, or
+            # 'agent_node[<n>]', for some integer 'n' >= 0
+            if target == 'local':
+                pass # ignore that one
+            elif target.startswith('agent_node[') and \
+                 target.endswith(']') and \
+                 (int(target[11:-1]) >= 0) :
+                self._agent_reqs.add(target)
+            else :
+                raise ValueError("ill-formatted agent target '%s'" % target)
+
+
+        # we are good to get rolling, and to detect the runtime environment of
+        # the local LRMS.
         self._configure()
-
         logger.info("Discovered execution environment: %s", self.node_list)
+
+        # make sure we got a valid nodelist and a valid setting for
+        # cores_per_node
+        if not self.node_list or self.cores_per_node < 1:
+            raise RuntimeError('LRMS configuration invalid (%s)(%s)' % \
+                    (self.node_list, self.cores_per_node))
+
+        # check if the LRMS implementation reserved agent nodes.  If not, pick
+        # the first couple of nodes from the nodelist as a fallback
+        if len(self._agent_reqs) and not self.agent_nodes:
+            self._log.info('use fallback to determine set of agent nodes')
+            for ar in self._agent_reqs:
+                self.agent_nodes[ar] = self.node_list.pop(0)
+                if not self.node_list:
+                    break
+
+        if self.agent_nodes:
+            self._log.info('reserved agent nodes: %s' % self.agent_nodes)
+            self._log.info('remaining work nodes: %s' % self.node_list)
+
+        # check if we can do any work
+        if not self.node_list:
+            raise RuntimeError('LRMS has no nodes left to run units')
 
         # after LRMS configuration, we call any existing config hooks on the
         # launch methods.  Those hooks may need to adjust the LRMS settings
-        # (hello ORTE).  
-        task_lm = config.get('task_launch_method')
-        mpi_lm  = config.get('mpi_launch_method')
+        # (hello ORTE).  We only call LM hooks *once*
+        launch_methods = set() # set keeps entries unique
+        launch_methods.add(self._cfg['mpi_launch_method'])
+        launch_methods.add(self._cfg['task_launch_method'])
+        launch_methods.add(self._cfg['agent_launch_method'])
 
-        # make sure we call the config hook just once
-        if task_lm == mpi_lm:
-            mpi_lm = None
-
-        if task_lm:
-            task_lm_info = LaunchMethod.lrms_config_hook(task_lm, self._cfg, self, self._log)
-        if task_lm:
-            mpi_lm_info  = LaunchMethod.lrms_config_hook(mpi_lm,  self._cfg, self, self._log)
-
-        # FIXME: this is not clean, but we'll only fix it once we have more than
-        #        one LM implemening a config hook
-
-        if task_lm_info:
-            self.lm_info = task_lm_info
-
-        if mpi_lm_info:
-            ru.dict_merge(self.lm_info, mpi_lm_info)
+        for lm in launch_methods:
+            if lm:
+                ru.dict_merge(self.lm_info,
+                        LaunchMethod.lrms_config_hook(lm, self._cfg, self, self._log))
 
         # For now assume that all nodes have equal amount of cores
         cores_avail = len(self.node_list) * self.cores_per_node
@@ -2214,6 +2249,7 @@ class LRMS(object):
             }[name]
             return impl(name, config, logger)
         except KeyError:
+            logger.exception('oops')
             raise RuntimeError("LRMS type '%s' unknown!" % name)
 
 
@@ -2229,12 +2265,17 @@ class LRMS(object):
     def hostname(self):
 
         # if a deriving class set a hostname, use that
-        if self._hostname:
-            return self._hostname
-
         # otherwise try to find hostname ourself
-        import socket
-        return socket.getfqdn()
+        if not self._hostname:
+
+            import socket
+            self._hostname = socket.getfqdn()
+
+        if not self._hostname:
+            self._log.exception("could not detect hostname")
+            raise RuntimeError("could not detect hostname")
+
+        return self._hostname
 
 
     # --------------------------------------------------------------------------
@@ -2243,30 +2284,35 @@ class LRMS(object):
     def hostip(self):
 
         # if a deriving class set a hostip, use that
-        if self._hostip:
-            return self._hostip
+        # otherwise try to find hostip ourself
+        if not self._hostip:
 
-      # # otherwise try to find hostip ourself
-        import socket
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.setblocking(False)
-            s.settimeout(1.0)
-            s.connect(('8.8.8.8', 0))
-            return s.getsockname()[0]
-        except Exception as e:
-            self._log.warn("use fallback IP detection (%s)" % e)
+            import socket
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.setblocking(False)
+                s.settimeout(1.0)
+                s.connect(('8.8.8.8', 0))
+                self._hostip = s.getsockname()[0]
+            except Exception as e:
+                self._log.exception("use fallback IP detection (%s)" % e)
 
-        # fallback:
-        try:
-            iplist = socket.gethostbyaddr(self.hostname)[3]
-            if isinstance(iplist, list):
-                return iplist[0]
-            return iplist
-        except Exception as e:
-            self._log.exception("IP detection failed (%s)" % e)
+        if not self._hostip:
+            # fallback:
+            try:
+                iplist = socket.gethostbyaddr(self.hostname)[2]
+                if isinstance(iplist, list):
+                    self._hostip = iplist[0]
+                else:
+                    self._hostip = iplist
+            except Exception as e:
+                self._log.exception("IP detection failed (%s)" % e)
 
-        raise RuntimeError("could not detect local IP")
+        if not self._hostip:
+            self._log.exception("could not detect local IP")
+            raise RuntimeError("could not detect local IP")
+
+        return self._hostip
 
 
 
@@ -4864,14 +4910,6 @@ class AgentWorker(rpu.Worker):
     #
     def __init__(self, cfg):
 
-        # find out what agent instance name we have
-        if len(sys.argv) == 1:
-            # we are master
-            cfg['name'] = 'agent.0'
-        else:
-            # we are given a name
-            cfg['name'] = sys.argv[1]
-
         rpu.Worker.__init__(self, cfg)
 
         # everything which comes after the worker init is limited in scope to
@@ -5019,22 +5057,22 @@ class AgentWorker(rpu.Worker):
             my_cfg = layout[self.name]
             self._pull_units = my_cfg.get('pull_units', False)
 
-            # determine the set of nodes we want to block for the agent, if any.
-            # The layout's 'target' keys are interpreted as follows:
-            #   'local' : run instance co-located to agent.0.  
-            #             Do not reserve that node.
-            #   'node[n]: run instance on the n'th entry of the lrms.node_list.
-            #             Reserve that node (no units will be executed there).
-            self._cfg['lrms_hints']                = dict()
-            self._cfg['lrms_hints']['agent_nodes'] = list()
-            for l in layout:
-                # it is the responsibility of the LRMS to handle duplicated
-                # entries in this list
-                self._cfg['lrms_hints']['agent_nodes'].append(layout[l].get('target', 'local'))
+            # We create the LRMS which will give us the set of agent_nodes to
+            # use for worker startup.  We will also add the remaining LRMS
+            # information to the config, for the benefit of the scheduler).
+            self._lrms = LRMS.create(
+                    name            = self._cfg['lrms'],
+                    config          = self._cfg,
+                    logger          = self._log)
+            self._cfg['lrms_info'] = dict()
+            self._cfg['lrms_info']['lm_info']        = self._lrms.lm_info
+            self._cfg['lrms_info']['node_list']      = self._lrms.node_list
+            self._cfg['lrms_info']['cores_per_node'] = self._lrms.cores_per_node
+            self._cfg['lrms_info']['agent_nodes']    = self._lrms.agent_nodes
 
-            # we now create the LRMS
-
-
+            # keep the nodes for worker startup around
+            agent_nodes = self._lrms.agent_nodes
+            
             # collect information about the items we want to start
             start_components     = my_cfg.get('components', {})
             start_bridges        = my_cfg.get('bridges',    {})
@@ -5100,29 +5138,56 @@ class AgentWorker(rpu.Worker):
                 for wp in worker_pubsubs:
                     if wp in bridge_addresses and \
                         worker_pubsubs[wp] == 'agent.0':
-                        worker_pubsubs[wp] = str(bridge_addresses[wp]).replace('*', lrms.hostip)
+                        worker_pubsubs[wp] = str(bridge_addresses[wp]).replace('*', self._lrms.hostip)
 
                 for wq in worker_queues:
                     if wq in bridge_addresses and \
                         worker_queues[wq] == 'agent.0':
-                        worker_queues[wq] = str(bridge_addresses[wq]).replace('*', lrms.hostip)
+                        worker_queues[wq] = str(bridge_addresses[wq]).replace('*', self._lrms.hostip)
 
                 # we can now write the worker config
-                self._log.debug(pprint.pformat(worker_config))
                 ru.write_json(worker_config, './%s.cfg' % worker)
-
-                # now we can start the sub-agent instances.
-                # FIXME: this will need
-                #   - information from LRMS which nodes to start the agents on
-                #   - some agent launch method
-                # For now this is hard coded, but is probably something we want
-                # to make *slightly* more flexible / encapsulated
-                rpu.prof("start", msg=worker, logger=self._log.info)
-                cmd = "/bin/sh bootstrap_2.sh %(w)s 1>%(w)s.out 2>%(w)s.err </dev/null &" % {'w' : worker}
-                os.system(cmd)
-                self._log.info("sub-agent %s started (%s)" % (worker, cmd))
-        
             self._log.debug("worker configs written")
+
+            # the configs are written, and the workers can be started.  To know
+            # how to do that we create the agent launch method, have it creating
+            # the respective command lines per agent instance, and run via
+            # popen. 
+            # FIXME: We should keep a handle to the resulting process around, for
+            #        monitoring and shutdown.
+            agent_lm = LaunchMethod.create(
+                name            = self._cfg['agent_launch_method'],
+                config          = self._cfg,
+                logger          = self._log)
+            for worker in workers:
+                agent_node = agent_nodes.get(worker)
+                if not agent_node :
+                    # start agent locally
+                    cmd = "/bin/sh bootstrap_2.sh %s" % worker
+                else:
+                    # start agent remotely, use launch method
+                    # NOTE:  there is some implicit assumption that we can use
+                    #        the 'agent_node' string as 'agent_string:0' and
+                    #        obtain a well format slot...
+                    # FIXME: it is actually tricky to translate the agent_node
+                    #        into a viable 'opaque_slots' structure, as that is
+                    #        usually done by the schedulers.  So we leave that
+                    #        out for the moment, which will make this unable to
+                    #        work with a number of launch methods.  Can the
+                    #        offset computation be moved to the LRMS?
+                    opaque_slots = { 
+                            'task_slots'   : ['%s:0' % agent_node], 
+                            'task_offsets' : [], 
+                            'lm_info'      : self._lrms_lm_info}
+                    cmd = agent_lm.construct_command(task_exec="/bin/sh", 
+                            task_args=['bootstrap_2.sh', worker], 
+                            task_numcores=1, 
+                            launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
+                            opaque_slots=opaque_slots)
+
+                rpu.prof("start", msg=worker)
+                self._log.info("start sub-agent %s: %s" % (worker, cmd))
+                os.system(cmd + " 1>%(w)s.out 2>%(w)s.err </dev/null &" % {'w' : worker})
 
             # create all the component types we need. create n instances for each
             # type.
@@ -5308,6 +5373,12 @@ def bootstrap_3():
         raise RuntimeError('RADICAL_PILOT_CFG is not set - abort')
 
     cfg = ru.read_json_str(os.environ['RADICAL_PILOT_CFG'])
+
+    # find out what agent instance name we have
+    if len(sys.argv) != 2: 
+        raise RuntimeError('invalid number of parameters (%s)' % sys.argv)
+    cfg['name'] = sys.argv[1]
+
     print "Agent config (%s):\n%s\n\n" % \
             (os.environ['RADICAL_PILOT_CFG'], pprint.pformat(cfg))
 

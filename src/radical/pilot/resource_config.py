@@ -11,6 +11,7 @@ from radical.pilot.exceptions import *
 # ------------------------------------------------------------------------------
 # Attribute description keys
 LABEL                       = 'label'
+AGENT_LAUNCH_METHOD         = 'agent_launch_method'
 AGENT_MONGODB_ENDPOINT      = 'agent_mongodb_endpoint'
 AGENT_SCHEDULER             = 'agent_scheduler'
 AGENT_SPAWNER               = 'agent_spawner'
@@ -189,7 +190,8 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
-        self._attributes_register(LABEL,                   label, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(LABEL                  , label, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(AGENT_LAUNCH_METHOD    ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_MONGODB_ENDPOINT ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_SCHEDULER        ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_SPAWNER          ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)

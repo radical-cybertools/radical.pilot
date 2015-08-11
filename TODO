@@ -25,5 +25,8 @@
   - component failures need to propagate to the agent to trigger shutdown
   - advance() implicitly publishes unit state, but the publisher needs to be
     declared explicitly.
+  - rename 'worker' to 'sub-agent' to avoid confusion?
+  - check what happens if target for agent.0 is 'agent_node[0]'
+  - 
 
   - component: collapse declare_input and declare_worker

@@ -406,6 +406,7 @@ class PilotLauncherWorker(threading.Thread):
 
                         # ------------------------------------------------------
                         # get parameters from cfg, set defaults where needed
+                        agent_launch_method     = resource_cfg.get ('agent_launch_method')
                         agent_dburl             = resource_cfg.get ('agent_mongodb_endpoint', database_url)
                         agent_spawner           = resource_cfg.get ('agent_spawner',       DEFAULT_AGENT_SPAWNER)
                         agent_type              = resource_cfg.get ('agent_type',          DEFAULT_AGENT_TYPE)
@@ -584,8 +585,9 @@ class PilotLauncherWorker(threading.Thread):
                         if not agent_spawner      : raise RuntimeError("missing agent spawner")
                         if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
                         if not lrms               : raise RuntimeError("missing LRMS")
-                        if not mpi_launch_method  : raise RuntimeError("missing mpi launch method")
+                        if not agent_launch_method: raise RuntimeError("missing agentlaunch method")
                         if not task_launch_method : raise RuntimeError("missing task launch method")
+                        if not mpi_launch_method  : raise RuntimeError("missing mpi launch method")
 
                         # massage some values
                         debug_level = os.environ.get ('RADICAL_PILOT_AGENT_VERBOSE', logger.level)
@@ -652,8 +654,9 @@ class PilotLauncherWorker(threading.Thread):
                         agent_config['runtime']            = runtime
                         agent_config['pilot_id']           = pilot_id
                         agent_config['session_id']         = session_id
-                        agent_config['mpi_launch_method']  = mpi_launch_method
+                        agent_config['agent_launch_method']= agent_launch_method
                         agent_config['task_launch_method'] = task_launch_method
+                        agent_config['mpi_launch_method']  = mpi_launch_method
 
                         # ------------------------------------------------------
                         # Write agent config dict to a json file in pilot sandbox.

@@ -1264,13 +1264,20 @@ echo "# CMDLINE: $AGENT_CMD"
 # Arguments to that script are passed on to the agent, which is specifically
 # done to distinguish agent instances.
 #
+# ------------------------------------------------------------------------------
 (cat <<EOT
 #!/bin/sh
+
+# some inspection for logging
+hostname
+
+# make sure we use the correct sandbox
+cd $SANDBOX
 
 # preprocessing commands
 $PREPROCESSING
 
-# actiavte virtenv
+# activate virtenv
 . $VIRTENV/bin/activate
 
 # make sure rp_install is used
@@ -1289,6 +1296,7 @@ EOT
 
 )> bootstrap_2.sh
 chmod 0755 bootstrap_2.sh
+# ------------------------------------------------------------------------------
 
 profile_event 'agent start'
 

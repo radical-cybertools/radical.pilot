@@ -12,8 +12,8 @@ dh = ru.DebugHelper ()
 CNT      =     0
 RUNTIME  =    10
 SLEEP    =     1
-CORES    =    26
-UNITS    =    50
+CORES    =    64
+UNITS    =    64
 SCHED    = rp.SCHED_DIRECT_SUBMISSION
 
 resources = {
