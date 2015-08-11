@@ -22,3 +22,4 @@
     MPI and non-MPI?  Not sure about the diversity of combinations which need
     supporting...
 
+  - component: collapse declare_input and declare_worker

@@ -31,8 +31,7 @@
                 "agent_staging_input_component"  : 1,
                 "agent_scheduling_component"     : 0,
                 "agent_executing_component"      : 1,
-                "agent_staging_output_component" : 0,
-                "agent_update_worker"            : 1
+                "agent_staging_output_component" : 0
             },
             "bridges" : {
                 # which bridges (and what type) should be started locally 
@@ -62,8 +61,7 @@
                 "agent_staging_input_component"  : 0,
                 "agent_scheduling_component"     : 1,
                 "agent_executing_component"      : 0,
-                "agent_staging_output_component" : 1,
-                "agent_update_worker"            : 0
+                "agent_staging_output_component" : 1
             },
             "bridges" : {
                 # which bridges (and what type) should be started locally 

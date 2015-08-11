@@ -5010,6 +5010,7 @@ class AgentWorker(rpu.Worker):
             # keep track of objects we need to close in the finally clause
             self._bridges    = list()
             self._components = list()
+            self._workers    = list()
 
             # two shortcuts for bridge creation
             def _create_queue_bridge(qname):
@@ -5102,7 +5103,6 @@ class AgentWorker(rpu.Worker):
             # We use a static map from component names to class types for now --
             # a factory might be more appropriate (FIXME)
             cmap = {
-                "agent_update_worker"            : AgentUpdateWorker,
                 "agent_staging_input_component"  : AgentStagingInputComponent,
                 "agent_scheduling_component"     : AgentSchedulingComponent,
                 "agent_executing_component"      : AgentExecutingComponent,
@@ -5118,12 +5118,24 @@ class AgentWorker(rpu.Worker):
                 for i in range(cnum):
 
                     # each component gets its own copy, which specifically has
-                    # no 'name' entru set -- name will then be the component
+                    # no 'name' entry set -- name will then be the component
                     # class name.
                     ccfg = copy.deepcopy(self._cfg)
                     del(ccfg['name'])
                     comp = cmap[cname].create(ccfg)
                     self._components.append(comp)
+
+            # we also create *one* instance of every 'worker' type -- which is
+            # specifically the update worker which pushes state updates to
+            # mongodb.
+            wmap = {
+                "agent_update_worker" : AgentUpdateWorker
+                }
+            for wname in wmap:
+                    wcfg = copy.deepcopy(self._cfg)
+                    del(wcfg['name'])
+                    worker = wmap[wname].create(wcfg)
+                    self._workers.append(worker)
 
             # FIXME: make sure all communication channels are in place.  This could
             # be replaced with a proper barrier, but not sure if that is worth it...
@@ -5159,6 +5171,10 @@ class AgentWorker(rpu.Worker):
             self._log.info("closing component %s", c._name)
             c.close()
       
+        for w in self._workers:
+            self._log.info("closing worker %s", w._name)
+            w.close()
+
         for b in self._bridges:
             self._log.info("closing bridge %s", b._name)
             b.close()
