@@ -111,14 +111,22 @@ if __name__ == "__main__":
         units = umgr.submit_units(cuds)
 
         pdesc = rp.ComputePilotDescription()
-        pdesc.resource      = resource
-        pdesc.cores         = 1
-        pdesc.project       = resources[resource]['project']
-        pdesc.queue         = resources[resource]['queue']
-        pdesc.runtime       = RUNTIME
-        pdesc.cleanup       = False
-        pdesc.access_schema = resources[resource]['schema']
+        pdesc.resource        = resource
+        pdesc.cores           = 1
+        pdesc.project         = resources[resource]['project']
+        pdesc.queue           = resources[resource]['queue']
+        pdesc.runtime         = RUNTIME
+        pdesc.cleanup         = False
+        pdesc.access_schema   = resources[resource]['schema']
+        pdesc.candidate_hosts = [#'MIT_CMS',
+                                 #'UConn-OSG',
+                                 #'SU-OG',
+                                 #'BU_ATLAS_Tier2',
+                                 '!UCSDT2', # Failing because of format character ...
+                                 '~(HAS_CVMFS_oasis_opensciencegrid_org =?= TRUE)'
+                                ]
 
+        # TODO: bulk submit pilots here
         for p in range(PILOTS):
             pilot = pmgr.submit_pilots(pdesc)
             umgr.add_pilots(pilot)
