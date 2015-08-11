@@ -730,9 +730,11 @@ class SchedulerContinuous(AgentSchedulingComponent):
             else:
                 raise NotImplementedError('No scattered multi node scheduler implemented yet.')
 
-        if task_slots is not None:
-            self._change_slot_states(task_slots, BUSY)
+        if not task_slots:
+            # allocation failed
+            return {}
 
+        self._change_slot_states(task_slots, BUSY)
         task_offsets = self.slots2offset(task_slots)
 
         return {'task_slots'   : task_slots, 
