@@ -6,11 +6,12 @@
   + lrms/scheduler dependency
   - profile names
   - log file name uniquenenss
-  - state history (update ordering)
-    - multiple updater instances will compete for state updates and push them
+  + state history (update ordering)
+    + multiple updater instances will compete for state updates and push them
       out of order, thus screwing with the CU states which end up in the DB.\
+    + limit to one update instance
   - pilot updates via updater (different pubsub channel)
-  - make sure finalize is called on terminate (via atexit?)
+  + make sure finalize is called on terminate (via atexit?)
   - make sure all profile entries exist, merge from module profiling branch
   - merge from devel / osgng :/
   - forward tunnel endpoint from bootstrap_1 to agent
@@ -21,5 +22,6 @@
   - At this point it might be simpler to have one LRMS instance which handles
     MPI and non-MPI?  Not sure about the diversity of combinations which need
     supporting...
+  - component failures need to propagate to the agent to trigger shutdown
 
   - component: collapse declare_input and declare_worker

@@ -41,7 +41,7 @@ resources = {
             },
 
         'xsede.stampede' : {
-            'project'  : 'TG-CCR140028',
+            'project'  : 'TG-MCB090174',
             'queue'    : 'development',
             'schema'   : None
             },

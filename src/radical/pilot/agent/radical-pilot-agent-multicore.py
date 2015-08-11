@@ -3450,7 +3450,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self, cfg):
+    def initialize(self):
 
       # self.declare_input (rp.AGENT_EXECUTING_PENDING, rp.AGENT_EXECUTING_QUEUE)
       # self.declare_worker(rp.AGENT_EXECUTING_PENDING, self.work)
