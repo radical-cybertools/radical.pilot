@@ -23,5 +23,7 @@
     MPI and non-MPI?  Not sure about the diversity of combinations which need
     supporting...
   - component failures need to propagate to the agent to trigger shutdown
+  - advance() implicitly publishes unit state, but the publisher needs to be
+    declared explicitly.
 
   - component: collapse declare_input and declare_worker

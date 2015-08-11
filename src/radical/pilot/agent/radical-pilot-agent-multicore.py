@@ -4941,6 +4941,7 @@ class AgentWorker(rpu.Worker):
         self._pilot_id   = self._cfg['pilot_id']
         self._session_id = self._cfg['session_id']
         self._runtime    = self._cfg['runtime']
+        self._pull_units = False
 
         # prepare profiler
         rpu.prof_init('agent.prof', 'start', uid=self._cfg['pilot_id'])
@@ -4967,12 +4968,12 @@ class AgentWorker(rpu.Worker):
         # TODO: Check for return value, update should be true!
         self._log.info("Database updated: %s", ret)
 
-
         # create components
         self._setup()       
 
-        # register the stagiing_input_queue as this is what we want to push to
+        # register the staging_input_queue as this is what we want to push to
         self.declare_output(rp.AGENT_STAGING_INPUT_PENDING, rp.AGENT_STAGING_INPUT_QUEUE)
+        self.declare_publisher('state', rp.AGENT_STATE_PUBSUB)
 
         # register idle callback, to pull for units -- which is the only action
         # we have to perform, really
@@ -4985,16 +4986,25 @@ class AgentWorker(rpu.Worker):
     #
     def _setup(self):
         """
-        This method will instantiate all communitation and notification channels,
-        and all components.  It will then feed a set of units to the lead-in queue
-        (staging_input).  A state notification callback will then register all units
-        which reached a final state (DONE).  Once all units are accounted for, it
-        will tear down all created objects.
+        This method will instantiate all communitation and notification
+        channels, and all components and workers.  It will then feed a set of
+        units to the lead-in queue (staging_input).  A state notification
+        callback will then register all units which reached a final state
+        (DONE).  Once all units are accounted for, it will tear down all created
+        objects.
 
-        The agent accepts a config, which will specifcy 
+        The agent accepts a config, which will specifcy in an agent_layout
+        section:
+          - what nodes should be used for sub-agent startup
           - what bridges should be started
           - what components should be started
           - what are the endpoints for bridges which are not started
+
+        Before starting any sub-agent or component, the agent master (agent.0)
+        will collect information about the nodes required for all instances.
+        That is added to the config itself, for the benefit of the LRMS
+        initizialization which is expected to block those nodes from the
+        scheduler.
         """
 
         # NOTE: we don't do sanity checks on the agent layout (too lazy) -- but
@@ -5004,10 +5014,30 @@ class AgentWorker(rpu.Worker):
             raise RuntimeError("no agent layout section for %s" % self.name)
 
         try:
-            self._priv_cfg = self._cfg['agent_layout'][self.name]
+            # get config, check if this agent instance pull for units
+            layout = self._cfg['agent_layout']
+            my_cfg = layout[self.name]
+            self._pull_units = my_cfg.get('pull_units', False)
 
-            start_components     = self._priv_cfg.get('components', {})
-            start_bridges        = self._priv_cfg.get('bridges',    {})
+            # determine the set of nodes we want to block for the agent, if any.
+            # The layout's 'target' keys are interpreted as follows:
+            #   'local' : run instance co-located to agent.0.  
+            #             Do not reserve that node.
+            #   'node[n]: run instance on the n'th entry of the lrms.node_list.
+            #             Reserve that node (no units will be executed there).
+            self._cfg['lrms_hints']                = dict()
+            self._cfg['lrms_hints']['agent_nodes'] = list()
+            for l in layout:
+                # it is the responsibility of the LRMS to handle duplicated
+                # entries in this list
+                self._cfg['lrms_hints']['agent_nodes'].append(layout[l].get('target', 'local'))
+
+            # we now create the LRMS
+
+
+            # collect information about the items we want to start
+            start_components     = my_cfg.get('components', {})
+            start_bridges        = my_cfg.get('bridges',    {})
             start_queue_bridges  = start_bridges.get('queue',    {})
             start_pubsub_bridges = start_bridges.get('pubsub',   {})
 
@@ -5051,19 +5081,11 @@ class AgentWorker(rpu.Worker):
 
             self._log.debug("bridges started")
 
-            # the workers will need the hostnames or ip addresses to connect to
-            # the bridges.  Its likely that we started the bridges in
-            # auto-listening mode, using something like 'tcp://*:1234', where
-            # zmq will listen on all interfaces.  Before we communicate those
-            # endpoints to the worker agents, we need to replace that '*' with
-            # our real hostname or IP.  Who could better do that than the LRMS?
-            lrms = LRMS.create(self._cfg['lrms'], self._cfg, self._log)
-
             # we now have the bridge addresses.  Those need to be corrected in
             # the agent config before we pass that config on to (a) the
             # components we create below, and (b) to any other agent instance we
             # intent to spawn.  So we do that for all workers we have configures
-            workers = self._priv_cfg.get('workers', [])
+            workers = my_cfg.get('workers', [])
             for worker in workers:
 
                 # each worker gets its own copy, which specifically sets the
@@ -5199,7 +5221,7 @@ class AgentWorker(rpu.Worker):
         """
 
         # only do something if we are configured to do so
-        if not self._priv_cfg.get('pull_units'):
+        if not self._pull_units:
             self._log.debug('not configured to pull for units')
             return 0
 

@@ -23,7 +23,7 @@
 
     "agent_layout" : {
         "agent.0"   : {
-            "target"     : "local",
+            "target"     : "nodelist[0]",
             "workers"    : ["agent.1"],
             "pull_units" : 1,
             "components" : {
@@ -52,8 +52,7 @@
             }
         },
         "agent.1"   : {
-          # "target"     : "nodelist[0]",
-            "target"     : "10.0.2.15",
+            "target"     : "nodelist[1]",
             "workers"    : [],
             "pull_units" : 0,
             "components" : {
