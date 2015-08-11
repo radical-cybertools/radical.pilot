@@ -4972,8 +4972,10 @@ class AgentWorker(rpu.Worker):
         # register the stagiing_input_queue as this is what we want to push to
         self.declare_output(rp.AGENT_STAGING_INPUT_PENDING, rp.AGENT_STAGING_INPUT_QUEUE)
 
-        # register idle callback -- which is the only action we have to perform,
-        # really
+        # register idle callback, to pull for units -- which is the only action
+        # we have to perform, really
+        # FIXME: do a sanity check on the config that only one agent pulls, as
+        # this is non-atomic
         self.declare_idle_cb(self.idle_cb, self._cfg['db_poll_sleeptime'])
 
 
@@ -5127,15 +5129,17 @@ class AgentWorker(rpu.Worker):
 
             # we also create *one* instance of every 'worker' type -- which is
             # specifically the update worker which pushes state updates to
-            # mongodb.
+            # mongodb.  To ensure this, we only create workers in agent.0.  
+            # FIXME: make this configurable, both number and placemwent
             wmap = {
                 "agent_update_worker" : AgentUpdateWorker
                 }
-            for wname in wmap:
-                    wcfg = copy.deepcopy(self._cfg)
-                    del(wcfg['name'])
-                    worker = wmap[wname].create(wcfg)
-                    self._workers.append(worker)
+            if self.name == 'agent.0':
+                for wname in wmap:
+                        wcfg = copy.deepcopy(self._cfg)
+                        del(wcfg['name'])
+                        worker = wmap[wname].create(wcfg)
+                        self._workers.append(worker)
 
             # FIXME: make sure all communication channels are in place.  This could
             # be replaced with a proper barrier, but not sure if that is worth it...

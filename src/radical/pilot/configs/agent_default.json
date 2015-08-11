@@ -25,13 +25,13 @@
         "agent.0"   : {
             "target"     : "local",
             "workers"    : ["agent.1"],
-            "pull_units" : 0,
+            "pull_units" : 1,
             "components" : {
                 # how many instances of the respective components should be started
-                "agent_staging_input_component"  : 1,
-                "agent_scheduling_component"     : 0,
-                "agent_executing_component"      : 1,
-                "agent_staging_output_component" : 0
+                "agent_staging_input_component"  : 2,
+                "agent_scheduling_component"     : 1,
+                "agent_executing_component"      : 2,
+                "agent_staging_output_component" : 2
             },
             "bridges" : {
                 # which bridges (and what type) should be started locally 
@@ -55,13 +55,13 @@
           # "target"     : "nodelist[0]",
             "target"     : "10.0.2.15",
             "workers"    : [],
-            "pull_units" : 1,
+            "pull_units" : 0,
             "components" : {
                 # how many instances of the respective components should be started
-                "agent_staging_input_component"  : 0,
-                "agent_scheduling_component"     : 1,
-                "agent_executing_component"      : 0,
-                "agent_staging_output_component" : 1
+                "agent_staging_input_component"  : 2,
+                "agent_scheduling_component"     : 0,
+                "agent_executing_component"      : 2,
+                "agent_staging_output_component" : 2
             },
             "bridges" : {
                 # which bridges (and what type) should be started locally 

@@ -448,9 +448,6 @@ class Component(mp.Process):
                                 uid=unit['_id'], logger=self._log.error)
                         continue
 
-                    # notify unit arrival
-                    self.publish('state', unit)
-
                     # check if we have a suitable worker (this should always be
                     # the case, as per the assertion done before we started the
                     # main loop.  But, hey... :P
@@ -535,7 +532,6 @@ class Component(mp.Process):
             if state:
                 unit['state'] = state
                 rpu_prof('state', uid=unit['_id'], msg=state)
-
 
             if publish:
                 # send state notifications
