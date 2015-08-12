@@ -149,14 +149,6 @@ class Component(mp.Process):
         if 'RADICAL_DEBUG' in os.environ:
             self._debug = True
 
-        # configure the component's logger
-        target    = "component_%s.log" % self._name
-        level     = self._cfg.get('debug', 'INFO')
-        self._log = rpu_get_logger(self._name, target, level)
-        self._log.debug('init %s - %s' % (self._name, os.getpid()))
-        self._log.debug('addr %s' % (pprint.pformat(self._addr_map)))
-        self._log.debug('cfg  %s' % (pprint.pformat(self._cfg)))
-
         # start the main event loop in a separate process.  At that point, the
         # component will basically detach itself from the parent process, and
         # will only maintain a handle to be used for shutdown
@@ -237,7 +229,7 @@ class Component(mp.Process):
 
         # check if a remote address is configured for the queue
         addr = self._addr_map.get (input)
-        self._log.debug("using addr %s for input %s" % (addr, input))
+      # self._log.debug("using addr %s for input %s" % (addr, input))
 
         q = rpu_Queue.create(rpu_QUEUE_ZMQ, input, rpu_QUEUE_OUTPUT, addr)
         self._inputs.append([q, states])
@@ -275,7 +267,7 @@ class Component(mp.Process):
             else:
                 # check if a remote address is configured for the queue
                 addr = self._addr_map.get (output)
-                self._log.debug("using addr %s for output %s" % (addr, output))
+              # self._log.debug("using addr %s for output %s" % (addr, output))
 
                 # non-final state, ie. we want a queue to push to
                 self._outputs[state] = \
@@ -336,7 +328,7 @@ class Component(mp.Process):
 
         # check if a remote address is configured for the queue
         addr = self._addr_map.get (pubsub)
-        self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
+      # self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
 
         q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_PUB, addr)
         self._publishers[topic].append(q)
@@ -361,18 +353,15 @@ class Component(mp.Process):
 
         # ----------------------------------------------------------------------
         def _subscriber(q, callback):
-            try:
-                while not self._terminate.is_set():
-                    topic, msg = q.get_nowait(0.1) # FIXME timout
-                    if topic and msg:
-                        callback (topic=topic, msg=msg)
-            except Exception as e:
-                self._log.exception('subscriber failed: %s' % e)
+            while not self._terminate.is_set():
+                topic, msg = q.get_nowait(0.1) # FIXME timout
+                if topic and msg:
+                    callback (topic=topic, msg=msg)
         # ----------------------------------------------------------------------
 
         # create a pubsub subscriber, and subscribe to the given topic
-        self._log.debug('create subscriber: %s - %s' \
-                        % (mt.current_thread().name, os.getpid()))
+      # self._log.debug('create subscriber: %s - %s' \
+      #                 % (mt.current_thread().name, os.getpid()))
         q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB)
         q.subscribe(topic)
 
@@ -394,6 +383,11 @@ class Component(mp.Process):
         """
 
         dh = ru.DebugHelper()
+
+        # configure the component's logger
+        target    = "component_%s.log" % self._name
+        level     = self._cfg.get('debug', 'INFO')
+        self._log = rpu_get_logger(self._name, target, level)
 
         # registering a sigterm handler will allow us to call an exit when the
         # parent calls terminate -- which is excepted in the loop below, and we
@@ -549,7 +543,7 @@ class Component(mp.Process):
 
                 if not self._outputs[state]:
                     # empty output -- drop unit
-                    self._log.debug('%s %s ===| %s' % ('state', unit['id'], unit['state']))
+                  # self._log.debug('%s %s ===| %s' % ('state', unit['id'], unit['state']))
                     continue
 
                 # FIXME: we should assert that the unit is in a PENDING state.

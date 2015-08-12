@@ -4392,6 +4392,7 @@ class AgentUpdateWorker(rpu.Worker):
     #
     @classmethod
     def create(cls, cfg):
+
         return cls(cfg)
 
 
@@ -5136,7 +5137,8 @@ class AgentWorker(rpu.Worker):
         agent instance on the respective node.  We pass it to the seconds
         bootstrap level, there is no need to pass the first one again.
         """
-        self._log.debug('step: start_sub_agents')
+
+        self._log.debug('start_sub_agents')
 
         # the configs are written, and the sub-agents can be started.  To know
         # how to do that we create the agent launch method, have it creating
@@ -5182,6 +5184,7 @@ class AgentWorker(rpu.Worker):
             self._log.info("create sub-agent %s: %s" % (sa, cmd))
             os.system("%s 1>%s.out 2>%s.err </dev/null &" % (cmd, sa, sa))
 
+        self._log.debug('start_sub_agents done')
 
     # --------------------------------------------------------------------------
     #
@@ -5191,7 +5194,7 @@ class AgentWorker(rpu.Worker):
         Keep a handle around for shutting them down later.
         """
 
-        self._log.debug('step: start_bridges')
+        self._log.debug('start_bridges')
 
         # ----------------------------------------------------------------------
         # shortcut for bridge creation
@@ -5220,7 +5223,7 @@ class AgentWorker(rpu.Worker):
             self._log.debug("start bridge %s" % b)
             self._bridges.append(_create_bridge(b))
 
-        self._log.debug("bridges started")
+        self._log.debug('start_bridges done')
 
 
     # --------------------------------------------------------------------------
@@ -5230,6 +5233,8 @@ class AgentWorker(rpu.Worker):
         For all componants defined on this agent instance, create the required
         number of those.  Keep a handle around for shutting them down later.
         """
+
+        self._log.debug("start_components")
 
         # We use a static map from component names to class types for now --
         # a factory might be more appropriate (FIXME)
@@ -5264,6 +5269,7 @@ class AgentWorker(rpu.Worker):
                 worker.start()
                 self._workers.append(worker)
 
+        self._log.debug("start_components done")
 
     # --------------------------------------------------------------------------
     #
@@ -5290,7 +5296,7 @@ class AgentWorker(rpu.Worker):
         scheduler.
         """
 
-        self._log.debug('step: bootstrap_4')
+        self._log.debug('bootstrap_4')
 
         # we pick the layout according to our role (name)
         # NOTE: we don't do sanity checks on the agent layout (too lazy) -- but
