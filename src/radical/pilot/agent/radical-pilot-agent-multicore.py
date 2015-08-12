@@ -4955,14 +4955,6 @@ class AgentWorker(rpu.Worker):
         # make sure we have a name
         self.name = cfg['name']
 
-        # NOTE: we pass the config to the Worker base right here where it will
-        # be used for bridge address lookup later on.  That config though does
-        # not yet know anything about agent_nodes, so cannot know about remote
-        # bridges.  Any communication channels opened in this process, and in
-        # any worker process or thread, will thus expect bridges to live local.
-        # Ultimately, only agent.x with x>0 will be able to talk to remote
-        # bridges, as they get the IP addresses passed in their config already,
-        # before they reach this place here.
         rpu.Worker.__init__(self, cfg, logger)
 
         # everything which comes after the worker init is limited in scope to
@@ -4975,15 +4967,7 @@ class AgentWorker(rpu.Worker):
         _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
         self._p  = mongo_db["%s.p"  % self._session_id]
 
-        # subscribe for commands from the heartbeat worker, mostly for shutdown
-        # NOTE: this callback needs to live in the agent proper, ie. in the
-        #       agent.0 before creating the subprocesses, as that is the root of
-        #       the process tree and shutdown needs to start here.  However,
-        #       during __inig__ of this process, we did not yet start any
-        #       bridges, and specifically do not yet know the address of the
-        #       agent_command_pubsub bridge.  Zeromq will delay the connection
-        #       all right, so calling connect straight away is ok -- but the
-        #       bridge should better live on the same host as this process!
+        # subscribe for commands (including shutdown)
         self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
 
 
