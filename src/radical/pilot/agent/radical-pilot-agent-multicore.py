@@ -4913,6 +4913,14 @@ class AgentWorker(rpu.Worker):
         # make sure we have a name
         self.name = cfg['name']
 
+        # NOTE: we pass the config to the Worker base right here where it will
+        # be used for bridge address lookup later on.  That config though does
+        # not yet know anything about agent_nodes, so cannot know about remote
+        # bridges.  Any communication channels opened in this process, and in
+        # any worker process or thread, will thus expect bridges to live local.
+        # Ultimately, only agent.x with x>0 will be able to talk to remote
+        # bridges, as they get the IP addresses passed in their config already,
+        # before they reach this place here.
         rpu.Worker.__init__(self, cfg)
 
         # everything which comes after the worker init is limited in scope to
