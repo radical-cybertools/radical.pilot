@@ -427,9 +427,9 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, logger):
 
-        rpu.Component.__init__(self, cfg)
+        rpu.Component.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -475,21 +475,25 @@ class AgentSchedulingComponent(rpu.Component):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, cfg):
+    def create(cls, cfg, logger=None):
 
         # Make sure that we are the base-class!
         if cls != AgentSchedulingComponent:
             raise TypeError("Scheduler Factory only available to base class!")
 
+        name = cfg['scheduler']
+
+        if not logger:
+            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
+
         try:
-            name = cfg['scheduler']
             impl = {
                 SCHEDULER_NAME_CONTINUOUS : SchedulerContinuous,
                 SCHEDULER_NAME_SCATTERED  : SchedulerScattered,
                 SCHEDULER_NAME_TORUS      : SchedulerTorus
             }[name]
 
-            impl = impl(cfg)
+            impl = impl(cfg, logger)
             return impl
 
         except KeyError:
@@ -644,11 +648,11 @@ class SchedulerContinuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, logger):
 
         self.slots = None
 
-        AgentSchedulingComponent.__init__(self, cfg)
+        AgentSchedulingComponent.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -929,12 +933,12 @@ class SchedulerTorus(AgentSchedulingComponent):
 
 
     # --------------------------------------------------------------------------
-    def __init__(self, cfg):
+    def __init__(self, cfg, logger):
 
         self.slots            = None
         self._cores_per_node  = None
 
-        AgentSchedulingComponent.__init__(self, cfg)
+        AgentSchedulingComponent.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1183,11 +1187,14 @@ class LaunchMethod(object):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, name, config, logger):
+    def create(cls, name, config, logger=None):
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
             raise TypeError("LaunchMethod factory only available to base class!")
+
+        if not logger:
+            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
 
         try:
             impl = {
@@ -2122,7 +2129,7 @@ class LRMS(object):
     in LRMS.node_list.
 
     Additionally, the LRMS can inform the agent about the current hostname
-    (LRMS.hostname) and ip (LRMS.hostip).  Once we start to spread the agent
+    (LRMS.hostname()) and ip (LRMS.hostip()).  Once we start to spread the agent
     over some compute nodes, we may want to block the respective nodes on LRMS
     level, so that is only reports the remaining nodes to the scheduler.
     """
@@ -2231,11 +2238,14 @@ class LRMS(object):
     # This class-method creates the appropriate sub-class for the LRMS.
     #
     @classmethod
-    def create(cls, name, config, logger):
+    def create(cls, name, config, logger=None):
 
         # Make sure that we are the base-class!
         if cls != LRMS:
             raise TypeError("LRMS Factory only available to base class!")
+
+        if not logger:
+            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
 
         try:
             impl = {
@@ -2262,56 +2272,65 @@ class LRMS(object):
 
     # --------------------------------------------------------------------------
     #
-    @property
-    def hostname(self):
+    @staticmethod
+    def hostname(logger=None):
 
-        # if a deriving class set a hostname, use that
-        # otherwise try to find hostname ourself
-        if not self._hostname:
+        hostname = socket.getfqdn()
 
-            self._hostname = socket.getfqdn()
+        if not hostname:
+            hostname = os.uname()[1]
 
-        if not self._hostname:
-            self._log.exception("could not detect hostname")
+        if not hostname:
+            if logger:
+                logger.error("could not detect hostname")
             raise RuntimeError("could not detect hostname")
 
-        return self._hostname
+        return hostname
 
 
     # --------------------------------------------------------------------------
     #
-    @property
-    def hostip(self):
+    @staticmethod
+    def hostip(host=None, logger=None):
+        """
+        look up the ip number for a given host name.  If hostname is not given,
+        look up IP for localhost.
+        """
 
-        # if a deriving class set a hostip, use that
-        # otherwise try to find hostip ourself
-        if not self._hostip:
+        if not host:
 
+            # try the simple and safe detection first -- which will fail though
+            # if we don't have any connectivity
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 s.setblocking(False)
                 s.settimeout(1.0)
                 s.connect(('8.8.8.8', 0))
-                self._hostip = s.getsockname()[0]
+                return s.getsockname()[0]
             except Exception as e:
-                self._log.exception("use fallback IP detection (%s)" % e)
+                if logger:
+                    logger.exception("use fallback IP detection (%s)" % e)
 
-        if not self._hostip:
-            # fallback:
-            try:
-                iplist = socket.gethostbyaddr(self.hostname)[2]
-                if isinstance(iplist, list):
-                    self._hostip = iplist[0]
-                else:
-                    self._hostip = iplist
-            except Exception as e:
-                self._log.exception("IP detection failed (%s)" % e)
+            # if that did not work, fall back to the normal lookup for localhost
+            host = LRMS.hostname()
 
-        if not self._hostip:
-            self._log.exception("could not detect local IP")
-            raise RuntimeError("could not detect local IP")
+        # a hostis given, or is localhost now -- look it up.
+        # FIXME: Temporary hack because nodefile on Cray doesn't have actual hostnames
+        if True:
+            host = 'nid%.5d' % int(host)
 
-        return self._hostip
+        # FIXME: move to ru?
+        if hasattr(socket, 'setdefaulttimeout'):
+            socket.setdefaulttimeout(1)
+
+        try:
+            iplist = socket.gethostbyaddr(host)[2]
+            if isinstance(iplist, list):
+                return iplist[0]
+            else:
+                return iplist
+        except:
+            raise LookupError("Can't get IP address for host %s" % host)
 
 
 
@@ -3451,9 +3470,9 @@ class AgentExecutingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, logger):
 
-        rpu.Component.__init__(self, cfg)
+        rpu.Component.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -3461,20 +3480,24 @@ class AgentExecutingComponent(rpu.Component):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, cfg):
+    def create(cls, cfg, logger=None):
 
         # Make sure that we are the base-class!
         if cls != AgentExecutingComponent:
             raise TypeError("Factory only available to base class!")
 
+        name = cfg['spawner']
+
+        if not logger:
+            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
+
         try:
-            name = cfg['spawner']
             impl = {
                 SPAWNER_NAME_POPEN : ExecWorker_POPEN,
                 SPAWNER_NAME_SHELL : ExecWorker_SHELL
             }[name]
 
-            impl = impl(cfg)
+            impl = impl(cfg, logger)
             return impl
 
         except KeyError:
@@ -3488,9 +3511,9 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, logger):
 
-        AgentExecutingComponent.__init__ (self, cfg)
+        AgentExecutingComponent.__init__ (self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -3888,9 +3911,9 @@ class ExecWorker_SHELL(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, logger):
 
-        AgentExecutingComponent.__init__ (self, cfg)
+        AgentExecutingComponent.__init__ (self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -4383,17 +4406,21 @@ class AgentUpdateWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, logger):
 
-        rpu.Worker.__init__(self, cfg)
+        rpu.Worker.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def create(cls, cfg):
+    def create(cls, cfg, logger=None):
 
-        return cls(cfg)
+        if not logger:
+            name   = rp.AGENT_UPDATE_WORKER
+            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
+
+        return cls(cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -4544,16 +4571,21 @@ class AgentStagingInputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, logger):
 
-        rpu.Component.__init__(self, cfg)
+        rpu.Component.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def create(cls, cfg):
-        return cls(cfg)
+    def create(cls, cfg, logger=None):
+
+        if not logger:
+            name   = rp.AGENT_STAGING_INPUT_COMPONENT
+            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
+
+        return cls(cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -4661,16 +4693,21 @@ class AgentStagingOutputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, logger):
 
-        rpu.Component.__init__(self, cfg)
+        rpu.Component.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def create(cls, cfg):
-        return cls(cfg)
+    def create(cls, cfg, logger=None):
+
+        if not logger:
+            name   = rp.AGENT_STAGING_OUTPUT_COMPONENT
+            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
+
+        return cls(cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -4800,16 +4837,21 @@ class AgentHeartbeatWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, logger):
 
-        rpu.Worker.__init__(self, cfg)
+        rpu.Worker.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def create(cls, cfg):
-        return cls(cfg)
+    def create(cls, cfg, logger=None):
+
+        if not logger:
+            name   = rp.AGENT_HEARTBEAT_WORKER
+            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
+
+        return cls(cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -4908,7 +4950,7 @@ class AgentWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, logger):
 
         # make sure we have a name
         self.name = cfg['name']
@@ -4921,7 +4963,7 @@ class AgentWorker(rpu.Worker):
         # Ultimately, only agent.x with x>0 will be able to talk to remote
         # bridges, as they get the IP addresses passed in their config already,
         # before they reach this place here.
-        rpu.Worker.__init__(self, cfg)
+        rpu.Worker.__init__(self, cfg, logger)
 
         # everything which comes after the worker init is limited in scope to
         # the current process, and will not be available in the worker process.
@@ -5060,93 +5102,6 @@ class AgentWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def create_lrms(self):
-        """
-        Create the LRMS which will give us the set of agent_nodes to use for
-        sub-agent startup.  Add the remaining LRMS information to the config, for
-        the benefit of the scheduler).
-        """
-
-        # this should only be callsed by the master agent
-        if not self.name == 'agent.0':
-            raise RuntimeError('only the master agent shall create an LRMS')
-
-        self._lrms = LRMS.create(name   = self._cfg['lrms'],
-                                 config = self._cfg,
-                                 logger = self._log)
-        self._cfg['lrms_info'] = dict()
-        self._cfg['lrms_info']['lm_info']        = self._lrms.lm_info
-        self._cfg['lrms_info']['node_list']      = self._lrms.node_list
-        self._cfg['lrms_info']['cores_per_node'] = self._lrms.cores_per_node
-        self._cfg['lrms_info']['agent_nodes']    = self._lrms.agent_nodes
-
-
-    # --------------------------------------------------------------------------
-    #
-    def create_sub_configs(self):
-        """
-        Based on the LRMS info, and specifically the agent_nodes, we now know
-        where each sub_agent will run.  We will sift through the config, find
-        where the bridges are to be created, thus can determine their addresses, 
-        and will then apply those addresses to the queue and pubsub endpoints in
-        all agent components.  Note that the bridge addresses themself will not
-        change -- they are fine to listen on tcp://*:[port]/.
-
-        Once we did those changes, we will write copies of the resulting config
-        for each sub agent instance.  At the moment those configs are identical,
-        and the sub_agent will pick its own layout section -- but in principle
-        this is also the point where we would make individual config changes.
-        """
-
-        # this should only be callsed by the master agent
-        if not self.name == 'agent.0':
-            raise RuntimeError('only the master agent shall create sub configs')
-
-        # ---------------------------------------------------------------------
-        def node2ip(node):
-            # Temporary hack because nodefile on Cray doesn't have actual hostnames
-            if True:
-                node = 'nid%.5d' % int(node)
-
-            # FIXME: move to ru
-            if hasattr(socket, 'setdefaulttimeout'):
-                socket.setdefaulttimeout(1)
-            try:
-                return socket.gethostbyaddr(node)[2]
-            except:
-                raise LookupError("Can't get IP address for node %s" % node)
-        # ---------------------------------------------------------------------
-
-        # dig oput bridges from all sub-agents (sa)
-        bridge_addresses = dict()
-        for sa in self._cfg['agent_layout']:
-
-            target = self._cfg['agent_layout'][sa]['target']
-            node   = self._cfg['lrms_info']['agent_nodes'].get(target)
-
-            if not node: nodeip = self._lrms.hostip
-            else       : nodeip = node2ip(node)
-
-            if isinstance(nodeip, list):
-                nodeip = nodeip[0]
-
-            # we should have at most one bridge for every type
-            for b in self._cfg['agent_layout'][sa].get('bridges', []):
-                if b in bridge_addresses:
-                    raise RuntimeError('duplicated bridge entry for %s' % b)
-                bridge_addresses[b] = "tcp://%s" % nodeip
-
-        # add bridge addresses to the config
-        self._cfg['bridge_addresses'] = bridge_addresses
-
-        # create a sub_config for each sub-agent (but skip master config)
-        for sa in self._cfg['agent_layout']:
-            if sa != 'agent.0':
-                ru.write_json(self._cfg, './%s.cfg' % sa)
-
-
-    # --------------------------------------------------------------------------
-    #
     def start_sub_agents(self):
         """
         For the list of sub_agents, get a launch command and launch that
@@ -5275,8 +5230,8 @@ class AgentWorker(rpu.Worker):
         # FIXME: make this configurable, both number and placement
         if self.name == 'agent.0':
             wmap = {
-                "agent_update_worker"    : AgentUpdateWorker,
-                "agent_heartbeat_worker" : AgentHeartbeatWorker
+                rp.AGENT_UPDATE_WORKER    : AgentUpdateWorker,
+                rp.AGENT_HEARTBEAT_WORKER : AgentHeartbeatWorker
                 }
             for wname in wmap:
                 self._log.info('create worker %s', wname)
@@ -5321,13 +5276,6 @@ class AgentWorker(rpu.Worker):
             raise RuntimeError("no agent layout section for %s" % self.name)
 
         try:
-            # only the master agent creates LRMS and config files.  Each
-            # sub-agent can spawn other sub-agents.  In general, those will only
-            # be defined on the master agent though
-            if self.name == 'agent.0':
-                self.create_lrms()
-                self.create_sub_configs()
-
             self.start_bridges()
             self.start_components()
             self.start_sub_agents()
@@ -5515,11 +5463,68 @@ def bootstrap_3():
     signal.signal(signal.SIGINT, sigint_handler)
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
-    agent = None
+    # set up a logger
+    log = rpu.get_logger(agent_name, "%s.log" % agent_name, cfg.get('debug', 'INFO'))
+
     try:
         # ----------------------------------------------------------------------
-        # des Pudels Kern
-        agent = AgentWorker(cfg)
+        # des Pudels Kern: merge LRMS info into cfg and get the agent started
+
+        if agent_name == 'agent.0':
+            
+            # only the master agent creates LRMS and sub-agent config files.
+            # The LRMS which will give us the set of agent_nodes to use for
+            # sub-agent startup.  Add the remaining LRMS information to the
+            # config, for the benefit of the scheduler).
+
+            lrms = LRMS.create(name   = cfg['lrms'],
+                               config = cfg,
+                               logger = log)
+            cfg['lrms_info'] = dict()
+            cfg['lrms_info']['lm_info']        = lrms.lm_info
+            cfg['lrms_info']['node_list']      = lrms.node_list
+            cfg['lrms_info']['cores_per_node'] = lrms.cores_per_node
+            cfg['lrms_info']['agent_nodes']    = lrms.agent_nodes
+
+            # Based on the LRMS info, and specifically the agent_nodes, we now
+            # know where each sub_agent will run.  We will sift through the
+            # config, find where the bridges are to be created, thus can
+            # determine their addresses, and will then apply those addresses to
+            # the queue and pubsub endpoints in all agent components.  Note that
+            # the bridge addresses themself will not change -- they are fine to
+            # listen on tcp://*:[port]/.
+            #
+            # Once we did those changes, we will write copies of the resulting config
+            # for each sub agent instance.  At the moment those configs are identical,
+            # and the sub_agent will pick its own layout section -- but in principle
+            # this is also the point where we would make individual config changes.
+
+            # dig oput bridges from all sub-agents (sa)
+            bridge_addresses = dict()
+            for sa in cfg['agent_layout']:
+
+                target = cfg['agent_layout'][sa]['target']
+                node   = cfg['lrms_info']['agent_nodes'].get(target)
+                nodeip = LRMS.hostip()
+
+                # we should have at most one bridge for every type
+                for b in cfg['agent_layout'][sa].get('bridges', []):
+                    if b in bridge_addresses:
+                        raise RuntimeError('duplicated bridge entry for %s' % b)
+                    bridge_addresses[b] = "tcp://%s" % nodeip
+
+            # add bridge addresses to the config
+            cfg['bridge_addresses'] = bridge_addresses
+
+            # create a sub_config for each sub-agent (but skip master config)
+            for sa in cfg['agent_layout']:
+                if sa != 'agent.0':
+                    ru.write_json(cfg, './%s.cfg' % sa)
+
+        # we now have correct bridge addresses added to the agent.0.cfg, and all
+        # other agents will have picked that up from their config files -- we
+        # can start the agent and all its components!
+        agent = AgentWorker(cfg, log)
         agent.start()
         agent.join()
         agent._finalize()
@@ -5530,7 +5535,8 @@ def bootstrap_3():
         sys.exit(6)
 
     except Exception as e:
-        pilot_FAILED(msg="Error running agent: %s" % str(e))
+        log.exception("Error running agent: %s" % e)
+        pilot_FAILED(msg="Error running agent: %s" % e)
         sys.exit(7)
 
     finally:

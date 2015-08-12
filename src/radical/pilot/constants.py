@@ -20,6 +20,7 @@ AGENT_EXECUTING_COMPONENT      = 'agent_executing_component'
 AGENT_STAGING_OUTPUT_QUEUE     = 'agent_staging_output_queue'
 AGENT_STAGING_OUTPUT_COMPONENT = 'agent_staging_output_component'
 AGENT_UPDATE_WORKER            = 'agent_update_worker'
+AGENT_HEARTBEAT_WORKER         = 'agent_heartbeat_worker'
 
 PMGR_LAUNCHING_QUEUE           = 'pmgr_launching_queue'
 PMGR_LAUNCHING_COMPONENT       = 'pmgr_launching_component'
