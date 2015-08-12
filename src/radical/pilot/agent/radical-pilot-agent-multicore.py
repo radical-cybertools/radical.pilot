@@ -5245,6 +5245,8 @@ class AgentWorker(rpu.Worker):
                 self._log.info('create component %s (%s)', cname, cnum)
                 ccfg = copy.deepcopy(self._cfg)
                 comp = cmap[cname].create(ccfg)
+                comp.start()
+                print 'step: created A %s - %s' % (cname, os.getpid())
                 self._components.append(comp)
 
         # we also create *one* instance of every 'worker' type -- which are the
@@ -5260,6 +5262,7 @@ class AgentWorker(rpu.Worker):
                 self._log.info('create worker %s', wname)
                 wcfg   = copy.deepcopy(self._cfg)
                 worker = wmap[wname].create(wcfg)
+                worker.start()
                 self._workers.append(worker)
 
 
@@ -5496,6 +5499,7 @@ def bootstrap_3():
         # ----------------------------------------------------------------------
         # des Pudels Kern
         agent = AgentWorker(cfg)
+        agent.start()
         agent.join()
         agent._finalize()
         # ----------------------------------------------------------------------

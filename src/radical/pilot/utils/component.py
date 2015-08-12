@@ -161,7 +161,6 @@ class Component(mp.Process):
         # component will basically detach itself from the parent process, and
         # will only maintain a handle to be used for shutdown
         mp.Process.__init__(self, name=self._name)
-        self.start()
 
 
     # --------------------------------------------------------------------------
