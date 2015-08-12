@@ -145,6 +145,7 @@ import Queue
 import pprint
 import signal
 import shutil
+import socket
 import logging
 import hostlist
 import threading
@@ -2249,7 +2250,7 @@ class LRMS(object):
             }[name]
             return impl(name, config, logger)
         except KeyError:
-            logger.exception('oops')
+            logger.exception('lrms construction error')
             raise RuntimeError("LRMS type '%s' unknown!" % name)
 
 
@@ -2268,7 +2269,6 @@ class LRMS(object):
         # otherwise try to find hostname ourself
         if not self._hostname:
 
-            import socket
             self._hostname = socket.getfqdn()
 
         if not self._hostname:
@@ -2287,7 +2287,6 @@ class LRMS(object):
         # otherwise try to find hostip ourself
         if not self._hostip:
 
-            import socket
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 s.setblocking(False)
@@ -4979,7 +4978,19 @@ class AgentWorker(rpu.Worker):
         self._pilot_id   = self._cfg['pilot_id']
         self._session_id = self._cfg['session_id']
         self._runtime    = self._cfg['runtime']
-        self._pull_units = False
+        self._sub_cfg    = self._cfg['agent_layout'][self.name]
+        self._pull_units = self._sub_cfg.get('pull_units', False)
+
+        # another sanity check
+        if self.name == 'agent.0':
+            if self._sub_cfg.get('target', 'local') != 'local':
+                raise ValueError("agent.0 must run on target 'local'")
+
+        # keep track of objects we need to close in the finally clause
+        self._sub_agents = list()
+        self._bridges    = list()
+        self._components = list()
+        self._workers    = list()
 
         # prepare profiler
         rpu.prof_init('agent.prof', 'start', uid=self._cfg['pilot_id'])
@@ -4988,41 +4999,263 @@ class AgentWorker(rpu.Worker):
         self._log.setLevel(self._cfg['debug'])
         self._log.info('git ident: %s' % git_ident)
 
-        # set up db connection
-        _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
+        # set up db connection -- only for the master agent and for the agent
+        # which pulls units (which might be the same)
+        if self.name == 'agent.0' or self._pull_units:
+            _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
 
-        self._p  = mongo_db["%s.p"  % self._session_id]
-        self._cu = mongo_db["%s.cu" % self._session_id]
+            self._p  = mongo_db["%s.p"  % self._session_id]
+            self._cu = mongo_db["%s.cu" % self._session_id]
 
         # first order of business: set the start time and state of the pilot
-        now = rpu.timestamp()
-        ret = self._p.update(
-            {"_id": self._pilot_id},
-            {"$set" : {"state"        : rp.ACTIVE,
-                       "started"      : now},
-             "$push": {"statehistory" : {"state"    : rp.ACTIVE,
-                                         "timestamp": now}}
-            })
-        # TODO: Check for return value, update should be true!
-        self._log.info("Database updated: %s", ret)
+        # Only the master agent performs this action
+        if self.name == 'agent.0':
+            now = rpu.timestamp()
+            ret = self._p.update(
+                {"_id": self._pilot_id},
+                {"$set" : {"state"        : rp.ACTIVE,
+                           "started"      : now},
+                 "$push": {"statehistory" : {"state"    : rp.ACTIVE,
+                                             "timestamp": now}}
+                })
+            # TODO: Check for return value, update should be true!
+            self._log.info("Database updated: %s", ret)
 
-        # create components
-        self._setup()       
+        # bootstrap sub-agents, agent components, bridges etc.
+        self.bootstrap_4()       
 
-        # register the staging_input_queue as this is what we want to push to
-        self.declare_output(rp.AGENT_STAGING_INPUT_PENDING, rp.AGENT_STAGING_INPUT_QUEUE)
-        self.declare_publisher('state', rp.AGENT_STATE_PUBSUB)
-
-        # register idle callback, to pull for units -- which is the only action
-        # we have to perform, really
+        
+        # the pulling agent registers the staging_input_queue as this is what we want to push to
         # FIXME: do a sanity check on the config that only one agent pulls, as
-        # this is non-atomic
-        self.declare_idle_cb(self.idle_cb, self._cfg['db_poll_sleeptime'])
+        #        this is a non-atomic operation at this point
+        if self._pull_units:
+
+            self.declare_output(rp.AGENT_STAGING_INPUT_PENDING, rp.AGENT_STAGING_INPUT_QUEUE)
+            self.declare_publisher('state', rp.AGENT_STATE_PUBSUB)
+
+            # register idle callback, to pull for units -- which is the only action
+            # we have to perform, really
+            self.declare_idle_cb(self.idle_cb, self._cfg['db_poll_sleeptime'])
 
 
     # --------------------------------------------------------------------------
     #
-    def _setup(self):
+    def create_lrms(self):
+        """
+        Create the LRMS which will give us the set of agent_nodes to use for
+        sub-agent startup.  Add the remaining LRMS information to the config, for
+        the benefit of the scheduler).
+        """
+
+        # this should only be callsed by the master agent
+        if not self.name == 'agent.0':
+            raise RuntimeError('only the master agent shall create an LRMS')
+
+        self._lrms = LRMS.create(name   = self._cfg['lrms'],
+                                 config = self._cfg,
+                                 logger = self._log)
+        self._cfg['lrms_info'] = dict()
+        self._cfg['lrms_info']['lm_info']        = self._lrms.lm_info
+        self._cfg['lrms_info']['node_list']      = self._lrms.node_list
+        self._cfg['lrms_info']['cores_per_node'] = self._lrms.cores_per_node
+        self._cfg['lrms_info']['agent_nodes']    = self._lrms.agent_nodes
+
+
+    # --------------------------------------------------------------------------
+    #
+    def create_sub_configs(self):
+        """
+        Based on the LRMS info, and specifically the agent_nodes, we now know
+        where each sub_agent will run.  We will sift through the config, find
+        where the bridges are to be created, thus can determine their addresses, 
+        and will then apply those addresses to the queue and pubsub endpoints in
+        all agent components.  Note that the bridge addresses themself will not
+        change -- they are fine to listen on tcp://*:[port]/.
+
+        Once we did those changes, we will write copies of the resulting config
+        for each sub agent instance.  At the moment those configs are identical,
+        and the sub_agent will pick its own layout section -- but in principle
+        this is also the point where we would make individual config changes.
+        """
+
+        # this should only be callsed by the master agent
+        if not self.name == 'agent.0':
+            raise RuntimeError('only the master agent shall create sub configs')
+
+        # ---------------------------------------------------------------------
+        def node2ip(node):
+            # FIXME: move to ru
+            if hasattr(socket, 'setdefaulttimeout'):
+                socket.setdefaulttimeout(1)
+            try:
+                return socket.gethostbyaddr(node)[2]
+            except:
+                raise LookupError("Can't get IP address for node %s" % node)
+        # ---------------------------------------------------------------------
+
+        # dig oput bridges from all sub-agents (sa)
+        bridge_addresses = dict()
+        for sa in self._cfg['agent_layout']:
+
+            target = self._cfg['agent_layout'][sa]['target']
+            node   = self._cfg['lrms_info']['agent_nodes'].get(target)
+
+            if not node: nodeip = self._lrms.hostip
+            else       : nodeip = node2ip(node)
+
+            # we should have at most one bridge for every type
+            for b in self._cfg['agent_layout'][sa].get('bridges', []):
+                if b in bridge_addresses:
+                    raise RuntimeError('duplicated bridge entry for %s' % b)
+                bridge_addresses[b] = "tcp://%s" % nodeip
+
+        # add bridge addresses to the config
+        self._cfg['bridge_addresses'] = bridge_addresses
+
+        # create a sub_config for each sub-agent (but skip master config)
+        for sa in self._cfg['agent_layout']:
+            if sa != 'agent.0':
+                ru.write_json(self._cfg, './%s.cfg' % sa)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def start_sub_agents(self):
+        """
+        For the list of sub_agents, get a launch command and launch that
+        agent instance on the respective node.  We pass it to the seconds
+        bootstrap level, there is no need to pass the first one again.
+        """
+        self._log.debug('step: start_sub_agents')
+
+        # the configs are written, and the sub-agents can be started.  To know
+        # how to do that we create the agent launch method, have it creating
+        # the respective command lines per agent instance, and run via
+        # popen. 
+        agent_lm = LaunchMethod.create(
+            name            = self._cfg['agent_launch_method'],
+            config          = self._cfg,
+            logger          = self._log)
+
+        for sa in self._sub_cfg.get('sub_agents', []):
+            target = self._cfg['agent_layout'][sa]['target']
+            node   = self._cfg['lrms_info']['agent_nodes'].get(target)
+
+            if not node :
+                # start agent locally
+                cmd = "/bin/sh bootstrap_2.sh %s" % sa
+            else:
+                # start agent remotely, use launch method
+                # NOTE:  there is some implicit assumption that we can use
+                #        the 'agent_node' string as 'agent_string:0' and
+                #        obtain a well format slot...
+                # FIXME: it is actually tricky to translate the agent_node
+                #        into a viable 'opaque_slots' structure, as that is
+                #        usually done by the schedulers.  So we leave that
+                #        out for the moment, which will make this unable to
+                #        work with a number of launch methods.  Can the
+                #        offset computation be moved to the LRMS?
+                # FIXME: are we using the 'hop' correctly?
+                opaque_slots = { 
+                        'task_slots'   : ['%s:0' % node], 
+                        'task_offsets' : [], 
+                        'lm_info'      : self._cfg['lrms_info']['lm_info']}
+                cmd = agent_lm.construct_command(task_exec="/bin/sh", 
+                        task_args="bootstrap_2.sh %s" % sa, 
+                        task_numcores=1, 
+                        launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
+                        opaque_slots=opaque_slots)
+
+            # FIXME: We should keep a handle to the resulting process around, 
+            #        for monitoring and shutdown.
+            rpu.prof("start", msg=sa)
+            self._log.info("start sub-agent %s: %s" % (sa, cmd))
+            os.system("%s 1>%s.out 2>%s.err </dev/null &" % (cmd, sa, sa))
+
+
+    # --------------------------------------------------------------------------
+    #
+    def start_bridges(self):
+        """
+        For all bridges defined on this agent instance, create that bridge.
+        Keep a handle around for shutting them down later.
+        """
+
+        self._log.debug('step: start_bridges')
+
+        # ----------------------------------------------------------------------
+        # shortcut for bridge creation
+        bridge_type = {rp.AGENT_STAGING_INPUT_QUEUE  : 'queue',
+                       rp.AGENT_SCHEDULING_QUEUE     : 'queue',
+                       rp.AGENT_EXECUTING_QUEUE      : 'queue',
+                       rp.AGENT_STAGING_OUTPUT_QUEUE : 'queue',
+                       rp.AGENT_UNSCHEDULE_PUBSUB    : 'pubsub',
+                       rp.AGENT_RESCHEDULE_PUBSUB    : 'pubsub',
+                       rp.AGENT_COMMAND_PUBSUB       : 'pubsub',
+                       rp.AGENT_STATE_PUBSUB         : 'pubsub'}
+
+        def _create_bridge(name):
+            self._log.info('create bridge %s', name)
+            if bridge_type[name] == 'queue':
+                return rpu.Queue.create(rpu.QUEUE_ZMQ, name, rpu.QUEUE_BRIDGE)
+            elif bridge_type[name] == 'pubsub':
+                return rpu.Pubsub.create(rpu.PUBSUB_ZMQ, name, rpu.PUBSUB_BRIDGE)
+            else:
+                raise ValueError('unknown bridge type for %s' % name)
+        # ----------------------------------------------------------------------
+
+        # create all bridges we need.  Use the default addresses,
+        # ie. they will bind to all local interfacces on ports 10.000++.
+        for b in self._sub_cfg.get('bridges', []):
+            self._log.debug("start bridge %s" % b)
+            self._bridges.append(_create_bridge(b))
+
+        self._log.debug("bridges started")
+
+
+    # --------------------------------------------------------------------------
+    #
+    def start_components(self):
+        """
+        For all componants defined on this agent instance, create the required
+        number of those.  Keep a handle around for shutting them down later.
+        """
+
+        # We use a static map from component names to class types for now --
+        # a factory might be more appropriate (FIXME)
+        cmap = {
+            "agent_staging_input_component"  : AgentStagingInputComponent,
+            "agent_scheduling_component"     : AgentSchedulingComponent,
+            "agent_executing_component"      : AgentExecutingComponent,
+            "agent_staging_output_component" : AgentStagingOutputComponent
+            }
+        for cname, cnum in self._sub_cfg.get('components',{}).iteritems():
+            for i in range(cnum):
+                # each component gets its own copy of the config
+                self._log.info('create component %s (%s)', cname, cnum)
+                ccfg = copy.deepcopy(self._cfg)
+                comp = cmap[cname].create(ccfg)
+                self._components.append(comp)
+
+        # we also create *one* instance of every 'worker' type -- which are the
+        # heartbeat and update worker.  To ensure this, we only create workers
+        # in agent.0.  
+        # FIXME: make this configurable, both number and placement
+        if self.name == 'agent.0':
+            wmap = {
+                "agent_update_worker"    : AgentUpdateWorker,
+                "agent_heartbeat_worker" : AgentHeartbeatWorker
+                }
+            for wname in wmap:
+                self._log.info('create worker %s', wname)
+                wcfg   = copy.deepcopy(self._cfg)
+                worker = wmap[wname].create(wcfg)
+                self._workers.append(worker)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def bootstrap_4(self):
         """
         This method will instantiate all communitation and notification
         channels, and all components and workers.  It will then feed a set of
@@ -5045,190 +5278,27 @@ class AgentWorker(rpu.Worker):
         scheduler.
         """
 
+        self._log.debug('step: bootstrap_4')
+
+        # we pick the layout according to our role (name)
         # NOTE: we don't do sanity checks on the agent layout (too lazy) -- but
         #       we would hiccup badly over ill-formatted or incomplete layouts...
-        # we pick the layout according to our role (name)
         if not self.name in self._cfg['agent_layout']:
             raise RuntimeError("no agent layout section for %s" % self.name)
 
         try:
-            # get config, check if this agent instance pull for units
-            layout = self._cfg['agent_layout']
-            my_cfg = layout[self.name]
-            self._pull_units = my_cfg.get('pull_units', False)
-
-            # We create the LRMS which will give us the set of agent_nodes to
-            # use for worker startup.  We will also add the remaining LRMS
-            # information to the config, for the benefit of the scheduler).
-            self._lrms = LRMS.create(
-                    name            = self._cfg['lrms'],
-                    config          = self._cfg,
-                    logger          = self._log)
-            self._cfg['lrms_info'] = dict()
-            self._cfg['lrms_info']['lm_info']        = self._lrms.lm_info
-            self._cfg['lrms_info']['node_list']      = self._lrms.node_list
-            self._cfg['lrms_info']['cores_per_node'] = self._lrms.cores_per_node
-            self._cfg['lrms_info']['agent_nodes']    = self._lrms.agent_nodes
-
-            # keep the nodes for worker startup around
-            agent_nodes = self._lrms.agent_nodes
-            
-            # collect information about the items we want to start
-            start_components     = my_cfg.get('components', {})
-            start_bridges        = my_cfg.get('bridges',    {})
-            start_queue_bridges  = start_bridges.get('queue',    {})
-            start_pubsub_bridges = start_bridges.get('pubsub',   {})
-
-            # keep track of objects we need to close in the finally clause
-            self._bridges    = list()
-            self._components = list()
-            self._workers    = list()
-
-            # two shortcuts for bridge creation
-            def _create_queue_bridge(qname):
-                return rpu.Queue.create(rpu.QUEUE_ZMQ, qname, rpu.QUEUE_BRIDGE)
-
-            def _create_pubsub_bridge(pname):
-                return rpu.Pubsub.create(rpu.PUBSUB_ZMQ, pname, rpu.PUBSUB_BRIDGE)
-
-            # create all queue bridges we need.  Use the default addresses,
-            # ie. they will bind to localhost to ports 10.000++.  We don't start
-            # bridges where the config contains an address, but instead pass that
-            # address to the component configuration.
-            bridge_addresses = dict() 
-            for qname, qaddr in start_queue_bridges.iteritems():
-                if qaddr == 'local':
-                    # start new bridge locally
-                    bridge = _create_queue_bridge(qname)
-                    bridge_addresses[qname] = bridge.addr
-                    self._bridges.append(bridge)
-                else:
-                    # use the bridge at the given address
-                    bridge_addresses[qname] = qaddr
-
-            # same procedure for the pubsub bridges
-            for pname, paddr in start_pubsub_bridges.iteritems():
-                if paddr == 'local':
-                    # start new bridge locally
-                    bridge = _create_pubsub_bridge(pname)
-                    bridge_addresses[pname] = bridge.addr
-                    self._bridges.append(bridge)
-                else:
-                    # use the bridge at the given address
-                    bridge_addresses[pname] = paddr
-
-            self._log.debug("bridges started")
-
-            # we now have the bridge addresses.  Those need to be corrected in
-            # the agent config before we pass that config on to (a) the
-            # components we create below, and (b) to any other agent instance we
-            # intent to spawn.  So we do that for all workers we have configures
-            workers = my_cfg.get('workers', [])
-            for worker in workers:
-
-                # each worker gets its own copy, which specifically sets the
-                # name to the worker ID, so that it can pick up the correct
-                # layout section
-                worker_config  = copy.deepcopy(self._cfg)
-                worker_config['name'] = worker
-                worker_layout  = worker_config['agent_layout'][worker]
-                worker_pubsubs = worker_layout['bridges']['pubsub']
-                worker_queues  = worker_layout['bridges']['queue']
-
-                for wp in worker_pubsubs:
-                    if wp in bridge_addresses and \
-                        worker_pubsubs[wp] == 'agent.0':
-                        worker_pubsubs[wp] = str(bridge_addresses[wp]).replace('*', self._lrms.hostip)
-
-                for wq in worker_queues:
-                    if wq in bridge_addresses and \
-                        worker_queues[wq] == 'agent.0':
-                        worker_queues[wq] = str(bridge_addresses[wq]).replace('*', self._lrms.hostip)
-
-                # we can now write the worker config
-                ru.write_json(worker_config, './%s.cfg' % worker)
-            self._log.debug("worker configs written")
-
-            # the configs are written, and the workers can be started.  To know
-            # how to do that we create the agent launch method, have it creating
-            # the respective command lines per agent instance, and run via
-            # popen. 
-            # FIXME: We should keep a handle to the resulting process around, for
-            #        monitoring and shutdown.
-            agent_lm = LaunchMethod.create(
-                name            = self._cfg['agent_launch_method'],
-                config          = self._cfg,
-                logger          = self._log)
-            for worker in workers:
-                agent_node = agent_nodes.get(worker)
-                if not agent_node :
-                    # start agent locally
-                    cmd = "/bin/sh bootstrap_2.sh %s" % worker
-                else:
-                    # start agent remotely, use launch method
-                    # NOTE:  there is some implicit assumption that we can use
-                    #        the 'agent_node' string as 'agent_string:0' and
-                    #        obtain a well format slot...
-                    # FIXME: it is actually tricky to translate the agent_node
-                    #        into a viable 'opaque_slots' structure, as that is
-                    #        usually done by the schedulers.  So we leave that
-                    #        out for the moment, which will make this unable to
-                    #        work with a number of launch methods.  Can the
-                    #        offset computation be moved to the LRMS?
-                    opaque_slots = { 
-                            'task_slots'   : ['%s:0' % agent_node], 
-                            'task_offsets' : [], 
-                            'lm_info'      : self._lrms_lm_info}
-                    cmd = agent_lm.construct_command(task_exec="/bin/sh", 
-                            task_args=['bootstrap_2.sh', worker], 
-                            task_numcores=1, 
-                            launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
-                            opaque_slots=opaque_slots)
-
-                rpu.prof("start", msg=worker)
-                self._log.info("start sub-agent %s: %s" % (worker, cmd))
-                os.system(cmd + " 1>%(w)s.out 2>%(w)s.err </dev/null &" % {'w' : worker})
-
-            # create all the component types we need. create n instances for each
-            # type.
-            # We use a static map from component names to class types for now --
-            # a factory might be more appropriate (FIXME)
-            cmap = {
-                "agent_staging_input_component"  : AgentStagingInputComponent,
-                "agent_scheduling_component"     : AgentSchedulingComponent,
-                "agent_executing_component"      : AgentExecutingComponent,
-                "agent_staging_output_component" : AgentStagingOutputComponent,
-                "agent_heartbeat_worker"         : AgentHeartbeatWorker
-                }
-
-            # we always start o heartbeat worker
-            if "agent_heartbeat_worker" not in start_components:
-                start_components["agent_heartbeat_worker"] = 1
-
-            for cname, cnum in start_components.iteritems():
-                for i in range(cnum):
-
-                    # each component gets its own copy, which specifically has
-                    # no 'name' entry set -- name will then be the component
-                    # class name.
-                    ccfg = copy.deepcopy(self._cfg)
-                    del(ccfg['name'])
-                    comp = cmap[cname].create(ccfg)
-                    self._components.append(comp)
-
-            # we also create *one* instance of every 'worker' type -- which is
-            # specifically the update worker which pushes state updates to
-            # mongodb.  To ensure this, we only create workers in agent.0.  
-            # FIXME: make this configurable, both number and placemwent
-            wmap = {
-                "agent_update_worker" : AgentUpdateWorker
-                }
+            # only the master agent creates LRMS and config files
             if self.name == 'agent.0':
-                for wname in wmap:
-                        wcfg = copy.deepcopy(self._cfg)
-                        del(wcfg['name'])
-                        worker = wmap[wname].create(wcfg)
-                        self._workers.append(worker)
+                self.create_lrms()
+                self.create_sub_configs()
+
+            # but each agent can spawn sub agents.  In general, those will only
+            # be defined on the master agent though
+            self.start_sub_agents()
+            self.start_bridges()
+            self.start_components()
+
+
 
             # FIXME: make sure all communication channels are in place.  This could
             # be replaced with a proper barrier, but not sure if that is worth it...
@@ -5249,7 +5319,6 @@ class AgentWorker(rpu.Worker):
     #
     def finalize(self):
 
-
         self._log.info("Agent finalizes")
       
         rpu.prof ('stop')
@@ -5257,9 +5326,13 @@ class AgentWorker(rpu.Worker):
 
         # FIXME: let logfiles settle before killing the components
         time.sleep(1)
-        os.system('sync')
       
         # burn the bridges, burn EVERYTHING
+        for sa in self._sub_agents:
+            # FIXME: this is not active, yet.
+            self._log.info("closing sub-agent %s", sa)
+            sa.terminate()
+
         for c in self._components:
             self._log.info("closing component %s", c._name)
             c.close()
@@ -5292,7 +5365,7 @@ class AgentWorker(rpu.Worker):
 
         try:
             # check for new units
-            return self._check_units()
+            return self.check_units()
 
         except Exception as e:
             # exception in the main loop is fatal
@@ -5304,7 +5377,7 @@ class AgentWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _check_units(self):
+    def check_units(self):
 
         # Check if there are compute units waiting for input staging
         # and log that we pulled it.

@@ -23,36 +23,17 @@
     "agent_layout" : {
         "agent.0"   : {
             "target"     : "local",
-            "workers"    : ["agent.1"],
+            "sub_agents" : ["agent.1", "agent.2"],
             "pull_units" : 1,
-            "components" : {
-                # how many instances of the respective components should be started
-                "agent_staging_input_component"  : 0,
-                "agent_scheduling_component"     : 1,
-                "agent_executing_component"      : 0,
-                "agent_staging_output_component" : 0
-            },
-            "bridges" : {
-                # which bridges (and what type) should be started locally 
-                # (keyword 'local'), and what endpoints are expected 
-                # elsewhere (zmq address like 'tcp://10.0.0.1/').
-                "queue" : {
-                    "agent_staging_input_queue"  : "local",
-                    "agent_scheduling_queue"     : "local",
-                    "agent_executing_queue"      : "local",
-                    "agent_staging_output_queue" : "local"
-                },
-                "pubsub" : {
-                    "agent_unschedule_pubsub"    : "local",
-                    "agent_reschedule_pubsub"    : "local",
-                    "agent_command_pubsub"       : "local",
-                    "agent_state_pubsub"         : "local"
-                }
-            }
+            "bridges" : [
+                # which bridges are to be started by this agent
+                "agent_staging_output_queue",
+                "agent_state_pubsub"
+            ]
         },
         "agent.1"   : {
             "target"     : "agent_node[1]",
-            "workers"    : [],
+            "sub_agents" : [],
             "pull_units" : 0,
             "components" : {
                 # how many instances of the respective components should be started
@@ -61,22 +42,22 @@
                 "agent_executing_component"      : 2,
                 "agent_staging_output_component" : 2
             },
-            "bridges" : {
-                # which bridges (and what type) should be started locally 
-                # (keyword 'local'), and what endpoints are expected 
-                # elsewhere (zmq address like 'tcp://10.0.0.1/').
-                "queue" : {
-                    "agent_staging_input_queue"  : "agent.0",
-                    "agent_scheduling_queue"     : "agent.0",
-                    "agent_executing_queue"      : "agent.0",
-                    "agent_staging_output_queue" : "agent.0"
-                },
-                "pubsub" : {
-                    "agent_unschedule_pubsub"    : "agent.0",
-                    "agent_reschedule_pubsub"    : "agent.0",
-                    "agent_command_pubsub"       : "agent.0",
-                    "agent_state_pubsub"         : "agent.0"
-                }
+            "bridges" : [
+                # which bridges are to be started by this agent
+                "agent_staging_input_queue",
+                "agent_scheduling_queue",
+                "agent_executing_queue",
+                "agent_unschedule_pubsub",
+                "agent_reschedule_pubsub",
+                "agent_command_pubsub"
+            ]
+        },
+        "agent.2"   : {
+            "target"     : "agent_node[2]",
+            "sub_agents" : [],
+            "pull_units" : 0,
+            "components" : {
+                "agent_scheduling_component" : 1
             }
         }
     },
