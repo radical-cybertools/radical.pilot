@@ -121,7 +121,7 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg=None):
+    def __init__(self, cfg, logger):
         """
         This constructor MUST be called by inheriting classes.  
         
@@ -130,9 +130,9 @@ class Component(mp.Process):
         initialize() method.
         """
 
-        if not cfg : cfg  = dict()
-
         self._cfg         = cfg
+        self._log         = logger
+
         self._name        = cfg.get('name', type(self).__name__)
         self._addr_map    = cfg.get('bridge_addresses', {})
         self._parent      = os.getpid() # pid of spawning process
@@ -229,7 +229,7 @@ class Component(mp.Process):
 
         # check if a remote address is configured for the queue
         addr = self._addr_map.get (input)
-      # self._log.debug("using addr %s for input %s" % (addr, input))
+        self._log.debug("using addr %s for input %s" % (addr, input))
 
         q = rpu_Queue.create(rpu_QUEUE_ZMQ, input, rpu_QUEUE_OUTPUT, addr)
         self._inputs.append([q, states])
@@ -267,7 +267,7 @@ class Component(mp.Process):
             else:
                 # check if a remote address is configured for the queue
                 addr = self._addr_map.get (output)
-              # self._log.debug("using addr %s for output %s" % (addr, output))
+                self._log.debug("using addr %s for output %s" % (addr, output))
 
                 # non-final state, ie. we want a queue to push to
                 self._outputs[state] = \
@@ -328,7 +328,7 @@ class Component(mp.Process):
 
         # check if a remote address is configured for the queue
         addr = self._addr_map.get (pubsub)
-      # self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
+        self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
 
         q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_PUB, addr)
         self._publishers[topic].append(q)
@@ -360,8 +360,8 @@ class Component(mp.Process):
         # ----------------------------------------------------------------------
 
         # create a pubsub subscriber, and subscribe to the given topic
-      # self._log.debug('create subscriber: %s - %s' \
-      #                 % (mt.current_thread().name, os.getpid()))
+        self._log.debug('create subscriber: %s - %s' \
+                        % (mt.current_thread().name, os.getpid()))
         q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB)
         q.subscribe(topic)
 
@@ -543,7 +543,7 @@ class Component(mp.Process):
 
                 if not self._outputs[state]:
                     # empty output -- drop unit
-                  # self._log.debug('%s %s ===| %s' % ('state', unit['id'], unit['state']))
+                    self._log.debug('%s %s ===| %s' % ('state', unit['id'], unit['state']))
                     continue
 
                 # FIXME: we should assert that the unit is in a PENDING state.
@@ -590,9 +590,9 @@ class Worker(Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, logger):
 
-        Component.__init__(self, cfg)
+        Component.__init__(self, cfg, logger)
 
     # --------------------------------------------------------------------------
     #
