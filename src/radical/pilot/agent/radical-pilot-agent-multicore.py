@@ -5143,7 +5143,7 @@ class AgentWorker(rpu.Worker):
 
             if not node :
                 # start agent locally
-                cmd = "/bin/sh bootstrap_2.sh %s" % sa
+                cmd = "/bin/sh %s/bootstrap_2.sh %s" % (os.getcwd(), sa)
             else:
                 # start agent remotely, use launch method
                 # NOTE:  there is some implicit assumption that we can use
@@ -5160,8 +5160,8 @@ class AgentWorker(rpu.Worker):
                         'task_slots'   : ['%s:0' % node], 
                         'task_offsets' : [], 
                         'lm_info'      : self._cfg['lrms_info']['lm_info']}
-                cmd = agent_lm.construct_command(task_exec="/bin/sh", 
-                        task_args="bootstrap_2.sh %s" % sa, 
+                cmd, _ = agent_lm.construct_command(task_exec="/bin/sh", 
+                        task_args="%s/bootstrap_2.sh %s" % (os.getcwd(), sa), 
                         task_numcores=1, 
                         launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
                         opaque_slots=opaque_slots)
@@ -5169,7 +5169,7 @@ class AgentWorker(rpu.Worker):
             # FIXME: We should keep a handle to the resulting process around, 
             #        for monitoring and shutdown.
             rpu.prof("start", msg=sa)
-            self._log.info("start sub-agent %s: %s" % (sa, cmd))
+            self._log.info("create sub-agent %s: %s" % (sa, cmd))
             os.system("%s 1>%s.out 2>%s.err </dev/null &" % (cmd, sa, sa))
 
 
