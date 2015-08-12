@@ -5087,6 +5087,10 @@ class AgentWorker(rpu.Worker):
 
         # ---------------------------------------------------------------------
         def node2ip(node):
+            # Temporary hack because nodefile on Cray doesn't have actual hostnames
+            if True:
+                node = 'nid%.5d' % int(node)
+
             # FIXME: move to ru
             if hasattr(socket, 'setdefaulttimeout'):
                 socket.setdefaulttimeout(1)
