@@ -4926,6 +4926,14 @@ class AgentWorker(rpu.Worker):
         self._p  = mongo_db["%s.p"  % self._session_id]
 
         # subscribe for commands from the heartbeat worker, mostly for shutdown
+        # NOTE: this callback needs to live in the agent proper, ie. in the
+        #       agent.0 before creating the subprocesses, as that is the root of
+        #       the process tree and shutdown needs to start here.  However,
+        #       during __inig__ of this process, we did not yet start any
+        #       bridges, and specifically do not yet know the address of the
+        #       agent_command_pubsub bridge.  Zeromq will delay the connection
+        #       all right, so calling connect straight away is ok -- but the
+        #       bridge should better live on the same host as this process!
         self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
 
 
