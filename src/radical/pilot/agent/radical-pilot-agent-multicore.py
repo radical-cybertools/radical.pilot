@@ -161,6 +161,8 @@ import radical.utils       as ru
 import radical.pilot       as rp
 import radical.pilot.utils as rpu
 
+from datetime import datetime
+
 
 
 # ------------------------------------------------------------------------------
@@ -1427,8 +1429,6 @@ class SchedulerYarn(Scheduler):
 
                 request = self._schedule_queue.get()
 
-                self._log.info('REQUEST MADE to SCHEDULER: {0}'.format(request))
-
                 if not isinstance(request, list):
                     # command only, no cu
                     request = [request, None]
@@ -2383,6 +2383,7 @@ class LaunchMethodYARN(LaunchMethod):
         else:
             args_string = ''
 
+        #app_name = '-appname '+ cu_descr['_id']
         # Construct the ncores_string which is the number of cores used by the
         # container to run the script
         if task_numcores:
@@ -2390,17 +2391,14 @@ class LaunchMethodYARN(LaunchMethod):
         else:
             ncores_string = ''
 
+        self._log.debug("CU Descr: %s"%cu_descr)
+
         # Construct the nmem_string which is the size of memory used by the
         # container to run the script
         #if task_nummem:
         #    nmem_string = '-container_memory '+task_nummem
         #else:
         #    nmem_string = ''
-
-        #if task_serv_url:
-        #    url_string = '-service_url '+ task_serv_url
-        #else:
-        #    url_string = ''
 
         #Getting the namenode's address.
         service_url = 'yarn://localhost?fs=hdfs://' + self._scheduler._lrms.namenode_url
@@ -4049,16 +4047,19 @@ class ExecWorker_POPEN (ExecWorker) :
 
         rpu.prof('spawning passed to popen', uid=cu['_id'])
 
-        cu['started'] = rpu.timestamp()
-        cu['state']   = rp.EXECUTING
         cu['proc']    = proc
 
         # register for state update and watching
-        cu['state'] = rp.EXECUTING
-        self._agent.update_unit_state(src    = 'ExecWorker',
+        if self._task_launcher.name !='YARN':
+            cu['started'] = rpu.timestamp()
+            cu['state']   = rp.EXECUTING
+
+            self._agent.update_unit_state(src    = 'ExecWorker',
                                       uid    = cu['_id'],
                                       state  = rp.EXECUTING,
                                       msg    = "unit execution start")
+        else:
+            cu['state'] = rp.ALLOCATING
 
         cu_list, _ = rpu.blowup(self._config, cu, WATCH_QUEUE)
         for _cu in cu_list :
@@ -4142,76 +4143,99 @@ class ExecWorker_POPEN (ExecWorker) :
         action = 0
 
         for cu in self._cus_to_watch:
+            #-------------------------------------------------------------------
+            # This code snippet reads the YARN application report file and if
+            # the application is RUNNING it update the state of the CU with the
+            # right time stamp. In any other case it works as it was.
+            if self._task_launcher.name == 'YARN' and cu['state']==rp.ALLOCATING \
+              and os.path.isfile(cu['workdir']+'/YarnApplicationReport.log'):
+                yarnreport=open(cu['workdir']+'/YarnApplicationReport.log','r')
+                report_contents = yarnreport.readlines()
+                yarnreport.close()
+                if report_contents.__len__()>=4:
+                    self._log.debug(report_contents)
+                    line = report_contents[3].split(',')
+                    timestamp = datetime.utcfromtimestamp(int(line[3].split('=')[1])/1000)
+                    cu['started'] = timestamp
+                    cu['state'] = rp.EXECUTING
+                    self._agent.update_unit_state(src       = 'ExecWatcher',
+                                                  uid       = cu['_id'],
+                                                  state     = rp.EXECUTING,
+                                                  msg       = "unit execution start",
+                                                  timestamp = timestamp)
+                    index = self._cus_to_watch.index(cu)
+                    self._cus_to_watch[index]=cu
+                
+            else :
+                # poll subprocess object
+                exit_code = cu['proc'].poll()
+                now       = rpu.timestamp()
 
-            # poll subprocess object
-            exit_code = cu['proc'].poll()
-            now       = rpu.timestamp()
+                if exit_code is None:
+                    # Process is still running
 
-            if exit_code is None:
-                # Process is still running
+                    if cu['_id'] in self._cus_to_cancel:
 
-                if cu['_id'] in self._cus_to_cancel:
+                        # FIXME: there is a race condition between the state poll
+                        # above and the kill command below.  We probably should pull
+                        # state after kill again?
 
-                    # FIXME: there is a race condition between the state poll
-                    # above and the kill command below.  We probably should pull
-                    # state after kill again?
+                        # We got a request to cancel this cu
+                        action += 1
+                        cu['proc'].kill()
+                        self._cus_to_cancel.remove(cu['_id'])
+                        self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
 
-                    # We got a request to cancel this cu
+                        cu['state'] = rp.CANCELED
+                        self._agent.update_unit_state(src    = 'ExecWatcher',
+                                                      uid    = cu['_id'],
+                                                      state  = rp.CANCELED,
+                                                      msg    = "unit execution canceled")
+                        rpu.prof('final', msg="execution canceled", uid=cu['_id'])
+                        # NOTE: this is final, cu will not be touched anymore
+                        cu = None
+
+                else:
+                    rpu.prof('execution complete', uid=cu['_id'])
+
+                    # we have a valid return code -- unit is final
                     action += 1
-                    cu['proc'].kill()
-                    self._cus_to_cancel.remove(cu['_id'])
+                    self._log.info("Unit %s has return code %s.", cu['_id'], exit_code)
+
+                    cu['exit_code'] = exit_code
+                    cu['finished']  = now
+
+                    # Free the Slots, Flee the Flots, Ree the Frots!
+                    self._cus_to_watch.remove(cu)
                     self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
 
-                    cu['state'] = rp.CANCELED
-                    self._agent.update_unit_state(src    = 'ExecWatcher',
-                                                  uid    = cu['_id'],
-                                                  state  = rp.CANCELED,
-                                                  msg    = "unit execution canceled")
-                    rpu.prof('final', msg="execution canceled", uid=cu['_id'])
-                    # NOTE: this is final, cu will not be touched anymore
-                    cu = None
+                    if exit_code != 0:
 
-            else:
-                rpu.prof('execution complete', uid=cu['_id'])
-
-                # we have a valid return code -- unit is final
-                action += 1
-                self._log.info("Unit %s has return code %s.", cu['_id'], exit_code)
-
-                cu['exit_code'] = exit_code
-                cu['finished']  = now
-
-                # Free the Slots, Flee the Flots, Ree the Frots!
-                self._cus_to_watch.remove(cu)
-                self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
-
-                if exit_code != 0:
-
-                    # The unit failed, no need to deal with its output data.
-                    cu['state'] = rp.FAILED
-                    self._agent.update_unit_state(src    = 'ExecWatcher',
+                        # The unit failed, no need to deal with its output data.
+                        cu['state'] = rp.FAILED
+                        self._agent.update_unit_state(src    = 'ExecWatcher',
                                                   uid    = cu['_id'],
                                                   state  = rp.FAILED,
                                                   msg    = "unit execution failed")
-                    rpu.prof('final', msg="execution failed", uid=cu['_id'])
-                    # NOTE: this is final, cu will not be touched anymore
-                    cu = None
+                        rpu.prof('final', msg="execution failed", uid=cu['_id'])
+                        # NOTE: this is final, cu will not be touched anymore
+                        cu = None
 
-                else:
-                    # The unit finished cleanly, see if we need to deal with
-                    # output data.  We always move to stageout, even if there are no
-                    # directives -- at the very least, we'll upload stdout/stderr
+                    else:
+                        # The unit finished cleanly, see if we need to deal with
+                        # output data.  We always move to stageout, even if there are no
+                        # directives -- at the very least, we'll upload stdout/stderr
 
-                    cu['state'] = rp.STAGING_OUTPUT
-                    self._agent.update_unit_state(src    = 'ExecWatcher',
-                                                  uid    = cu['_id'],
-                                                  state  = rp.STAGING_OUTPUT,
-                                                  msg    = "unit execution completed")
+                        cu['state'] = rp.STAGING_OUTPUT
+                        self._agent.update_unit_state(src    = 'ExecWatcher',
+                                                    uid    = cu['_id'],
+                                                    state  = rp.STAGING_OUTPUT,
+                                                    msg    = "unit execution completed")
 
-                    cu_list, _ = rpu.blowup(self._config, cu, STAGEOUT_QUEUE)
-                    for _cu in cu_list :
-                        rpu.prof('put', msg="ExecWatcher to stageout_queue (%s)" % _cu['state'], uid=_cu['_id'])
-                        self._stageout_queue.put(_cu)
+                        cu_list, _ = rpu.blowup(self._config, cu, STAGEOUT_QUEUE)
+                        for _cu in cu_list :
+                            rpu.prof('put', msg="ExecWatcher to stageout_queue (%s)" % _cu['state'], uid=_cu['_id'])
+                            self._stageout_queue.put(_cu)
 
         return action
 
@@ -4329,9 +4353,6 @@ class ExecWorker_SHELL(ExecWorker):
                 rpu.prof('get', msg="executing_queue to ExecutionWorker (%s)" % cu['state'], uid=cu['_id'])
 
                 try:
-
-                    self._log.debug('Showing CU')
-                    self._log.debug(cu)
 
                     cu_list, _ = rpu.blowup(self._config, cu, EXEC_WORKER)
 
@@ -4705,6 +4726,8 @@ class ExecWorker_SHELL(ExecWorker):
 
         # got an explicit event to handle
         self._log.info ("monitoring handles event for %s: %s:%s:%s", cu['_id'], pid, state, data)
+
+        self._log.info ("Showing handles event for %s: {0}".format(cu), cu['_id'])
 
         rp_state = {'DONE'     : rp.DONE,
                     'FAILED'   : rp.FAILED,
@@ -5684,7 +5707,7 @@ class Agent(object):
     # --------------------------------------------------------------------------
     #
     def update_unit_state(self, src, uid, state, msg=None, query=None, update=None,
-            logger=None):
+            logger=None,timestamp=None):
 
         if not query  : query  = dict()
         if not update : update = dict()
@@ -5693,8 +5716,10 @@ class Agent(object):
             logger("unit '%s' state change (%s)" % (uid, msg))
 
         # we alter update, so rather use a copy of the dict...
-
-        now = rpu.timestamp()
+        if timestamp == None:
+            now = rpu.timestamp()
+        else:
+            now = timestamp
         update_dict = {
                 '$set' : {
                     'state' : state

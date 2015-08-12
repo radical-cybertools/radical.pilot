@@ -13,7 +13,7 @@
         "lrms"                        : "YARN",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "YARN",
-        "agent_spawner"               : "SHELL",
+        "agent_spawner"               : "POPEN",
         "task_launch_method"          : "YARN",
         "mpi_launch_method"           : "MPIEXEC",
         "rp_version"                  : "debug",
