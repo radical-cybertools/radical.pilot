@@ -4909,6 +4909,9 @@ class AgentWorker(rpu.Worker):
     #
     def __init__(self, cfg):
 
+        # make sure we have a name
+        self.name = cfg['name']
+
         rpu.Worker.__init__(self, cfg)
 
         # everything which comes after the worker init is limited in scope to
@@ -5103,6 +5106,9 @@ class AgentWorker(rpu.Worker):
             if not node: nodeip = self._lrms.hostip
             else       : nodeip = node2ip(node)
 
+            if isinstance(nodeip, list):
+                nodeip = nodeip[0]
+
             # we should have at most one bridge for every type
             for b in self._cfg['agent_layout'][sa].get('bridges', []):
                 if b in bridge_addresses:
@@ -5287,18 +5293,16 @@ class AgentWorker(rpu.Worker):
             raise RuntimeError("no agent layout section for %s" % self.name)
 
         try:
-            # only the master agent creates LRMS and config files
+            # only the master agent creates LRMS and config files.  Each
+            # sub-agent can spawn other sub-agents.  In general, those will only
+            # be defined on the master agent though
             if self.name == 'agent.0':
                 self.create_lrms()
                 self.create_sub_configs()
 
-            # but each agent can spawn sub agents.  In general, those will only
-            # be defined on the master agent though
-            self.start_sub_agents()
             self.start_bridges()
             self.start_components()
-
-
+            self.start_sub_agents()
 
             # FIXME: make sure all communication channels are in place.  This could
             # be replaced with a proper barrier, but not sure if that is worth it...
@@ -5445,15 +5449,19 @@ def bootstrap_3():
     if not 'RADICAL_PILOT_CFG' in os.environ:
         raise RuntimeError('RADICAL_PILOT_CFG is not set - abort')
 
-    cfg = ru.read_json_str(os.environ['RADICAL_PILOT_CFG'])
 
     # find out what agent instance name we have
     if len(sys.argv) != 2: 
         raise RuntimeError('invalid number of parameters (%s)' % sys.argv)
-    cfg['name'] = sys.argv[1]
+    agent_name = sys.argv[1]
+    agent_cfg  = "%s/%s.cfg" % (os.getcwd(), agent_name)
 
-    print "Agent config (%s):\n%s\n\n" % \
-            (os.environ['RADICAL_PILOT_CFG'], pprint.pformat(cfg))
+    print "startup agent %s : %s" % (agent_name, agent_cfg)
+
+    cfg = ru.read_json_str(agent_cfg)
+    cfg['name'] = agent_name
+
+    print "Agent config (%s):\n%s\n\n" % (agent_cfg, pprint.pformat(cfg))
 
     mongodb_url = cfg['mongodb_url']
     pilot_id    = cfg['pilot_id']

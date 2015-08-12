@@ -2,6 +2,7 @@
 import os
 import sys
 import time
+import pprint
 import signal
 
 import threading       as mt
@@ -153,6 +154,8 @@ class Component(mp.Process):
         level     = self._cfg.get('debug', 'INFO')
         self._log = rpu_get_logger(self._name, target, level)
         self._log.debug('init %s - %s' % (self._name, os.getpid()))
+        self._log.debug('addr %s' % (pprint.pformat(self._addr_map)))
+        self._log.debug('cfg  %s' % (pprint.pformat(self._cfg)))
 
         # start the main event loop in a separate process.  At that point, the
         # component will basically detach itself from the parent process, and
