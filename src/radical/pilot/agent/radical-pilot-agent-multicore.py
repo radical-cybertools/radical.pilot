@@ -5246,7 +5246,6 @@ class AgentWorker(rpu.Worker):
                 ccfg = copy.deepcopy(self._cfg)
                 comp = cmap[cname].create(ccfg)
                 comp.start()
-                print 'step: created A %s - %s' % (cname, os.getpid())
                 self._components.append(comp)
 
         # we also create *one* instance of every 'worker' type -- which are the
