@@ -322,7 +322,6 @@ class PilotLauncherWorker(threading.Thread):
                         # Database connection parameters
                         session_id    = self._session.uid
                         database_url  = self._session.dburl
-                        database_name = self._session.dbname
 
                         # ------------------------------------------------------
                         # pilot description and resource configuration

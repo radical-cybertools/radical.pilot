@@ -3508,7 +3508,6 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
         self.declare_publisher('unschedule', rp.AGENT_UNSCHEDULE_PUBSUB)
         self.declare_publisher('state',      rp.AGENT_STATE_PUBSUB)
 
-
         self._cus_to_watch   = list()
         self._cus_to_cancel  = list()
         self._watch_queue    = queue.Queue ()
@@ -3905,7 +3904,6 @@ class ExecWorker_SHELL(AgentExecutingComponent):
         self.declare_publisher('unschedule', rp.AGENT_UNSCHEDULE_PUBSUB)
         self.declare_publisher('state',      rp.AGENT_STATE_PUBSUB)
 
-
         # Mimic what virtualenv's "deactivate" would do
         self._deactivate = "# deactivate pilot virtualenv\n"
 
@@ -4067,6 +4065,7 @@ class ExecWorker_SHELL(AgentExecutingComponent):
                     ret.append ('"%s"' % arg)
 
             return  ret
+
         # ----------------------------------------------------------------------
 
         args  = ""
@@ -4996,7 +4995,7 @@ class AgentWorker(rpu.Worker):
         self._workers    = list()
 
         # prepare profiler
-        rpu.prof_init('agent.prof', 'start', uid=self._cfg['pilot_id'])
+        rpu.prof_init('%s.agent.0.prof' % self._session_id, 'start')
 
         # configure the agent logger
         self._log.setLevel(self._cfg['debug'])
@@ -5436,7 +5435,7 @@ def bootstrap_3():
     control to the Agent class which will spawn the functional components.
     """
 
-    rpu.prof_init()
+    rpu.prof_init(target='bootstrap_3.log')
 
     # FIXME: signal handlers need mongo_p, but we won't have that until later
 

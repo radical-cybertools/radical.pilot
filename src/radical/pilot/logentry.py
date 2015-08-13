@@ -11,9 +11,7 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__ = "MIT"
 
-import datetime
-
-from radical.pilot.utils import timestamp as ts
+import time
 
 _iso = "%Y-%m-%dT%H:%M:%S.%f"
 
@@ -28,13 +26,7 @@ class Logentry(object):
     def __init__(self, message, timestamp=None, logger=None):
 
         if not timestamp :
-            timestamp = ts()
-
-        if isinstance(timestamp, datetime.datetime):
-            timestamp = timestamp.isoformat()
-
-        if not isinstance(timestamp, basestring):
-            timestamp = str(timestamp)
+            timestamp = time.time()
 
         if  logger :
             logger (message)
@@ -63,9 +55,9 @@ class Logentry(object):
     #
     @property
     def timestamp(self):
-        """Returns the timestamp as datetime
+        """Returns the timestamp
         """
-        return datetime.datetime.strptime(self._timestamp, "%Y-%m-%dT%H:%M:%S.%f")
+        return self._timestamp
 
     # --------------------------------------------------------------------------
     #

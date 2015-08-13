@@ -3,59 +3,6 @@ import os
 
 # ------------------------------------------------------------------------------
 #
-def get_experiment_frames(experiments, datadir=None):
-    """
-    read profiles for all sessions in the given 'experiments' dict.  That dict
-    is expected to be like this:
-
-    { 'test 1' : [ [ 'rp.session.thinkie.merzky.016609.0007',         'stampede popen sleep 1/1/1/1 (?)'] ],
-      'test 2' : [ [ 'rp.session.ip-10-184-31-85.merzky.016610.0112', 'stampede shell sleep 16/8/8/4'   ] ],
-      'test 3' : [ [ 'rp.session.ip-10-184-31-85.merzky.016611.0013', 'stampede shell mdrun 16/8/8/4'   ] ],
-      'test 4' : [ [ 'rp.session.titan-ext4.marksant1.016607.0005',   'titan    shell sleep 1/1/1/1 a'  ] ],
-      'test 5' : [ [ 'rp.session.titan-ext4.marksant1.016607.0006',   'titan    shell sleep 1/1/1/1 b'  ] ],
-      'test 6' : [ [ 'rp.session.ip-10-184-31-85.merzky.016611.0013', 'stampede - isolated',            ],
-                   [ 'rp.session.ip-10-184-31-85.merzky.016612.0012', 'stampede - integrated',          ],
-                   [ 'rp.session.titan-ext4.marksant1.016607.0006',   'blue waters - integrated'        ] ]
-    }  name in 
-
-    ie. iname in t is a list of experiment names, and each label has a list of
-    session/label pairs, where the label will be later used to label (duh) plots.
-
-    we return a similar dict where the session IDs are data frames
-    """
-    import pandas as pd
-
-    exp_frames  = dict()
-
-    if not datadir:
-        datadir = os.getcwd()
-
-    print 'reading profiles in %s' % datadir
-
-    for exp in experiments:
-        print " - %s" % exp
-        exp_frames[exp] = list()
-
-        for sid, label in experiments[exp]:
-            print "   - %s" % sid
-            
-            import glob
-            for prof in glob.glob ("%s/%s-pilot.*.prof" % (datadir, sid)):
-                print "     - %s" % prof
-                frame = get_profile_frame (prof)
-                exp_frames[exp].append ([frame, label])
-                
-    return exp_frames
-
-
-# ------------------------------------------------------------------------------
-#
-def get_profile_frame (prof):
-    import pandas as pd
-    return pd.read_csv(prof)
-
-# ------------------------------------------------------------------------------
-#
 tmp = None
 def add_concurrency (frame, tgt, spec):
     """
@@ -349,6 +296,30 @@ def create_analytical_frame (idx, kind, args, limits, step):
     else:
         raise ValueError ("No such frame kind '%s'" % kind)
         
+
+# ------------------------------------------------------------------------------
+#
+def add_derived(df):
+    """
+    Add additional (derived) colums to dataframes
+    create columns based on two other columns using an operator
+    """
+    
+    import operator
+    
+    df['executor_queue'] = operator.sub(df['ewo_get'],      df['s_to_ewo'])
+    df['raw_runtime']    = operator.sub(df['ewa_complete'], df['ewo_launch'])
+    df['full_runtime']   = operator.sub(df['uw_push_done'], df['s_to_ewo'])
+    df['watch_delay']    = operator.sub(df['ewa_get'],      df['ewo_to_ewa'])
+    df['allocation']     = operator.sub(df['s_allocated'],  df['a_to_s'])
+
+    # add a flag to indicate if a unit / pilot / ... is cloned
+    # --------------------------------------------------------------------------
+    def _cloned (row):
+        return 'clone' in row['uid'].lower()
+    # --------------------------------------------------------------------------
+    df['cloned'] = df.apply(lambda row: _cloned (row), axis=1)
+
 
 # ------------------------------------------------------------------------------
 

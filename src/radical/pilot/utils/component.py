@@ -11,19 +11,19 @@ import radical.utils   as ru
 
 from radical.pilot.states import *
 
-from .logger import get_logger   as rpu_get_logger
-from .misc   import prof_init    as rpu_prof_init
-from .misc   import prof         as rpu_prof
+from .logger     import get_logger   as rpu_get_logger
+from .prof_utils import prof_init    as rpu_prof_init
+from .prof_utils import prof         as rpu_prof
 
-from .queue  import Queue        as rpu_Queue
-from .queue  import QUEUE_ZMQ    as rpu_QUEUE_ZMQ
-from .queue  import QUEUE_OUTPUT as rpu_QUEUE_OUTPUT
-from .queue  import QUEUE_INPUT  as rpu_QUEUE_INPUT
+from .queue      import Queue        as rpu_Queue
+from .queue      import QUEUE_ZMQ    as rpu_QUEUE_ZMQ
+from .queue      import QUEUE_OUTPUT as rpu_QUEUE_OUTPUT
+from .queue      import QUEUE_INPUT  as rpu_QUEUE_INPUT
 
-from .pubsub import Pubsub       as rpu_Pubsub
-from .pubsub import PUBSUB_ZMQ   as rpu_PUBSUB_ZMQ
-from .pubsub import PUBSUB_PUB   as rpu_PUBSUB_PUB
-from .pubsub import PUBSUB_SUB   as rpu_PUBSUB_SUB
+from .pubsub     import Pubsub       as rpu_Pubsub
+from .pubsub     import PUBSUB_ZMQ   as rpu_PUBSUB_ZMQ
+from .pubsub     import PUBSUB_PUB   as rpu_PUBSUB_PUB
+from .pubsub     import PUBSUB_SUB   as rpu_PUBSUB_SUB
 
 # TODO:
 #   - add profiling
@@ -403,7 +403,8 @@ class Component(mp.Process):
             sys.exit()
         signal.signal(signal.SIGTERM, sigterm_handler)
 
-        rpu_prof_init(target="component_%s.prof" % self._name)
+        # initialize profiler
+        rpu_prof_init(target="component_%s" % self._name)
         rpu_prof('run %s' % self._name)
 
         # Initialize() should declare all input and output channels, and all
@@ -417,6 +418,7 @@ class Component(mp.Process):
             for state in states:
                 if not state in self._workers:
                     raise RuntimeError("%s: no worker declared for input state %s" % self._name, state)
+        rpu_prof('initialized')
 
         try:
             # The main event loop will repeatedly iterate over all input
@@ -447,7 +449,7 @@ class Component(mp.Process):
                     state = unit['state']
                     if state not in states:
                         self.advance(unit, FAILED, publish=True, push=False)
-                        rpu_prof(etype='failed', msg="unexpected state %s" % state,
+                        rpu_prof(event='failed', msg="unexpected state %s" % state,
                                 uid=unit['_id'], logger=self._log.error)
                         continue
 
@@ -462,13 +464,13 @@ class Component(mp.Process):
                     # it over, wait for completion, and then pull for the next
                     # unit
                     try:
-                        rpu_prof(etype='work', msg='state %s' % state, uid=unit['_id'])
+                        rpu_prof(event='work', msg='state %s' % state, uid=unit['_id'])
                         self._workers[state](unit)
-                        rpu_prof(etype='work done', msg='state %s' % state, uid=unit['_id'])
+                        rpu_prof(event='work done', msg='state %s' % state, uid=unit['_id'])
 
                     except Exception as e:
                         self.advance(unit, FAILED, publish=True, push=False)
-                        rpu_prof(etype='failed', msg=str(e), uid=unit['_id'],
+                        rpu_prof(event='failed', msg=str(e), uid=unit['_id'],
                                 logger=self._log.exception)
 
 

@@ -13,7 +13,6 @@ import radical.pilot as rp
 # Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
 # you want to see what happens behind the scences!
 
-CNT=0
 
 #------------------------------------------------------------------------------
 #
@@ -35,16 +34,16 @@ def pilot_state_cb (pilot, state):
 def unit_state_cb (unit, state):
     """ this callback is invoked on all unit state changes """
 
-    if state == rp.DONE:
-        global CNT
-        CNT += 1
-
-        print "[Callback]: ComputeUnit %05d '%s: %s' (on %s) state: %s." \
-            % (CNT, unit.name, unit.uid, unit.pilot_id, state)
+    print "[Callback]: ComputeUnit  '%s: %s' (on %s) state: %s." \
+        % (unit.name, unit.uid, unit.pilot_id, state)
 
     if state == rp.FAILED:
         print "stderr: %s" % unit.stderr
         sys.exit (1)
+
+    if state in [rp.DONE, rp.FAILED, rp.CANCELED]:
+        for cb in unit.callback_history:
+            print cb
 
 
 #------------------------------------------------------------------------------
@@ -84,7 +83,8 @@ if __name__ == "__main__":
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
     session = rp.Session(name=session_name)
-    print "session id: %s" % session.uid
+    sid = session.uid
+    print "session id: %s" % sid
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
@@ -120,7 +120,7 @@ if __name__ == "__main__":
         # a UnitManager object.
         umgr = rp.UnitManager(
             session=session,
-            scheduler=rp.SCHED_DIRECT)
+            scheduler=rp.SCHED_BACKFILLING)
     
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
@@ -147,7 +147,7 @@ if __name__ == "__main__":
         #    /bin/cat $INPUT1 $INPUT2
         #
         cuds = []
-        for unit_count in range(0, 140):
+        for unit_count in range(0, 8):
             cud = rp.ComputeUnitDescription()
             cud.name          = "unit_%03d" % unit_count
             cud.executable    = "/bin/sleep"
@@ -196,16 +196,32 @@ if __name__ == "__main__":
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.
+
+        # don't clean the session if you want to retrieve the profiles
         print "closing session"
-        print session.uid
         session.close (cleanup=False)
 
-        # the above is equivalent to
-        #
-        #   session.close (cleanup=True, terminate=True)
-        #
-        # it will thus both clean out the session's database record, and kill
-        # all remaining pilots (none in our example).
+    # fetch profiles and convert into inspectable data frames
+    if session:
+        import radical.pilot.utils as rpu
+
+        profiles   = session.fetch_profiles(target='/tmp/')
+        profile    = rpu.combine_profiles (profiles)
+        frame      = rpu.prof2frame(profile)
+        sf, pf, uf = rpu.split_frame(frame)
+
+        print len(sf)
+        print len(pf)
+        print len(uf)
+        
+        print sf[0:10]
+        print pf[0:10]
+        print uf[0:10]
+        print uf[uf['uid'] == 'unit.000001']
+        print list(pf['event'])
+
+        for f in profiles:
+            os.unlink(f)
 
 
 #-------------------------------------------------------------------------------

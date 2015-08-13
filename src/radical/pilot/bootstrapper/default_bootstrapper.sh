@@ -81,17 +81,52 @@ fi
 
 # ------------------------------------------------------------------------------
 #
-PROFILE_LOG="agent.0.prof"
+PROFILE="$SESSION_ID.$$.Bootstrapper.prof"
 profile_event()
 {
-    if ! test -z "$RADICAL_PILOT_PROFILE"
+    if test -z "$RADICAL_PILOT_PROFILE"
     then
+        return
+    fi
+
+    event=$1
+    msg=$2
+
+    if ! test -f 'gtod.c'
+    then
+        cat > gtod.c <<EOT
+            #include <stdio.h>
+            #include <sys/time.h>
+            
+            int main ()
+            {
+                struct timeval tv;
+                (void) gettimeofday (&tv, NULL);
+                fprintf (stdout, "%d.%06d\n", tv.tv_sec, tv.tv_usec);
+                return (0);
+            }
+EOT
+        cc -o gtod gtod.c 1>/dev/null 2>/dev/null
+    fi
+
+    if test -e "./gtod"
+    then
+        TIMESTAMP=`./gtod`
+        NOW=`echo "$TIMESTAMP" - "$TIME_ZERO" | bc`
+    else
         timestamp
         NOW=$((TIMESTAMP-TIME_ZERO))
-        # Format: time, component, uid, event, message"
-        printf "%.4f,%s,%s,%s,%s\n" \
-            "$NOW" "bootstrap_1" "$PILOTID" "$@" "" >> $PROFILE_LOG
     fi
+
+    if ! test -f "$PROFILE"
+    then
+        # initialize profile
+        echo "#time,name,uid,state,event,msg" > "$PROFILE"
+    fi
+
+    printf "%.4f,%s,%s,%s,%s,%s\n" \
+        "$NOW" "$$:Bootstrapper" "$PILOT_ID" "ACTIVE" "$event" "$msg" \
+        >> "$PROFILE"
 }
 
 
@@ -1134,7 +1169,6 @@ done
 # Create header for profile log
 if ! test -z "$RADICAL_PILOT_PROFILE"
 then
-    echo "time,component,uid,event,message" > $PROFILE_LOG
     profile_event 'bootstrap start'
 fi
 
@@ -1301,6 +1335,7 @@ chmod 0755 bootstrap_2.sh
 profile_event 'agent start'
 
 # start the master agent instance (zero)
+profile_event 'sync rel' 'agent start'
 sh bootstrap_2.sh 'agent.0'
 AGENT_EXITCODE=$?
 
