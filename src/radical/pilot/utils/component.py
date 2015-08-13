@@ -121,7 +121,7 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg=None):
+    def __init__(self, cfg, logger):
         """
         This constructor MUST be called by inheriting classes.  
         
@@ -130,9 +130,9 @@ class Component(mp.Process):
         initialize() method.
         """
 
-        if not cfg : cfg  = dict()
-
         self._cfg         = cfg
+        self._log         = logger
+
         self._name        = cfg.get('name', type(self).__name__)
         self._addr_map    = cfg.get('bridge_addresses', {})
         self._parent      = os.getpid() # pid of spawning process
@@ -149,19 +149,10 @@ class Component(mp.Process):
         if 'RADICAL_DEBUG' in os.environ:
             self._debug = True
 
-        # configure the component's logger
-        target    = "component_%s.log" % self._name
-        level     = self._cfg.get('debug', 'INFO')
-        self._log = rpu_get_logger(self._name, target, level)
-        self._log.debug('init %s - %s' % (self._name, os.getpid()))
-        self._log.debug('addr %s' % (pprint.pformat(self._addr_map)))
-        self._log.debug('cfg  %s' % (pprint.pformat(self._cfg)))
-
         # start the main event loop in a separate process.  At that point, the
         # component will basically detach itself from the parent process, and
         # will only maintain a handle to be used for shutdown
         mp.Process.__init__(self, name=self._name)
-        self.start()
 
 
     # --------------------------------------------------------------------------
@@ -362,13 +353,10 @@ class Component(mp.Process):
 
         # ----------------------------------------------------------------------
         def _subscriber(q, callback):
-            try:
-                while not self._terminate.is_set():
-                    topic, msg = q.get_nowait(0.1) # FIXME timout
-                    if topic and msg:
-                        callback (topic=topic, msg=msg)
-            except Exception as e:
-                self._log.exception('subscriber failed: %s' % e)
+            while not self._terminate.is_set():
+                topic, msg = q.get_nowait(0.1) # FIXME timout
+                if topic and msg:
+                    callback (topic=topic, msg=msg)
         # ----------------------------------------------------------------------
 
         # create a pubsub subscriber, and subscribe to the given topic
@@ -395,6 +383,11 @@ class Component(mp.Process):
         """
 
         dh = ru.DebugHelper()
+
+        # configure the component's logger
+        target    = "component_%s.log" % self._name
+        level     = self._cfg.get('debug', 'INFO')
+        self._log = rpu_get_logger(self._name, target, level)
 
         # registering a sigterm handler will allow us to call an exit when the
         # parent calls terminate -- which is excepted in the loop below, and we
@@ -599,9 +592,9 @@ class Worker(Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, logger):
 
-        Component.__init__(self, cfg)
+        Component.__init__(self, cfg, logger)
 
     # --------------------------------------------------------------------------
     #

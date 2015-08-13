@@ -22,10 +22,17 @@ resources = {
             'queue'    : None,
             'schema'   : None
             },
+
         'home.test' : {
             'project'  : None,
             'queue'    : None,
             'schema'   : 'ssh'
+            },
+
+        'ncsa.bw' : {
+            'project'  : None,
+            'queue'    : 'debug',
+            'schema'   : None
             },
 
         'epsrc.archer' : {
@@ -88,6 +95,9 @@ def pilot_state_cb (pilot, state):
 
     if state == rp.FAILED:
         sys.exit (1)
+
+    if state in [rp.DONE, rp.CANCELED]:
+        sys.exit (0)
 
 
 #------------------------------------------------------------------------------
