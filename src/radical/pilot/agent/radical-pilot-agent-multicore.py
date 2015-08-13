@@ -1939,7 +1939,7 @@ class LaunchMethodORTE(LaunchMethod):
         reserved_size = 1 # TODO: make configurable
         vm_size = len(lrms.node_list) - reserved_size
         lrms.reserved_nodes = sorted(lrms.node_list)[-reserved_size:]
-        logger.info("Reserving nodes: %s" % self.lrms.reserved_nodes)
+        logger.info("Reserving nodes: %s" % lrms.reserved_nodes)
 
       # # Mark the reserved node slots BUSY
       # # NOTE: we don't need that anymore, as the nodelist is manipulated on
