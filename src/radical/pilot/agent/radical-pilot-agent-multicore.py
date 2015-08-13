@@ -1986,7 +1986,7 @@ class LaunchMethodORTE(LaunchMethod):
 
                 # Check if the process is still around,
                 # and log output in debug mode.
-                if not dvm_process.poll():
+                if None == dvm_process.poll():
                     logger.debug("ORTE: %s" % line)
                 else:
                     # Process is gone: fatal!
