@@ -3403,13 +3403,6 @@ class ExecWorker_POPEN (ExecWorker) :
                  schedule_queue, pilot_id, session_id)
 
 
-        # run watcher thread
-        watcher_name  = self.name.replace ('ExecWorker', 'ExecWatcher')
-        self._watcher = threading.Thread(target = self._watch,
-                                         name   = watcher_name)
-        self._watcher.start ()
-
-
     # --------------------------------------------------------------------------
     #
     def close(self):
@@ -3417,8 +3410,6 @@ class ExecWorker_POPEN (ExecWorker) :
         # shut down the watcher thread
         rpu.prof ('stop request')
         rpu.flush_prof()
-        self._terminate.set()
-        self._watcher.join()
 
 
     # --------------------------------------------------------------------------
@@ -3452,6 +3443,13 @@ class ExecWorker_POPEN (ExecWorker) :
     # --------------------------------------------------------------------------
     #
     def run(self):
+
+        # run watcher thread
+        watcher_name  = self.name.replace ('ExecWorker', 'ExecWatcher')
+        self._watcher = threading.Thread(target = self._watch,
+                                         name   = watcher_name)
+        self._watcher.start ()
+
 
         rpu.prof('run')
         try:
@@ -3524,6 +3522,8 @@ class ExecWorker_POPEN (ExecWorker) :
 
         except Exception as e:
             self._log.exception("Error in ExecWorker loop (%s)" % e)
+            self._terminate.set()
+            self._watcher.join()
 
         rpu.prof ('stop')
 
