@@ -38,7 +38,7 @@ def run_record(rec):
 
         rep.header('create pilots')
         pds = list()
-        for pd_json in glob.glob("%s/pilot.*.json % rec"):
+        for pd_json in glob.glob("%s/pilot.*.json" % rec):
             pd_dict = ru.read_json(pd_json)
             pd      = rp.ComputePilotDescription()
             for key, val in pd_dict.iteritems():
@@ -48,9 +48,12 @@ def run_record(rec):
         pilots = pmgr.submit_pilots(pds)
         rep.ok('pilots submitted')
 
+        rep.header('using pilots')
+        umgr.add_pilots(pilots)
+
         batch = 0
         while True:
-            ud_json_list = glob.glob("%s/unit.*.batch.%03d.json" % batch)
+            ud_json_list = glob.glob("%s/unit.*.batch.%03d.json" % (rec, batch))
 
             if not ud_json_list:
                 rec.header('no more unit batches found')
