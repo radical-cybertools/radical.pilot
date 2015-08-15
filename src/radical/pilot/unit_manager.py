@@ -100,6 +100,7 @@ class UnitManager(object):
         self._session = session
         self._worker  = None 
         self._pilots  = list()
+        self._rec_id  = 0
 
         self._uid = ru.generate_id ('umgr') 
 
@@ -389,9 +390,18 @@ class UnitManager(object):
         units = list()
         for ud in unit_descriptions :
 
-            units.append (ComputeUnit.create (unit_description=ud,
-                                              unit_manager_obj=self, 
-                                              local_state=SCHEDULING))
+            u = ComputeUnit.create (unit_description=ud,
+                                    unit_manager_obj=self, 
+                                    local_state=SCHEDULING)
+            units.append(u)
+
+            if self._session._rec:
+                import radical.utils as ru
+                ru.write_json(ud.as_dict(), "%s/%s.batch.%03d.json" \
+                        % (self._session._rec, u.uid, self._rec_id))
+
+        if self._session._rec:
+            self._rec_id += 1
 
         self._worker.publish_compute_units (units=units)
 

@@ -264,27 +264,27 @@ class PilotManager(object):
         # each one and append it to 'pilot_obj_list'.
         pilot_obj_list = list()
 
-        for pilot_description in pilot_descriptions:
+        for pd in pilot_descriptions:
 
-            if pilot_description.resource is None:
+            if pd.resource is None:
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'resource'."
                 raise BadParameter(error_msg)
 
-            elif pilot_description.runtime is None:
+            elif pd.runtime is None:
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'runtime'."
                 raise BadParameter(error_msg)
 
-            elif pilot_description.cores is None:
+            elif pd.cores is None:
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'cores'."
                 raise BadParameter(error_msg)
 
-            resource_key = pilot_description.resource
+            resource_key = pd.resource
             resource_cfg = self._session.get_resource_config(resource_key)
 
             # Check resource-specific mandatory attributes
             if "mandatory_args" in resource_cfg:
                 for ma in resource_cfg["mandatory_args"]:
-                    if getattr(pilot_description, ma) is None:
+                    if getattr(pd, ma) is None:
                         error_msg = "ComputePilotDescription does not define attribute '{0}' which is required for '{1}'.".format(ma, resource_key)
                         raise BadParameter(error_msg)
 
@@ -293,14 +293,14 @@ class PilotManager(object):
             # the selected schema so better use a deep copy...
             import copy
             resource_cfg  = copy.deepcopy (resource_cfg)
-            schema        = pilot_description['access_schema']
+            schema        = pd['access_schema']
 
             if  not schema :
                 if 'schemas' in resource_cfg :
                     schema = resource_cfg['schemas'][0]
               # import pprint
               # print "no schema, using %s" % schema
-              # pprint.pprint (pilot_description)
+              # pprint.pprint (pd)
 
             if  not schema in resource_cfg :
               # import pprint
@@ -315,21 +315,23 @@ class PilotManager(object):
                     resource_cfg[key] = resource_cfg[schema][key]
 
             # If 'default_sandbox' is defined, set it.
-            if pilot_description.sandbox is not None:
+            if pd.sandbox is not None:
                 if "valid_roots" in resource_cfg and resource_cfg["valid_roots"] is not None:
                     is_valid = False
                     for vr in resource_cfg["valid_roots"]:
-                        if pilot_description.sandbox.startswith(vr):
+                        if pd.sandbox.startswith(vr):
                             is_valid = True
                     if is_valid is False:
-                        raise BadParameter("Working directory for resource '%s' defined as '%s' but needs to be rooted in %s " % (resource_key, pilot_description.sandbox, resource_cfg["valid_roots"]))
+                        raise BadParameter("Working directory for resource '%s'" \
+                               " defined as '%s' but needs to be rooted in %s " \
+                                % (resource_key, pd.sandbox, resource_cfg["valid_roots"]))
 
             # After the sanity checks have passed, we can register a pilot
             # startup request with the worker process and create a facade
             # object.
 
             pilot = ComputePilot.create(
-                pilot_description=pilot_description,
+                pilot_description=pd,
                 pilot_manager_obj=self)
 
             pilot_uid = self._worker.register_start_pilot_request(
@@ -339,6 +341,12 @@ class PilotManager(object):
             pilot._uid = pilot_uid
 
             pilot_obj_list.append(pilot)
+
+            if self._session._rec:
+                import radical.utils as ru
+                ru.write_json(pd.as_dict(), "%s/%s.json" 
+                        % (self._session._rec, pilot_uid))
+
 
         # Implicit return value conversion
         if  return_list_type :
