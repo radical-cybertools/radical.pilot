@@ -50,7 +50,6 @@ class PilotManagerController(threading.Thread):
 
         # The MongoDB database handle.
         self._dbs = self._session.get_dbs()
-        print "db: %s" % self._dbs
 
         # Multithreading stuff
         threading.Thread.__init__(self)
