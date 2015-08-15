@@ -497,7 +497,7 @@ class AgentSchedulingComponent(rpu.Component):
             return impl
 
         except KeyError:
-            raise ValueError("Scheduler '%s' unknown!" % name)
+            raise ValueError("Scheduler '%s' unknown or defunct" % name)
 
 
     # --------------------------------------------------------------------------
@@ -1216,7 +1216,7 @@ class LaunchMethod(object):
             return impl(name, config, logger)
 
         except KeyError:
-            logger.exception("LaunchMethod '%s' unknown!" % name)
+            logger.exception("LaunchMethod '%s' unknown or defunct" % name)
 
         except Exception as e:
             logger.exception("LaunchMethod cannot be used: %s!" % e)
@@ -2261,7 +2261,7 @@ class LRMS(object):
             return impl(name, config, logger)
         except KeyError:
             logger.exception('lrms construction error')
-            raise RuntimeError("LRMS type '%s' unknown!" % name)
+            raise RuntimeError("LRMS type '%s' unknown or defunct" % name)
 
 
     # --------------------------------------------------------------------------
@@ -3501,7 +3501,7 @@ class AgentExecutingComponent(rpu.Component):
             return impl
 
         except KeyError:
-            raise ValueError("AgentExecutingComponent '%s' unknown!" % name)
+            raise ValueError("AgentExecutingComponent '%s' unknown or defunct" % name)
 
 
 
@@ -3542,25 +3542,8 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                                            name   = "%s.watcher" % self.name)
         self._watcher.start ()
 
-        # FIXME: 
-        #
         # The AgentExecutingComponent needs the LaunchMethods to construct
-        # commands.  Those need the scheduler for some lookups and helper
-        # methods, and the scheduler needs the LRMS.  The LRMS can in general
-        # only initialized in the original agent environment -- which ultimately
-        # limits our ability to place the CU execution on other nodes.  
-        #
-        # As a temporary workaround we pass a None-Scheduler -- this will only
-        # work for some launch methods, and specifically not for ORTE, DPLACE
-        # and RUNJOB.  
-        #
-        # The clean solution seems to be to make sure that, on 'allocating', the
-        # scheduler derives all information needed to use the allocation and
-        # attaches them to the CU, so that the launch methods don't need to look
-        # them up again.  This will make the 'opaque_slots' more opaque -- but
-        # that is the reason of their existence (and opaqueness) in the first
-        # place...
-
+        # commands.
         self._task_launcher = LaunchMethod.create(
                 name            = self._cfg['task_launch_method'],
                 config          = self._cfg,
@@ -3570,6 +3553,15 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                 name            = self._cfg['mpi_launch_method'],
                 config          = self._cfg,
                 logger          = self._log)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
+
+        # terminate watcher thread
+        self._terminate.set()
+        self._watcher.join()
 
 
     # --------------------------------------------------------------------------

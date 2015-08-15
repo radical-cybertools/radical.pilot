@@ -341,13 +341,12 @@ class PilotLauncherWorker(threading.Thread):
                         agent_layout = compute_pilot['description']['_layout']
 
                         if not agent_config:
-                            agent_config = os.environ.get('RADICAL_PILOT_CFG', "")
+                            agent_config = os.environ.get('RADICAL_PILOT_CFG')
                         if not agent_layout:
-                            agent_layout = os.environ.get('RADICAL_PILOT_LAYOUT', "")
+                            agent_layout = os.environ.get('RADICAL_PILOT_LAYOUT')
 
 
-                        # FIXME: variable names below are overloaded on type and
-                        # use
+                        # FIXME: variables below are overloaded on type and use
                         # FIXME: CFG -> CONFIG, but collides with SAGA ini files
 
                         # The agent config can either be a config dict, or
@@ -362,7 +361,7 @@ class PilotLauncherWorker(threading.Thread):
                                 logger.info("read config file: %s" % agent_config)
                                 agent_config = ru.read_json(agent_config)
                             except Exception as e:
-                                logger.warn("error reading config file: %s" % e)
+                                logger.exception("error reading config file: %s" % e)
                         elif agent_config:
                             # we can't handle this type
                             raise TypeError('agent config must be string or dict')
@@ -383,7 +382,7 @@ class PilotLauncherWorker(threading.Thread):
                                 logger.info("read layout file: %s" % agent_layout)
                                 agent_layout = ru.read_json(agent_layout)
                             except Exception as e:
-                                logger.warn("error reading layout file: %s" % e)
+                                logger.exception("error reading layout file: %s" % e)
                         elif agent_layout:
                             # we can't handle this type
                             raise TypeError('agent layout must be string or dict')
