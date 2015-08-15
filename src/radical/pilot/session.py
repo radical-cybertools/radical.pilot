@@ -231,7 +231,7 @@ class Session (saga.Session, Object):
                 if _rec:
                     self._rec = "%s/%s" % (_rec, self.uid)
                     os.system('mkdir -p %s' % self._rec)
-                    ru.write_json({'dburl' : self._database_url}, "%s/session.json" % self._rec)
+                    ru.write_json({'dburl' : str(self._database_url)}, "%s/session.json" % self._rec)
                     logger.info("recording session in %s" % self._rec)
                 else:
                     self._rec = None
