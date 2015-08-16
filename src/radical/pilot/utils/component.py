@@ -586,7 +586,7 @@ class Component(mp.Process):
         if not self._publishers[topic]:
             print "ERROR  : %s no route for notification %s (%s)" \
                     % (self._cname, topic, self._publishers.keys())
-            returreturn
+            return
 
         for m in msg:
             for p in self._publishers[topic]:
