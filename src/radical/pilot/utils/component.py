@@ -133,7 +133,13 @@ class Component(mp.Process):
         self._cfg         = cfg
         self._log         = logger
 
-        self._name        = cfg.get('name', type(self).__name__)
+        if hasattr(self, 'name'):
+            self._cname = "%s.%d" % (self.name,   cfg.get('number', 0))
+        elif 'name' in cfg:
+            self._cname = "%s.%d" % (cfg['name'], cfg.get('number', 0))
+        else:
+            self._cname = "%s.%d" % (type(self).__name__, cfg.get('number', 0))
+
         self._addr_map    = cfg.get('bridge_addresses', {})
         self._parent      = os.getpid() # pid of spawning process
         self._inputs      = list()      # queues to get units from
@@ -152,7 +158,7 @@ class Component(mp.Process):
         # start the main event loop in a separate process.  At that point, the
         # component will basically detach itself from the parent process, and
         # will only maintain a handle to be used for shutdown
-        mp.Process.__init__(self, name=self._name)
+        mp.Process.__init__(self, name=self._cname)
 
 
     # --------------------------------------------------------------------------
@@ -163,7 +169,8 @@ class Component(mp.Process):
         in the context of the main run(), and should be used to set up component
         state before units arrive
         """
-        raise NotImplementedError("initialize() is not implemented by %s" % self._name)
+        raise NotImplementedError("initialize() is not implemented by %s"
+                % self._cname)
 
 
     # --------------------------------------------------------------------------
@@ -187,7 +194,7 @@ class Component(mp.Process):
         """
 
         self._log.info('shut down component %s - %s(%d threads)' \
-                % (self._name, os.getpid(), len(self._threads)))
+                % (self._cname, os.getpid(), len(self._threads)))
 
         # tear down all subscriber threads
         self._terminate.set()
@@ -208,7 +215,7 @@ class Component(mp.Process):
             self.terminate()
 
         except Exception as e:
-            print "error on closing %s: %s" % (self._name, e)
+            print "error on closing %s: %s" % (self._cname, e)
 
 
     # --------------------------------------------------------------------------
@@ -259,7 +266,8 @@ class Component(mp.Process):
 
             # we want a *unique* output queue for each state.
             if state in self._outputs:
-                print "WARNING: %s replaces output for %s : %s -> %s" % (self._name, state, self._outputs[state], output)
+                print "WARNING: %s replaces output for %s : %s -> %s" \
+                        % (self._cname, state, self._outputs[state], output)
 
             if not output:
                 # this indicates a final state
@@ -297,7 +305,8 @@ class Component(mp.Process):
         # be responsible for multiple states
         for state in states:
             if state in self._workers:
-                print "WARNING: %s replaces worker for %s (%s)" % (self._name, state, self._workers[state])
+                print "WARNING: %s replaces worker for %s (%s)" \
+                        % (self._cname, state, self._workers[state])
             self._workers[state] = worker
 
 
@@ -385,9 +394,9 @@ class Component(mp.Process):
         dh = ru.DebugHelper()
 
         # configure the component's logger
-        target    = "component_%s.log" % self._name
+        target    = "component_%s.log" % self._cname
         level     = self._cfg.get('debug', 'INFO')
-        self._log = rpu_get_logger(self._name, target, level)
+        self._log = rpu_get_logger(self._cname, target, level)
 
         # registering a sigterm handler will allow us to call an exit when the
         # parent calls terminate -- which is excepted in the loop below, and we
@@ -397,8 +406,8 @@ class Component(mp.Process):
         signal.signal(signal.SIGTERM, sigterm_handler)
 
         # initialize profiler
-        rpu_prof_init(target="component_%s" % self._name)
-        rpu_prof('run %s' % self._name)
+        rpu_prof_init(target="component_%s" % self._cname)
+        rpu_prof('run %s' % self._cname)
 
         # Initialize() should declare all input and output channels, and all
         # workers and notification callbacks
@@ -410,7 +419,8 @@ class Component(mp.Process):
         for input, states in self._inputs:
             for state in states:
                 if not state in self._workers:
-                    raise RuntimeError("%s: no worker declared for input state %s" % self._name, state)
+                    raise RuntimeError("%s: no worker declared for input state %s" \
+                                    % self._cname, state)
         rpu_prof('initialized')
 
         try:
@@ -450,7 +460,8 @@ class Component(mp.Process):
                     # the case, as per the assertion done before we started the
                     # main loop.  But, hey... :P
                     if not state in self._workers:
-                        print "ERROR  : %s cannot handle state %s: %s" % (self._name, state, unit)
+                        print "ERROR  : %s cannot handle state %s: %s" \
+                                % (self._cname, state, unit)
                         continue
 
                     # we have an acceptable state and a matching worker -- hand
@@ -540,7 +551,8 @@ class Component(mp.Process):
                 state = unit['state']
                 if state not in self._outputs:
                     # unknown target state -- error
-                    print "ERROR  : %s can't route state %s (%s)" % (self._name, state, self._outputs.keys())
+                    print "ERROR  : %s can't route state %s (%s)" \
+                            % (self._cname, state, self._outputs.keys())
                     continue
 
                 if not self._outputs[state]:
@@ -567,11 +579,13 @@ class Component(mp.Process):
             msg = [msg]
 
         if topic not in self._publishers:
-            print "ERROR  : %s can't route notification %s (%s)" % (self._name, topic, self._publishers.keys())
+            print "ERROR  : %s can't route notification %s (%s)" \
+                    % (self._cname, topic, self._publishers.keys())
             return
 
         if not self._publishers[topic]:
-            print "ERROR  : %s no route for notification %s (%s)" % (self._name, topic, self._publishers.keys())
+            print "ERROR  : %s no route for notification %s (%s)" \
+                    % (self._cname, topic, self._publishers.keys())
             returreturn
 
         for m in msg:
@@ -605,7 +619,7 @@ class Worker(Component):
 
         if state:
             raise RuntimeError("worker %s cannot advance state (%s)"
-                    % (self.name, state))
+                    % (self.cname, state))
 
         Component.advance(self, units, state, publish, push)
 

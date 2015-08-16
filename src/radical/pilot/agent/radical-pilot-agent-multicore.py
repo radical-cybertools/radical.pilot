@@ -503,25 +503,25 @@ class AgentSchedulingComponent(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        raise NotImplementedError("_configure() not implemented for Scheduler '%s'." % self.name)
+        raise NotImplementedError("_configure() not implemented for Scheduler '%s'." % self._cname)
 
 
     # --------------------------------------------------------------------------
     #
     def slot_status(self):
-        raise NotImplementedError("slot_status() not implemented for Scheduler '%s'." % self.name)
+        raise NotImplementedError("slot_status() not implemented for Scheduler '%s'." % self._cname)
 
 
     # --------------------------------------------------------------------------
     #
     def _allocate_slot(self, cores_requested):
-        raise NotImplementedError("_allocate_slot() not implemented for Scheduler '%s'." % self.name)
+        raise NotImplementedError("_allocate_slot() not implemented for Scheduler '%s'." % self._cname)
 
 
     # --------------------------------------------------------------------------
     #
     def _release_slot(self, opaque_slots):
-        raise NotImplementedError("_release_slot() not implemented for Scheduler '%s'." % self.name)
+        raise NotImplementedError("_release_slot() not implemented for Scheduler '%s'." % self._cname)
 
 
     # --------------------------------------------------------------------------
@@ -1166,11 +1166,11 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        self.name       = name
-        self._cfg       = config
-        self._log       = logger
+        self.name = type(self).__name__
+        self._cfg = cfg
+        self._log = logger
 
         self.launch_command = None
         self._configure()
@@ -1187,7 +1187,7 @@ class LaunchMethod(object):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, name, config, logger=None):
+    def create(cls, name, cfg, logger=None):
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
@@ -1213,7 +1213,7 @@ class LaunchMethod(object):
                 LAUNCH_METHOD_RUNJOB        : LaunchMethodRUNJOB,
                 LAUNCH_METHOD_SSH           : LaunchMethodSSH
             }[name]
-            return impl(name, config, logger)
+            return impl(cfg, logger)
 
         except KeyError:
             logger.exception("LaunchMethod '%s' unknown or defunct" % name)
@@ -1227,7 +1227,7 @@ class LaunchMethod(object):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, config, lrms, logger):
+    def lrms_config_hook(cls, name, cfg, lrms, logger):
         """
         This hook will allow the LRMS to perform launch methods specific
         configuration steps.  The LRMS layer MUST ensure that this hook is
@@ -1261,7 +1261,7 @@ class LaunchMethod(object):
             return None
 
         logger.info('call LRMS config hook for LaunchMethod %s: %s' % (name, impl))
-        return impl.lrms_config_hook(name, config, lrms, logger)
+        return impl.lrms_config_hook(name, cfg, lrms, logger)
 
 
 
@@ -1327,9 +1327,9 @@ class LaunchMethodFORK(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1359,9 +1359,9 @@ class LaunchMethodMPIRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1408,9 +1408,9 @@ class LaunchMethodSSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1472,9 +1472,9 @@ class LaunchMethodMPIEXEC(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1519,9 +1519,9 @@ class LaunchMethodAPRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1555,9 +1555,9 @@ class LaunchMethodCCMRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1590,9 +1590,9 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1642,9 +1642,9 @@ class LaunchMethodRUNJOB(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1716,9 +1716,9 @@ class LaunchMethodDPLACE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1759,9 +1759,9 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
     # --------------------------------------------------------------------------
     #
@@ -1810,9 +1810,9 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1857,9 +1857,9 @@ class LaunchMethodIBRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1903,15 +1903,15 @@ class LaunchMethodORTE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, config, lrms, logger):
+    def lrms_config_hook(cls, name, cfg, lrms, logger):
         """
         FIXME: this config hook will manipulate the LRMS nodelist.  Not a nice
                thing to do, but hey... :P
@@ -2050,9 +2050,9 @@ class LaunchMethodPOE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -2148,10 +2148,10 @@ class LRMS(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        self.name            = name
-        self._cfg            = config
+        self.name            = type(self).__name__
+        self._cfg            = cfg
         self._log            = logger
         self._hostname       = None
         self._hostip         = None
@@ -2238,7 +2238,7 @@ class LRMS(object):
     # This class-method creates the appropriate sub-class for the LRMS.
     #
     @classmethod
-    def create(cls, name, config, logger=None):
+    def create(cls, name, cfg, logger=None):
 
         # Make sure that we are the base-class!
         if cls != LRMS:
@@ -2258,7 +2258,7 @@ class LRMS(object):
                 LRMS_NAME_SLURM       : SLURMLRMS,
                 LRMS_NAME_TORQUE      : TORQUELRMS
             }[name]
-            return impl(name, config, logger)
+            return impl(cfg, logger)
         except KeyError:
             logger.exception('lrms construction error')
             raise RuntimeError("LRMS type '%s' unknown or defunct" % name)
@@ -2339,9 +2339,9 @@ class LRMS(object):
 class CCMLRMS(LRMS):
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LRMS.__init__(self, name, config, logger)
+        LRMS.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -2389,9 +2389,9 @@ class TORQUELRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LRMS.__init__(self, name, config, logger)
+        LRMS.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -2475,9 +2475,9 @@ class PBSProLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LRMS.__init__(self, name, config, logger)
+        LRMS.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -2621,9 +2621,9 @@ class SLURMLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LRMS.__init__(self, name, config, logger)
+        LRMS.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -2691,9 +2691,9 @@ class SGELRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LRMS.__init__(self, name, config, logger)
+        LRMS.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -2733,9 +2733,9 @@ class LSFLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LRMS.__init__(self, name, config, logger)
+        LRMS.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -2920,14 +2920,14 @@ class LoadLevelerLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
         self.torus_block            = None
         self.loadl_bg_block         = None
         self.shape_table            = None
         self.torus_dimension_labels = None
 
-        LRMS.__init__(self, name, config, logger)
+        LRMS.__init__(self, cfg, logger)
 
     # --------------------------------------------------------------------------
     #
@@ -3420,9 +3420,9 @@ class ForkLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LRMS.__init__(self, name, config, logger)
+        LRMS.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -3539,20 +3539,20 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
         # run watcher thread
         self._terminate = threading.Event()
         self._watcher   = threading.Thread(target = self._watch,
-                                           name   = "%s.watcher" % self.name)
+                                           name   = "%s.watcher" % self._cname)
         self._watcher.start ()
 
         # The AgentExecutingComponent needs the LaunchMethods to construct
         # commands.
         self._task_launcher = LaunchMethod.create(
-                name            = self._cfg['task_launch_method'],
-                config          = self._cfg,
-                logger          = self._log)
+                name   = self._cfg['task_launch_method'],
+                cfg    = self._cfg,
+                logger = self._log)
 
         self._mpi_launcher = LaunchMethod.create(
-                name            = self._cfg['mpi_launch_method'],
-                config          = self._cfg,
-                logger          = self._log)
+                name   = self._cfg['mpi_launch_method'],
+                cfg    = self._cfg,
+                logger = self._log)
 
 
     # --------------------------------------------------------------------------
@@ -3957,27 +3957,27 @@ class ExecWorker_SHELL(AgentExecutingComponent):
         self.monitor_shell  = sups.PTYShell ("fork://localhost/")
 
         # run the spawner on the shells
-        #tmp = tempfile.gettempdir()
+        tmp = tempfile.gettempdir()
         # Moving back to shared file system again, until it reaches maturity,
         # as this breaks launch methods with a hop, e.g. ssh.
-        tmp      = os.getcwd() # FIXME: see #658
+        # tmp = os.getcwd() # FIXME: see #658
         pilot_id = self._cfg['pilot_id']
         ret, out, _  = self.launcher_shell.run_sync \
                            ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
-                           % (os.path.dirname (rp.__file__), tmp, pilot_id, self.name))
+                           % (os.path.dirname (rp.__file__), tmp, pilot_id, self._cname))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
 
         ret, out, _  = self.monitor_shell.run_sync \
                            ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
-                           % (os.path.dirname (rp.__file__), tmp, pilot_id, self.name))
+                           % (os.path.dirname (rp.__file__), tmp, pilot_id, self._cname))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
 
         # run watcher thread
         self._terminate = threading.Event()
         self._watcher   = threading.Thread(target = self._watch,
-                                           name   = "%s.watcher" % self.name)
+                                           name   = "%s.watcher" % self._cname)
         self._watcher.start ()
 
 
@@ -4001,14 +4001,14 @@ class ExecWorker_SHELL(AgentExecutingComponent):
         # place...
 
         self._task_launcher = LaunchMethod.create(
-                name            = self._cfg['task_launch_method'],
-                config          = self._cfg,
-                logger          = self._log)
+                name   = self._cfg['task_launch_method'],
+                cfg    = self._cfg,
+                logger = self._log)
 
         self._mpi_launcher = LaunchMethod.create(
-                name            = self._cfg['mpi_launch_method'],
-                config          = self._cfg,
-                logger          = self._log)
+                name   = self._cfg['mpi_launch_method'],
+                cfg    = self._cfg,
+                logger = self._log)
 
 
     # --------------------------------------------------------------------------
@@ -4943,9 +4943,7 @@ class AgentWorker(rpu.Worker):
     #
     def __init__(self, cfg, logger):
 
-        # make sure we have a name
-        self.name = cfg['name']
-
+        self.agent_name = cfg['agent_name']
         rpu.Worker.__init__(self, cfg, logger)
 
         # everything which comes after the worker init is limited in scope to
@@ -5015,11 +5013,11 @@ class AgentWorker(rpu.Worker):
         self._pilot_id   = self._cfg['pilot_id']
         self._session_id = self._cfg['session_id']
         self._runtime    = self._cfg['runtime']
-        self._sub_cfg    = self._cfg['agent_layout'][self.name]
+        self._sub_cfg    = self._cfg['agent_layout'][self.agent_name]
         self._pull_units = self._sub_cfg.get('pull_units', False)
 
         # another sanity check
-        if self.name == 'agent.0':
+        if self.agent_name == 'agent.0':
             if self._sub_cfg.get('target', 'local') != 'local':
                 raise ValueError("agent.0 must run on target 'local'")
 
@@ -5038,7 +5036,7 @@ class AgentWorker(rpu.Worker):
 
         # set up db connection -- only for the master agent and for the agent
         # which pulls units (which might be the same)
-        if self.name == 'agent.0' or self._pull_units:
+        if self.agent_name == 'agent.0' or self._pull_units:
             _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
 
             self._p  = mongo_db["%s.p"  % self._session_id]
@@ -5046,7 +5044,7 @@ class AgentWorker(rpu.Worker):
 
         # first order of business: set the start time and state of the pilot
         # Only the master agent performs this action
-        if self.name == 'agent.0':
+        if self.agent_name == 'agent.0':
             now = rpu.timestamp()
             ret = self._p.update(
                 {"_id": self._pilot_id},
@@ -5091,9 +5089,9 @@ class AgentWorker(rpu.Worker):
         # the respective command lines per agent instance, and run via
         # popen. 
         agent_lm = LaunchMethod.create(
-            name            = self._cfg['agent_launch_method'],
-            config          = self._cfg,
-            logger          = self._log)
+            name   = self._cfg['agent_launch_method'],
+            cfg    = self._cfg,
+            logger = self._log)
 
         for sa in self._sub_cfg.get('sub_agents', []):
             target = self._cfg['agent_layout'][sa]['target']
@@ -5195,6 +5193,7 @@ class AgentWorker(rpu.Worker):
                 # each component gets its own copy of the config
                 self._log.info('create component %s (%s)', cname, cnum)
                 ccfg = copy.deepcopy(self._cfg)
+                ccfg['number'] = i
                 comp = cmap[cname].create(ccfg)
                 comp.start()
                 self._components.append(comp)
@@ -5203,7 +5202,7 @@ class AgentWorker(rpu.Worker):
         # heartbeat and update worker.  To ensure this, we only create workers
         # in agent.0.  
         # FIXME: make this configurable, both number and placement
-        if self.name == 'agent.0':
+        if self.agent_name == 'agent.0':
             wmap = {
                 rp.AGENT_UPDATE_WORKER    : AgentUpdateWorker,
                 rp.AGENT_HEARTBEAT_WORKER : AgentHeartbeatWorker
@@ -5247,8 +5246,8 @@ class AgentWorker(rpu.Worker):
         # we pick the layout according to our role (name)
         # NOTE: we don't do sanity checks on the agent layout (too lazy) -- but
         #       we would hiccup badly over ill-formatted or incomplete layouts...
-        if not self.name in self._cfg['agent_layout']:
-            raise RuntimeError("no agent layout section for %s" % self.name)
+        if not self.agent_name in self._cfg['agent_layout']:
+            raise RuntimeError("no agent layout section for %s" % self.agent_name)
 
         try:
             self.start_bridges()
@@ -5410,7 +5409,7 @@ def bootstrap_3():
     print "startup agent %s : %s" % (agent_name, agent_cfg)
 
     cfg = ru.read_json_str(agent_cfg)
-    cfg['name'] = agent_name
+    cfg['agent_name'] = agent_name
 
     print "Agent config (%s):\n%s\n\n" % (agent_cfg, pprint.pformat(cfg))
 
@@ -5453,7 +5452,7 @@ def bootstrap_3():
             # config, for the benefit of the scheduler).
 
             lrms = LRMS.create(name   = cfg['lrms'],
-                               config = cfg,
+                               cfg    = cfg,
                                logger = log)
             cfg['lrms_info'] = dict()
             cfg['lrms_info']['lm_info']        = lrms.lm_info
