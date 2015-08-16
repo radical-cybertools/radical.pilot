@@ -18,14 +18,13 @@ import copy
 
 import radical.utils as ru
 
-from radical.pilot.states     import *
-from radical.pilot.exceptions import *
-
-from radical.pilot.controller      import PilotManagerController
-from radical.pilot.compute_pilot   import ComputePilot
-from radical.pilot.utils.logger    import logger
-from radical.pilot.exceptions      import PilotException, BadParameter
-from radical.pilot.resource_config import ResourceConfig
+from .states          import *
+from .exceptions      import *
+from .utils           import logger
+from .controller      import PilotManagerController
+from .compute_pilot   import ComputePilot
+from .exceptions      import PilotException, BadParameter
+from .resource_config import ResourceConfig
 
 # -----------------------------------------------------------------------------
 #
@@ -162,12 +161,9 @@ class PilotManager(object):
             logger.debug("pmgr    %s canceled worker %s" % (str(self.uid), self._worker.name))
 
         # If terminate is set, we cancel all pilots. 
-        print '============================================'
-        print 'terminate: %s' % terminate
         if  terminate :
             # cancel all pilots, make sure they are gone, and close the pilot
             # managers.
-            print self.get_pilots()
             for pilot in self.get_pilots () :
                 logger.debug("pmgr    %s cancels  pilot  %s" % (str(self.uid), pilot.uid))
             self.cancel_pilots ()
@@ -393,7 +389,6 @@ class PilotManager(object):
 
             * :class:`radical.pilot.PilotException`
         """
-        print 'get pilots: %s' % self._valid
         self._is_valid()
 
         

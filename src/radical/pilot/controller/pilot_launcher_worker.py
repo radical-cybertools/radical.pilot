@@ -17,12 +17,11 @@ import tempfile
 import saga
 import radical.utils as ru
 
-from radical.pilot.utils  import timestamp
-from radical.pilot.states import *
-
-from radical.pilot.utils.logger  import logger
-from radical.pilot.context       import Context
-from radical.pilot.logentry      import Logentry
+from ..states    import *
+from ..utils     import logger
+from ..utils     import timestamp
+from ..context   import Context
+from ..logentry  import Logentry
 
 pwd = os.path.dirname(__file__)
 root = "%s/../" % pwd
@@ -588,19 +587,6 @@ class PilotLauncherWorker(threading.Thread):
                         if not mpi_launch_method  : raise RuntimeError("missing mpi launch method")
 
                         # massage some values
-                        debug_level = os.environ.get ('RADICAL_PILOT_AGENT_VERBOSE', logger.level)
-                        try:
-                            debug_level = int(debug_level)
-                        except ValueError:
-                            debug_level = {
-                                'CRITICAL' : 1,
-                                'ERROR'    : 2,
-                                'WARNING'  : 3,
-                                'WARN'     : 3,
-                                'INFO'     : 4,
-                                'DEBUG'    : 5
-                            }.get(debug_level, 0)
-
                         if not queue :
                             queue = default_queue
 
@@ -644,7 +630,7 @@ class PilotLauncherWorker(threading.Thread):
 
                         # set some agent configuration
                         agent_config['cores']              = number_cores
-                        agent_config['debug']              = debug_level
+                        agent_config['debug']              = logger.getEffectiveLevel() 
                         agent_config['mongodb_url']        = str(agent_dburl)
                         agent_config['lrms']               = lrms
                         agent_config['spawner']            = agent_spawner

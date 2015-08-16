@@ -146,12 +146,10 @@ import pprint
 import signal
 import shutil
 import socket
-import logging
 import hostlist
-import threading
 import tempfile
-import traceback
 import threading
+import traceback
 import subprocess
 import multiprocessing
 
@@ -292,9 +290,6 @@ def pilot_FAILED(mongo_p=None, pilot_uid=None, logger=None, msg=None):
     print msg
     print ru.get_trace()
 
-    with open("%s-%s.trace" % (os.getpid(), threading.current_thread().name), "w") as f:
-        f.write ("\n%s\n" % ru.get_trace())
-
     if mongo_p and pilot_uid:
 
         now = rpu.timestamp()
@@ -427,9 +422,9 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
-        rpu.Component.__init__(self, cfg, logger)
+        rpu.Component.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -472,19 +467,16 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    # This class-method creates the appropriate sub-class for the Launch Method.
+    # This class-method creates the appropriate sub-class for the Scheduler.
     #
     @classmethod
-    def create(cls, cfg, logger=None):
+    def create(cls, cfg):
 
         # Make sure that we are the base-class!
         if cls != AgentSchedulingComponent:
             raise TypeError("Scheduler Factory only available to base class!")
 
         name = cfg['scheduler']
-
-        if not logger:
-            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
 
         try:
             impl = {
@@ -493,7 +485,7 @@ class AgentSchedulingComponent(rpu.Component):
                 SCHEDULER_NAME_TORUS      : SchedulerTorus
             }[name]
 
-            impl = impl(cfg, logger)
+            impl = impl(cfg)
             return impl
 
         except KeyError:
@@ -648,11 +640,11 @@ class SchedulerContinuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
         self.slots = None
 
-        AgentSchedulingComponent.__init__(self, cfg, logger)
+        AgentSchedulingComponent.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -933,12 +925,12 @@ class SchedulerTorus(AgentSchedulingComponent):
 
 
     # --------------------------------------------------------------------------
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
         self.slots            = None
         self._cores_per_node  = None
 
-        AgentSchedulingComponent.__init__(self, cfg, logger)
+        AgentSchedulingComponent.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -1187,14 +1179,11 @@ class LaunchMethod(object):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, name, cfg, logger=None):
+    def create(cls, name, cfg, logger):
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
             raise TypeError("LaunchMethod factory only available to base class!")
-
-        if not logger:
-            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
 
         try:
             impl = {
@@ -1220,8 +1209,6 @@ class LaunchMethod(object):
 
         except Exception as e:
             logger.exception("LaunchMethod cannot be used: %s!" % e)
-
-        return None
 
 
     # --------------------------------------------------------------------------
@@ -2238,14 +2225,11 @@ class LRMS(object):
     # This class-method creates the appropriate sub-class for the LRMS.
     #
     @classmethod
-    def create(cls, name, cfg, logger=None):
+    def create(cls, name, cfg, logger):
 
         # Make sure that we are the base-class!
         if cls != LRMS:
             raise TypeError("LRMS Factory only available to base class!")
-
-        if not logger:
-            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
 
         try:
             impl = {
@@ -2259,6 +2243,7 @@ class LRMS(object):
                 LRMS_NAME_TORQUE      : TORQUELRMS
             }[name]
             return impl(cfg, logger)
+
         except KeyError:
             logger.exception('lrms construction error')
             raise RuntimeError("LRMS type '%s' unknown or defunct" % name)
@@ -3470,26 +3455,23 @@ class AgentExecutingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
-        rpu.Component.__init__(self, cfg, logger)
+        rpu.Component.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
     #
-    # This class-method creates the appropriate sub-class for the Launch Method.
+    # This class-method creates the appropriate sub-class for the Spawner
     #
     @classmethod
-    def create(cls, cfg, logger=None):
+    def create(cls, cfg):
 
         # Make sure that we are the base-class!
         if cls != AgentExecutingComponent:
             raise TypeError("Factory only available to base class!")
 
-        name = cfg['spawner']
-
-        if not logger:
-            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
+        name   = cfg['spawner']
 
         try:
             impl = {
@@ -3497,7 +3479,7 @@ class AgentExecutingComponent(rpu.Component):
                 SPAWNER_NAME_SHELL : ExecWorker_SHELL
             }[name]
 
-            impl = impl(cfg, logger)
+            impl = impl(cfg)
             return impl
 
         except KeyError:
@@ -3511,9 +3493,9 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
-        AgentExecutingComponent.__init__ (self, cfg, logger)
+        AgentExecutingComponent.__init__ (self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -3902,9 +3884,9 @@ class ExecWorker_SHELL(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
-        AgentExecutingComponent.__init__ (self, cfg, logger)
+        AgentExecutingComponent.__init__ (self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -4397,21 +4379,17 @@ class AgentUpdateWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
-        rpu.Worker.__init__(self, cfg, logger)
+        rpu.Worker.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def create(cls, cfg, logger=None):
+    def create(cls, cfg):
 
-        if not logger:
-            name   = rp.AGENT_UPDATE_WORKER
-            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
-
-        return cls(cfg, logger)
+        return cls(cfg)
 
 
     # --------------------------------------------------------------------------
@@ -4562,21 +4540,17 @@ class AgentStagingInputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
-        rpu.Component.__init__(self, cfg, logger)
+        rpu.Component.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def create(cls, cfg, logger=None):
+    def create(cls, cfg):
 
-        if not logger:
-            name   = rp.AGENT_STAGING_INPUT_COMPONENT
-            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
-
-        return cls(cfg, logger)
+        return cls(cfg)
 
 
     # --------------------------------------------------------------------------
@@ -4684,21 +4658,17 @@ class AgentStagingOutputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
-        rpu.Component.__init__(self, cfg, logger)
+        rpu.Component.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def create(cls, cfg, logger=None):
+    def create(cls, cfg):
 
-        if not logger:
-            name   = rp.AGENT_STAGING_OUTPUT_COMPONENT
-            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
-
-        return cls(cfg, logger)
+        return cls(cfg)
 
 
     # --------------------------------------------------------------------------
@@ -4828,21 +4798,17 @@ class AgentHeartbeatWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
-        rpu.Worker.__init__(self, cfg, logger)
+        rpu.Worker.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def create(cls, cfg, logger=None):
+    def create(cls, cfg):
 
-        if not logger:
-            name   = rp.AGENT_HEARTBEAT_WORKER
-            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
-
-        return cls(cfg, logger)
+        return cls(cfg)
 
 
     # --------------------------------------------------------------------------
@@ -4941,10 +4907,10 @@ class AgentWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
         self.agent_name = cfg['agent_name']
-        rpu.Worker.__init__(self, cfg, logger)
+        rpu.Worker.__init__(self, cfg)
 
         # everything which comes after the worker init is limited in scope to
         # the current process, and will not be available in the worker process.
@@ -5367,7 +5333,6 @@ class AgentWorker(rpu.Worker):
         rpu.prof('get', msg="bulk size: %d" % len(cu_list))
         self._log.info("units found: %4d"   % len(cu_list))
 
-        print 'advancing %s' % cu_uids
         self.advance(cu_list, publish=True, push=True)
 
         # indicate that we did some work (if we did...)
@@ -5438,8 +5403,8 @@ def bootstrap_3():
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
     # set up a logger
-    log = rpu.get_logger(agent_name, "%s.log" % agent_name, cfg.get('debug', 'INFO'))
-
+    log = rpu.get_logger(agent_name, target="%s.log" % agent_name,
+                         level=cfg.get('debug', 'INFO'))
     try:
         # ----------------------------------------------------------------------
         # des Pudels Kern: merge LRMS info into cfg and get the agent started
@@ -5498,7 +5463,7 @@ def bootstrap_3():
         # we now have correct bridge addresses added to the agent.0.cfg, and all
         # other agents will have picked that up from their config files -- we
         # can start the agent and all its components!
-        agent = AgentWorker(cfg, log)
+        agent = AgentWorker(cfg)
         agent.start()
         agent.join()
         agent._finalize()
@@ -5541,49 +5506,4 @@ if __name__ == "__main__":
 
 #
 # ------------------------------------------------------------------------------
-
-##      # to run the spawner shells remote, run the following command on the
-##      # target node:
-##      #   "nc -l -p <port> -v -e /bin/sh  %s/agent/radical-pilot-spawner.sh %s"
-##      # and then below run
-##      #   "nc <node_ip> <port>"
-##      # with unique port numbers for each ExecWorker instance, obviously.
-##      #
-##      # for each exec worker, we run two nc's on consecutive ports.  We start
-##      # with port 10000. so use:
-##      #
-##      #   10000 + 2 * (self._number)
-##      #   10000 + 2 * (self._number) + 1
-##      #
-##      # to avoid collission with the other exec workers.  Only the execworker
-##      # 0 will run the remote nc's which are listening for our connections.
-##      #
-##      host = 'nid%.5d' % int(self._scheduler.reserved_nodes[0])
-##      portbase = 10000
-##      srcdir  = os.path.dirname(rp.__file__)
-##      if self._number == 0:
-##          # this is exec worker 0 -- we run the remote nc's
-##          #workbase = "/tmp/Spawner-%s" % (self._pilot_id)
-##          workbase = "%s/Spawner-%s" % (os.getcwd(), self._pilot_id)
-##
-##          # Usage: execworker-wrapper.sh <spawner.sh> <workdir> <port base> <count>
-##          self._remote_process = subprocess.Popen([
-##              'aprun', '-n', '1',
-##              '/bin/sh', '%s/agent/execworker-wrapper.sh' % srcdir,
-##              '%s/agent/radical-pilot-spawner.sh' % srcdir,
-##              workbase,
-##              str(portbase),
-##              str(self._cfg['number_of_workers'][EXEC_WORKER])
-##          ])
-##
-##      # we need to give the above command some time to actually start the
-##      # listening processes, otherwise the following connections will fail
-##      # TODO: might want to add a lock here to sync the instances
-##      time.sleep(5)
-##
-##      # now instead of the spawner, launch NCs toward the host on the given
-##      # ports
-##      myport = portbase + 2 * self._number
-##      ret, out, _  = self.launcher_shell.run_sync ("nc %s %d" % (host, myport))
-##      ret, out, _  = self.monitor_shell.run_sync  ("nc %s %d" % (host, myport + 1))
 

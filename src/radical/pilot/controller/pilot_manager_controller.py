@@ -20,13 +20,12 @@ from multiprocessing import Pool
 
 import radical.utils as ru
 
-from radical.pilot.utils        import timestamp
-from radical.pilot.states       import *
-from radical.pilot.utils.logger import logger
+from ..states       import *
+from ..utils        import logger
+from ..utils        import timestamp
+from ..db.database  import COMMAND_CANCEL_PILOT
 
-from radical.pilot.controller.pilot_launcher_worker import PilotLauncherWorker
-
-from radical.pilot.db.database import COMMAND_CANCEL_PILOT
+from .pilot_launcher_worker import PilotLauncherWorker
 
 import saga.utils.pty_shell as sup
 

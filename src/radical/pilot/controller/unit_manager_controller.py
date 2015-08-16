@@ -14,17 +14,17 @@ import threading
 
 from multiprocessing import Pool
 
-from radical.utils        import which
-from radical.utils        import Url
-from radical.pilot.types  import *
-from radical.pilot.states import *
-from radical.pilot.utils  import timestamp
-from radical.pilot.utils.logger import logger
+import radical.utils as ru
 
-from radical.pilot.controller.input_file_transfer_worker  import InputFileTransferWorker
-from radical.pilot.controller.output_file_transfer_worker import OutputFileTransferWorker
+from ..types              import *
+from ..states             import *
+from ..utils              import logger
+from ..utils              import timestamp
+from ..staging_directives import TRANSFER, LINK, COPY, MOVE
 
-from radical.pilot.staging_directives import TRANSFER, LINK, COPY, MOVE
+from .input_file_transfer_worker  import InputFileTransferWorker
+from .output_file_transfer_worker import OutputFileTransferWorker
+
 
 IDLE_TIME = 1.0  # seconds to sleep between activities
 
@@ -476,8 +476,8 @@ class UnitManagerController(threading.Thread):
 
                 for input_sd_entry in input_sds:
                     action = input_sd_entry['action']
-                    source = Url(input_sd_entry['source'])
-                    target = Url(input_sd_entry['target'])
+                    source = ru.Url(input_sd_entry['source'])
+                    target = ru.Url(input_sd_entry['target'])
 
                     new_sd = {'action':   action,
                               'source':   str(source),
@@ -515,8 +515,8 @@ class UnitManagerController(threading.Thread):
 
                 for output_sds_entry in output_sds:
                     action = output_sds_entry['action']
-                    source = Url(output_sds_entry['source'])
-                    target = Url(output_sds_entry['target'])
+                    source = ru.Url(output_sds_entry['source'])
+                    target = ru.Url(output_sds_entry['target'])
 
                     new_sd = {'action':   action,
                               'source':   str(source),

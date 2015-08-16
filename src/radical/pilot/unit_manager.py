@@ -18,15 +18,13 @@ import weakref
 import radical.utils as ru
 import utils         as rpu
 
-from radical.pilot.compute_unit import ComputeUnit
-from radical.pilot.utils.logger import logger
-
-from radical.pilot.controller   import UnitManagerController
-from radical.pilot.scheduler    import get_scheduler, SCHED_DEFAULT
-
-from radical.pilot.types        import *
-from radical.pilot.states       import *
-from radical.pilot.exceptions   import *
+from .types        import *
+from .states       import *
+from .exceptions   import *
+from .utils        import logger
+from .compute_unit import ComputeUnit
+from .controller   import UnitManagerController
+from .scheduler    import get_scheduler, SCHED_DEFAULT
 
 # -----------------------------------------------------------------------------
 #

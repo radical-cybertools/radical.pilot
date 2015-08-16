@@ -16,17 +16,14 @@ import bson
 import glob
 import copy
 import saga
-import radical.utils       as ru
+import radical.utils as ru
 
-import utils as rpu
-
-from radical.pilot.unit_manager    import UnitManager
-from radical.pilot.pilot_manager   import PilotManager
-from radical.pilot.utils.logger    import logger
-from radical.pilot.resource_config import ResourceConfig
-from radical.pilot.exceptions      import PilotException
-
-from radical.pilot.db              import Session as dbSession
+from .utils           import *
+from .unit_manager    import UnitManager
+from .pilot_manager   import PilotManager
+from .resource_config import ResourceConfig
+from .exceptions      import PilotException
+from .db              import Session as dbSession
 
 
 # ------------------------------------------------------------------------------
@@ -148,7 +145,7 @@ class Session (saga.Session):
                             % (self._dburl, ex))  
 
         # initialize profiling
-        rpu.prof_init('%s' % self._uid)
+        prof_init('%s' % self._uid)
 
         # Loading all "default" resource configurations
         module_path  = os.path.dirname(os.path.abspath(__file__))
@@ -194,7 +191,7 @@ class Session (saga.Session):
         default_aliases = "%s/configs/resource_aliases.json" % module_path
         self._resource_aliases = ru.read_json_str (default_aliases)['aliases']
 
-        rpu.prof('configs parsed', uid=self._uid)
+        prof('configs parsed', uid=self._uid)
 
         _rec = os.environ.get('RADICAL_PILOT_RECORD_SESSION')
         if _rec:
@@ -238,7 +235,7 @@ class Session (saga.Session):
         """
 
         logger.debug("session %s closing" % (str(self._uid)))
-        rpu.prof("close", uid=self._uid)
+        prof("close", uid=self._uid)
 
         if not self._valid:
             raise RuntimeError("Session object already closed.")
@@ -274,12 +271,12 @@ class Session (saga.Session):
             logger.debug("session %s closed   umgr   %s" % (str(self._uid), umgr._uid))
 
         if  cleanup :
-            rpu.prof("cleaning", uid=self._uid)
+            prof("cleaning", uid=self._uid)
             self._destroy_db_entry()
-            rpu.prof("cleaned", uid=self._uid)
+            prof("cleaned", uid=self._uid)
 
         logger.debug("session %s closed" % (str(self._uid)))
-        rpu.prof("closed", uid=self._uid)
+        prof("closed", uid=self._uid)
 
         self._valid = False
 
@@ -575,12 +572,12 @@ class Session (saga.Session):
     # -------------------------------------------------------------------------
     #
     def fetch_profiles (self, target=None):
-        return rpu.fetch_profiles (self._uid, dburl=self._dburl, target=target)
+        return fetch_profiles (self._uid, dburl=self._dburl, target=target)
 
 
     # -------------------------------------------------------------------------
     #
     def fetch_json (self, target=None):
-        return rpu.fetch_json (self._uid, dburl=self._dburl, target=target)
+        return fetch_json (self._uid, dburl=self._dburl, target=target)
 
 

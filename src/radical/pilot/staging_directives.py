@@ -1,6 +1,9 @@
-#from radical.pilot.utils.logger import logger
+
+
 import os
 import saga
+
+from .utils import logger
 
 # The Staging Directives are specified using a dict in the following form:
 #   staging_directive = {
@@ -35,7 +38,7 @@ STAGING_AREA     = 'staging_area'
 
 #-----------------------------------------------------------------------------
 #
-def expand_staging_directive(staging_directive, logger):
+def expand_staging_directive(staging_directive):
     """Take an abbreviated or compressed staging directive and expand it.
 
     """

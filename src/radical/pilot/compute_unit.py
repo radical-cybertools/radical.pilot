@@ -17,15 +17,12 @@ import time
 
 import radical.utils as ru
 
-from radical.pilot.utils.logger import logger
-
-from radical.pilot.states import *
-from radical.pilot.logentry import *
-from radical.pilot.exceptions import *
-
-from radical.pilot.db.database import COMMAND_CANCEL_COMPUTE_UNIT
-
-from radical.pilot.staging_directives import expand_staging_directive
+from .states             import *
+from .logentry           import *
+from .exceptions         import *
+from .utils              import logger
+from .db.database        import COMMAND_CANCEL_COMPUTE_UNIT
+from .staging_directives import expand_staging_directive
 
 # -----------------------------------------------------------------------------
 #
@@ -108,10 +105,10 @@ class ComputeUnit(object):
 
         # If staging directives exist, try to expand them
         if  ud_copy.input_staging:
-            ud_copy.input_staging = expand_staging_directive(ud_copy.input_staging, logger)
+            ud_copy.input_staging = expand_staging_directive(ud_copy.input_staging)
 
         if  ud_copy.output_staging:
-            ud_copy.output_staging = expand_staging_directive(ud_copy.output_staging, logger)
+            ud_copy.output_staging = expand_staging_directive(ud_copy.output_staging)
 
         computeunit._description = ud_copy
         computeunit._manager     = unit_manager_obj
