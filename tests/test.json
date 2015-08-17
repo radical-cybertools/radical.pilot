@@ -15,10 +15,10 @@
  "epsrc.archer"        : {
      "cp_project"      : "e290",
      "cp_queue"        : "short",
-     "cp_runtime"      : 5,
-     "cp_cores"        : 8,
+     "cp_runtime"      : 10,
+     "cp_cores"        : 48,
      "cp_schema"       : "",
-     "cu_cores"        : 4,
+     "cu_cores"        : 24,
      "cu_pre_exec"     : ["module load python",
                           ". /fs4/e290/e290/merzky/ve/bin/activate",
                           "module swap PrgEnv-cray PrgEnv-gnu"],
@@ -217,6 +217,16 @@
                           "module load python"],
      "executable"      : "python"
      },
+ "xsede.comet"         : {
+     "cp_project"      : "unc100",
+     "cp_queue"        : "",
+     "cp_runtime"      :  5,
+     "cp_cores"        : 24,
+     "cp_schema"       : "",
+     "cu_cores"        :  8,
+     "cu_pre_exec"     : ["module load python mpi4py"],
+     "executable"      : "python"
+      },
  "xsede.gordon"        : {
      "cp_project"      : "unc101",
      "cp_queue"        : "",

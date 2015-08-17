@@ -65,31 +65,32 @@ class State(object):
 
 # -----------------------------------------------------------------------------
 # Common States
-NEW                         = 'New'
-DONE                        = 'Done'
-CANCELING                   = 'Canceling'
-CANCELED                    = 'Canceled'
-FAILED                      = 'Failed'
-PENDING                     = 'Pending'
+NEW                          = 'New'
+DONE                         = 'Done'
+CANCELING                    = 'Canceling'
+CANCELED                     = 'Canceled'
+FAILED                       = 'Failed'
+PENDING                      = 'Pending'
 
 # -----------------------------------------------------------------------------
 # ComputePilot States
-PENDING_LAUNCH              = 'PendingLaunch'
-LAUNCHING                   = 'Launching'
-PENDING_ACTIVE              = 'PendingActive'
-ACTIVE                      = 'Active'
+PENDING_LAUNCH               = 'PendingLaunch'
+LAUNCHING                    = 'Launching'
+PENDING_ACTIVE               = 'PendingActive'
+ACTIVE                       = 'Active'
 
 # -----------------------------------------------------------------------------
 # ComputeUnit States
-UNSCHEDULED                 = 'Unscheduled'
-PENDING_INPUT_STAGING       = 'PendingInputStaging'
-STAGING_INPUT               = 'StagingInput'
-PENDING_AGENT_INPUT_STAGING = 'AgentPendingInputStaging'
-AGENT_STAGING_INPUT         = 'AgentStagingInput'
-PENDING_EXECUTION           = 'PendingExecution'
-SCHEDULING                  = 'Scheduling'
-ALLOCATING                  = 'Allocating'
-EXECUTING                   = 'Executing'
-PENDING_OUTPUT_STAGING      = 'PendingOutputStaging'
-STAGING_OUTPUT              = 'StagingOutput'
-
+UNSCHEDULED                  = 'Unscheduled'
+PENDING_INPUT_STAGING        = 'PendingInputStaging'
+STAGING_INPUT                = 'StagingInput'
+PENDING_AGENT_INPUT_STAGING  = 'PendingAgentInputStaging'
+AGENT_STAGING_INPUT          = 'AgentStagingInput'
+PENDING_EXECUTION            = 'PendingExecution'
+SCHEDULING                   = 'Scheduling'
+ALLOCATING                   = 'Allocating'
+EXECUTING                    = 'Executing'
+PENDING_AGENT_OUTPUT_STAGING = 'PendingAgentOutputStaging'
+AGENT_STAGING_OUTPUT         = 'AgentStagingOutput'
+PENDING_OUTPUT_STAGING       = 'PendingOutputStaging'
+STAGING_OUTPUT               = 'StagingOutput'

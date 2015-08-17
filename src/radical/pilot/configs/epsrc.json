@@ -7,7 +7,7 @@
         "mandatory_args"              : ["project"],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://login.archer.ac.uk/",
+            "job_manager_endpoint"    : "pbspro+ssh://login.archer.ac.uk/",
             "filesystem_endpoint"     : "sftp://login.archer.ac.uk/"
         },
         "default_queue"               : "standard",
@@ -18,7 +18,7 @@
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
         "forward_tunnel_endpoint"     : "10.60.0.52",
-        "pre_bootstrap"               : ["module load python/2.7.6-ucs4"],
+        "pre_bootstrap"               : ["module switch anaconda python-compute/2.7.6-ucs4"],
         # choosing this module fixes #587
         "default_remote_workdir"      : "/work/`id -gn`/`id -gn`/$USER",
         "valid_roots"                 : ["/work"],

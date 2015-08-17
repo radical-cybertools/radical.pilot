@@ -24,9 +24,9 @@ from radical.pilot.utils.logger  import logger
 from radical.pilot.context       import Context
 from radical.pilot.logentry      import Logentry
 
-pwd     = os.path.dirname (__file__)
-root    = "%s/../" % pwd
-version, version_detail, version_branch, sdist_name, sdist_path = ru.get_version ([root, pwd])
+pwd = os.path.dirname(__file__)
+root = "%s/../" % pwd
+_, _, _, rp_sdist_name, rp_sdist_path = ru.get_version([root, pwd])
 
 IDLE_TIMER           =  1  # seconds to sleep if notthing to do
 JOB_CHECK_INTERVAL   = 60  # seconds between runs of the job state check loop
@@ -85,10 +85,11 @@ class PilotLauncherWorker(threading.Thread):
     def _get_pilot_logs (self, pilot_col, pilot_id) :
 
         out, err, log = ["", "", ""]
+        # TODO: can this be linked to an #issue ?
         return out, err, log
 
         # attempt to get stdout/stderr/log.  We only expect those if pilot was
-        # attemptint launch at some point
+        # attempting launch at some point
         launched = False
         pilot    = pilot_col.find ({"_id": pilot_id})[0]
 
@@ -400,27 +401,33 @@ class PilotLauncherWorker(threading.Thread):
                         # Create a host:port string for use by the bootstrapper.
                         database_hostport = "%s:%d" % (db_url.host, db_url.port)
 
+                        # Open the remote sandbox
+                        sandbox_tgt = saga.filesystem.Directory(pilot_sandbox,
+                                                                session=self._session,
+                                                                flags=saga.filesystem.CREATE_PARENTS)
+
+                        BOOTSTRAPPER_SCRIPT = "default_bootstrapper.sh"
+                        AGENT_SCRIPT = 'radical-pilot-agent.py'
+                        LOCAL_SCHEME = 'file'
+
                         # ------------------------------------------------------
                         # Copy the bootstrap shell script.  This also creates
                         # the sandbox. We use always "default_bootstrapper.sh"
-                        bootstrapper = 'default_bootstrapper.sh'
+                        # TODO: Is this still configurable and/or in the resource configs?
+                        bootstrapper = BOOTSTRAPPER_SCRIPT
                         bootstrapper_path = os.path.abspath("%s/../bootstrapper/%s" \
                                 % (mod_dir, bootstrapper))
 
                         msg = "Using bootstrapper %s" % bootstrapper_path
-                        logentries.append (Logentry (msg, logger=logger.info))
+                        logentries.append(Logentry(msg, logger=logger.info))
 
-
-                        bs_script_url = saga.Url("file://localhost/%s" % bootstrapper_path)
-                        bs_script_tgt = saga.Url("%s/pilot_bootstrapper.sh" % pilot_sandbox)
+                        bs_script_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, bootstrapper_path))
 
                         msg = "Copying bootstrapper '%s' to agent sandbox (%s)." \
-                                % (bs_script_url, bs_script_tgt)
+                                % (bs_script_url, sandbox_tgt)
                         logentries.append(Logentry (msg, logger=logger.debug))
 
-                        bs_script = saga.filesystem.File(bs_script_url, session=self._session)
-                        bs_script.copy(bs_script_tgt, flags=saga.filesystem.CREATE_PARENTS)
-                        bs_script.close()
+                        sandbox_tgt.copy(bs_script_url, BOOTSTRAPPER_SCRIPT)
 
 
                         # ------------------------------------------------------
@@ -504,30 +511,25 @@ class PilotLauncherWorker(threading.Thread):
                         # we have the complete stack to install...
                         if stage_sdist:
 
-                            for path in [ru.sdist_path, saga.sdist_path, sdist_path]:
+                            for sdist_path in [ru.sdist_path, saga.sdist_path, rp_sdist_path]:
 
-                                sdist_url = saga.Url("file://localhost/%s" % path)
-                                msg = "Copying sdist '%s' to sdist sandbox (%s)." % (sdist_url, pilot_sandbox)
+                                sdist_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, sdist_path))
+                                msg = "Copying sdist '%s' to sandbox (%s)." % (sdist_url, pilot_sandbox)
                                 logentries.append(Logentry (msg, logger=logger.debug))
-
-                                sdist_file = saga.filesystem.File(sdist_url)
-                                sdist_file.copy("%s/" % (str(pilot_sandbox)))
-                                sdist_file.close()
+                                sandbox_tgt.copy(sdist_url, os.path.basename(str(sdist_url)))
 
 
                         # ------------------------------------------------------
-                        # some machines cannot run pip due to outdated ca certs.
-                        # For those, we also stage an updated cert bundle
+                        # Some machines cannot run pip due to outdated CA certs.
+                        # For those, we also stage an updated certificate bundle
                         if stage_cacerts:
                             cc_path = os.path.abspath("%s/../bootstrapper/%s" \
                                     % (mod_dir, 'cacert.pem.gz'))
 
-                            cc_script_url = saga.Url("file://localhost/%s" % cc_path)
-                            cc_script_tgt = saga.Url("%s/cacert.pem.gz"    % pilot_sandbox)
-
-                            cc_script = saga.filesystem.File(cc_script_url, session=self._session)
-                            cc_script.copy(cc_script_tgt, flags=saga.filesystem.CREATE_PARENTS)
-                            cc_script.close()
+                            cc_url= saga.Url("%s://localhost/%s" % (LOCAL_SCHEME, cc_path))
+                            msg = "Copying CA certificate bundle '%s' to sandbox (%s)." % (cc_url, pilot_sandbox)
+                            logentries.append(Logentry (msg, logger=logger.debug))
+                            sandbox_tgt.copy(cc_url, os.path.basename(str(cc_url)))
 
 
                         #-------------------------------------------------------
@@ -557,19 +559,23 @@ class PilotLauncherWorker(threading.Thread):
                             cfg_tmp_handle, cf_tmp_file = tempfile.mkstemp(suffix='.json', prefix='rp_agent_config_')
 
                             # Convert dict to json file
+                            msg = "Writing agent configuration to file '%s'." % cf_tmp_file
+                            logentries.append(Logentry (msg, logger=logger.debug))
                             ru.write_json(agent_config, cf_tmp_file)
 
-                            cf_src = saga.Url("file://localhost/%s" % cf_tmp_file)
-                            cf_tgt = saga.Url("%s/agent.cfg" % pilot_sandbox)
-
-                            cf_file = saga.filesystem.File(cf_src, session=self._session)
-                            cf_file.copy(cf_tgt, flags=saga.filesystem.CREATE_PARENTS)
-                            cf_file.close()
+                            cf_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, cf_tmp_file))
+                            msg = "Copying agent configuration file '%s' to sandbox (%s)." % (cf_url, pilot_sandbox)
+                            logentries.append(Logentry (msg, logger=logger.debug))
+                            sandbox_tgt.copy(cf_url, 'agent.cfg')
 
                             # close and remove temp file
                             os.close(cfg_tmp_handle)
                             os.unlink(cf_tmp_file)
 
+
+                        # ------------------------------------------------------
+                        # Done with all transfers to pilot sandbox, close handle
+                        sandbox_tgt.close()
 
                         # ------------------------------------------------------
                         # sanity checks
@@ -606,7 +612,7 @@ class PilotLauncherWorker(threading.Thread):
                             if virtenv_mode is not 'private' :
                                 cleanup = cleanup.replace ('v', '')
 
-                        sdists = ':'.join([ru.sdist_name, saga.sdist_name, sdist_name])
+                        sdists = ':'.join([ru.sdist_name, saga.sdist_name, rp_sdist_name])
 
                         # if cores_per_node is set (!= None), then we need to
                         # allocation full nodes, and thus round up
@@ -667,12 +673,13 @@ class PilotLauncherWorker(threading.Thread):
                         jd = saga.job.Description()
 
                         jd.executable            = "/bin/bash"
-                        jd.arguments             = ["-l pilot_bootstrapper.sh", bootstrap_args]
+                        jd.arguments             = ["-l %s" % BOOTSTRAPPER_SCRIPT, bootstrap_args]
                         jd.working_directory     = saga.Url(pilot_sandbox).path
                         jd.project               = project
                         jd.output                = "agent.out"
                         jd.error                 = "agent.err"
                         jd.total_cpu_count       = number_cores
+                        jd.processes_per_host    = cores_per_node
                         jd.wall_time_limit       = runtime
                         jd.total_physical_memory = memory
                         jd.queue                 = queue

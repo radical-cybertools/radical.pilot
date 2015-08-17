@@ -6,7 +6,7 @@
         "schemas"                     : ["ssh"],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://davinci.rice.edu/",
+            "job_manager_endpoint"    : "torque+ssh://davinci.rice.edu/",
             "filesystem_endpoint"     : "sftp://davinci.rice.edu/"
         },
         "lrms"                        : "TORQUE",
@@ -29,7 +29,7 @@
         "schemas"                     : ["ssh"],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://biou.rice.edu/",
+            "job_manager_endpoint"    : "torque+ssh://biou.rice.edu/",
             "filesystem_endpoint"     : "sftp://biou.rice.edu/"
         },
         "lrms"                        : "TORQUE",

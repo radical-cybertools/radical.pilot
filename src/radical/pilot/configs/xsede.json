@@ -2,7 +2,7 @@
     "stampede": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["ssh", "gsissh"],
+        "schemas"                     : ["ssh", "gsissh", "go"],
         "mandatory_args"              : ["project"],
         "ssh"                         :
         {
@@ -11,8 +11,13 @@
         },
         "gsissh"                      :
         {
-            "job_manager_endpoint"    : "slurm+gsissh://stampede.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "gsisftp://stampede.tacc.utexas.edu/"
+            "job_manager_endpoint"    : "slurm+gsissh://stampede.tacc.utexas.edu:2222/",
+            "filesystem_endpoint"     : "gsisftp://stampede.tacc.utexas.edu:2222/"
+        },
+        "go":
+        {
+            "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "go://xsede#stampede/"
         },
         "default_queue"               : "normal",
         "lrms"                        : "SLURM",
@@ -25,8 +30,8 @@
                                          "module load TACC",
                                          "module load cluster",
                                          "module load Linux",
-                                         "module load mvapich2",
-                                         "module load python",
+                                         "module load intel/15.0.2",
+                                         "module load python/2.7.9",
                                          "module unload xalt",
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
@@ -78,12 +83,12 @@
         "schemas"                     : ["ssh", "gsissh"],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://trestles.sdsc.xsede.org/",
+            "job_manager_endpoint"    : "torque+ssh://trestles.sdsc.xsede.org/",
             "filesystem_endpoint"     : "sftp://trestles.sdsc.xsede.org/"
         },
         "gsissh"                      :
         {
-            "job_manager_endpoint"    : "pbs+gsissh://trestles.sdsc.xsede.org/",
+            "job_manager_endpoint"    : "torque+gsissh://trestles.sdsc.xsede.org/",
             "filesystem_endpoint"     : "gsisftp://trestles.sdsc.xsede.org/"
         },
         "default_queue"               : "normal",
@@ -106,12 +111,12 @@
         "schemas"                     : ["ssh", "gsissh"],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://gordon.sdsc.xsede.org/",
+            "job_manager_endpoint"    : "torque+ssh://gordon.sdsc.xsede.org/",
             "filesystem_endpoint"     : "sftp://gordon.sdsc.xsede.org/"
         },
         "gsissh"                      :
         {
-            "job_manager_endpoint"    : "pbs+gsissh://gordon.sdsc.xsede.org/",
+            "job_manager_endpoint"    : "torque+gsissh://gordon.sdsc.xsede.org/",
             "filesystem_endpoint"     : "gsisftp://gordon.sdsc.xsede.org/"
         },
         "default_queue"               : "normal",
@@ -134,15 +139,16 @@
         "schemas"                     : ["ssh", "gsissh"],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "pbs+ssh://blacklight.psc.xsede.org/?ppn=16",
+            "job_manager_endpoint"    : "torque+ssh://blacklight.psc.xsede.org",
             "filesystem_endpoint"     : "sftp://blacklight.psc.xsede.org/"
         },
         "gsissh"                      :
         {
-            "job_manager_endpoint"    : "pbs+gsissh://blacklight.psc.xsede.org/?ppn=16",
+            "job_manager_endpoint"    : "torque+gsissh://blacklight.psc.xsede.org",
             "filesystem_endpoint"     : "gsisftp://blacklight.psc.xsede.org/"
         },
         "default_queue"               : "batch",
+        "cores_per_node"              : "16",
         "lrms"                        : "TORQUE",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
@@ -157,6 +163,36 @@
         "stage_cacerts"               : "True",
         "rp_version"                  : "debug",
         "virtenv"                     : "%(global_sandbox)s/ve_blacklight",
+        "virtenv_mode"                : "create"
+    },
+
+    "comet": {
+        "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["ssh", "gsissh"],
+        "mandatory_args"              : ["project"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://comet.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://comet.sdsc.xsede.org/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://comet.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "gsisftp://comet.sdsc.xsede.org/"
+        },
+        "default_queue"               : "compute",
+        "cores_per_node"              : "24",
+        "lrms"                        : "SLURM",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "SHELL",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN_RSH",
+        "pre_bootstrap"               : ["module load python"],
+        "valid_roots"                 : ["/home"],
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_comet",
         "virtenv_mode"                : "create"
     }
 }
