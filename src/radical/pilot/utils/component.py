@@ -406,6 +406,7 @@ class Component(mp.Process):
         # workers and notification callbacks
         rpu_prof('initialize')
         self.initialize()
+        rpu_prof('initialized')
 
         # perform a sanity check: for each declared input state, we expect
         # a corresponding work method to be declared, too.

@@ -336,62 +336,40 @@ class PilotLauncherWorker(threading.Thread):
                         global_sandbox = compute_pilot['global_sandbox']
 
                         # Agent configuration that is not part of the public API.
-                        agent_config = compute_pilot['description']['_config']
-                        agent_layout = compute_pilot['description']['_layout']
-
-                        if not agent_config:
-                            agent_config = os.environ.get('RADICAL_PILOT_CFG')
-                        if not agent_layout:
-                            agent_layout = os.environ.get('RADICAL_PILOT_LAYOUT')
-
-
-                        # FIXME: variables below are overloaded on type and use
-                        # FIXME: CFG -> CONFIG, but collides with SAGA ini files
-
                         # The agent config can either be a config dict, or
-                        # a string pointing to a config file.  If neither is
-                        # given, check if 'RADICAL_PILOT_CFG' is set.
+                        # a string pointing to a configuration name.  If neither
+                        # is given, check if 'RADICAL_PILOT_AGENT_CONFIG' is
+                        # set.  The last fallback is 'agent_default'
+                        agent_config = compute_pilot['description'].get('_config')
+                        if not agent_config:
+                            agent_config = os.environ.get('RADICAL_PILOT_AGENT_CONFIG')
+                        if not agent_config:
+                            agent_config = 'default'
+
                         if isinstance(agent_config, dict):
                             # nothing to do
                             pass
+
                         elif isinstance(agent_config, basestring):
-                            # read config as json file
                             try:
-                                logger.info("read config file: %s" % agent_config)
-                                agent_config = ru.read_json(agent_config)
+                                if os.path.exists(agent_config):
+                                    # try to open as file name
+                                    logger.info("read config file: %s" % agent_config)
+                                    agent_config = ru.read_json(agent_config)
+                                else:
+                                    # otherwise interpret as a config name
+                                    # FIXME: load in session just like resource
+                                    #        configs, including user level overloads 
+                                    module_path = os.path.dirname(os.path.abspath(__file__))
+                                    config_path = "%s/../configs/" % module_path
+                                    agent_cfg_file = "%s/agent_%s.json" % (config_path, agent_config)
+                                    agent_cfg = ru.read_json(agent_cfg_file)
                             except Exception as e:
                                 logger.exception("error reading config file: %s" % e)
-                        elif agent_config:
+
+                        else:
                             # we can't handle this type
                             raise TypeError('agent config must be string or dict')
-
-                        # we *always* want an agent config
-                        if not agent_config:
-                            agent_config = dict()
-
-                        # The agent layout can either be a layout dict, or
-                        # a string pointing to a layout file.  If neither is
-                        # given, check if 'RADICAL_PILOT_LAYOUT' is set.
-                        if isinstance(agent_layout, dict):
-                            # nothing to do
-                            pass
-                        elif isinstance(agent_layout, basestring):
-                            # read layout as json file
-                            try:
-                                logger.info("read layout file: %s" % agent_layout)
-                                agent_layout = ru.read_json(agent_layout)
-                            except Exception as e:
-                                logger.exception("error reading layout file: %s" % e)
-                        elif agent_layout:
-                            # we can't handle this type
-                            raise TypeError('agent layout must be string or dict')
-
-                        # we *always* want an agent layout
-                        if not agent_layout:
-                            agent_layout = dict()
-
-                        # layout becomes part of the config
-                        ru.dict_merge (agent_config, agent_layout)
 
                         # we expand and exchange keys in the resource config,
                         # depending on the selected schema so better use a deep
@@ -629,31 +607,28 @@ class PilotLauncherWorker(threading.Thread):
                         if cleanup:                 bootstrap_args += " -x '%s'" % cleanup
 
                         # set some agent configuration
-                        agent_config['cores']              = number_cores
-                        agent_config['debug']              = logger.getEffectiveLevel() 
-                        agent_config['mongodb_url']        = str(agent_dburl)
-                        agent_config['lrms']               = lrms
-                        agent_config['spawner']            = agent_spawner
-                        agent_config['scheduler']          = agent_scheduler
-                        agent_config['runtime']            = runtime
-                        agent_config['pilot_id']           = pilot_id
-                        agent_config['session_id']         = session_id
-                        agent_config['agent_launch_method']= agent_launch_method
-                        agent_config['task_launch_method'] = task_launch_method
-                        agent_config['mpi_launch_method']  = mpi_launch_method
+                        agent_cfg['cores']              = number_cores
+                        agent_cfg['debug']              = logger.getEffectiveLevel() 
+                        agent_cfg['mongodb_url']        = str(agent_dburl)
+                        agent_cfg['lrms']               = lrms
+                        agent_cfg['spawner']            = agent_spawner
+                        agent_cfg['scheduler']          = agent_scheduler
+                        agent_cfg['runtime']            = runtime
+                        agent_cfg['pilot_id']           = pilot_id
+                        agent_cfg['session_id']         = session_id
+                        agent_cfg['agent_launch_method']= agent_launch_method
+                        agent_cfg['task_launch_method'] = task_launch_method
+                        agent_cfg['mpi_launch_method']  = mpi_launch_method
 
                         # ------------------------------------------------------
                         # Write agent config dict to a json file in pilot sandbox.
                         
-                        if not isinstance(agent_config, dict):
-                            raise Exception("Can't deal with non_dict _config: %s" % agent_config)
-
-                        cfg_tmp_handle, cf_tmp_file = tempfile.mkstemp(suffix='.json', prefix='rp_agent_config_')
+                        cfg_tmp_handle, cf_tmp_file = tempfile.mkstemp(suffix='.json', prefix='rp_agent_cfg_')
 
                         # Convert dict to json file
                         msg = "Writing agent configuration to file '%s'." % cf_tmp_file
                         logentries.append(Logentry (msg, logger=logger.debug))
-                        ru.write_json(agent_config, cf_tmp_file)
+                        ru.write_json(agent_cfg, cf_tmp_file)
 
                         cf_env = saga.Url("%s/agent.0.cfg" % pilot_sandbox).path # this is what the pilot sees
                         cf_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, cf_tmp_file))
