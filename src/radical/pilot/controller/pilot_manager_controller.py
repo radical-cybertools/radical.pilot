@@ -421,7 +421,7 @@ class PilotManagerController(threading.Thread):
                 url = "%s://%s/" % (js_url.schema, js_url.host)
 
             logger.debug("saga.utils.PTYShell ('%s')" % url)
-            shell = sup.PTYShell(url, self._session, logger)
+            shell = sup.PTYShell(url, self._session)
 
             ret, out, err = shell.run_sync(' echo "WORKDIR: %s"' % workdir_raw)
             if ret == 0 and 'WORKDIR:' in out :
