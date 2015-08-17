@@ -5403,8 +5403,8 @@ def bootstrap_3():
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
     # set up a logger
-    log = rpu.get_logger(agent_name, target="%s.log" % agent_name,
-                         level=cfg.get('debug', 'INFO'))
+    log = ru.get_logger(agent_name, target="%s.log" % agent_name,
+                        level=cfg.get('debug', 'INFO'))
     try:
         # ----------------------------------------------------------------------
         # des Pudels Kern: merge LRMS info into cfg and get the agent started

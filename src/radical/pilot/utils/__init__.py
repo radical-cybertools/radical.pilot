@@ -7,7 +7,6 @@ from pubsub             import *
 from analysis           import *
 from session            import *
 from component          import *
-from logger             import get_logger
 
 # ------------------------------------------------------------------------------
 #
@@ -18,6 +17,7 @@ pwd  = os.path.dirname (__file__)
 root = "%s/.." % pwd
 version, version_detail, version_branch, sdist_name, sdist_path = ru.get_version ([root])
 
-logger = get_logger(name='radical.pilot')
+import radical.utils as ru
+logger = ru.get_logger('radical.pilot')
 logger.info('radical.pilot        version: %s' % version_detail)
 

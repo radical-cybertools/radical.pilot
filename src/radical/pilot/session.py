@@ -78,6 +78,7 @@ class Session (saga.Session):
 
         """
 
+        logger = ru.get_logger('radical.pilot')
 
         if database_name:
             logger.error("The 'database_name' parameter is deprecated - please specify an URL path") 

@@ -9,9 +9,7 @@ import threading       as mt
 import multiprocessing as mp
 import radical.utils   as ru
 
-from radical.pilot.states import *
-
-from .logger     import get_logger
+from ..states    import *
 
 from .prof_utils import prof_init    as rpu_prof_init
 from .prof_utils import prof         as rpu_prof
@@ -145,8 +143,8 @@ class Component(mp.Process):
         self._threads     = list()      # subscriber threads
         self._terminate   = mt.Event()  # signal for thread termination
 
-        self._log = get_logger(name=self._agent_name,
-                               target="%s.log" % self._agent_name)
+        self._log = ru.get_logger(name=self._agent_name,
+                                  target="%s.log" % self._agent_name)
         self._log.info('creating %s' % self._cname)
 
         # start the main event loop in a separate process.  At that point, the
@@ -387,8 +385,8 @@ class Component(mp.Process):
         dh = ru.DebugHelper()
 
         # configure the component's logger
-        self._log = get_logger(name=self._agent_name, 
-                               target="./%s.%s.log" % (self._agent_name, self._cname))
+        self._log = ru.get_logger(name=self._agent_name, 
+                                  target="./%s.%s.log" % (self._agent_name, self._cname))
         self._log.info('running %s' % self._cname)
 
         # registering a sigterm handler will allow us to call an exit when the
@@ -415,8 +413,6 @@ class Component(mp.Process):
                 if not state in self._workers:
                     raise RuntimeError("%s: no worker declared for input state %s" \
                                     % self._cname, state)
-        rpu_prof('initialized')
-
         try:
             # The main event loop will repeatedly iterate over all input
             # channels, probing 
