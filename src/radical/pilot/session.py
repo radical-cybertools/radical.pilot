@@ -225,7 +225,17 @@ class Session (saga.Session, Object):
                                       db_url  = self._database_url,
                                       db_name = self._database_name)
 
-                logger.info("New Session created%s." % str(self))
+                logger.info("New Session created %s." % str(self))
+
+                _rec = os.environ.get('RADICAL_PILOT_RECORD_SESSION')
+                if _rec:
+                    self._rec = "%s/%s" % (_rec, self.uid)
+                    os.system('mkdir -p %s' % self._rec)
+                    ru.write_json({'dburl' : str(self._database_url)}, "%s/session.json" % self._rec)
+                    logger.info("recording session in %s" % self._rec)
+                else:
+                    self._rec = None
+
 
             except Exception, ex:
                 logger.exception ('session create failed')

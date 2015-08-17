@@ -1,0 +1,157 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import glob
+import pprint
+import datetime
+import logging
+import pymongo
+import radical.utils       as ru
+import radical.pilot       as rp
+import radical.pilot.utils as rpu
+
+
+# ------------------------------------------------------------------------------
+#
+def run_record(rec):
+
+    session = None
+
+    try:
+
+        rep = ru.Reporter(title='Session Replay: %s' % rec)
+
+        rep.header('create session')
+        s_dict  = ru.read_json_str("%s/session.json" % rec)
+        dburl   = s_dict.get('dburl')
+        rep.info('session dburl: %s' % dburl)
+
+        session = rp.Session(database_url=dburl)
+        rep.ok('session uid  : %s' % session.uid)
+
+        pmgr    = rp.PilotManager(session=session)
+        rep.ok('pilot manager: %s' % pmgr.uid)
+
+        umgr    = rp.UnitManager(session=session)
+        rep.ok('unit manager : %s' % umgr.uid)
+
+        rep.header('create pilots')
+        pds = list()
+        for pd_json in glob.glob("%s/pilot.*.json" % rec):
+            pd_dict = ru.read_json(pd_json)
+            pd      = rp.ComputePilotDescription()
+            for key, val in pd_dict.iteritems():
+                pd.set_attribute(key, val)
+            pds.append(pd)
+            rep.info('%-15s [%3d cores]' % (pd.resource, pd.cores))
+        pilots = pmgr.submit_pilots(pds)
+        rep.ok('pilots submitted')
+
+        rep.header('using pilots')
+        umgr.add_pilots(pilots)
+
+        batch = 0
+        while True:
+            ud_json_list = glob.glob("%s/unit.*.batch.%03d.json" % (rec, batch))
+
+            if not ud_json_list:
+                rec.header('no more unit batches found')
+                break
+
+            rep.header('submit units [batch %d]' % batch)
+            uds = list()
+            for ud_json in ud_json_list:
+                ud_dict = ru.read_json(ud_json)
+                ud      = rp.ComputeUnitDescription()
+                for key, val in ud_dict.iteritems():
+                    ud.set_attribute(key, val)
+                uds.append(ud)
+                args = ud_dict.get('arguments', [])
+                rep.info('%s  %s [%3d cores]' % (ud.executable, ' '.join(args), ud.cores))
+            units = umgr.submit_units(uds)
+            rep.ok('units submitted  [batch %d]' % batch)
+    
+            rep.info('wait for units [batch %d]' % batch)
+            umgr.wait_units()
+            rep.ok('units all done   [batch %d]' % batch)
+    
+            for u in units:
+                rep.info("%s (@ %s) state %s, exit %s" \
+                    % (u.uid, u.execution_locations, u.state, u.exit_code))
+
+            batch += 1
+
+
+    except Exception as e:
+        logging.exception('error')
+        rep.error("Exception caught: %s" % e)
+
+    finally:
+
+        if session:
+            rep.info('closing session %s' % session.uid)
+            session.close()
+            rep.ok('session closed')
+
+
+
+# ------------------------------------------------------------------------------
+#
+def usage (msg=None, noexit=False) :
+
+    if  msg :
+        print "\n      Error: %s" % msg
+
+    print """
+      usage      : %s [-r rec]
+      example    : %s -r /tmp/recorded_session
+      options :
+        -r <rec> : run the session recorded in the directory 'rec'
+                   if not specified, we use the value of the env variable
+                   RADICAL_PILOT_SESSION_RECORD (if available)
+
+""" % (sys.argv[0], sys.argv[0])
+
+    if  msg :
+        sys.exit (1)
+
+    if  not noexit :
+        sys.exit (0)
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__' :
+
+    import optparse
+    parser = optparse.OptionParser (add_help_option=False)
+
+    parser.add_option('-r', '--record', dest='rec')
+    parser.add_option('-h', '--help',   dest='help', action="store_true")
+
+    options, args = parser.parse_args ()
+
+    if  options.help :
+        usage ()
+
+    if  options.rec :
+        rec = options.rec
+    else:
+        print 'looking for RADICAL_PILOT_SESSION_RECORD'
+        rec = os.environ.get('RADICAL_PILOT_RECORD_SESSION')
+        if not rec:
+            print 'not found'
+
+    if not rec:
+        usage ("No record specified")
+
+    # don't record a recorded session
+    if 'RADICAL_PILOT_RECORD_SESSION' in os.environ:
+        del(os.environ['RADICAL_PILOT_RECORD_SESSION'])
+
+    run_record(rec)
+
+
+# ------------------------------------------------------------------------------
+
