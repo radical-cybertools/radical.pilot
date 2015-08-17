@@ -3520,8 +3520,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
 
         # run watcher thread
         self._terminate = threading.Event()
-        self._watcher   = threading.Thread(target = self._watch,
-                                           name   = "Watcher" % self._cname)
+        self._watcher   = threading.Thread(target=self._watch, name="Watcher")
         self._watcher.start ()
 
         # The AgentExecutingComponent needs the LaunchMethods to construct
@@ -3744,8 +3743,6 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
     #
     def _watch(self):
 
-        # create a new, thread specific profiler
-        self._prof = rpu.Profiler(self._cname)
         self._prof.prof('run')
         try:
 
@@ -3960,8 +3957,7 @@ class ExecWorker_SHELL(AgentExecutingComponent):
 
         # run watcher thread
         self._terminate = threading.Event()
-        self._watcher   = threading.Thread(target = self._watch,
-                                           name   = "%s.watcher" % self._cname)
+        self._watcher   = threading.Thread(target=self._watch, name="Watcher")
         self._watcher.start ()
 
 
@@ -4226,8 +4222,6 @@ timestamp () {
         MONITOR_READ_TIMEOUT = 1.0   # check for stop signal now and then
         static_cnt           = 0
 
-        # create a new, thread specific profiler
-        self._prof = rpu.Profiler(self._cname)
         self._prof.prof('run')
         try:
 
@@ -5091,11 +5085,14 @@ class AgentWorker(rpu.Worker):
                         launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
                         opaque_slots=opaque_slots)
 
-            # FIXME: We should keep a handle to the resulting process around, 
-            #        for monitoring and shutdown.
+            # spawn the SA
             self._prof.prof("create", msg=sa)
             self._log.info ("create sub-agent %s: %s" % (sa, cmd))
-            os.system("%s 1>%s.out 2>%s.err </dev/null &" % (cmd, sa, sa))
+            sa_out = open("%s.out" % sa, "w")
+            sa_err = open("%s.err" % sa, "w")
+            sa_proc = subprocess.Popen(cmd, shell=True, stdout=sa_out, stderr=sa_err)
+            self._sub_agents.append([sa, sa_proc, sa_out, sa_err])
+            self._prof.prof("created", msg=sa)
 
         self._log.debug('start_sub_agents done')
 
@@ -5249,10 +5246,11 @@ class AgentWorker(rpu.Worker):
         time.sleep(1)
       
         # burn the bridges, burn EVERYTHING
-        for sa in self._sub_agents:
-            # FIXME: this is not active, yet.
+        for sa, sa_proc, sa_out, sa_err in self._sub_agents:
             self._log.info("closing sub-agent %s", sa)
-            sa.terminate()
+            sa_proc.terminate()
+            sa_out.close()
+            sa_err.close()
 
         for c in self._components:
             self._log.info("closing component %s", c._name)
@@ -5350,7 +5348,7 @@ def bootstrap_3():
 
     # set up a logger and profiler
     prof = rpu.Profiler('bootstrap_3')
-    log  = ru.get_logger('bootstrap_3')
+    log  = ru.get_logger('bootstrap_3', 'bootstrap_3.log')
     log.info('start')
 
     # FIXME: signal handlers need mongo_p, but we won't have that until later

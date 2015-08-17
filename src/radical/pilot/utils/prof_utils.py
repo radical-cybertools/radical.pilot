@@ -78,21 +78,17 @@ class Profiler (object):
             self._enabled = False
             return
 
-        self._name = name
-        self._tid  = threading.current_thread().name
-
         self._ts_zero, self._ts_abs = self._timestamp_init()
 
-        timestamp = self._timestamp_now()
-        self._handle = open("%s.%s.prof"  % (self._name, self._tid), 'a')
-
+        self._name  = name
+        self._handle = open("%s.prof"  % self._name, 'a')
 
         # write header and time normalization info
         # NOTE: Don't forget to sync any format changes in the bootstrapper
         #       and downstream analysis tools too!
         self._handle.write("#time,name,uid,state,event,msg\n")
         self._handle.write("%.4f,%s:%s,%s,%s,%s,%s\n" % \
-                (timestamp, self._name, self._tid, "", "", 'sync abs',\
+                (0.0, self._name, "", "", "", 'sync abs',\
                 "%s:%s:%s" % (time.time(), self._ts_zero, self._ts_abs)))
 
 
@@ -134,10 +130,12 @@ class Profiler (object):
             # no timestamp provided -- use 'now'
             timestamp = self._timestamp_now()
 
+        tid = threading.current_thread().name
+
         # NOTE: Don't forget to sync any format changes in the bootstrapper
         #       and downstream analysis tools too!
         self._handle.write("%.4f,%s:%s,%s,%s,%s,%s\n" \
-                % (timestamp, self._name, self._tid, uid, state, event, msg))
+                % (timestamp, self._name, tid, uid, state, event, msg))
         self.flush()
 
 

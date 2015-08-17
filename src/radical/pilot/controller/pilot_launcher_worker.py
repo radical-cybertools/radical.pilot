@@ -665,8 +665,8 @@ class PilotLauncherWorker(threading.Thread):
                         jd.arguments             = ["-l %s" % BOOTSTRAPPER_SCRIPT, bootstrap_args]
                         jd.working_directory     = saga.Url(pilot_sandbox).path
                         jd.project               = project
-                        jd.output                = "agent.0.out"
-                        jd.error                 = "agent.0.err"
+                        jd.output                = "bootstrap_1.out"
+                        jd.error                 = "bootstrap_1.err"
                         jd.total_cpu_count       = number_cores
                         jd.processes_per_host    = cores_per_node
                         jd.wall_time_limit       = runtime

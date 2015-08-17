@@ -141,8 +141,10 @@ class Component(mp.Process):
         self._threads     = list()      # subscriber threads
         self._terminate   = mt.Event()  # signal for thread termination
 
-        self._log = ru.get_logger(name=self._agent_name,
-                                  target="%s.log" % self._agent_name)
+        # use agent_name for one log per agent, cname for one log per agent and component
+        log_name = self._cname
+        log_tgt  = self._cname + ".log"
+        self._log = ru.get_logger(log_name, log_tgt)
         self._log.info('creating %s' % self._cname)
 
         self._prof = Profiler(self._cname)
@@ -401,8 +403,9 @@ class Component(mp.Process):
         dh = ru.DebugHelper()
 
         # configure the component's logger
-        self._log = ru.get_logger(name=self._agent_name, 
-                                  target="./%s.%s.log" % (self._agent_name, self._cname))
+        log_name = self._cname
+        log_tgt  = self._cname + ".log"
+        self._log = ru.get_logger(log_name, log_tgt)
         self._log.info('running %s' % self._cname)
 
         # registering a sigterm handler will allow us to call an exit when the
