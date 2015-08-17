@@ -537,7 +537,7 @@ class AgentSchedulingComponent(rpu.Component):
             return False
 
         # got an allocation, go off and launch the process
-        rpu.prof('schedule', msg="allocated", uid=cu['_id'])
+        self._prof.prof('schedule', msg="allocated", uid=cu['_id'])
         self._log.info("slot status after allocated  : %s" % self.slot_status ())
 
         # FIXME: if allocation succeeded, then the unit will likely advance to
@@ -559,7 +559,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         cu = msg
 
-        rpu.prof('reschedule')
+        self._prof.prof('reschedule')
         self._log.info("slot status before reschedule: %s" % self.slot_status())
 
         # cycle through wait queue, and see if we get anything running now.  We
@@ -575,10 +575,10 @@ class AgentSchedulingComponent(rpu.Component):
                 # remove it from the wait queue
                 with self._wait_lock :
                     self._wait_pool.remove(cu)
-                    rpu.prof('unqueue', msg="re-allocation done", uid=cu['_id'])
+                    self._prof.prof('unqueue', msg="re-allocation done", uid=cu['_id'])
 
         self._log.info("slot status after  reschedule: %s" % self.slot_status ())
-        rpu.prof('reschedule done')
+        self._prof.prof('reschedule done')
 
 
     # --------------------------------------------------------------------------
@@ -589,7 +589,7 @@ class AgentSchedulingComponent(rpu.Component):
         """
 
         cu = msg
-        rpu.prof('unschedule', uid=cu['_id'])
+        self._prof.prof('unschedule', uid=cu['_id'])
 
         if not cu['opaque_slots']:
             # Nothing to do -- how come?
@@ -630,7 +630,7 @@ class AgentSchedulingComponent(rpu.Component):
             with self._wait_lock :
                 self._wait_pool.append(cu)
 
-            rpu.prof('schedule', msg="allocation failed", uid=cu['_id'])
+            self._prof.prof('schedule', msg="allocation failed", uid=cu['_id'])
 
 
 
@@ -3521,7 +3521,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
         # run watcher thread
         self._terminate = threading.Event()
         self._watcher   = threading.Thread(target = self._watch,
-                                           name   = "%s.watcher" % self._cname)
+                                           name   = "Watcher" % self._cname)
         self._watcher.start ()
 
         # The AgentExecutingComponent needs the LaunchMethods to construct
@@ -3593,7 +3593,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
             self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
             assert(cu['opaque_slots']) # FIXME: no assert, but check
-            rpu.prof('ExecWorker unit launch', uid=cu['_id'])
+            self._prof.prof('ExecWorker unit launch', uid=cu['_id'])
 
             # Start a new subprocess to launch the unit
             self.spawn(launcher=launcher, cu=cu)
@@ -3618,7 +3618,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
     #
     def spawn(self, launcher, cu):
 
-        rpu.prof('ExecWorker spawn', uid=cu['_id'])
+        self._prof.prof('ExecWorker spawn', uid=cu['_id'])
 
         launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu['workdir']
         self._log.debug("Created launch_script: %s", launch_script_name)
@@ -3682,7 +3682,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                 if hop_cmd : cmdline = hop_cmd
                 else       : cmdline = launch_script_name
 
-                rpu.prof('launch script constructed', uid=cu['_id'])
+                self._prof.prof('launch script constructed', uid=cu['_id'])
 
             except Exception as e:
                 msg = "Error in spawner (%s)" % e
@@ -3715,7 +3715,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
         _stderr_file_h = open(cu['stderr_file'], "w")
 
         self._log.info("Launching unit %s via %s in %s", cu['_id'], cmdline, cu['workdir'])
-        rpu.prof('spawning pass to popen', uid=cu['_id'])
+        self._prof.prof('spawning pass to popen', uid=cu['_id'])
 
         proc = subprocess.Popen(args               = cmdline,
                                 bufsize            = 0,
@@ -3732,7 +3732,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                                 startupinfo        = None,
                                 creationflags      = 0)
 
-        rpu.prof('spawning passed to popen', uid=cu['_id'])
+        self._prof.prof('spawning passed to popen', uid=cu['_id'])
 
         cu['started'] = rpu.timestamp()
         cu['proc']    = proc
@@ -3744,7 +3744,9 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
     #
     def _watch(self):
 
-        rpu.prof('run')
+        # create a new, thread specific profiler
+        self._prof = rpu.Profiler(self._cname)
+        self._prof.prof('run')
         try:
 
             while not self._terminate.is_set():
@@ -3754,7 +3756,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                 # See if there are cancel requests, or new units to watch
                 try:
                     command = self._command_queue.get_nowait()
-                    rpu.prof('get_cmd', msg="command_queue to ExecWatcher (%s)" % command[COMMAND_TYPE])
+                    self._prof.prof('get_cmd', msg="command_queue to ExecWatcher (%s)" % command[COMMAND_TYPE])
 
                     if command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
                         self._cus_to_cancel.append(command[COMMAND_ARG])
@@ -3773,7 +3775,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                     # learn about CUs until all slots are filled, because then
                     # we may not be able to catch finishing CUs in time -- so
                     # there is a fine balance here.  Balance means 100 (FIXME).
-                  # rpu.prof('ExecWorker popen watcher pull cu from queue')
+                  # self._prof.prof('ExecWorker popen watcher pull cu from queue')
                     MAX_QUEUE_BULKSIZE = 100
                     while len(cus) < MAX_QUEUE_BULKSIZE :
                         cus.append (self._watch_queue.get_nowait())
@@ -3787,7 +3789,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                 # add all cus we found to the watchlist
                 for cu in cus :
                     
-                    rpu.prof('get', msg="ExecWatcher picked up unit", uid=cu['_id'])
+                    self._prof.prof('get', msg="ExecWatcher picked up unit", uid=cu['_id'])
                     self._cus_to_watch.append (cu)
 
                 # check on the known cus.
@@ -3800,7 +3802,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
         except Exception as e:
             self._log.exception("Error in ExecWorker watch loop (%s)" % e)
 
-        rpu.prof ('stop')
+        self._prof.prof ('stop')
 
 
     # --------------------------------------------------------------------------
@@ -3830,13 +3832,13 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                     cu['proc'].kill()
                     self._cus_to_cancel.remove(cu['_id'])
 
-                    rpu.prof('final', msg="execution canceled", uid=cu['_id'])
+                    self._prof.prof('final', msg="execution canceled", uid=cu['_id'])
 
                     self.publish('unschedule', cu)
                     self.advance(cu, rp.CANCELED, publish=True, push=False)
 
             else:
-                rpu.prof('execution complete', uid=cu['_id'])
+                self._prof.prof('execution complete', uid=cu['_id'])
 
                 # we have a valid return code -- unit is final
                 action += 1
@@ -3856,20 +3858,20 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                             for line in txt.split("\n"):
                                 if line:
                                     x1, x2, x3 = line.split()
-                                    rpu.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
+                                    self._prof.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
                         except Exception as e:
                             self._log.error("Pre/Post profiling file read failed: `%s`" % e)
 
                 if exit_code != 0:
                     # The unit failed - fail after staging output
-                    rpu.prof('final', msg="execution failed", uid=cu['_id'])
+                    self._prof.prof('final', msg="execution failed", uid=cu['_id'])
                     cu['target_state'] = rp.FAILED
 
                 else:
                     # The unit finished cleanly, see if we need to deal with
                     # output data.  We always move to stageout, even if there are no
                     # directives -- at the very least, we'll upload stdout/stderr
-                    rpu.prof('final', msg="execution succeeded", uid=cu['_id'])
+                    self._prof.prof('final', msg="execution succeeded", uid=cu['_id'])
                     cu['target_state'] = rp.DONE
 
                 self.advance(cu, rp.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
@@ -4012,7 +4014,7 @@ class ExecWorker_SHELL(AgentExecutingComponent):
             self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
             assert(cu['opaque_slots']) # FIXME: no assert, but check
-            rpu.prof('ExecWorker unit launch', uid=cu['_id'])
+            self._prof.prof('ExecWorker unit launch', uid=cu['_id'])
 
             # Start a new subprocess to launch the unit
             self.spawn(launcher=launcher, cu=cu)
@@ -4163,14 +4165,14 @@ timestamp () {
 
         uid = cu['_id']
 
-        rpu.prof('ExecWorker spawn', uid=uid)
+        self._prof.prof('ExecWorker spawn', uid=uid)
 
         # we got an allocation: go off and launch the process.  we get
         # a multiline command, so use the wrapper's BULK/LRUN mode.
         cmd       = self._cu_to_cmd (cu, launcher)
         run_cmd   = "BULK\nLRUN\n%s\nLRUN_EOT\nBULK_RUN\n" % cmd
 
-        rpu.prof('launch script constructed', uid=cu['_id'])
+        self._prof.prof('launch script constructed', uid=cu['_id'])
 
       # TODO: Remove this commented out block?
       # if  self.lrms.target_is_macos :
@@ -4207,12 +4209,12 @@ timestamp () {
             raise RuntimeError ("failed to run unit '%s': (%s)(%s)" \
                              % (run_cmd, ret, out))
 
-        rpu.prof('spawning passed to pty', uid=uid)
+        self._prof.prof('spawning passed to pty', uid=uid)
 
         # FIXME: this is too late, there is already a race with the monitoring
         # thread for this CU execution.  We need to communicate the PIDs/CUs via
         # a queue again!
-        rpu.prof('put', msg="ExecWorker to watcher (%s)" % cu['state'], uid=cu['_id'])
+        self._prof.prof('put', msg="ExecWorker to watcher (%s)" % cu['state'], uid=cu['_id'])
         with self._registry_lock :
             self._registry[pid] = cu
 
@@ -4224,7 +4226,9 @@ timestamp () {
         MONITOR_READ_TIMEOUT = 1.0   # check for stop signal now and then
         static_cnt           = 0
 
-        rpu.prof('run')
+        # create a new, thread specific profiler
+        self._prof = rpu.Profiler(self._cname)
+        self._prof.prof('run')
         try:
 
             self.monitor_shell.run_async ("MONITOR")
@@ -4307,7 +4311,8 @@ timestamp () {
                         cu = self._registry.get (pid, None)
 
                     if cu:
-                        rpu.prof('get', msg="ExecWatcher picked up unit", uid=cu['_id'])
+                        self._prof.prof('get', msg="ExecWatcher picked up unit",
+                                state=cu['state'], uid=cu['_id'])
                         self._handle_event (cu, pid, state, data)
                     else:
                         self._cached_events.append ([pid, state, data])
@@ -4317,7 +4322,7 @@ timestamp () {
             self._log.error ("Exception in job monitoring thread: %s", e)
             self._terminate.set()
 
-        rpu.prof ('stop')
+        self._prof.prof ('stop')
 
 
     # --------------------------------------------------------------------------
@@ -4348,14 +4353,14 @@ timestamp () {
 
         if rp_state in [rp.FAILED, rp.CANCELED] :
             # The unit failed - fail after staging output
-            rpu.prof('final', msg="execution failed", uid=cu['_id'])
+            self._prof.prof('final', msg="execution failed", uid=cu['_id'])
             cu['target_state'] = rp.FAILED
 
         else:
             # The unit finished cleanly, see if we need to deal with
             # output data.  We always move to stageout, even if there are no
             # directives -- at the very least, we'll upload stdout/stderr
-            rpu.prof('final', msg="execution succeeded", uid=cu['_id'])
+            self._prof.prof('final', msg="execution succeeded", uid=cu['_id'])
             cu['target_state'] = rp.DONE
 
         self.advance(cu, rp.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
@@ -4426,14 +4431,14 @@ class AgentUpdateWorker(rpu.Worker):
         res = cinfo['bulk'].execute()
         self._log.debug("bulk update result: %s", res)
 
-        rpu.prof('unit update bulk pushed (%d)' % len(cinfo['uids']))
+        self._prof.prof('unit update bulk pushed (%d)' % len(cinfo['uids']))
         for entry in cinfo['uids']:
             uid   = entry[0]
             state = entry[1]
             if state:
-                rpu.prof('unit update pushed (%s)' % state, uid=uid)
+                self._prof.prof('unit update pushed (%s)' % state, uid=uid)
             else:
-                rpu.prof('unit update pushed', uid=uid)
+                self._prof.prof('unit update pushed', uid=uid)
 
         cinfo['last'] = now
         cinfo['bulk'] = None
@@ -4475,7 +4480,7 @@ class AgentUpdateWorker(rpu.Worker):
             uid   = cu['_id']
             state = cu.get('state')
 
-            rpu.prof('get', msg="update unit state to %s" % state, uid=uid)
+            self._prof.prof('get', msg="update unit state to %s" % state, uid=uid)
 
             cbase       = cu.get('cbase',  '.cu')
             query_dict  = cu.get('query')
@@ -4517,7 +4522,7 @@ class AgentUpdateWorker(rpu.Worker):
 
                 # attempt a timed update
                 self._timed_bulk_execute(cinfo)
-                rpu.prof('unit update bulked (%s)' % state, uid=uid)
+                self._prof.prof('unit update bulked (%s)' % state, uid=uid)
 
 
         except Exception as e:
@@ -4590,11 +4595,11 @@ class AgentStagingInputComponent(rpu.Component):
 
         # create unit workdir
         rec_makedir(workdir)
-        rpu.prof('unit mkdir', uid=cu['_id'])
+        self._prof.prof('unit mkdir', uid=cu['_id'])
 
         for directive in cu['Agent_Input_Directives']:
 
-            rpu.prof('Agent input_staging queue', uid=cu['_id'],
+            self._prof.prof('Agent input_staging queue', uid=cu['_id'],
                      msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
 
             # Perform input staging
@@ -4635,7 +4640,7 @@ class AgentStagingInputComponent(rpu.Component):
             self._log.info(log_message)
 
 
-        rpu.prof('log', msg="toward agent scheduling", uid=cu['_id'])
+        self._prof.prof('log', msg="toward agent scheduling", uid=cu['_id'])
 
       # self.advance(cu, rp.AGENT_SCHEDULING_PENDING, publish=True, push=True)
         self.advance(cu, rp.ALLOCATING_PENDING, publish=True, push=True)
@@ -4721,7 +4726,7 @@ class AgentStagingOutputComponent(rpu.Component):
                     for line in txt.split("\n"):
                         if line:
                             x1, x2, x3 = line.split()
-                            rpu.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
+                            self._prof.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
             except Exception as e:
                 self._log.error("Pre/Post profiling file read failed: `%s`" % e)
 
@@ -4737,7 +4742,7 @@ class AgentStagingOutputComponent(rpu.Component):
         # all other units get their (expectedly valid) output files staged
         for directive in cu['Agent_Output_Directives']:
 
-            rpu.prof('Agent output_staging', uid=cu['_id'],
+            self._prof.prof('Agent output_staging', uid=cu['_id'],
                      msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
 
             # Perform output staging
@@ -4838,7 +4843,7 @@ class AgentHeartbeatWorker(rpu.Worker):
     def idle_cb(self):
 
         try:
-            rpu.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!')
+            self._prof.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!')
             self._check_commands()
             self._check_state   ()
             return True
@@ -4867,7 +4872,7 @@ class AgentHeartbeatWorker(rpu.Worker):
             cmd = command[COMMAND_TYPE]
             arg = command[COMMAND_ARG]
 
-            rpu.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" % (cmd, arg))
+            self._prof.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" % (cmd, arg))
 
             if cmd == COMMAND_CANCEL_PILOT:
                 self._log.info('cancel pilot cmd')
@@ -4993,9 +4998,6 @@ class AgentWorker(rpu.Worker):
         self._components = list()
         self._workers    = list()
 
-        # prepare profiler
-        rpu.prof_init('%s.agent.0.prof' % self._session_id, 'start')
-
         # configure the agent logger
         self._log.setLevel(self._cfg['debug'])
         self._log.info('git ident: %s' % git_ident)
@@ -5029,6 +5031,7 @@ class AgentWorker(rpu.Worker):
         # the pulling agent registers the staging_input_queue as this is what we want to push to
         # FIXME: do a sanity check on the config that only one agent pulls, as
         #        this is a non-atomic operation at this point
+        self._log.debug('pull units: %s' % self._pull_units)
         if self._pull_units:
 
             self.declare_output(rp.AGENT_STAGING_INPUT_PENDING, rp.AGENT_STAGING_INPUT_QUEUE)
@@ -5090,8 +5093,8 @@ class AgentWorker(rpu.Worker):
 
             # FIXME: We should keep a handle to the resulting process around, 
             #        for monitoring and shutdown.
-            rpu.prof("start", msg=sa)
-            self._log.info("create sub-agent %s: %s" % (sa, cmd))
+            self._prof.prof("create", msg=sa)
+            self._log.info ("create sub-agent %s: %s" % (sa, cmd))
             os.system("%s 1>%s.out 2>%s.err </dev/null &" % (cmd, sa, sa))
 
         self._log.debug('start_sub_agents done')
@@ -5229,7 +5232,7 @@ class AgentWorker(rpu.Worker):
             self._log.exception("Agent setup error: %s" % e)
             raise
 
-        rpu.prof('Agent setup done', logger=self._log.debug)
+        self._prof.prof('Agent setup done', logger=self._log.debug)
 
         # FIXME: signal the other agents, and shot down all components and
         #        bridges.
@@ -5240,9 +5243,7 @@ class AgentWorker(rpu.Worker):
     def finalize(self):
 
         self._log.info("Agent finalizes")
-      
-        rpu.prof ('stop')
-        rpu.flush_prof()
+        self._prof.prof('stop')
 
         # FIXME: let logfiles settle before killing the components
         time.sleep(1)
@@ -5278,10 +5279,10 @@ class AgentWorker(rpu.Worker):
         then feed them to the respective component queues.
         """
 
-        # only do something if we are configured to do so
+        # only do something if configured to do so
         if not self._pull_units:
             self._log.debug('not configured to pull for units')
-            return 0
+            return True  # fake work to avoid busy noops
 
         try:
             # check for new units
@@ -5291,7 +5292,7 @@ class AgentWorker(rpu.Worker):
             # exception in the main loop is fatal
             pilot_FAILED(self._p, self._pilot_id, self._log,
                 "ERROR in agent main loop: %s. %s" % (e, traceback.format_exc()))
-            rpu.flush_prof()
+            self._prof.flush()
             sys.exit(1)
 
 
@@ -5313,7 +5314,7 @@ class AgentWorker(rpu.Worker):
                                            'control' : 'umgr'})
         if not cu_cursor.count():
             # no units whatsoever...
-            self._log.info("units found:    0")
+            self._log.info("units pulled:    0")
             return False
 
         # update the unit states to avoid pulling them again next time.
@@ -5324,15 +5325,11 @@ class AgentWorker(rpu.Worker):
                         spec     = {"_id"   : {"$in"     : cu_uids}},
                         document = {"$set"  : {"control" : 'agent'}})
 
+        self._prof.prof('get', msg="bulk size: %d" % len(cu_list))
+        self._log.info("units pulled: %4d"   % len(cu_list))
+
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline)
-        if not cu_list:
-            self._log.info("units found:    0")
-            return False
-
-        rpu.prof('get', msg="bulk size: %d" % len(cu_list))
-        self._log.info("units found: %4d"   % len(cu_list))
-
         self.advance(cu_list, publish=True, push=True)
 
         # indicate that we did some work (if we did...)
@@ -5351,7 +5348,10 @@ def bootstrap_3():
     control to the Agent class which will spawn the functional components.
     """
 
-    rpu.prof_init(target='bootstrap_3.log')
+    # set up a logger and profiler
+    prof = rpu.Profiler('bootstrap_3')
+    log  = ru.get_logger('bootstrap_3')
+    log.info('start')
 
     # FIXME: signal handlers need mongo_p, but we won't have that until later
 
@@ -5376,6 +5376,8 @@ def bootstrap_3():
     cfg = ru.read_json_str(agent_cfg)
     cfg['agent_name'] = agent_name
 
+    log.setLevel(cfg.get('debug', 'INFO'))
+
     print "Agent config (%s):\n%s\n\n" % (agent_cfg, pprint.pformat(cfg))
 
     mongodb_url = cfg['mongodb_url']
@@ -5387,7 +5389,8 @@ def bootstrap_3():
 
     # set up signal and exit handlers
     def exit_handler():
-        rpu.flush_prof()
+        pass
+      # rpu.flush_prof()
     
     def sigint_handler(signum, frame):
         pilot_FAILED(msg='Caught SIGINT. EXITING (%s)' % frame)
@@ -5402,9 +5405,6 @@ def bootstrap_3():
     signal.signal(signal.SIGINT, sigint_handler)
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
-    # set up a logger
-    log = ru.get_logger(agent_name, target="%s.log" % agent_name,
-                        level=cfg.get('debug', 'INFO'))
     try:
         # ----------------------------------------------------------------------
         # des Pudels Kern: merge LRMS info into cfg and get the agent started
@@ -5479,7 +5479,8 @@ def bootstrap_3():
         sys.exit(7)
 
     finally:
-        rpu.prof('stop', msg='finally clause')
+        log.info('stop')
+        prof.prof('stop', msg='finally clause')
         sys.exit(8)
 
 

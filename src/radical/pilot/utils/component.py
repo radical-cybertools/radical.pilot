@@ -11,8 +11,7 @@ import radical.utils   as ru
 
 from ..states    import *
 
-from .prof_utils import prof_init    as rpu_prof_init
-from .prof_utils import prof         as rpu_prof
+from .prof_utils import Profiler
 
 from .queue      import Queue        as rpu_Queue
 from .queue      import QUEUE_ZMQ    as rpu_QUEUE_ZMQ
@@ -25,7 +24,6 @@ from .pubsub     import PUBSUB_PUB   as rpu_PUBSUB_PUB
 from .pubsub     import PUBSUB_SUB   as rpu_PUBSUB_SUB
 
 # TODO:
-#   - add profiling
 #   - add PENDING states
 #   - for notifications, change msg from [topic, unit] to [topic, msg]
 #   - components should not need to declare the state publisher?
@@ -131,7 +129,7 @@ class Component(mp.Process):
 
         self._cfg         = cfg
         self._agent_name  = cfg['agent_name']
-        self._cname       = "%s.%d" % (type(self).__name__, cfg.get('number', 0))
+        self._cname       = "%s.%s.%d" % (self._agent_name, type(self).__name__, cfg.get('number', 0))
         self._addr_map    = cfg['bridge_addresses']
         self._parent      = os.getpid() # pid of spawning process
         self._inputs      = list()      # queues to get units from
@@ -146,6 +144,8 @@ class Component(mp.Process):
         self._log = ru.get_logger(name=self._agent_name,
                                   target="%s.log" % self._agent_name)
         self._log.info('creating %s' % self._cname)
+
+        self._prof = Profiler(self._cname)
 
         # start the main event loop in a separate process.  At that point, the
         # component will basically detach itself from the parent process, and
@@ -225,6 +225,9 @@ class Component(mp.Process):
         if not isinstance(states, list):
             states = [states]
 
+        self._log.debug('%s declares input     : %s : %s' \
+                % (self._cname, states, input))
+
         # check if a remote address is configured for the queue
         addr = self._addr_map.get (input)
         self._log.debug("using addr %s for input %s" % (addr, input))
@@ -252,6 +255,9 @@ class Component(mp.Process):
 
         if not isinstance(states, list):
             states = [states]
+
+        self._log.debug('%s declares output    : %s : %s' \
+                % (self._cname, states, output))
 
         for state in states:
 
@@ -292,6 +298,9 @@ class Component(mp.Process):
         if not isinstance(states, list):
             states = [states]
 
+        self._log.debug('%s declares worker    : %s : %s' \
+                % (self._cname, states, worker))
+
         # we want exactly one worker associated with a state -- but a worker can
         # be responsible for multiple states
         for state in states:
@@ -304,6 +313,9 @@ class Component(mp.Process):
     # --------------------------------------------------------------------------
     #
     def declare_idle_cb(self, cb, timeout=0.0):
+
+        self._log.debug('%s declares idler     : %s : %s' \
+                % (self._cname, cb, timeout))
 
         self._idlers.append({
             'cb'      : cb,       # call this whenever we are idle
@@ -325,6 +337,9 @@ class Component(mp.Process):
 
         if topic not in self._publishers:
             self._publishers[topic] = list()
+
+        self._log.debug('%s declares publisher : %s : %s' \
+                % (self._cname, topic, pubsub))
 
         # check if a remote address is configured for the queue
         addr = self._addr_map.get (pubsub)
@@ -359,9 +374,10 @@ class Component(mp.Process):
                     callback (topic=topic, msg=msg)
         # ----------------------------------------------------------------------
 
+        self._log.debug('%s declares subscriber: %s : %s : %s' \
+                % (self._cname, topic, pubsub, cb))
+
         # create a pubsub subscriber, and subscribe to the given topic
-        self._log.debug('create subscriber: %s - %s' \
-                        % (mt.current_thread().name, os.getpid()))
         q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB)
         q.subscribe(topic)
 
@@ -397,14 +413,13 @@ class Component(mp.Process):
         signal.signal(signal.SIGTERM, sigterm_handler)
 
         # initialize profiler
-        rpu_prof_init(target="component_%s" % self._cname)
-        rpu_prof('run %s' % self._cname)
+        self._prof = Profiler(self._cname)
 
         # Initialize() should declare all input and output channels, and all
         # workers and notification callbacks
-        rpu_prof('initialize')
+        self._prof.prof('initialize')
         self.initialize()
-        rpu_prof('initialized')
+        self._prof.prof('initialized')
 
         # perform a sanity check: for each declared input state, we expect
         # a corresponding work method to be declared, too.
@@ -417,7 +432,7 @@ class Component(mp.Process):
             # The main event loop will repeatedly iterate over all input
             # channels, probing 
             while True:
-       
+
                 # if no ation occurs in this iteration, invoke idle callbacks
                 active = False 
 
@@ -437,13 +452,15 @@ class Component(mp.Process):
                         continue
 
                     active = True
+                    self._prof.prof(event='get', state=unit['state'],
+                            uid=unit['_id'], msg=input.name)
 
                     # assert that the unit is in an expected state
                     state = unit['state']
                     if state not in states:
                         self.advance(unit, FAILED, publish=True, push=False)
-                        rpu_prof(event='failed', msg="unexpected state %s" % state,
-                                uid=unit['_id'], logger=self._log.error)
+                        self._prof.prof(event='failed', msg="unexpected state %s" % state,
+                                uid=unit['_id'], state=unit['state'], logger=self._log.error)
                         continue
 
                     # check if we have a suitable worker (this should always be
@@ -458,14 +475,15 @@ class Component(mp.Process):
                     # it over, wait for completion, and then pull for the next
                     # unit
                     try:
-                        rpu_prof(event='work', msg='state %s' % state, uid=unit['_id'])
+                        self._prof.prof(event='work start', state=unit['state'], uid=unit['_id'])
                         self._workers[state](unit)
-                        rpu_prof(event='work done', msg='state %s' % state, uid=unit['_id'])
+                        self._prof.prof(event='work done ', state=unit['state'], uid=unit['_id'])
 
                     except Exception as e:
                         self.advance(unit, FAILED, publish=True, push=False)
-                        rpu_prof(event='failed', msg=str(e), uid=unit['_id'],
-                                logger=self._log.exception)
+                        self._prof.prof(event='failed', msg=str(e), uid=unit['_id'],
+                                state=unit['state'])
+                        self._log.exception("unit %s failed" % unit['_id'])
 
 
                 # if nothing happened, we can call the idle callbacks.  Don't
@@ -495,7 +513,7 @@ class Component(mp.Process):
             # could in principle detect the latter within the loop -- - but
             # since we don't know what to do with the units it operated on, we
             # don't bother...
-            rpu_prof("loop error", msg=str(e), logger=self._log.exception)
+            self._prof.prof("loop error", msg=str(e), logger=self._log.exception)
 
 
         finally:
@@ -505,7 +523,8 @@ class Component(mp.Process):
             self._log.debug('finalize')
             self.finalize()
             self._log.debug('finalize complete')
-            rpu_prof("final")
+            self._prof.prof("final")
+            self._prof.flush()
 
 
     # --------------------------------------------------------------------------
@@ -530,12 +549,12 @@ class Component(mp.Process):
 
             if state:
                 unit['state'] = state
-                rpu_prof('state', uid=unit['_id'], msg=state)
+                self._prof.prof('state advance', uid=unit['_id'], state=state)
 
             if publish:
                 # send state notifications
                 self.publish('state', unit)
-                rpu_prof('pub', uid=unit['_id'])
+                self._prof.prof('state publish', uid=unit['_id'], state=unit['state'])
 
             if push:
                 state = unit['state']
@@ -555,7 +574,7 @@ class Component(mp.Process):
                 #
                 # push the unit down the drain
                 self._outputs[state].put(unit)
-                rpu_prof('put', uid=unit['_id'], msg=self._outputs[state].name)
+                self._prof.prof('put', uid=unit['_id'], state=unit['state'], msg=self._outputs[state].name)
 
 
     # --------------------------------------------------------------------------

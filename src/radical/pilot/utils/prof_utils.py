@@ -57,17 +57,16 @@ _prof_entries = [
 # profile class
 #
 class Profiler (object):
-
-    # we want the profiler to be a singleton, to have consistent timing over all
-    # threads.  Each process needs to re-inialize the profiler if it was not
-    # inherited in any other way.  We thus append pid and thread id to the
-    # profiler output files
-    __metaclass__ = ru.Singleton
-
+    """
+    This class is really just a persistent file handle with a conventient way
+    (prof()) of writing lines with timestamp and events to that file.  Any
+    profiling intelligence is applied when reading and evaluating the created
+    profiles.
+    """
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, target, logger=None):
+    def __init__ (self, name):
 
         # this init is only called once (globally).  We synchronize clocks and
         # set timestamp_zero
@@ -79,16 +78,22 @@ class Profiler (object):
             self._enabled = False
             return
 
-        self._target  = target
-        self._handles = dict()
-        self._logger  = logger
+        self._name = name
+        self._tid  = threading.current_thread().name
 
         self._ts_zero, self._ts_abs = self._timestamp_init()
 
-        # log initialization event
-        tid = threading.current_thread().name
-        pid = os.getpid()
-        _ = self._get_handle (pid, tid)
+        timestamp = self._timestamp_now()
+        self._handle = open("%s.%s.prof"  % (self._name, self._tid), 'a')
+
+
+        # write header and time normalization info
+        # NOTE: Don't forget to sync any format changes in the bootstrapper
+        #       and downstream analysis tools too!
+        self._handle.write("#time,name,uid,state,event,msg\n")
+        self._handle.write("%.4f,%s:%s,%s,%s,%s,%s\n" % \
+                (timestamp, self._name, self._tid, "", "", 'sync abs',\
+                "%s:%s:%s" % (time.time(), self._ts_zero, self._ts_abs)))
 
 
     # ------------------------------------------------------------------------------
@@ -104,9 +109,7 @@ class Profiler (object):
     def flush(self):
 
         if self._enabled:
-            for pid in self._handles:
-                for tid in self._handles[pid]:
-                    self._handles[pid][tid].flush()
+            self._handle.flush()
 
 
     # ------------------------------------------------------------------------------
@@ -116,11 +119,8 @@ class Profiler (object):
         if not self._enabled:
             return
 
-        if         logger:       logger("%s (%10s%s) : %s", event, uid, state, msg)
-        elif self._logger: self._logger("%s (%10s%s) : %s", event, uid, state, msg)
-
-        tid = threading.current_thread().name
-        pid = os.getpid()
+        if logger:
+            logger("%s (%10s%s) : %s", event, uid, state, msg)
 
         if timestamp != None:
             if timestamp > (100 * 1000 * 1000):
@@ -136,37 +136,9 @@ class Profiler (object):
 
         # NOTE: Don't forget to sync any format changes in the bootstrapper
         #       and downstream analysis tools too!
-        handle = self._get_handle (pid, tid)
-        handle.write("%.4f,%s:%s,%s,%s,%s,%s\n" % (timestamp, pid, tid, uid, state, event, msg))
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_handle (self, pid, tid):
-
-        # NOTE: Don't forget to sync any format changes in the bootstrapper
-        #       and downstream analysis tools too!
-
-        if not pid in self._handles:
-            self._handles[pid] = dict()
-
-        if not tid in self._handles[pid]:
-
-            if self._target == '-':
-                handle = sys.stdout
-            else:
-                timestamp = self._timestamp_now()
-                handle = open("%s.%s.%s.prof" % (self._target, pid, tid), 'a')
-
-                # write header and time normalization info
-                handle.write("#time,name,uid,state,event,msg\n")
-                handle.write("%.4f,%s:%s,%s,%s,%s,%s\n" % \
-                        (timestamp, pid, tid, "", "", 'sync abs',\
-                         "%s:%s:%s" % (time.time(), self._ts_zero, self._ts_abs)))
-
-            self._handles[pid][tid] = handle
-
-        return self._handles[pid][tid]
+        self._handle.write("%.4f,%s:%s,%s,%s,%s,%s\n" \
+                % (timestamp, self._name, self._tid, uid, state, event, msg))
+        self.flush()
 
 
     # --------------------------------------------------------------------------
@@ -199,22 +171,6 @@ class Profiler (object):
         return float(time.time()) - self._ts_zero
 
 
-# --------------------------------------------------------------------------
-#
-# methods to keep the new Profiler class backward compatible
-#
-_p = None
-def prof_init(target, logger=None):
-    global _p
-    _p = Profiler (target, logger)
-
-def prof(event, uid=None, state=None, msg=None, timestamp=None, logger=None):
-    global _p
-    _p and _p.prof(event=event, uid=uid, state=state, msg=msg, timestamp=timestamp, logger=logger)
-
-def flush_prof():
-    global _p
-    _p and _p.flush()
 
 # --------------------------------------------------------------------------
 #
