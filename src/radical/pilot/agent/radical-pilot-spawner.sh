@@ -50,7 +50,7 @@ fi
 # -- but printf will interprete every single '%' in the string, which we don't
 # want.  We thus escape it to '%%'
 qprintf(){
-  \echo "$*" | sed -e 's/%/%%/g' | \xargs --null \printf 
+  \printf "%b\n" "$*"
 }
 
 # --------------------------------------------------------------------
