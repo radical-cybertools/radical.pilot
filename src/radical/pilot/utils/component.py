@@ -371,7 +371,7 @@ class Component(mp.Process):
         # ----------------------------------------------------------------------
         def _subscriber(q, callback):
             while not self._terminate.is_set():
-                topic, msg = q.get_nowait(0.1) # FIXME timout
+                topic, msg = q.get_nowait(1000) # timout in ms
                 if topic and msg:
                     callback (topic=topic, msg=msg)
         # ----------------------------------------------------------------------
@@ -450,7 +450,7 @@ class Component(mp.Process):
 
                     # FIXME: the timeouts have a large effect on throughput, but
                     #        I am not yet sure how best to set them...
-                    unit = input.get_nowait(0.1) # FIXME: timeout
+                    unit = input.get_nowait(1000) # timeout
                     if not unit:
                         continue
 
