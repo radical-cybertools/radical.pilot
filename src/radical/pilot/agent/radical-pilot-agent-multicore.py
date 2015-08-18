@@ -4368,7 +4368,10 @@ timestamp () {
                     self._log.warn ("monitoring channel noise: %s", line)
 
                 else :
-                    pid, state, data = line.split (':', 2)
+                    elems = line.split (':', 2)
+                    if len(elems) != 3:
+                        raise ValueError("parse error for (%s)", line)
+                    pid, state, data = elems
 
                     # we are not interested in non-final state information, at
                     # the moment
