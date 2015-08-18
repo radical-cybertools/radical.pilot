@@ -2290,7 +2290,7 @@ class LRMS(object):
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 s.setblocking(False)
                 s.settimeout(1.0)
-                s.connect(('8.8.8.8', 0))
+                s.connect(('8.8.8.8', 53))
                 return s.getsockname()[0]
             except Exception as e:
                 if logger:
