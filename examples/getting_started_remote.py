@@ -11,9 +11,9 @@ dh = ru.DebugHelper ()
 
 CNT      =     0
 RUNTIME  =    10
-SLEEP    =     0
-CORES    =   256
-UNITS    =  1024
+SLEEP    =     1
+CORES    =    64
+UNITS    =    64
 SCHED    = rp.SCHED_DIRECT_SUBMISSION
 
 resources = {
@@ -49,7 +49,7 @@ resources = {
 
         'xsede.stampede' : {
             'project'  : 'TG-MCB090174',
-            'queue'    : 'normal',
+            'queue'    : 'development',
             'schema'   : None
             },
 
@@ -167,26 +167,26 @@ if __name__ == "__main__":
                 'target': 'staging:///f1',
                 'action': rp.TRANSFER
                 }
-      # pilot.stage_in (input_sd_pilot)
+        pilot.stage_in (input_sd_pilot)
 
         umgr = rp.UnitManager(session=session, scheduler=SCHED)
         umgr.register_callback(unit_state_cb,      rp.UNIT_STATE)
         umgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
         umgr.add_pilots(pilot)
 
-      # input_sd_umgr   = {'source':'/etc/group',        'target': 'f2',                'action': rp.TRANSFER}
-      # input_sd_agent  = {'source':'staging:///f1',     'target': 'f1',                'action': rp.COPY}
-      # output_sd_agent = {'source':'f1',                'target': 'staging:///f1.bak', 'action': rp.COPY}
-      # output_sd_umgr  = {'source':'f2',                'target': 'f2.bak',            'action': rp.TRANSFER}
+        input_sd_umgr   = {'source':'/etc/group',        'target': 'f2',                'action': rp.TRANSFER}
+        input_sd_agent  = {'source':'staging:///f1',     'target': 'f1',                'action': rp.COPY}
+        output_sd_agent = {'source':'f1',                'target': 'staging:///f1.bak', 'action': rp.COPY}
+        output_sd_umgr  = {'source':'f2',                'target': 'f2.bak',            'action': rp.TRANSFER}
 
         cuds = list()
         for unit_count in range(0, UNITS):
             cud = rp.ComputeUnitDescription()
-            cud.executable     = "sleep"
-            cud.arguments      = [SLEEP]
+            cud.executable     = "wc"
+            cud.arguments      = ["f1", "f2"]
             cud.cores          = 1
-          # cud.input_staging  = [ input_sd_umgr,  input_sd_agent]
-          # cud.output_staging = [output_sd_umgr, output_sd_agent]
+            cud.input_staging  = [ input_sd_umgr,  input_sd_agent]
+            cud.output_staging = [output_sd_umgr, output_sd_agent]
             cuds.append(cud)
 
         units = umgr.submit_units(cuds)

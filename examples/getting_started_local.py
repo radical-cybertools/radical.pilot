@@ -147,7 +147,7 @@ if __name__ == "__main__":
         #    /bin/cat $INPUT1 $INPUT2
         #
         cuds = []
-        for unit_count in range(0, 10):
+        for unit_count in range(0, 140):
             cud = rp.ComputeUnitDescription()
             cud.name          = "unit_%03d" % unit_count
             cud.executable    = "/bin/sleep"

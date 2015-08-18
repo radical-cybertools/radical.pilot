@@ -2216,9 +2216,9 @@ class LRMS(object):
         # For now assume that all nodes have equal amount of cores
         cores_avail = len(self.node_list) * self.cores_per_node
         if 'RADICAL_PILOT_PROFILE' not in os.environ:
-            if cores_avail < int(self.requested_cores):
+            if cores_avail < int(requested_cores):
                 raise ValueError("Not enough cores available (%s) to satisfy allocation request (%s)." \
-                                % (str(cores_avail), str(self.requested_cores)))
+                                % (str(cores_avail), str(requested_cores)))
 
 
     # --------------------------------------------------------------------------
@@ -3796,7 +3796,6 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                 for cu in cus :
                     
                     self._prof.prof('get', msg="ExecWatcher picked up unit", uid=cu['_id'])
-                    self._log.debug("cu: %s" % pprint.pformat(cu))
                     self._cus_to_watch.append (cu)
 
                 # check on the known cus.
