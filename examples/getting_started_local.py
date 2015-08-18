@@ -22,12 +22,12 @@ def pilot_state_cb (pilot, state):
 
     print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
-    if state == rp.FAILED:
-        sys.exit (1)
-
     if state in [rp.DONE, rp.FAILED, rp.CANCELED]:
         for cb in pilot.callback_history:
             print cb
+
+    if state == rp.FAILED:
+        sys.exit (1)
 
 
 #------------------------------------------------------------------------------

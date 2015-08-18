@@ -145,7 +145,6 @@ import Queue
 import pprint
 import signal
 import shutil
-import Queue
 import socket
 import hostlist
 import tempfile
@@ -3770,7 +3769,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
         try:
             self._log = ru.get_logger('%s.Watcher' % self.name, 
                                       target="%s.Watcher.log" % self.name,
-                                      level='DEBUG')
+                                      level='DEBUG') # FIXME?
 
             while not self._terminate.is_set():
 
@@ -4303,7 +4302,7 @@ timestamp () {
         try:
             self._log = ru.get_logger('%s.Watcher' % self.name, 
                                       target="%s.Watcher.log" % self.name,
-                                      level='DEBUG')
+                                      level='DEBUG') # FIXME?
             self.monitor_shell.run_async ("MONITOR")
 
             while not self._terminate.is_set () :
@@ -4964,7 +4963,7 @@ class AgentHeartbeatWorker(rpu.Worker):
             elif cmd == COMMAND_KEEP_ALIVE:
                 self._log.info('keepalive pilot cmd')
                 self.publish('command', {'cmd' : 'heartbeat', 
-                                         'msg' : 'keepalive'})
+                                         'arg' : 'keepalive'})
 
             else:
                 self._log.error("Received unknown command: %s with arg: %s.", cmd, arg)
@@ -4979,7 +4978,7 @@ class AgentHeartbeatWorker(rpu.Worker):
         if time.time() >= self._starttime + (int(self._runtime) * 60):
             self._log.info("Agent has reached runtime limit of %s seconds.", self._runtime*60)
             self.publish('command', {'cmd' : 'shutdown', 
-                                     'msg' : 'timeout'})
+                                     'arg' : 'timeout'})
 
 
 
@@ -5201,7 +5200,6 @@ class AgentWorker(rpu.Worker):
                        rp.AGENT_STATE_PUBSUB         : 'pubsub'}
 
         def _create_bridge(name):
-            self._log.info('create bridge %s', name)
             if bridge_type[name] == 'queue':
                 return rpu.Queue.create(rpu.QUEUE_ZMQ, name, rpu.QUEUE_BRIDGE)
             elif bridge_type[name] == 'pubsub':
@@ -5212,9 +5210,10 @@ class AgentWorker(rpu.Worker):
 
         # create all bridges we need.  Use the default addresses,
         # ie. they will bind to all local interfacces on ports 10.000++.
-        for b in self._sub_cfg.get('bridges', []):
-            self._log.debug("start bridge %s" % b)
-            self._bridges.append(_create_bridge(b))
+        for name in self._sub_cfg.get('bridges', []):
+            b = _create_bridge(name)
+            self._bridges.append(b)
+            self._log.info('created bridge %s: %s', name, b.name)
 
         self._log.debug('start_bridges done')
 
@@ -5240,12 +5239,12 @@ class AgentWorker(rpu.Worker):
         for cname, cnum in self._sub_cfg.get('components',{}).iteritems():
             for i in range(cnum):
                 # each component gets its own copy of the config
-                self._log.info('create component %s (%s)', cname, cnum)
                 ccfg = copy.deepcopy(self._cfg)
                 ccfg['number'] = i
                 comp = cmap[cname].create(ccfg)
                 comp.start()
                 self._components.append(comp)
+                self._log.info('created component %s (%s): %s', cname, cnum, comp.cname)
 
         # we also create *one* instance of every 'worker' type -- which are the
         # heartbeat and update worker.  To ensure this, we only create workers
@@ -5431,7 +5430,7 @@ def bootstrap_3():
 
     # set up a logger and profiler
     prof = rpu.Profiler('bootstrap_3')
-    log  = ru.get_logger('bootstrap_3', 'bootstrap_3.log')
+    log  = ru.get_logger('bootstrap_3', 'bootstrap_3.log', 'DEBUG')  # FIXME?
     log.info('start')
 
     # FIXME: signal handlers need mongo_p, but we won't have that until later

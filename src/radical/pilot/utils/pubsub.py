@@ -77,11 +77,12 @@ class Pubsub(object):
     def __init__(self, flavor, channel, role, address=None):
 
         self._flavor  = flavor
-        self._name    = channel
+        self._channel = channel
         self._role    = role
         self._addr    = ru.Url(address)
         self._debug   = False
         self._logfd   = None
+        self._name    = "pubsub.%s.%s.%d" % (self._channel, self._role, os.getpid())
 
         if 'msg' in os.environ.get('RADICAL_DEBUG', '').lower():
             self._debug = True
@@ -96,14 +97,18 @@ class Pubsub(object):
         if not self._addr.port  : self._addr.port   = default_addr.port
 
         if not self._addr:
-            raise RuntimeError("no default address found for '%s'" % self._name)
+            raise RuntimeError("no default address found for '%s'" % self._channel)
 
         self._log ("create %s - %s - %s - %d" \
                 % (channel, role, self._addr, os.getpid()))
 
     @property
-    def channel(self):
+    def name(self):
         return self._name
+
+    @property
+    def channel(self):
+        return self._channel
 
     @property
     def role(self):
@@ -120,8 +125,8 @@ class Pubsub(object):
 
         if self._debug:
             if not self._logfd:
-                self._logfd = open("pubsub.%s.%s.%d.log" % (self._name, self._role, os.getpid()), 'a')
-            self._logfd.write("%15.5f: %-30s: %s\n" % (time.time(), self._name, msg))
+                self._logfd = open("%s.log" % self.name, 'a')
+            self._logfd.write("%15.5f: %-30s: %s\n" % (time.time(), self._channel, msg))
             self._logfd.flush()
 
 
@@ -210,7 +215,7 @@ class PubsubZMQ(Pubsub):
             if self._addr.host == '*':
                 self._addr.host = '127.0.0.1'
 
-        self._log('%s/%s uses addr %s' % (self._name, self._role, self._addr))
+        self._log('%s/%s uses addr %s' % (self._channel, self._role, self._addr))
 
 
         # ----------------------------------------------------------------------
@@ -298,7 +303,7 @@ class PubsubZMQ(Pubsub):
     def subscribe(self, topic):
 
         if not self._role == PUBSUB_SUB:
-            raise RuntimeError("channel %s (%s) can't subscribe()" % (self._name, self._role))
+            raise RuntimeError("channel %s (%s) can't subscribe()" % (self._channel, self._role))
 
         topic = topic.replace(' ', '_')
 
@@ -311,7 +316,7 @@ class PubsubZMQ(Pubsub):
     def put(self, topic, msg):
 
         if not self._role == PUBSUB_PUB:
-            raise RuntimeError("channel %s (%s) can't put()" % (self._name, self._role))
+            raise RuntimeError("channel %s (%s) can't put()" % (self._channel, self._role))
 
         topic = topic.replace(' ', '_')
         data = json.dumps(msg)
@@ -330,7 +335,7 @@ class PubsubZMQ(Pubsub):
     def get(self):
 
         if not self._role == PUBSUB_SUB:
-            raise RuntimeError("channel %s (%s) can't get()" % (self._name, self._role))
+            raise RuntimeError("channel %s (%s) can't get()" % (self._channel, self._role))
 
         if _USE_MULTIPART:
             topic, data = self._q.recv_multipart()
@@ -349,7 +354,7 @@ class PubsubZMQ(Pubsub):
     def get_nowait(self, timeout=None): # timeout in ms
 
         if not self._role == PUBSUB_SUB:
-            raise RuntimeError("channel %s (%s) can't get_nowait()" % (self._name, self._role))
+            raise RuntimeError("channel %s (%s) can't get_nowait()" % (self._channel, self._role))
 
         if self._q.poll (flags=zmq.POLLIN, timeout=timeout):
 
