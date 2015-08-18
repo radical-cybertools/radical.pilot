@@ -2290,7 +2290,7 @@ class LRMS(object):
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 s.setblocking(False)
                 s.settimeout(1.0)
-                s.connect(('8.8.8.8', 0))
+                s.connect(('8.8.8.8', 53))
                 return s.getsockname()[0]
             except Exception as e:
                 if logger:
@@ -5194,7 +5194,7 @@ class AgentWorker(rpu.Worker):
         (DONE).  Once all units are accounted for, it will tear down all created
         objects.
 
-        The agent accepts a config, which will specifcy in an agent_layout
+        The agent accepts a config, which will specify in an agent_layout
         section:
           - what nodes should be used for sub-agent startup
           - what bridges should be started
@@ -5204,7 +5204,7 @@ class AgentWorker(rpu.Worker):
         Before starting any sub-agent or component, the agent master (agent.0)
         will collect information about the nodes required for all instances.
         That is added to the config itself, for the benefit of the LRMS
-        initizialization which is expected to block those nodes from the
+        initialisation which is expected to block those nodes from the
         scheduler.
         """
 
