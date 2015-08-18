@@ -3513,8 +3513,11 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
         self.declare_publisher('unschedule', rp.AGENT_UNSCHEDULE_PUBSUB)
         self.declare_publisher('state',      rp.AGENT_STATE_PUBSUB)
 
-        self._cus_to_watch   = list()
+        self.declare_subscriber('command',   rp.AGENT_COMMAND_PUBSUB, self.command_cb)
+
+        self._cancel_lock    = threading.RLock()
         self._cus_to_cancel  = list()
+        self._cus_to_watch   = list()
         self._watch_queue    = queue.Queue ()
         self._cu_environment = self._populate_cu_environment()
 
@@ -3543,6 +3546,23 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
         # terminate watcher thread
         self._terminate.set()
         self._watcher.join()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def command_cb(self, topic, msg):
+
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        if cmd == 'cancel_unit':
+
+            self._log.info("cancel unit command (%s)" % arg)
+            with self._cancel_lock:
+                self._cus_to_cancel.append(arg)
+
+        else:
+            self._log.info("ignored command '%s'" % msg)
 
 
     # --------------------------------------------------------------------------
@@ -3750,21 +3770,6 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
 
                 cus = list()
 
-                # See if there are cancel requests, or new units to watch
-                try:
-                    command = self._command_queue.get_nowait()
-                    self._prof.prof('get_cmd', msg="command_queue to ExecWatcher (%s)" % command[COMMAND_TYPE])
-
-                    if command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
-                        self._cus_to_cancel.append(command[COMMAND_ARG])
-                    else:
-                        raise RuntimeError("Command %s not applicable in this context." %
-                                           command[COMMAND_TYPE])
-
-                except Queue.Empty:
-                    # do nothing if we don't have any queued commands
-                    pass
-
                 try:
 
                     # we don't want to only wait for one CU -- then we would
@@ -3827,7 +3832,8 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                     # We got a request to cancel this cu
                     action += 1
                     cu['proc'].kill()
-                    self._cus_to_cancel.remove(cu['_id'])
+                    with self._cancel_lock:
+                        self._cus_to_cancel.remove(cu['_id'])
 
                     self._prof.prof('final', msg="execution canceled", uid=cu['_id'])
 
@@ -3900,6 +3906,8 @@ class ExecWorker_SHELL(AgentExecutingComponent):
         self.declare_publisher('unschedule', rp.AGENT_UNSCHEDULE_PUBSUB)
         self.declare_publisher('state',      rp.AGENT_STATE_PUBSUB)
 
+        self.declare_subscriber('command',   rp.AGENT_COMMAND_PUBSUB, self.command_cb)
+
         # Mimic what virtualenv's "deactivate" would do
         self._deactivate = "# deactivate pilot virtualenv\n"
 
@@ -3928,6 +3936,9 @@ class ExecWorker_SHELL(AgentExecutingComponent):
         # watcher thread, we use a lock while accessing it.
         self._registry      = dict()
         self._registry_lock = threading.RLock()
+
+        self._cus_to_cancel  = list()
+        self._cancel_lock    = threading.RLock()
 
         self._cached_events = list() # keep monitoring events for pid's which
                                      # are not yet known
@@ -3993,7 +4004,66 @@ class ExecWorker_SHELL(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
+    def command_cb(self, topic, msg):
+
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        if cmd == 'cancel_unit':
+
+            self._log.info("cancel unit command (%s)" % arg)
+            with self._cancel_lock:
+                self._cus_to_cancel.append(arg)
+
+        else:
+            self._log.info("ignored command '%s'" % msg)
+
+
+    # --------------------------------------------------------------------------
+    #
     def work(self, cu):
+
+        # check that we don't start any units which need cancelling
+        if cu['_id'] in self._cus_to_cancel:
+
+            with self._cancel_lock:
+                self._cus_to_cancel.remove(cu['_id'])
+
+            self.publish('unschedule', cu)
+            self.advance(cu, rp.CANCELED, publish=True, push=False)
+            return True
+
+        # otherwise, check if we have any active units to cancel
+        # FIXME: this should probably go into a separate idle callback
+        if self._cus_to_cancel:
+
+            # NOTE: cu cancellation is costly: we keep a potentially long list
+            # of cancel candidates, perform one inversion and n lookups on the
+            # registry, and lock the registry for that complete time span...
+
+            with self._registry_lock :
+                # inverse registry for quick lookups:
+                inv_registry = {v: k for k, v in self._registry.items()}
+
+                for cu_uid in self._cus_to_cancel:
+                    pid = inv_registry.get(cu_uid)
+                    if pid:
+                        # we own that cu, cancel it!
+                        ret, out, _ = self.launcher_shell.run_sync ('CANCEL %s\n' % pid)
+                        if  ret != 0 :
+                            self._log.error ("failed to cancel unit '%s': (%s)(%s)" \
+                                            , (cu_uid, ret, out))
+                        # successful or not, we only try once
+                        del(self._registry[pid])
+
+                        with self._cancel_lock:
+                            self._cus_to_cancel.remove(cu_uid)
+
+            # The state advance will be managed by the watcher, which will pick
+            # up the cancel notification.  
+            # FIXME: We could optimize a little by publishing the unschedule
+            #        right here...
+
 
       # self.advance(cu, rp.AGENT_EXECUTING, publish=True, push=False)
         self.advance(cu, rp.EXECUTING, publish=True, push=False)
@@ -4200,8 +4270,6 @@ timestamp () {
         # 'BULK COMPLETED message from lrun
         ret, out = self.launcher_shell.find_prompt ()
         if  ret != 0 :
-            with self._registry_lock :
-                del(self._registry[uid])
             raise RuntimeError ("failed to run unit '%s': (%s)(%s)" \
                              % (run_cmd, ret, out))
 
