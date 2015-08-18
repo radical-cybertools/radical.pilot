@@ -3938,10 +3938,10 @@ class ExecWorker_SHELL(AgentExecutingComponent):
         self.monitor_shell  = sups.PTYShell ("fork://localhost/")
 
         # run the spawner on the shells
-        tmp = tempfile.gettempdir()
+        # tmp = tempfile.gettempdir()
         # Moving back to shared file system again, until it reaches maturity,
         # as this breaks launch methods with a hop, e.g. ssh.
-        # tmp = os.getcwd() # FIXME: see #658
+        tmp = os.getcwd() # FIXME: see #658
         pilot_id = self._cfg['pilot_id']
         ret, out, _  = self.launcher_shell.run_sync \
                            ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
@@ -4844,7 +4844,8 @@ class AgentHeartbeatWorker(rpu.Worker):
 
         except Exception as e:
             self._log.exception('heartbeat died - cancel')
-            self.publish('command', 'cancel')
+            self.publish('command', {'cmd' : 'shutdown', 
+                                     'arg' : 'exception'})
 
 
     # --------------------------------------------------------------------------

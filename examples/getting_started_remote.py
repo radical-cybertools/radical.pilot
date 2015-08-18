@@ -96,9 +96,6 @@ def pilot_state_cb (pilot, state):
     if state == rp.FAILED:
         sys.exit (1)
 
-    if state in [rp.DONE, rp.CANCELED]:
-        sys.exit (0)
-
 
 #------------------------------------------------------------------------------
 #
