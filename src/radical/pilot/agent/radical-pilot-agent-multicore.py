@@ -4390,7 +4390,7 @@ timestamp () {
 
         except Exception as e:
 
-            self._log.error ("Exception in job monitoring thread: %s", e)
+            self._log.exception("Exception in job monitoring thread: %s", e)
             self._terminate.set()
 
         self._prof.prof ('stop')
