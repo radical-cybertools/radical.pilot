@@ -1955,16 +1955,16 @@ class LaunchMethodORTE(LaunchMethod):
                 if len(line.split(' ')) != 2:
                     raise Exception("Unknown VMURI format: %s" % line)
 
-                label, dvmuri = line.split(' ', 1)
+                label, dvm_uri = line.split(' ', 1)
 
                 if label != 'VMURI:':
                     raise Exception("Unknown VMURI format: %s" % line)
 
-                logger.info("ORTE DVM URI: %s" % dvmuri)
+                logger.info("ORTE DVM URI: %s" % dvm_uri)
 
             elif line == 'DVM ready':
 
-                if not dvmuri:
+                if not dvm_uri:
                     raise Exception("VMURI not found!")
 
                 logger.info("ORTE DVM startup successful!")
@@ -1983,7 +1983,7 @@ class LaunchMethodORTE(LaunchMethod):
         # we need to inform the actual LM instance about the DVM URI.  So we
         # pass it back to the LRMS which will keep it in an 'lm_info', which
         # will then be passed as part of the opaque_slots via the scheduler
-        lm_info = {'dvmuri' : dvmuri}
+        lm_info = {'dvm_uri' : dvm_uri}
         return lm_info
 
     # TODO: Create teardown() function for LaunchMethod's (in this case to terminate the dvm)
@@ -2002,15 +2002,20 @@ class LaunchMethodORTE(LaunchMethod):
     def construct_command(self, task_exec, task_args, task_numcores,
                           launch_script_hop, opaque_slots):
 
-        if  'task_slots' not in opaque_slots or \
-            'dvm_url'    not in opaque_slots or \
-            'lm_info'    not in opaque_slots :
-            raise RuntimeError('insufficient information to launch via %s: %s' \
+        if 'task_slots' not in opaque_slots:
+            raise RuntimeError('No task_slots to launch via %s: %s' \
+                               % (self.name, opaque_slots))
+
+        if 'lm_info' not in opaque_slots:
+            raise RuntimeError('No lm_info to launch via %s: %s' \
                     % (self.name, opaque_slots))
 
-        if  not opaque_slots['lm_info'] or \
-            'dvmuri' not in opaque_slots['lm_info'] :
+        if not opaque_slots['lm_info']:
             raise RuntimeError('lm_info missing for %s: %s' \
+                               % (self.name, opaque_slots))
+
+        if 'dvm_uri' not in opaque_slots['lm_info']:
+            raise RuntimeError('dvm_uri not in lm_info for %s: %s' \
                     % (self.name, opaque_slots))
 
         task_slots = opaque_slots['task_slots']
