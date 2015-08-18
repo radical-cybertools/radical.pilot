@@ -167,7 +167,7 @@ class Queue(object):
         self._addr   = ru.Url(address)
         self._debug  = False
 
-        if 'RADICAL_DEBUG' in os.environ:
+        if 'msg' in os.environ.get('RADICAL_DEBUG', '').lower():
             self._debug = True
 
         # sanity check on address
@@ -399,13 +399,14 @@ class QueueZMQ(Queue):
                 self._addr.host = '127.0.0.1'
 
         self._log('%s/%s uses addr %s' % (self._name, self._role, self._addr))
-        print     '%s/%s uses addr %s' % (self._name, self._role, self._addr)
+
 
         # ----------------------------------------------------------------------
         # behavior depends on the role...
         if self._role == QUEUE_INPUT:
             self._q = self._ctx.socket(zmq.PUSH)
             self._q.connect(str(self._addr))
+
 
         # ----------------------------------------------------------------------
         elif self._role == QUEUE_BRIDGE:
@@ -475,7 +476,7 @@ class QueueZMQ(Queue):
         if not self._role == QUEUE_INPUT:
             raise RuntimeError("queue %s (%s) can't put()" % (self._name, self._role))
        
-        self._log("-> %s" % pprint.pformat(msg))
+      # self._log("-> %s" % pprint.pformat(msg))
         self._q.send_json(msg)
 
 
@@ -489,7 +490,7 @@ class QueueZMQ(Queue):
         self._q.send('request')
 
         msg = self._q.recv_json()
-        self._log("<- %s" % pprint.pformat(msg))
+      # self._log("<- %s" % pprint.pformat(msg))
         return msg
 
 
@@ -519,7 +520,7 @@ class QueueZMQ(Queue):
             if self._q.poll (flags=zmq.POLLIN, timeout=timeout):
                 msg = self._q.recv_json()
                 self._requested = False
-                self._log("<< %s" % pprint.pformat(msg))
+              # self._log("<< %s" % pprint.pformat(msg))
                 return msg
 
             else:

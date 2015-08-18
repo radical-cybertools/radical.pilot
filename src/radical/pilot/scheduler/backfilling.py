@@ -15,11 +15,11 @@ import os
 import pprint
 import threading
 
-from radical.pilot.utils import timestamp
+from ..states   import *
+from ..utils    import logger
+from ..utils    import timestamp
 
-from radical.pilot.utils.logger        import logger
-from radical.pilot.scheduler.interface import Scheduler
-from radical.pilot.states              import *
+from .interface import Scheduler
 
 # to reduce roundtrips, we can oversubscribe a pilot, and schedule more units
 # than it can immediately execute.  Value is in %.

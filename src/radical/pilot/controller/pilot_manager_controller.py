@@ -20,13 +20,12 @@ from multiprocessing import Pool
 
 import radical.utils as ru
 
-from radical.pilot.utils        import timestamp
-from radical.pilot.states       import *
-from radical.pilot.utils.logger import logger
+from ..states       import *
+from ..utils        import logger
+from ..utils        import timestamp
+from ..db.database  import COMMAND_CANCEL_PILOT
 
-from radical.pilot.controller.pilot_launcher_worker import PilotLauncherWorker
-
-from radical.pilot.db.database import COMMAND_CANCEL_PILOT
+from .pilot_launcher_worker import PilotLauncherWorker
 
 import saga.utils.pty_shell as sup
 
@@ -42,7 +41,7 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, pilot_manager_uid, pilot_manager_data, 
+    def __init__(self, pmgr_uid, pilot_manager_data, 
         session, pilot_launcher_workers=1):
         """Le constructeur.
         """
@@ -50,7 +49,6 @@ class PilotManagerController(threading.Thread):
 
         # The MongoDB database handle.
         self._dbs = self._session.get_dbs()
-        print "db: %s" % self._dbs
 
         # Multithreading stuff
         threading.Thread.__init__(self)
@@ -94,17 +92,13 @@ class PilotManagerController(threading.Thread):
         # that are passed to the worker. Command queues are inspected during
         # runtime in the run() loop and the worker acts upon them accordingly.
         #
-        if pilot_manager_uid is None:
-            # Try to register the PilotManager with the database.
-            self._pm_id = self._dbs.insert_pilot_manager(
-                pilot_manager_data=pilot_manager_data,
-                pilot_launcher_workers=pilot_launcher_workers
-            )
-            self._num_pilot_launcher_workers = pilot_launcher_workers
-        else:
-            pm_json = self._dbs.get_pilot_manager(pilot_manager_id=pilot_manager_uid)
-            self._pm_id = pilot_manager_uid
-            self._num_pilot_launcher_workers = pm_json["pilot_launcher_workers"]
+        # Try to register the PilotManager with the database.
+        self._pm_id = self._dbs.insert_pilot_manager(
+            pmgr_uid=pmgr_uid,
+            pilot_manager_data=pilot_manager_data,
+            pilot_launcher_workers=pilot_launcher_workers
+        )
+        self._num_pilot_launcher_workers = pilot_launcher_workers
 
         # The pilot launcher worker(s) are autonomous processes that
         # execute pilot bootstrap / launcher requests concurrently.
@@ -427,7 +421,7 @@ class PilotManagerController(threading.Thread):
                 url = "%s://%s/" % (js_url.schema, js_url.host)
 
             logger.debug("saga.utils.PTYShell ('%s')" % url)
-            shell = sup.PTYShell(url, self._session, logger)
+            shell = sup.PTYShell(url, self._session)
 
             ret, out, err = shell.run_sync(' echo "WORKDIR: %s"' % workdir_raw)
             if ret == 0 and 'WORKDIR:' in out :

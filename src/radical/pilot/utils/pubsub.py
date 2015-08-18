@@ -83,7 +83,7 @@ class Pubsub(object):
         self._addr    = ru.Url(address)
         self._debug   = False
 
-        if 'RADICAL_DEBUG' in os.environ:
+        if 'msg' in os.environ.get('RADICAL_DEBUG', '').lower():
             self._debug = True
 
         # sanity check on address
@@ -209,7 +209,6 @@ class PubsubZMQ(Pubsub):
                 self._addr.host = '127.0.0.1'
 
         self._log('%s/%s uses addr %s' % (self._channel, self._role, self._addr))
-        print     '%s/%s uses addr %s' % (self._channel, self._role, self._addr)
 
 
         # ----------------------------------------------------------------------
@@ -226,7 +225,7 @@ class PubsubZMQ(Pubsub):
             # ------------------------------------------------------------------
             def _bridge(ctx, addr_in, addr_out):
 
-                self._log ('_bridge: %s %s' % (addr_in, addr_out))
+              # self._log ('_bridge: %s %s' % (addr_in, addr_out))
                 _in = ctx.socket(zmq.XSUB)
                 _in.bind(addr_in)
 
@@ -245,7 +244,7 @@ class PubsubZMQ(Pubsub):
                             msg = _in.recv(flags=zmq.NOBLOCK)
                             _out.send(msg)
                         idle = False
-                        self._log("-> %s" % msg)
+                      # self._log("-> %s" % msg)
 
 
                     if _out.poll (flags=zmq.POLLIN, timeout=0.01):
@@ -256,7 +255,7 @@ class PubsubZMQ(Pubsub):
                             msg = _out.recv()
                             _in.send(msg)
                         idle = False
-                        self._log("<- %s" % msg)
+                      # self._log("<- %s" % msg)
 
                     if idle:
                         time.sleep(0.01)
@@ -329,7 +328,7 @@ class PubsubZMQ(Pubsub):
 
         topic = topic.replace(' ', '_')
 
-        self._log("~~ %s" % topic)
+      # self._log("~~ %s" % topic)
         self._q.setsockopt(zmq.SUBSCRIBE, topic)
 
 
@@ -344,12 +343,12 @@ class PubsubZMQ(Pubsub):
         data = json.dumps(msg)
 
         if _USE_MULTIPART:
-            self._log("-> %s" % str([topic, data]))
+          # self._log("-> %s" % str([topic, data]))
             self._q.send_multipart ([topic, data])
 
         else:
             msg = "%s %s" % (topic, data)
-            self._log("-> %s" % msg)
+          # self._log("-> %s" % msg)
             self._q.send (msg)
 
 
@@ -377,7 +376,7 @@ class PubsubZMQ(Pubsub):
                     break
 
         msg = json.loads(data)
-        self._log("<- %s" % str([topic, pprint.pformat(msg)]))
+      # self._log("<- %s" % str([topic, pprint.pformat(msg)]))
         return [topic, msg]
 
 

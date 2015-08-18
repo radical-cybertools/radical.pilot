@@ -8,10 +8,10 @@ import saga
 import thread
 import threading
 
-from radical.pilot.utils  import timestamp
-from radical.pilot.states import * 
-from radical.pilot.utils.logger import logger
-from radical.pilot.staging_directives import CREATE_PARENTS
+from ..states import * 
+from ..utils  import logger
+from ..utils  import timestamp
+from ..staging_directives import CREATE_PARENTS
 
 IDLE_TIME  = 1.0  # seconds to sleep after idle cycles
 

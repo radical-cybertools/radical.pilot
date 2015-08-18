@@ -198,6 +198,7 @@ setup_args = {
                             'radical.utils',
                             'pymongo==2.8',
                             'python-hostlist',
+                            'ntplib',
                             'pyzmq'],
     'tests_require'      : [],
     'test_suite'         : 'radical.pilot.tests',

@@ -46,6 +46,15 @@ fi
 
 # --------------------------------------------------------------------
 #
+# POSIX echo does not understand '\n'.  For multiline strings we thus use printf
+# -- but printf will interprete every single '%' in the string, which we don't
+# want.  We thus escape it to '%%'
+qprintf(){
+  \echo "$*" | sed -e 's/%/%%/g' | \xargs --null \printf 
+}
+
+# --------------------------------------------------------------------
+#
 # ERROR and RETVAL are used for return state from function calls
 #
 ERROR=""
@@ -270,6 +279,12 @@ create_monitor () {
   # equivalent to starting monitor.sh via 'nohup'
   trap "" HUP
 
+  # --------------------------------------------------------------------
+  # Make sure we don't interpret '%' on printf
+  qprintf(){
+    \\echo "\$*" | sed -e 's/%/%%/g' | \\xargs --null \\printf 
+  }
+
   # create the monitor wrapper script once -- this is used by all job startup
   # scripts to actually run job.sh.  The script gets a PID as argument,
   # denoting the job to monitor.   The monitor will write 3 pids to a named pipe
@@ -315,9 +330,9 @@ create_monitor () {
   # the subshell instance with the job executable, leaving the I/O redirections
   # intact.
   \\touch  "\$DIR/in"
-  \\printf "#!/bin/sh\n\n" > \$DIR/cmd
-  \\printf "\$@\n"        >> \$DIR/cmd
-  \\chmod 0700               \$DIR/cmd
+  qprintf "#!/bin/sh\n" > \$DIR/cmd
+  qprintf "\$@"        >> \$DIR/cmd
+  \\chmod 0700            \$DIR/cmd
 
   (
     export SAGA_PWD="\$DIR"
@@ -687,7 +702,6 @@ cmd_cancel () {
 
   DIR="$BASE/$1"
 
-
   rpid=`\cat "$DIR/rpid"`
   mpid=`\cat "$DIR/mpid"`
 
@@ -895,8 +909,8 @@ listen() {
       BULK_RUN ) IN_BULK=""
                  \printf "BULK_EVAL\n"  >> "$BASE/bulk.$GID"
                  ;;
-      *        ) test -z "$ARGS" && \printf "$CMD\n"       >> "$BASE/bulk.$GID"
-                 test -z "$ARGS" || \printf "$CMD $ARGS\n" >> "$BASE/bulk.$GID"
+      *        ) test -z "$ARGS" && qprintf "$CMD"       >> "$BASE/bulk.$$"
+                 test -z "$ARGS" || qprintf "$CMD $ARGS" >> "$BASE/bulk.$$"
                  ;;
     esac
 

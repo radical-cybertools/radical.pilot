@@ -146,12 +146,10 @@ import pprint
 import signal
 import shutil
 import socket
-import logging
 import hostlist
-import threading
 import tempfile
-import traceback
 import threading
+import traceback
 import subprocess
 import multiprocessing
 
@@ -292,9 +290,6 @@ def pilot_FAILED(mongo_p=None, pilot_uid=None, logger=None, msg=None):
     print msg
     print ru.get_trace()
 
-    with open("%s-%s.trace" % (os.getpid(), threading.current_thread().name), "w") as f:
-        f.write ("\n%s\n" % ru.get_trace())
-
     if mongo_p and pilot_uid:
 
         now = rpu.timestamp()
@@ -427,9 +422,9 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
-        rpu.Component.__init__(self, cfg, logger)
+        rpu.Component.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -472,19 +467,16 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    # This class-method creates the appropriate sub-class for the Launch Method.
+    # This class-method creates the appropriate sub-class for the Scheduler.
     #
     @classmethod
-    def create(cls, cfg, logger=None):
+    def create(cls, cfg):
 
         # Make sure that we are the base-class!
         if cls != AgentSchedulingComponent:
             raise TypeError("Scheduler Factory only available to base class!")
 
         name = cfg['scheduler']
-
-        if not logger:
-            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
 
         try:
             impl = {
@@ -493,35 +485,35 @@ class AgentSchedulingComponent(rpu.Component):
                 SCHEDULER_NAME_TORUS      : SchedulerTorus
             }[name]
 
-            impl = impl(cfg, logger)
+            impl = impl(cfg)
             return impl
 
         except KeyError:
-            raise ValueError("Scheduler '%s' unknown!" % name)
+            raise ValueError("Scheduler '%s' unknown or defunct" % name)
 
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        raise NotImplementedError("_configure() not implemented for Scheduler '%s'." % self.name)
+        raise NotImplementedError("_configure() not implemented for Scheduler '%s'." % self._cname)
 
 
     # --------------------------------------------------------------------------
     #
     def slot_status(self):
-        raise NotImplementedError("slot_status() not implemented for Scheduler '%s'." % self.name)
+        raise NotImplementedError("slot_status() not implemented for Scheduler '%s'." % self._cname)
 
 
     # --------------------------------------------------------------------------
     #
     def _allocate_slot(self, cores_requested):
-        raise NotImplementedError("_allocate_slot() not implemented for Scheduler '%s'." % self.name)
+        raise NotImplementedError("_allocate_slot() not implemented for Scheduler '%s'." % self._cname)
 
 
     # --------------------------------------------------------------------------
     #
     def _release_slot(self, opaque_slots):
-        raise NotImplementedError("_release_slot() not implemented for Scheduler '%s'." % self.name)
+        raise NotImplementedError("_release_slot() not implemented for Scheduler '%s'." % self._cname)
 
 
     # --------------------------------------------------------------------------
@@ -545,7 +537,7 @@ class AgentSchedulingComponent(rpu.Component):
             return False
 
         # got an allocation, go off and launch the process
-        rpu.prof('schedule', msg="allocated", uid=cu['_id'])
+        self._prof.prof('schedule', msg="allocated", uid=cu['_id'])
         self._log.info("slot status after allocated  : %s" % self.slot_status ())
 
         # FIXME: if allocation succeeded, then the unit will likely advance to
@@ -567,7 +559,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         cu = msg
 
-        rpu.prof('reschedule')
+        self._prof.prof('reschedule')
         self._log.info("slot status before reschedule: %s" % self.slot_status())
 
         # cycle through wait queue, and see if we get anything running now.  We
@@ -583,10 +575,10 @@ class AgentSchedulingComponent(rpu.Component):
                 # remove it from the wait queue
                 with self._wait_lock :
                     self._wait_pool.remove(cu)
-                    rpu.prof('unqueue', msg="re-allocation done", uid=cu['_id'])
+                    self._prof.prof('unqueue', msg="re-allocation done", uid=cu['_id'])
 
         self._log.info("slot status after  reschedule: %s" % self.slot_status ())
-        rpu.prof('reschedule done')
+        self._prof.prof('reschedule done')
 
 
     # --------------------------------------------------------------------------
@@ -597,7 +589,7 @@ class AgentSchedulingComponent(rpu.Component):
         """
 
         cu = msg
-        rpu.prof('unschedule', uid=cu['_id'])
+        self._prof.prof('unschedule', uid=cu['_id'])
 
         if not cu['opaque_slots']:
             # Nothing to do -- how come?
@@ -638,7 +630,7 @@ class AgentSchedulingComponent(rpu.Component):
             with self._wait_lock :
                 self._wait_pool.append(cu)
 
-            rpu.prof('schedule', msg="allocation failed", uid=cu['_id'])
+            self._prof.prof('schedule', msg="allocation failed", uid=cu['_id'])
 
 
 
@@ -648,11 +640,11 @@ class SchedulerContinuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
         self.slots = None
 
-        AgentSchedulingComponent.__init__(self, cfg, logger)
+        AgentSchedulingComponent.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -933,12 +925,12 @@ class SchedulerTorus(AgentSchedulingComponent):
 
 
     # --------------------------------------------------------------------------
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
         self.slots            = None
         self._cores_per_node  = None
 
-        AgentSchedulingComponent.__init__(self, cfg, logger)
+        AgentSchedulingComponent.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -1166,11 +1158,11 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        self.name       = name
-        self._cfg       = config
-        self._log       = logger
+        self.name = type(self).__name__
+        self._cfg = cfg
+        self._log = logger
 
         self.launch_command = None
         self._configure()
@@ -1187,14 +1179,11 @@ class LaunchMethod(object):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, name, config, logger=None):
+    def create(cls, name, cfg, logger):
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
             raise TypeError("LaunchMethod factory only available to base class!")
-
-        if not logger:
-            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
 
         try:
             impl = {
@@ -1213,21 +1202,19 @@ class LaunchMethod(object):
                 LAUNCH_METHOD_RUNJOB        : LaunchMethodRUNJOB,
                 LAUNCH_METHOD_SSH           : LaunchMethodSSH
             }[name]
-            return impl(name, config, logger)
+            return impl(cfg, logger)
 
         except KeyError:
-            logger.exception("LaunchMethod '%s' unknown!" % name)
+            logger.exception("LaunchMethod '%s' unknown or defunct" % name)
 
         except Exception as e:
             logger.exception("LaunchMethod cannot be used: %s!" % e)
-
-        return None
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, config, lrms, logger):
+    def lrms_config_hook(cls, name, cfg, lrms, logger):
         """
         This hook will allow the LRMS to perform launch methods specific
         configuration steps.  The LRMS layer MUST ensure that this hook is
@@ -1261,7 +1248,7 @@ class LaunchMethod(object):
             return None
 
         logger.info('call LRMS config hook for LaunchMethod %s: %s' % (name, impl))
-        return impl.lrms_config_hook(name, config, lrms, logger)
+        return impl.lrms_config_hook(name, cfg, lrms, logger)
 
 
 
@@ -1327,9 +1314,9 @@ class LaunchMethodFORK(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1359,9 +1346,9 @@ class LaunchMethodMPIRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1408,9 +1395,9 @@ class LaunchMethodSSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1472,9 +1459,9 @@ class LaunchMethodMPIEXEC(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1519,9 +1506,9 @@ class LaunchMethodAPRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1555,9 +1542,9 @@ class LaunchMethodCCMRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1590,9 +1577,9 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1642,9 +1629,9 @@ class LaunchMethodRUNJOB(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1716,9 +1703,9 @@ class LaunchMethodDPLACE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1759,9 +1746,9 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
     # --------------------------------------------------------------------------
     #
@@ -1810,9 +1797,9 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1857,9 +1844,9 @@ class LaunchMethodIBRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -1903,15 +1890,15 @@ class LaunchMethodORTE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, config, lrms, logger):
+    def lrms_config_hook(cls, name, cfg, lrms, logger):
         """
         FIXME: this config hook will manipulate the LRMS nodelist.  Not a nice
                thing to do, but hey... :P
@@ -1939,7 +1926,7 @@ class LaunchMethodORTE(LaunchMethod):
         reserved_size = 1 # TODO: make configurable
         vm_size = len(lrms.node_list) - reserved_size
         lrms.reserved_nodes = sorted(lrms.node_list)[-reserved_size:]
-        logger.info("Reserving nodes: %s" % self.lrms.reserved_nodes)
+        logger.info("Reserving nodes: %s" % lrms.reserved_nodes)
 
       # # Mark the reserved node slots BUSY
       # # NOTE: we don't need that anymore, as the nodelist is manipulated on
@@ -1986,7 +1973,7 @@ class LaunchMethodORTE(LaunchMethod):
 
                 # Check if the process is still around,
                 # and log output in debug mode.
-                if not dvm_process.poll():
+                if None == dvm_process.poll():
                     logger.debug("ORTE: %s" % line)
                 else:
                     # Process is gone: fatal!
@@ -2050,9 +2037,9 @@ class LaunchMethodPOE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -2148,10 +2135,10 @@ class LRMS(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        self.name            = name
-        self._cfg            = config
+        self.name            = type(self).__name__
+        self._cfg            = cfg
         self._log            = logger
         self._hostname       = None
         self._hostip         = None
@@ -2238,14 +2225,11 @@ class LRMS(object):
     # This class-method creates the appropriate sub-class for the LRMS.
     #
     @classmethod
-    def create(cls, name, config, logger=None):
+    def create(cls, name, cfg, logger):
 
         # Make sure that we are the base-class!
         if cls != LRMS:
             raise TypeError("LRMS Factory only available to base class!")
-
-        if not logger:
-            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
 
         try:
             impl = {
@@ -2258,10 +2242,11 @@ class LRMS(object):
                 LRMS_NAME_SLURM       : SLURMLRMS,
                 LRMS_NAME_TORQUE      : TORQUELRMS
             }[name]
-            return impl(name, config, logger)
+            return impl(cfg, logger)
+
         except KeyError:
             logger.exception('lrms construction error')
-            raise RuntimeError("LRMS type '%s' unknown!" % name)
+            raise RuntimeError("LRMS type '%s' unknown or defunct" % name)
 
 
     # --------------------------------------------------------------------------
@@ -2339,9 +2324,9 @@ class LRMS(object):
 class CCMLRMS(LRMS):
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LRMS.__init__(self, name, config, logger)
+        LRMS.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -2389,9 +2374,9 @@ class TORQUELRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LRMS.__init__(self, name, config, logger)
+        LRMS.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -2475,9 +2460,9 @@ class PBSProLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LRMS.__init__(self, name, config, logger)
+        LRMS.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -2621,9 +2606,9 @@ class SLURMLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LRMS.__init__(self, name, config, logger)
+        LRMS.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -2691,9 +2676,9 @@ class SGELRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LRMS.__init__(self, name, config, logger)
+        LRMS.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -2733,9 +2718,9 @@ class LSFLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LRMS.__init__(self, name, config, logger)
+        LRMS.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -2920,14 +2905,14 @@ class LoadLevelerLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
         self.torus_block            = None
         self.loadl_bg_block         = None
         self.shape_table            = None
         self.torus_dimension_labels = None
 
-        LRMS.__init__(self, name, config, logger)
+        LRMS.__init__(self, cfg, logger)
 
     # --------------------------------------------------------------------------
     #
@@ -3420,9 +3405,9 @@ class ForkLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger):
+    def __init__(self, cfg, logger):
 
-        LRMS.__init__(self, name, config, logger)
+        LRMS.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -3470,26 +3455,23 @@ class AgentExecutingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
-        rpu.Component.__init__(self, cfg, logger)
+        rpu.Component.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
     #
-    # This class-method creates the appropriate sub-class for the Launch Method.
+    # This class-method creates the appropriate sub-class for the Spawner
     #
     @classmethod
-    def create(cls, cfg, logger=None):
+    def create(cls, cfg):
 
         # Make sure that we are the base-class!
         if cls != AgentExecutingComponent:
             raise TypeError("Factory only available to base class!")
 
-        name = cfg['spawner']
-
-        if not logger:
-            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
+        name   = cfg['spawner']
 
         try:
             impl = {
@@ -3497,11 +3479,11 @@ class AgentExecutingComponent(rpu.Component):
                 SPAWNER_NAME_SHELL : ExecWorker_SHELL
             }[name]
 
-            impl = impl(cfg, logger)
+            impl = impl(cfg)
             return impl
 
         except KeyError:
-            raise ValueError("AgentExecutingComponent '%s' unknown!" % name)
+            raise ValueError("AgentExecutingComponent '%s' unknown or defunct" % name)
 
 
 
@@ -3511,9 +3493,9 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
-        AgentExecutingComponent.__init__ (self, cfg, logger)
+        AgentExecutingComponent.__init__ (self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -3531,7 +3513,6 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
         self.declare_publisher('unschedule', rp.AGENT_UNSCHEDULE_PUBSUB)
         self.declare_publisher('state',      rp.AGENT_STATE_PUBSUB)
 
-
         self._cus_to_watch   = list()
         self._cus_to_cancel  = list()
         self._watch_queue    = queue.Queue ()
@@ -3539,38 +3520,29 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
 
         # run watcher thread
         self._terminate = threading.Event()
-        self._watcher   = threading.Thread(target = self._watch,
-                                           name   = "%s.watcher" % self.name)
+        self._watcher   = threading.Thread(target=self._watch, name="Watcher")
         self._watcher.start ()
 
-        # FIXME: 
-        #
         # The AgentExecutingComponent needs the LaunchMethods to construct
-        # commands.  Those need the scheduler for some lookups and helper
-        # methods, and the scheduler needs the LRMS.  The LRMS can in general
-        # only initialized in the original agent environment -- which ultimately
-        # limits our ability to place the CU execution on other nodes.  
-        #
-        # As a temporary workaround we pass a None-Scheduler -- this will only
-        # work for some launch methods, and specifically not for ORTE, DPLACE
-        # and RUNJOB.  
-        #
-        # The clean solution seems to be to make sure that, on 'allocating', the
-        # scheduler derives all information needed to use the allocation and
-        # attaches them to the CU, so that the launch methods don't need to look
-        # them up again.  This will make the 'opaque_slots' more opaque -- but
-        # that is the reason of their existence (and opaqueness) in the first
-        # place...
-
+        # commands.
         self._task_launcher = LaunchMethod.create(
-                name            = self._cfg['task_launch_method'],
-                config          = self._cfg,
-                logger          = self._log)
+                name   = self._cfg['task_launch_method'],
+                cfg    = self._cfg,
+                logger = self._log)
 
         self._mpi_launcher = LaunchMethod.create(
-                name            = self._cfg['mpi_launch_method'],
-                config          = self._cfg,
-                logger          = self._log)
+                name   = self._cfg['mpi_launch_method'],
+                cfg    = self._cfg,
+                logger = self._log)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
+
+        # terminate watcher thread
+        self._terminate.set()
+        self._watcher.join()
 
 
     # --------------------------------------------------------------------------
@@ -3620,7 +3592,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
             self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
             assert(cu['opaque_slots']) # FIXME: no assert, but check
-            rpu.prof('ExecWorker unit launch', uid=cu['_id'])
+            self._prof.prof('ExecWorker unit launch', uid=cu['_id'])
 
             # Start a new subprocess to launch the unit
             self.spawn(launcher=launcher, cu=cu)
@@ -3645,7 +3617,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
     #
     def spawn(self, launcher, cu):
 
-        rpu.prof('ExecWorker spawn', uid=cu['_id'])
+        self._prof.prof('ExecWorker spawn', uid=cu['_id'])
 
         launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu['workdir']
         self._log.debug("Created launch_script: %s", launch_script_name)
@@ -3709,7 +3681,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                 if hop_cmd : cmdline = hop_cmd
                 else       : cmdline = launch_script_name
 
-                rpu.prof('launch script constructed', uid=cu['_id'])
+                self._prof.prof('launch script constructed', uid=cu['_id'])
 
             except Exception as e:
                 msg = "Error in spawner (%s)" % e
@@ -3742,7 +3714,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
         _stderr_file_h = open(cu['stderr_file'], "w")
 
         self._log.info("Launching unit %s via %s in %s", cu['_id'], cmdline, cu['workdir'])
-        rpu.prof('spawning pass to popen', uid=cu['_id'])
+        self._prof.prof('spawning pass to popen', uid=cu['_id'])
 
         proc = subprocess.Popen(args               = cmdline,
                                 bufsize            = 0,
@@ -3759,7 +3731,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                                 startupinfo        = None,
                                 creationflags      = 0)
 
-        rpu.prof('spawning passed to popen', uid=cu['_id'])
+        self._prof.prof('spawning passed to popen', uid=cu['_id'])
 
         cu['started'] = rpu.timestamp()
         cu['proc']    = proc
@@ -3771,7 +3743,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
     #
     def _watch(self):
 
-        rpu.prof('run')
+        self._prof.prof('run')
         try:
 
             while not self._terminate.is_set():
@@ -3781,7 +3753,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                 # See if there are cancel requests, or new units to watch
                 try:
                     command = self._command_queue.get_nowait()
-                    rpu.prof('get_cmd', msg="command_queue to ExecWatcher (%s)" % command[COMMAND_TYPE])
+                    self._prof.prof('get_cmd', msg="command_queue to ExecWatcher (%s)" % command[COMMAND_TYPE])
 
                     if command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
                         self._cus_to_cancel.append(command[COMMAND_ARG])
@@ -3800,7 +3772,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                     # learn about CUs until all slots are filled, because then
                     # we may not be able to catch finishing CUs in time -- so
                     # there is a fine balance here.  Balance means 100 (FIXME).
-                  # rpu.prof('ExecWorker popen watcher pull cu from queue')
+                  # self._prof.prof('ExecWorker popen watcher pull cu from queue')
                     MAX_QUEUE_BULKSIZE = 100
                     while len(cus) < MAX_QUEUE_BULKSIZE :
                         cus.append (self._watch_queue.get_nowait())
@@ -3814,7 +3786,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                 # add all cus we found to the watchlist
                 for cu in cus :
                     
-                    rpu.prof('get', msg="ExecWatcher picked up unit", uid=cu['_id'])
+                    self._prof.prof('get', msg="ExecWatcher picked up unit", uid=cu['_id'])
                     self._cus_to_watch.append (cu)
 
                 # check on the known cus.
@@ -3827,7 +3799,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
         except Exception as e:
             self._log.exception("Error in ExecWorker watch loop (%s)" % e)
 
-        rpu.prof ('stop')
+        self._prof.prof ('stop')
 
 
     # --------------------------------------------------------------------------
@@ -3857,13 +3829,13 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                     cu['proc'].kill()
                     self._cus_to_cancel.remove(cu['_id'])
 
-                    rpu.prof('final', msg="execution canceled", uid=cu['_id'])
+                    self._prof.prof('final', msg="execution canceled", uid=cu['_id'])
 
                     self.publish('unschedule', cu)
                     self.advance(cu, rp.CANCELED, publish=True, push=False)
 
             else:
-                rpu.prof('execution complete', uid=cu['_id'])
+                self._prof.prof('execution complete', uid=cu['_id'])
 
                 # we have a valid return code -- unit is final
                 action += 1
@@ -3883,20 +3855,20 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                             for line in txt.split("\n"):
                                 if line:
                                     x1, x2, x3 = line.split()
-                                    rpu.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
+                                    self._prof.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
                         except Exception as e:
                             self._log.error("Pre/Post profiling file read failed: `%s`" % e)
 
                 if exit_code != 0:
                     # The unit failed - fail after staging output
-                    rpu.prof('final', msg="execution failed", uid=cu['_id'])
+                    self._prof.prof('final', msg="execution failed", uid=cu['_id'])
                     cu['target_state'] = rp.FAILED
 
                 else:
                     # The unit finished cleanly, see if we need to deal with
                     # output data.  We always move to stageout, even if there are no
                     # directives -- at the very least, we'll upload stdout/stderr
-                    rpu.prof('final', msg="execution succeeded", uid=cu['_id'])
+                    self._prof.prof('final', msg="execution succeeded", uid=cu['_id'])
                     cu['target_state'] = rp.DONE
 
                 self.advance(cu, rp.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
@@ -3911,9 +3883,9 @@ class ExecWorker_SHELL(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
-        AgentExecutingComponent.__init__ (self, cfg, logger)
+        AgentExecutingComponent.__init__ (self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -3927,7 +3899,6 @@ class ExecWorker_SHELL(AgentExecutingComponent):
 
         self.declare_publisher('unschedule', rp.AGENT_UNSCHEDULE_PUBSUB)
         self.declare_publisher('state',      rp.AGENT_STATE_PUBSUB)
-
 
         # Mimic what virtualenv's "deactivate" would do
         self._deactivate = "# deactivate pilot virtualenv\n"
@@ -3967,27 +3938,26 @@ class ExecWorker_SHELL(AgentExecutingComponent):
         self.monitor_shell  = sups.PTYShell ("fork://localhost/")
 
         # run the spawner on the shells
-        #tmp = tempfile.gettempdir()
+        tmp = tempfile.gettempdir()
         # Moving back to shared file system again, until it reaches maturity,
         # as this breaks launch methods with a hop, e.g. ssh.
-        tmp      = os.getcwd() # FIXME: see #658
+        # tmp = os.getcwd() # FIXME: see #658
         pilot_id = self._cfg['pilot_id']
         ret, out, _  = self.launcher_shell.run_sync \
                            ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
-                           % (os.path.dirname (rp.__file__), tmp, pilot_id, self.name))
+                           % (os.path.dirname (rp.__file__), tmp, pilot_id, self._cname))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
 
         ret, out, _  = self.monitor_shell.run_sync \
                            ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
-                           % (os.path.dirname (rp.__file__), tmp, pilot_id, self.name))
+                           % (os.path.dirname (rp.__file__), tmp, pilot_id, self._cname))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
 
         # run watcher thread
         self._terminate = threading.Event()
-        self._watcher   = threading.Thread(target = self._watch,
-                                           name   = "%s.watcher" % self.name)
+        self._watcher   = threading.Thread(target=self._watch, name="Watcher")
         self._watcher.start ()
 
 
@@ -4011,14 +3981,14 @@ class ExecWorker_SHELL(AgentExecutingComponent):
         # place...
 
         self._task_launcher = LaunchMethod.create(
-                name            = self._cfg['task_launch_method'],
-                config          = self._cfg,
-                logger          = self._log)
+                name   = self._cfg['task_launch_method'],
+                cfg    = self._cfg,
+                logger = self._log)
 
         self._mpi_launcher = LaunchMethod.create(
-                name            = self._cfg['mpi_launch_method'],
-                config          = self._cfg,
-                logger          = self._log)
+                name   = self._cfg['mpi_launch_method'],
+                cfg    = self._cfg,
+                logger = self._log)
 
 
     # --------------------------------------------------------------------------
@@ -4040,7 +4010,7 @@ class ExecWorker_SHELL(AgentExecutingComponent):
             self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
             assert(cu['opaque_slots']) # FIXME: no assert, but check
-            rpu.prof('ExecWorker unit launch', uid=cu['_id'])
+            self._prof.prof('ExecWorker unit launch', uid=cu['_id'])
 
             # Start a new subprocess to launch the unit
             self.spawn(launcher=launcher, cu=cu)
@@ -4090,6 +4060,7 @@ class ExecWorker_SHELL(AgentExecutingComponent):
                     ret.append ('"%s"' % arg)
 
             return  ret
+
         # ----------------------------------------------------------------------
 
         args  = ""
@@ -4190,14 +4161,14 @@ timestamp () {
 
         uid = cu['_id']
 
-        rpu.prof('ExecWorker spawn', uid=uid)
+        self._prof.prof('ExecWorker spawn', uid=uid)
 
         # we got an allocation: go off and launch the process.  we get
         # a multiline command, so use the wrapper's BULK/LRUN mode.
         cmd       = self._cu_to_cmd (cu, launcher)
         run_cmd   = "BULK\nLRUN\n%s\nLRUN_EOT\nBULK_RUN\n" % cmd
 
-        rpu.prof('launch script constructed', uid=cu['_id'])
+        self._prof.prof('launch script constructed', uid=cu['_id'])
 
       # TODO: Remove this commented out block?
       # if  self.lrms.target_is_macos :
@@ -4234,12 +4205,12 @@ timestamp () {
             raise RuntimeError ("failed to run unit '%s': (%s)(%s)" \
                              % (run_cmd, ret, out))
 
-        rpu.prof('spawning passed to pty', uid=uid)
+        self._prof.prof('spawning passed to pty', uid=uid)
 
         # FIXME: this is too late, there is already a race with the monitoring
         # thread for this CU execution.  We need to communicate the PIDs/CUs via
         # a queue again!
-        rpu.prof('put', msg="ExecWorker to watcher (%s)" % cu['state'], uid=cu['_id'])
+        self._prof.prof('put', msg="ExecWorker to watcher (%s)" % cu['state'], uid=cu['_id'])
         with self._registry_lock :
             self._registry[pid] = cu
 
@@ -4251,7 +4222,7 @@ timestamp () {
         MONITOR_READ_TIMEOUT = 1.0   # check for stop signal now and then
         static_cnt           = 0
 
-        rpu.prof('run')
+        self._prof.prof('run')
         try:
 
             self.monitor_shell.run_async ("MONITOR")
@@ -4334,7 +4305,8 @@ timestamp () {
                         cu = self._registry.get (pid, None)
 
                     if cu:
-                        rpu.prof('get', msg="ExecWatcher picked up unit", uid=cu['_id'])
+                        self._prof.prof('get', msg="ExecWatcher picked up unit",
+                                state=cu['state'], uid=cu['_id'])
                         self._handle_event (cu, pid, state, data)
                     else:
                         self._cached_events.append ([pid, state, data])
@@ -4344,7 +4316,7 @@ timestamp () {
             self._log.error ("Exception in job monitoring thread: %s", e)
             self._terminate.set()
 
-        rpu.prof ('stop')
+        self._prof.prof ('stop')
 
 
     # --------------------------------------------------------------------------
@@ -4375,14 +4347,14 @@ timestamp () {
 
         if rp_state in [rp.FAILED, rp.CANCELED] :
             # The unit failed - fail after staging output
-            rpu.prof('final', msg="execution failed", uid=cu['_id'])
+            self._prof.prof('final', msg="execution failed", uid=cu['_id'])
             cu['target_state'] = rp.FAILED
 
         else:
             # The unit finished cleanly, see if we need to deal with
             # output data.  We always move to stageout, even if there are no
             # directives -- at the very least, we'll upload stdout/stderr
-            rpu.prof('final', msg="execution succeeded", uid=cu['_id'])
+            self._prof.prof('final', msg="execution succeeded", uid=cu['_id'])
             cu['target_state'] = rp.DONE
 
         self.advance(cu, rp.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
@@ -4406,21 +4378,17 @@ class AgentUpdateWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
-        rpu.Worker.__init__(self, cfg, logger)
+        rpu.Worker.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def create(cls, cfg, logger=None):
+    def create(cls, cfg):
 
-        if not logger:
-            name   = rp.AGENT_UPDATE_WORKER
-            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
-
-        return cls(cfg, logger)
+        return cls(cfg)
 
 
     # --------------------------------------------------------------------------
@@ -4457,14 +4425,14 @@ class AgentUpdateWorker(rpu.Worker):
         res = cinfo['bulk'].execute()
         self._log.debug("bulk update result: %s", res)
 
-        rpu.prof('unit update bulk pushed (%d)' % len(cinfo['uids']))
+        self._prof.prof('unit update bulk pushed (%d)' % len(cinfo['uids']))
         for entry in cinfo['uids']:
             uid   = entry[0]
             state = entry[1]
             if state:
-                rpu.prof('unit update pushed (%s)' % state, uid=uid)
+                self._prof.prof('unit update pushed (%s)' % state, uid=uid)
             else:
-                rpu.prof('unit update pushed', uid=uid)
+                self._prof.prof('unit update pushed', uid=uid)
 
         cinfo['last'] = now
         cinfo['bulk'] = None
@@ -4506,7 +4474,7 @@ class AgentUpdateWorker(rpu.Worker):
             uid   = cu['_id']
             state = cu.get('state')
 
-            rpu.prof('get', msg="update unit state to %s" % state, uid=uid)
+            self._prof.prof('get', msg="update unit state to %s" % state, uid=uid)
 
             cbase       = cu.get('cbase',  '.cu')
             query_dict  = cu.get('query')
@@ -4548,7 +4516,7 @@ class AgentUpdateWorker(rpu.Worker):
 
                 # attempt a timed update
                 self._timed_bulk_execute(cinfo)
-                rpu.prof('unit update bulked (%s)' % state, uid=uid)
+                self._prof.prof('unit update bulked (%s)' % state, uid=uid)
 
 
         except Exception as e:
@@ -4571,21 +4539,17 @@ class AgentStagingInputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
-        rpu.Component.__init__(self, cfg, logger)
+        rpu.Component.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def create(cls, cfg, logger=None):
+    def create(cls, cfg):
 
-        if not logger:
-            name   = rp.AGENT_STAGING_INPUT_COMPONENT
-            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
-
-        return cls(cfg, logger)
+        return cls(cfg)
 
 
     # --------------------------------------------------------------------------
@@ -4625,11 +4589,11 @@ class AgentStagingInputComponent(rpu.Component):
 
         # create unit workdir
         rec_makedir(workdir)
-        rpu.prof('unit mkdir', uid=cu['_id'])
+        self._prof.prof('unit mkdir', uid=cu['_id'])
 
         for directive in cu['Agent_Input_Directives']:
 
-            rpu.prof('Agent input_staging queue', uid=cu['_id'],
+            self._prof.prof('Agent input_staging queue', uid=cu['_id'],
                      msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
 
             # Perform input staging
@@ -4670,7 +4634,7 @@ class AgentStagingInputComponent(rpu.Component):
             self._log.info(log_message)
 
 
-        rpu.prof('log', msg="toward agent scheduling", uid=cu['_id'])
+        self._prof.prof('log', msg="toward agent scheduling", uid=cu['_id'])
 
       # self.advance(cu, rp.AGENT_SCHEDULING_PENDING, publish=True, push=True)
         self.advance(cu, rp.ALLOCATING_PENDING, publish=True, push=True)
@@ -4693,21 +4657,17 @@ class AgentStagingOutputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
-        rpu.Component.__init__(self, cfg, logger)
+        rpu.Component.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def create(cls, cfg, logger=None):
+    def create(cls, cfg):
 
-        if not logger:
-            name   = rp.AGENT_STAGING_OUTPUT_COMPONENT
-            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
-
-        return cls(cfg, logger)
+        return cls(cfg)
 
 
     # --------------------------------------------------------------------------
@@ -4760,7 +4720,7 @@ class AgentStagingOutputComponent(rpu.Component):
                     for line in txt.split("\n"):
                         if line:
                             x1, x2, x3 = line.split()
-                            rpu.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
+                            self._prof.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
             except Exception as e:
                 self._log.error("Pre/Post profiling file read failed: `%s`" % e)
 
@@ -4776,7 +4736,7 @@ class AgentStagingOutputComponent(rpu.Component):
         # all other units get their (expectedly valid) output files staged
         for directive in cu['Agent_Output_Directives']:
 
-            rpu.prof('Agent output_staging', uid=cu['_id'],
+            self._prof.prof('Agent output_staging', uid=cu['_id'],
                      msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
 
             # Perform output staging
@@ -4837,21 +4797,17 @@ class AgentHeartbeatWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
-        rpu.Worker.__init__(self, cfg, logger)
+        rpu.Worker.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def create(cls, cfg, logger=None):
+    def create(cls, cfg):
 
-        if not logger:
-            name   = rp.AGENT_HEARTBEAT_WORKER
-            logger = rpu.get_logger(name, "%s.log" % name, cfg.get('debug', 'INFO'))
-
-        return cls(cfg, logger)
+        return cls(cfg)
 
 
     # --------------------------------------------------------------------------
@@ -4881,7 +4837,7 @@ class AgentHeartbeatWorker(rpu.Worker):
     def idle_cb(self):
 
         try:
-            rpu.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!')
+            self._prof.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!')
             self._check_commands()
             self._check_state   ()
             return True
@@ -4910,7 +4866,7 @@ class AgentHeartbeatWorker(rpu.Worker):
             cmd = command[COMMAND_TYPE]
             arg = command[COMMAND_ARG]
 
-            rpu.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" % (cmd, arg))
+            self._prof.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" % (cmd, arg))
 
             if cmd == COMMAND_CANCEL_PILOT:
                 self._log.info('cancel pilot cmd')
@@ -4950,20 +4906,10 @@ class AgentWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg):
 
-        # make sure we have a name
-        self.name = cfg['name']
-
-        # NOTE: we pass the config to the Worker base right here where it will
-        # be used for bridge address lookup later on.  That config though does
-        # not yet know anything about agent_nodes, so cannot know about remote
-        # bridges.  Any communication channels opened in this process, and in
-        # any worker process or thread, will thus expect bridges to live local.
-        # Ultimately, only agent.x with x>0 will be able to talk to remote
-        # bridges, as they get the IP addresses passed in their config already,
-        # before they reach this place here.
-        rpu.Worker.__init__(self, cfg, logger)
+        self.agent_name = cfg['agent_name']
+        rpu.Worker.__init__(self, cfg)
 
         # everything which comes after the worker init is limited in scope to
         # the current process, and will not be available in the worker process.
@@ -4975,15 +4921,7 @@ class AgentWorker(rpu.Worker):
         _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
         self._p  = mongo_db["%s.p"  % self._session_id]
 
-        # subscribe for commands from the heartbeat worker, mostly for shutdown
-        # NOTE: this callback needs to live in the agent proper, ie. in the
-        #       agent.0 before creating the subprocesses, as that is the root of
-        #       the process tree and shutdown needs to start here.  However,
-        #       during __inig__ of this process, we did not yet start any
-        #       bridges, and specifically do not yet know the address of the
-        #       agent_command_pubsub bridge.  Zeromq will delay the connection
-        #       all right, so calling connect straight away is ok -- but the
-        #       bridge should better live on the same host as this process!
+        # subscribe for commands (including shutdown)
         self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
 
 
@@ -5040,11 +4978,11 @@ class AgentWorker(rpu.Worker):
         self._pilot_id   = self._cfg['pilot_id']
         self._session_id = self._cfg['session_id']
         self._runtime    = self._cfg['runtime']
-        self._sub_cfg    = self._cfg['agent_layout'][self.name]
+        self._sub_cfg    = self._cfg['agent_layout'][self.agent_name]
         self._pull_units = self._sub_cfg.get('pull_units', False)
 
         # another sanity check
-        if self.name == 'agent.0':
+        if self.agent_name == 'agent.0':
             if self._sub_cfg.get('target', 'local') != 'local':
                 raise ValueError("agent.0 must run on target 'local'")
 
@@ -5054,16 +4992,13 @@ class AgentWorker(rpu.Worker):
         self._components = list()
         self._workers    = list()
 
-        # prepare profiler
-        rpu.prof_init('agent.prof', 'start', uid=self._cfg['pilot_id'])
-
         # configure the agent logger
         self._log.setLevel(self._cfg['debug'])
         self._log.info('git ident: %s' % git_ident)
 
         # set up db connection -- only for the master agent and for the agent
         # which pulls units (which might be the same)
-        if self.name == 'agent.0' or self._pull_units:
+        if self.agent_name == 'agent.0' or self._pull_units:
             _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
 
             self._p  = mongo_db["%s.p"  % self._session_id]
@@ -5071,7 +5006,7 @@ class AgentWorker(rpu.Worker):
 
         # first order of business: set the start time and state of the pilot
         # Only the master agent performs this action
-        if self.name == 'agent.0':
+        if self.agent_name == 'agent.0':
             now = rpu.timestamp()
             ret = self._p.update(
                 {"_id": self._pilot_id},
@@ -5090,6 +5025,7 @@ class AgentWorker(rpu.Worker):
         # the pulling agent registers the staging_input_queue as this is what we want to push to
         # FIXME: do a sanity check on the config that only one agent pulls, as
         #        this is a non-atomic operation at this point
+        self._log.debug('pull units: %s' % self._pull_units)
         if self._pull_units:
 
             self.declare_output(rp.AGENT_STAGING_INPUT_PENDING, rp.AGENT_STAGING_INPUT_QUEUE)
@@ -5116,9 +5052,9 @@ class AgentWorker(rpu.Worker):
         # the respective command lines per agent instance, and run via
         # popen. 
         agent_lm = LaunchMethod.create(
-            name            = self._cfg['agent_launch_method'],
-            config          = self._cfg,
-            logger          = self._log)
+            name   = self._cfg['agent_launch_method'],
+            cfg    = self._cfg,
+            logger = self._log)
 
         for sa in self._sub_cfg.get('sub_agents', []):
             target = self._cfg['agent_layout'][sa]['target']
@@ -5149,11 +5085,14 @@ class AgentWorker(rpu.Worker):
                         launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
                         opaque_slots=opaque_slots)
 
-            # FIXME: We should keep a handle to the resulting process around, 
-            #        for monitoring and shutdown.
-            rpu.prof("start", msg=sa)
-            self._log.info("create sub-agent %s: %s" % (sa, cmd))
-            os.system("%s 1>%s.out 2>%s.err </dev/null &" % (cmd, sa, sa))
+            # spawn the SA
+            self._prof.prof("create", msg=sa)
+            self._log.info ("create sub-agent %s: %s" % (sa, cmd))
+            sa_out = open("%s.out" % sa, "w")
+            sa_err = open("%s.err" % sa, "w")
+            sa_proc = subprocess.Popen(cmd, shell=True, stdout=sa_out, stderr=sa_err)
+            self._sub_agents.append([sa, sa_proc, sa_out, sa_err])
+            self._prof.prof("created", msg=sa)
 
         self._log.debug('start_sub_agents done')
 
@@ -5220,6 +5159,7 @@ class AgentWorker(rpu.Worker):
                 # each component gets its own copy of the config
                 self._log.info('create component %s (%s)', cname, cnum)
                 ccfg = copy.deepcopy(self._cfg)
+                ccfg['number'] = i
                 comp = cmap[cname].create(ccfg)
                 comp.start()
                 self._components.append(comp)
@@ -5228,7 +5168,7 @@ class AgentWorker(rpu.Worker):
         # heartbeat and update worker.  To ensure this, we only create workers
         # in agent.0.  
         # FIXME: make this configurable, both number and placement
-        if self.name == 'agent.0':
+        if self.agent_name == 'agent.0':
             wmap = {
                 rp.AGENT_UPDATE_WORKER    : AgentUpdateWorker,
                 rp.AGENT_HEARTBEAT_WORKER : AgentHeartbeatWorker
@@ -5272,8 +5212,8 @@ class AgentWorker(rpu.Worker):
         # we pick the layout according to our role (name)
         # NOTE: we don't do sanity checks on the agent layout (too lazy) -- but
         #       we would hiccup badly over ill-formatted or incomplete layouts...
-        if not self.name in self._cfg['agent_layout']:
-            raise RuntimeError("no agent layout section for %s" % self.name)
+        if not self.agent_name in self._cfg['agent_layout']:
+            raise RuntimeError("no agent layout section for %s" % self.agent_name)
 
         try:
             self.start_bridges()
@@ -5289,7 +5229,7 @@ class AgentWorker(rpu.Worker):
             self._log.exception("Agent setup error: %s" % e)
             raise
 
-        rpu.prof('Agent setup done', logger=self._log.debug)
+        self._prof.prof('Agent setup done', logger=self._log.debug)
 
         # FIXME: signal the other agents, and shot down all components and
         #        bridges.
@@ -5300,18 +5240,17 @@ class AgentWorker(rpu.Worker):
     def finalize(self):
 
         self._log.info("Agent finalizes")
-      
-        rpu.prof ('stop')
-        rpu.flush_prof()
+        self._prof.prof('stop')
 
         # FIXME: let logfiles settle before killing the components
         time.sleep(1)
       
         # burn the bridges, burn EVERYTHING
-        for sa in self._sub_agents:
-            # FIXME: this is not active, yet.
+        for sa, sa_proc, sa_out, sa_err in self._sub_agents:
             self._log.info("closing sub-agent %s", sa)
-            sa.terminate()
+            sa_proc.terminate()
+            sa_out.close()
+            sa_err.close()
 
         for c in self._components:
             self._log.info("closing component %s", c._name)
@@ -5338,10 +5277,10 @@ class AgentWorker(rpu.Worker):
         then feed them to the respective component queues.
         """
 
-        # only do something if we are configured to do so
+        # only do something if configured to do so
         if not self._pull_units:
             self._log.debug('not configured to pull for units')
-            return 0
+            return True  # fake work to avoid busy noops
 
         try:
             # check for new units
@@ -5351,7 +5290,7 @@ class AgentWorker(rpu.Worker):
             # exception in the main loop is fatal
             pilot_FAILED(self._p, self._pilot_id, self._log,
                 "ERROR in agent main loop: %s. %s" % (e, traceback.format_exc()))
-            rpu.flush_prof()
+            self._prof.flush()
             sys.exit(1)
 
 
@@ -5373,7 +5312,7 @@ class AgentWorker(rpu.Worker):
                                            'control' : 'umgr'})
         if not cu_cursor.count():
             # no units whatsoever...
-            self._log.info("units found:    0")
+            self._log.info("units pulled:    0")
             return False
 
         # update the unit states to avoid pulling them again next time.
@@ -5384,16 +5323,11 @@ class AgentWorker(rpu.Worker):
                         spec     = {"_id"   : {"$in"     : cu_uids}},
                         document = {"$set"  : {"control" : 'agent'}})
 
+        self._prof.prof('get', msg="bulk size: %d" % len(cu_list))
+        self._log.info("units pulled: %4d"   % len(cu_list))
+
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline)
-        if not cu_list:
-            self._log.info("units found:    0")
-            return False
-
-        rpu.prof('get', msg="bulk size: %d" % len(cu_list))
-        self._log.info("units found: %4d"   % len(cu_list))
-
-        print 'advancing %s' % cu_uids
         self.advance(cu_list, publish=True, push=True)
 
         # indicate that we did some work (if we did...)
@@ -5412,7 +5346,10 @@ def bootstrap_3():
     control to the Agent class which will spawn the functional components.
     """
 
-    rpu.prof_init()
+    # set up a logger and profiler
+    prof = rpu.Profiler('bootstrap_3')
+    log  = ru.get_logger('bootstrap_3', 'bootstrap_3.log')
+    log.info('start')
 
     # FIXME: signal handlers need mongo_p, but we won't have that until later
 
@@ -5435,7 +5372,9 @@ def bootstrap_3():
     print "startup agent %s : %s" % (agent_name, agent_cfg)
 
     cfg = ru.read_json_str(agent_cfg)
-    cfg['name'] = agent_name
+    cfg['agent_name'] = agent_name
+
+    log.setLevel(cfg.get('debug', 'INFO'))
 
     print "Agent config (%s):\n%s\n\n" % (agent_cfg, pprint.pformat(cfg))
 
@@ -5448,7 +5387,8 @@ def bootstrap_3():
 
     # set up signal and exit handlers
     def exit_handler():
-        rpu.flush_prof()
+        pass
+      # rpu.flush_prof()
     
     def sigint_handler(signum, frame):
         pilot_FAILED(msg='Caught SIGINT. EXITING (%s)' % frame)
@@ -5463,9 +5403,6 @@ def bootstrap_3():
     signal.signal(signal.SIGINT, sigint_handler)
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
-    # set up a logger
-    log = rpu.get_logger(agent_name, "%s.log" % agent_name, cfg.get('debug', 'INFO'))
-
     try:
         # ----------------------------------------------------------------------
         # des Pudels Kern: merge LRMS info into cfg and get the agent started
@@ -5478,7 +5415,7 @@ def bootstrap_3():
             # config, for the benefit of the scheduler).
 
             lrms = LRMS.create(name   = cfg['lrms'],
-                               config = cfg,
+                               cfg    = cfg,
                                logger = log)
             cfg['lrms_info'] = dict()
             cfg['lrms_info']['lm_info']        = lrms.lm_info
@@ -5524,7 +5461,7 @@ def bootstrap_3():
         # we now have correct bridge addresses added to the agent.0.cfg, and all
         # other agents will have picked that up from their config files -- we
         # can start the agent and all its components!
-        agent = AgentWorker(cfg, log)
+        agent = AgentWorker(cfg)
         agent.start()
         agent.join()
         agent._finalize()
@@ -5540,7 +5477,8 @@ def bootstrap_3():
         sys.exit(7)
 
     finally:
-        rpu.prof('stop', msg='finally clause')
+        log.info('stop')
+        prof.prof('stop', msg='finally clause')
         sys.exit(8)
 
 
@@ -5567,49 +5505,4 @@ if __name__ == "__main__":
 
 #
 # ------------------------------------------------------------------------------
-
-##      # to run the spawner shells remote, run the following command on the
-##      # target node:
-##      #   "nc -l -p <port> -v -e /bin/sh  %s/agent/radical-pilot-spawner.sh %s"
-##      # and then below run
-##      #   "nc <node_ip> <port>"
-##      # with unique port numbers for each ExecWorker instance, obviously.
-##      #
-##      # for each exec worker, we run two nc's on consecutive ports.  We start
-##      # with port 10000. so use:
-##      #
-##      #   10000 + 2 * (self._number)
-##      #   10000 + 2 * (self._number) + 1
-##      #
-##      # to avoid collission with the other exec workers.  Only the execworker
-##      # 0 will run the remote nc's which are listening for our connections.
-##      #
-##      host = 'nid%.5d' % int(self._scheduler.reserved_nodes[0])
-##      portbase = 10000
-##      srcdir  = os.path.dirname(rp.__file__)
-##      if self._number == 0:
-##          # this is exec worker 0 -- we run the remote nc's
-##          #workbase = "/tmp/Spawner-%s" % (self._pilot_id)
-##          workbase = "%s/Spawner-%s" % (os.getcwd(), self._pilot_id)
-##
-##          # Usage: execworker-wrapper.sh <spawner.sh> <workdir> <port base> <count>
-##          self._remote_process = subprocess.Popen([
-##              'aprun', '-n', '1',
-##              '/bin/sh', '%s/agent/execworker-wrapper.sh' % srcdir,
-##              '%s/agent/radical-pilot-spawner.sh' % srcdir,
-##              workbase,
-##              str(portbase),
-##              str(self._cfg['number_of_workers'][EXEC_WORKER])
-##          ])
-##
-##      # we need to give the above command some time to actually start the
-##      # listening processes, otherwise the following connections will fail
-##      # TODO: might want to add a lock here to sync the instances
-##      time.sleep(5)
-##
-##      # now instead of the spawner, launch NCs toward the host on the given
-##      # ports
-##      myport = portbase + 2 * self._number
-##      ret, out, _  = self.launcher_shell.run_sync ("nc %s %d" % (host, myport))
-##      ret, out, _  = self.monitor_shell.run_sync  ("nc %s %d" % (host, myport + 1))
 
