@@ -145,6 +145,7 @@ import Queue
 import pprint
 import signal
 import shutil
+import Queue
 import socket
 import hostlist
 import tempfile
@@ -3518,7 +3519,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
         self._cancel_lock    = threading.RLock()
         self._cus_to_cancel  = list()
         self._cus_to_watch   = list()
-        self._watch_queue    = queue.Queue ()
+        self._watch_queue    = Queue.Queue ()
         self._cu_environment = self._populate_cu_environment()
 
         # run watcher thread
@@ -3765,6 +3766,9 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
 
         self._prof.prof('run')
         try:
+            self._log = ru.get_logger('%s.Watcher' % self.name, 
+                                      target="%s.Watcher.log" % self.name,
+                                      level='DEBUG')
 
             while not self._terminate.is_set():
 
@@ -3799,10 +3803,11 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
 
                 if not action and not cus :
                     # nothing happend at all!  Zzz for a bit.
-                    time.sleep(self._cfg['queue_poll_sleeptime'])
+                    time.sleep(self._cfg['db_poll_sleeptime'])
 
         except Exception as e:
             self._log.exception("Error in ExecWorker watch loop (%s)" % e)
+            # FIXME: this should signal the ExecWorker for shutdown...
 
         self._prof.prof ('stop')
 
@@ -3837,6 +3842,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
 
                     self._prof.prof('final', msg="execution canceled", uid=cu['_id'])
 
+                    del(cu['proc'])  # proc is not json serializable
                     self.publish('unschedule', cu)
                     self.advance(cu, rp.CANCELED, publish=True, push=False)
 
@@ -3852,6 +3858,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
 
                 # Free the Slots, Flee the Flots, Ree the Frots!
                 self._cus_to_watch.remove(cu)
+                del(cu['proc'])  # proc is not json serializable
                 self.publish('unschedule', cu)
 
                 if os.path.isfile("%s/PROF" % cu['workdir']):
@@ -4292,7 +4299,9 @@ timestamp () {
 
         self._prof.prof('run')
         try:
-
+            self._log = ru.get_logger('%s.Watcher' % self.name, 
+                                      target="%s.Watcher.log" % self.name,
+                                      level='DEBUG')
             self.monitor_shell.run_async ("MONITOR")
 
             while not self._terminate.is_set () :
