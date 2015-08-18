@@ -2305,10 +2305,7 @@ class LRMS(object):
             # if that did not work, fall back to the normal lookup for localhost
             host = LRMS.hostname()
 
-        # a hostis given, or is localhost now -- look it up.
-        # FIXME: Temporary hack because nodefile on Cray doesn't have actual hostnames
-        if True:
-            host = 'nid%.5d' % int(host)
+        # a host is given, or is localhost now -- look it up.
 
         # FIXME: move to ru?
         if hasattr(socket, 'setdefaulttimeout'):
