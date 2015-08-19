@@ -57,7 +57,8 @@ def _get_addr(name, role):
 
     if role != PUBSUB_BRIDGE:
         u = ru.Url(addr)
-        u.host = '127.0.0.1'
+        # This is the culprit
+        u.host = '127.0.0.2'
         addr = str(u)
 
     return addr
@@ -80,7 +81,7 @@ class Pubsub(object):
         self._channel = channel
         self._role    = role
         self._addr    = ru.Url(address)
-        self._debug   = False
+        self._debug   = True
         self._logfd   = None
         self._name    = "pubsub.%s.%s.%d" % (self._channel, self._role, os.getpid())
 

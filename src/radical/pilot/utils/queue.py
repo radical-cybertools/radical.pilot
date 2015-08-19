@@ -165,7 +165,7 @@ class Queue(object):
         self._qname  = qname
         self._role   = role
         self._addr   = ru.Url(address)
-        self._debug  = False
+        self._debug  = True
         self._logfd  = None
         self._name   = "queue.%s.%s.%d" % (self._qname, self._role, os.getpid())
 
