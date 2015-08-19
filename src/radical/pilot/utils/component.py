@@ -397,6 +397,7 @@ class Component(mp.Process):
                 % (self._cname, topic, pubsub, cb, t.name))
 
 
+
     # --------------------------------------------------------------------------
     #
     def run(self):

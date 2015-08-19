@@ -74,7 +74,7 @@ def run_test (cfg):
         pdesc.queue    = cfg['cp_queue']
         pdesc.runtime  = cfg['cp_runtime']
         pdesc.cores    = cfg['cp_cores']
-        #pdesc.cleanup  = True
+        pdesc.cleanup  = True
 
         # submit the pilot.
         print "Submitting Compute Pilot to Pilot Manager ..."
@@ -104,11 +104,9 @@ def run_test (cfg):
             cudesc = rp.ComputeUnitDescription()
             if cfg['cu_pre_exec']:
                 cudesc.pre_exec = cfg['cu_pre_exec']
-            cudesc.executable    = '/bin/bash'
-            #cudesc.executable    = cfg['executable']
-            #cudesc.arguments     = ["helloworld_mpi.py"]
-            cudesc.arguments     = ["-c", 'date ; hostname -f ; sleep 10 ; date']
-            #cudesc.input_staging = ["%s/../examples/helloworld_mpi.py" % cfg['pwd']]
+            cudesc.executable    = cfg['executable']
+            cudesc.arguments     = ["helloworld_mpi.py"]
+            cudesc.input_staging = ["%s/../examples/helloworld_mpi.py" % cfg['pwd']]
             cudesc.cores         = cfg['cu_cores']
             cudesc.mpi           = True
 

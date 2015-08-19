@@ -122,18 +122,6 @@
      "cu_pre_exec"     : ["module load bw-python"],
      "executable"      : "python"
      },
- "ncsa.bw_orte"      : {
-    "cp_project"      : "",
-    "cp_queue"        : "debug",
-    "cp_runtime"      : 10,
-    "cp_cores"        : 64,
-    "cp_schema"       : "",
-    "cu_cores"        : 8,
-    #"cu_pre_exec"     : ["module load bw-python"],
-    "cu_pre_exec"     : [],
-    #"executable"      : "python",
-    "executable"      : "/bin/hostname"
-    },
  "nersc.edison"        : {
      "cp_project"      : "",
      "cp_queue"        : "debug",

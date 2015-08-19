@@ -1923,10 +1923,10 @@ class LaunchMethodORTE(LaunchMethod):
         stdbuf_arg = "-oL"
 
         # Reserve compute nodes to offload agent too
-        reserved_size = 0 # TODO: make configurable
+        reserved_size = 1 # TODO: make configurable
         vm_size = len(lrms.node_list) - reserved_size
-        #lrms.reserved_nodes = sorted(lrms.node_list)[-reserved_size:]
-        #logger.info("Reserving nodes: %s" % lrms.reserved_nodes)
+        lrms.reserved_nodes = sorted(lrms.node_list)[-reserved_size:]
+        logger.info("Reserving nodes: %s" % lrms.reserved_nodes)
 
       # # Mark the reserved node slots BUSY
       # # NOTE: we don't need that anymore, as the nodelist is manipulated on
@@ -2189,7 +2189,6 @@ class LRMS(object):
 
         # check if the LRMS implementation reserved agent nodes.  If not, pick
         # the first couple of nodes from the nodelist as a fallback
-        # TODO: isn't agent_node always empty here?
         if len(self._agent_reqs) and not self.agent_nodes:
             self._log.info('use fallback to determine set of agent nodes')
             for ar in self._agent_reqs:
