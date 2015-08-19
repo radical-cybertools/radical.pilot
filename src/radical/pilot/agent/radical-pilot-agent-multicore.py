@@ -2189,6 +2189,7 @@ class LRMS(object):
 
         # check if the LRMS implementation reserved agent nodes.  If not, pick
         # the first couple of nodes from the nodelist as a fallback
+        # TODO: isn't agent_node always empty here?
         if len(self._agent_reqs) and not self.agent_nodes:
             self._log.info('use fallback to determine set of agent nodes')
             for ar in self._agent_reqs:
