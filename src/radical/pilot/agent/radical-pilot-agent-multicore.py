@@ -2318,6 +2318,16 @@ class LaunchMethodYARN(LaunchMethod):
     def _configure(self):
 
         self.launch_command = self._which('yarn')
+        self._log.info('YARN was called by %s'%self._scheduler._lrms.name)
+        
+        # If the LRMS used is not YARN the namenode url is going to be
+        # the first node in the list and the port is the default one, else 
+        # it is the one that the YARN LRMS returns
+        if self._scheduler._lrms.name != 'YARN':
+            self._serviceurl = self._scheduler._lrms.node_list[0] + ':9000'
+        else:
+            self._serviceurl = self._scheduler._lrms.namenode_url
+
 
     # --------------------------------------------------------------------------
     #
@@ -2402,7 +2412,7 @@ class LaunchMethodYARN(LaunchMethod):
         #    nmem_string = ''
 
         #Getting the namenode's address.
-        service_url = 'yarn://localhost?fs=hdfs://' + self._scheduler._lrms.namenode_url
+        service_url = 'yarn://localhost?fs=hdfs://' + self._serviceurl
 
         yarn_command = '%s -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
                        ' com.radical.pilot.Client -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
