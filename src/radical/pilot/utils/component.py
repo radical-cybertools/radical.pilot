@@ -385,17 +385,20 @@ class Component(mp.Process):
                     callback (topic=topic, msg=msg)
         # ----------------------------------------------------------------------
 
+        # check if a remote address is configured for the queue
+        addr = self._addr_map.get (pubsub)
+        self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
+
         # create a pubsub subscriber, and subscribe to the given topic
-        q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB)
+        q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB, addr)
         q.subscribe(topic)
 
         t = mt.Thread (target=_subscriber, args=[q,cb])
         t.start()
         self._threads.append(t)
 
-        self._log.debug('%s declares subscriber: %s : %s : %s : %s' \
+        self._log.debug('%s declared subscriber: %s : %s : %s : %s' \
                 % (self._cname, topic, pubsub, cb, t.name))
-
 
 
     # --------------------------------------------------------------------------
