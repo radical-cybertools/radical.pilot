@@ -1979,10 +1979,29 @@ class LaunchMethodORTE(LaunchMethod):
                     # Process is gone: fatal!
                     raise Exception("ORTE DVM process disappeared")
 
+
+        def _watch_dvm(dvm_process):
+
+            logger.info('starting DVM watcher')
+
+            while dvm_process.poll() is None:
+                line = dvm_process.stdout.readline().strip()
+                if line:
+                    logger.debug('dvm output: %s' % line)
+                else:
+                    time.sleep(1.0)
+
+            logger.info('DVM stopped (%d)' % dvm_process.returncode)
+
+        dvm_watcher = threading.Thread(target=watch_dvm, name="DVMWatcher")
+        dvm_watcher.start ()
+
+        lm_info = {'dvm_uri'     : dvm_uri, 
+                   'dvm_watcher' : dvm_watcher}
+
         # we need to inform the actual LM instance about the DVM URI.  So we
         # pass it back to the LRMS which will keep it in an 'lm_info', which
         # will then be passed as part of the opaque_slots via the scheduler
-        lm_info = {'dvm_uri' : dvm_uri}
         return lm_info
 
     # TODO: Create teardown() function for LaunchMethod's (in this case to terminate the dvm)
