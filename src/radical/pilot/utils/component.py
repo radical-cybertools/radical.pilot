@@ -326,6 +326,10 @@ class Component(mp.Process):
     #
     def declare_idle_cb(self, cb, timeout=0.0):
 
+        if None == timeout:
+            timeout = 0.0
+        timeout = float(timeout)
+
         self._idlers.append({
             'cb'      : cb,       # call this whenever we are idle
             'last'    : 0.0,      # was never called before

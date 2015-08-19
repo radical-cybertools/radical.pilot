@@ -2214,8 +2214,14 @@ class LRMS(object):
 
         for lm in launch_methods:
             if lm:
-                ru.dict_merge(self.lm_info,
-                        LaunchMethod.lrms_config_hook(lm, self._cfg, self, self._log))
+                try:
+                    ru.dict_merge(self.lm_info,
+                            LaunchMethod.lrms_config_hook(lm, self._cfg, self, self._log))
+                except Exception as e:
+                    self._log.exception("lrms config hook failed")
+                    raise
+
+                self._log.exception("lrms config hook succeeded (%s)" % lm)
 
         # For now assume that all nodes have equal amount of cores
         cores_avail = len(self.node_list) * self.cores_per_node
@@ -5107,7 +5113,7 @@ class AgentWorker(rpu.Worker):
         # the pulling agent registers the staging_input_queue as this is what we want to push to
         # FIXME: do a sanity check on the config that only one agent pulls, as
         #        this is a non-atomic operation at this point
-        self._log.debug('pull units: %s' % self._pull_units)
+        self._log.debug('agent will pull units: %s' % bool(self._pull_units))
         if self._pull_units:
 
             self.declare_output(rp.AGENT_STAGING_INPUT_PENDING, rp.AGENT_STAGING_INPUT_QUEUE)
