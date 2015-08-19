@@ -1310,28 +1310,31 @@ class SchedulerYarn(Scheduler):
     #
     def _configure(self):
 
-        #-----------------------------------------------------------------------
-        # Find out how many applications you can submit to YARN. And also keep
-        # this check happened to update it accordingly
-        sample_time = rpu.timestamp()
-        yarn_status = ul.urlopen('http://localhost:8088/ws/v1/cluster/scheduler')
+        try:
+            #-----------------------------------------------------------------------
+            # Find out how many applications you can submit to YARN. And also keep
+            # this check happened to update it accordingly
+            sample_time = rpu.timestamp()
+            yarn_status = ul.urlopen('http://localhost:8088/ws/v1/cluster/scheduler')
 
-        yarn_schedul_json = json.loads(yarn_status.read())
+            yarn_schedul_json = json.loads(yarn_status.read())
 
-        max_num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['maxApplications']
-        num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['numApplications']
+            max_num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['maxApplications']
+            num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['numApplications']
 
-        #-----------------------------------------------------------------------
-        # Find out the cluster's resources
-        cluster_metrics = ul.urlopen('http://localhost:8088/ws/v1/cluster/metrics')
+            #-----------------------------------------------------------------------
+            # Find out the cluster's resources
+            cluster_metrics = ul.urlopen('http://localhost:8088/ws/v1/cluster/metrics')
 
-        metrics = json.loads(cluster_metrics.read())
-        self._num_of_cores = metrics['clusterMetrics']['totalVirtualCores']
-        self._mem_size = metrics['clusterMetrics']['totalMB']
+            metrics = json.loads(cluster_metrics.read())
+            self._num_of_cores = metrics['clusterMetrics']['totalVirtualCores']
+            self._mem_size = metrics['clusterMetrics']['totalMB']
 
-        self.avail_app = {'apps':max_num_app - num_app,'timestamp':sample_time}
+            self.avail_app = {'apps':max_num_app - num_app,'timestamp':sample_time}
 
-        return True
+            return True
+        except:
+            return False
 
 
     # --------------------------------------------------------------------------
@@ -2317,17 +2320,164 @@ class LaunchMethodYARN(LaunchMethod):
     #
     def _configure(self):
 
-        self.launch_command = self._which('yarn')
+        # Single Node configuration
+        # TODO : Multinode config
+
+        def set_env_vars():
+    
+            self._hadoop_home = os.getcwd() + '/hadoop'
+            self._hadoop_install = self._hadoop_home
+            self._hadoop_mapred_home = self._hadoop_home
+            self._hadoop_common_home = self._hadoop_home
+            self._hadoop_hdfs_home = self._hadoop_home
+            self._yarn_home = self._hadoop_home
+            self._hadoop_common_lib_native_dir = self._hadoop_home + '/lib/native'
+
+            #-------------------------------------------------------------------
+            # Solution to find Java's home folder: http://stackoverflow.com/questions/1117398/java-home-directory
+
+            jpos = commands.getstatusoutput('readlink -f /usr/bin/java | sed "s:bin/java::"')
+            if jpos[1].find('jre') != -1:
+                java_home = jpos[1][:jpos[1].find('jre')]
+            else:
+                java_home = jpos[1]
+
+            hadoop_env_file = open(self._hadoop_home+'/etc/hadoop/hadoop-env.sh','r')
+            hadoop_env_file_lines = hadoop_env_file.readlines()
+            hadoop_env_file.close()
+            hadoop_env_file_lines[24] = 'export JAVA_HOME=%s'%java_home
+            hadoop_env_file = open(self._hadoop_home+'/etc/hadoop/hadoop-env.sh','w')
+            for line in hadoop_env_file_lines:
+                hadoop_env_file.write(line)
+            hadoop_env_file.close()
+
+        def config_core_site(node):
+
+            core_site_file = open(os.getcwd()+'/hadoop/etc/hadoop/core-site.xml','r')
+            lines = core_site_file.readlines()
+            core_site_file.close()
+
+            prop_str  = '<property>\n'
+            prop_str += '  <name>fs.default.name</name>\n'
+            prop_str += '    <value>hdfs://%s:9000</value>\n'%node
+            prop_str += '</property>\n'
+
+            lines.insert(-1,prop_str)
+
+            core_site_file = open(os.getcwd()+'/hadoop/etc/hadoop/core-site.xml','w')
+            for line in lines:
+                core_site_file.write(line)
+            core_site_file.close()
+
+        def config_hdfs_site(nodes):
+
+            hdfs_site_file = open(os.getcwd()+'/hadoop/etc/hadoop/hdfs-site.xml','r')
+            lines = hdfs_site_file.readlines()
+            hdfs_site_file.close()
+
+            prop_str  = '<property>\n'
+            prop_str += ' <name>dfs.replication</name>\n'
+            prop_str += ' <value>1</value>\n'
+            prop_str += '</property>\n'
+
+            prop_str += '<property>\n'
+            prop_str += '  <name>dfs.name.dir</name>\n'
+            prop_str += '    <value>file:///tmp/hadoop/hadoopdata/hdfs/namenode</value>\n'
+            prop_str += '</property>\n'
+
+            prop_str += '<property>\n'
+            prop_str += '  <name>dfs.data.dir</name>\n'
+            prop_str += '    <value>file:///tmp/hadoop/hadoopdata/hdfs/datanode</value>\n'
+            prop_str += '</property>\n'
+
+            lines.insert(-1,prop_str)
+
+            hdfs_site_file = open(os.getcwd()+'/hadoop/etc/hadoop/hdfs-site.xml','w')
+            for line in lines:
+                hdfs_site_file.write(line)
+            hdfs_site_file.close()
+
+        def config_mapred_site():
+
+            mapred_site_file = open(os.getcwd()+'/hadoop/etc/hadoop/mapred-site.xml.template','r')
+            lines = mapred_site_file.readlines()
+            mapred_site_file.close()
+
+            prop_str  = ' <property>\n'
+            prop_str += '  <name>mapreduce.framework.name</name>\n'
+            prop_str += '   <value>yarn</value>\n'
+            prop_str += ' </property>\n'
+
+            lines.insert(-1,prop_str)
+
+            mapred_site_file = open(os.getcwd()+'/hadoop/etc/hadoop/mapred-site.xml','w')
+            for line in lines:
+                mapred_site_file.write(line)
+            mapred_site_file.close()
+
+        def config_yarn_site():
+
+            yarn_site_file = open(os.getcwd()+'/hadoop/etc/hadoop/yarn-site.xml','r')
+            lines = yarn_site_file.readlines()
+            yarn_site_file.close()
+
+            prop_str  = ' <property>\n'
+            prop_str += '  <name>yarn.nodemanager.aux-services</name>\n'
+            prop_str += '    <value>mapreduce_shuffle</value>\n'
+            prop_str += ' </property>\n'
+
+            lines.insert(-1,prop_str)
+
+            yarn_site_file = open(os.getcwd()+'/hadoop/etc/hadoop/yarn-site.xml','w')
+            for line in lines:
+                yarn_site_file.write(line)
+            yarn_site_file.close()
+
         self._log.info('YARN was called by %s'%self._scheduler._lrms.name)
         
         # If the LRMS used is not YARN the namenode url is going to be
         # the first node in the list and the port is the default one, else 
         # it is the one that the YARN LRMS returns
         if self._scheduler._lrms.name != 'YARN':
+            # Here are the necessary commands to start the cluster.
+            if self._scheduler._lrms.node_list[0] == 'localhost':
+                #Download the tar file
+                #stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.0/hadoop-2.6.0.tar.gz")
+                stat = os.system('cp ~/hadoop-2.6.0.tar.gz .;tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
+            else:
+                self._log.error('Wrong System!')
+                #We need to see what should happen. Download or take it from somewhere else????????
+                # TODO: Decide how the agent will get Hadoop tar ball.
+
+            set_env_vars()
+            config_core_site(self._scheduler._lrms.node_list[0])
+            config_hdfs_site(self._scheduler._lrms.node_list)
+            config_mapred_site()
+            config_yarn_site()
+
+            self._log.info('Start Formatting DFS')
+            namenode_format = os.system(self._hadoop_home + '/bin/hdfs namenode -format -force')
+            self._log.info('DFS Formatted. Starting DFS.')
+            hadoop_start = os.system(self._hadoop_home + '/sbin/start-dfs.sh')
+            self._log.info('Starting YARN')
+            yarn_start = os.system(self._hadoop_home + '/sbin/start-yarn.sh')
+
+            #-------------------------------------------------------------------
+            # Creating user's HDFS home folder
+            self._log.debug('Running: %s/bin/hdfs dfs -mkdir /user'%self._hadoop_home)
+            os.system('%s/bin/hdfs dfs -mkdir /user'%self._hadoop_home)
+            uname = commands.getstatusoutput('whoami')
+            self._log.debug('Running: %s/bin/hdfs dfs -mkdir /user/%s'%(self._hadoop_home,uname[1]))
+            os.system('%s/bin/hdfs dfs -mkdir /user/%s'%(self._hadoop_home,uname[1]))
+            check = commands.getstatusoutput('%s/bin/hdfs dfs -ls /user'%self._hadoop_home)
+            self._log.info(check[1])
+            self._scheduler._configure()
+
             self._serviceurl = self._scheduler._lrms.node_list[0] + ':9000'
+            self.launch_command = self._yarn_home + '/bin/yarn'
         else:
             self._serviceurl = self._scheduler._lrms.namenode_url
-
+            self.launch_command = self._which('yarn')
 
     # --------------------------------------------------------------------------
     #
