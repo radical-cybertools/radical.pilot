@@ -12,8 +12,8 @@ dh = ru.DebugHelper ()
 CNT      =     0
 RUNTIME  =    10
 SLEEP    =     0
-CORES    =   256
-UNITS    =  1024
+CORES    =    64
+UNITS    =   128
 SCHED    = rp.SCHED_DIRECT_SUBMISSION
 
 resources = {
@@ -49,7 +49,7 @@ resources = {
 
         'xsede.stampede' : {
             'project'  : 'TG-MCB090174',
-            'queue'    : 'normal',
+            'queue'    : 'development',
             'schema'   : None
             },
 

@@ -110,7 +110,7 @@ if __name__ == "__main__":
         pdesc = rp.ComputePilotDescription()
         pdesc.resource = "local.localhost"
         pdesc.runtime  =  10 # minutes
-        pdesc.cores    = 256
+        pdesc.cores    =   8
         pdesc.cleanup  = False
     
         # Launch the pilot.
