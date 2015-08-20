@@ -1169,7 +1169,7 @@ class LaunchMethod(object):
         # TODO: This doesn't make too much sense for LM's that use multiple
         #       commands, perhaps this needs to move to per LM __init__.
         if self.launch_command is None:
-            raise RuntimeError("Launch command not found for LaunchMethod '%s'" % name)
+            raise RuntimeError("Launch command not found for LaunchMethod '%s'" % self.name)
 
         logger.info("Discovered launch command: '%s'.", self.launch_command)
 
