@@ -327,7 +327,7 @@ def pilot_FAILED(mongo_p=None, pilot_uid=None, logger=None, msg=None):
 
 # ------------------------------------------------------------------------------
 #
-def pilot_CANCELED(mongo_p, pilot_uid, logger, msg):
+def pilot_CANCELED(mongo_p=None, pilot_uid=None, logger=None, msg=None):
 
     if logger:
         logger.warning(msg)
@@ -372,7 +372,7 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, msg):
 
 # ------------------------------------------------------------------------------
 #
-def pilot_DONE(mongo_p, pilot_uid):
+def pilot_DONE(mongo_p=None, pilot_uid=None, logger=None, msg=None):
 
     if mongo_p and pilot_uid:
 
