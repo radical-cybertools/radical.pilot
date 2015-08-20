@@ -109,8 +109,8 @@ if __name__ == "__main__":
         # after itself.
         pdesc = rp.ComputePilotDescription()
         pdesc.resource = "local.localhost"
-        pdesc.runtime  = 5 # minutes
-        pdesc.cores    = 8
+        pdesc.runtime  =  10 # minutes
+        pdesc.cores    = 256
         pdesc.cleanup  = False
     
         # Launch the pilot.
@@ -147,7 +147,7 @@ if __name__ == "__main__":
         #    /bin/cat $INPUT1 $INPUT2
         #
         cuds = []
-        for unit_count in range(0, 140):
+        for unit_count in range(0, 10):
             cud = rp.ComputeUnitDescription()
             cud.name          = "unit_%03d" % unit_count
             cud.executable    = "/bin/sleep"
