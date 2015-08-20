@@ -1940,7 +1940,7 @@ class LaunchMethodORTE(LaunchMethod):
         logger.info("Starting ORTE DVM on %d nodes ..." % vm_size)
 
         dvm_process = subprocess.Popen(
-            [stdbuf_cmd, stdbuf_arg, dvm_command,
+            [stdbuf_cmd, stdbuf_arg, dvm_command, '--debug-devel',
              '--mca', 'orte_max_vm_size', str(vm_size)],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT
         )
@@ -1992,6 +1992,7 @@ class LaunchMethodORTE(LaunchMethod):
                     time.sleep(1.0)
 
             logger.info('DVM stopped (%d)' % dvm_process.returncode)
+            # TODO: Tear down everything?
 
         dvm_watcher = threading.Thread(target=_watch_dvm, args=(dvm_process,), name="DVMWatcher")
         dvm_watcher.start()
@@ -2195,7 +2196,7 @@ class LRMS(object):
 
 
         # we are good to get rolling, and to detect the runtime environment of
-        # the local LRMS.
+        # the local LRMS
         self._configure()
         logger.info("Discovered execution environment: %s", self.node_list)
 
