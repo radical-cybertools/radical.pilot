@@ -1922,20 +1922,7 @@ class LaunchMethodORTE(LaunchMethod):
             raise Exception("Couldn't find (g)stdbuf")
         stdbuf_arg = "-oL"
 
-        # Reserve compute nodes to offload agent too
-        reserved_size = 1 # TODO: make configurable
-        vm_size = len(lrms.node_list) - reserved_size
-        lrms.reserved_nodes = sorted(lrms.node_list)[-reserved_size:]
-        logger.info("Reserving nodes: %s" % lrms.reserved_nodes)
-
-      # # Mark the reserved node slots BUSY
-      # # NOTE: we don't need that anymore, as the nodelist is manipulated on
-      # LRMS level, before it reaches the scheduler
-      # for node in self._scheduler.reserved_nodes:
-      #     slots = []
-      #     for c in range(32):
-      #         slots.append('%s:%d' % (node, c))
-      #     self._scheduler._change_slot_states(slots, BUSY)
+        vm_size = len(lrms.node_list)
 
         logger.info("Starting ORTE DVM on %d nodes ..." % vm_size)
 
