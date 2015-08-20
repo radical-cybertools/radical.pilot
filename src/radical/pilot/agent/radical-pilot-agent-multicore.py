@@ -1993,11 +1993,10 @@ class LaunchMethodORTE(LaunchMethod):
 
             logger.info('DVM stopped (%d)' % dvm_process.returncode)
 
-        dvm_watcher = threading.Thread(target=watch_dvm, name="DVMWatcher")
-        dvm_watcher.start ()
+        dvm_watcher = threading.Thread(target=_watch_dvm, args=(dvm_process,), name="DVMWatcher")
+        dvm_watcher.start()
 
-        lm_info = {'dvm_uri'     : dvm_uri, 
-                   'dvm_watcher' : dvm_watcher}
+        lm_info = {'dvm_uri': dvm_uri}
 
         # we need to inform the actual LM instance about the DVM URI.  So we
         # pass it back to the LRMS which will keep it in an 'lm_info', which
