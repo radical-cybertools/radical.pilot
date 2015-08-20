@@ -24,7 +24,7 @@
         "agent.0"   : {
             "target"     : "local",
             "sub_agents" : ["agent.1", "agent.2"],
-            "pull_units" : 1,
+            "pull_units" : true,
             "bridges" : [
                 # which bridges are to be started by this agent
                 "agent_staging_input_queue",
@@ -45,7 +45,6 @@
         "agent.1"   : {
             "target"     : "agent_node[0]",
             "sub_agents" : [],
-            "pull_units" : 0,
             "components" : {
                 "agent_staging_input_component"  : 4,
                 "agent_executing_component"      : 8,
@@ -55,7 +54,6 @@
         "agent.2"   : {
             "target"     : "agent_node[1]",
             "sub_agents" : [],
-            "pull_units" : 0,
             "components" : {
                 "agent_staging_input_component"  : 4,
                 "agent_executing_component"      : 8,
