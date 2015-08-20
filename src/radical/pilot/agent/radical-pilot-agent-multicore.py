@@ -1966,7 +1966,8 @@ class LaunchMethodORTE(LaunchMethod):
                     # Process is gone: fatal!
                     raise Exception("ORTE DVM process disappeared")
 
-
+        #######################################################################
+        #
         def _watch_dvm(dvm_process):
 
             logger.info('starting DVM watcher')
@@ -2181,7 +2182,6 @@ class LRMS(object):
             else :
                 raise ValueError("ill-formatted agent target '%s'" % target)
 
-
         # we are good to get rolling, and to detect the runtime environment of
         # the local LRMS
         self._configure()
@@ -2195,11 +2195,10 @@ class LRMS(object):
 
         # check if the LRMS implementation reserved agent nodes.  If not, pick
         # the first couple of nodes from the nodelist as a fallback
-        # TODO: isn't agent_node always empty here?
-        if len(self._agent_reqs) and not self.agent_nodes:
+        if len(self._agent_reqs):
             self._log.info('use fallback to determine set of agent nodes')
             for ar in self._agent_reqs:
-                self.agent_nodes[ar] = self.node_list.pop(0)
+                self.agent_nodes[ar] = self.node_list.pop()
                 if not self.node_list:
                     break
 
@@ -5180,7 +5179,7 @@ class AgentWorker(rpu.Worker):
                         launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
                         opaque_slots=opaque_slots)
 
-            # spawn the SA
+            # spawn the sub-agent
             self._prof.prof("create", msg=sa)
             self._log.info ("create sub-agent %s: %s" % (sa, cmd))
             sa_out = open("%s.out" % sa, "w")
