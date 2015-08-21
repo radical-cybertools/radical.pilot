@@ -13,11 +13,15 @@ import radical.utils as ru
 #
 _prof_fields  = ['time', 'name', 'uid', 'state', 'event', 'msg']
 _prof_entries = [
-    ('a_get_u',         'MainThread',      'get', 'MongoDB to Agent (PendingExecution)'),
-    ('a_build_u',       'MainThread',      'Agent get unit meta', ''),
-    ('a_mkdir_u',       'MainThread',      'Agent get unit mkdir', ''),
-    ('a_notify_alloc',  'MainThread',      'put', 'Agent to update_queue (Allocating)'),
-    ('a_to_s',          'MainThread',      'put', 'Agent to schedule_queue (Allocating)'),
+    ('a_get_u',         'Agent',           'get', 'MongoDB to Agent (PendingAgentInputStaging)'),
+    ('a_build_u',       'Agent',           'Agent get unit meta', ''),
+    ('a_mkdir_u',       'Agent',           'Agent get unit mkdir', ''),
+    ('a_notify_alloc',  'Agent',           'put', 'Agent to update_queue (Allocating)'),
+    ('a_to_s',          'Agent',           'put', 'Agent to schedule_queue (Allocating)'),
+
+    ('siw_get_u',       'StageinWorker',   'get', 'stagein_queue to StageinWorker (AgentStagingInput)'),
+    ('siw_u_done',      'StageinWorker',   'put', 'StageinWorker to schedule_queue (Allocating)'),
+    ('siw_notify_done', 'StageinWorker',   'put', 'StageinWorker to update_queue (Allocating)'),
 
     ('s_get_alloc',     'CONTINUOUS',      'get', 'schedule_queue to Scheduler (Allocating)'),
     ('s_alloc_failed',  'CONTINUOUS',      'schedule', 'allocation failed'),
@@ -36,11 +40,11 @@ _prof_entries = [
     ('ewa_get',         'ExecWatcher',     'get', 'ExecWatcher picked up unit'),
     ('ewa_complete',    'ExecWatcher',     'execution complete', ''),
     ('ewa_notify_so',   'ExecWatcher',     'put', 'ExecWatcher to update_queue (StagingOutput)'),
-    ('ewa_to_sow',      'ExecWatcher',     'put', 'ExecWatcher to stageout_queue (StagingOutput)'),
-  
-    ('sow_get_u',       'StageoutWorker',  'get', 'stageout_queue to StageoutWorker (StagingOutput)'),
+    ('ewa_to_sow',      'ExecWatcher',     'put', 'ExecWatcher to stageout_queue (PendingAgentOutputStaging)'),
+
+    ('sow_get_u',       'StageoutWorker',  'get', 'stageout_queue to StageoutWorker (AgentOutputStaging)'),
     ('sow_u_done',      'StageoutWorker',  'final', 'stageout done'),
-    ('sow_notify_done', 'StageoutWorker',  'put', 'StageoutWorker to update_queue (Done)'),
+    ('sow_notify_done', 'StageoutWorker',  'put', 'StageoutWorker to update_queue (PendingOutputStaging)'),
 
     ('uw_get_alloc',    'UpdateWorker',    'get', 'update_queue to UpdateWorker (Allocating)'),   
     ('uw_push_alloc',   'UpdateWorker',    'unit update pushed (Allocating)', ''),
