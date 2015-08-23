@@ -137,7 +137,7 @@ class Session (saga.Session):
                             % (self._database_url, ex))  
 
         # initialize profiling
-        rpu.prof_init('%s' % self.uid, uid=self.uid)
+        self.prof = rpu.Profiler('%s' % self.uid, uid=self.uid)
 
         # Loading all "default" resource configurations
         module_path   = os.path.dirname(os.path.abspath(__file__))
@@ -183,7 +183,7 @@ class Session (saga.Session):
         default_aliases = "%s/configs/aliases.json" % module_path
         self._resource_aliases = ru.read_json_str (default_aliases)['aliases']
 
-        rpu.prof('configs parsed', uid=self.uid)
+        self.prof.prof('configs parsed', uid=self.uid)
 
 
     #---------------------------------------------------------------------------
@@ -218,7 +218,7 @@ class Session (saga.Session):
         """
 
         logger.debug("session %s closing" % (str(self.uid)))
-        rpu.prof("close", uid=self.uid)
+        self.prof.prof("close", uid=self.uid)
 
         uid = self.uid
 
@@ -256,12 +256,12 @@ class Session (saga.Session):
             logger.debug("session %s closed   umgr   %s" % (str(self.uid), umgr._uid))
 
         if  cleanup :
-            rpu.prof("cleaning", uid=self.uid)
+            self.prof.prof("cleaning", uid=self.uid)
             self._destroy_db_entry()
-            rpu.prof("cleaned", uid=self.uid)
+            self.prof.prof("cleaned", uid=self.uid)
 
         logger.debug("session %s closed" % (str(self.uid)))
-        rpu.prof("closed", uid=self.uid)
+        self.prof.prof("closed", uid=self.uid)
 
         self._valid = False
 

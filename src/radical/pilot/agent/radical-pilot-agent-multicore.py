@@ -529,7 +529,8 @@ class Scheduler(threading.Thread):
         self._wait_pool       = list()
         self._wait_queue_lock = threading.RLock()
 
-        rpu.prof('sync ref', msg='agent start')
+        self.prof = rpu.Profiler("scheduler.prof")
+        self.prof.prof('sync ref', msg='agent start')
 
         self._configure()
 
@@ -568,8 +569,8 @@ class Scheduler(threading.Thread):
     #
     def stop(self):
         
-        rpu.prof ('stop request')
-        rpu.flush_prof()
+        self.prof.prof ('stop request')
+        self.prof.flush()
         self._terminate.set()
 
 
@@ -618,12 +619,12 @@ class Scheduler(threading.Thread):
             return False
 
         # got an allocation, go off and launch the process
-        rpu.prof('schedule', msg="allocated", uid=cu['_id'], logger=self._log.warn)
+        self.prof.prof('schedule', msg="allocated", uid=cu['_id'], logger=self._log.warn)
         self._log.info (self.slot_status())
 
         cu_list, cu_dropped = rpu.blowup(self._config, cu, EXECUTION_QUEUE)
         for _cu in cu_list :
-            rpu.prof('put', msg="Scheduler to execution_queue (%s)" % _cu['state'], uid=_cu['_id'])
+            self.prof.prof('put', msg="Scheduler to execution_queue (%s)" % _cu['state'], uid=_cu['_id'])
             self._execution_queue.put(_cu)
 
         # we need to free allocated cores for dropped CUs
@@ -636,7 +637,7 @@ class Scheduler(threading.Thread):
     #
     def _reschedule(self):
 
-        rpu.prof('reschedule')
+        self.prof.prof('reschedule')
         self._log.info("slot status before reschedule: %s" % self.slot_status())
 
         # cycle through wait queue, and see if we get anything running now.  We
@@ -648,10 +649,10 @@ class Scheduler(threading.Thread):
                 # NOTE: this is final, remove it from the wait queue
                 with self._wait_queue_lock :
                     self._wait_pool.remove(cu)
-                    rpu.prof('unqueue', msg="re-allocation done", uid=cu['_id'])
+                    self.prof.prof('unqueue', msg="re-allocation done", uid=cu['_id'])
 
         self._log.info("slot status after  reschedule: %s" % self.slot_status ())
-        rpu.prof('reschedule done')
+        self.prof.prof('reschedule done')
 
 
     # --------------------------------------------------------------------------
@@ -663,7 +664,7 @@ class Scheduler(threading.Thread):
         # in a different thread....
         with self._lock :
 
-            rpu.prof('unschedule')
+            self.prof.prof('unschedule')
             self._log.info("slot status before unschedule: %s" % self.slot_status ())
 
             slots_released = False
@@ -678,18 +679,18 @@ class Scheduler(threading.Thread):
 
             # notify the scheduling thread of released slots
             if slots_released:
-                rpu.prof('put_cmd', msg="Scheduler to schedule_queue (%s)" % COMMAND_RESCHEDULE)
+                self.prof.prof('put_cmd', msg="Scheduler to schedule_queue (%s)" % COMMAND_RESCHEDULE)
                 self._schedule_queue.put(COMMAND_RESCHEDULE)
 
             self._log.info("slot status after  unschedule: %s" % self.slot_status ())
-            rpu.prof('unschedule done - reschedule')
+            self.prof.prof('unschedule done - reschedule')
 
 
     # --------------------------------------------------------------------------
     #
     def run(self):
 
-        rpu.prof('run')
+        self.prof.prof('run')
         while not self._terminate.is_set():
 
             try:
@@ -702,18 +703,18 @@ class Scheduler(threading.Thread):
 
                 # shutdown signal
                 if not request:
-                    rpu.prof('get_cmd', msg="schedule_queue to Scheduler (wakeup)")
+                    self.prof.prof('get_cmd', msg="schedule_queue to Scheduler (wakeup)")
                     continue
 
                 command = request[0]
                 cu      = request[1]
 
-                rpu.prof('get_cmd', msg="schedule_queue to Scheduler (%s)" % command)
+                self.prof.prof('get_cmd', msg="schedule_queue to Scheduler (%s)" % command)
 
                 if command == COMMAND_WAKEUP:
 
                     # nothing to do (other then testing self._terminate)
-                    rpu.prof('get_cmd', msg="schedule_queue to Scheduler (wakeup)")
+                    self.prof.prof('get_cmd', msg="schedule_queue to Scheduler (wakeup)")
                     continue
 
 
@@ -726,7 +727,7 @@ class Scheduler(threading.Thread):
 
                 elif command == COMMAND_SCHEDULE:
 
-                    rpu.prof('get', msg="schedule_queue to Scheduler (%s)" % cu['state'], uid=cu['_id'])
+                    self.prof.prof('get', msg="schedule_queue to Scheduler (%s)" % cu['state'], uid=cu['_id'])
 
                     # FIXME: this state update is not recorded?
                     cu['state'] = rp.ALLOCATING
@@ -741,7 +742,7 @@ class Scheduler(threading.Thread):
                             # No resources available, put in wait queue
                             with self._wait_queue_lock :
                                 self._wait_pool.append(_cu)
-                            rpu.prof('schedule', msg="allocation failed", uid=_cu['_id'])
+                            self.prof.prof('schedule', msg="allocation failed", uid=_cu['_id'])
 
 
                 elif command == COMMAND_UNSCHEDULE :
@@ -755,7 +756,7 @@ class Scheduler(threading.Thread):
                     # NOTE: unschedule() runs re-schedule, which probably
                     # should be delayed until this bulk has been worked
                     # on...
-                    rpu.prof('schedule', msg="unit deallocation", uid=cu['_id'])
+                    self.prof.prof('schedule', msg="unit deallocation", uid=cu['_id'])
                     self.unschedule(cu)
 
                 else :
@@ -766,7 +767,7 @@ class Scheduler(threading.Thread):
                 raise
 
             finally:
-                rpu.prof ('stop')
+                self.prof.prof ('stop')
 
 
 # ==============================================================================
@@ -1298,6 +1299,8 @@ class LaunchMethod(object):
         self._config    = config
         self._log       = logger
         self._scheduler = scheduler
+
+        self.prof = rpu.Profiler('launch_method.prof')
 
         self.launch_command = None
         self._configure()
@@ -2090,6 +2093,8 @@ class LRMS(object):
         self.slot_list = []
         self.node_list = []
         self.cores_per_node = None
+
+        self.prof = rpu.Profiler('lrms.prof')
 
         self._configure()
 
@@ -3307,6 +3312,8 @@ class ExecWorker(COMPONENT_TYPE):
 
         COMPONENT_TYPE.__init__(self)
 
+        self.prof = rpu.Profiler('exec_worker.prof')
+
         self.configure ()
 
 
@@ -3351,8 +3358,8 @@ class ExecWorker(COMPONENT_TYPE):
     #
     def stop(self):
 
-        rpu.prof ('stop request')
-        rpu.flush_prof()
+        self.prof.prof ('stop request')
+        self.prof.flush()
         self._terminate.set()
 
 
@@ -3410,8 +3417,8 @@ class ExecWorker_POPEN (ExecWorker) :
     def close(self):
 
         # shut down the watcher thread
-        rpu.prof ('stop request')
-        rpu.flush_prof()
+        self.prof.prof ('stop request')
+        self.prof.flush()
         self._terminate.set()
         self._watcher.join()
 
@@ -3448,7 +3455,7 @@ class ExecWorker_POPEN (ExecWorker) :
     #
     def run(self):
 
-        rpu.prof('run')
+        self.prof.prof('run')
         try:
             # report initial slot status
             # TODO: Where does this abstraction belong?  Scheduler!
@@ -3459,13 +3466,13 @@ class ExecWorker_POPEN (ExecWorker) :
                 cu = self._execution_queue.get()
 
                 if not cu :
-                    rpu.prof('get_cmd', msg="execution_queue to ExecWorker (wakeup)")
+                    self.prof.prof('get_cmd', msg="execution_queue to ExecWorker (wakeup)")
                     # 'None' is the wakeup signal
                     continue
 
                 cu['state'] = rp.EXECUTING
 
-                rpu.prof('get', msg="executing_queue to ExecutionWorker (%s)" % cu['state'], uid=cu['_id'])
+                self.prof.prof('get', msg="executing_queue to ExecutionWorker (%s)" % cu['state'], uid=cu['_id'])
 
                 try:
 
@@ -3488,7 +3495,7 @@ class ExecWorker_POPEN (ExecWorker) :
                         self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
                         assert(_cu['opaque_slot']) # FIXME: no assert, but check
-                        rpu.prof('ExecWorker unit launch', uid=_cu['_id'])
+                        self.prof.prof('ExecWorker unit launch', uid=_cu['_id'])
 
                         # Start a new subprocess to launch the unit
                         # TODO: This is scheduler specific
@@ -3520,14 +3527,14 @@ class ExecWorker_POPEN (ExecWorker) :
         except Exception as e:
             self._log.exception("Error in ExecWorker loop (%s)" % e)
 
-        rpu.prof ('stop')
+        self.prof.prof ('stop')
 
 
     # --------------------------------------------------------------------------
     #
     def spawn(self, launcher, cu):
 
-        rpu.prof('ExecWorker spawn', uid=cu['_id'])
+        self.prof.prof('ExecWorker spawn', uid=cu['_id'])
 
         launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu['workdir']
         self._log.debug("Created launch_script: %s", launch_script_name)
@@ -3591,7 +3598,7 @@ class ExecWorker_POPEN (ExecWorker) :
                 if hop_cmd : cmdline = hop_cmd
                 else       : cmdline = launch_script_name
 
-                rpu.prof('launch script constructed', uid=cu['_id'])
+                self.prof.prof('launch script constructed', uid=cu['_id'])
 
             except Exception as e:
                 msg = "Error in spawner (%s)" % e
@@ -3624,7 +3631,7 @@ class ExecWorker_POPEN (ExecWorker) :
         _stderr_file_h = open(cu['stderr_file'], "w")
 
         self._log.info("Launching unit %s via %s in %s", cu['_id'], cmdline, cu['workdir'])
-        rpu.prof('spawning pass to popen', uid=cu['_id'])
+        self.prof.prof('spawning pass to popen', uid=cu['_id'])
 
         proc = subprocess.Popen(args               = cmdline,
                                 bufsize            = 0,
@@ -3641,7 +3648,7 @@ class ExecWorker_POPEN (ExecWorker) :
                                 startupinfo        = None,
                                 creationflags      = 0)
 
-        rpu.prof('spawning passed to popen', uid=cu['_id'])
+        self.prof.prof('spawning passed to popen', uid=cu['_id'])
 
         cu['started'] = rpu.timestamp()
         cu['state']   = rp.EXECUTING
@@ -3656,7 +3663,7 @@ class ExecWorker_POPEN (ExecWorker) :
 
         cu_list, _ = rpu.blowup(self._config, cu, WATCH_QUEUE)
         for _cu in cu_list :
-            rpu.prof('put', msg="ExecWorker to watcher (%s)" % _cu['state'], uid=_cu['_id'])
+            self.prof.prof('put', msg="ExecWorker to watcher (%s)" % _cu['state'], uid=_cu['_id'])
             self._watch_queue.put(_cu)
 
 
@@ -3664,7 +3671,7 @@ class ExecWorker_POPEN (ExecWorker) :
     #
     def _watch(self):
 
-        rpu.prof('run')
+        self.prof.prof('run')
         try:
 
             while not self._terminate.is_set():
@@ -3674,7 +3681,7 @@ class ExecWorker_POPEN (ExecWorker) :
                 # See if there are cancel requests, or new units to watch
                 try:
                     command = self._command_queue.get_nowait()
-                    rpu.prof('get_cmd', msg="command_queue to ExecWatcher (%s)" % command[COMMAND_TYPE])
+                    self.prof.prof('get_cmd', msg="command_queue to ExecWatcher (%s)" % command[COMMAND_TYPE])
 
                     if command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
                         self._cus_to_cancel.append(command[COMMAND_ARG])
@@ -3693,7 +3700,7 @@ class ExecWorker_POPEN (ExecWorker) :
                     # learn about CUs until all slots are filled, because then
                     # we may not be able to catch finishing CUs in time -- so
                     # there is a fine balance here.  Balance means 100 (FIXME).
-                  # rpu.prof('ExecWorker popen watcher pull cu from queue')
+                  # self.prof.prof('ExecWorker popen watcher pull cu from queue')
                     MAX_QUEUE_BULKSIZE = 100
                     while len(cus) < MAX_QUEUE_BULKSIZE :
                         cus.append (self._watch_queue.get_nowait())
@@ -3707,7 +3714,7 @@ class ExecWorker_POPEN (ExecWorker) :
                 # add all cus we found to the watchlist
                 for cu in cus :
                     
-                    rpu.prof('get', msg="ExecWatcher picked up unit", uid=cu['_id'])
+                    self.prof.prof('get', msg="ExecWatcher picked up unit", uid=cu['_id'])
                     cu_list, _ = rpu.blowup(self._config, cu, WATCHER)
 
                     for _cu in cu_list :
@@ -3723,7 +3730,7 @@ class ExecWorker_POPEN (ExecWorker) :
         except Exception as e:
             self._log.exception("Error in ExecWorker watch loop (%s)" % e)
 
-        rpu.prof ('stop')
+        self.prof.prof ('stop')
 
 
     # --------------------------------------------------------------------------
@@ -3759,12 +3766,12 @@ class ExecWorker_POPEN (ExecWorker) :
                                                   uid    = cu['_id'],
                                                   state  = rp.CANCELED,
                                                   msg    = "unit execution canceled")
-                    rpu.prof('final', msg="execution canceled", uid=cu['_id'])
+                    self.prof.prof('final', msg="execution canceled", uid=cu['_id'])
                     # NOTE: this is final, cu will not be touched anymore
                     cu = None
 
             else:
-                rpu.prof('execution complete', uid=cu['_id'])
+                self.prof.prof('execution complete', uid=cu['_id'])
 
                 # we have a valid return code -- unit is final
                 action += 1
@@ -3784,7 +3791,7 @@ class ExecWorker_POPEN (ExecWorker) :
                             for line in txt.split("\n"):
                                 if line:
                                     x1, x2, x3 = line.split()
-                                    rpu.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
+                                    self.prof.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
                         except Exception as e:
                             self._log.error("Pre/Post profiling file read failed: `%s`" % e)
 
@@ -3796,7 +3803,7 @@ class ExecWorker_POPEN (ExecWorker) :
                                                   uid    = cu['_id'],
                                                   state  = rp.FAILED,
                                                   msg    = "unit execution failed")
-                    rpu.prof('final', msg="execution failed", uid=cu['_id'])
+                    self.prof.prof('final', msg="execution failed", uid=cu['_id'])
                     # NOTE: this is final, cu will not be touched anymore
                     cu = None
 
@@ -3813,7 +3820,7 @@ class ExecWorker_POPEN (ExecWorker) :
 
                     cu_list, _ = rpu.blowup(self._config, cu, STAGEOUT_QUEUE)
                     for _cu in cu_list :
-                        rpu.prof('put', msg="ExecWatcher to stageout_queue (%s)" % _cu['state'], uid=_cu['_id'])
+                        self.prof.prof('put', msg="ExecWatcher to stageout_queue (%s)" % _cu['state'], uid=_cu['_id'])
                         self._stageout_queue.put(_cu)
 
         return action
@@ -3843,7 +3850,7 @@ class ExecWorker_SHELL(ExecWorker):
 
         threading.current_thread().name = self.name
 
-        rpu.prof('run')
+        self.prof.prof('run')
 
         # Mimic what virtualenv's "deactivate" would do
         self._deactivate = "# deactivate pilot virtualenv\n"
@@ -3905,7 +3912,7 @@ class ExecWorker_SHELL(ExecWorker):
                                          name   = watcher_name)
         self._watcher.start ()
 
-        rpu.prof('run setup done')
+        self.prof.prof('run setup done')
 
         try:
             # report initial slot status
@@ -3914,17 +3921,17 @@ class ExecWorker_SHELL(ExecWorker):
 
             while not self._terminate.is_set():
 
-              # rpu.prof('ExecWorker pull cu from queue')
+              # self.prof.prof('ExecWorker pull cu from queue')
                 cu = self._execution_queue.get()
 
                 if not cu :
-                    rpu.prof('get_cmd', msg="execution_queue to ExecWorker (wakeup)")
+                    self.prof.prof('get_cmd', msg="execution_queue to ExecWorker (wakeup)")
                     # 'None' is the wakeup signal
                     continue
 
                 cu['state'] = rp.EXECUTING
 
-                rpu.prof('get', msg="executing_queue to ExecutionWorker (%s)" % cu['state'], uid=cu['_id'])
+                self.prof.prof('get', msg="executing_queue to ExecutionWorker (%s)" % cu['state'], uid=cu['_id'])
 
                 try:
 
@@ -3948,7 +3955,7 @@ class ExecWorker_SHELL(ExecWorker):
                         self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
                         assert(_cu['opaque_slot']) # FIXME: no assert, but check
-                        rpu.prof('ExecWorker unit launch', uid=_cu['_id'])
+                        self.prof.prof('ExecWorker unit launch', uid=_cu['_id'])
 
                         # Start a new subprocess to launch the unit
                         # TODO: This is scheduler specific
@@ -3979,7 +3986,7 @@ class ExecWorker_SHELL(ExecWorker):
         except Exception as e:
             self._log.exception("Error in ExecWorker loop (%s)" % e)
 
-        rpu.prof ('stop')
+        self.prof.prof ('stop')
 
 
     # --------------------------------------------------------------------------
@@ -4112,14 +4119,14 @@ timestamp () {
 
         uid = cu['_id']
 
-        rpu.prof('ExecWorker spawn', uid=uid)
+        self.prof.prof('ExecWorker spawn', uid=uid)
 
         # we got an allocation: go off and launch the process.  we get
         # a multiline command, so use the wrapper's BULK/LRUN mode.
         cmd       = self._cu_to_cmd (cu, launcher)
         run_cmd   = "BULK\nLRUN\n%s\nLRUN_EOT\nBULK_RUN\n" % cmd
 
-        rpu.prof('launch script constructed', uid=cu['_id'])
+        self.prof.prof('launch script constructed', uid=cu['_id'])
 
       # TODO: Remove this commented out block?
       # if  self.lrms.target_is_macos :
@@ -4156,12 +4163,12 @@ timestamp () {
             raise RuntimeError ("failed to run unit '%s': (%s)(%s)" \
                              % (run_cmd, ret, out))
 
-        rpu.prof('spawning passed to pty', uid=uid)
+        self.prof.prof('spawning passed to pty', uid=uid)
 
         # FIXME: this is too late, there is already a race with the monitoring
         # thread for this CU execution.  We need to communicate the PIDs/CUs via
         # a queue again!
-        rpu.prof('put', msg="ExecWorker to watcher (%s)" % cu['state'], uid=cu['_id'])
+        self.prof.prof('put', msg="ExecWorker to watcher (%s)" % cu['state'], uid=cu['_id'])
         with self._registry_lock :
             self._registry[pid] = cu
 
@@ -4179,7 +4186,7 @@ timestamp () {
         MONITOR_READ_TIMEOUT = 1.0   # check for stop signal now and then
         static_cnt           = 0
 
-        rpu.prof('run')
+        self.prof.prof('run')
         try:
 
             self.monitor_shell.run_async ("MONITOR")
@@ -4262,7 +4269,7 @@ timestamp () {
                         cu = self._registry.get (pid, None)
 
                     if cu:
-                        rpu.prof('get', msg="ExecWatcher picked up unit", uid=cu['_id'])
+                        self.prof.prof('get', msg="ExecWatcher picked up unit", uid=cu['_id'])
                         self._handle_event (cu, pid, state, data)
                     else:
                         self._cached_events.append ([pid, state, data])
@@ -4272,7 +4279,7 @@ timestamp () {
             self._log.error ("Exception in job monitoring thread: %s", e)
             self._terminate.set()
 
-        rpu.prof ('stop')
+        self.prof.prof ('stop')
 
 
     # --------------------------------------------------------------------------
@@ -4308,7 +4315,7 @@ timestamp () {
                                           msg   = "unit execution finished")
 
         elif rp_state in [rp.DONE] :
-            rpu.prof('execution complete', uid=cu['_id'])
+            self.prof.prof('execution complete', uid=cu['_id'])
             # advance the unit state
             self._schedule_queue.put ([COMMAND_UNSCHEDULE, cu])
             cu['state'] = rp.PENDING_AGENT_OUTPUT_STAGING,
@@ -4320,7 +4327,7 @@ timestamp () {
             cu_list, _ = rpu.blowup(self._config, cu, STAGEOUT_QUEUE)
 
             for _cu in cu_list :
-                rpu.prof('put', msg="ExecWatcher to stageout_queue (%s)" % _cu['state'], uid=_cu['_id'])
+                self.prof.prof('put', msg="ExecWatcher to stageout_queue (%s)" % _cu['state'], uid=_cu['_id'])
                 self._stageout_queue.put(_cu)
 
         # we don't need the cu in the registry anymore
@@ -4358,6 +4365,8 @@ class UpdateWorker(threading.Thread):
         self._mongo_db      = rpu.get_mongodb(mongodb_url, mongodb_name, mongodb_auth)
         self._cinfo         = dict()  # collection cache
 
+        self.prof = rpu.Profiler('update_worker.prof')
+
         # run worker thread
         self.start()
 
@@ -4365,8 +4374,8 @@ class UpdateWorker(threading.Thread):
     #
     def stop(self):
 
-        rpu.prof ('stop request')
-        rpu.flush_prof()
+        self.prof.prof ('stop request')
+        self.prof.flush()
         self._terminate.set()
 
 
@@ -4374,7 +4383,7 @@ class UpdateWorker(threading.Thread):
     #
     def run(self):
 
-        rpu.prof('run')
+        self.prof.prof('run')
         while not self._terminate.is_set():
 
             # ------------------------------------------------------------------
@@ -4392,14 +4401,14 @@ class UpdateWorker(threading.Thread):
                     res  = cinfo['bulk'].execute()
                     self._log.debug("bulk update result: %s", res)
 
-                    rpu.prof('unit update bulk pushed (%d)' % len(cinfo['uids']))
+                    self.prof.prof('unit update bulk pushed (%d)' % len(cinfo['uids']))
                     for entry in cinfo['uids']:
                         uid   = entry[0]
                         state = entry[1]
                         if state:
-                            rpu.prof('unit update pushed (%s)' % state, uid=uid)
+                            self.prof.prof('unit update pushed (%s)' % state, uid=uid)
                         else:
-                            rpu.prof('unit update pushed', uid=uid)
+                            self.prof.prof('unit update pushed', uid=uid)
 
                     cinfo['last'] = now
                     cinfo['bulk'] = None
@@ -4434,9 +4443,9 @@ class UpdateWorker(threading.Thread):
                 state = update_request.get('state', None)
 
                 if state :
-                    rpu.prof('get', msg="update_queue to UpdateWorker (%s)" % state, uid=uid)
+                    self.prof.prof('get', msg="update_queue to UpdateWorker (%s)" % state, uid=uid)
                 else:
-                    rpu.prof('get', msg="update_queue to UpdateWorker", uid=uid)
+                    self.prof.prof('get', msg="update_queue to UpdateWorker", uid=uid)
 
                 update_request_list, _ = rpu.blowup(self._config, update_request, UPDATE_WORKER)
 
@@ -4470,14 +4479,14 @@ class UpdateWorker(threading.Thread):
                                  .update(update_dict)
 
                     timed_bulk_execute(cinfo)
-                    rpu.prof('unit update bulked (%s)' % state, uid=uid)
+                    self.prof.prof('unit update bulked (%s)' % state, uid=uid)
 
             except Exception as e:
                 self._log.exception("unit update failed (%s)", e)
                 # FIXME: should we fail the pilot at this point?
                 # FIXME: Are the strategies to recover?
 
-        rpu.prof ('stop')
+        self.prof.prof ('stop')
 
 
 # ==============================================================================
@@ -4504,6 +4513,8 @@ class StageinWorker(threading.Thread):
         self._workdir         = workdir
         self._terminate       = threading.Event()
 
+        self.prof = rpu.Profiler('stagein_worker.prof')
+
         # run worker thread
         self.start()
 
@@ -4511,8 +4522,8 @@ class StageinWorker(threading.Thread):
     #
     def stop(self):
 
-        rpu.prof ('stop request')
-        rpu.flush_prof()
+        self.prof.prof ('stop request')
+        self.prof.flush()
         self._terminate.set()
 
 
@@ -4520,7 +4531,7 @@ class StageinWorker(threading.Thread):
     #
     def run(self):
 
-        rpu.prof('run')
+        self.prof.prof('run')
         while not self._terminate.is_set():
 
             try:
@@ -4528,11 +4539,11 @@ class StageinWorker(threading.Thread):
                 cu = self._stagein_queue.get()
 
                 if not cu:
-                    rpu.prof('get_cmd', msg="stagein_queue to StageinWorker (wakeup)")
+                    self.prof.prof('get_cmd', msg="stagein_queue to StageinWorker (wakeup)")
                     continue
 
                 cu['state'] = rp.AGENT_STAGING_INPUT
-                rpu.prof('get', msg="stagein_queue to StageinWorker (%s)" % cu['state'], uid=cu['_id'])
+                self.prof.prof('get', msg="stagein_queue to StageinWorker (%s)" % cu['state'], uid=cu['_id'])
 
                 cu_list, _ = rpu.blowup(self._config, cu, STAGEIN_WORKER)
                 for _cu in cu_list :
@@ -4542,12 +4553,12 @@ class StageinWorker(threading.Thread):
 
                     for directive in _cu['Agent_Input_Directives']:
 
-                        rpu.prof('Agent input_staging queue', uid=_cu['_id'],
+                        self.prof.prof('Agent input_staging queue', uid=_cu['_id'],
                                  msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
 
                         if directive['state'] != rp.PENDING :
                             # we ignore directives which need no action
-                            rpu.prof('Agent input_staging queue', uid=_cu['_id'], msg='ignored')
+                            self.prof.prof('Agent input_staging queue', uid=_cu['_id'], msg='ignored')
                             continue
 
 
@@ -4605,7 +4616,7 @@ class StageinWorker(threading.Thread):
                                                           msg    = log_message)
 
                     # Agent staging is all done, unit can go to ALLOCATING
-                    rpu.prof('log', msg="no staging to do -- go allocate", uid=_cu['_id'])
+                    self.prof.prof('log', msg="no staging to do -- go allocate", uid=_cu['_id'])
                     _cu['state'] = rp.ALLOCATING
                     self._agent.update_unit_state(src    = 'StageinWorker',
                                                   uid    = _cu['_id'],
@@ -4614,14 +4625,14 @@ class StageinWorker(threading.Thread):
 
                     _cu_list, _ = rpu.blowup(self._config, _cu, SCHEDULE_QUEUE)
                     for __cu in _cu_list :
-                        rpu.prof('put', msg="StageinWorker to schedule_queue (%s)" % __cu['state'], uid=__cu['_id'])
+                        self.prof.prof('put', msg="StageinWorker to schedule_queue (%s)" % __cu['state'], uid=__cu['_id'])
                         self._schedule_queue.put([COMMAND_SCHEDULE, __cu])
 
             except Exception as e:
                 self._log.exception('worker died')
                 sys.exit(1)
 
-        rpu.prof ('stop')
+        self.prof.prof ('stop')
 
 
 # ==============================================================================
@@ -4657,6 +4668,8 @@ class StageoutWorker(threading.Thread):
         self._workdir         = workdir
         self._terminate       = threading.Event()
 
+        self.prof = rpu.Profiler('stageout_worker.prof')
+
         # run worker thread
         self.start()
 
@@ -4664,8 +4677,8 @@ class StageoutWorker(threading.Thread):
     #
     def stop(self):
 
-        rpu.prof ('stop request')
-        rpu.flush_prof()
+        self.prof.prof ('stop request')
+        self.prof.flush()
         self._terminate.set()
 
 
@@ -4673,7 +4686,7 @@ class StageoutWorker(threading.Thread):
     #
     def run(self):
 
-        rpu.prof('run')
+        self.prof.prof('run')
 
         staging_area = os.path.join(self._workdir, self._config['staging_area'])
 
@@ -4685,7 +4698,7 @@ class StageoutWorker(threading.Thread):
                 cu = self._stageout_queue.get()
 
                 if not cu:
-                    rpu.prof('get_cmd', msg="stageout_queue to StageoutWorker (wakeup)")
+                    self.prof.prof('get_cmd', msg="stageout_queue to StageoutWorker (wakeup)")
                     continue
 
                 cu['state'] = rp.AGENT_STAGING_OUTPUT
@@ -4693,7 +4706,7 @@ class StageoutWorker(threading.Thread):
                 cu_list, _ = rpu.blowup(self._config, cu, STAGEOUT_WORKER)
                 for _cu in cu_list :
 
-                    rpu.prof('get', msg="stageout_queue to StageoutWorker (%s)" % _cu['state'], uid=_cu['_id'])
+                    self.prof.prof('get', msg="stageout_queue to StageoutWorker (%s)" % _cu['state'], uid=_cu['_id'])
 
                     sandbox = os.path.join(self._workdir, '%s' % _cu['_id'])
 
@@ -4725,13 +4738,13 @@ class StageoutWorker(threading.Thread):
                                 for line in txt.split("\n"):
                                     if line:
                                         x1, x2, x3 = line.split()
-                                        rpu.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
+                                        self.prof.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
                             except Exception as e:
                                 self._log.error("Pre/Post profiling file read failed: `%s`" % e)
 
                     for directive in _cu['Agent_Output_Directives']:
 
-                        rpu.prof('Agent output_staging', uid=_cu['_id'],
+                        self.prof.prof('Agent output_staging', uid=_cu['_id'],
                                  msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
 
                         # Perform output staging
@@ -4794,7 +4807,7 @@ class StageoutWorker(threading.Thread):
 
                     # Agent output staging is done.
 
-                    #rpu.prof('final', msg="stageout done", uid=_cu['_id'])
+                    #self.prof.prof('final', msg="stageout done", uid=_cu['_id'])
                     _cu['state'] = rp.PENDING_OUTPUT_STAGING
                     self._agent.update_unit_state(src    = 'StageoutWorker',
                                                   uid    = _cu['_id'],
@@ -4824,7 +4837,7 @@ class StageoutWorker(threading.Thread):
                 # *last* actions of the loop above -- otherwise we may get
                 # invalid state transitions...
                 if cu:
-                    rpu.prof('final', msg="stageout failed", uid=cu['_id'])
+                    self.prof.prof('final', msg="stageout failed", uid=cu['_id'])
                     cu['state'] = rp.FAILED
                     self._agent.update_unit_state(src    = 'StageoutWorker',
                                                   uid    = cu['_id'],
@@ -4846,7 +4859,7 @@ class StageoutWorker(threading.Thread):
                 # forward the exception
                 raise
 
-        rpu.prof ('stop')
+        self.prof.prof ('stop')
 
 
 # ==============================================================================
@@ -4874,6 +4887,8 @@ class HeartbeatMonitor(threading.Thread):
         self._runtime         = runtime
         self._terminate       = threading.Event()
 
+        self.prof = rpu.Profiler('heartbeat.prof')
+
         # run worker thread
         self.start()
 
@@ -4881,8 +4896,8 @@ class HeartbeatMonitor(threading.Thread):
     #
     def stop(self):
 
-        rpu.prof ('stop request')
-        rpu.flush_prof()
+        self.prof.prof ('stop request')
+        self.prof.flush()
         self._terminate.set()
         self._agent.stop()
 
@@ -4891,11 +4906,11 @@ class HeartbeatMonitor(threading.Thread):
     #
     def run(self):
 
-        rpu.prof('run')
+        self.prof.prof('run')
         while not self._terminate.is_set():
 
             try:
-                rpu.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!')
+                self.prof.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!')
                 self._check_commands()
                 self._check_state   ()
                 time.sleep(self._config['heartbeat_interval'])
@@ -4904,7 +4919,7 @@ class HeartbeatMonitor(threading.Thread):
                 self._log.exception('error in heartbeat monitor (%s)', e)
                 self.stop()
 
-        rpu.prof ('stop')
+        self.prof.prof ('stop')
 
 
     # --------------------------------------------------------------------------
@@ -4930,23 +4945,23 @@ class HeartbeatMonitor(threading.Thread):
 
             command_str = '%s:%s' % (command[COMMAND_TYPE], command[COMMAND_ARG])
 
-            rpu.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s)" % command_str)
+            self.prof.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s)" % command_str)
 
             if command[COMMAND_TYPE] == COMMAND_CANCEL_PILOT:
                 self.stop()
                 pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
-                rpu.flush_prof()
+                self.prof.flush()
                 sys.exit(1)
 
             elif state == rp.CANCELING:
                 self.stop()
                 pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL implied. Terminating.")
-                rpu.flush_prof()
+                self.prof.flush()
                 sys.exit(1)
 
             elif command[COMMAND_TYPE] == COMMAND_CANCEL_COMPUTE_UNIT:
                 self._log.info("Received Cancel Compute Unit command for: %s", command[COMMAND_ARG])
-                rpu.prof('put_cmd', msg="HeartbeatMonitor to command_queue (%s)" % command_str,
+                self.prof.prof('put_cmd', msg="HeartbeatMonitor to command_queue (%s)" % command_str,
                         uid=command[COMMAND_ARG])
                 # Put it on the command queue of the ExecWorker
                 self._command_queue.put(command)
@@ -4993,7 +5008,8 @@ class Agent(object):
             mongodb_url, mongodb_name, mongodb_auth,
             pilot_id, session_id):
 
-        rpu.prof('Agent init')
+        self.prof = rpu.Profiler(target="agent.prof", uid=pilot_id)
+        self.prof.prof('Agent init')
 
         threading.current_thread().name = name
 
@@ -5129,7 +5145,7 @@ class Agent(object):
                 pilot_id        = self._pilot_id)
         self.worker_list.append(hbmon)
 
-        rpu.prof('Agent init done')
+        self.prof.prof('Agent init done')
 
 
     # --------------------------------------------------------------------------
@@ -5140,8 +5156,8 @@ class Agent(object):
         main loop finishes (see run())
         """
 
-        rpu.prof ('stop request')
-        rpu.flush_prof()
+        self.prof.prof('stop request')
+        self.prof.flush()
         self._terminate.set()
 
 
@@ -5169,9 +5185,9 @@ class Agent(object):
                                            'timestamp' : rpu.timestamp()}
 
         if state:
-            rpu.prof('put', msg="%s to update_queue (%s)" % (src, state), uid=query_dict['_id'])
+            self.prof.prof('put', msg="%s to update_queue (%s)" % (src, state), uid=query_dict['_id'])
         else:
-            rpu.prof('put', msg="%s to update_queue" % src, uid=query_dict['_id'])
+            self.prof.prof('put', msg="%s to update_queue" % src, uid=query_dict['_id'])
 
         query_list, _ = rpu.blowup(self._config, query_dict, UPDATE_QUEUE)
 
@@ -5223,7 +5239,7 @@ class Agent(object):
     #
     def run(self):
 
-        rpu.prof('run')
+        self.prof.prof('run')
 
         # first order of business: set the start time and state of the pilot
         self._log.info("Agent %s starting ...", self._pilot_id)
@@ -5259,7 +5275,7 @@ class Agent(object):
                 self.stop()
                 pilot_FAILED(self._p, self._pilot_id, self._log,
                     "ERROR in agent main loop: %s. %s" % (e, traceback.format_exc()))
-                rpu.flush_prof()
+                self.prof.flush()
                 sys.exit(1)
 
         # main loop terminated, so self._terminate was set
@@ -5284,8 +5300,8 @@ class Agent(object):
         pilot_CANCELED(self._p, self._pilot_id, self._log,
                 "Terminated (_terminate set).")
 
-        rpu.prof ('stop')
-        rpu.flush_prof()
+        self.prof.prof ('stop')
+        self.prof.flush()
         sys.exit(0)
 
 
@@ -5325,12 +5341,12 @@ class Agent(object):
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline)
         if cu_list:
-            rpu.prof('Agent get units', msg="bulk size: %d" % cu_cursor.count(),
+            self.prof.prof('Agent get units', msg="bulk size: %d" % cu_cursor.count(),
                  logger=self._log.info)
 
         for cu in cu_list:
 
-            rpu.prof('get', msg="MongoDB to Agent (%s)" % cu['state'], uid=cu['_id'], logger=self._log.info)
+            self.prof.prof('get', msg="MongoDB to Agent (%s)" % cu['state'], uid=cu['_id'], logger=self._log.info)
 
             _cu_list, _ = rpu.blowup(self._config, cu, AGENT)
             for _cu in _cu_list :
@@ -5354,10 +5370,10 @@ class Agent(object):
                         stderr_file = 'STDERR'
                     _cu['stderr_file'] = os.path.join(workdir, stderr_file)
 
-                    rpu.prof('Agent get unit meta', uid=_cu['_id'])
+                    self.prof.prof('Agent get unit meta', uid=_cu['_id'])
                     # create unit sandbox
                     rec_makedir(workdir)
-                    rpu.prof('Agent get unit mkdir', uid=_cu['_id'])
+                    self.prof.prof('Agent get unit mkdir', uid=_cu['_id'])
 
                     # and send to staging 
                     _cu['state'] = rp.AGENT_STAGING_INPUT
@@ -5368,14 +5384,14 @@ class Agent(object):
 
                     _cu_list, _ = rpu.blowup(self._config, _cu, STAGEIN_QUEUE)
                     for __cu in _cu_list :
-                        rpu.prof('put', msg="Agent to stagein_queue (%s)" % __cu['state'], uid=__cu['_id'])
+                        self.prof.prof('put', msg="Agent to stagein_queue (%s)" % __cu['state'], uid=__cu['_id'])
                         self._stagein_queue.put(__cu)
 
                 except Exception as e:
                     # if any unit sorting step failed, the unit did not end up in
                     # a queue (its always the last step).  We set it to FAILED
                     msg = "could not sort unit (%s)" % e
-                    rpu.prof('error', msg=msg, uid=_cu['_id'], logger=self._log.exception)
+                    self.prof.prof('error', msg=msg, uid=_cu['_id'], logger=self._log.exception)
                     _cu['state'] = rp.FAILED
                     self.update_unit_state(src    = 'Agent',
                                            uid    = _cu['_id'],
@@ -5431,7 +5447,7 @@ def main():
     if not options.runtime              : parser.error("Missing or zero agent runtime (-r)")
     if not options.session_id           : parser.error("Missing session id (-s)")
 
-    rpu.prof_init(options.session_id, uid=options.pilot_id)
+    prof = rpu.Profiler(options.session_id, uid=options.pilot_id)
 
     # configure the agent logger
     logger    = logging.getLogger  ('radical.pilot.agent')
@@ -5451,7 +5467,7 @@ def main():
     def sigint_handler(signum, frame):
         msg = 'Caught SIGINT. EXITING. (%s: %s)' % (signum, frame)
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        rpu.flush_prof()
+        prof.flush()
         sys.exit(2)
     signal.signal(signal.SIGINT, sigint_handler)
 
@@ -5461,7 +5477,7 @@ def main():
         msg = 'Caught SIGALRM (Walltime limit reached?). EXITING (%s: %s)' \
             % (signum, frame)
         pilot_FAILED(mongo_p, options.pilot_id, logger, msg)
-        rpu.flush_prof()
+        prof.flush()
         sys.exit(3)
     signal.signal(signal.SIGALRM, sigalarm_handler)
 
@@ -5488,14 +5504,14 @@ def main():
     try:
         # ----------------------------------------------------------------------
         # Establish database connection
-        rpu.prof('db setup')
+        prof.prof('db setup')
         mongo_db = rpu.get_mongodb(options.mongodb_url, options.mongodb_name,
                                    options.mongodb_auth)
         mongo_p  = mongo_db["%s.p" % options.session_id]
 
         # ----------------------------------------------------------------------
         # Launch the agent thread
-        rpu.prof('Agent create')
+        prof.prof('Agent create')
         agent = Agent(
                 name               = 'Agent',
                 config             = agent_config,
@@ -5515,23 +5531,23 @@ def main():
         )
 
         agent.run()
-        rpu.prof('Agent done')
+        prof.prof('Agent done')
 
     except SystemExit:
         logger.error("Caught keyboard interrupt. EXITING")
-        rpu.flush_prof()
+        prof.flush()
         return(6)
 
     except Exception as e:
         error_msg = "Error running agent: %s" % str(e)
         logger.exception(error_msg)
         pilot_FAILED(mongo_p, options.pilot_id, logger, error_msg)
-        rpu.flush_prof()
+        prof.flush()
         sys.exit(7)
 
     finally:
-        rpu.prof('stop', msg='finally clause')
-        rpu.flush_prof()
+        prof.prof('stop', msg='finally clause')
+        prof.flush()
         sys.exit(8)
 
 

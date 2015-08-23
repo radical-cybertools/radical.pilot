@@ -72,21 +72,23 @@ class Profiler (object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, target, uid=None, logger=None):
+    def __init__ (self, target, uid=None, logger=None, enabled=False):
 
         # this init is only called once (globally).  We synchronize clocks and
         # set timestamp_zero
 
-        # we only profile if so instructed
-        if 'RADICAL_PILOT_PROFILE' in os.environ:
-            self._enabled = True
-        else:
-            self._enabled = False
-            return
-
         self._target  = target
         self._handles = dict()
         self._logger  = logger
+
+        # we only profile if so instructed
+        if enabled or 'RADICAL_PILOT_PROFILE' in os.environ:
+            if logger: logger('enabled!')
+            self._enabled = True
+        else:
+            if logger: logger('disabled!')
+            self._enabled = False
+            return
 
         self._ts_zero, self._ts_abs = self._timestamp_init()
 
@@ -206,23 +208,6 @@ class Profiler (object):
 
 # --------------------------------------------------------------------------
 #
-# methods to keep the new Profiler class backward compatible
-#
-_p = None
-def prof_init(target, uid="", logger=None):
-    global _p
-    _p = Profiler (target, uid, logger)
-
-def prof(etype, uid="", msg="", timestamp=None, logger=None):
-    global _p
-    _p and _p.prof(etype=etype, uid=uid, msg=msg, timestamp=timestamp, logger=logger)
-
-def flush_prof():
-    global _p
-    _p and _p.flush()
-
-# --------------------------------------------------------------------------
-#
 def timestamp():
     # human readable absolute UTC timestamp for log entries in database
     return datetime.datetime.utcnow()
@@ -262,6 +247,8 @@ def prof2frame(prof):
     # --------------------------------------------------------------------------
     # add a flag to indicate entity type
     def _entity (row):
+        if not row['uid']:
+            return 'session'
         if 'unit' in row['uid']:
             return 'unit'
         if 'pilot' in row['uid']:
@@ -272,7 +259,10 @@ def prof2frame(prof):
     # --------------------------------------------------------------------------
     # add a flag to indicate if a unit / pilot / ... is cloned
     def _cloned (row):
-        return 'clone' in row['uid'].lower()
+        if not row['uid']:
+            return False
+        else:
+            return 'clone' in row['uid'].lower()
     frame['cloned'] = frame.apply(lambda row: _cloned (row), axis=1)
 
     # --------------------------------------------------------------------------
@@ -282,7 +272,7 @@ def prof2frame(prof):
     def _info (row):
         for info, name, event, msg in _prof_entries:
             ret = np.NaN
-            if  name  in row['name']  and \
+            if  row['name'] and name  in row['name']  and \
                 event == row['event'] and \
                 msg   == row['msg']   :
                 ret = info
@@ -499,14 +489,14 @@ def blowup(config, cus, component, logger=None):
         cus = [cus]
 
     # blowup is only enabled on profiling
-    global _p
-    if not _p or not _p.enabled: 
+    if 'RADICAL_PILOT_PROFILE' not in os.environ:
         return
 
     factor = config['blowup_factor'].get (component, 1)
     drop   = config['drop_clones']  .get (component, 1)
 
-    prof ("debug", msg="%s drops with %s" % (component, drop))
+    # FIXME
+  # prof ("debug", msg="%s drops with %s" % (component, drop))
 
     cloned  = list()
     dropped = list()
@@ -518,13 +508,15 @@ def blowup(config, cus, component, logger=None):
         if drop >= 1:
             # drop clones --> drop matching uid's
             if '.clone_' in uid :
-                prof ('drop clone', msg=component, uid=uid)
+                # FIXME
+              # prof ('drop clone', msg=component, uid=uid)
                 dropped.append(cu)
                 continue
 
         if drop >= 2:
             # drop everything, even original units
-            prof ('drop', msg=component, uid=uid)
+            # FIXME
+          # prof ('drop', msg=component, uid=uid)
             dropped.append(cu)
             continue
 
@@ -544,7 +536,8 @@ def blowup(config, cus, component, logger=None):
 
             idx += 1
             cloned.append(cu_clone)
-            prof('add clone', msg=component, uid=clone_id)
+            # FIXME
+          # prof('add clone', msg=component, uid=clone_id)
 
         # For any non-zero factor, append the original unit -- factor==0 lets us
         # drop the cu.
