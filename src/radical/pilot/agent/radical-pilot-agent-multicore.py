@@ -5531,12 +5531,10 @@ def bootstrap_3():
             # and the sub_agent will pick its own layout section -- but in principle
             # this is also the point where we would make individual config changes.
 
-            # dig oput bridges from all sub-agents (sa)
+            # dig output bridges from all sub-agents (sa)
             bridge_addresses = dict()
             for sa in cfg['agent_layout']:
 
-                target = cfg['agent_layout'][sa]['target']
-                node   = cfg['lrms_info']['agent_nodes'].get(target)
                 nodeip = LRMS.hostip()
 
                 # we should have at most one bridge for every type
