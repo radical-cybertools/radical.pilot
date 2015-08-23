@@ -2163,56 +2163,58 @@ class LRMS(object):
         self.lm_info         = dict()
         self.slot_list       = list()
         self.node_list       = list()
-        self.agent_nodes     = dict()
+        self.agent_nodes     = {}
         self.cores_per_node  = None
 
-        # the LRMS will need to reserve nodes for the agent, according to the
-        # agent layout.  We dig out the repsective requirements from the config
+        # The LRMS will possibly need to reserve nodes for the agent, according to the
+        # agent layout.  We dig out the respective requirements from the config
         # right here.
-        self._agent_reqs = set()  # using set will avoid duplicates
+        self._agent_reqs = []
         layout = self._cfg['agent_layout']
         for worker in layout:
             target = layout[worker].get('target')
-            # make sure that the target either 'local', which we will ignore, or
-            # 'agent_node[<n>]', for some integer 'n' >= 0
+            # make sure that the target either 'local', which we will ignore,
+            # or 'node'.
             if target == 'local':
                 pass # ignore that one
-            elif target.startswith('agent_node[') and \
-                 target.endswith(']') and \
-                 (int(target[11:-1]) >= 0) :
-                self._agent_reqs.add(target)
+            elif target == 'node':
+                self._agent_reqs.append(worker)
             else :
                 raise ValueError("ill-formatted agent target '%s'" % target)
 
-        # we are good to get rolling, and to detect the runtime environment of
-        # the local LRMS
+        # We are good to get rolling, and to detect the runtime environment of
+        # the local LRMS.
         self._configure()
         logger.info("Discovered execution environment: %s", self.node_list)
 
-        # make sure we got a valid nodelist and a valid setting for
+        # Make sure we got a valid nodelist and a valid setting for
         # cores_per_node
         if not self.node_list or self.cores_per_node < 1:
             raise RuntimeError('LRMS configuration invalid (%s)(%s)' % \
                     (self.node_list, self.cores_per_node))
 
-        # check if the LRMS implementation reserved agent nodes.  If not, pick
-        # the first couple of nodes from the nodelist as a fallback
-        if len(self._agent_reqs):
-            self._log.info('use fallback to determine set of agent nodes')
-            for ar in self._agent_reqs:
-                self.agent_nodes[ar] = self.node_list.pop()
+        # Check if the LRMS implementation reserved agent nodes.  If not, pick
+        # the first couple of nodes from the nodelist as a fallback.
+        if self._agent_reqs and not self.agent_nodes:
+            self._log.info('Determine list of agent nodes generically.')
+            for worker in self._agent_reqs:
+                # Get a node from the end of the node list
+                self.agent_nodes[worker] = self.node_list.pop()
+                # If all nodes are taken by workers now, we can safely stop,
+                # and let the raise below do its thing.
                 if not self.node_list:
                     break
 
         if self.agent_nodes:
-            self._log.info('reserved agent nodes: %s' % self.agent_nodes)
-            self._log.info('remaining work nodes: %s' % self.node_list)
+            self._log.info('Reserved agent nodes: %s' % self.agent_nodes.values())
+            self._log.info('Agent running on nodes: %s' % self.agent_nodes.keys())
+            self._log.info('Remaining work nodes: %s' % self.node_list)
 
-        # check if we can do any work
+        # Check if we can do any work
         if not self.node_list:
             raise RuntimeError('LRMS has no nodes left to run units')
 
-        # after LRMS configuration, we call any existing config hooks on the
+        # After LRMS configuration, we call any existing config hooks on the
         # launch methods.  Those hooks may need to adjust the LRMS settings
         # (hello ORTE).  We only call LM hooks *once*
         launch_methods = set() # set keeps entries unique
@@ -5156,12 +5158,15 @@ class AgentWorker(rpu.Worker):
 
         for sa in self._sub_cfg.get('sub_agents', []):
             target = self._cfg['agent_layout'][sa]['target']
-            node   = self._cfg['lrms_info']['agent_nodes'].get(target)
 
-            if not node :
+            if target == 'local':
+
                 # start agent locally
                 cmd = "/bin/sh %s/bootstrap_2.sh %s" % (os.getcwd(), sa)
-            else:
+
+            elif target == 'node':
+
+                node = self._cfg['lrms_info']['agent_nodes'].get(sa)
                 # start agent remotely, use launch method
                 # NOTE:  there is some implicit assumption that we can use
                 #        the 'agent_node' string as 'agent_string:0' and
@@ -5534,12 +5539,10 @@ def bootstrap_3():
             # and the sub_agent will pick its own layout section -- but in principle
             # this is also the point where we would make individual config changes.
 
-            # dig oput bridges from all sub-agents (sa)
+            # dig output bridges from all sub-agents (sa)
             bridge_addresses = dict()
             for sa in cfg['agent_layout']:
 
-                target = cfg['agent_layout'][sa]['target']
-                node   = cfg['lrms_info']['agent_nodes'].get(target)
                 nodeip = LRMS.hostip()
 
                 # we should have at most one bridge for every type
