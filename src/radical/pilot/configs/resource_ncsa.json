@@ -37,12 +37,13 @@
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "SHELL",
         "agent_launch_method"         : "APRUN",
+        "agent_config"                : "cray",
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",
         "pre_bootstrap"               : [
             "module load bw-python",
             "module use --append /u/sciteam/marksant/privatemodules",
-            "module load openmpi/2.x"
+            "module load openmpi/HEAD"
         ],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
