@@ -67,7 +67,7 @@ class Session():
 
         # make sure session doesn't exist already
         if self._db[sid].count() != 0:
-            raise DBEntryExistsException ("Session '%s' already exists." % sid)
+            raise RuntimeError("Session '%s' already exists." % sid)
 
         # create the db entry
         self._s = self._db["%s" % sid]

@@ -146,7 +146,8 @@ class Session (saga.Session):
                             % (self._dburl, ex))  
 
         # initialize profiling
-        self._prof = Profiler('%s' % self._uid)
+        self.prof = Profiler('session.%s' % self._uid)
+        self.prof.prof('start session', uid=self._uid)
 
         # Loading all "default" resource configurations
         module_path  = os.path.dirname(os.path.abspath(__file__))
@@ -192,11 +193,11 @@ class Session (saga.Session):
         default_aliases = "%s/configs/resource_aliases.json" % module_path
         self._resource_aliases = ru.read_json_str (default_aliases)['aliases']
 
-        self._prof.prof('configs parsed', uid=self._uid)
+        self.prof.prof('configs parsed', uid=self._uid)
 
         _rec = os.environ.get('RADICAL_PILOT_RECORD_SESSION')
         if _rec:
-            self._rec = "%s/%s" % (_rec, self.uid)
+            self._rec = "%s/%s" % (_rec, self._uid)
             os.system('mkdir -p %s' % self._rec)
             ru.write_json({'dburl' : str(self._dburl)}, "%s/session.json" % self._rec)
             logger.info("recording session in %s" % self._rec)
@@ -238,7 +239,9 @@ class Session (saga.Session):
         """
 
         logger.debug("session %s closing" % (str(self._uid)))
-        self._prof.prof("close", uid=self._uid)
+        self.prof.prof("close", uid=self._uid)
+
+        uid = self._uid
 
         if not self._valid:
             raise RuntimeError("Session object already closed.")
@@ -274,12 +277,12 @@ class Session (saga.Session):
             logger.debug("session %s closed   umgr   %s" % (str(self._uid), umgr._uid))
 
         if  cleanup :
-            self._prof.prof("cleaning", uid=self._uid)
+            self.prof.prof("cleaning", uid=self._uid)
             self._destroy_db_entry()
-            self._prof.prof("cleaned", uid=self._uid)
+            self.prof.prof("cleaned", uid=self._uid)
 
         logger.debug("session %s closed" % (str(self._uid)))
-        self._prof.prof("closed", uid=self._uid)
+        self.prof.prof("closed", uid=self._uid)
 
         self._valid = False
 

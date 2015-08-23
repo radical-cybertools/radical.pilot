@@ -1,6 +1,8 @@
 
 import os
 
+from ..states import *
+
 # ------------------------------------------------------------------------------
 #
 tmp = None
@@ -319,6 +321,67 @@ def add_derived(df):
         return 'clone' in row['uid'].lower()
     # --------------------------------------------------------------------------
     df['cloned'] = df.apply(lambda row: _cloned (row), axis=1)
+
+
+# ------------------------------------------------------------------------------
+#
+def add_states(df):
+    """
+    Add two additional columns: 'state_entered' and 'state_left'.  Those will
+    have entries for those events which signify the respective state
+    transitions.  An initial state will have NaN for 'state_left', otherwise all
+    transitions will have two entries, meaning the state changed from ... to ...
+    """
+    
+    import numpy
+
+    # --------------------------------------------------------------------------
+    _transitions = {
+            'a_get_u'         : [PENDING_AGENT_INPUT_STAGING, PENDING_AGENT_INPUT_STAGING],
+            'siw_get_u'       : [PENDING_AGENT_INPUT_STAGING, AGENT_STAGING_INPUT],
+            'siw_u_done'      : [AGENT_STAGING_INPUT, ALLOCATING],
+          # 's_get_alloc'     : [ALLOCATING, ALLOCATING],
+            's_alocated'      : [ALLOCATING, EXECUTING],
+          # 'ewo_get'         : [EXECUTING, EXECUTING],
+            'ewa_complete'    : [EXECUTING, PENDING_AGENT_OUTPUT_STAGING],
+            'sow_get_u'       : [PENDING_AGENT_OUTPUT_STAGING, AGENT_STAGING_OUTPUT],
+            'sow_notify_done' : [AGENT_STAGING_OUTPUT, DONE]
+            }
+    _uid_states = dict()
+    def _state (row):
+        return _transitions.get(row['info'], [numpy.NaN, numpy.NaN])
+    # --------------------------------------------------------------------------
+    df['state_from'], df['state_to'] = zip(*df.apply(lambda row: _state(row), axis=1))
+
+
+# ------------------------------------------------------------------------------
+#
+def get_span(df, spec):
+    """
+    get the timespan from the first of any of the listed events to the last of
+    any of the listed events.  Events are 'info' entries.
+    """
+    
+    import numpy
+
+    if not isinstance(spec, list):
+        spec = [spec]
+
+    first = float(df.tail(1)['time']) # max
+    last  = float(df.head(1)['time']) # min
+
+    ok = False
+    for s in spec:
+        tmp   = df[df['info'] == s]
+        if len(tmp):
+            ok = True
+            first = min(first, float(tmp.head(1).iloc[0]['time']))
+            last  = max(last,  float(tmp.tail(1).iloc[0]['time']))
+
+    if not ok:
+        return None
+
+    return last - first
 
 
 # ------------------------------------------------------------------------------

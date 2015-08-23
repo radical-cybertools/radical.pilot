@@ -543,7 +543,7 @@ class AgentSchedulingComponent(rpu.Component):
         # FIXME: if allocation succeeded, then the unit will likely advance to
         #        executing soon.  Advance will do a blowup before puching -- but
         #        that will also *drop* units.  We need to unschedule those.
-        #        self.unschedule(cu_dropped), ad should probably do that right
+        #        self.unschedule(cu_dropped), and should probably do that right
         #        here?  Not sure if this is worth a dropping-hook on component
         #        level...
         return True
@@ -623,14 +623,14 @@ class AgentSchedulingComponent(rpu.Component):
         # straight away and move it to execution, or we have to
         # put it on the wait queue.
         if self._try_allocation(cu):
+            self._prof.prof('schedule', msg="allocation succeeded", uid=cu['_id'])
             self.advance(cu, rp.EXECUTING_PENDING, publish=True, push=True)
 
         else:
             # No resources available, put in wait queue
+            self._prof.prof('schedule', msg="allocation failed", uid=cu['_id'])
             with self._wait_lock :
                 self._wait_pool.append(cu)
-
-            self._prof.prof('schedule', msg="allocation failed", uid=cu['_id'])
 
 
 
@@ -1163,6 +1163,8 @@ class LaunchMethod(object):
         self.name = type(self).__name__
         self._cfg = cfg
         self._log = logger
+
+        self._prof = rpu.Profiler('launch_method.prof')
 
         self.launch_command = None
         self._configure()
@@ -3979,6 +3981,7 @@ class ExecWorker_SHELL(AgentExecutingComponent):
         self._watcher   = threading.Thread(target=self._watch, name="Watcher")
         self._watcher.start ()
 
+        self._prof.prof('run setup done')
 
         # FIXME: 
         #
@@ -4599,7 +4602,6 @@ class AgentUpdateWorker(rpu.Worker):
                 self._timed_bulk_execute(cinfo)
                 self._prof.prof('unit update bulked (%s)' % state, uid=uid)
 
-
         except Exception as e:
             self._log.exception("unit update failed (%s)", e)
             # FIXME: should we fail the pilot at this point?
@@ -4927,7 +4929,6 @@ class AgentHeartbeatWorker(rpu.Worker):
             self._log.exception('heartbeat died - cancel')
             self.publish('command', {'cmd' : 'shutdown', 
                                      'arg' : 'exception'})
-
 
     # --------------------------------------------------------------------------
     #
