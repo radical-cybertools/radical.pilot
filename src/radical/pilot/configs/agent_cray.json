@@ -1,6 +1,5 @@
 # This config is an examplary for a pilot on a Cray machine
 {
-
     # directory for staging files inside the agent sandbox
     "staging_area"         : "staging_area",
 
@@ -21,11 +20,14 @@
 
     "agent_layout": {
         "agent.0": {
+            # Where to run this agent ("local" or "node")
             "target": "local",
+            # Which sub_agents should I look for?
             "sub_agents": ["agent.1"],
+            # One of the agents need to pull the actual tasks from MongoDB
             "pull_units": true,
+            # which bridges are to be started by this agent
             "bridges": [
-                # which bridges are to be started by this agent
                 "agent_staging_input_queue",
                 "agent_scheduling_queue",
                 "agent_executing_queue",
@@ -36,21 +38,21 @@
                 "agent_command_pubsub",
                 "agent_state_pubsub"
             ],
+            # which components to start on this agent
             "components": {
                 # how many instances of the respective components should be started
                 "agent_staging_input_component": 1,
-                #"agent_scheduling_component": 1,
-                #"agent_executing_component": 1,
                 "agent_staging_output_component": 1
             }
         },
         "agent.1": {
+            # Where to run this agent ("local" or "node")
             "target": "node",
+            # which components to start on this agent
             "components": {
-                #"agent_staging_input_component": 1,
+                # how many instances of the respective components should be started
                 "agent_scheduling_component": 1,
                 "agent_executing_component": 1
-                #"agent_staging_output_component": 1
             }
         }
     }
