@@ -42,7 +42,7 @@
         "pre_bootstrap"               : [
             "module load bw-python",
             "module use --append /u/sciteam/marksant/privatemodules",
-            "module load openmpi/git"
+            "module load openmpi/2.x"
         ],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],

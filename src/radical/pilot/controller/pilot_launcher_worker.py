@@ -355,7 +355,7 @@ class PilotLauncherWorker(threading.Thread):
                                 if os.path.exists(agent_config):
                                     # try to open as file name
                                     logger.info("read config file: %s" % agent_config)
-                                    agent_config = ru.read_json(agent_config)
+                                    agent_cfg = ru.read_json(agent_config)
                                 else:
                                     # otherwise interpret as a config name
                                     # FIXME: load in session just like resource
@@ -363,6 +363,7 @@ class PilotLauncherWorker(threading.Thread):
                                     module_path = os.path.dirname(os.path.abspath(__file__))
                                     config_path = "%s/../configs/" % module_path
                                     agent_cfg_file = "%s/agent_%s.json" % (config_path, agent_config)
+                                    logger.info("read config file: %s" % agent_cfg_file)
                                     agent_cfg = ru.read_json(agent_cfg_file)
                             except Exception as e:
                                 logger.exception("error reading config file: %s" % e)

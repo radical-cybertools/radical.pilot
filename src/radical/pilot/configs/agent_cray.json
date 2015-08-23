@@ -1,0 +1,57 @@
+# This config is an examplary for a pilot on a Cray machine
+{
+
+    # directory for staging files inside the agent sandbox
+    "staging_area"         : "staging_area",
+
+    # url scheme to indicate the use of staging_area
+    "staging_scheme"       : "staging",
+
+    # max number of cu out/err chars to push to db
+    "max_io_loglength"     : 1024,
+
+    # max time period to collect db notifications into bulks (seconds)
+    "bulk_collection_time" : 1.0,
+
+    # time to sleep between database polls (seconds)
+    "db_poll_sleeptime"    : 0.1,
+
+    # time between checks of internal state and commands from mothership (seconds)
+    "heartbeat_interval"   : 10,
+
+    "agent_layout": {
+        "agent.0": {
+            "target": "local",
+            "sub_agents": ["agent.1"],
+            "pull_units": true,
+            "bridges": [
+                # which bridges are to be started by this agent
+                "agent_staging_input_queue",
+                "agent_scheduling_queue",
+                "agent_executing_queue",
+                "agent_staging_output_queue",
+
+                "agent_unschedule_pubsub",
+                "agent_reschedule_pubsub",
+                "agent_command_pubsub",
+                "agent_state_pubsub"
+            ],
+            "components": {
+                # how many instances of the respective components should be started
+                "agent_staging_input_component": 1,
+                #"agent_scheduling_component": 1,
+                #"agent_executing_component": 1,
+                "agent_staging_output_component": 1
+            }
+        },
+        "agent.1": {
+            "target": "node",
+            "components": {
+                #"agent_staging_input_component": 1,
+                "agent_scheduling_component": 1,
+                "agent_executing_component": 1
+                #"agent_staging_output_component": 1
+            }
+        }
+    }
+}

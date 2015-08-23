@@ -327,7 +327,7 @@ def pilot_FAILED(mongo_p=None, pilot_uid=None, logger=None, msg=None):
 
 # ------------------------------------------------------------------------------
 #
-def pilot_CANCELED(mongo_p, pilot_uid, logger, msg):
+def pilot_CANCELED(mongo_p=None, pilot_uid=None, logger=None, msg=None):
 
     if logger:
         logger.warning(msg)
@@ -372,7 +372,7 @@ def pilot_CANCELED(mongo_p, pilot_uid, logger, msg):
 
 # ------------------------------------------------------------------------------
 #
-def pilot_DONE(mongo_p, pilot_uid):
+def pilot_DONE(mongo_p=None, pilot_uid=None, logger=None, msg=None):
 
     if mongo_p and pilot_uid:
 
@@ -1171,7 +1171,7 @@ class LaunchMethod(object):
         # TODO: This doesn't make too much sense for LM's that use multiple
         #       commands, perhaps this needs to move to per LM __init__.
         if self.launch_command is None:
-            raise RuntimeError("Launch command not found for LaunchMethod '%s'" % name)
+            raise RuntimeError("Launch command not found for LaunchMethod '%s'" % self.name)
 
         logger.info("Discovered launch command: '%s'.", self.launch_command)
 
@@ -1924,25 +1924,12 @@ class LaunchMethodORTE(LaunchMethod):
             raise Exception("Couldn't find (g)stdbuf")
         stdbuf_arg = "-oL"
 
-        # Reserve compute nodes to offload agent too
-        reserved_size = 1 # TODO: make configurable
-        vm_size = len(lrms.node_list) - reserved_size
-        lrms.reserved_nodes = sorted(lrms.node_list)[-reserved_size:]
-        logger.info("Reserving nodes: %s" % lrms.reserved_nodes)
-
-      # # Mark the reserved node slots BUSY
-      # # NOTE: we don't need that anymore, as the nodelist is manipulated on
-      # LRMS level, before it reaches the scheduler
-      # for node in self._scheduler.reserved_nodes:
-      #     slots = []
-      #     for c in range(32):
-      #         slots.append('%s:%d' % (node, c))
-      #     self._scheduler._change_slot_states(slots, BUSY)
+        vm_size = len(lrms.node_list)
 
         logger.info("Starting ORTE DVM on %d nodes ..." % vm_size)
 
         dvm_process = subprocess.Popen(
-            [stdbuf_cmd, stdbuf_arg, dvm_command,
+            [stdbuf_cmd, stdbuf_arg, dvm_command, '--debug-devel',
              '--mca', 'orte_max_vm_size', str(vm_size)],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT
         )
@@ -1981,10 +1968,30 @@ class LaunchMethodORTE(LaunchMethod):
                     # Process is gone: fatal!
                     raise Exception("ORTE DVM process disappeared")
 
+        #######################################################################
+        #
+        def _watch_dvm(dvm_process):
+
+            logger.info('starting DVM watcher')
+
+            while dvm_process.poll() is None:
+                line = dvm_process.stdout.readline().strip()
+                if line:
+                    logger.debug('dvm output: %s' % line)
+                else:
+                    time.sleep(1.0)
+
+            logger.info('DVM stopped (%d)' % dvm_process.returncode)
+            # TODO: Tear down everything?
+
+        dvm_watcher = threading.Thread(target=_watch_dvm, args=(dvm_process,), name="DVMWatcher")
+        dvm_watcher.start()
+
+        lm_info = {'dvm_uri': dvm_uri}
+
         # we need to inform the actual LM instance about the DVM URI.  So we
         # pass it back to the LRMS which will keep it in an 'lm_info', which
         # will then be passed as part of the opaque_slots via the scheduler
-        lm_info = {'dvm_uri' : dvm_uri}
         return lm_info
 
     # TODO: Create teardown() function for LaunchMethod's (in this case to terminate the dvm)
@@ -2177,9 +2184,8 @@ class LRMS(object):
             else :
                 raise ValueError("ill-formatted agent target '%s'" % target)
 
-
         # we are good to get rolling, and to detect the runtime environment of
-        # the local LRMS.
+        # the local LRMS
         self._configure()
         logger.info("Discovered execution environment: %s", self.node_list)
 
@@ -2191,10 +2197,10 @@ class LRMS(object):
 
         # check if the LRMS implementation reserved agent nodes.  If not, pick
         # the first couple of nodes from the nodelist as a fallback
-        if len(self._agent_reqs) and not self.agent_nodes:
+        if len(self._agent_reqs):
             self._log.info('use fallback to determine set of agent nodes')
             for ar in self._agent_reqs:
-                self.agent_nodes[ar] = self.node_list.pop(0)
+                self.agent_nodes[ar] = self.node_list.pop()
                 if not self.node_list:
                     break
 
@@ -2216,8 +2222,14 @@ class LRMS(object):
 
         for lm in launch_methods:
             if lm:
-                ru.dict_merge(self.lm_info,
-                        LaunchMethod.lrms_config_hook(lm, self._cfg, self, self._log))
+                try:
+                    ru.dict_merge(self.lm_info,
+                            LaunchMethod.lrms_config_hook(lm, self._cfg, self, self._log))
+                except Exception as e:
+                    self._log.exception("lrms config hook failed")
+                    raise
+
+                self._log.exception("lrms config hook succeeded (%s)" % lm)
 
         # For now assume that all nodes have equal amount of cores
         cores_avail = len(self.node_list) * self.cores_per_node
@@ -5108,7 +5120,7 @@ class AgentWorker(rpu.Worker):
         # the pulling agent registers the staging_input_queue as this is what we want to push to
         # FIXME: do a sanity check on the config that only one agent pulls, as
         #        this is a non-atomic operation at this point
-        self._log.debug('pull units: %s' % self._pull_units)
+        self._log.debug('agent will pull units: %s' % bool(self._pull_units))
         if self._pull_units:
 
             self.declare_output(rp.AGENT_STAGING_INPUT_PENDING, rp.AGENT_STAGING_INPUT_QUEUE)
@@ -5168,7 +5180,7 @@ class AgentWorker(rpu.Worker):
                         launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
                         opaque_slots=opaque_slots)
 
-            # spawn the SA
+            # spawn the sub-agent
             self._prof.prof("create", msg=sa)
             self._log.info ("create sub-agent %s: %s" % (sa, cmd))
             sa_out = open("%s.out" % sa, "w")
