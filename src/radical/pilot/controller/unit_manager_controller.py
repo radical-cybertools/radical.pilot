@@ -554,6 +554,7 @@ class UnitManagerController(threading.Thread):
                 # are picked up by the FTW
                 log = "Scheduled for data transfer to ComputePilot %s." % pilot_uid
                 self._dbs.set_compute_unit_state(unit.uid, PENDING_INPUT_STAGING, log)
+                self._session.prof.prof('advance', uid=unit.uid, state=PENDING_INPUT_STAGING)
 
 
             logger.info(
@@ -575,6 +576,8 @@ class UnitManagerController(threading.Thread):
         try:
             unit_ids = [unit.uid for unit in units]
             self._dbs.set_compute_unit_state(unit_ids, UNSCHEDULED, "unit remains unscheduled")
+            for unit in units:
+                self._session.prof.prof('advance', uid=unit.uid, state=UNSCHEDULED)
 
         except Exception, e:
             logger.exception ('error in unit manager controller (unschedule())')

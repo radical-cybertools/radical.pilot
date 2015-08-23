@@ -309,11 +309,11 @@ def add_derived(df):
     
     import operator
     
-    df['executor_queue'] = operator.sub(df['ewo_get'],      df['s_to_ewo'])
+    df['executor_queue'] = operator.sub(df['ewo_get'],      df['as_to_ewo'])
     df['raw_runtime']    = operator.sub(df['ewa_complete'], df['ewo_launch'])
-    df['full_runtime']   = operator.sub(df['uw_push_done'], df['s_to_ewo'])
+    df['full_runtime']   = operator.sub(df['uw_push_done'], df['as_to_ewo'])
     df['watch_delay']    = operator.sub(df['ewa_get'],      df['ewo_to_ewa'])
-    df['allocation']     = operator.sub(df['s_allocated'],  df['a_to_s'])
+    df['allocation']     = operator.sub(df['as_allocated'], df['a_to_as'])
 
     # add a flag to indicate if a unit / pilot / ... is cloned
     # --------------------------------------------------------------------------
@@ -337,14 +337,14 @@ def add_states(df):
 
     # --------------------------------------------------------------------------
     _transitions = {
-            'a_get_u'         : [PENDING_AGENT_INPUT_STAGING, PENDING_AGENT_INPUT_STAGING],
-            'siw_get_u'       : [PENDING_AGENT_INPUT_STAGING, AGENT_STAGING_INPUT],
+            'a_get_u'         : [AGENT_STAGING_INPUT_PENDING, AGENT_STAGING_INPUT_PENDING],
+            'siw_get_u'       : [AGENT_STAGING_INPUT_PENDING, AGENT_STAGING_INPUT],
             'siw_u_done'      : [AGENT_STAGING_INPUT, ALLOCATING],
-          # 's_get_alloc'     : [ALLOCATING, ALLOCATING],
-            's_alocated'      : [ALLOCATING, EXECUTING],
+          # 'as_get_alloc'     : [ALLOCATING, ALLOCATING],
+            'as_alocated'      : [ALLOCATING, EXECUTING],
           # 'ewo_get'         : [EXECUTING, EXECUTING],
-            'ewa_complete'    : [EXECUTING, PENDING_AGENT_OUTPUT_STAGING],
-            'sow_get_u'       : [PENDING_AGENT_OUTPUT_STAGING, AGENT_STAGING_OUTPUT],
+            'ewa_complete'    : [EXECUTING, AGENT_STAGING_OUTPUT_PENDING],
+            'sow_get_u'       : [AGENT_STAGING_OUTPUT_PENDING, AGENT_STAGING_OUTPUT],
             'sow_notify_done' : [AGENT_STAGING_OUTPUT, DONE]
             }
     _uid_states = dict()

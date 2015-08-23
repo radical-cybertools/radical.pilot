@@ -112,10 +112,13 @@ class ComputeUnit(object):
 
         computeunit._description = ud_copy
         computeunit._manager     = unit_manager_obj
+        computeunit._session     = unit_manager_obj._session
         computeunit._worker      = unit_manager_obj._worker
         computeunit._uid         = ru.generate_id('unit.%(counter)06d', ru.ID_CUSTOM)
         computeunit._name        = unit_description['name']
         computeunit._local_state = local_state
+
+        computeunit._session.prof.prof('advance', msg='create', uid=computeunit._uid, state=NEW)
 
         return computeunit
 
@@ -481,6 +484,7 @@ class ComputeUnit(object):
 
             * :class:`radical.pilot.radical.pilotException`
         """
+        
         # Check if this instance is valid
         if not self._uid:
             raise BadParameter("Invalid Compute Unit instance.")
@@ -518,6 +522,8 @@ class ComputeUnit(object):
 
         else:
             raise IncorrectState("Unknown Compute Unit state: %s, cannot cancel" % self.state)
+
+        self._session.prof.prof('advance', msg='cancel', uid=unit.uid, state=CANCELED)
 
         # done canceling
         return

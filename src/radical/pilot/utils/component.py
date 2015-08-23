@@ -148,8 +148,6 @@ class Component(mp.Process):
         self._log = ru.get_logger(log_name, log_tgt, self._debug)
         self._log.info('creating %s' % self._cname)
 
-        self._prof = Profiler(self._cname)
-
         # start the main event loop in a separate process.  At that point, the
         # component will basically detach itself from the parent process, and
         # will only maintain a handle to be used for shutdown
@@ -569,12 +567,12 @@ class Component(mp.Process):
 
             if state:
                 unit['state'] = state
-                self._prof.prof('state advance', uid=unit['_id'], state=state)
+                self._prof.prof('advance', uid=unit['_id'], state=state)
 
             if publish:
                 # send state notifications
                 self.publish('state', unit)
-                self._prof.prof('state publish', uid=unit['_id'], state=unit['state'])
+                self._prof.prof('publish', uid=unit['_id'], state=unit['state'])
 
             if push:
                 state = unit['state']

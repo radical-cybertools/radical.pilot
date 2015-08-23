@@ -184,7 +184,8 @@ if __name__ == "__main__":
 
         except Exception as e:
             # Something unexpected happened in the pilot code above
-            print "caught Exception: %s" % e
+            import logging
+            logging.exception("caught Exception: %s" % e)
             raise
 
         except (KeyboardInterrupt, SystemExit) as e:
@@ -211,7 +212,7 @@ if __name__ == "__main__":
 
         import radical.pilot.utils as rpu
         # we have a session
-        profiles   = rpu.fetch_profiles(sid=session_id, target='/tmp/')
+        profiles   = rpu.fetch_profiles(sid=session_id, tgt='/tmp/')
         profile    = rpu.combine_profiles (profiles)
         frame      = rpu.prof2frame(profile)
         sf, pf, uf = rpu.split_frame(frame)

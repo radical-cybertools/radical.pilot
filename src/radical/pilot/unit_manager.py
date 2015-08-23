@@ -102,6 +102,8 @@ class UnitManager(object):
 
         self._uid = ru.generate_id ('umgr') 
 
+        self._session.prof.prof('create umgr', uid=self._uid)
+
         if not scheduler:
             scheduler = SCHED_DEFAULT
 
@@ -140,6 +142,7 @@ class UnitManager(object):
         if self._worker:
             self._worker.stop()
 
+        self._session.prof.prof('closed umgr', uid=self._uid)
         logger.info("Closed UnitManager %s." % str(self._uid))
 
         self._valid = False
@@ -465,6 +468,7 @@ class UnitManager(object):
 
                 if  not pid in schedule['pilots'] :
                     # lost pilot, do not schedule unit
+                    self._session.prof.prof('unschedule', uid=unit.uid)
                     logger.warn ("unschedule unit %s, lost pilot %s" % (unit.uid, pid))
                     continue
 

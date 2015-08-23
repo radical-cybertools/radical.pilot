@@ -3491,8 +3491,8 @@ class AgentExecutingComponent(rpu.Component):
 
         try:
             impl = {
-                SPAWNER_NAME_POPEN : ExecWorker_POPEN,
-                SPAWNER_NAME_SHELL : ExecWorker_SHELL
+                SPAWNER_NAME_POPEN : AgentExecutingComponent_POPEN,
+                SPAWNER_NAME_SHELL : AgentExecutingComponent_SHELL
             }[name]
 
             impl = impl(cfg)
@@ -3505,7 +3505,7 @@ class AgentExecutingComponent(rpu.Component):
 
 # ==============================================================================
 #
-class ExecWorker_POPEN (AgentExecutingComponent) :
+class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
@@ -3628,7 +3628,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
             self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
             assert(cu['opaque_slots']) # FIXME: no assert, but check
-            self._prof.prof('ExecWorker unit launch', uid=cu['_id'])
+            self._prof.prof('exec', msg='unit launch', uid=cu['_id'])
 
             # Start a new subprocess to launch the unit
             self.spawn(launcher=launcher, cu=cu)
@@ -3653,7 +3653,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
     #
     def spawn(self, launcher, cu):
 
-        self._prof.prof('ExecWorker spawn', uid=cu['_id'])
+        self._prof.prof('spawn', msg='unit spawn', uid=cu['_id'])
 
         launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu['workdir']
         self._log.debug("Created launch_script: %s", launch_script_name)
@@ -3717,7 +3717,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                 if hop_cmd : cmdline = hop_cmd
                 else       : cmdline = launch_script_name
 
-                self._prof.prof('launch script constructed', uid=cu['_id'])
+                self._prof.prof('command', msg='launch script constructed', uid=cu['_id'])
 
             except Exception as e:
                 msg = "Error in spawner (%s)" % e
@@ -3779,6 +3779,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
     #
     def _watch(self):
 
+        self._prof = rpu.Profiler("%s.Watcher" % self.name)
         self._prof.prof('run')
         try:
             self._log = ru.get_logger('%s.Watcher' % self.name, 
@@ -3862,7 +3863,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
                     self.advance(cu, rp.CANCELED, publish=True, push=False)
 
             else:
-                self._prof.prof('execution complete', uid=cu['_id'])
+                self._prof.prof('exec', 'execution complete', uid=cu['_id'])
 
                 # we have a valid return code -- unit is final
                 action += 1
@@ -3906,7 +3907,7 @@ class ExecWorker_POPEN (AgentExecutingComponent) :
 
 # ==============================================================================
 #
-class ExecWorker_SHELL(AgentExecutingComponent):
+class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
 
     # --------------------------------------------------------------------------
@@ -4103,7 +4104,7 @@ class ExecWorker_SHELL(AgentExecutingComponent):
             self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
             assert(cu['opaque_slots']) # FIXME: no assert, but check
-            self._prof.prof('ExecWorker unit launch', uid=cu['_id'])
+            self._prof.prof('exec', msg='unit launch', uid=cu['_id'])
 
             # Start a new subprocess to launch the unit
             self.spawn(launcher=launcher, cu=cu)
@@ -4254,14 +4255,14 @@ timestamp () {
 
         uid = cu['_id']
 
-        self._prof.prof('ExecWorker spawn', uid=uid)
+        self._prof.prof('spawn', msg='unit spawn', uid=uid)
 
         # we got an allocation: go off and launch the process.  we get
         # a multiline command, so use the wrapper's BULK/LRUN mode.
         cmd       = self._cu_to_cmd (cu, launcher)
         run_cmd   = "BULK\nLRUN\n%s\nLRUN_EOT\nBULK_RUN\n" % cmd
 
-        self._prof.prof('launch script constructed', uid=cu['_id'])
+        self._prof.prof('command', msg='launch script constructed', uid=cu['_id'])
 
       # TODO: Remove this commented out block?
       # if  self.lrms.target_is_macos :
@@ -4296,12 +4297,12 @@ timestamp () {
             raise RuntimeError ("failed to run unit '%s': (%s)(%s)" \
                              % (run_cmd, ret, out))
 
-        self._prof.prof('spawning passed to pty', uid=uid)
+        self._prof.prof('spawn', msg='spawning passed to pty', uid=uid)
 
         # FIXME: this is too late, there is already a race with the monitoring
         # thread for this CU execution.  We need to communicate the PIDs/CUs via
         # a queue again!
-        self._prof.prof('put', msg="ExecWorker to watcher (%s)" % cu['state'], uid=cu['_id'])
+        self._prof.prof('put', msg="to watcher (%s)" % cu['state'], uid=cu['_id'])
         with self._registry_lock :
             self._registry[pid] = cu
 
@@ -4309,6 +4310,8 @@ timestamp () {
     # --------------------------------------------------------------------------
     #
     def _watch (self) :
+
+        self._prof = rpu.Profiler("%s.Watcher" % self.name)
 
         MONITOR_READ_TIMEOUT = 1.0   # check for stop signal now and then
         static_cnt           = 0
@@ -4526,9 +4529,9 @@ class AgentUpdateWorker(rpu.Worker):
             uid   = entry[0]
             state = entry[1]
             if state:
-                self._prof.prof('unit update pushed (%s)' % state, uid=uid)
+                self._prof.prof('push', msg='unit update pushed (%s)' % state, uid=uid)
             else:
-                self._prof.prof('unit update pushed', uid=uid)
+                self._prof.prof('push', msg='unit update pushed', uid=uid)
 
         cinfo['last'] = now
         cinfo['bulk'] = None
@@ -4609,10 +4612,10 @@ class AgentUpdateWorker(rpu.Worker):
                 cinfo['uids'].append([uid, state])
                 cinfo['bulk'].find  (query_dict) \
                              .update(update_dict)
+                self._prof.prof('update', msg='bulked (%s)' % state, uid=uid)
 
                 # attempt a timed update
                 self._timed_bulk_execute(cinfo)
-                self._prof.prof('unit update bulked (%s)' % state, uid=uid)
 
         except Exception as e:
             self._log.exception("unit update failed (%s)", e)

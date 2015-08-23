@@ -146,7 +146,7 @@ class Session (saga.Session):
                             % (self._dburl, ex))  
 
         # initialize profiling
-        self.prof = Profiler('session.%s' % self._uid)
+        self.prof = Profiler('%s' % self._uid)
         self.prof.prof('start session', uid=self._uid)
 
         # Loading all "default" resource configurations

@@ -103,7 +103,10 @@ class OutputFileTransferWorker(threading.Thread):
                         # We have found a new CU. Now we can process the transfer
                         # directive(s) with SAGA.
                         compute_unit_id = str(compute_unit["_id"])
+
+                        self._session.prof.prof('advance', uid=compute_unit_id, state=STAGING_OUTPUT)
                         logger.debug ("OutputStagingController: unit found: %s" % compute_unit_id)
+
                         remote_sandbox = compute_unit["sandbox"]
                         output_staging = compute_unit.get("FTW_Output_Directives", [])
 
@@ -121,6 +124,7 @@ class OutputFileTransferWorker(threading.Thread):
                             )
                             if state_doc['state'] == CANCELED:
                                 logger.info("Compute Unit Canceled, interrupting output file transfers.")
+                                self._session.prof.prof('advance', uid=compute_unit_id, state=CANCELED)
                                 state = CANCELED
                                 # Break out of the loop over all SD's, into the loop over CUs
                                 break
@@ -166,6 +170,7 @@ class OutputFileTransferWorker(threading.Thread):
                                 'log': {'message': log_message, 'timestamp': ts}
                             }
                         })
+                        self._session.prof.prof('advance', uid=compute_unit_id, state=DONE)
 
                     except Exception as e :
                         # Update the CU's state to 'FAILED'.
@@ -178,6 +183,7 @@ class OutputFileTransferWorker(threading.Thread):
                                 'log': {'message': log_message, 'timestamp': ts}
                             }})
                         logger.exception(log_message)
+                        self._session.prof.prof('advance', uid=compute_unit_id, state=FAILED)
                         raise
 
         except SystemExit as e :

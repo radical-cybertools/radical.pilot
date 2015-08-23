@@ -104,9 +104,13 @@ class InputFileTransferWorker(threading.Thread):
                         # We have found a new CU. Now we can process the transfer
                         # directive(s) wit SAGA.
                         compute_unit_id = str(compute_unit["_id"])
+
                         logger.debug ("InputStagingController: unit found: %s" % compute_unit_id)
+                        self._session.prof.prof('advance', uid=compute_unit_id, state=state)
+
                         remote_sandbox = compute_unit["sandbox"]
                         input_staging = compute_unit.get("FTW_Input_Directives", [])
+
 
                         # We need to create the CU's directory in case it doesn't exist yet.
                         log_msg = "InputStagingController: Creating ComputeUnit sandbox directory %s." % remote_sandbox
@@ -148,6 +152,7 @@ class InputFileTransferWorker(threading.Thread):
                                 fields=["state"]
                             )
                             if state_doc['state'] == CANCELED:
+                                self._session.prof.prof('advance', uid=compute_unit_id, state=CANCELED)
                                 logger.info("Compute Unit Canceled, interrupting input file transfers.")
                                 state = CANCELED
                                 # Break out of the loop for this CU's SD's
@@ -188,7 +193,6 @@ class InputFileTransferWorker(threading.Thread):
                         # marked as under 'agent' control, before the
                         # agent_stging_output_component passes control back in
                         # a similar manner.
-                        logger.debug("InputStagingController: %s : push to agent" % compute_unit_id)
                         um_col.update({'_id': compute_unit_id},
                                       {'$set': {'state'  : AGENT_STAGING_INPUT_PENDING, 
                                                 'control': 'umgr'},
@@ -200,6 +204,8 @@ class InputFileTransferWorker(threading.Thread):
                                                'timestamp': timestamp(),
                                                'message': 'push unit to agent after ftw staging'
                                        }}})
+                        logger.debug("InputStagingController: %s : push to agent" % compute_unit_id)
+                        self._session.prof.prof('advance', uid=compute_unit_id, state=AGENT_STAGING_INPUT_PENDING)
 
                     except Exception as e :
 
@@ -214,6 +220,7 @@ class InputFileTransferWorker(threading.Thread):
                                            'statehistory': {'state': FAILED, 'timestamp': ts},
                                            'log': logentry
                                        }})
+                        self._session.prof.prof('advance', uid=compute_unit_id, state=FAILED)
 
                         logger.exception(str(logentry))
                         raise

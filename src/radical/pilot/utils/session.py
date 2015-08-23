@@ -1,6 +1,7 @@
 
 import os
 import sys
+import glob
 import saga
 
 import radical.utils as ru
@@ -10,10 +11,11 @@ from db_utils import *
 
 # ------------------------------------------------------------------------------
 #
-def fetch_profiles (sid, dburl=None, target=None):
+def fetch_profiles (sid, dburl=None, src=None, tgt=None):
     '''
-    sid   : session for which all profiles are fetched
-    target: dir to store the profile in
+    sid: session for which all profiles are fetched
+    src: dir to look for session profiles
+    tgt: dir to store the profile in
 
     returns list of file names
     '''
@@ -26,11 +28,32 @@ def fetch_profiles (sid, dburl=None, target=None):
     if not dburl:
         raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
 
-    if not target:
-        target = os.getcwd()
+    if not src:
+        src = os.getcwd()
             
-    if not target.startswith('/'):
-        target = "%s/%s" % (os.getcwd, target)
+    if not tgt:
+        tgt = os.getcwd()
+            
+    if not tgt.startswith('/'):
+        tgt = "%s/%s" % (os.getcwd, tgt)
+
+    # first fetch session profile
+    # FIXME: should we record pwd or profile location in db session?  Or create
+    #        a sandbox like dir for storing profiles and logs?
+    profiles = glob.glob("%s/%s.prof" % (src, sid))
+
+    if not profiles:
+        raise ValueError("Cannot find any local profile for session %s" % sid)
+
+    for prof in profiles:
+
+        ret.append('/%s/%s' % (tgt, os.path.basename(prof)))
+
+        print "fetching '%s' to '%s'." % (prof, tgt)
+        prof_file = saga.filesystem.File(prof)
+        prof_file.copy(tgt, flags=saga.filesystem.CREATE_PARENTS)
+        prof_file.close()
+
 
     _, db, _, _, _ = ru.mongodb_connect (dburl)
 
@@ -50,11 +73,11 @@ def fetch_profiles (sid, dburl=None, target=None):
 
         for prof in profiles:
 
-            ret.append('/%s/%s' % (target, prof))
+            ret.append('/%s/%s' % (tgt, prof))
 
-            print "fetching '%s/%s' to '%s'." % (pilot['sandbox'], prof, target)
+            print "fetching '%s/%s' to '%s'." % (pilot['sandbox'], prof, tgt)
             prof_file = saga.filesystem.File("%s/%s" % (pilot['sandbox'], prof))
-            prof_file.copy(target, flags=saga.filesystem.CREATE_PARENTS)
+            prof_file.copy(tgt, flags=saga.filesystem.CREATE_PARENTS)
             prof_file.close()
 
     return ret
@@ -316,7 +339,7 @@ def get_session_frames (db, sids, cachedir=None) :
 
 # ------------------------------------------------------------------------------
 #
-def fetch_json (sid, dburl=None, target=None) :
+def fetch_json (sid, dburl=None, tgt=None) :
 
     '''
     returns file name
@@ -328,17 +351,17 @@ def fetch_json (sid, dburl=None, target=None) :
     if not dburl:
         raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
 
-    if not target:
-        target = '.'
+    if not tgt:
+        tgt = '.'
 
     _, db, _, _, _ = ru.mongodb_connect (dburl)
 
     json_docs = get_session_docs(db, sid)
 
-    if target.startswith('/'):
-        dst = '/%s/%s.json' % (target, sid)
+    if tgt.startswith('/'):
+        dst = '/%s/%s.json' % (tgt, sid)
     else:
-        dst = '/%s/%s/%s.json' % (os.getcwd(), target, sid)
+        dst = '/%s/%s/%s.json' % (os.getcwd(), tgt, sid)
 
     ru.write_json (json_docs, dst)
     print "session written to %s" % dst

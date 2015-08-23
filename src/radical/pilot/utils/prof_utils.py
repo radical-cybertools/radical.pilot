@@ -13,47 +13,46 @@ import radical.utils as ru
 #
 _prof_fields  = ['time', 'name', 'uid', 'state', 'event', 'msg']
 _prof_entries = [
-    ('a_get_u',         'Agent',           'get', 'MongoDB to Agent (PendingAgentInputStaging)'),
-    ('a_build_u',       'Agent',           'Agent get unit meta', ''),
-    ('a_mkdir_u',       'Agent',           'Agent get unit mkdir', ''),
-    ('a_notify_alloc',  'Agent',           'put', 'Agent to update_queue (Allocating)'),
-    ('a_to_s',          'Agent',           'put', 'Agent to schedule_queue (Allocating)'),
+    ('a_get_u',         'Agent',               'get',      'MongoDB to Agent (PendingAgentInputStaging)'),
+    ('a_notify_alloc',  'Agent',               'put',      'Agent to update_queue (Allocating)'),
+    ('a_to_as',         'Agent',               'put',      'Agent to schedule_queue (Allocating)'),
 
-    ('siw_get_u',       'StageinWorker',   'get', 'stagein_queue to StageinWorker (AgentStagingInput)'),
-    ('siw_u_done',      'StageinWorker',   'put', 'StageinWorker to schedule_queue (Allocating)'),
-    ('siw_notify_done', 'StageinWorker',   'put', 'StageinWorker to update_queue (Allocating)'),
+    ('siw_get_u',       'AgentStagingInput',   'get',      'stagein_queue to StageinWorker (AgentStagingInput)'),
+    ('siw_u_done',      'AgentStagingInput',   'put',      'StageinWorker to schedule_queue (Allocating)'),
+    ('siw_notify_done', 'AgentStagingInput',   'put',      'StageinWorker to update_queue (Allocating)'),
 
-    ('s_get_alloc',     'CONTINUOUS',      'get', 'schedule_queue to Scheduler (Allocating)'),
-    ('s_alloc_failed',  'CONTINUOUS',      'schedule', 'allocation failed'),
-    ('s_allocated',     'CONTINUOUS',      'schedule', 'allocated'),
-    ('s_to_ewo',        'CONTINUOUS',      'put', 'Scheduler to execution_queue (Allocating)'),
-    ('s_unqueue',       'CONTINUOUS',      'unqueue', 're-allocation done'),
+    # FIXME: the names below will break for other schedulers
+    ('as_get_alloc',    'SchedulerContinuous', 'get',      'schedule_queue to Scheduler (Allocating)'),
+    ('as_alloc_failed', 'SchedulerContinuous', 'schedule', 'allocation failed'),
+    ('as_allocated',    'SchedulerContinuous', 'schedule', 'allocated'),
+    ('as_to_ewo',       'SchedulerContinuous', 'put',      'Scheduler to execution_queue (Allocating)'),
+    ('as_unqueue',      'SchedulerContinuous', 'unqueue',  're-allocation done'),
   
-    ('ewo_get',         'ExecWorker',      'get', 'executing_queue to ExecutionWorker (Executing)'),
-    ('ewo_launch',      'ExecWorker',      'ExecWorker unit launch', ''),
-    ('ewo_spawn',       'ExecWorker',      'ExecWorker spawn', ''),
-    ('ewo_script',      'ExecWorker',      'launch script constructed', ''),
-    ('ewo_pty',         'ExecWorker',      'spawning passed to pty', ''),  
-    ('ewo_notify_exec', 'ExecWorker',      'put', 'ExecWorker to update_queue (Executing)'),
-    ('ewo_to_ewa',      'ExecWorker',      'put', 'ExecWorker to watcher (Executing)'),
+    ('ewo_get',         'ExecWorker',          'get',      'executing_queue to ExecutionWorker (Executing)'),
+    ('ewo_launch',      'ExecWorker',          'exec',     'unit launch'),
+    ('ewo_spawn',       'ExecWorker',          'spawn',    'unit spawn'),
+    ('ewo_script',      'ExecWorker',          'command',  'launch script constructed'),
+    ('ewo_pty',         'ExecWorker',          'spawn',    'spawning passed to pty'),  
+    ('ewo_notify_exec', 'ExecWorker',          'put',      'ExecWorker to update_queue (Executing)'),
+    ('ewo_to_ewa',      'ExecWorker',          'put',      'ExecWorker to watcher (Executing)'),
   
-    ('ewa_get',         'ExecWatcher',     'get', 'ExecWatcher picked up unit'),
-    ('ewa_complete',    'ExecWatcher',     'execution complete', ''),
-    ('ewa_notify_so',   'ExecWatcher',     'put', 'ExecWatcher to update_queue (StagingOutput)'),
-    ('ewa_to_sow',      'ExecWatcher',     'put', 'ExecWatcher to stageout_queue (PendingAgentOutputStaging)'),
+    ('ewa_get',         'ExecWatcher',         'get',      'ExecWatcher picked up unit'),
+    ('ewa_complete',    'ExecWatcher',         'exec',     'execution complete'),
+    ('ewa_notify_so',   'ExecWatcher',         'put',      'ExecWatcher to update_queue (StagingOutput)'),
+    ('ewa_to_sow',      'ExecWatcher',         'put',      'ExecWatcher to stageout_queue (PendingAgentOutputStaging)'),
 
-    ('sow_get_u',       'StageoutWorker',  'get', 'stageout_queue to StageoutWorker (AgentOutputStaging)'),
-    ('sow_u_done',      'StageoutWorker',  'final', 'stageout done'),
-    ('sow_notify_done', 'StageoutWorker',  'put', 'StageoutWorker to update_queue (PendingOutputStaging)'),
+    ('sow_get_u',       'AgentStagingOutput',  'get',      'stageout_queue to StageoutWorker (AgentOutputStaging)'),
+    ('sow_u_done',      'AgentStagingOutput',  'final',    'stageout done'),
+    ('sow_notify_done', 'AgentStagingOutput',  'put',      'StageoutWorker to update_queue (PendingOutputStaging)'),
 
-    ('uw_get_alloc',    'UpdateWorker',    'get', 'update_queue to UpdateWorker (Allocating)'),   
-    ('uw_push_alloc',   'UpdateWorker',    'unit update pushed (Allocating)', ''),
-    ('uw_get_exec',     'UpdateWorker',    'get', 'update_queue to UpdateWorker (Executing)'),
-    ('uw_push_exec',    'UpdateWorker',    'unit update pushed (Executing)', ''),
-    ('uw_get_so',       'UpdateWorker',    'get', 'update_queue to UpdateWorker (StagingOutput)'),
-    ('uw_push_so',      'UpdateWorker',    'unit update pushed (StagingOutput)', ''),
-    ('uw_get_done',     'UpdateWorker',    'get', 'update_queue to UpdateWorker (Done)'),
-    ('uw_push_done',    'UpdateWorker',    'unit update pushed (Done)', '')
+    ('uw_get_alloc',    'UpdateWorker',        'get',      'update_queue to UpdateWorker (Allocating)'),   
+    ('uw_push_alloc',   'UpdateWorker',        'push',     'unit update pushed (Allocating)'),
+    ('uw_get_exec',     'UpdateWorker',        'get',      'update_queue to UpdateWorker (Executing)'),
+    ('uw_push_exec',    'UpdateWorker',        'push',     'unit update pushed (Executing)'),
+    ('uw_get_so',       'UpdateWorker',        'get',      'update_queue to UpdateWorker (StagingOutput)'),
+    ('uw_push_so',      'UpdateWorker',        'push',     'unit update pushed (StagingOutput)'),
+    ('uw_get_done',     'UpdateWorker',        'get',      'update_queue to UpdateWorker (Done)'),
+    ('uw_push_done',    'UpdateWorker',        'push',     'unit update pushed (Done)')
 ]
 
 # ------------------------------------------------------------------------------
