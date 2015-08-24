@@ -29,8 +29,6 @@
         "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap"               : ["module purge",
                                          "module load TACC",
-                                         "module load cluster",
-                                         "module load Linux",
                                          "module load intel/15.0.2",
                                          "module load python/2.7.9",
                                          "module unload xalt",
