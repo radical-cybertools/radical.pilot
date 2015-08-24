@@ -148,6 +148,35 @@ def add_concurrency (frame, tgt, spec):
   # print frame[[tgt, 'time']]
 
 
+
+# ------------------------------------------------------------------------------
+#
+def add_frequency(frame, tgt, window, spec):
+    """
+    This method will add a row 'tgt' to the given data frame, which will contain
+    a contain the frequency (1/s) of the events spcified in 'spec'.
+
+    We first will filter the given frame by spec, and then apply a rolling
+    window over the time column, counting the rows which fall into the window,
+    dividing by window size.  
+    
+    The method looks backwards, so the resulting frequency column contains the
+    frequency which applid *up to* that point in time.  
+    """
+    
+    # --------------------------------------------------------------------------
+    def _freq(t, _tmp, _window):
+        # return the number of columns of _tmp which fall in the specified time window
+        return (len(_tmp.uid[(_tmp.time > t-_window) & (_tmp.time <= t)])/_window)
+    # --------------------------------------------------------------------------
+    
+    # filter the frame by the given spec
+    tmp = frame
+    for key,val in spec.iteritems():
+        tmp = tmp[tmp[key].isin([val])]
+    frame[tgt] = tmp.time.apply(_freq, args=[tmp, window])
+
+
 # ------------------------------------------------------------------------------
 #
 t0 = None
