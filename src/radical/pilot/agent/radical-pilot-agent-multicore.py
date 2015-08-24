@@ -5539,10 +5539,14 @@ def bootstrap_3():
             # and the sub_agent will pick its own layout section -- but in principle
             # this is also the point where we would make individual config changes.
 
-            # dig output bridges from all sub-agents (sa)
+            # dig out bridges from all sub-agents (sa)
             bridge_addresses = dict()
             for sa in cfg['agent_layout']:
 
+                # FIXME: we should point the address to the node of the subagent
+                #        which hosts the bridge, not the local IP.  Until this
+                #        is fixed, bridges MUST run on agent.0 (which is what
+                #        LRMS.hostip() below will point to).
                 nodeip = LRMS.hostip()
 
                 # we should have at most one bridge for every type
