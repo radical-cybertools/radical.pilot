@@ -2442,15 +2442,18 @@ class LaunchMethodYARN(LaunchMethod):
             # Here are the necessary commands to start the cluster.
             if self._scheduler._lrms.node_list[0] == 'localhost':
                 #Download the tar file
-                #stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.0/hadoop-2.6.0.tar.gz")
-                stat = os.system('cp ~/hadoop-2.6.0.tar.gz .;tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
+                node_name = self._scheduler._lrms.node_list[0]
+                stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.0/hadoop-2.6.0.tar.gz")
+                stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
             else:
-                self._log.error('Wrong System!')
-                #We need to see what should happen. Download or take it from somewhere else????????
+                node = commands.getstatusoutput('/bin/hostname')
+                node_name = node[1]
+                stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.0/hadoop-2.6.0.tar.gz")
+                stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
                 # TODO: Decide how the agent will get Hadoop tar ball.
 
             set_env_vars()
-            config_core_site(self._scheduler._lrms.node_list[0])
+            config_core_site(node_name)
             config_hdfs_site(self._scheduler._lrms.node_list)
             config_mapred_site()
             config_yarn_site()
@@ -2473,7 +2476,7 @@ class LaunchMethodYARN(LaunchMethod):
             self._log.info(check[1])
             self._scheduler._configure()
 
-            self._serviceurl = self._scheduler._lrms.node_list[0] + ':9000'
+            self._serviceurl = node_name + ':9000'
             self.launch_command = self._yarn_home + '/bin/yarn'
         else:
             self._serviceurl = self._scheduler._lrms.namenode_url
@@ -2573,6 +2576,14 @@ class LaunchMethodYARN(LaunchMethod):
 
         return print_str+yarn_command, None
 
+    def stop_service(self):
+
+            self._log.info('Stoping YARN')
+            yarn_start = os.system(self._hadoop_home + '/sbin/stop-yarn.sh')
+            self._log.info('Stoping DFS.')
+            hadoop_start = os.system(self._hadoop_home + '/sbin/stop-dfs.sh')
+            self._log.info("Deleting HADOOP files from temp")
+            os.system('rm -rf /tmp/hadoop')
 
 
 # ==============================================================================
@@ -5781,6 +5792,8 @@ class Agent(object):
         """
 
         rpu.prof ('stop request')
+        if self._task_launcher.name == 'YARN':
+            self._task_launcher.stop_service()
         rpu.flush_prof()
         self._terminate.set()
 
