@@ -382,6 +382,7 @@ class PilotLauncherWorker(threading.Thread):
 
                         if isinstance(agent_config, dict):
                             # nothing to do
+                            agent_cfg_dict = agent_config
                             pass
 
                         elif isinstance(agent_config, basestring):
@@ -389,7 +390,7 @@ class PilotLauncherWorker(threading.Thread):
                                 if os.path.exists(agent_config):
                                     # try to open as file name
                                     logger.info("Read agent config file: %s" % agent_config)
-                                    agent_cfg = ru.read_json(agent_config)
+                                    agent_cfg_dict = ru.read_json(agent_config)
                                 else:
                                     # otherwise interpret as a config name
                                     # FIXME: load in session just like resource
@@ -398,7 +399,7 @@ class PilotLauncherWorker(threading.Thread):
                                     config_path = "%s/../configs/" % module_path
                                     agent_cfg_file = os.path.join(config_path, "agent_%s.json" % agent_config)
                                     logger.info("Read agent config file: %s" % agent_cfg_file)
-                                    agent_cfg = ru.read_json(agent_cfg_file)
+                                    agent_cfg_dict = ru.read_json(agent_cfg_file)
                             except Exception as e:
                                 logger.exception("Error reading agent config file: %s" % e)
 
@@ -611,18 +612,18 @@ class PilotLauncherWorker(threading.Thread):
                         if cleanup:                 bootstrap_args += " -x '%s'" % cleanup
 
                         # set some agent configuration
-                        agent_cfg['cores']              = number_cores
-                        agent_cfg['debug']              = logger.getEffectiveLevel() 
-                        agent_cfg['mongodb_url']        = str(agent_dburl)
-                        agent_cfg['lrms']               = lrms
-                        agent_cfg['spawner']            = agent_spawner
-                        agent_cfg['scheduler']          = agent_scheduler
-                        agent_cfg['runtime']            = runtime
-                        agent_cfg['pilot_id']           = pilot_id
-                        agent_cfg['session_id']         = session_id
-                        agent_cfg['agent_launch_method']= agent_launch_method
-                        agent_cfg['task_launch_method'] = task_launch_method
-                        agent_cfg['mpi_launch_method']  = mpi_launch_method
+                        agent_cfg_dict['cores']              = number_cores
+                        agent_cfg_dict['debug']              = logger.getEffectiveLevel() 
+                        agent_cfg_dict['mongodb_url']        = str(agent_dburl)
+                        agent_cfg_dict['lrms']               = lrms
+                        agent_cfg_dict['spawner']            = agent_spawner
+                        agent_cfg_dict['scheduler']          = agent_scheduler
+                        agent_cfg_dict['runtime']            = runtime
+                        agent_cfg_dict['pilot_id']           = pilot_id
+                        agent_cfg_dict['session_id']         = session_id
+                        agent_cfg_dict['agent_launch_method']= agent_launch_method
+                        agent_cfg_dict['task_launch_method'] = task_launch_method
+                        agent_cfg_dict['mpi_launch_method']  = mpi_launch_method
 
                         # ------------------------------------------------------
                         # Write agent config dict to a json file in pilot sandbox.
@@ -632,7 +633,7 @@ class PilotLauncherWorker(threading.Thread):
                         # Convert dict to json file
                         msg = "Writing agent configuration to file '%s'." % cf_tmp_file
                         logentries.append(Logentry (msg, logger=logger.debug))
-                        ru.write_json(agent_cfg, cf_tmp_file)
+                        ru.write_json(agent_cfg_dict, cf_tmp_file)
 
                         cf_env = saga.Url("%s/agent.0.cfg" % pilot_sandbox).path # this is what the pilot sees
                         cf_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, cf_tmp_file))
