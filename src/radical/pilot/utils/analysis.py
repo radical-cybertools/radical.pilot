@@ -3,6 +3,40 @@ import os
 
 from ..states import *
 
+_info_prefix = {
+        'AgentWorker'                 : 'awo',
+        'AgentStagingInputComponent'  : 'asic',
+        'SchedulerContinuous'         : 'asc',
+        'AgentExecutingComponent'     : 'aec',
+        'AgentExecutingWatcher'       : 'aew',
+        'AgentStagingOutputComponent' : 'asoc',
+        'session'                     : 'mod'
+        }
+
+_info_events = {
+        'get'        : 'get_u',
+        'work start' : 'work_u',
+        'work done'  : 'worked_u',
+        'put'        : 'put_u',
+        'publish'    : 'pub_u',
+        'advance'    : 'adv_u',
+        'update'     : 'upd_u'
+        }
+
+_info_entries = [
+    # FIXME: the names below will break for other schedulers
+    ('asc_alloc_nok', 'SchedulerContinuous',      'schedule', 'allocation failed'),
+    ('asc_alloc_ok',  'SchedulerContinuous',      'schedule', 'allocation succeeded'),
+    ('asc_unqueue',   'SchedulerContinuous',      'unqueue',  're-allocation done'),
+  
+    ('aec_launch',    'AgentExecutingComponent',  'exec',     'unit launch'),
+    ('aec_spawn',     'AgentExecutingComponent',  'spawn',    'unit spawn'),
+    ('aec_script',    'AgentExecutingComponent',  'command',  'launch script constructed'),
+    ('aec_pty',       'AgentExecutingComponent',  'spawn',    'spawning passed to pty'),  
+  
+    ('aew_complete',  'AgentExecutingWatcher',    'exec',     'execution complete'),
+]
+
 # ------------------------------------------------------------------------------
 #
 tmp = None
@@ -45,7 +79,7 @@ def add_concurrency (frame, tgt, spec):
         get_concurrency (df, 'concurrently_running', spec)
     """
     
-    import numpy
+    import numpy as np
 
     # create a temporary row over which we can do the commulative sum
     # --------------------------------------------------------------------------
@@ -82,7 +116,7 @@ def add_concurrency (frame, tgt, spec):
 
         # no filter matched
       # print "   : %-20s : %.2f : %-20s : %s " % (row['uid'], row['time'], row['event'], row['message'])
-        return  0
+        return  np.NaN
     # --------------------------------------------------------------------------
 
     # we only want to later look at changes of the concurrency -- leading or trailing 
@@ -94,7 +128,7 @@ def add_concurrency (frame, tgt, spec):
     def _time (x):
         global tmp
         if     x != tmp: tmp = x
-        else           : x   = numpy.NaN
+        else           : x   = np.NaN
         return x
 
 
@@ -104,7 +138,7 @@ def add_concurrency (frame, tgt, spec):
     # --------------------------------------------------------------------------
     def _abs (x):
         if x < 0:
-            return numpy.NaN
+            return np.NaN
         return x
     # --------------------------------------------------------------------------
     
@@ -325,33 +359,70 @@ def add_derived(df):
 
 # ------------------------------------------------------------------------------
 #
-def add_states(df):
+def add_info(df):
     """
-    Add two additional columns: 'state_entered' and 'state_left'.  Those will
-    have entries for those events which signify the respective state
-    transitions.  An initial state will have NaN for 'state_left', otherwise all
-    transitions will have two entries, meaning the state changed from ... to ...
+    we also derive some specific info from the event/msg columns, based on
+    the mapping defined in _info_entries.  That should make it easier to
+    analyse the data.
     """
-    
-    import numpy
+
+    import numpy as np
 
     # --------------------------------------------------------------------------
-    _transitions = {
-            'a_get_u'         : [AGENT_STAGING_INPUT_PENDING, AGENT_STAGING_INPUT_PENDING],
-            'siw_get_u'       : [AGENT_STAGING_INPUT_PENDING, AGENT_STAGING_INPUT],
-            'siw_u_done'      : [AGENT_STAGING_INPUT, ALLOCATING],
-          # 'as_get_alloc'     : [ALLOCATING, ALLOCATING],
-            'as_alocated'      : [ALLOCATING, EXECUTING],
-          # 'ewo_get'         : [EXECUTING, EXECUTING],
-            'ewa_complete'    : [EXECUTING, AGENT_STAGING_OUTPUT_PENDING],
-            'sow_get_u'       : [AGENT_STAGING_OUTPUT_PENDING, AGENT_STAGING_OUTPUT],
-            'sow_notify_done' : [AGENT_STAGING_OUTPUT, DONE]
-            }
-    _uid_states = dict()
-    def _state (row):
-        return _transitions.get(row['info'], [numpy.NaN, numpy.NaN])
+    def _info (row):
+        for pat, pre in _info_prefix.iteritems():
+            if pat in row['name']:
+                for pat, post in _info_events.iteritems():
+                    if pat == row['event']:
+                        return "%s_%s" % (pre, post)
+                break
+        for info, name, event, msg in _info_entries:
+            if  row['name'] and name  in row['name'] and \
+                event == row['event'] and \
+                msg   == row['msg']:
+                return info
+        return np.NaN
     # --------------------------------------------------------------------------
-    df['state_from'], df['state_to'] = zip(*df.apply(lambda row: _state(row), axis=1))
+    df['info'] = df.apply(lambda row: _info (row), axis=1)
+    
+# ------------------------------------------------------------------------------
+#
+def add_states(df):
+    """
+    Add one additional columns: 'state_from'.  It will have a value for all
+    columns where a stateful entity entered a new state, and will have the value
+    of the previous state.
+
+    We also fill out the state column, to continue to have the value of any
+    previous state setting.
+    """
+    
+    import numpy as np
+
+    # --------------------------------------------------------------------------
+    _old_states = dict()
+    def _state_from (row):
+        old = np.NaN
+        if  row['uid']   and \
+            row['state'] and \
+            row['event'] == 'advance': 
+            old = _old_states.get(row['uid'], np.NaN)
+            _old_states[row['uid']] = row['state']
+        return old
+    # --------------------------------------------------------------------------
+  # df['state_from'], df['state_to'] = zip(*df.apply(lambda row: _state(row), axis=1))
+    df['state_from'] = df.apply(lambda row: _state_from(row), axis=1)
+
+    _old_states = dict()
+    # --------------------------------------------------------------------------
+    def _state (row):
+        if  not row['uid']:
+            return np.NaN
+        if row['state']:
+            _old_states[row['uid']] = row['state']
+        return _old_states.get(row['uid'], '')
+    # --------------------------------------------------------------------------
+    df['state'] = df.apply(lambda row: _state(row), axis=1)
 
 
 # ------------------------------------------------------------------------------
@@ -362,7 +433,7 @@ def get_span(df, spec):
     any of the listed events.  Events are 'info' entries.
     """
     
-    import numpy
+    import numpy as np
 
     if not isinstance(spec, list):
         spec = [spec]

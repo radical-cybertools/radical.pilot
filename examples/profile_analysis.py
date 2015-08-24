@@ -224,6 +224,7 @@ if __name__ == "__main__":
       # print sf[0:10]
       # print pf[0:10]
       # print uf[0:10]
+        rpu.add_info(uf)
         rpu.add_states(uf)
         print uf[uf['uid'] == 'unit.000001']
       # print list(pf['event'])

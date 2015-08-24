@@ -12,49 +12,6 @@ import radical.utils as ru
 # "label", "component", "event", "message"
 #
 _prof_fields  = ['time', 'name', 'uid', 'state', 'event', 'msg']
-_prof_entries = [
-    ('a_get_u',         'Agent',               'get',      'MongoDB to Agent (PendingAgentInputStaging)'),
-    ('a_notify_alloc',  'Agent',               'put',      'Agent to update_queue (Allocating)'),
-    ('a_to_as',         'Agent',               'put',      'Agent to schedule_queue (Allocating)'),
-
-    ('siw_get_u',       'AgentStagingInput',   'get',      'stagein_queue to StageinWorker (AgentStagingInput)'),
-    ('siw_u_done',      'AgentStagingInput',   'put',      'StageinWorker to schedule_queue (Allocating)'),
-    ('siw_notify_done', 'AgentStagingInput',   'put',      'StageinWorker to update_queue (Allocating)'),
-
-    # FIXME: the names below will break for other schedulers
-    ('as_get_alloc',    'SchedulerContinuous', 'get',      'schedule_queue to Scheduler (Allocating)'),
-    ('as_alloc_failed', 'SchedulerContinuous', 'schedule', 'allocation failed'),
-    ('as_allocated',    'SchedulerContinuous', 'schedule', 'allocated'),
-    ('as_to_ewo',       'SchedulerContinuous', 'put',      'Scheduler to execution_queue (Allocating)'),
-    ('as_unqueue',      'SchedulerContinuous', 'unqueue',  're-allocation done'),
-  
-    ('ewo_get',         'ExecWorker',          'get',      'executing_queue to ExecutionWorker (Executing)'),
-    ('ewo_launch',      'ExecWorker',          'exec',     'unit launch'),
-    ('ewo_spawn',       'ExecWorker',          'spawn',    'unit spawn'),
-    ('ewo_script',      'ExecWorker',          'command',  'launch script constructed'),
-    ('ewo_pty',         'ExecWorker',          'spawn',    'spawning passed to pty'),  
-    ('ewo_notify_exec', 'ExecWorker',          'put',      'ExecWorker to update_queue (Executing)'),
-    ('ewo_to_ewa',      'ExecWorker',          'put',      'ExecWorker to watcher (Executing)'),
-  
-    ('ewa_get',         'ExecWatcher',         'get',      'ExecWatcher picked up unit'),
-    ('ewa_complete',    'ExecWatcher',         'exec',     'execution complete'),
-    ('ewa_notify_so',   'ExecWatcher',         'put',      'ExecWatcher to update_queue (StagingOutput)'),
-    ('ewa_to_sow',      'ExecWatcher',         'put',      'ExecWatcher to stageout_queue (PendingAgentOutputStaging)'),
-
-    ('sow_get_u',       'AgentStagingOutput',  'get',      'stageout_queue to StageoutWorker (AgentOutputStaging)'),
-    ('sow_u_done',      'AgentStagingOutput',  'final',    'stageout done'),
-    ('sow_notify_done', 'AgentStagingOutput',  'put',      'StageoutWorker to update_queue (PendingOutputStaging)'),
-
-    ('uw_get_alloc',    'UpdateWorker',        'get',      'update_queue to UpdateWorker (Allocating)'),   
-    ('uw_push_alloc',   'UpdateWorker',        'push',     'unit update pushed (Allocating)'),
-    ('uw_get_exec',     'UpdateWorker',        'get',      'update_queue to UpdateWorker (Executing)'),
-    ('uw_push_exec',    'UpdateWorker',        'push',     'unit update pushed (Executing)'),
-    ('uw_get_so',       'UpdateWorker',        'get',      'update_queue to UpdateWorker (StagingOutput)'),
-    ('uw_push_so',      'UpdateWorker',        'push',     'unit update pushed (StagingOutput)'),
-    ('uw_get_done',     'UpdateWorker',        'get',      'update_queue to UpdateWorker (Done)'),
-    ('uw_push_done',    'UpdateWorker',        'push',     'unit update pushed (Done)')
-]
-
 # ------------------------------------------------------------------------------
 #
 # profile class
@@ -137,6 +94,11 @@ class Profiler (object):
 
         tid = threading.current_thread().name
 
+        if not uid  : uid   = ''
+        if not msg  : msg   = ''
+        if not state: state = ''
+
+
         # NOTE: Don't forget to sync any format changes in the bootstrapper
         #       and downstream analysis tools too!
         self._handle.write("%.4f,%s:%s,%s,%s,%s,%s\n" \
@@ -182,24 +144,6 @@ def timestamp():
 
 # ------------------------------------------------------------------------------
 #
-# Lookup tuples in dataframe based on uid and the tuple from the elements list
-#
-def _tup2ts(df, uid, tup):
-
-    import numpy as np
-    
-    all_for_uid = df[df.uid == uid].fillna('')
-    val = all_for_uid[(all_for_uid.component.str.startswith(tup[1])) &
-                      (all_for_uid.event == tup[2]) &
-                      (all_for_uid.message == tup[3])].time
-    try:
-        return val.iloc[0]
-    except Exception as e:
-        return np.NaN
-
-
-# ------------------------------------------------------------------------------
-#
 def prof2frame(prof):
     """
     expect a profile, ie. a list of profile rows which are dicts.  
@@ -233,21 +177,6 @@ def prof2frame(prof):
             return 'clone' in row['uid'].lower()
     frame['cloned'] = frame.apply(lambda row: _cloned (row), axis=1)
 
-    # --------------------------------------------------------------------------
-    # we also derive some specific info from the event/msg columns, based on
-    # the mapping defined in _prof_entries.  That should make it easier to
-    # analyse the data.
-    def _info (row):
-        for info, name, event, msg in _prof_entries:
-            ret = np.NaN
-            if  row['name'] and name  in row['name']  and \
-                event == row['event'] and \
-                msg   == row['msg']   :
-                ret = info
-                break
-        return ret
-    frame['info'] = frame.apply(lambda row: _info (row), axis=1)
-    
     return frame
 
 

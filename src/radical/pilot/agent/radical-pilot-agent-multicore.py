@@ -3781,11 +3781,11 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
     #
     def _watch(self):
 
-        self._prof = rpu.Profiler("%s.Watcher" % self.name)
+        cname = self.name.replace('Component', 'Watcher')
+        self._prof = rpu.Profiler(cname)
         self._prof.prof('run')
         try:
-            self._log = ru.get_logger('%s.Watcher' % self.name, 
-                                      target="%s.Watcher.log" % self.name,
+            self._log = ru.get_logger(cname, target="%s.log" % cname,
                                       level='DEBUG') # FIXME?
 
             while not self._terminate.is_set():
@@ -4313,15 +4313,15 @@ timestamp () {
     #
     def _watch (self) :
 
-        self._prof = rpu.Profiler("%s.Watcher" % self.name)
+        cname = self.name.replace('Component', 'Watcher')
+        self._prof = rpu.Profiler(cname)
 
         MONITOR_READ_TIMEOUT = 1.0   # check for stop signal now and then
         static_cnt           = 0
 
         self._prof.prof('run')
         try:
-            self._log = ru.get_logger('%s.Watcher' % self.name, 
-                                      target="%s.Watcher.log" % self.name,
+            self._log = ru.get_logger(cname, target="%s.log" % cname,
                                       level='DEBUG') # FIXME?
             self.monitor_shell.run_async ("MONITOR")
 
@@ -4531,9 +4531,9 @@ class AgentUpdateWorker(rpu.Worker):
             uid   = entry[0]
             state = entry[1]
             if state:
-                self._prof.prof('push', msg='unit update pushed (%s)' % state, uid=uid)
+                self._prof.prof('update', msg='unit update pushed (%s)' % state, uid=uid)
             else:
-                self._prof.prof('push', msg='unit update pushed', uid=uid)
+                self._prof.prof('update', msg='unit update pushed', uid=uid)
 
         cinfo['last'] = now
         cinfo['bulk'] = None
@@ -4614,7 +4614,7 @@ class AgentUpdateWorker(rpu.Worker):
                 cinfo['uids'].append([uid, state])
                 cinfo['bulk'].find  (query_dict) \
                              .update(update_dict)
-                self._prof.prof('update', msg='bulked (%s)' % state, uid=uid)
+                self._prof.prof('bulk', msg='bulked (%s)' % state, uid=uid)
 
                 # attempt a timed update
                 self._timed_bulk_execute(cinfo)
