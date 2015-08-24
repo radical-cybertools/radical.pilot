@@ -6,7 +6,7 @@ from ..states import *
 _info_prefix = {
         'AgentWorker'                 : 'awo',
         'AgentStagingInputComponent'  : 'asic',
-        'SchedulerContinuous'         : 'asc',
+        'SchedulerContinuous'         : 'asc',  # agent scheduler component
         'AgentExecutingComponent'     : 'aec',
         'AgentExecutingWatcher'       : 'aew',
         'AgentStagingOutputComponent' : 'asoc',
@@ -14,13 +14,13 @@ _info_prefix = {
         }
 
 _info_events = {
-        'get'        : 'get_u',
-        'work start' : 'work_u',
-        'work done'  : 'worked_u',
-        'put'        : 'put_u',
-        'publish'    : 'pub_u',
-        'advance'    : 'adv_u',
-        'update'     : 'upd_u'
+        'get'        : 'get_u',     # get a unit from a queue
+        'work start' : 'work_u',    # unit is handed over to component
+        'work done'  : 'worked_u',  # component finished to operate on unit
+        'put'        : 'put_u',     # unit is put onto the next queue
+        'publish'    : 'pub_u',     # unit state is published via some pubsub
+        'advance'    : 'adv_u',     # the unit state is advanced
+        'update'     : 'upd_u'      # a unit state update is pushed to the DB
         }
 
 _info_entries = [
