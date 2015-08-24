@@ -226,11 +226,13 @@ if __name__ == "__main__":
       # print uf[0:10]
         rpu.add_info(uf)
         rpu.add_states(uf)
-        print uf[uf['uid'] == 'unit.000001']
+        adv = uf[uf['event'].isin(['advance'])]
+        print len(adv)
+      # print uf[uf['uid'] == 'unit.000001']
       # print list(pf['event'])
 
-        rpu.add_frequency(uf, 'f_exe', 1, {'state' : 'Executing', 'event' : 'advance'})
-        print uf[['time', 'f_exe']].dropna(subset=['f_exe'])
+        rpu.add_frequency(adv, 'f_exe', 0.5, {'state' : 'Executing', 'event' : 'advance'})
+        print adv[['time', 'f_exe']].dropna(subset=['f_exe'])
 
         for f in profiles:
             os.unlink(f)

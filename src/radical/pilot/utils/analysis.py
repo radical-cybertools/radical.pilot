@@ -157,8 +157,9 @@ def add_frequency(frame, tgt, window, spec):
     a contain the frequency (1/s) of the events spcified in 'spec'.
 
     We first will filter the given frame by spec, and then apply a rolling
-    window over the time column, counting the rows which fall into the window,
-    dividing by window size.  
+    window over the time column, counting the rows which fall into the window.
+    The result is *not* divided by window size, so normalization is up to the
+    caller.
     
     The method looks backwards, so the resulting frequency column contains the
     frequency which applid *up to* that point in time.  
@@ -166,8 +167,9 @@ def add_frequency(frame, tgt, window, spec):
     
     # --------------------------------------------------------------------------
     def _freq(t, _tmp, _window):
-        # return the number of columns of _tmp which fall in the specified time window
-        return (len(_tmp.uid[(_tmp.time > t-_window) & (_tmp.time <= t)])/_window)
+        # get sequence of frame which falls within the time window, and return
+        # length of that sequence
+        return len(_tmp.uid[(_tmp.time > t-_window) & (_tmp.time <= t)])
     # --------------------------------------------------------------------------
     
     # filter the frame by the given spec

@@ -272,7 +272,7 @@ def combine_profiles(profiles):
     for prof in profiles:
         p     = list()
         tref  = None
-        with open(prof) as csvfile:
+        with open(prof, 'r') as csvfile:
             reader = csv.DictReader(csvfile, fieldnames=_prof_fields)
             empty  = True
             for row in reader:
