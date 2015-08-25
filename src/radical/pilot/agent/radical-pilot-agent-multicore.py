@@ -2359,7 +2359,7 @@ class LaunchMethodYARN(LaunchMethod):
 
             prop_str  = '<property>\n'
             prop_str += '  <name>fs.default.name</name>\n'
-            prop_str += '    <value>hdfs://%s:9000</value>\n'%node
+            prop_str += '    <value>hdfs://%s:57410</value>\n'%node
             prop_str += '</property>\n'
 
             lines.insert(-1,prop_str)
@@ -2476,7 +2476,7 @@ class LaunchMethodYARN(LaunchMethod):
             self._log.info(check[1])
             self._scheduler._configure()
 
-            self._serviceurl = node_name + ':9000'
+            self._serviceurl = node_name + ':57410'
             self.launch_command = self._yarn_home + '/bin/yarn'
         else:
             self._serviceurl = self._scheduler._lrms.namenode_url
@@ -2583,7 +2583,9 @@ class LaunchMethodYARN(LaunchMethod):
             self._log.info('Stoping DFS.')
             hadoop_start = os.system(self._hadoop_home + '/sbin/stop-dfs.sh')
             self._log.info("Deleting HADOOP files from temp")
-            os.system('rm -rf /tmp/hadoop')
+            os.system('rm -rf /tmp/hadoop*')
+            os.system('rm -rf /tmp/Jetty*')
+            os.system('rm -rf /tmp/hsperf*')
 
 
 # ==============================================================================
