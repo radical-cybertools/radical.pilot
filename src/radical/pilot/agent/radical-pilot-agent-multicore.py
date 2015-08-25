@@ -4543,6 +4543,7 @@ class StageinWorker(threading.Thread):
 
                     sandbox      = os.path.join(self._workdir, '%s' % _cu['_id'])
                     staging_area = os.path.join(self._workdir, self._config['staging_area'])
+                    staging_ok   = True
 
                     for directive in _cu['Agent_Input_Directives']:
 
@@ -4608,18 +4609,23 @@ class StageinWorker(threading.Thread):
                                                           state  = rp.FAILED,
                                                           msg    = log_message)
 
-                    # Agent staging is all done, unit can go to ALLOCATING
-                    rpu.prof('log', msg="no staging to do -- go allocate", uid=_cu['_id'])
-                    _cu['state'] = rp.ALLOCATING
-                    self._agent.update_unit_state(src    = 'StageinWorker',
-                                                  uid    = _cu['_id'],
-                                                  state  = rp.ALLOCATING,
-                                                  msg    = 'agent input staging done')
+                            # don't attempt to stage other files
+                            staging_ok = False
+                            break
 
-                    _cu_list, _ = rpu.blowup(self._config, _cu, SCHEDULE_QUEUE)
-                    for __cu in _cu_list :
-                        rpu.prof('put', msg="StageinWorker to schedule_queue (%s)" % __cu['state'], uid=__cu['_id'])
-                        self._schedule_queue.put([COMMAND_SCHEDULE, __cu])
+                    # if agent staging is all done, unit can go to ALLOCATING
+                    if staging_ok:
+                        rpu.prof('log', msg="no staging to do -- go allocate", uid=_cu['_id'])
+                        _cu['state'] = rp.ALLOCATING
+                        self._agent.update_unit_state(src    = 'StageinWorker',
+                                                      uid    = _cu['_id'],
+                                                      state  = rp.ALLOCATING,
+                                                      msg    = 'agent input staging done')
+
+                        _cu_list, _ = rpu.blowup(self._config, _cu, SCHEDULE_QUEUE)
+                        for __cu in _cu_list :
+                            rpu.prof('put', msg="StageinWorker to schedule_queue (%s)" % __cu['state'], uid=__cu['_id'])
+                            self._schedule_queue.put([COMMAND_SCHEDULE, __cu])
 
             except Exception as e:
                 self._log.exception('worker died')
@@ -4700,6 +4706,7 @@ class StageoutWorker(threading.Thread):
                     rpu.prof('get', msg="stageout_queue to StageoutWorker (%s)" % _cu['state'], uid=_cu['_id'])
 
                     sandbox = os.path.join(self._workdir, '%s' % _cu['_id'])
+                    staging_ok = True
 
                     ## parked from unit state checker: unit postprocessing
 
@@ -4795,25 +4802,28 @@ class StageoutWorker(threading.Thread):
                                                           uid    = _cu['_id'],
                                                           state  = rp.FAILED,
                                                           msg    = log_message)
+                            staging_ok = False
+                            break
 
-                    # Agent output staging is done.
+                    # if agent output staging is done, advance the unit
+                    if staging_ok:
 
-                    #rpu.prof('final', msg="stageout done", uid=_cu['_id'])
-                    _cu['state'] = rp.PENDING_OUTPUT_STAGING
-                    self._agent.update_unit_state(src    = 'StageoutWorker',
-                                                  uid    = _cu['_id'],
-                                                  state  = rp.PENDING_OUTPUT_STAGING,
-                                                  msg    = 'Agent output staging completed',
-                                                  update = {
-                                                      '$set' : {
-                                                          'stdout'    : _cu['stdout'],
-                                                          'stderr'    : _cu['stderr'],
-                                                          'exit_code' : _cu['exit_code'],
-                                                          'started'   : _cu['started'],
-                                                          'finished'  : _cu['finished'],
-                                                          'slots'     : _cu['opaque_slot'],
-                                                      }
-                                                  })
+                        #rpu.prof('final', msg="stageout done", uid=_cu['_id'])
+                        _cu['state'] = rp.PENDING_OUTPUT_STAGING
+                        self._agent.update_unit_state(src    = 'StageoutWorker',
+                                                      uid    = _cu['_id'],
+                                                      state  = rp.PENDING_OUTPUT_STAGING,
+                                                      msg    = 'Agent output staging completed',
+                                                      update = {
+                                                          '$set' : {
+                                                              'stdout'    : _cu['stdout'],
+                                                              'stderr'    : _cu['stderr'],
+                                                              'exit_code' : _cu['exit_code'],
+                                                              'started'   : _cu['started'],
+                                                              'finished'  : _cu['finished'],
+                                                              'slots'     : _cu['opaque_slot'],
+                                                          }
+                                                      })
                     # NOTE: this is final, the cu is not touched anymore
                     _cu = None
 
