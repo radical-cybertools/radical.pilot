@@ -500,8 +500,10 @@ def get_info_df(df):
         tmp4   = tmp3[['time', 'state']].dropna()
         tmp2_d = tmp4.set_index('state').to_dict()['time']
         for k,v in tmp2_d.iteritems():
-            cols.add(k)
             tmp1_d[k] = v
+        # make sure the frame column headers are complete
+        for s in _info_states:
+            cols.add(s)
 
         # make sure we got no info double defined on any unit.  Also derive
         # column names
@@ -519,6 +521,17 @@ def get_info_df(df):
         new_df.loc[uid] = pd.Series(dicts[uid])
 
     return new_df
+
+
+# ------------------------------------------------------------------------------
+#
+def get_state_df(df):
+    """
+    This call accepts an 'info' df, and reduces it to only contain state
+    transitions.
+    """
+
+    return df[_info_states]
 
 
 # ------------------------------------------------------------------------------
