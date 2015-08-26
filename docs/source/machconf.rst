@@ -140,6 +140,9 @@ A configuration file has to be valid JSON. The structure is as follows:
                                              "source /home/hpc/pr87be/di29sut/pilotve/bin/activate"
                                             ],
             "valid_roots"                 : ["/home", "/gpfs/work", "/gpfs/scratch"],
+            "agent_type"                  : "multicore",
+            "agent_scheduler"             : "CONTINUOUS",
+            "agent_spawner"               : "POPEN",
             "pilot_agent"                 : "radical-pilot-agent-multicore.py"
         },
         "ANOTHER_KEY_NAME": 
