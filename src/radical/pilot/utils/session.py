@@ -32,7 +32,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, session=None):
         src = os.getcwd()
             
     if not tgt:
-        tgt = "%s" % os.getcwd()
+        tgt = os.getcwd()
             
     #if not tgt.startswith('/'):
     #    tgt = "%s/%s" % (os.getcwd(), tgt)
