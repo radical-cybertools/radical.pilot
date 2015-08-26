@@ -3813,7 +3813,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 # add all cus we found to the watchlist
                 for cu in cus :
                     
-                    self._prof.prof('get', msg="ExecWatcher picked up unit", uid=cu['_id'])
+                    self._prof.prof('passed', msg="ExecWatcher picked up unit", uid=cu['_id'])
                     self._cus_to_watch.append (cu)
 
                 # check on the known cus.
@@ -4304,7 +4304,7 @@ timestamp () {
         # FIXME: this is too late, there is already a race with the monitoring
         # thread for this CU execution.  We need to communicate the PIDs/CUs via
         # a queue again!
-        self._prof.prof('put', msg="to watcher (%s)" % cu['state'], uid=cu['_id'])
+        self._prof.prof('pass', msg="to watcher (%s)" % cu['state'], uid=cu['_id'])
         with self._registry_lock :
             self._registry[pid] = cu
 
@@ -4406,7 +4406,7 @@ timestamp () {
                         cu = self._registry.get (pid, None)
 
                     if cu:
-                        self._prof.prof('get', msg="ExecWatcher picked up unit",
+                        self._prof.prof('passed', msg="ExecWatcher picked up unit",
                                 state=cu['state'], uid=cu['_id'])
                         self._handle_event (cu, pid, state, data)
                     else:

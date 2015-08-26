@@ -106,41 +106,45 @@ class InputFileTransferWorker(threading.Thread):
                         compute_unit_id = str(compute_unit["_id"])
 
                         logger.debug ("InputStagingController: unit found: %s" % compute_unit_id)
-                        self._session.prof.prof('advance', uid=compute_unit_id, state=state)
+                        self._session.prof.prof('advance', uid=compute_unit_id,
+                                msg=state, state=state)
 
                         remote_sandbox = compute_unit["sandbox"]
                         input_staging = compute_unit.get("FTW_Input_Directives", [])
 
 
-                        # We need to create the CU's directory in case it doesn't exist yet.
-                        log_msg = "InputStagingController: Creating ComputeUnit sandbox directory %s." % remote_sandbox
-                        log_messages.append(log_msg)
-                        logger.info(log_msg)
+                        # if we do staging, create the CU's directory in case it doesn't exist yet.
+                        if input_staging:
+                            log_msg = "InputStagingController: Creating ComputeUnit sandbox directory %s." % remote_sandbox
+                            log_messages.append(log_msg)
+                            logger.info(log_msg)
 
-                        # Creating/initialising the sandbox directory.
-                        try:
-                            logger.debug ("saga.fs.Directory ('%s')" % remote_sandbox)
+                            # Creating/initialising the sandbox directory.
+                            try:
+                                logger.debug ("saga.fs.Directory ('%s')" % remote_sandbox)
 
-                            # url used for saga
-                            remote_sandbox_url = saga.Url(remote_sandbox)
+                                # url used for saga
+                                remote_sandbox_url = saga.Url(remote_sandbox)
 
-                            # keyurl and key used for cache
-                            remote_sandbox_keyurl = saga.Url(remote_sandbox)
-                            remote_sandbox_keyurl.path = '/'
-                            remote_sandbox_key = str(remote_sandbox_keyurl)
+                                # keyurl and key used for cache
+                                remote_sandbox_keyurl = saga.Url(remote_sandbox)
+                                remote_sandbox_keyurl.path = '/'
+                                remote_sandbox_key = str(remote_sandbox_keyurl)
 
-                            if  remote_sandbox_key not in self._saga_dirs :
-                                self._saga_dirs[remote_sandbox_key] = \
-                                        saga.filesystem.Directory(remote_sandbox_url,
-                                                flags=saga.filesystem.CREATE_PARENTS,
-                                                session=self._session)
+                                if  remote_sandbox_key not in self._saga_dirs :
+                                    self._saga_dirs[remote_sandbox_key] = \
+                                            saga.filesystem.Directory(remote_sandbox_url,
+                                                    flags=saga.filesystem.CREATE_PARENTS,
+                                                    session=self._session)
 
-                            saga_dir = self._saga_dirs[remote_sandbox_key]
-                        except Exception as e :
-                            logger.exception('Error: %s' % e)
-                            raise
+                                saga_dir = self._saga_dirs[remote_sandbox_key]
+                            except Exception as e :
+                                logger.exception('Error: %s' % e)
+                                raise
 
-                        logger.info("InputStagingController: Processing input file transfers for ComputeUnit %s" % compute_unit_id)
+                            logger.info("InputStagingController: Processing input file transfers for ComputeUnit %s" % compute_unit_id)
+
+
                         # Loop over all transfer directives and execute them.
                         for sd in input_staging:
 
@@ -152,7 +156,8 @@ class InputFileTransferWorker(threading.Thread):
                                 fields=["state"]
                             )
                             if state_doc['state'] == CANCELED:
-                                self._session.prof.prof('advance', uid=compute_unit_id, state=CANCELED)
+                                self._session.prof.prof('advance', uid=compute_unit_id, 
+                                        msg=CANCELED, state=CANCELED)
                                 logger.info("Compute Unit Canceled, interrupting input file transfers.")
                                 state = CANCELED
                                 # Break out of the loop for this CU's SD's
@@ -205,7 +210,8 @@ class InputFileTransferWorker(threading.Thread):
                                                'message': 'push unit to agent after ftw staging'
                                        }}})
                         logger.debug("InputStagingController: %s : push to agent" % compute_unit_id)
-                        self._session.prof.prof('advance', uid=compute_unit_id, state=AGENT_STAGING_INPUT_PENDING)
+                        self._session.prof.prof('advance', uid=compute_unit_id, 
+                                msg=AGENT_STAGING_INPUT_PENDING, state=AGENT_STAGING_INPUT_PENDING)
 
                     except Exception as e :
 
@@ -220,7 +226,8 @@ class InputFileTransferWorker(threading.Thread):
                                            'statehistory': {'state': FAILED, 'timestamp': ts},
                                            'log': logentry
                                        }})
-                        self._session.prof.prof('advance', uid=compute_unit_id, state=FAILED)
+                        self._session.prof.prof('advance', uid=compute_unit_id, 
+                                msg=FAILED, state=FAILED)
 
                         logger.exception(str(logentry))
                         raise

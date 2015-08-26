@@ -415,6 +415,13 @@ class UnitManagerController(threading.Thread):
     def publish_compute_units(self, units):
         """register the unscheduled units in the database"""
 
+      # # units are UNSCHEDULED on publishing
+      # # FIXME: wtf, units are not even statefulll Bah!
+      # for unit in units:
+      #     unit['state'] = UNSCHEDULED
+      #     self._session.prof.prof('advance', uid=unit.uid, 
+      #                 msg=UNSCHEDULED, state=UNSCHEDULED)
+
         # Add all units to the database.
         results = self._dbs.insert_compute_units(umgr_uid=self.uid,
                 units=units,
@@ -554,7 +561,8 @@ class UnitManagerController(threading.Thread):
                 # are picked up by the FTW
                 log = "Scheduled for data transfer to ComputePilot %s." % pilot_uid
                 self._dbs.set_compute_unit_state(unit.uid, PENDING_INPUT_STAGING, log)
-                self._session.prof.prof('advance', uid=unit.uid, state=PENDING_INPUT_STAGING)
+                self._session.prof.prof('advance', uid=unit.uid, 
+                        msg=PENDING_INPUT_STAGING, state=PENDING_INPUT_STAGING)
 
 
             logger.info(
@@ -577,7 +585,8 @@ class UnitManagerController(threading.Thread):
             unit_ids = [unit.uid for unit in units]
             self._dbs.set_compute_unit_state(unit_ids, UNSCHEDULED, "unit remains unscheduled")
             for unit in units:
-                self._session.prof.prof('advance', uid=unit.uid, state=UNSCHEDULED)
+                self._session.prof.prof('advance', uid=unit.uid, 
+                        msg=UNSCHEDULED, state=UNSCHEDULED)
 
         except Exception, e:
             logger.exception ('error in unit manager controller (unschedule())')
