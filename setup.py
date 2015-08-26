@@ -182,6 +182,7 @@ setup_args = {
     'packages'           : find_packages('src'),
     'package_dir'        : {'': 'src'},
     'scripts'            : ['bin/radicalpilot-bson2json',
+                            'bin/radicalpilot-fetch-profiles',
                             'bin/radicalpilot-inspect',
                             'bin/radicalpilot-version',
                             'bin/radicalpilot-close-session',
