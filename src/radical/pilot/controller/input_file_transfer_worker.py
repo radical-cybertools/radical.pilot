@@ -106,7 +106,8 @@ class InputFileTransferWorker(threading.Thread):
                         compute_unit_id = str(compute_unit["_id"])
 
                         logger.debug ("InputStagingController: unit found: %s" % compute_unit_id)
-                        self._session.prof.prof('advance', uid=compute_unit_id, state=state)
+                        self._session.prof.prof('advance', uid=compute_unit_id,
+                                msg=state, state=state)
 
                         remote_sandbox = compute_unit["sandbox"]
                         input_staging = compute_unit.get("FTW_Input_Directives", [])
@@ -155,7 +156,8 @@ class InputFileTransferWorker(threading.Thread):
                                 fields=["state"]
                             )
                             if state_doc['state'] == CANCELED:
-                                self._session.prof.prof('advance', uid=compute_unit_id, state=CANCELED)
+                                self._session.prof.prof('advance', uid=compute_unit_id, 
+                                        msg=CANCELED, state=CANCELED)
                                 logger.info("Compute Unit Canceled, interrupting input file transfers.")
                                 state = CANCELED
                                 # Break out of the loop for this CU's SD's
@@ -208,7 +210,8 @@ class InputFileTransferWorker(threading.Thread):
                                                'message': 'push unit to agent after ftw staging'
                                        }}})
                         logger.debug("InputStagingController: %s : push to agent" % compute_unit_id)
-                        self._session.prof.prof('advance', uid=compute_unit_id, state=AGENT_STAGING_INPUT_PENDING)
+                        self._session.prof.prof('advance', uid=compute_unit_id, 
+                                msg=AGENT_STAGING_INPUT_PENDING, state=AGENT_STAGING_INPUT_PENDING)
 
                     except Exception as e :
 
@@ -223,7 +226,8 @@ class InputFileTransferWorker(threading.Thread):
                                            'statehistory': {'state': FAILED, 'timestamp': ts},
                                            'log': logentry
                                        }})
-                        self._session.prof.prof('advance', uid=compute_unit_id, state=FAILED)
+                        self._session.prof.prof('advance', uid=compute_unit_id, 
+                                msg=FAILED, state=FAILED)
 
                         logger.exception(str(logentry))
                         raise

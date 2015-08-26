@@ -118,7 +118,7 @@ class ComputeUnit(object):
         computeunit._name        = unit_description['name']
         computeunit._local_state = local_state
 
-        computeunit._session.prof.prof('advance', msg='create', uid=computeunit._uid, state=NEW)
+        computeunit._session.prof.prof('advance', msg=NEW, uid=computeunit._uid, state=NEW)
 
         return computeunit
 
@@ -523,7 +523,7 @@ class ComputeUnit(object):
         else:
             raise IncorrectState("Unknown Compute Unit state: %s, cannot cancel" % self.state)
 
-        self._session.prof.prof('advance', msg='cancel', uid=unit.uid, state=CANCELED)
+        self._session.prof.prof('advance', msg=CANCELED, uid=unit.uid, state=CANCELED)
 
         # done canceling
         return

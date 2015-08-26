@@ -292,7 +292,7 @@ def combine_profiles(profiles):
                     if row['event'] == 'sync abs' : 
                         tref = 'abs'
                         rd_abs[prof] = [row['time']] + row['msg'].split(':')
-    
+
                 # store row in profile
                 p.append(row)
     

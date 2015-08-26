@@ -104,7 +104,8 @@ class OutputFileTransferWorker(threading.Thread):
                         # directive(s) with SAGA.
                         compute_unit_id = str(compute_unit["_id"])
 
-                        self._session.prof.prof('advance', uid=compute_unit_id, state=STAGING_OUTPUT)
+                        self._session.prof.prof('advance', uid=compute_unit_id,
+                                msg=STAGING_OUTPUT, state=STAGING_OUTPUT)
                         logger.debug ("OutputStagingController: unit found: %s" % compute_unit_id)
 
                         remote_sandbox = compute_unit["sandbox"]
@@ -124,7 +125,8 @@ class OutputFileTransferWorker(threading.Thread):
                             )
                             if state_doc['state'] == CANCELED:
                                 logger.info("Compute Unit Canceled, interrupting output file transfers.")
-                                self._session.prof.prof('advance', uid=compute_unit_id, state=CANCELED)
+                                self._session.prof.prof('advance', uid=compute_unit_id, 
+                                        msg=CANCELED, state=CANCELED)
                                 state = CANCELED
                                 # Break out of the loop over all SD's, into the loop over CUs
                                 break
@@ -170,7 +172,8 @@ class OutputFileTransferWorker(threading.Thread):
                                 'log': {'message': log_message, 'timestamp': ts}
                             }
                         })
-                        self._session.prof.prof('advance', uid=compute_unit_id, state=DONE)
+                        self._session.prof.prof('advance', uid=compute_unit_id,
+                                msg=DONE, state=DONE)
 
                     except Exception as e :
                         # Update the CU's state to 'FAILED'.
@@ -183,7 +186,8 @@ class OutputFileTransferWorker(threading.Thread):
                                 'log': {'message': log_message, 'timestamp': ts}
                             }})
                         logger.exception(log_message)
-                        self._session.prof.prof('advance', uid=compute_unit_id, state=FAILED)
+                        self._session.prof.prof('advance', uid=compute_unit_id, 
+                                msg=FAILED, state=FAILED)
                         raise
 
         except SystemExit as e :
