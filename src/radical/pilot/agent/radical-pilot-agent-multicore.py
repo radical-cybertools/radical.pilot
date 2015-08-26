@@ -5426,8 +5426,10 @@ class AgentWorker(rpu.Worker):
                         spec     = {"_id"   : {"$in"     : cu_uids}},
                         document = {"$set"  : {"control" : 'agent'}})
 
-        self._prof.prof('get', msg="bulk size: %d" % len(cu_list))
         self._log.info("units pulled: %4d"   % len(cu_list))
+        self._prof.prof('get', msg="bulk size: %d" % len(cu_list))
+        for cu in cu_list:
+            self._prof.prof('get', msg="bulk size: %d" % len(cu_list), uid=cu['_id'])
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline)
