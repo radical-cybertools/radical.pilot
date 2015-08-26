@@ -56,25 +56,25 @@ _info_states = [
 
 _info_entries = [
     # FIXME: the names below will break for other schedulers
-    ('umgr_get_u',    'MainThread',             'advance',   'New'),
-    ('umgr_adv_u',    'MainThread',             'advance',   'PendingInputStaging'),
-    ('usic_get_u',    'InputFileTransfer',      'advance',   'StagingInput'),
-    ('usic_adv_u',    'InputFileTransfer',      'advance',   'AgentStagingInputPending'),
+    ('umgr_get_u',      'MainThread',             'advance',   'New'),
+    ('umgr_adv_u_pend', 'MainThread',             'advance',   'PendingInputStaging'),
+    ('usic_get_u',      'InputFileTransfer',      'advance',   'StagingInput'),
+    ('usic_adv_u_pend', 'InputFileTransfer',      'advance',   'AgentStagingInputPending'),
 
-    ('usoc_get_u',    'OutputFileTransfer',     'advance',   'StagingOutput'),
-    ('usoc_adv_u',    'OutputFileTransfer',     'advance',   'Done'),
+    ('usoc_get_u',      'OutputFileTransfer',     'advance',   'StagingOutput'),
+    ('usoc_adv_u',      'OutputFileTransfer',     'advance',   'Done'),
 
-    ('asc_alloc_nok', 'SchedulerContinuous',    'schedule',  'allocation failed'),
-    ('asc_alloc_ok',  'SchedulerContinuous',    'schedule',  'allocation succeeded'),
-    ('asc_unqueue',   'SchedulerContinuous',    'unqueue',   're-allocation done'),
+    ('asc_alloc_nok',   'SchedulerContinuous',    'schedule',  'allocation failed'),
+    ('asc_alloc_ok',    'SchedulerContinuous',    'schedule',  'allocation succeeded'),
+    ('asc_unqueue',     'SchedulerContinuous',    'unqueue',   're-allocation done'),
 
-    ('aec_launch',    'AgentExecuting',         'exec',      'unit launch'),
-    ('aec_spawn',     'AgentExecuting',         'spawn',     'unit spawn'),
-    ('aec_script',    'AgentExecuting',         'command',   'launch script constructed'),
-    ('aec_pty',       'AgentExecuting',         'spawn',     'spawning passed to pty'),  
-    ('aec_end',       'AgentExecuting',         'final',     ''),  
+    ('aec_launch',      'AgentExecuting',         'exec',      'unit launch'),
+    ('aec_spawn',       'AgentExecuting',         'spawn',     'unit spawn'),
+    ('aec_script',      'AgentExecuting',         'command',   'launch script constructed'),
+    ('aec_pty',         'AgentExecuting',         'spawn',     'spawning passed to pty'),  
+    ('aec_end',         'AgentExecuting',         'final',     ''),  
 
-    ('aew_complete',  'AgentExecuting',         'exec',      'execution complete'),
+    ('aew_complete',    'AgentExecuting',         'exec',      'execution complete'),
 ]
 
 # ------------------------------------------------------------------------------
@@ -494,8 +494,11 @@ def get_info_df(df):
 
         # add state transitions to dict.  We basically select all rows with
         # a 'state_from', and add a dict entry for the 'state' column.
-        tmp2   = uf_n[uf_n['state_from'].notnull()][['time', 'state']].dropna()
-        tmp2_d = tmp2.set_index('state').to_dict()['time']
+        # Make sure we ignore transitions where 'state' == 'state_from'.
+        tmp2   = uf_n[uf_n['state_from'].notnull()]
+        tmp3   = tmp2[tmp2['state'] != tmp2['state_from']]
+        tmp4   = tmp3[['time', 'state']].dropna()
+        tmp2_d = tmp4.set_index('state').to_dict()['time']
         for k,v in tmp2_d.iteritems():
             cols.add(k)
             tmp1_d[k] = v
