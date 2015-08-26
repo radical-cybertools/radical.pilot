@@ -34,8 +34,8 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, session=None):
     if not tgt:
         tgt = "%s" % os.getcwd()
             
-    if not tgt.startswith('/'):
-        tgt = "%s/%s" % (os.getcwd, tgt)
+    #if not tgt.startswith('/'):
+    #    tgt = "%s/%s" % (os.getcwd(), tgt)
 
     # at the moment, we only support localhost as fetch target
     tgt = saga.Url(tgt)
