@@ -489,16 +489,16 @@ def get_info_df(df):
 
     for uid in uids:
         uf_n  = df[df['uid'] == uid]
-        tmp   = uf_n[['time', 'info']].dropna()
-        tmp_d = tmp.set_index('info').to_dict()['time']
+        tmp1   = uf_n[['time', 'info']].dropna()
+        tmp1_d = tmp1.set_index('info').to_dict()['time']
 
         # add state transitions to dict.  We basically select all rows with
         # a 'state_from', and add a dict entry for the 'state' column.
-        tmp   = uf_n[uf_n['state_from'].notnull()][['time', 'state']].dropna()
-        tmp_d = tmp.set_index('state').to_dict()['time']
-        for k,v in tmp_d.iteritems():
+        tmp2   = uf_n[uf_n['state_from'].notnull()][['time', 'state']].dropna()
+        tmp2_d = tmp2.set_index('state').to_dict()['time']
+        for k,v in tmp2_d.iteritems():
             cols.add(k)
-            tmp_d[k] = v
+            tmp1_d[k] = v
 
         # make sure we got no info double defined on any unit.  Also derive
         # column names
@@ -508,7 +508,7 @@ def get_info_df(df):
             if l.count(i)>1:
                 raise ValueError('doubled info entry %s' % i)
 
-        dicts[uid] = tmp_d
+        dicts[uid] = tmp1_d
 
 
     new_df = pd.DataFrame(columns=cols, index=uids)
