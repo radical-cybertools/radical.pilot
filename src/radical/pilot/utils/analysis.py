@@ -55,10 +55,10 @@ _info_entries = [
 tmp = None
 def add_concurrency (frame, tgt, spec):
     """
-    add a column 'tgt' which is a cumulative sum of conditionals of enother row.  
+    add a column 'tgt' which is a cumulative sum of conditionals of another row.
     
     The purpose is the following: if a unit enters a component, the tgt row counter is 
-    increased by 1, if the unit leaves the component, the counter is decreases by 1.
+    increased by 1, if the unit leaves the component, the counter is decreased by 1.
     For any time, the resulting row contains the number of units which is in the 
     component.  Or state.  Or whatever.
     
