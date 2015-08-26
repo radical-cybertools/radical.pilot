@@ -11,7 +11,7 @@ from db_utils import *
 
 # ------------------------------------------------------------------------------
 #
-def fetch_profiles (sid, dburl=None, src=None, tgt=None):
+def fetch_profiles (sid, dburl=None, src=None, tgt=None, session=None):
     '''
     sid: session for which all profiles are fetched
     src: dir to look for session profiles
@@ -50,7 +50,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None):
         ret.append('/%s/%s' % (tgt, os.path.basename(prof)))
 
         print "fetching '%s' to '%s'." % (prof, tgt)
-        prof_file = saga.filesystem.File(prof)
+        prof_file = saga.filesystem.File(prof, session=session)
         prof_file.copy(tgt, flags=saga.filesystem.CREATE_PARENTS)
         prof_file.close()
 
@@ -68,7 +68,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None):
 
         print "Processing pilot '%s'" % pilot['_id']
 
-        sandbox  = saga.filesystem.Directory (pilot['sandbox'])
+        sandbox  = saga.filesystem.Directory (pilot['sandbox'], session=session)
         profiles = sandbox.list('*.prof')
 
         for prof in profiles:
@@ -76,7 +76,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None):
             ret.append('/%s/%s' % (tgt, prof))
 
             print "fetching '%s/%s' to '%s'." % (pilot['sandbox'], prof, tgt)
-            prof_file = saga.filesystem.File("%s/%s" % (pilot['sandbox'], prof))
+            prof_file = saga.filesystem.File("%s/%s" % (pilot['sandbox'], prof), session=session)
             prof_file.copy(tgt, flags=saga.filesystem.CREATE_PARENTS)
             prof_file.close()
 

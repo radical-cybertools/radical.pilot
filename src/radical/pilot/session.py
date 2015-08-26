@@ -577,13 +577,13 @@ class Session (saga.Session):
 
     # -------------------------------------------------------------------------
     #
-    def fetch_profiles (self, target=None):
-        return fetch_profiles (self._uid, dburl=self._dburl, target=target)
+    def fetch_profiles (self, tgt=None):
+        return fetch_profiles (self._uid, dburl=self._dburl, tgt=tgt, session=self)
 
 
     # -------------------------------------------------------------------------
     #
-    def fetch_json (self, target=None):
-        return fetch_json (self._uid, dburl=self._dburl, target=target)
+    def fetch_json (self, tgt=None):
+        return fetch_json (self._uid, dburl=self._dburl, tgt=tgt)
 
 
