@@ -34,8 +34,8 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, session=None):
     if not tgt:
         tgt = os.getcwd()
             
-    if not tgt.startswith('/'):
-        tgt = "%s/%s" % (os.getcwd(), tgt)
+    #if not tgt.startswith('/'):
+    #    tgt = "%s/%s" % (os.getcwd(), tgt)
 
     # first fetch session profile
     # FIXME: should we record pwd or profile location in db session?  Or create
