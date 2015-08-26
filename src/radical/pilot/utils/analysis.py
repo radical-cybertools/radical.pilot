@@ -23,9 +23,36 @@ _info_events = {
         'update'     : '_upd_u'      # a unit state update is pushed to the DB
         }
 
-_info_states = {
+_info_pending = {
         'Pending'    : '_pend'
         }
+
+_info_states = [
+        ACTIVE,
+        AGENT_STAGING_INPUT,
+        AGENT_STAGING_INPUT_PENDING,
+        AGENT_STAGING_OUTPUT,
+        AGENT_STAGING_OUTPUT_PENDING,
+        ALLOCATING,
+        ALLOCATING_PENDING,
+        CANCELED,
+        DONE,
+        EXECUTING,
+        EXECUTING_PENDING,
+        FAILED,
+        LAUNCHING,
+        NEW,
+        PENDING,
+        PENDING_ACTIVE,
+        PENDING_EXECUTION,
+        PENDING_INPUT_STAGING,
+        PENDING_LAUNCH,
+        PENDING_OUTPUT_STAGING,
+        SCHEDULING,
+        STAGING_INPUT,
+        STAGING_OUTPUT,
+        UNSCHEDULED
+        ]
 
 _info_entries = [
     # FIXME: the names below will break for other schedulers
@@ -432,7 +459,7 @@ def add_info(df):
                 ret += ev
                 n   += 1
                 break
-        for pat, s in _info_states.iteritems():
+        for pat, s in _info_pending.iteritems():
             if ret and pat in row['state']:
                 ret += s
                 break
@@ -461,16 +488,28 @@ def get_info_df(df):
     dicts = dict()
 
     for uid in uids:
-        uf_n = df[df['uid'] == uid][['time', 'info']].dropna()
-        dicts[uid] = uf_n.set_index('info').to_dict()['time']
+        uf_n  = df[df['uid'] == uid]
+        tmp   = uf_n[['time', 'info']].dropna()
+        tmp_d = tmp.set_index('info').to_dict()['time']
+
+        # add state transitions to dict.  We basically select all rows with
+        # a 'state_from', and add a dict entry for the 'state' column.
+        tmp   = uf_n[uf_n['state_from'].notnull()][['time', 'state']].dropna()
+        tmp_d = tmp.set_index('state').to_dict()['time']
+        for k,v in tmp_d.iteritems():
+            cols.add(k)
+            tmp_d[k] = v
 
         # make sure we got no info double defined on any unit.  Also derive
         # column names
-        l = list(uf_n['info'])
+        l = list(uf_n['info'].dropna())
         for i in set(l):
             cols.add(i)
             if l.count(i)>1:
                 raise ValueError('doubled info entry %s' % i)
+
+        dicts[uid] = tmp_d
+
 
     new_df = pd.DataFrame(columns=cols, index=uids)
     for uid in dicts:
