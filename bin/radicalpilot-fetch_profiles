@@ -11,9 +11,9 @@ import radical.pilot.utils as rpu
 
 # ------------------------------------------------------------------------------
 #
-def usage (msg=None, noexit=False) :
+def usage(msg=None, noexit=False):
 
-    if  msg :
+    if msg:
         print "\n      Error: %s" % msg
 
     print """
@@ -37,52 +37,52 @@ def usage (msg=None, noexit=False) :
 
 """ % (sys.argv[0], sys.argv[0], os.environ.get('RADICAL_PILOT_DBURL'))
 
-    if  msg :
-        sys.exit (1)
+    if msg:
+        sys.exit(1)
 
-    if  not noexit :
-        sys.exit (0)
+    if not noexit:
+        sys.exit(0)
 
 
 # ------------------------------------------------------------------------------
 #
-def fetch_profiles (dburl, sid, src, tgt) :
+def fetch_profiles(dburl, sid, src, tgt):
 
     rpu.fetch_profiles(sid=sid, dburl=dburl, src=src, tgt=tgt)
 
 
 # ------------------------------------------------------------------------------
 # 
-if __name__ == '__main__' :
+if __name__ == '__main__':
 
     import optparse
-    parser = optparse.OptionParser (add_help_option=False)
+    parser = optparse.OptionParser(add_help_option=False)
 
     parser.add_option('-d', '--dburl',   dest='dburl')
     parser.add_option('-s', '--src',     dest='src')
-    parser.add_option('-m', '--mode',    dest='tgt')
+    parser.add_option('-t', '--tgt',     dest='tgt')
     parser.add_option('-h', '--help',    dest='help', action="store_true")
 
-    options, args = parser.parse_args ()
+    options, args = parser.parse_args()
 
-    if  len(args) > 1 :
-        usage ("Too many arguments (%s)" % args)
+    if len(args) > 1:
+        usage("Too many arguments (%s)" % args)
 
-    if  len(args) < 1 :
-        usage ("session ID missing")
+    if len(args) < 1:
+        usage("session ID missing")
 
-    if  options.help :
-        usage ()
+    if options.help:
+        usage()
 
-    if  not options.dburl : 
-        options.dburl = None
+    if not options.src   : options.src   = os.getpwd()
+    if not options.tgt   : options.tgt   = os.getpwd()
+    if not options.dburl : options.dburl = None
 
 
     sid   = args[0]
     src   = options.src 
     tgt   = options.tgt 
     dburl = options.dburl
-
 
     fetch_profiles(sid=sid, dburl=dburl, src=src, tgt=tgt)
 
