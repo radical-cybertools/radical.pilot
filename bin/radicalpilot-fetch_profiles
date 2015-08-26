@@ -74,8 +74,8 @@ if __name__ == '__main__':
     if options.help:
         usage()
 
-    if not options.src   : options.src   = os.getpwd()
-    if not options.tgt   : options.tgt   = os.getpwd()
+    if not options.src   : options.src   = os.getcwd()
+    if not options.tgt   : options.tgt   = os.getcwd()
     if not options.dburl : options.dburl = None
 
 
