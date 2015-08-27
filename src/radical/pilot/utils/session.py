@@ -34,8 +34,20 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, session=None):
     if not tgt:
         tgt = os.getcwd()
             
-    #if not tgt.startswith('/'):
-    #    tgt = "%s/%s" % (os.getcwd(), tgt)
+    if not tgt.startswith('/') and '://' not in tgt:
+        tgt = "%s/%s" % (os.getcwd(), tgt)
+
+    # we always create a session dir as real target
+    tgt = "%s/%s/" % (tgt, sid)
+
+    # at the moment, we only support localhost as fetch target
+    tgt_url = saga.Url(tgt)
+    if not saga.utils.misc.url_is_local (tgt_url):
+        raise ValueError('Only local fetch targets are supported (%s)' % tgt_url)
+
+    # make locality explicit
+    tgt_url.schema = 'file'
+    tgt_url.host   = 'localhost'
 
     # first fetch session profile
     # FIXME: should we record pwd or profile location in db session?  Or create
@@ -47,11 +59,12 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, session=None):
 
     for prof in profiles:
 
-        ret.append('/%s/%s' % (tgt, os.path.basename(prof)))
+        ftgt = '%s/%s' % (tgt_url, os.path.basename(prof))
+        ret.append("%s/%s" % (tgt, os.path.basename(prof)))
 
-        print "fetching '%s' to '%s'." % (prof, tgt)
+        print "fetching '%s' to '%s'." % (prof, tgt_url)
         prof_file = saga.filesystem.File(prof, session=session)
-        prof_file.copy(tgt, flags=saga.filesystem.CREATE_PARENTS)
+        prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
         prof_file.close()
 
 
@@ -73,11 +86,12 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, session=None):
 
         for prof in profiles:
 
-            ret.append('/%s/%s' % (tgt, prof))
+            ftgt = '%s/%s' % (tgt_url, prof)
+            ret.append("%s/%s" % (tgt, prof))
 
-            print "fetching '%s/%s' to '%s'." % (pilot['sandbox'], prof, tgt)
+            print "fetching '%s/%s' to '%s'." % (pilot['sandbox'], prof, tgt_url)
             prof_file = saga.filesystem.File("%s/%s" % (pilot['sandbox'], prof), session=session)
-            prof_file.copy(tgt, flags=saga.filesystem.CREATE_PARENTS)
+            prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
             prof_file.close()
 
     return ret
