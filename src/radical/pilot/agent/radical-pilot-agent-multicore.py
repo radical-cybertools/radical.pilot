@@ -3865,7 +3865,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                     self.advance(cu, rp.CANCELED, publish=True, push=False)
 
             else:
-                self._prof.prof('exec', 'execution complete', uid=cu['_id'])
+                self._prof.prof('exec', msg='execution complete', uid=cu['_id'])
 
                 # we have a valid return code -- unit is final
                 action += 1
