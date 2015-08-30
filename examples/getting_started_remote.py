@@ -53,6 +53,12 @@ resources = {
             'schema'   : None
             },
 
+        'xsede.comet' : {
+            'project'  : 'unc100',
+            'queue'    : '',
+            'schema'   : None
+            },
+
         'xsede.gordon' : {
             'project'  : None,
             'queue'    : 'debug',
