@@ -1315,7 +1315,7 @@ class SchedulerYarn(Scheduler):
             # Find out how many applications you can submit to YARN. And also keep
             # this check happened to update it accordingly
             sample_time = rpu.timestamp()
-            yarn_status = ul.urlopen('http://localhost:8088/ws/v1/cluster/scheduler')
+            yarn_status = ul.urlopen('http://{0}:8088/ws/v1/cluster/scheduler'.format(self._lrms.rm_ip))
 
             yarn_schedul_json = json.loads(yarn_status.read())
 
@@ -1324,7 +1324,7 @@ class SchedulerYarn(Scheduler):
 
             #-----------------------------------------------------------------------
             # Find out the cluster's resources
-            cluster_metrics = ul.urlopen('http://localhost:8088/ws/v1/cluster/metrics')
+            cluster_metrics = ul.urlopen('http://{0}:8088/ws/v1/cluster/metrics'.format(self._lrms.rm_ip))
 
             metrics = json.loads(cluster_metrics.read())
             self._num_of_cores = metrics['clusterMetrics']['totalVirtualCores']
@@ -1349,7 +1349,7 @@ class SchedulerYarn(Scheduler):
         # made about slot status. Keeping the code commented just in case it is
         # needed later either as whole or art of it.
         sample = rpu.timestamp()
-        yarn_status = ul.urlopen('http://localhost:8088/ws/v1/cluster/scheduler')
+        yarn_status = ul.urlopen('http://{0}:8088/ws/v1/cluster/scheduler'.format(self._lrms.rm_ip))
         yarn_schedul_json = json.loads(yarn_status.read())
 
         max_num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['maxApplications']
@@ -2359,7 +2359,7 @@ class LaunchMethodYARN(LaunchMethod):
 
             prop_str  = '<property>\n'
             prop_str += '  <name>fs.default.name</name>\n'
-            prop_str += '    <value>hdfs://%s:9000</value>\n'%node
+            prop_str += '    <value>hdfs://%s:54170</value>\n'%node
             prop_str += '</property>\n'
 
             lines.insert(-1,prop_str)
@@ -2476,10 +2476,11 @@ class LaunchMethodYARN(LaunchMethod):
             self._log.info(check[1])
             self._scheduler._configure()
 
-            self._serviceurl = node_name + ':9000'
+            self._serviceurl = node_name + ':54170'
             self.launch_command = self._yarn_home + '/bin/yarn'
         else:
             self._serviceurl = self._scheduler._lrms.namenode_url
+            self._rm_url     = self._scheduler._lrms.rm_ip+':'+self._scheduler._lrms.rm_port
             self.launch_command = self._which('yarn')
 
     # --------------------------------------------------------------------------
@@ -2565,7 +2566,7 @@ class LaunchMethodYARN(LaunchMethod):
         #    nmem_string = ''
 
         #Getting the namenode's address.
-        service_url = 'yarn://localhost?fs=hdfs://' + self._serviceurl
+        service_url = 'yarn://{0}?fs=hdfs://{1}'.format(self._rm_url,self._serviceurl)
 
         yarn_command = '%s -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
                        ' com.radical.pilot.Client -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
@@ -2577,13 +2578,13 @@ class LaunchMethodYARN(LaunchMethod):
         return print_str+yarn_command, None
 
     def stop_service(self):
-
-            self._log.info('Stoping YARN')
-            yarn_start = os.system(self._hadoop_home + '/sbin/stop-yarn.sh')
-            self._log.info('Stoping DFS.')
-            hadoop_start = os.system(self._hadoop_home + '/sbin/stop-dfs.sh')
-            self._log.info("Deleting HADOOP files from temp")
-            os.system('rm -rf /tmp/hadoop')
+            
+        self._log.info('Stoping YARN')
+        yarn_start = os.system(self._hadoop_home + '/sbin/stop-yarn.sh')
+        self._log.info('Stoping DFS.')
+        hadoop_start = os.system(self._hadoop_home + '/sbin/stop-dfs.sh')
+        self._log.info("Deleting HADOOP files from temp")
+        os.system('rm -rf /tmp/hadoop')
 
 
 # ==============================================================================
@@ -3823,6 +3824,20 @@ class YARNLRMS(LRMS):
         for output in hdfs_conf_ouput:
             if ':' in output:
                 self.namenode_url = output
+
+
+        yarn_conf_output = commands.getstatusoutput('yarn node -list')[1].split('\n')
+        for line in yarn_conf_output:
+            if 'ResourceManager' in line:
+                settings = line.split('at ')[1]
+                if '/' in settings:
+                    rm_url=settings.split('/')[1]
+                    self.rm_ip=rm_url.split(':')[0]
+                    self.rm_port=rm_url.split(':')[1]
+
+                else:
+                    self.rm_ip=settings.split(':')[0]
+                    self.rm_port=settings.split(':')[1]
 
         self.node_list = ["localhost"]
         self.cores_per_node = selected_cpus
@@ -5792,7 +5807,7 @@ class Agent(object):
         """
 
         rpu.prof ('stop request')
-        if self._task_launcher.name == 'YARN':
+        if self._task_launcher.name == 'YARN' and self._lrms.name !='YARN':
             self._task_launcher.stop_service()
         rpu.flush_prof()
         self._terminate.set()
