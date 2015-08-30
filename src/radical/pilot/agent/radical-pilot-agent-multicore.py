@@ -2475,7 +2475,7 @@ class LaunchMethodYARN(LaunchMethod):
             check = commands.getstatusoutput('%s/bin/hdfs dfs -ls /user'%self._hadoop_home)
             self._log.info(check[1])
             self._scheduler._configure()
-
+            
             self._serviceurl = node_name + ':54170'
             self.launch_command = self._yarn_home + '/bin/yarn'
         else:
@@ -2578,13 +2578,15 @@ class LaunchMethodYARN(LaunchMethod):
         return print_str+yarn_command, None
 
     def stop_service(self):
-            
+
         self._log.info('Stoping YARN')
         yarn_start = os.system(self._hadoop_home + '/sbin/stop-yarn.sh')
         self._log.info('Stoping DFS.')
         hadoop_start = os.system(self._hadoop_home + '/sbin/stop-dfs.sh')
         self._log.info("Deleting HADOOP files from temp")
-        os.system('rm -rf /tmp/hadoop')
+        os.system('rm -rf /tmp/hadoop*')
+        os.system('rm -rf /tmp/Jetty*')
+        os.system('rm -rf /tmp/hsperf*')
 
 
 # ==============================================================================
