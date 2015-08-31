@@ -4435,6 +4435,8 @@ timestamp () {
                              pid, state, data)
             return
 
+        self._prof.prof('exec', msg='execution complete', uid=cu['_id'])
+
         # for final states, we can free the slots.
         self.publish('unschedule', cu)
 
