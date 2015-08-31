@@ -9,7 +9,8 @@
         "stampede.tacc.xsede.org"  : "xsede.stampede",
         "stampede.xsede.org"       : "xsede.stampede",
         "trestles.sdsc.xsede.org"  : "xsede.trestles",
-        "localhost"                : "local.localhost"
+        "localhost"                : "local.localhost",
+        "lsu.supermic"             : "xsede.supermic"
     }
 }
 

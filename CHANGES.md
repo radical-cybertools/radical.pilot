@@ -4,6 +4,13 @@
   - For a list of open issues and known problems, see
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
+
+0.35 Release                                               2015-07-14
+--------------------------------------------------------------------------------
+
+  - numerous bug fixes and support for new resources
+
+
 0.34 Release                                               2015-07-14
 --------------------------------------------------------------------------------
 

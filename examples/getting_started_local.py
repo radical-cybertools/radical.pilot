@@ -13,6 +13,7 @@ import radical.pilot as rp
 # Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
 # you want to see what happens behind the scences!
 
+CNT=0
 
 #------------------------------------------------------------------------------
 #
@@ -21,12 +22,12 @@ def pilot_state_cb (pilot, state):
 
     print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
-    if state == rp.FAILED:
-        sys.exit (1)
-
     if state in [rp.DONE, rp.FAILED, rp.CANCELED]:
         for cb in pilot.callback_history:
             print cb
+
+    if state == rp.FAILED:
+        sys.exit (1)
 
 
 #------------------------------------------------------------------------------
@@ -34,16 +35,16 @@ def pilot_state_cb (pilot, state):
 def unit_state_cb (unit, state):
     """ this callback is invoked on all unit state changes """
 
-    print "[Callback]: ComputeUnit  '%s: %s' (on %s) state: %s." \
-        % (unit.name, unit.uid, unit.pilot_id, state)
+    if state == rp.DONE:
+        global CNT
+        CNT += 1
+
+        print "[Callback]: ComputeUnit %05d '%s: %s' (on %s) state: %s." \
+            % (CNT, unit.name, unit.uid, unit.pilot_id, state)
 
     if state == rp.FAILED:
         print "stderr: %s" % unit.stderr
         sys.exit (1)
-
-    if state in [rp.DONE, rp.FAILED, rp.CANCELED]:
-        for cb in unit.callback_history:
-            print cb
 
 
 #------------------------------------------------------------------------------
@@ -108,8 +109,8 @@ if __name__ == "__main__":
         # after itself.
         pdesc = rp.ComputePilotDescription()
         pdesc.resource = "local.localhost"
-        pdesc.runtime  = 5 # minutes
-        pdesc.cores    = 8
+        pdesc.runtime  =  10 # minutes
+        pdesc.cores    =   8
         pdesc.cleanup  = False
     
         # Launch the pilot.
@@ -119,7 +120,7 @@ if __name__ == "__main__":
         # a UnitManager object.
         umgr = rp.UnitManager(
             session=session,
-            scheduler=rp.SCHED_BACKFILLING)
+            scheduler=rp.SCHED_DIRECT)
     
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
@@ -146,13 +147,13 @@ if __name__ == "__main__":
         #    /bin/cat $INPUT1 $INPUT2
         #
         cuds = []
-        for unit_count in range(0, 14):
+        for unit_count in range(0, 10):
             cud = rp.ComputeUnitDescription()
             cud.name          = "unit_%03d" % unit_count
             cud.executable    = "/bin/sleep"
-            cud.pre_exec      = ["sleep 5"]
-            cud.post_exec     = ["sleep 5"]
-            cud.arguments     = ["5"]
+            cud.pre_exec      = ["sleep 1"]
+            cud.post_exec     = ["sleep 1"]
+            cud.arguments     = ["1"]
             cud.cores         = 1
     
             cuds.append(cud)
@@ -196,7 +197,8 @@ if __name__ == "__main__":
         # always clean up the session, no matter if we caught an exception or
         # not.
         print "closing session"
-        session.close ()
+        print session.uid
+        session.close (cleanup=False)
 
         # the above is equivalent to
         #
