@@ -8,9 +8,10 @@ import saga
 import thread
 import threading
 
-from radical.pilot.states import * 
-from radical.pilot.utils.logger import logger
-from radical.pilot.staging_directives import CREATE_PARENTS
+from ..states import * 
+from ..utils  import logger
+from ..utils  import timestamp
+from ..staging_directives import CREATE_PARENTS
 
 IDLE_TIME  = 1.0  # seconds to sleep after idle cycles
 
@@ -23,7 +24,7 @@ class OutputFileTransferWorker(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, session, db_connection_info, unit_manager_id, number=None):
+    def __init__(self, session, unit_manager_id, number=None):
 
         self._session = session
 
@@ -31,7 +32,6 @@ class OutputFileTransferWorker(threading.Thread):
         threading.Thread.__init__(self)
         self.daemon = True
 
-        self.db_connection_info = db_connection_info
         self.unit_manager_id = unit_manager_id
 
         self._worker_number = number
@@ -63,9 +63,8 @@ class OutputFileTransferWorker(threading.Thread):
 
             # Try to connect to the database and create a tailable cursor.
             try:
-                connection = self.db_connection_info.get_db_handle()
-                db = connection[self.db_connection_info.dbname]
-                um_col = db["%s.cu" % self.db_connection_info.session_id]
+                db = self._session.get_db()
+                um_col = db["%s.cu" % self._session.uid]
                 logger.debug("Connected to MongoDB. Serving requests for UnitManager %s." % self.unit_manager_id)
 
             except Exception as e:
@@ -75,13 +74,21 @@ class OutputFileTransferWorker(threading.Thread):
             while not self._stop.is_set():
 
                 # See if we can find a ComputeUnit that is waiting for client output file transfer.
-                ts = datetime.datetime.utcnow()
+                # FIXME: this method is not bulkable.  See agent pulling for
+                #        units for an approach to split the call into two bulkable 
+                #        ones.
+                ts = timestamp()
                 compute_unit = um_col.find_and_modify(
                     query={"unitmanager": self.unit_manager_id,
-                           "state": PENDING_OUTPUT_STAGING},
-                    update={"$set" : {"state": STAGING_OUTPUT},
-                            "$push": {"statehistory": {"state": STAGING_OUTPUT, "timestamp": ts}}}
-                )
+                           "state"      : PENDING_OUTPUT_STAGING,
+                           "control"    : 'agent'},
+                    update={"$set" : {"state"   : STAGING_OUTPUT,
+                                      "control" : 'umgr'},
+                            "$push": {"statehistory" : 
+                                         {"state"    : STAGING_OUTPUT, 
+                                          "timestamp": ts}
+                                     }
+                            })
 
                 if compute_unit is None:
                     # Sleep a bit if no new units are available.
@@ -96,7 +103,11 @@ class OutputFileTransferWorker(threading.Thread):
                         # We have found a new CU. Now we can process the transfer
                         # directive(s) with SAGA.
                         compute_unit_id = str(compute_unit["_id"])
+
+                        self._session.prof.prof('advance', uid=compute_unit_id,
+                                msg=STAGING_OUTPUT, state=STAGING_OUTPUT)
                         logger.debug ("OutputStagingController: unit found: %s" % compute_unit_id)
+
                         remote_sandbox = compute_unit["sandbox"]
                         output_staging = compute_unit.get("FTW_Output_Directives", [])
 
@@ -114,6 +125,8 @@ class OutputFileTransferWorker(threading.Thread):
                             )
                             if state_doc['state'] == CANCELED:
                                 logger.info("Compute Unit Canceled, interrupting output file transfers.")
+                                self._session.prof.prof('advance', uid=compute_unit_id, 
+                                        msg=CANCELED, state=CANCELED)
                                 state = CANCELED
                                 # Break out of the loop over all SD's, into the loop over CUs
                                 break
@@ -150,7 +163,7 @@ class OutputFileTransferWorker(threading.Thread):
                             continue
 
                         # Update the CU's state to 'DONE'.
-                        ts = datetime.datetime.utcnow()
+                        ts = timestamp()
                         log_message = "Output transfer completed."
                         um_col.update({'_id': compute_unit_id}, {
                             '$set': {'state': DONE},
@@ -159,10 +172,12 @@ class OutputFileTransferWorker(threading.Thread):
                                 'log': {'message': log_message, 'timestamp': ts}
                             }
                         })
+                        self._session.prof.prof('advance', uid=compute_unit_id,
+                                msg=DONE, state=DONE)
 
                     except Exception as e :
                         # Update the CU's state to 'FAILED'.
-                        ts = datetime.datetime.utcnow()
+                        ts = timestamp()
                         log_message = "Output transfer failed: %s" % e
                         um_col.update({'_id': compute_unit_id}, {
                             '$set': {'state': FAILED},
@@ -171,6 +186,8 @@ class OutputFileTransferWorker(threading.Thread):
                                 'log': {'message': log_message, 'timestamp': ts}
                             }})
                         logger.exception(log_message)
+                        self._session.prof.prof('advance', uid=compute_unit_id, 
+                                msg=FAILED, state=FAILED)
                         raise
 
         except SystemExit as e :

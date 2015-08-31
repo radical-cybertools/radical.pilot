@@ -13,8 +13,10 @@ __license__   = "MIT"
 
 import os
 
-from radical.pilot.utils.logger        import logger
-from radical.pilot.scheduler.interface import Scheduler 
+from ..utils    import logger
+
+from .interface import Scheduler 
+
 
 # -----------------------------------------------------------------------------
 # 

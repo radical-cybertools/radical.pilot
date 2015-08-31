@@ -16,19 +16,19 @@ import time
 import glob
 import copy
 
-from radical.pilot.states import *
-from radical.pilot.exceptions import *
+import radical.utils as ru
 
-from radical.pilot.object import Object
-from radical.pilot.controller import PilotManagerController
-from radical.pilot.compute_pilot import ComputePilot
-from radical.pilot.utils.logger import logger
-from radical.pilot.exceptions import PilotException, BadParameter
-from radical.pilot.resource_config import ResourceConfig
+from .states          import *
+from .exceptions      import *
+from .utils           import logger
+from .controller      import PilotManagerController
+from .compute_pilot   import ComputePilot
+from .exceptions      import PilotException, BadParameter
+from .resource_config import ResourceConfig
 
 # -----------------------------------------------------------------------------
 #
-class PilotManager(Object):
+class PilotManager(object):
     """A PilotManager holds :class:`radical.pilot.ComputePilot` instances that are
     submitted via the :func:`radical.pilot.PilotManager.submit_pilots` method.
 
@@ -54,7 +54,7 @@ class PilotManager(Object):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self, session, pilot_launcher_workers=1, _reconnect=False):
+    def __init__(self, session, pilot_launcher_workers=1):
         """Creates a new PilotManager and attaches is to the session.
 
         .. note:: The `resource_configurations` (see :ref:`chapter_machconf`)
@@ -100,33 +100,36 @@ class PilotManager(Object):
         """
         self._session = session
         self._worker = None
-        self._uid = None
 
-        if _reconnect == True:
-            return
+        self.uid = ru.generate_id ('pmgr')
 
-        ###############################
-        # Create a new pilot manager. #
-        ###############################
+        # ----------------------------------------------------------------------
+        # Create a new pilot manager
 
         # Start a worker process fo this PilotManager instance. The worker
         # process encapsulates database access, persitency et al.
         self._worker = PilotManagerController(
-            pilot_manager_uid=None,
+            pmgr_uid=self.uid,
             pilot_manager_data={},
             pilot_launcher_workers=pilot_launcher_workers, 
-            session=self._session,
-            db_connection=session._dbs,
-            db_connection_info=session._connection_info)
+            session=self._session)
         self._worker.start()
 
-        self._uid = self._worker.pilot_manager_uid
 
         # Each pilot manager has a worker thread associated with it. The task
         # of the worker thread is to check and update the state of pilots, fire
         # callbacks and so on.
-        self._session._pilot_manager_objects.append(self)
-        self._session._process_registry.register(self._uid, self._worker)
+        self._session._pilot_manager_objects[self.uid] = self
+
+        self._valid = True
+
+
+    #---------------------------------------------------------------------------
+    #
+    def _is_valid(self):
+        if not self._valid:
+            raise RuntimeError("instance was closed")
+
 
     #--------------------------------------------------------------------------
     #
@@ -141,10 +144,10 @@ class PilotManager(Object):
 
         """
 
-        logger.debug("pmgr    %s closing" % (str(self._uid)))
+        logger.debug("pmgr    %s closing" % (str(self.uid)))
 
         # Spit out a warning in case the object was already closed.
-        if not self._uid:
+        if not self.uid:
             logger.error("PilotManager object already closed.")
             return
 
@@ -153,18 +156,16 @@ class PilotManager(Object):
         # ongoing state checks...
         if self._worker is not None:
             # Stop the worker process
-            logger.debug("pmgr    %s cancel   worker %s" % (str(self._uid), self._worker.name))
+            logger.debug("pmgr    %s cancel   worker %s" % (str(self.uid), self._worker.name))
             self._worker.cancel_launcher()
-            logger.debug("pmgr    %s canceled worker %s" % (str(self._uid), self._worker.name))
-
-
+            logger.debug("pmgr    %s canceled worker %s" % (str(self.uid), self._worker.name))
 
         # If terminate is set, we cancel all pilots. 
         if  terminate :
             # cancel all pilots, make sure they are gone, and close the pilot
             # managers.
             for pilot in self.get_pilots () :
-                logger.debug("pmgr    %s cancels  pilot  %s" % (str(self._uid), pilot._uid))
+                logger.debug("pmgr    %s cancels  pilot  %s" % (str(self.uid), pilot.uid))
             self.cancel_pilots ()
 
           # FIXME:
@@ -194,70 +195,30 @@ class PilotManager(Object):
             while wait_for_cancel :
                 wait_for_cancel = False
                 for pilot in all_pilots :
-                    logger.debug("pmgr    %s wait for pilot  %s (%s)" % (str(self._uid), pilot._uid, pilot.state))
+                    logger.debug("pmgr    %s wait for pilot  %s (%s)" % (str(self.uid), pilot.uid, pilot.state))
                     if  pilot.state not in [DONE, FAILED, CANCELED, CANCELING] :
                         time.sleep (1)
                         wait_for_cancel = True
                         break
             for pilot in self.get_pilots () :
-                logger.debug("pmgr    %s canceled pilot  %s" % (str(self._uid), pilot._uid))
+                logger.debug("pmgr    %s canceled pilot  %s" % (str(self.uid), pilot.uid))
 
 
-        logger.debug("pmgr    %s stops    worker %s" % (str(self._uid), self._worker.name))
+        logger.debug("pmgr    %s stops    worker %s" % (str(self.uid), self._worker.name))
         self._worker.stop()
         self._worker.join()
-        logger.debug("pmgr    %s stopped  worker %s" % (str(self._uid), self._worker.name))
+        logger.debug("pmgr    %s stopped  worker %s" % (str(self.uid), self._worker.name))
+        logger.debug("pmgr    %s closed" % (str(self.uid)))
 
-        # Remove worker from registry
-        self._session._process_registry.remove(self._uid)
+        self._valid = False
 
-
-        logger.debug("pmgr    %s closed" % (str(self._uid)))
-        self._uid = None
-
-    #--------------------------------------------------------------------------
-    #
-    @classmethod
-    def _reconnect(cls, session, pilot_manager_id):
-        """PRIVATE: reconnect to an existing pilot manager.
-        """
-        uid_exists = PilotManagerController.uid_exists(
-            db_connection=session._dbs,
-            pilot_manager_uid=pilot_manager_id
-        )
-
-        if not uid_exists:
-            raise BadParameter(
-                "PilotManager with id '%s' not in database." % pilot_manager_id)
-
-        obj = cls(session=session, _reconnect=True)
-        obj._uid = pilot_manager_id
-
-        # Retrieve or start a worker process fo this PilotManager instance.
-        worker = session._process_registry.retrieve(pilot_manager_id)
-        if worker is not None:
-            obj._worker = worker
-        else:
-            obj._worker = PilotManagerController(
-                pilot_manager_uid=pilot_manager_id,
-                pilot_manager_data={},
-                session=session,
-                db_connection=session._dbs,
-                db_connection_info=session._connection_info)
-            session._process_registry.register(pilot_manager_id, obj._worker)
-
-        # start the worker if it's not already running
-        if obj._worker.is_alive() is False:
-            obj._worker.start()
-
-        return obj
 
     # -------------------------------------------------------------------------
     #
     def as_dict(self):
         """Returns a Python dictionary representation of the object.
         """
-        self._assert_obj_is_valid()
+        self._is_valid()
 
         object_dict = {
             'uid': self.uid
@@ -286,7 +247,7 @@ class PilotManager(Object):
             * :class:`radical.pilot.PilotException`
         """
         # Check if the object instance is still valid.
-        self._assert_obj_is_valid()
+        self._is_valid()
 
         # Implicit list conversion.
         return_list_type = True
@@ -403,7 +364,7 @@ class PilotManager(Object):
             * :class:`radical.pilot.PilotException`
         """
         # Check if the object instance is still valid.
-        self._assert_obj_is_valid()
+        self._is_valid()
 
         # Get the pilot list from the worker
         return self._worker.list_pilots()
@@ -428,7 +389,7 @@ class PilotManager(Object):
 
             * :class:`radical.pilot.PilotException`
         """
-        self._assert_obj_is_valid()
+        self._is_valid()
 
         
         return_list_type = True
@@ -481,7 +442,7 @@ class PilotManager(Object):
 
             * :class:`radical.pilot.PilotException`
         """
-        self._assert_obj_is_valid()
+        self._is_valid()
 
         if not isinstance(state, list):
             state = [state]
@@ -541,7 +502,7 @@ class PilotManager(Object):
             * :class:`radical.pilot.PilotException`
         """
         # Check if the object instance is still valid.
-        self._assert_obj_is_valid()
+        self._is_valid()
 
         # Implicit list conversion.
         if (not isinstance(pilot_ids, list)) and (pilot_ids is not None):
@@ -566,7 +527,7 @@ class PilotManager(Object):
         ``state`` is the new state of that object, and ``data`` are the data
         passed on callback registration.
         """
-        self._assert_obj_is_valid()
+        self._is_valid()
 
         self._worker.register_manager_callback(callback_function, callback_data)
 

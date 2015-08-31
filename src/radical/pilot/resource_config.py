@@ -11,10 +11,12 @@ from radical.pilot.exceptions import *
 # ------------------------------------------------------------------------------
 # Attribute description keys
 LABEL                       = 'label'
+AGENT_LAUNCH_METHOD         = 'agent_launch_method'
 AGENT_MONGODB_ENDPOINT      = 'agent_mongodb_endpoint'
 AGENT_SCHEDULER             = 'agent_scheduler'
 AGENT_SPAWNER               = 'agent_spawner'
 AGENT_TYPE                  = 'agent_type'
+AGENT_CONFIG                = 'agent_config'
 BOOTSTRAPPER                = 'bootstrapper'
 CORES_PER_NODE              = 'cores_per_node'
 DEFAULT_QUEUE               = 'default_queue'
@@ -152,7 +154,10 @@ class ResourceConfig(attributes.Attributes):
           rcf_name = str(os.path.basename (filename))
 
           if  rcf_name.endswith ('.json'):
-              rcf_name = rcf_name[0:-5]
+              rcf_name = rcf_name[:-5]
+
+          if  rcf_name.startswith ('resource_'):
+              rcf_name = rcf_name[9:]
 
           if  'aliases' in rcf_dict:
               # return empty list
@@ -186,11 +191,13 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
-        self._attributes_register(LABEL,                   label, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(LABEL                  , label, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(AGENT_LAUNCH_METHOD    ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_MONGODB_ENDPOINT ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_SCHEDULER        ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_SPAWNER          ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_TYPE             ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(AGENT_CONFIG           ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(BOOTSTRAPPER           ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(CORES_PER_NODE         ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(DEFAULT_QUEUE          ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
