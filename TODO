@@ -4,27 +4,28 @@
   + client agent startup
   + exec worker/watcher concurrency
   + lrms/scheduler dependency
-  - profile names
-  - log file name uniquenenss
+  + profile names
+  + log file name uniquenenss
   + state history (update ordering)
     + multiple updater instances will compete for state updates and push them
       out of order, thus screwing with the CU states which end up in the DB.\
     + limit to one update instance
-  - pilot updates via updater (different pubsub channel)
+  + pilot updates via updater (different pubsub channel)
   + make sure finalize is called on terminate (via atexit?)
-  - make sure all profile entries exist, merge from module profiling branch
-  - merge from devel / osgng :/
-  - forward tunnel endpoint from bootstrap_1 to agent
-  - make sure opaque_slot is a dict
-  - make sure that the lrms_config_hook is called only once
+  + make sure all profile entries exist, merge from module profiling branch
+  + merge from devel
+  - merge from osgng
+  = forward tunnel endpoint from bootstrap_1 to agent?
+  + make sure opaque_slot is a dict
+  + make sure that the lrms_config_hook is called only once
     - this is implicit right now(we only have one scheduler instance, and thus
       only one (set of) LRMS instances)
   - At this point it might be simpler to have one LRMS instance which handles
     MPI and non-MPI?  Not sure about the diversity of combinations which need
     supporting...
-  - component failures need to propagate to the agent to trigger shutdown
+  = component failures need to propagate to the agent to trigger shutdown
+  = torus scheduler is broken in the split arch
   - advance() implicitly publishes unit state, but the publisher needs to be
     declared explicitly.
   + rename 'worker' to 'sub-agent' to avoid confusion?
-  - check what happens if target for agent.0 is 'agent_node[0]'
   - component: collapse declare_input and declare_worker
