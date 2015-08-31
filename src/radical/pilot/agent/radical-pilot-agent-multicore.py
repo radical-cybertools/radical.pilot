@@ -3719,8 +3719,6 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 if hop_cmd : cmdline = hop_cmd
                 else       : cmdline = launch_script_name
 
-                self._prof.prof('command', msg='launch script constructed', uid=cu['_id'])
-
             except Exception as e:
                 msg = "Error in spawner (%s)" % e
                 self._log.exception(msg)
@@ -3745,6 +3743,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 launch_script.write("echo post stop  $TIMESTAMP >> %s/PROF\n" % cu['workdir'])
 
         # done writing to launch script, get it ready for execution.
+        self._prof.prof('command', msg='launch script constructed', uid=cu['_id'])
         st = os.stat(launch_script_name)
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
 
