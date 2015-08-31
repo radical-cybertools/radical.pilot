@@ -3743,15 +3743,14 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 launch_script.write("echo post stop  $TIMESTAMP >> %s/PROF\n" % cu['workdir'])
 
         # done writing to launch script, get it ready for execution.
-        self._prof.prof('command', msg='launch script constructed', uid=cu['_id'])
         st = os.stat(launch_script_name)
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
+        self._prof.prof('command', msg='launch script constructed', uid=cu['_id'])
 
         _stdout_file_h = open(cu['stdout_file'], "w")
         _stderr_file_h = open(cu['stderr_file'], "w")
 
         self._log.info("Launching unit %s via %s in %s", cu['_id'], cmdline, cu['workdir'])
-        self._prof.prof('spawning pass to popen', uid=cu['_id'])
 
         proc = subprocess.Popen(args               = cmdline,
                                 bufsize            = 0,

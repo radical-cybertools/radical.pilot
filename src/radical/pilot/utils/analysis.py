@@ -71,8 +71,9 @@ _info_entries = [
     ('aec_launch',      'AgentExecuting',         'exec',      'unit launch'),
     ('aec_spawn',       'AgentExecuting',         'spawn',     'unit spawn'),
     ('aec_script',      'AgentExecuting',         'command',   'launch script constructed'),
-    ('aec_pty',         'AgentExecuting',         'spawn',     'spawning passed to pty'),  
-    ('aec_end',         'AgentExecuting',         'final',     ''),  
+    ('aec_handover',    'AgentExecuting',         'spawn',     'spawning passed to pty'),
+    ('aec_handover',    'AgentExecuting',         'spawn',     'spawning passed to popen'),
+    ('aec_end',         'AgentExecuting',         'final',     ''),
 
     ('aew_complete',    'AgentExecuting',         'exec',      'execution complete'),
 ]
