@@ -3805,9 +3805,8 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
                 except Queue.Empty:
 
-                    # nothing found -- no problem, see if any CUs finshed
+                    # nothing found -- no problem, see if any CUs finished
                     pass
-
 
                 # add all cus we found to the watchlist
                 for cu in cus :
@@ -3819,7 +3818,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 action = self._check_running()
 
                 if not action and not cus :
-                    # nothing happend at all!  Zzz for a bit.
+                    # nothing happened at all!  Zzz for a bit.
                     time.sleep(self._cfg['db_poll_sleeptime'])
 
         except Exception as e:
