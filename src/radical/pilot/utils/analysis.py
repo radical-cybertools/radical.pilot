@@ -8,7 +8,7 @@ info_names = {
         'AgentStagingInputComponent'  : 'asic',
         'SchedulerContinuous'         : 'asc',  # agent scheduler component
         'AgentExecutingComponent'     : 'aec',
-        'AgentExecutingWatcher'       : 'aec',
+        'AgentExecutingWatcher'       : 'aew',
         'AgentStagingOutputComponent' : 'asoc',
         'session'                     : 'mod'
         }
