@@ -3767,7 +3767,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                                 startupinfo        = None,
                                 creationflags      = 0)
 
-        self._prof.prof('spawning passed to popen', uid=cu['_id'])
+        self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['_id'])
 
         cu['started'] = rpu.timestamp()
         cu['proc']    = proc
