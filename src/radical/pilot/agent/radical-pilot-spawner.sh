@@ -46,17 +46,23 @@ fi
 
 # --------------------------------------------------------------------
 #
+# POSIX echo does not understand '\n'.  For multiline strings we thus use printf
+# -- but printf will interprete every single '%' in the string, which we don't
+# want.  We thus escape it to '%%'
+qprintf(){
+  \printf "%b\n" "$*"
+}
+
+# --------------------------------------------------------------------
+#
 # ERROR and RETVAL are used for return state from function calls
 #
 ERROR=""
 RETVAL=""
 
-# keep PID as global ID.  This is used to uniquely identify some files, in case
-# that the workdir is shared among spawner instances.
-# FIXME: why can't we use $GID for the fifo name?  It seems that in this case,
-#        the spawner never gets anything on the fifo (even though the job
-#        startup goes well)...
+# keep PID as global ID
 GID="$$"
+export GID
 
 # this is where this 'daemon' keeps state for all started jobs
 BASE="$*"
@@ -65,6 +71,7 @@ then
   BASE=$HOME/.saga/adaptors/shell_job/
 fi
 NOTIFICATIONS="$BASE/notifications"
+LOG="$BASE/log"
 
 # this process will terminate when idle for longer than TIMEOUT seconds
 TIMEOUT=30
@@ -254,15 +261,29 @@ verify_err () {
 
 
 # --------------------------------------------------------------------
+# ensure that given job id has valid log file
+verify_log () {
+  verify_dir $1
+  if ! test -r "$DIR/log";   then ERROR="pid $1 has no log"; return 1; fi
+}
+
+
+# --------------------------------------------------------------------
 #
 # create the monitor script, used by the command running routines.
 #
 create_monitor () {
-  \cat > "$BASE/monitor.sh" <<EOT
+  \cat > "$BASE/monitor.$GID.sh" <<EOT
 
   # the monitor should never finish when the parent shell dies.  This is
   # equivalent to starting monitor.sh via 'nohup'
   trap "" HUP
+
+  # --------------------------------------------------------------------
+  # Make sure we don't interpret '%' on printf
+  qprintf(){
+    \\printf "%b\\n" "\$*"
+  }
 
   # create the monitor wrapper script once -- this is used by all job startup
   # scripts to actually run job.sh.  The script gets a PID as argument,
@@ -275,6 +296,8 @@ create_monitor () {
 
   MPID=\$\$
   NOTIFICATIONS="$NOTIFICATIONS"
+
+# \\echo "monitor starts (\$MPID)" >> $LOG
 
   # on reuse of process IDs, we need to generate new, unique derivations of the
   # job directory name.  That name is, by default, the job's rpid.  Id the job
@@ -307,29 +330,37 @@ create_monitor () {
   # the subshell instance with the job executable, leaving the I/O redirections
   # intact.
   \\touch  "\$DIR/in"
-  \\echo   "#!/bin/sh\n" > \$DIR/cmd
-  \\echo   "\$@"        >> \$DIR/cmd
-  \\chmod 0700             \$DIR/cmd
+  qprintf "#!/bin/sh\n" > \$DIR/cmd
+  qprintf "\$@"        >> \$DIR/cmd
+  \\chmod 0700            \$DIR/cmd
 
   (
-    \\printf  "RUNNING \\n"          >> "\$DIR/state"
-    \\printf  "\$UPID:RUNNING: \\n"  >> "\$NOTIFICATIONS"
-    \\exec "\$DIR/cmd"   < "\$DIR/in" > "\$DIR/out" 2> "\$DIR/err"
+    export SAGA_PWD="\$DIR"
+    export SAGA_UPID="\$UPID"
+    \\printf  "`\date` : RUNNING \\n" >> "\$DIR/log"
+    \\printf  "RUNNING \\n"           >> "\$DIR/state"
+    \\printf  "\$UPID:RUNNING: \\n"   >> "\$NOTIFICATIONS"
+    \\exec "\$DIR/cmd"  <  "\$DIR/in"  > "\$DIR/out" 2> "\$DIR/err"
   ) 1>/dev/null 2>/dev/null 3</dev/null &
 
   # the real job ID (not exposed to user)
   RPID=\$!
+
+# \\echo "monitor started job (\$MPID): \$RPID" >> $LOG
 
   \\printf "\$RPID\\n"    > "\$DIR/rpid"  # real process  pid
   \\printf "\$MPID\\n"    > "\$DIR/mpid"  # monitor shell pid
   \\printf "\$UPID\\n"    > "\$DIR/upid"  # unique job    pid
 
   # signal the wrapper that job startup is done, and report job id
-  \\printf "\$UPID\\n" >> "$BASE/fifo"
+  \\printf "\$UPID\\n" >> "$BASE/fifo.$GID"
+
+# \\echo "monitor sent job id (\$MPID): \$UPID" >> $LOG
 
   # start monitoring the job
   while true
   do
+  # \\echo "monitor waits on id (\$MPID): \$RPID" >> $LOG
     \\wait \$RPID
     retv=\$?
 
@@ -370,7 +401,6 @@ create_monitor () {
     test   "\$retv" -eq 0  && \\printf "\$UPID:DONE:\$retv   \\n" >> "\$NOTIFICATIONS"
     test   "\$retv" -eq 0  || \\printf "\$UPID:FAILED:\$retv \\n" >> "\$NOTIFICATIONS"
 
-
     # done waiting
     break
   done
@@ -379,6 +409,7 @@ create_monitor () {
 
 EOT
 
+# echo "monitor created: `ls -la $BASE/monitor.$GID.sh`" >> $LOG
 }
 
 
@@ -388,6 +419,8 @@ EOT
 #
 cmd_monitor () {
 
+# echo "start monitoring mode ($GID)" >> $LOG
+
   # 'touch' to make sure the file exists, and use '-n 0' so that we don't 
   # read old notifications'
   # NOTE: tail complains on inotify handle shortage, and then continues 
@@ -395,6 +428,8 @@ cmd_monitor () {
   #       that we don't miss any other notifications... :/
   \touch        "$NOTIFICATIONS"
   \tail -f -n 0 "$NOTIFICATIONS" 2>/dev/null
+
+# echo "end monitoring mode ($GID)" >> $LOG
 
   # if tail dies for some reason, make sure the shell goes down
   \printf "EXIT\n"
@@ -442,23 +477,29 @@ cmd_monitor () {
 
 cmd_run () {
 
+# echo "run command ($@)" >> $LOG
+
   # do a double fork to avoid zombies.  Use 'set -m' to force a new process
   # group for the monitor
   (
    ( set -m 
-     /bin/sh "$BASE/monitor.sh" "$@" 
+     /bin/sh "$BASE/monitor.$GID.sh" "$@" 
    ) 1>/dev/null 2>/dev/null 3</dev/null & exit
   )
 
+# echo "wait for pid" >> $LOG
+
+
   # we wait until the job was really started, and get its pid from the fifo
-  \read -r UPID < "$BASE/fifo"
+  \read -r UPID < "$BASE/fifo.$GID"
+
+# echo "got pid ($UPID)" >> $LOG
 
   # report the current state
   \tail -n 1 "$BASE/$UPID/state" || \printf "UNKNOWN\n"
 
   # return job id
   RETVAL="$UPID"
-
 }
 
 
@@ -508,6 +549,22 @@ cmd_stats () {
   STATE=`\grep -e ' $' "$DIR/state" | \tail -n 1 | \tr -d ' '`
   RETVAL="STATE : $STATE\n"
   RETVAL="$RETVAL\n`\cat $DIR/stats`\n"
+
+  # if state is FAILED, we also deliver the last couple of lines from stderr,
+  # for obvious reasons.  Oh heck, we always deliver it, that makes parsing
+  # simpler -- but we deliver more on errors
+  N=10
+  if test "$state" = "FAILED" 
+  then
+    N=100
+  fi
+  STDERR=`test -f "$DIR/err" && tail -$N "$DIR/err"`
+  RETVAL="$RETVAL\nSTART_STDERR\n$STDERR\nEND_STDERR\n"
+
+  # same procedure for stdout -- this will not be returned to the end user, but
+  # is mostly for debugging
+  STDERR=`test -f "$DIR/err" && tail -$N "$DIR/err"`
+  RETVAL="$RETVAL\nSTART_STDOUT\n$STDERR\nEND_STDOUT\n"
 }
 
 
@@ -645,7 +702,6 @@ cmd_cancel () {
 
   DIR="$BASE/$1"
 
-
   rpid=`\cat "$DIR/rpid"`
   mpid=`\cat "$DIR/mpid"`
 
@@ -708,6 +764,18 @@ cmd_stderr () {
 
   DIR="$BASE/$1"
   RETVAL=`cat "$DIR/err" | od -t x1 -A n #| cut -c 2- | tr -d ' \n'`
+}
+
+
+# --------------------------------------------------------------------
+#
+# print uuencoded string of job's log
+#
+cmd_log () {
+  verify_log $1 || return
+
+  DIR="$BASE/$1"
+  RETVAL=`cat "$DIR/log" | od -t x1 -A n #| cut -c 2- | tr -d ' \n'`
 }
 
 
@@ -783,7 +851,7 @@ cmd_quit () {
 
   # clean bulk file and other temp files
   \rm -f $BASE/bulk.$GID
-  \rm -f $BASE/fifo
+  \rm -f $BASE/fifo.$GID
 
   # restore shell echo
   \stty echo    >/dev/null 2>&1
@@ -820,8 +888,8 @@ listen() {
   #IDLE=$!
 
   # make sure the fifo to communicate with the monitors exists
-  \rm -f  "$BASE/fifo"
-  \mkfifo "$BASE/fifo"
+  \rm -f  "$BASE/fifo.$GID"
+  \mkfifo "$BASE/fifo.$GID"
 
   # prompt for commands...
   \printf "PROMPT-0->\n"
@@ -841,8 +909,8 @@ listen() {
       BULK_RUN ) IN_BULK=""
                  \printf "BULK_EVAL\n"  >> "$BASE/bulk.$GID"
                  ;;
-      *        ) test -z "$ARGS" && \echo "$CMD"       >> "$BASE/bulk.$GID"
-                 test -z "$ARGS" || \echo "$CMD $ARGS" >> "$BASE/bulk.$GID"
+      *        ) test -z "$ARGS" && qprintf "$CMD"       >> "$BASE/bulk.$$"
+                 test -z "$ARGS" || qprintf "$CMD $ARGS" >> "$BASE/bulk.$$"
                  ;;
     esac
 

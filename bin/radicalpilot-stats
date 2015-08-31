@@ -44,18 +44,22 @@ _EVENT_ENCODING = {
         'umgr': {
         }, 
         'unit': {
-            rp.NEW                     :  1,
-            rp.SCHEDULING              :  2,
-            rp.PENDING_INPUT_STAGING   :  3,
-            rp.STAGING_INPUT           :  4,
-            rp.PENDING_EXECUTION       :  5,
-            rp.ALLOCATING              :  6,
-            rp.EXECUTING               :  7,
-            rp.PENDING_OUTPUT_STAGING  :  8,
-            rp.STAGING_OUTPUT          :  9,
-            rp.DONE                    : 10,
-            rp.CANCELED                : 11,
-            rp.FAILED                  : 12
+            rp.NEW                          :  1,
+            rp.SCHEDULING                   :  2,
+            rp.PENDING_INPUT_STAGING        :  3,
+            rp.STAGING_INPUT                :  4,
+            rp.PENDING_AGENT_INPUT_STAGING  :  5,
+            rp.AGENT_STAGING_INPUT          :  6,
+            rp.PENDING_EXECUTION            :  7,
+            rp.ALLOCATING                   :  8,
+            rp.EXECUTING                    :  9,
+            rp.PENDING_OUTPUT_STAGING       : 10,
+            rp.STAGING_OUTPUT               : 11,
+            rp.PENDING_AGENT_OUTPUT_STAGING : 12,
+            rp.AGENT_STAGING_OUTPUT         : 13,
+            rp.DONE                         : 14,
+            rp.CANCELED                     : 15,
+            rp.FAILED                       : 16
         }
     }
 

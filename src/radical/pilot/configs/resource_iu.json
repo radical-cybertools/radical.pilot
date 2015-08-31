@@ -13,6 +13,7 @@
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "APRUN",
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
         "pre_bootstrap"               : ["module load python/2.7.8"],
@@ -35,6 +36,7 @@
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
         "pre_bootstrap"               :
