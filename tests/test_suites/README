@@ -27,6 +27,11 @@ Definitions
 Invocation
 ------------------------------
 
+To specify maximim number of tests which can fail use: 
+--maxfail=2
+for more info please refer to pytest documentation: https://pytest.org
+
+
 To run all tests:
 cd test_suites
 py.test --junitxml result.xml
@@ -84,3 +89,5 @@ Adding remote tests:
   If your test is using an existing fixure, increase the runtime of a pilot(s) in 
   that fixute. In case if you need to create a new fixure, please place it in 
   the upper part of the file.  
+
+  
