@@ -71,7 +71,7 @@ _info_entries = [
     ('aec_launch',      'AgentExecuting',         'exec',      'unit launch'),
     ('aec_spawn',       'AgentExecuting',         'spawn',     'unit spawn'),
     ('aec_script',      'AgentExecuting',         'command',   'launch script constructed'),
-    ('ace_outerr',      'AgentExecuting',         'command'    'stdout and stderr files created'),
+    ('ace_outerr',      'AgentExecuting',         'command',   'stdout and stderr files created'),
     ('aec_handover',    'AgentExecuting',         'spawn',     'spawning passed to pty'),
     ('aec_handover',    'AgentExecuting',         'spawn',     'spawning passed to popen'),
     ('aec_end',         'AgentExecuting',         'final',     ''),
