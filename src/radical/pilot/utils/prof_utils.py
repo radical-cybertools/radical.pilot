@@ -122,7 +122,7 @@ class Profiler (object):
             response = ntplib.NTPClient().request('0.pool.ntp.org')
             timestamp_sys  = response.orig_time
             timestamp_abs  = response.tx_time
-            return [timestamp_sys, timstamp_abs]
+            return [timestamp_sys, timestamp_abs]
         except:
             t = time.time()
             return [t,t]
