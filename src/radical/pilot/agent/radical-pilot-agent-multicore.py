@@ -3749,6 +3749,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
         _stdout_file_h = open(cu['stdout_file'], "w")
         _stderr_file_h = open(cu['stderr_file'], "w")
+        self._prof.prof('command', msg='stdout and stderr files created', uid=cu['_id'])
 
         self._log.info("Launching unit %s via %s in %s", cu['_id'], cmdline, cu['workdir'])
 
