@@ -3883,17 +3883,6 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 del(cu['proc'])  # proc is not json serializable
                 self.publish('unschedule', cu)
 
-                if os.path.isfile("%s/PROF" % cu['workdir']):
-                    with open("%s/PROF" % cu['workdir'], 'r') as prof_f:
-                        try:
-                            txt = prof_f.read()
-                            for line in txt.split("\n"):
-                                if line:
-                                    x1, x2, x3 = line.split()
-                                    self._prof.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
-                        except Exception as e:
-                            self._log.error("Pre/Post profiling file read failed: `%s`" % e)
-
                 if exit_code != 0:
                     # The unit failed - fail after staging output
                     self._prof.prof('final', msg="execution failed", uid=cu['_id'])
@@ -4817,7 +4806,6 @@ class AgentStagingOutputComponent(rpu.Component):
                     txt = "unit stderr contains binary data -- use file staging directives"
 
                 cu['stderr'] += rpu.tail(txt)
-
 
         if os.path.isfile("%s/PROF" % cu['workdir']):
             try:
