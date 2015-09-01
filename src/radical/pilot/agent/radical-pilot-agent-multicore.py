@@ -1379,6 +1379,7 @@ class LaunchMethod(object):
           # LAUNCH_METHOD_MPIRUN        : LaunchMethodMPIRUN,
           # LAUNCH_METHOD_MPIRUN_RSH    : LaunchMethodMPIRUNRSH,
             LAUNCH_METHOD_ORTE          : LaunchMethodORTE,
+            LAUNCH_METHOD_YARN          : LaunchMethodYARN,
           # LAUNCH_METHOD_POE           : LaunchMethodPOE,
           # LAUNCH_METHOD_RUNJOB        : LaunchMethodRUNJOB,
           # LAUNCH_METHOD_SSH           : LaunchMethodSSH
@@ -1390,6 +1391,48 @@ class LaunchMethod(object):
 
         logger.info('call LRMS config hook for LaunchMethod %s: %s' % (name, impl))
         return impl.lrms_config_hook(name, cfg, lrms, logger)
+
+
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def lrms_final_hook(cls, lm_info, logger):
+        """
+        This hook can be used to tear down whatever has been brought up in the
+        config hook.  The LRMS layer MUST ensure that this hook is called
+        exactly once (globally).  This will be a NOOP for LMs which do not
+        overload this method.  Exceptions fall through to the LRMS.
+        """
+
+        # Make sure that we are the base-class!
+        if cls != LaunchMethod:
+            raise TypeError("LaunchMethod config hook only available to base class!")
+
+        impl = {
+          # LAUNCH_METHOD_APRUN         : LaunchMethodAPRUN,
+          # LAUNCH_METHOD_CCMRUN        : LaunchMethodCCMRUN,
+          # LAUNCH_METHOD_DPLACE        : LaunchMethodDPLACE,
+          # LAUNCH_METHOD_FORK          : LaunchMethodFORK,
+          # LAUNCH_METHOD_IBRUN         : LaunchMethodIBRUN,
+          # LAUNCH_METHOD_MPIEXEC       : LaunchMethodMPIEXEC,
+          # LAUNCH_METHOD_MPIRUN_CCMRUN : LaunchMethodMPIRUNCCMRUN,
+          # LAUNCH_METHOD_MPIRUN_DPLACE : LaunchMethodMPIRUNDPLACE,
+          # LAUNCH_METHOD_MPIRUN        : LaunchMethodMPIRUN,
+          # LAUNCH_METHOD_MPIRUN_RSH    : LaunchMethodMPIRUNRSH,
+            LAUNCH_METHOD_ORTE          : LaunchMethodORTE,
+            LAUNCH_METHOD_YARN          : LaunchMethodYARN,
+          # LAUNCH_METHOD_POE           : LaunchMethodPOE,
+          # LAUNCH_METHOD_RUNJOB        : LaunchMethodRUNJOB,
+          # LAUNCH_METHOD_SSH           : LaunchMethodSSH
+        }.get(name)
+
+        if not impl:
+            logger.info('no LRMS config hook defined for LaunchMethod %s' % name)
+            return None
+
+        logger.info('call LRMS config hook for LaunchMethod %s: %s' % (name, impl))
+        return impl.lrms_final_hook(lm_info, logger)
 
 
 
@@ -2051,8 +2094,8 @@ class LaunchMethodORTE(LaunchMethod):
                the DVM.
         """
 
-        dvm_command = cls._which('orte-dvm')
-        if not dvm_command:
+        dvm_cmd = cls._which('orte-dvm')
+        if not dvm_cmd:
             raise Exception("Couldn't find orte-dvm")
 
         # Use (g)stdbuf to disable buffering.
@@ -2070,7 +2113,7 @@ class LaunchMethodORTE(LaunchMethod):
         logger.info("Starting ORTE DVM on %d nodes ..." % vm_size)
 
         dvm_process = subprocess.Popen(
-            [stdbuf_cmd, stdbuf_arg, dvm_command, '--debug-devel',
+            [stdbuf_cmd, stdbuf_arg, dvm_cmd, '--debug-devel',
              '--mca', 'orte_max_vm_size', str(vm_size)],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT
         )
@@ -2128,15 +2171,23 @@ class LaunchMethodORTE(LaunchMethod):
         dvm_watcher = threading.Thread(target=_watch_dvm, args=(dvm_process,), name="DVMWatcher")
         dvm_watcher.start()
 
-        lm_info = {'dvm_uri': dvm_uri}
+        lm_info = {'dvm_uri' : dvm_uri,
+                   'dvm_cmd' : dvm_cmd}
 
         # we need to inform the actual LM instance about the DVM URI.  So we
         # pass it back to the LRMS which will keep it in an 'lm_info', which
         # will then be passed as part of the opaque_slots via the scheduler
         return lm_info
 
-    # TODO: Create teardown() function for LaunchMethod's (in this case to terminate the dvm)
-    #subprocess.Popen([self.launch_command, "--hnp", orte_vm_uri_filename, "--terminate"])
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def lrms_final_hook(cls, lm_info, logger):
+
+        logger.info('DVM shutdow')
+        subprocess.Popen([lm_info['dvm_cmd'], "--hnp",
+                          lm_info['dvm_uri'], "--terminate"])
 
 
     # --------------------------------------------------------------------------
@@ -2438,11 +2489,27 @@ class LaunchMethodYARN(LaunchMethod):
         # dict, and will be passed around as part of the opaque_slots structure,
         # so it is available on all LM create_command calls.
         lm_info = {'service_url'  : service_url,
-                   'rm_url'       : rm_url }
+                   'rm_url'       : rm_url,
+                   'hadoop_home'  : hadoop_home}
 
         return lm_info
 
 
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def lrms_final_hook(cls, lm_info, logger):
+
+        logger.info('Stoping YARN')
+        os.system(lm_info['hadoop_home'] + '/sbin/stop-yarn.sh')
+
+        logger.info('Stoping DFS.')
+        os.system(lm_info['hadoop_home'] + '/sbin/stop-dfs.sh')
+
+        logger.info("Deleting HADOOP files from temp")
+        os.system('rm -rf /tmp/hadoop*')
+        os.system('rm -rf /tmp/Jetty*')
+        os.system('rm -rf /tmp/hsperf*')
 
 
     # --------------------------------------------------------------------------
@@ -2569,16 +2636,6 @@ class LaunchMethodYARN(LaunchMethod):
 
         return print_str+yarn_command, None
 
-    def stop_service(self):
-
-        self._log.info('Stoping YARN')
-        yarn_start = os.system(self._hadoop_home + '/sbin/stop-yarn.sh')
-        self._log.info('Stoping DFS.')
-        hadoop_start = os.system(self._hadoop_home + '/sbin/stop-dfs.sh')
-        self._log.info("Deleting HADOOP files from temp")
-        os.system('rm -rf /tmp/hadoop*')
-        os.system('rm -rf /tmp/Jetty*')
-        os.system('rm -rf /tmp/hsperf*')
 
 
 # ==============================================================================
@@ -2748,6 +2805,28 @@ class LRMS(object):
         except KeyError:
             logger.exception('lrms construction error')
             raise RuntimeError("LRMS type '%s' unknown or defunct" % name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
+
+        # After all is said and done, we now also call the LM finalization
+        # hooks.  We only pass the lm_info back to them
+        launch_methods = set() # set keeps entries unique
+        launch_methods.add(self._cfg['mpi_launch_method'])
+        launch_methods.add(self._cfg['task_launch_method'])
+        launch_methods.add(self._cfg['agent_launch_method'])
+
+        for lm in launch_methods:
+            if lm:
+                try:
+                    LaunchMethod.lrms_final_hook(lm, self.lm_info, self._log))
+                except Exception as e:
+                    self._log.exception("lrms final hook failed")
+                    raise
+
+                self._log.exception("lrms final hook succeeded (%s)" % lm)
 
 
     # --------------------------------------------------------------------------
@@ -4099,12 +4178,6 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         # terminate watcher thread
         self._terminate.set()
         self._watcher.join()
-
-        # FIXME: we should introduce a proper finalize for LM base which is then
-        #        overloaded by the YARN LM
-        #        G.: What do you mean?
-        if self._cfg['task_launch_method'] == 'YARN' and self._cfg['lrms'] != 'YARN':
-            self._task_launcher.stop_service()
 
 
     # --------------------------------------------------------------------------
@@ -6142,6 +6215,7 @@ def bootstrap_3():
         # ----------------------------------------------------------------------
         # des Pudels Kern: merge LRMS info into cfg and get the agent started
 
+        lrms = None
         if agent_name == 'agent.0':
             
             # only the master agent creates LRMS and sub-agent config files.
@@ -6201,7 +6275,17 @@ def bootstrap_3():
         agent = AgentWorker(cfg)
         agent.start()
         agent.join()
-        agent._finalize()
+        agent._finalize()  # FIXME: layer violation
+
+
+        if agent_name == 'agent.0':
+
+            # tear down LRMS and anything which has been initialized in the lrms
+            # config hooks
+            if lrms:
+                lrms.finalize()
+
+
         # ----------------------------------------------------------------------
 
     except SystemExit:
