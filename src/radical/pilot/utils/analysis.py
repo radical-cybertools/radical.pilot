@@ -64,9 +64,11 @@ _info_entries = [
     ('usoc_get_u',      'OutputFileTransfer',     'advance',   'StagingOutput'),
     ('usoc_adv_u',      'OutputFileTransfer',     'advance',   'Done'),
 
+    ('asc_allocated',   'SchedulerContinuous',    'schedule',  'allocated'),
     ('asc_alloc_nok',   'SchedulerContinuous',    'schedule',  'allocation failed'),
     ('asc_alloc_ok',    'SchedulerContinuous',    'schedule',  'allocation succeeded'),
     ('asc_unqueue',     'SchedulerContinuous',    'unqueue',   're-allocation done'),
+    ('asc_released',    'SchedulerContinuous',    'unschedule','released'),
 
     ('aec_launch',      'AgentExecuting',         'exec',      'unit launch'),
     ('aec_spawn',       'AgentExecuting',         'spawn',     'unit spawn'),

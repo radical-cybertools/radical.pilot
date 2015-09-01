@@ -602,6 +602,7 @@ class AgentSchedulingComponent(rpu.Component):
         # in a different thread....
         with self._slot_lock :
             self._release_slot(cu['opaque_slots'])
+            self._prof.prof('unschedule', msg='released', uid=cu['_id'])
 
         # notify the scheduling thread, ie. trigger a reschedule to utilize
         # the freed slots
@@ -609,7 +610,7 @@ class AgentSchedulingComponent(rpu.Component):
         #        should in principle suffice though.
         self.publish('reschedule', cu)
 
-        self._log.info("slot status after  unschedule: %s" % self.slot_status ())
+        self._log.info("slot status after unschedule: %s" % self.slot_status ())
 
 
     # --------------------------------------------------------------------------
