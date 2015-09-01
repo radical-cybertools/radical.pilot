@@ -577,6 +577,7 @@ class AgentSchedulingComponent(rpu.Component):
                     self._wait_pool.remove(cu)
                     self._prof.prof('unqueue', msg="re-allocation done", uid=cu['_id'])
 
+        # Note: The extra space below is for visual alignment
         self._log.info("slot status after  reschedule: %s" % self.slot_status ())
         self._prof.prof('reschedule done')
 
@@ -610,7 +611,8 @@ class AgentSchedulingComponent(rpu.Component):
         #        should in principle suffice though.
         self.publish('reschedule', cu)
 
-        self._log.info("slot status after unschedule: %s" % self.slot_status ())
+        # Note: The extra space below is for visual alignment
+        self._log.info("slot status after  unschedule: %s" % self.slot_status ())
 
 
     # --------------------------------------------------------------------------
@@ -3691,12 +3693,13 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                         pre_exec_string += "%s\n" % elem
                 else:
                     pre_exec_string += "%s\n" % cu['description']['pre_exec']
+                # Note: extra spaces below are for visual alignment
                 launch_script.write("# Pre-exec commands\n")
                 launch_script.write("timestamp\n")
-                launch_script.write("echo pre start $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
+                launch_script.write("echo pre  start $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
                 launch_script.write(pre_exec_string)
                 launch_script.write("timestamp\n")
-                launch_script.write("echo pre stop $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
+                launch_script.write("echo pre  stop $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
 
             # Create string for environment variable setting
             if cu['description']['environment'] and    \
