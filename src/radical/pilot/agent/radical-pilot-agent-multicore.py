@@ -1155,21 +1155,9 @@ class SchedulerYarn(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, lrms, schedule_queue, execution_queue,
-                 update_queue):
+    def __init__(self, cfg):
 
-        Scheduler.__init__(self,name,config,logger,lrms,schedule_queue,
-            execution_queue,update_queue)
-
-
-
-    # --------------------------------------------------------------------------
-    #
-    def stop(self):
-        
-        rpu.prof ('stop request')
-        rpu.flush_prof()
-        self._terminate.set()
+        AgentSchedulingComponent.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -1287,89 +1275,6 @@ class SchedulerYarn(AgentSchedulingComponent):
         self.unschedule(cu_dropped)
 
         return True
-
-    # --------------------------------------------------------------------------
-    #
-    def run(self):
-
-        rpu.prof('run')
-        while not self._terminate.is_set():
-
-            try:
-
-                request = self._schedule_queue.get()
-
-                if not isinstance(request, list):
-                    # command only, no cu
-                    request = [request, None]
-
-                # shutdown signal
-                if not request:
-                    rpu.prof('get_cmd', msg="schedule_queue to Scheduler (wakeup)")
-                    continue
-
-                command = request[0]
-                cu      = request[1]
-
-                rpu.prof('get_cmd', msg="schedule_queue to Scheduler (%s)" % command)
-
-                if command == COMMAND_WAKEUP:
-
-                    # nothing to do (other then testing self._terminate)
-                    rpu.prof('get_cmd', msg="schedule_queue to Scheduler (wakeup)")
-                    continue
-
-
-                elif command == COMMAND_RESCHEDULE:
-
-                    # reschedule is done over all units in the wait queue
-                    assert (cu == None) 
-                    self._reschedule()
-
-
-                elif command == COMMAND_SCHEDULE:
-
-                    rpu.prof('get', msg="schedule_queue to Scheduler (%s)" % cu['state'], uid=cu['_id'])
-
-                    # FIXME: this state update is not recorded?
-                    cu['state'] = rp.ALLOCATING
-
-                    cu_list, _  = rpu.blowup(self._config, cu, SCHEDULER)
-                    for _cu in cu_list:
-
-                        # we got a new unit to schedule.  Either we can place it
-                        # straight away and move it to execution, or we have to
-                        # put it on the wait queue.
-                        if not self._try_allocation(_cu):
-                            # No resources available, put in wait queue
-                            with self._wait_queue_lock :
-                                self._wait_pool.append(_cu)
-                            rpu.prof('schedule', msg="allocation failed", uid=_cu['_id'])
-
-
-                elif command == COMMAND_UNSCHEDULE :
-
-                    # we got a finished unit, and can re-use its cores
-                    #
-                    # FIXME: we may want to handle this type of requests
-                    # with higher priority, so it might deserve a separate
-                    # queue.  Measure first though, then optimize...
-                    #
-                    # NOTE: unschedule() runs re-schedule, which probably
-                    # should be delayed until this bulk has been worked
-                    # on...
-                    rpu.prof('schedule', msg="unit deallocation", uid=cu['_id'])
-                    self.unschedule(cu)
-
-                else :
-                    raise ValueError ("cannot handle scheduler command '%s'", command)
-
-            except Exception as e:
-                self._log.exception('Error in scheduler loop: %s', e)
-                raise
-
-            finally:
-                rpu.prof ('stop')
 
 
 
