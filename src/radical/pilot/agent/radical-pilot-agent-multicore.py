@@ -2257,38 +2257,12 @@ class LaunchMethodYARN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
-
-        # Single Node configuration
-        # TODO : Multinode config
-
-        def set_env_vars():
-    
-            self._hadoop_home = os.getcwd() + '/hadoop'
-            self._hadoop_install = self._hadoop_home
-            self._hadoop_mapred_home = self._hadoop_home
-            self._hadoop_common_home = self._hadoop_home
-            self._hadoop_hdfs_home = self._hadoop_home
-            self._yarn_home = self._hadoop_home
-            self._hadoop_common_lib_native_dir = self._hadoop_home + '/lib/native'
-
-            #-------------------------------------------------------------------
-            # Solution to find Java's home folder: http://stackoverflow.com/questions/1117398/java-home-directory
-
-            jpos = commands.getstatusoutput('readlink -f /usr/bin/java | sed "s:bin/java::"')
-            if jpos[1].find('jre') != -1:
-                java_home = jpos[1][:jpos[1].find('jre')]
-            else:
-                java_home = jpos[1]
-
-            hadoop_env_file = open(self._hadoop_home+'/etc/hadoop/hadoop-env.sh','r')
-            hadoop_env_file_lines = hadoop_env_file.readlines()
-            hadoop_env_file.close()
-            hadoop_env_file_lines[24] = 'export JAVA_HOME=%s'%java_home
-            hadoop_env_file = open(self._hadoop_home+'/etc/hadoop/hadoop-env.sh','w')
-            for line in hadoop_env_file_lines:
-                hadoop_env_file.write(line)
-            hadoop_env_file.close()
+    @classmethod
+    def lrms_config_hook(cls, name, cfg, lrms, logger):
+        """
+        FIXME: this config hook will inspect the LRMS nodelist and, if needed,
+               will start the YRN cluster on node[0].
+        """
 
         def config_core_site(node):
 
@@ -2372,16 +2346,19 @@ class LaunchMethodYARN(LaunchMethod):
                 yarn_site_file.write(line)
             yarn_site_file.close()
 
-        self._log.info('YARN was called by %s'%self._scheduler._lrms.name)
-        
         # If the LRMS used is not YARN the namenode url is going to be
         # the first node in the list and the port is the default one, else 
         # it is the one that the YARN LRMS returns
-        if self._scheduler._lrms.name != 'YARN':
+        if lrms.name == 'YARN':
+            service_url    = lrms.namenode_url
+            rm_url         = "%s:%s" % (lrms.rm_ip, lrms.rm_port)
+            launch_command = cls._which('yarn')
+
+        else:
             # Here are the necessary commands to start the cluster.
-            if self._scheduler._lrms.node_list[0] == 'localhost':
+            if lrms.node_list[0] == 'localhost':
                 #Download the tar file
-                node_name = self._scheduler._lrms.node_list[0]
+                node_name = lrms.node_list[0]
                 stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.0/hadoop-2.6.0.tar.gz")
                 stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
             else:
@@ -2391,45 +2368,121 @@ class LaunchMethodYARN(LaunchMethod):
                 stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
                 # TODO: Decide how the agent will get Hadoop tar ball.
 
-            set_env_vars()
+            # this was formerly
+            #   def set_env_vars():
+            # but we are in a class method, and don't have self -- and we don't need
+            # it anyway...
+    
+            hadoop_home        = os.getcwd() + '/hadoop'
+            hadoop_install     = hadoop_home
+            hadoop_mapred_home = hadoop_home
+            hadoop_common_home = hadoop_home
+            hadoop_hdfs_home   = hadoop_home
+            yarn_home          = hadoop_home
+
+            hadoop_common_lib_native_dir = hadoop_home + '/lib/native'
+
+            #-------------------------------------------------------------------
+            # Solution to find Java's home folder: 
+            # http://stackoverflow.com/questions/1117398/java-home-directory
+
+            jpos = commands.getstatusoutput('readlink -f /usr/bin/java | sed "s:bin/java::"')
+            if jpos[1].find('jre') != -1:
+                java_home = jpos[1][:jpos[1].find('jre')]
+            else:
+                java_home = jpos[1]
+
+            hadoop_env_file = open(hadoop_home+'/etc/hadoop/hadoop-env.sh','r')
+            hadoop_env_file_lines = hadoop_env_file.readlines()
+            hadoop_env_file.close()
+            hadoop_env_file_lines[24] = 'export JAVA_HOME=%s'%java_home
+            hadoop_env_file = open(hadoop_home+'/etc/hadoop/hadoop-env.sh','w')
+            for line in hadoop_env_file_lines:
+                hadoop_env_file.write(line)
+            hadoop_env_file.close()
+
+            # set_env_vars() ended here
+
             config_core_site(node_name)
-            config_hdfs_site(self._scheduler._lrms.node_list)
+            config_hdfs_site(lrms.node_list)
             config_mapred_site()
             config_yarn_site()
 
-            self._log.info('Start Formatting DFS')
-            namenode_format = os.system(self._hadoop_home + '/bin/hdfs namenode -format -force')
-            self._log.info('DFS Formatted. Starting DFS.')
-            hadoop_start = os.system(self._hadoop_home + '/sbin/start-dfs.sh')
-            self._log.info('Starting YARN')
-            yarn_start = os.system(self._hadoop_home + '/sbin/start-yarn.sh')
+            logger.info('Start Formatting DFS')
+            namenode_format = os.system(hadoop_home + '/bin/hdfs namenode -format -force')
+            logger.info('DFS Formatted. Starting DFS.')
+            hadoop_start = os.system(hadoop_home + '/sbin/start-dfs.sh')
+            logger.info('Starting YARN')
+            yarn_start = os.system(hadoop_home + '/sbin/start-yarn.sh')
 
             #-------------------------------------------------------------------
             # Creating user's HDFS home folder
-            self._log.debug('Running: %s/bin/hdfs dfs -mkdir /user'%self._hadoop_home)
-            os.system('%s/bin/hdfs dfs -mkdir /user'%self._hadoop_home)
+            logger.debug('Running: %s/bin/hdfs dfs -mkdir /user'%hadoop_home)
+            os.system('%s/bin/hdfs dfs -mkdir /user'%hadoop_home)
             uname = commands.getstatusoutput('whoami')
-            self._log.debug('Running: %s/bin/hdfs dfs -mkdir /user/%s'%(self._hadoop_home,uname[1]))
-            os.system('%s/bin/hdfs dfs -mkdir /user/%s'%(self._hadoop_home,uname[1]))
-            check = commands.getstatusoutput('%s/bin/hdfs dfs -ls /user'%self._hadoop_home)
-            self._log.info(check[1])
-            self._scheduler._configure()
-            
-            self._serviceurl = node_name + ':54170'
-            self.launch_command = self._yarn_home + '/bin/yarn'
-        else:
-            self._serviceurl = self._scheduler._lrms.namenode_url
-            self._rm_url     = self._scheduler._lrms.rm_ip+':'+self._scheduler._lrms.rm_port
-            self.launch_command = self._which('yarn')
+            logger.debug('Running: %s/bin/hdfs dfs -mkdir /user/%s'%(hadoop_home,uname[1]))
+            os.system('%s/bin/hdfs dfs -mkdir /user/%s'%(hadoop_home,uname[1]))
+            check = commands.getstatusoutput('%s/bin/hdfs dfs -ls /user'%hadoop_home)
+            logger.info(check[1])
+          # FIXME YARN: why was the scheduler configure called here?  Configure
+          #             is already called during scheduler instantiation
+          # self._scheduler._configure()
+
+            service_url = node_name + ':54170',
+            rm_url      = yarn_home + '/bin/yarn'
+
+          
+        # The LRMS instance is only available here -- everything which is later
+        # needed by the scheduler or launch method is stored in an 'lm_info'
+        # dict.  That lm_info dict will be attached to the scheduler's lrms_info
+        # dict, and will be passed around as part of the opaque_slots structure,
+        # so it is available on all LM create_command calls.
+        lm_info = {'service_url'  : service_url,
+                   'rm_url'       : rm_url }
+
+        return lm_info
+
+
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _configure(self):
+
+        # Single Node configuration
+        # TODO : Multinode config
+
+        self._log.info('YARN was called')
+        
 
     # --------------------------------------------------------------------------
     #
     def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop,(cu_descr,work_dir)):
+                          launch_script_hop, opaque_slots, (cu_descr,work_dir)):
 
         # Construct the args_string which is the arguments given as input to the
         # shell script. Needs to be a string
         self._log.debug("Constructing YARN command")
+
+        if 'lm_info' not in opaque_slots:
+            raise RuntimeError('No lm_info to launch via %s: %s' \
+                    % (self.name, opaque_slots))
+
+        if not opaque_slots['lm_info']:
+            raise RuntimeError('lm_info missing for %s: %s' \
+                               % (self.name, opaque_slots))
+
+        if 'service_url' not in opaque_slots['lm_info']:
+            raise RuntimeError('service_url not in lm_info for %s: %s' \
+                    % (self.name, opaque_slots))
+
+        if 'rm_url' not in opaque_slots['lm_info']:
+            raise RuntimeError('rm_url not in lm_info for %s: %s' \
+                    % (self.name, opaque_slots))
+
+        service_url = opaque_slots['lm_info']['service_url']
+        rm_url      = opaque_slots['lm_info']['rm_url']
+
 
         #-----------------------------------------------------------------------
         # Create YARN script
@@ -2457,8 +2510,8 @@ class LaunchMethodYARN(LaunchMethod):
 
         arg_str=str()
         if cu_descr['arguments']:
-            for Arg in cu_descr['arguments']:
-                arg_str+='%s '%str(Arg)
+            for arg in cu_descr['arguments']:
+                arg_str+='%s '%str(arg)
 
         print_str+="echo '%s %s 1>stdout 2>stderr'>>ExecScript.sh\n"%(cu_descr['executable'],arg_str)
 
@@ -2505,7 +2558,7 @@ class LaunchMethodYARN(LaunchMethod):
         #    nmem_string = ''
 
         #Getting the namenode's address.
-        service_url = 'yarn://{0}?fs=hdfs://{1}'.format(self._rm_url,self._serviceurl)
+        service_url = 'yarn://{0}?fs=hdfs://{1}'.format(rm_url, service_url)
 
         yarn_command = '%s -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
                        ' com.radical.pilot.Client -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
