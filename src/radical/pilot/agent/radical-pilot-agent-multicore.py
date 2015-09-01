@@ -2250,9 +2250,9 @@ class LaunchMethodYARN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, scheduler):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger, scheduler)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
@@ -3888,16 +3888,16 @@ class YARNLRMS(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, requested_cores):
+    def __init__(self, cfg, logger):
 
-        LRMS.__init__(self, name, config, logger, requested_cores)
+        LRMS.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
 
-        self._log.info("Using fork on localhost.")
+        self._log.info("Using YARN on localhost.")
 
         selected_cpus = self.requested_cores
 
@@ -4049,7 +4049,8 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
         # FIXME: we should introduce a proper finalize for LM base which is then
         #        overloaded by the YARN LM
-        if self._cfg['task_launch_method'] == 'YARN':
+        #        G.: What do you mean?
+        if self._cfg['task_launch_method'] == 'YARN' and self._cfg['lrms'] != 'YARN':
             self._task_launcher.stop_service()
 
 
