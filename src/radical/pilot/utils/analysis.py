@@ -76,6 +76,10 @@ _info_entries = [
     ('aec_handover',    'AgentExecuting',         'spawn',     'spawning passed to popen'),
     ('aec_end',         'AgentExecuting',         'final',     ''),
 
+    ('aew_pickup',      'AgentExecuting',         'passed',    'ExecWatcher picked up unit'),
+    ('aew_script_top',  'AgentExecuting',         'script',    'start'),
+    ('aew_cd',          'AgentExecuting',         'script',    'after_cd'),
+    ('aew_after_exec',  'AgentExecuting',         'script',    'after_exec'),
     ('aew_complete',    'AgentExecuting',         'exec',      'execution complete'),
 ]
 

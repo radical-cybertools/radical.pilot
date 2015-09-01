@@ -3667,7 +3667,11 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             launch_script.write("TIMESTAMP=`awk 'BEGIN{srand(); print srand()}'`\n")
             launch_script.write("}\n\n")
 
+            launch_script.write("timestamp\n")
+            launch_script.write("echo script start $TIMESTAMP >> %s/PROF\n" % cu['workdir'])
             launch_script.write('\n# Change to working directory for unit\ncd %s\n' % cu['workdir'])
+            launch_script.write("timestamp\n")
+            launch_script.write("echo script after_cd $TIMESTAMP >> %s/PROF\n" % cu['workdir'])
 
             # Before the Big Bang there was nothing
             if cu['description']['pre_exec']:
@@ -3726,6 +3730,8 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
             launch_script.write("# The command to run\n")
             launch_script.write("%s\n" % launch_command)
+            launch_script.write("timestamp\n")
+            launch_script.write("echo script after_exec $TIMESTAMP >> %s/PROF\n" % cu['workdir'])
 
             # After the universe dies the infrared death, there will be nothing
             if cu['description']['post_exec']:
