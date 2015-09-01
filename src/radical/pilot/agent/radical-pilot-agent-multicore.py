@@ -3557,6 +3557,9 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 logger = self._log)
 
 
+        self.tmpdir = tempfile.gettempdir()
+
+
     # --------------------------------------------------------------------------
     #
     def finalize(self):
@@ -3657,7 +3660,13 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
         self._prof.prof('spawn', msg='unit spawn', uid=cu['_id'])
 
-        launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu['workdir']
+        if False:
+            cu_tmpdir = '%s/%s' % (self.tmpdir, cu['_id'])
+            rec_makedir(cu_tmpdir)
+        else:
+            cu_tmpdir = cu['workdir']
+
+        launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu_tmpdir
         self._log.debug("Created launch_script: %s", launch_script_name)
 
         with open(launch_script_name, "w") as launch_script:
@@ -3668,10 +3677,10 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             launch_script.write("}\n\n")
 
             launch_script.write("timestamp\n")
-            launch_script.write("echo script start $TIMESTAMP >> %s/PROF\n" % cu['workdir'])
-            launch_script.write('\n# Change to working directory for unit\ncd %s\n' % cu['workdir'])
+            launch_script.write("echo script start_script $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
+            launch_script.write('\n# Change to working directory for unit\ncd %s\n' % cu_tmpdir)
             launch_script.write("timestamp\n")
-            launch_script.write("echo script after_cd $TIMESTAMP >> %s/PROF\n" % cu['workdir'])
+            launch_script.write("echo script after_cd $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
 
             # Before the Big Bang there was nothing
             if cu['description']['pre_exec']:
@@ -3683,10 +3692,10 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                     pre_exec_string += "%s\n" % cu['description']['pre_exec']
                 launch_script.write("# Pre-exec commands\n")
                 launch_script.write("timestamp\n")
-                launch_script.write("echo pre  start $TIMESTAMP >> %s/PROF\n" % cu['workdir'])
+                launch_script.write("echo pre start $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
                 launch_script.write(pre_exec_string)
                 launch_script.write("timestamp\n")
-                launch_script.write("echo pre  stop  $TIMESTAMP >> %s/PROF\n" % cu['workdir'])
+                launch_script.write("echo pre stop $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
 
             # Create string for environment variable setting
             if cu['description']['environment'] and    \
@@ -3731,7 +3740,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             launch_script.write("# The command to run\n")
             launch_script.write("%s\n" % launch_command)
             launch_script.write("timestamp\n")
-            launch_script.write("echo script after_exec $TIMESTAMP >> %s/PROF\n" % cu['workdir'])
+            launch_script.write("echo script after_exec $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
 
             # After the universe dies the infrared death, there will be nothing
             if cu['description']['post_exec']:
@@ -3743,10 +3752,10 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                     post_exec_string += "%s\n" % cu['description']['post_exec']
                 launch_script.write("# Post-exec commands\n")
                 launch_script.write("timestamp\n")
-                launch_script.write("echo post start $TIMESTAMP >> %s/PROF\n" % cu['workdir'])
+                launch_script.write("echo post start $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
                 launch_script.write('%s\n' % post_exec_string)
                 launch_script.write("timestamp\n")
-                launch_script.write("echo post stop  $TIMESTAMP >> %s/PROF\n" % cu['workdir'])
+                launch_script.write("echo post stop  $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
 
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
@@ -3757,7 +3766,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         _stderr_file_h = open(cu['stderr_file'], "w")
         self._prof.prof('command', msg='stdout and stderr files created', uid=cu['_id'])
 
-        self._log.info("Launching unit %s via %s in %s", cu['_id'], cmdline, cu['workdir'])
+        self._log.info("Launching unit %s via %s in %s", cu['_id'], cmdline, cu_tmpdir)
 
         proc = subprocess.Popen(args               = cmdline,
                                 bufsize            = 0,
@@ -3768,7 +3777,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                                 preexec_fn         = None,
                                 close_fds          = True,
                                 shell              = True,
-                                cwd                = cu['workdir'],
+                                cwd                = cu_tmpdir,
                                 env                = self._cu_environment,
                                 universal_newlines = False,
                                 startupinfo        = None,
