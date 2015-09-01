@@ -2250,9 +2250,9 @@ class LaunchMethodYARN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, config, logger, scheduler):
+    def __init__(self, cfg, logger):
 
-        LaunchMethod.__init__(self, name, config, logger, scheduler)
+        LaunchMethod.__init__(self, cfg, logger)
 
 
     # --------------------------------------------------------------------------
