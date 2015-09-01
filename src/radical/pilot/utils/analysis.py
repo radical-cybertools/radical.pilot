@@ -77,9 +77,9 @@ _info_entries = [
     ('aec_end',         'AgentExecuting',         'final',     ''),
 
     ('aew_pickup',      'AgentExecuting',         'passed',    'ExecWatcher picked up unit'),
-    ('aew_script_top',  'AgentExecuting',         'script',    'start'),
-    ('aew_cd',          'AgentExecuting',         'script',    'after_cd'),
-    ('aew_after_exec',  'AgentExecuting',         'script',    'after_exec'),
+    ('aew_start_script','AgentStagingOutputComponent','script','start_script'),
+    ('aew_after_cd',    'AgentStagingOutputComponent','script','after_cd'),
+    ('aew_after_exec',  'AgentStagingOutputComponent','script','after_exec'),
     ('aew_complete',    'AgentExecuting',         'exec',      'execution complete'),
 ]
 
