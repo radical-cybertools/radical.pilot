@@ -1226,8 +1226,8 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
     # Kill ssh process when bootstrap_1 dies, to prevent lingering ssh's
     trap 'jobs -p | xargs kill' EXIT
 
-    # Overwrite HOSTPORT
-    HOSTPORT=$BIND_ADDRESS:$DBPORT
+    # and export to agent
+    export RADICAL_PILOT_DB_HOSTPORT=$BIND_ADDRESS:$DBPORT
 
     profile_event 'tunnel setup done'
 
