@@ -5646,6 +5646,9 @@ def bootstrap_3():
     """
     This method continues where the bootstrapper left off, but will quickly pass
     control to the Agent class which will spawn the functional components.
+
+    Most of bootstrap_3 applies only to agent.0, in particular all mongodb
+    interactions remains excluded for other sub-agent instances.
     """
 
     # find out what agent instance name we have
@@ -5654,18 +5657,12 @@ def bootstrap_3():
     agent_name = sys.argv[1]
 
     # set up a logger and profiler
-    prof = rpu.Profiler('%s.bootstrap_3' % agent_name)
-    log  = ru.get_logger('%s.bootstrap_3' % agent_name, '%s.bootstrap_3.log' % agent_name, 'DEBUG')  # FIXME?
+    prof = rpu.Profiler ('%s.bootstrap_3' % agent_name)
+    log  = ru.get_logger('%s.bootstrap_3' % agent_name, 
+                         '%s.bootstrap_3.log' % agent_name, 'DEBUG')  # FIXME?
     log.info('start')
 
-    # FIXME: signal handlers need mongo_p, but we won't have that until later
-
-    # quickly set up a mongodb handle so that we can report errors.  We need to
-    # parse the config to get the url and some IDs.
-    # FIXME: should those be the things we pass as arg or env?
-    # --------------------------------------------------------------------------
     # load the agent config, and overload the config dicts
-
     if not 'RADICAL_PILOT_CFG' in os.environ:
         raise RuntimeError('RADICAL_PILOT_CFG is not set - abort')
 
@@ -5679,30 +5676,36 @@ def bootstrap_3():
 
     print "Agent config (%s):\n%s\n\n" % (agent_cfg, pprint.pformat(cfg))
 
-    mongodb_url = cfg['mongodb_url']
-    pilot_id    = cfg['pilot_id']
-    session_id  = cfg['session_id']
 
-    _, mongo_db, _, _, _  = ru.mongodb_connect(mongodb_url)
-    mongo_p  = mongo_db["%s.p" % cfg['session_id']]
+    # quickly set up a mongodb handle so that we can report errors.
+    # FIXME: signal handlers need mongo_p, but we won't have that until later
+    if agent_name == 'agent.0':
 
-    # set up signal and exit handlers
-    def exit_handler():
-        pass
-      # rpu.flush_prof()
-    
-    def sigint_handler(signum, frame):
-        pilot_FAILED(msg='Caught SIGINT. EXITING (%s)' % frame)
-        sys.exit(2)
+        _, mongo_db, _, _, _  = ru.mongodb_connect(cfg['mongodb_url'])
+        mongo_p = mongo_db["%s.p" % cfg['session_id']]
 
-    def sigalarm_handler(signum, frame):
-        pilot_FAILED(msg='Caught SIGALRM (Walltime limit?). EXITING (%s)' % frame)
-        sys.exit(3)
+        # set up signal and exit handlers
+        def exit_handler():
+          # rpu.flush_prof()
+            pass
 
-    import atexit
-    atexit.register(exit_handler)
-    signal.signal(signal.SIGINT, sigint_handler)
-    signal.signal(signal.SIGALRM, sigalarm_handler)
+        def sigint_handler(signum, frame):
+            pilot_FAILED(msg='Caught SIGINT. EXITING (%s)' % frame)
+            sys.exit(2)
+
+        def sigalarm_handler(signum, frame):
+            pilot_FAILED(msg='Caught SIGALRM (Walltime limit?). EXITING (%s)' % frame)
+            sys.exit(3)
+
+        import atexit
+        atexit.register(exit_handler)
+        signal.signal(signal.SIGINT,  sigint_handler)
+        signal.signal(signal.SIGALRM, sigalarm_handler)
+
+    # if anything went wrong up to this point, we would have been unable to
+    # report errors into mongodb.  From here on, any fatal error should result
+    # in one of the above handlers or exit handlers being activated, thuse
+    # reporting the error dutifully.
 
     try:
         # ----------------------------------------------------------------------
@@ -5773,7 +5776,7 @@ def bootstrap_3():
         agent = AgentWorker(cfg)
         agent.start()
         agent.join()
-        agent._finalize()
+        agent._finalize()   # FIXME: layer violation
         # ----------------------------------------------------------------------
 
     except SystemExit:
