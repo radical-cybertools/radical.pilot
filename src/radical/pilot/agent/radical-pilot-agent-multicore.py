@@ -5212,10 +5212,15 @@ class AgentWorker(rpu.Worker):
                 else:
                     self._log.error("unknown   ALIVE (%s)" % arg)
 
-            elif name in self._sub_agents:
+            # TODO: Should the sub-agent only reports its name?
+            # Or should the receiver know about all the sub-components too?
+            #
+            # Only look for the 'agent.N' in 'agent.N.component.M'
+            # TODO: This relies on the/a convention of the sub-agents.
+            elif name.rsplit('.', 2)[0] in self._sub_agents:
+                name = name.rsplit('.', 2)[0]
                 self._log.debug("sub-agent ALIVE (%s)" % name)
                 self._sub_agents[name]['alive'] = True
-
             else:
                 self._log.debug("ignored   ALIVE (%s)" % arg)
 
