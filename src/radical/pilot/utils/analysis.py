@@ -8,7 +8,7 @@ info_names = {
         'AgentStagingInputComponent'  : 'asic',
         'SchedulerContinuous'         : 'asc',  # agent scheduler component
         'AgentExecutingComponent'     : 'aec',
-        'AgentExecutingWatcher'       : 'aec',
+        'AgentExecutingWatcher'       : 'aew',
         'AgentStagingOutputComponent' : 'asoc',
         'session'                     : 'mod'
         }
@@ -64,16 +64,24 @@ _info_entries = [
     ('usoc_get_u',      'OutputFileTransfer',     'advance',   'StagingOutput'),
     ('usoc_adv_u',      'OutputFileTransfer',     'advance',   'Done'),
 
+    ('asc_allocated',   'SchedulerContinuous',    'schedule',  'allocated'),
     ('asc_alloc_nok',   'SchedulerContinuous',    'schedule',  'allocation failed'),
     ('asc_alloc_ok',    'SchedulerContinuous',    'schedule',  'allocation succeeded'),
     ('asc_unqueue',     'SchedulerContinuous',    'unqueue',   're-allocation done'),
+    ('asc_released',    'SchedulerContinuous',    'unschedule','released'),
 
     ('aec_launch',      'AgentExecuting',         'exec',      'unit launch'),
     ('aec_spawn',       'AgentExecuting',         'spawn',     'unit spawn'),
     ('aec_script',      'AgentExecuting',         'command',   'launch script constructed'),
-    ('aec_pty',         'AgentExecuting',         'spawn',     'spawning passed to pty'),  
-    ('aec_end',         'AgentExecuting',         'final',     ''),  
+    ('ace_outerr',      'AgentExecuting',         'command',   'stdout and stderr files created'),
+    ('aec_handover',    'AgentExecuting',         'spawn',     'spawning passed to pty'),
+    ('aec_handover',    'AgentExecuting',         'spawn',     'spawning passed to popen'),
+    ('aec_end',         'AgentExecuting',         'final',     ''),
 
+    ('aew_pickup',      'AgentExecuting',         'passed',    'ExecWatcher picked up unit'),
+    ('aew_start_script','AgentStagingOutputComponent','script','start_script'),
+    ('aew_after_cd',    'AgentStagingOutputComponent','script','after_cd'),
+    ('aew_after_exec',  'AgentStagingOutputComponent','script','after_exec'),
     ('aew_complete',    'AgentExecuting',         'exec',      'execution complete'),
 ]
 

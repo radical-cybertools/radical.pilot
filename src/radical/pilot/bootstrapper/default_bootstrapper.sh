@@ -1326,7 +1326,7 @@ export RADICAL_UTIL_VERBOSE=DEBUG
 export RADICAL_PILOT_VERBOSE=DEBUG
 
 # start agent, forward arguments
-$AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
+$AGENT_CMD "\$1" 1>"\$1.bootstrap_2.out" 2>"\$1.bootstrap_2.err"
 
 EOT
 
@@ -1338,7 +1338,7 @@ profile_event 'agent start'
 
 # start the master agent instance (zero)
 profile_event 'sync rel' 'agent start'
-sh bootstrap_2.sh 'agent.0' 1>bootstrap_2.out 2>bootstrap_2.err
+sh bootstrap_2.sh 'agent.0' 1>agent.0.bootstrap_2.out 2>agent.0.bootstrap_2.err
 AGENT_EXITCODE=$?
 
 profile_event 'cleanup start'
