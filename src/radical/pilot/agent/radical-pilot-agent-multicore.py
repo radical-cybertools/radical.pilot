@@ -5460,9 +5460,14 @@ def bootstrap_3():
     control to the Agent class which will spawn the functional components.
     """
 
+    # find out what agent instance name we have
+    if len(sys.argv) != 2:
+        raise RuntimeError('invalid number of parameters (%s)' % sys.argv)
+    agent_name = sys.argv[1]
+
     # set up a logger and profiler
-    prof = rpu.Profiler('bootstrap_3')
-    log  = ru.get_logger('bootstrap_3', 'bootstrap_3.log', 'DEBUG')  # FIXME?
+    prof = rpu.Profiler('%s.bootstrap_3' % agent_name)
+    log  = ru.get_logger('%s.bootstrap_3' % agent_name, '%s.bootstrap_3.log' % agent_name, 'DEBUG')  # FIXME?
     log.info('start')
 
     # FIXME: signal handlers need mongo_p, but we won't have that until later
@@ -5476,13 +5481,7 @@ def bootstrap_3():
     if not 'RADICAL_PILOT_CFG' in os.environ:
         raise RuntimeError('RADICAL_PILOT_CFG is not set - abort')
 
-
-    # find out what agent instance name we have
-    if len(sys.argv) != 2: 
-        raise RuntimeError('invalid number of parameters (%s)' % sys.argv)
-    agent_name = sys.argv[1]
     agent_cfg  = "%s/%s.cfg" % (os.getcwd(), agent_name)
-
     print "startup agent %s : %s" % (agent_name, agent_cfg)
 
     cfg = ru.read_json_str(agent_cfg)
