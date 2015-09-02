@@ -420,14 +420,6 @@ class Component(mp.Process):
         attempt ar getting a unit is up.
         """
 
-        dh = ru.DebugHelper()
-
-        # configure the component's logger
-        log_name = self._cname
-        log_tgt  = self._cname + ".log"
-        self._log = ru.get_logger(log_name, log_tgt, self._debug)
-        self._log.info('running %s' % self._cname)
-
         # registering a sigterm handler will allow us to call an exit when the
         # parent calls terminate -- which is excepted in the loop below, and we
         # can then cleanly call finalize...
@@ -435,23 +427,33 @@ class Component(mp.Process):
             sys.exit()
         signal.signal(signal.SIGTERM, sigterm_handler)
 
-        # initialize profiler
-        self._prof = Profiler(self._cname)
 
-        # Initialize() should declare all input and output channels, and all
-        # workers and notification callbacks
-        self._prof.prof('initialize')
-        self.initialize()
-        self._prof.prof('initialized')
-
-        # perform a sanity check: for each declared input state, we expect
-        # a corresponding work method to be declared, too.
-        for input, states in self._inputs:
-            for state in states:
-                if not state in self._workers:
-                    raise RuntimeError("%s: no worker declared for input state %s" \
-                                    % self._cname, state)
         try:
+            dh = ru.DebugHelper()
+
+            # configure the component's logger
+            log_name = self._cname
+            log_tgt  = self._cname + ".log"
+            self._log = ru.get_logger(log_name, log_tgt, self._debug)
+            self._log.info('running %s' % self._cname)
+
+            # initialize profiler
+            self._prof = Profiler(self._cname)
+
+            # initialize() should declare all input and output channels, and all
+            # workers and notification callbacks
+            self._prof.prof('initialize')
+            self.initialize()
+            self._prof.prof('initialized')
+
+            # perform a sanity check: for each declared input state, we expect
+            # a corresponding work method to be declared, too.
+            for input, states in self._inputs:
+                for state in states:
+                    if not state in self._workers:
+                        raise RuntimeError("%s: no worker declared for input state %s" \
+                                        % self._cname, state)
+
             # The main event loop will repeatedly iterate over all input
             # channels, probing 
             while True:
@@ -541,12 +543,11 @@ class Component(mp.Process):
 
         finally:
             # call finalizers
-            self._log.debug('_finalize')
+            self._prof.prof("_finalize")
             self._finalize()
-            self._log.debug('finalize')
+            self._prof.prof("finalize")
             self.finalize()
-            self._log.debug('finalize complete')
-            self._prof.prof("final")
+            self._prof.prof("finalized")
             self._prof.flush()
 
 
