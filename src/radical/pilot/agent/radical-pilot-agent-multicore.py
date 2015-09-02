@@ -1167,8 +1167,6 @@ class LaunchMethod(object):
         self._cfg = cfg
         self._log = logger
 
-        self._prof = rpu.Profiler('launch_method.prof')
-
         self.launch_command = None
         self._configure()
         # TODO: This doesn't make too much sense for LM's that use multiple
