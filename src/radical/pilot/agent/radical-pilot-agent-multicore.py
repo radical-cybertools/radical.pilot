@@ -5298,7 +5298,7 @@ class AgentWorker(rpu.Worker):
     #
     def bootstrap_4(self):
         """
-        This method will instantiate all communitation and notification
+        This method will instantiate all communication and notification
         channels, and all components and workers.  It will then feed a set of
         units to the lead-in queue (staging_input).  A state notification
         callback will then register all units which reached a final state
