@@ -3613,9 +3613,6 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             self._log.info('received shutdown command')
             self.close()
 
-        else:
-            self._log.info("ignored command '%s'" % msg)
-
 
     # --------------------------------------------------------------------------
     #
@@ -4088,9 +4085,6 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         elif cmd == 'shutdown':
             self._log.info('received shutdown command')
             self.close()
-
-        else:
-            self._log.info("ignored command '%s'" % msg)
 
 
     # --------------------------------------------------------------------------
@@ -5111,9 +5105,6 @@ class AgentHeartbeatWorker(rpu.Worker):
                 self.publish('command', {'cmd' : 'heartbeat', 
                                          'arg' : 'keepalive'})
 
-            else:
-                self._log.error("Received unknown command: %s with arg: %s.", cmd, arg)
-
 
     # --------------------------------------------------------------------------
     #
@@ -5180,8 +5171,6 @@ class AgentWorker(rpu.Worker):
             else:
                 pilot_FAILED(self._p, self._pilot_id, self._log, "TERMINATE(%s) received" % arg)
 
-        else:
-            self._log.error("unknown command in command cb: '%s'" % msg)
 
     # --------------------------------------------------------------------------
     #
@@ -5210,22 +5199,11 @@ class AgentWorker(rpu.Worker):
                     self._workers[name]['alive'] = True
 
                 else:
-                    self._log.error("unknown   ALIVE (%s)" % arg)
+                    self._log.error("unknown   ALIVE (%s)" % name)
 
-            # TODO: Should the sub-agent only reports its name?
-            # Or should the receiver know about all the sub-components too?
-            #
-            # Only look for the 'agent.N' in 'agent.N.component.M'
-            # TODO: This relies on the/a convention of the sub-agents.
-            elif name.rsplit('.', 2)[0] in self._sub_agents:
-                name = name.rsplit('.', 2)[0]
+            elif name in self._sub_agents:
                 self._log.debug("sub-agent ALIVE (%s)" % name)
                 self._sub_agents[name]['alive'] = True
-            else:
-                self._log.debug("ignored   ALIVE (%s)" % arg)
-
-        else:
-            self._log.error("unknown command in barrier cb: '%s'" % msg)
 
 
     # --------------------------------------------------------------------------
