@@ -3743,6 +3743,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
             launch_script.write("# The command to run\n")
             launch_script.write("%s\n" % launch_command)
+            launch_script.write("RETVAL=$?\n")
             launch_script.write("timestamp\n")
             launch_script.write("echo script after_exec $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
 
@@ -3760,6 +3761,9 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 launch_script.write('%s\n' % post_exec_string)
                 launch_script.write("timestamp\n")
                 launch_script.write("echo post stop  $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
+
+            launch_script.write("# Exit the script with the return code from the command\n")
+            launch_script.write("exit $RETVAL\n")
 
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
