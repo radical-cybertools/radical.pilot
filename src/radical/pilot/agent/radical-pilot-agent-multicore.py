@@ -5181,7 +5181,7 @@ class AgentWorker(rpu.Worker):
                 pilot_FAILED(self._p, self._pilot_id, self._log, "TERMINATE(%s) received" % arg)
 
         else:
-            self._log.error("unknown command '%s'" % msg)
+            self._log.error("unknown command in command cb: '%s'" % msg)
 
     # --------------------------------------------------------------------------
     #
@@ -5220,7 +5220,7 @@ class AgentWorker(rpu.Worker):
                 self._log.debug("ignored   ALIVE (%s)" % arg)
 
         else:
-            self._log.error("unknown command '%s'" % msg)
+            self._log.error("unknown command in barrier cb: '%s'" % msg)
 
 
     # --------------------------------------------------------------------------
