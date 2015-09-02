@@ -361,6 +361,11 @@ class Component(mp.Process):
         self._log.debug('declared publisher : %s : %s : %s' \
                 % (topic, pubsub, q.name))
 
+        # FIXME: I am not exactly sure why this is 'needed', but declaring
+        #        a published as above and then immediately publishing on that
+        #        channel seems to sometimes lead to a loss of messages.
+        time.sleep(1)
+
 
     # --------------------------------------------------------------------------
     #

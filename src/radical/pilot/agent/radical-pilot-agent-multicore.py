@@ -449,6 +449,10 @@ class AgentSchedulingComponent(rpu.Component):
         self.declare_publisher ('reschedule', rp.AGENT_RESCHEDULE_PUBSUB)
         self.declare_subscriber('reschedule', rp.AGENT_RESCHEDULE_PUBSUB, self.reschedule_cb)
 
+        # all components use the command channel for control messages
+        self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
+        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
+
         # The scheduler needs the LRMS information which have been collected
         # during agent startup.  We dig them out of the config at this point.
         self._cores = self._cfg['cores']
@@ -463,6 +467,10 @@ class AgentSchedulingComponent(rpu.Component):
 
         # configure the scheduler instance
         self._configure()
+
+        # communicate successful startup
+        self.publish('command', {'cmd' : 'alive',
+                                 'arg' : self.cname})
 
 
     # --------------------------------------------------------------------------
@@ -490,6 +498,18 @@ class AgentSchedulingComponent(rpu.Component):
 
         except KeyError:
             raise ValueError("Scheduler '%s' unknown or defunct" % name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def command_cb(self, topic, msg):
+
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        if cmd == 'shutdown':
+            self._log.info('received shutdown command')
+            self.close()
 
 
     # --------------------------------------------------------------------------
@@ -596,7 +616,7 @@ class AgentSchedulingComponent(rpu.Component):
             # Nothing to do -- how come?
             self._log.warn("cannot unschedule: %s (no slots)" % cu)
             return
-        
+
         self._log.info("slot status before unschedule: %s" % self.slot_status ())
 
         # needs to be locked as we try to release slots, but slots are acquired
@@ -2232,7 +2252,7 @@ class LRMS(object):
                     self._log.exception("lrms config hook failed")
                     raise
 
-                self._log.exception("lrms config hook succeeded (%s)" % lm)
+                self._log.debug("lrms config hook succeeded (%s)" % lm)
 
         # For now assume that all nodes have equal amount of cores
         cores_avail = len(self.node_list) * self.cores_per_node
@@ -3529,10 +3549,12 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
         self.declare_output(rp.AGENT_STAGING_OUTPUT_PENDING, rp.AGENT_STAGING_OUTPUT_QUEUE)
 
-        self.declare_publisher('unschedule', rp.AGENT_UNSCHEDULE_PUBSUB)
-        self.declare_publisher('state',      rp.AGENT_STATE_PUBSUB)
+        self.declare_publisher ('unschedule', rp.AGENT_UNSCHEDULE_PUBSUB)
+        self.declare_publisher ('state',      rp.AGENT_STATE_PUBSUB)
 
-        self.declare_subscriber('command',   rp.AGENT_COMMAND_PUBSUB, self.command_cb)
+        # all components use the command channel for control messages
+        self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
+        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
 
         self._cancel_lock    = threading.RLock()
         self._cus_to_cancel  = list()
@@ -3556,6 +3578,10 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 name   = self._cfg['mpi_launch_method'],
                 cfg    = self._cfg,
                 logger = self._log)
+
+        # communicate successful startup
+        self.publish('command', {'cmd' : 'alive',
+                                 'arg' : self.cname})
 
 
         self.tmpdir = tempfile.gettempdir()
@@ -3582,6 +3608,10 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             self._log.info("cancel unit command (%s)" % arg)
             with self._cancel_lock:
                 self._cus_to_cancel.append(arg)
+
+        elif cmd == 'shutdown':
+            self._log.info('received shutdown command')
+            self.close()
 
         else:
             self._log.info("ignored command '%s'" % msg)
@@ -3831,7 +3861,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
                 # add all cus we found to the watchlist
                 for cu in cus :
-                    
+
                     self._prof.prof('passed', msg="ExecWatcher picked up unit", uid=cu['_id'])
                     self._cus_to_watch.append (cu)
 
@@ -3936,10 +3966,12 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         self.declare_output(rp.AGENT_STAGING_OUTPUT_PENDING, rp.AGENT_STAGING_OUTPUT_QUEUE)
 
-        self.declare_publisher('unschedule', rp.AGENT_UNSCHEDULE_PUBSUB)
-        self.declare_publisher('state',      rp.AGENT_STATE_PUBSUB)
+        self.declare_publisher ('unschedule', rp.AGENT_UNSCHEDULE_PUBSUB)
+        self.declare_publisher ('state',      rp.AGENT_STATE_PUBSUB)
 
-        self.declare_subscriber('command',   rp.AGENT_COMMAND_PUBSUB, self.command_cb)
+        # all components use the command channel for control messages
+        self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
+        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
 
         # Mimic what virtualenv's "deactivate" would do
         self._deactivate = "# deactivate pilot virtualenv\n"
@@ -4035,6 +4067,10 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
                 cfg    = self._cfg,
                 logger = self._log)
 
+        # communicate successful startup
+        self.publish('command', {'cmd' : 'alive',
+                                 'arg' : self.cname})
+
 
     # --------------------------------------------------------------------------
     #
@@ -4048,6 +4084,10 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
             self._log.info("cancel unit command (%s)" % arg)
             with self._cancel_lock:
                 self._cus_to_cancel.append(arg)
+
+        elif cmd == 'shutdown':
+            self._log.info('received shutdown command')
+            self.close()
 
         else:
             self._log.info("ignored command '%s'" % msg)
@@ -4517,6 +4557,26 @@ class AgentUpdateWorker(rpu.Worker):
         self.declare_subscriber('state', 'agent_state_pubsub', self.state_cb)
         self.declare_idle_cb(self.idle_cb, self._cfg.get('bulk_collection_time'))
 
+        # all components use the command channel for control messages
+        self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
+        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
+
+        # communicate successful startup
+        self.publish('command', {'cmd' : 'alive',
+                                 'arg' : self.cname})
+
+
+    # --------------------------------------------------------------------------
+    #
+    def command_cb(self, topic, msg):
+
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        if cmd == 'shutdown':
+            self._log.info('received shutdown command')
+            self.close()
+
 
     # ------------------------------------------------------------------
     #
@@ -4673,6 +4733,26 @@ class AgentStagingInputComponent(rpu.Component):
 
         self.declare_publisher('state', rp.AGENT_STATE_PUBSUB)
 
+        # all components use the command channel for control messages
+        self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
+        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
+
+        # communicate successful startup
+        self.publish('command', {'cmd' : 'alive',
+                                 'arg' : self.cname})
+
+
+    # --------------------------------------------------------------------------
+    #
+    def command_cb(self, topic, msg):
+
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        if cmd == 'shutdown':
+            self._log.info('received shutdown command')
+            self.close()
+
 
     # --------------------------------------------------------------------------
     #
@@ -4791,6 +4871,26 @@ class AgentStagingOutputComponent(rpu.Component):
         self.declare_output(rp.PENDING_OUTPUT_STAGING, None) # drop units
 
         self.declare_publisher('state', rp.AGENT_STATE_PUBSUB)
+
+        # all components use the command channel for control messages
+        self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
+        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
+
+        # communicate successful startup
+        self.publish('command', {'cmd' : 'alive',
+                                 'arg' : self.cname})
+
+
+    # --------------------------------------------------------------------------
+    #
+    def command_cb(self, topic, msg):
+
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        if cmd == 'shutdown':
+            self._log.info('received shutdown command')
+            self.close()
 
 
     # --------------------------------------------------------------------------
@@ -4926,8 +5026,11 @@ class AgentHeartbeatWorker(rpu.Worker):
         self._session_id    = self._cfg['session_id']
         self._mongodb_url   = self._cfg['mongodb_url']
 
-        self.declare_publisher('command', rp.AGENT_COMMAND_PUBSUB)
         self.declare_idle_cb(self.idle_cb, self._cfg.get('heartbeat_interval'))
+
+        # all components use the command channel for control messages
+        self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
+        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
 
         self._pilot_id      = self._cfg['pilot_id']
         self._session_id    = self._cfg['session_id']
@@ -4939,6 +5042,22 @@ class AgentHeartbeatWorker(rpu.Worker):
 
         self._p  = mongo_db["%s.p"  % self._session_id]
         self._cu = mongo_db["%s.cu" % self._session_id]
+
+        # communicate successful startup
+        self.publish('command', {'cmd' : 'alive',
+                                 'arg' : self.cname})
+
+
+    # --------------------------------------------------------------------------
+    #
+    def command_cb(self, topic, msg):
+
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        if cmd == 'shutdown':
+            self._log.info('received shutdown command')
+            self.close()
 
 
     # --------------------------------------------------------------------------
@@ -5030,8 +5149,13 @@ class AgentWorker(rpu.Worker):
         _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
         self._p  = mongo_db["%s.p"  % self._session_id]
 
-        # subscribe for commands (including shutdown)
+        # all components use the command channel for control messages
+        self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
         self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
+
+        # communicate successful startup
+        self.publish('command', {'cmd' : 'alive',
+                                 'arg' : self.cname})
 
 
     # --------------------------------------------------------------------------
@@ -5055,6 +5179,45 @@ class AgentWorker(rpu.Worker):
 
             else:
                 pilot_FAILED(self._p, self._pilot_id, self._log, "TERMINATE(%s) received" % arg)
+
+        else:
+            self._log.error("unknown command '%s'" % msg)
+
+    # --------------------------------------------------------------------------
+    #
+    def barrier_cb(self, topic, msg):
+
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        if cmd == 'alive':
+
+            name = arg
+            self._log.debug('waiting alive: \n%s\n%s\n%s'
+                    % (self._components.keys(), self._workers.keys(),
+                        self._sub_agents.keys()))
+
+            # we only look at ALIVE messages which come from *this* agent, and
+            # simply ignore all others (this is a shared medium after all)
+            if name.startswith (self.agent_name):
+
+                if name in self._components:
+                    self._log.debug("component ALIVE (%s)" % name)
+                    self._components[name]['alive'] = True
+
+                elif name in self._workers:
+                    self._log.debug("worker    ALIVE (%s)" % name)
+                    self._workers[name]['alive'] = True
+
+                else:
+                    self._log.error("unknown   ALIVE (%s)" % arg)
+
+            elif name in self._sub_agents:
+                self._log.debug("sub-agent ALIVE (%s)" % name)
+                self._sub_agents[name]['alive'] = True
+
+            else:
+                self._log.debug("ignored   ALIVE (%s)" % arg)
 
         else:
             self._log.error("unknown command '%s'" % msg)
@@ -5127,8 +5290,17 @@ class AgentWorker(rpu.Worker):
             # TODO: Check for return value, update should be true!
             self._log.info("Database updated: %s", ret)
 
+        # make sure we collect commands, specifically to implement the startup
+        # barrier on bootstrap_4
+        self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
+        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.barrier_cb)
+
         # bootstrap sub-agents, agent components, bridges etc.
-        self.bootstrap_4()       
+        self.bootstrap_4()
+
+        # once bootstrap_4 is done, we signal success to the parent agent
+        self.publish('command', {'cmd' : 'alive',
+                                 'arg' : self.agent_name})
 
         # the pulling agent registers the staging_input_queue as this is what we want to push to
         # FIXME: do a sanity check on the config that only one agent pulls, as
@@ -5334,12 +5506,36 @@ class AgentWorker(rpu.Worker):
 
         try:
             self.start_bridges()
-            self.start_components()
-            self.start_sub_agents()
 
             # FIXME: make sure all communication channels are in place.  This could
             # be replaced with a proper barrier, but not sure if that is worth it...
             time.sleep (1)
+
+            self.start_components()
+            self.start_sub_agents()
+
+            # before we declare bootstrapping-success, the we wait for all
+            # components, workers and sub_agents to complete startup.  For that,
+            # all sub-agents will wait ALIVE messages on the COMMAND pubsub for
+            # all entities it spawned.  Only when all are alive, we will
+            # continue here.
+            #
+            # FIXME: add bridges, too?  But we need pubsub for counting... Duh!
+            total = len(self._components) + \
+                    len(self._workers   ) + \
+                    len(self._sub_agents)
+            while True:
+                alive = [v['alive'] for v in self._components.values()] + \
+                        [v['alive'] for v in self._workers   .values()] + \
+                        [v['alive'] for v in self._sub_agents.values()]
+
+                self._log.debug('found alive: %2d / %2d' % (alive.count(True), total))
+
+                if alive.count(True) == total:
+                    self._log.debug('bootstrap barrier success')
+                    break
+
+                time.sleep(1)
 
 
         except Exception as e:
