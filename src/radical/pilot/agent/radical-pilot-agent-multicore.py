@@ -5087,10 +5087,10 @@ class AgentWorker(rpu.Worker):
                 raise ValueError("agent.0 must run on target 'local'")
 
         # keep track of objects we need to close in the finally clause
-        self._sub_agents = list()
-        self._bridges    = list()
-        self._components = list()
-        self._workers    = list()
+        self._sub_agents = dict()
+        self._bridges    = dict()
+        self._components = dict()
+        self._workers    = dict()
 
         # configure the agent logger
         self._log.setLevel(self._cfg['debug'])
@@ -5121,7 +5121,6 @@ class AgentWorker(rpu.Worker):
         # bootstrap sub-agents, agent components, bridges etc.
         self.bootstrap_4()       
 
-        
         # the pulling agent registers the staging_input_queue as this is what we want to push to
         # FIXME: do a sanity check on the config that only one agent pulls, as
         #        this is a non-atomic operation at this point
@@ -5194,7 +5193,10 @@ class AgentWorker(rpu.Worker):
             sa_out = open("%s.out" % sa, "w")
             sa_err = open("%s.err" % sa, "w")
             sa_proc = subprocess.Popen(cmd, shell=True, stdout=sa_out, stderr=sa_err)
-            self._sub_agents.append([sa, sa_proc, sa_out, sa_err])
+            self._sub_agents[sa] = {'proc'  : sa_proc,
+                                    'out'   : sa_out,
+                                    'err'   : sa_err,
+                                    'alive' : False}
             self._prof.prof("created", msg=sa)
 
         self._log.debug('start_sub_agents done')
@@ -5233,7 +5235,8 @@ class AgentWorker(rpu.Worker):
         # ie. they will bind to all local interfacces on ports 10.000++.
         for name in self._sub_cfg.get('bridges', []):
             b = _create_bridge(name)
-            self._bridges.append(b)
+            self._bridges[name] = {'handle' : b,
+                                   'alive'  : True}  # no alive check done, yet
             self._log.info('created bridge %s: %s', name, b.name)
 
         self._log.debug('start_bridges done')
@@ -5264,7 +5267,8 @@ class AgentWorker(rpu.Worker):
                 ccfg['number'] = i
                 comp = cmap[cname].create(ccfg)
                 comp.start()
-                self._components.append(comp)
+                self._components[comp.cname] = {'handle' : comp,
+                                                'alive'  : False}
                 self._log.info('created component %s (%s): %s', cname, cnum, comp.cname)
 
         # we also create *one* instance of every 'worker' type -- which are the
@@ -5281,7 +5285,8 @@ class AgentWorker(rpu.Worker):
                 wcfg   = copy.deepcopy(self._cfg)
                 worker = wmap[wname].create(wcfg)
                 worker.start()
-                self._workers.append(worker)
+                self._workers[worker.cname] = {'handle' : worker,
+                                               'alive'  : False}
 
         self._log.debug("start_components done")
 
@@ -5347,25 +5352,29 @@ class AgentWorker(rpu.Worker):
 
         # FIXME: let logfiles settle before killing the components
         time.sleep(1)
-      
+
         # burn the bridges, burn EVERYTHING
-        for sa, sa_proc, sa_out, sa_err in self._sub_agents:
+        for sa in self._sub_agents:
             self._log.info("closing sub-agent %s", sa)
-            sa_proc.terminate()
-            sa_out.close()
-            sa_err.close()
+            sa['proc'].terminate()
+            sa['out'].close()
+            sa['err'].close()
+            sa['alive'] = False
 
         for c in self._components:
-            self._log.info("closing component %s", c._name)
-            c.close()
-      
+            self._log.info("closing component %s", c)
+            c['handle'].close()
+            c['alive'] = False
+
         for w in self._workers:
-            self._log.info("closing worker %s", w._name)
-            w.close()
+            self._log.info("closing worker %s", w)
+            w['handle'].close()
+            w['alive'] = False
 
         for b in self._bridges:
-            self._log.info("closing bridge %s", b._name)
-            b.close()
+            self._log.info("closing bridge %s", b)
+            b['handle'].close()
+            b['alive'] = False
 
         self._log.info("Agent finalized")
         sys.exit()
@@ -5502,7 +5511,7 @@ def bootstrap_3():
     def sigalarm_handler(signum, frame):
         pilot_FAILED(msg='Caught SIGALRM (Walltime limit?). EXITING (%s)' % frame)
         sys.exit(3)
-        
+
     import atexit
     atexit.register(exit_handler)
     signal.signal(signal.SIGINT, sigint_handler)
@@ -5513,7 +5522,7 @@ def bootstrap_3():
         # des Pudels Kern: merge LRMS info into cfg and get the agent started
 
         if agent_name == 'agent.0':
-            
+
             # only the master agent creates LRMS and sub-agent config files.
             # The LRMS which will give us the set of agent_nodes to use for
             # sub-agent startup.  Add the remaining LRMS information to the
