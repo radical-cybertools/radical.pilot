@@ -198,7 +198,7 @@ class Component(mp.Process):
                 % (self._cname, os.getpid(), len(self._threads)))
 
         # tear down all subscriber threads
-        self.terminated = True
+        self._terminated = True
         self._terminate.set()
         for t in self._threads:
             self._log.debug('joining subscriber thread %s - %s' % (t, os.getpid()))
@@ -214,7 +214,7 @@ class Component(mp.Process):
         Shut down the process hosting the event loop
         """
         try:
-            self.terminated = True
+            self._terminated = True
             if self._is_parent:
                 self.terminate()
 

@@ -5215,6 +5215,8 @@ class AgentWorker(rpu.Worker):
         cmd = msg['cmd']
         arg = msg['arg']
 
+        self._log.info('agent command: %s %s' % (cmd, arg))
+
         shutdown = False
         if cmd == 'final':
 
