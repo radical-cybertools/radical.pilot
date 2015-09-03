@@ -1159,7 +1159,6 @@ class SchedulerYarn(AgentSchedulingComponent):
 
         AgentSchedulingComponent.__init__(self, cfg)
 
-
     # --------------------------------------------------------------------------
     #
     def _configure(self):
@@ -1168,8 +1167,17 @@ class SchedulerYarn(AgentSchedulingComponent):
             #-----------------------------------------------------------------------
             # Find out how many applications you can submit to YARN. And also keep
             # this check happened to update it accordingly
+
+
+            #if 'rm_ip' not in self._cfg['lrms_info']:
+            #    raise RuntimeError('rm_ip not in lm_info for %s' \
+            #            % (self.name))
+
+            self._log.info('Checking rm_ip %s'%self._cfg['lrms_info']['rm_ip'])
+            self._rm_ip = self._cfg['lrms_info']['rm_ip']
+
             sample_time = rpu.timestamp()
-            yarn_status = ul.urlopen('http://{0}:8088/ws/v1/cluster/scheduler'.format(self._lrms.rm_ip))
+            yarn_status = ul.urlopen('http://{0}:8088/ws/v1/cluster/scheduler'.format(self._rm_ip))
 
             yarn_schedul_json = json.loads(yarn_status.read())
 
@@ -1178,7 +1186,7 @@ class SchedulerYarn(AgentSchedulingComponent):
 
             #-----------------------------------------------------------------------
             # Find out the cluster's resources
-            cluster_metrics = ul.urlopen('http://{0}:8088/ws/v1/cluster/metrics'.format(self._lrms.rm_ip))
+            cluster_metrics = ul.urlopen('http://{0}:8088/ws/v1/cluster/metrics'.format(self._rm_ip))
 
             metrics = json.loads(cluster_metrics.read())
             self._num_of_cores = metrics['clusterMetrics']['totalVirtualCores']
@@ -1203,7 +1211,7 @@ class SchedulerYarn(AgentSchedulingComponent):
         # made about slot status. Keeping the code commented just in case it is
         # needed later either as whole or art of it.
         sample = rpu.timestamp()
-        yarn_status = ul.urlopen('http://{0}:8088/ws/v1/cluster/scheduler'.format(self._lrms.rm_ip))
+        yarn_status = ul.urlopen('http://{0}:8088/ws/v1/cluster/scheduler'.format(self._rm_ip))
         yarn_schedul_json = json.loads(yarn_status.read())
 
         max_num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['maxApplications']
@@ -1382,7 +1390,7 @@ class LaunchMethod(object):
             LAUNCH_METHOD_YARN          : LaunchMethodYARN,
           # LAUNCH_METHOD_POE           : LaunchMethodPOE,
           # LAUNCH_METHOD_RUNJOB        : LaunchMethodRUNJOB,
-          # LAUNCH_METHOD_SSH           : LaunchMethodSSH
+          # LAUNCH_METHOD_SSH           : LaunchMethodSSH,
         }.get(name)
 
         if not impl:
@@ -2315,6 +2323,8 @@ class LaunchMethodYARN(LaunchMethod):
                will start the YRN cluster on node[0].
         """
 
+        logger.info('Hook called by YARN LRMS with the name %s'%lrms.name)
+
         def config_core_site(node):
 
             core_site_file = open(os.getcwd()+'/hadoop/etc/hadoop/core-site.xml','r')
@@ -2400,7 +2410,8 @@ class LaunchMethodYARN(LaunchMethod):
         # If the LRMS used is not YARN the namenode url is going to be
         # the first node in the list and the port is the default one, else 
         # it is the one that the YARN LRMS returns
-        if lrms.name == 'YARN':
+        if lrms.name == 'YARNLRMS':
+            logger.info('Hook called by YARN LRMS')
             service_url    = lrms.namenode_url
             rm_url         = "%s:%s" % (lrms.rm_ip, lrms.rm_port)
             launch_command = cls._which('yarn')
@@ -2419,10 +2430,10 @@ class LaunchMethodYARN(LaunchMethod):
                 stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
                 # TODO: Decide how the agent will get Hadoop tar ball.
 
-            # this was formerly
-            #   def set_env_vars():
-            # but we are in a class method, and don't have self -- and we don't need
-            # it anyway...
+                # this was formerly
+                #   def set_env_vars():
+                # but we are in a class method, and don't have self -- and we don't need
+                # it anyway...
     
             hadoop_home        = os.getcwd() + '/hadoop'
             hadoop_install     = hadoop_home
@@ -2475,12 +2486,12 @@ class LaunchMethodYARN(LaunchMethod):
             os.system('%s/bin/hdfs dfs -mkdir /user/%s'%(hadoop_home,uname[1]))
             check = commands.getstatusoutput('%s/bin/hdfs dfs -ls /user'%hadoop_home)
             logger.info(check[1])
-          # FIXME YARN: why was the scheduler configure called here?  Configure
-          #             is already called during scheduler instantiation
-          # self._scheduler._configure()
+            # FIXME YARN: why was the scheduler configure called here?  Configure
+            #             is already called during scheduler instantiation
+            # self._scheduler._configure()
 
             service_url = node_name + ':54170',
-            rm_url      = yarn_home + '/bin/yarn'
+            rm_url      = node_name
 
           
         # The LRMS instance is only available here -- everything which is later
@@ -2490,7 +2501,9 @@ class LaunchMethodYARN(LaunchMethod):
         # so it is available on all LM create_command calls.
         lm_info = {'service_url'  : service_url,
                    'rm_url'       : rm_url,
-                   'hadoop_home'  : hadoop_home}
+                   'hadoop_home'  : hadoop_home,
+                   'rm_ip'        : lrms.rm_ip,
+                   'name'         : lrms.name }
 
         return lm_info
 
@@ -2499,17 +2512,21 @@ class LaunchMethodYARN(LaunchMethod):
     #
     @classmethod
     def lrms_final_hook(cls, lm_info, logger):
+        if 'name' not in lm_info:
+            raise RuntimeError('rm_ip not in lm_info for %s' \
+                    % (self.name))
 
-        logger.info('Stoping YARN')
-        os.system(lm_info['hadoop_home'] + '/sbin/stop-yarn.sh')
+        if lm_info['name'] != 'YARNLRMS'
+            logger.info('Stoping YARN')
+            os.system(lm_info['hadoop_home'] + '/sbin/stop-yarn.sh')
 
-        logger.info('Stoping DFS.')
-        os.system(lm_info['hadoop_home'] + '/sbin/stop-dfs.sh')
+            logger.info('Stoping DFS.')
+            os.system(lm_info['hadoop_home'] + '/sbin/stop-dfs.sh')
 
-        logger.info("Deleting HADOOP files from temp")
-        os.system('rm -rf /tmp/hadoop*')
-        os.system('rm -rf /tmp/Jetty*')
-        os.system('rm -rf /tmp/hsperf*')
+            logger.info("Deleting HADOOP files from temp")
+            os.system('rm -rf /tmp/hadoop*')
+            os.system('rm -rf /tmp/Jetty*')
+            os.system('rm -rf /tmp/hsperf*')
 
 
     # --------------------------------------------------------------------------
