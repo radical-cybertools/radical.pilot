@@ -1434,7 +1434,7 @@ class LaunchMethod(object):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_final_hook(cls, lm_info, logger):
+    def lrms_final_hook(cls, name, lm_info, logger):
         """
         This hook can be used to tear down whatever has been brought up in the
         config hook.  The LRMS layer MUST ensure that this hook is called
