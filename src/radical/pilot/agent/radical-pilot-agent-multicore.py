@@ -2232,7 +2232,7 @@ class LRMS(object):
                     self._log.exception("lrms config hook failed")
                     raise
 
-                self._log.exception("lrms config hook succeeded (%s)" % lm)
+                self._log.info("lrms config hook succeeded (%s)" % lm)
 
         # For now assume that all nodes have equal amount of cores
         cores_avail = len(self.node_list) * self.cores_per_node
