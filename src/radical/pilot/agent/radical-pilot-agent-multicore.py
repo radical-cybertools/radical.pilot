@@ -334,7 +334,6 @@ def pilot_CANCELED(mongo_p=None, pilot_uid=None, logger=None, msg=None):
 
     print msg
 
-
     if mongo_p and pilot_uid:
 
         now = rpu.timestamp()
@@ -1998,8 +1997,7 @@ class LaunchMethodORTE(LaunchMethod):
                     # Process is gone: fatal!
                     raise Exception("ORTE DVM process disappeared")
 
-        #######################################################################
-        #
+        # ----------------------------------------------------------------------
         def _watch_dvm(dvm_process):
 
             logger.info('starting DVM watcher')
@@ -2013,6 +2011,7 @@ class LaunchMethodORTE(LaunchMethod):
 
             logger.info('DVM stopped (%d)' % dvm_process.returncode)
             # TODO: Tear down everything?
+        # ----------------------------------------------------------------------
 
         dvm_watcher = threading.Thread(target=_watch_dvm, args=(dvm_process,), name="DVMWatcher")
         dvm_watcher.start()
@@ -5196,8 +5195,9 @@ class AgentWorker(rpu.Worker):
 
         # set up db connection for the command cb (the worker process gets its
         # own db handle)
-        _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
-        self._p  = mongo_db["%s.p"  % self._session_id]
+        if self.agent_name == 'agent.0':
+            _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
+            self._p  = mongo_db["%s.p"  % self._session_id]
 
         # all components use the command channel for control messages
         self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
@@ -5212,49 +5212,40 @@ class AgentWorker(rpu.Worker):
     #
     def command_cb(self, topic, msg):
 
+        # This callback is invoked in the process context of the main agent
+        # class.
+        #
+        # NOTE: That means it is *not* joined in the finalization of the main
+        # loop, and the subscriber thread needs to be joined specifically in the
+        # current process context.  At the moment that requires a call to
+        # self._finalize() in the main process.
+
         cmd = msg['cmd']
         arg = msg['arg']
 
         self._log.info('agent command: %s %s' % (cmd, arg))
 
-        shutdown = False
-        if cmd == 'final':
-
-            if arg.startswith("%s." % self.agent_name):
-
-                # one of our components got finalized.  If we are not already
-                # shutting down, we do so now
-                if not self._terminated:
-                    self._log.info('terminate: component %s got finalized' % arg)
-                    shutdown = True
-
-            elif arg in self._sub_agents:
-
-                # one of our agents got finalized.  we now shut down, too.
-                self._log.info('terminate: sub-agent %s got finalized' % arg)
-                shutdown = True
-
-
-        if shutdown or cmd == 'shutdown':
+        if cmd == 'shutdown':
 
             self._log.info("shutdown command (%s)" % arg)
             self._log.info("terminate")
             self.terminate()
 
-            if arg == 'timeout':
-                pilot_DONE(self._p, self._pilot_id, self._log, "TIMEOUT received. Terminating.")
-
-            if arg == 'cancel':
-                pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
-
-            else:
-                pilot_FAILED(self._p, self._pilot_id, self._log, "TERMINATE (%s) received" % arg)
-
+            if self.agent_name == 'agent.0':
+                if arg == 'timeout':
+                    pilot_DONE(self._p, self._pilot_id, self._log, "TIMEOUT received. Terminating.")
+                if arg == 'cancel':
+                    pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
+                else:
+                    pilot_FAILED(self._p, self._pilot_id, self._log, "TERMINATE (%s) received" % arg)
 
 
     # --------------------------------------------------------------------------
     #
     def barrier_cb(self, topic, msg):
+
+        # This callback is invoked in the process context of the run loop, and
+        # will be cleaned up automatically.
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -5284,6 +5275,25 @@ class AgentWorker(rpu.Worker):
             elif name in self._sub_agents:
                 self._log.debug("sub-agent ALIVE (%s)" % name)
                 self._sub_agents[name]['alive'] = True
+
+
+        elif cmd == 'final':
+            # finalization needs to happen in the main thread/process, thus we
+            # catch it in the command cb which is registered at __init__
+
+            if arg.startswith("%s." % self.agent_name):
+
+                # one of our components got finalized.  If we are not already
+                # shutting down, we do so now
+                if not self._terminated:
+                    self._log.info('terminate: component %s got finalized' % arg)
+                    self.close()
+
+            elif arg in self._sub_agents:
+
+                # one of our agents got finalized.  we now shut down, too.
+                self._log.info('terminate: sub-agent %s got finalized' % arg)
+                self.close()
 
 
     # --------------------------------------------------------------------------
@@ -5390,34 +5400,56 @@ class AgentWorker(rpu.Worker):
         time.sleep(1)
 
         # burn the bridges, burn EVERYTHING
-        for sa in self._sub_agents:
-            self._log.info("closing sub-agent %s", sa)
-            sa['proc'].terminate()
-            sa['out'].close()
-            sa['err'].close()
-            sa['alive'] = False
+        for name,sa in self._sub_agents.items():
+            try:
+                self._log.info("closing sub-agent %s", sa)
+                sa['proc'].terminate()
+                sa['out'].close()
+                sa['err'].close()
+                sa['alive'] = False
+            except Exception as e:
+                self._log.exception('ignore failing sub-agent terminate')
 
-        for c in self._components:
-            self._log.info("closing component %s", c)
-            c['handle'].close()
-            c['alive'] = False
+        self._log.info("Agent finalizes 1")
 
-        for w in self._workers:
-            self._log.info("closing worker %s", w)
-            w['handle'].close()
-            w['alive'] = False
+        for name,c in self._components.items():
+            try:
+                self._log.info("closing component %s", c)
+                c['handle'].close()
+                c['alive'] = False
+            except Exception as e:
+                self._log.exception('ignore failing component terminate')
 
-        for b in self._bridges:
-            self._log.info("closing bridge %s", b)
-            b['handle'].close()
-            b['alive'] = False
+        self._log.info("Agent finalizes 2")
+        for name,w in self._workers.items():
+            try:
+                self._log.info("closing worker %s", w)
+                w['handle'].close()
+                w['alive'] = False
+            except Exception as e:
+                self._log.exception('ignore failing worker terminate')
 
-        # communicate finalization
+        self._log.info("Agent finalizes 3")
+        for name,b in self._bridges.items():
+            try:
+                self._log.info("closing bridge %s", b)
+                b['handle'].close()
+                b['alive'] = False
+            except Exception as e:
+                self._log.exception('ignore failing bridge terminate')
+
+        self._log.info("Agent finalizes 4")
+
+      # # fallback shutdown requests in case any of the above close calls did
+      # # not reach the components
+      # self.publish('command', {'cmd' : 'shutdown',
+      #                          'arg' : 'finalization fallback'})
+
+        # communicate finalization to parent agent
         self.publish('command', {'cmd' : 'final',
                                  'arg' : self.agent_name})
 
         self._log.info("Agent finalized")
-        sys.exit()
 
 
     # --------------------------------------------------------------------------
@@ -5615,8 +5647,8 @@ class AgentWorker(rpu.Worker):
             # be replaced with a proper barrier, but not sure if that is worth it...
             time.sleep (1)
 
-            self.start_components()
             self.start_sub_agents()
+            self.start_components()
 
             # before we declare bootstrapping-success, the we wait for all
             # components, workers and sub_agents to complete startup.  For that,
@@ -5771,14 +5803,16 @@ def bootstrap_3():
         # set up signal and exit handlers
         def exit_handler():
           # rpu.flush_prof()
-            pass
+            print 'atexit'
 
         def sigint_handler(signum, frame):
             pilot_FAILED(msg='Caught SIGINT. EXITING (%s)' % frame)
+            print 'sigint'
             sys.exit(2)
 
         def sigalarm_handler(signum, frame):
             pilot_FAILED(msg='Caught SIGALRM (Walltime limit?). EXITING (%s)' % frame)
+            print 'sigalrm'
             sys.exit(3)
 
         import atexit
@@ -5860,21 +5894,26 @@ def bootstrap_3():
         agent = AgentWorker(cfg)
         agent.start()
         agent.join()
+        agent._finalize()   # FIXME: layer violation, see comment on barrier_cb
+
+        if agent_name == 'agent.0' :
+            pilot_DONE(mongo_p, cfg['pilot_id'], log, msg="AgentWorker joined. EXITING")
         # ----------------------------------------------------------------------
 
     except SystemExit:
+        log.exception("Exit running agent: %s" % e)
         pilot_FAILED(msg="Caught system exit. EXITING") 
-        sys.exit(6)
+        sys.exit(1)
 
     except Exception as e:
         log.exception("Error running agent: %s" % e)
         pilot_FAILED(msg="Error running agent: %s" % e)
-        sys.exit(7)
+        sys.exit(2)
 
     finally:
         log.info('stop')
-        prof.prof('stop', msg='finally clause')
-        sys.exit(8)
+        prof.prof('stop', msg='finally clause agent')
+
 
 
 # ==============================================================================
@@ -5896,7 +5935,7 @@ if __name__ == "__main__":
     print
 
     dh = ru.DebugHelper()
-    sys.exit(bootstrap_3())
+    bootstrap_3()
 
 #
 # ------------------------------------------------------------------------------

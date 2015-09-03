@@ -112,7 +112,7 @@ class Component(mp.Process):
     # --------------------------------------------------------------------------
     #
     # FIXME: 
-    #  - *_PENDING -> *_QUEUED ?
+    #  - *_PENDING -> * ?
     #  - make state transitions more formal
     # --------------------------------------------------------------------------
 
@@ -127,22 +127,23 @@ class Component(mp.Process):
         initialize() method.
         """
 
-        self._cfg         = cfg
-        self._debug       = cfg.get('debug', 'DEBUG') # FIXME?
-        self._agent_name  = cfg['agent_name']
-        self._cname       = "%s.%s.%d" % (self._agent_name, type(self).__name__, cfg.get('number', 0))
-        self._addr_map    = cfg['bridge_addresses']
-        self._parent      = os.getpid() # pid of spawning process
-        self._inputs      = list()      # queues to get units from
-        self._outputs     = dict()      # queues to send units to
-        self._publishers  = dict()      # channels to send notifications to
-        self._subscribers = dict()      # callbacks for received notifications
-        self._workers     = dict()      # where units get worked upon
-        self._idlers      = list()      # idle_callback registry
-        self._threads     = list()      # subscriber threads
-        self._terminate   = mt.Event()  # signal for thread termination
-        self._terminated  = False       # True during shutdown sequence
-        self._is_parent   = True        # set to False in run()
+        self._cfg           = cfg
+        self._debug         = cfg.get('debug', 'DEBUG') # FIXME
+        self._agent_name    = cfg['agent_name']
+        self._cname         = "%s.%s.%d" % (self._agent_name, type(self).__name__, cfg.get('number', 0))
+        self._addr_map      = cfg['bridge_addresses']
+        self._parent        = os.getpid() # pid of spawning process
+        self._inputs        = list()      # queues to get units from
+        self._outputs       = dict()      # queues to send units to
+        self._publishers    = dict()      # channels to send notifications to
+        self._subscribers   = dict()      # callbacks for received notifications
+        self._workers       = dict()      # where units get worked upon
+        self._idlers        = list()      # idle_callback registry
+        self._threads       = list()      # subscriber threads
+        self._terminate     = mt.Event()  # signal for thread termination
+        self._terminated    = False       # True during shutdown sequence
+        self._is_parent     = True        # set to False in run()
+        self._exit_on_error = True        # FIXME: make configurable
 
         # use agent_name for one log per agent, cname for one log per agent and component
         log_name = self._cname
@@ -213,6 +214,10 @@ class Component(mp.Process):
         """
         Shut down the process hosting the event loop
         """
+
+        if self._terminated:
+            return
+
         try:
             self._terminated = True
             if self._is_parent:
@@ -409,7 +414,7 @@ class Component(mp.Process):
         q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB, addr)
         q.subscribe(topic)
 
-        t = mt.Thread (target=_subscriber, args=[q,cb])
+        t = mt.Thread (target=_subscriber, args=[q,cb], name="%s.subscriber" % self.cname)
         t.start()
         self._threads.append(t)
 
@@ -520,6 +525,9 @@ class Component(mp.Process):
                         self._prof.prof(event='failed', msg=str(e), uid=unit['_id'],
                                 state=unit['state'])
                         self._log.exception("unit %s failed" % unit['_id'])
+
+                        if self._exit_on_error:
+                            raise
 
 
                 # if nothing happened, we can call the idle callbacks.  Don't
