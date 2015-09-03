@@ -1173,8 +1173,8 @@ class SchedulerYarn(AgentSchedulingComponent):
             #    raise RuntimeError('rm_ip not in lm_info for %s' \
             #            % (self.name))
 
-            self._log.info('Checking rm_ip %s'%self._cfg['lrms_info']['rm_ip'])
-            self._rm_ip = self._cfg['lrms_info']['rm_ip']
+            self._log.info('Checking rm_ip %s'%self._cfg['lrms_info']['lm_info']['rm_ip'])
+            self._rm_ip = self._cfg['lrms_info']['lm_info']['rm_ip']
 
             sample_time = rpu.timestamp()
             yarn_status = ul.urlopen('http://{0}:8088/ws/v1/cluster/scheduler'.format(self._rm_ip))
@@ -1216,7 +1216,7 @@ class SchedulerYarn(AgentSchedulingComponent):
 
         max_num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['maxApplications']
         num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['numApplications']
-        if (self.avail_app['timestamp'] - sample).total_seconds()>60 and \
+        if (self.avail_app['timestamp'] - sample)>60 and \
            (self.avail_app['apps'] != max_num_app - num_app):
             self.avail_app['apps'] = max_num_app - num_app 
             self.avail_app['timestamp']=sample
@@ -1272,7 +1272,7 @@ class SchedulerYarn(AgentSchedulingComponent):
         if self.avail_app['apps']==0 or not self._allocate_slot(cu['description']['cores']):
             return False
 
-        cu_list, cu_dropped = rpu.blowup(self._config, cu, EXECUTION_QUEUE)
+        cu_list, cu_dropped = rpu.blowup(self._cfg, cu, EXECUTION_QUEUE)
         for _cu in cu_list :
             if self.avail_app['apps'] > 0:
                 self.avail_app['apps']-=1
@@ -2410,6 +2410,7 @@ class LaunchMethodYARN(LaunchMethod):
         # If the LRMS used is not YARN the namenode url is going to be
         # the first node in the list and the port is the default one, else 
         # it is the one that the YARN LRMS returns
+        hadoop_home = None
         if lrms.name == 'YARNLRMS':
             logger.info('Hook called by YARN LRMS')
             service_url    = lrms.namenode_url
@@ -2516,7 +2517,7 @@ class LaunchMethodYARN(LaunchMethod):
             raise RuntimeError('rm_ip not in lm_info for %s' \
                     % (self.name))
 
-        if lm_info['name'] != 'YARNLRMS'
+        if lm_info['name'] != 'YARNLRMS':
             logger.info('Stoping YARN')
             os.system(lm_info['hadoop_home'] + '/sbin/stop-yarn.sh')
 
@@ -2838,7 +2839,7 @@ class LRMS(object):
         for lm in launch_methods:
             if lm:
                 try:
-                    LaunchMethod.lrms_final_hook(lm, self.lm_info, self._log))
+                    LaunchMethod.lrms_final_hook(lm, self.lm_info, self._log)
                 except Exception as e:
                     self._log.exception("lrms final hook failed")
                     raise
