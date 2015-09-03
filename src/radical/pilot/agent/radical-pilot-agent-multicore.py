@@ -475,6 +475,15 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def finalize(self):
+
+        # communicate finalization
+        self.publish('command', {'cmd' : 'final',
+                                 'arg' : self.cname})
+
+
+    # --------------------------------------------------------------------------
+    #
     # This class-method creates the appropriate sub-class for the Scheduler.
     #
     @classmethod
@@ -3595,6 +3604,10 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         self._terminate.set()
         self._watcher.join()
 
+        # communicate finalization
+        self.publish('command', {'cmd' : 'final',
+                                 'arg' : self.cname})
+
 
     # --------------------------------------------------------------------------
     #
@@ -4066,6 +4079,15 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',
+                                 'arg' : self.cname})
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
+
+        # communicate finalization
+        self.publish('command', {'cmd' : 'final',
                                  'arg' : self.cname})
 
 
@@ -4562,6 +4584,15 @@ class AgentUpdateWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
+    def finalize(self):
+
+        # communicate finalization
+        self.publish('command', {'cmd' : 'final',
+                                 'arg' : self.cname})
+
+
+    # --------------------------------------------------------------------------
+    #
     def command_cb(self, topic, msg):
 
         cmd = msg['cmd']
@@ -4738,6 +4769,15 @@ class AgentStagingInputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def finalize(self):
+
+        # communicate finalization
+        self.publish('command', {'cmd' : 'final',
+                                 'arg' : self.cname})
+
+
+    # --------------------------------------------------------------------------
+    #
     def command_cb(self, topic, msg):
 
         cmd = msg['cmd']
@@ -4877,6 +4917,15 @@ class AgentStagingOutputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def finalize(self):
+
+        # communicate finalization
+        self.publish('command', {'cmd' : 'final',
+                                 'arg' : self.cname})
+
+
+    # --------------------------------------------------------------------------
+    #
     def command_cb(self, topic, msg):
 
         cmd = msg['cmd']
@@ -4990,6 +5039,7 @@ class AgentStagingOutputComponent(rpu.Component):
         self.advance(cu, rp.PENDING_OUTPUT_STAGING, publish=True, push=False)
 
 
+
 # ==============================================================================
 #
 class AgentHeartbeatWorker(rpu.Worker):
@@ -5039,6 +5089,15 @@ class AgentHeartbeatWorker(rpu.Worker):
 
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',
+                                 'arg' : self.cname})
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
+
+        # communicate finalization
+        self.publish('command', {'cmd' : 'final',
                                  'arg' : self.cname})
 
 
@@ -5156,7 +5215,25 @@ class AgentWorker(rpu.Worker):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'shutdown':
+        shutdown = False
+        if cmd == 'final':
+
+            if arg.startswith("%s." % self.agent_name):
+
+                # one of our components got finalized.  If we are not already
+                # shutting down, we do so now
+                if not self._terminated:
+                    self._log.info('terminate: component %s got finalized' % arg)
+                    shutdown = True
+
+            elif arg in self._sub_agents:
+
+                # one of our agents got finalized.  we now shut down, too.
+                self._log.info('terminate: sub-agent %s got finalized' % arg)
+                shutdown = True
+
+
+        if shutdown or cmd == 'shutdown':
 
             self._log.info("shutdown command (%s)" % arg)
             self._log.info("terminate")
@@ -5169,7 +5246,8 @@ class AgentWorker(rpu.Worker):
                 pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
 
             else:
-                pilot_FAILED(self._p, self._pilot_id, self._log, "TERMINATE(%s) received" % arg)
+                pilot_FAILED(self._p, self._pilot_id, self._log, "TERMINATE (%s) received" % arg)
+
 
 
     # --------------------------------------------------------------------------
@@ -5297,6 +5375,47 @@ class AgentWorker(rpu.Worker):
             # register idle callback, to pull for units -- which is the only action
             # we have to perform, really
             self.declare_idle_cb(self.idle_cb, self._cfg['db_poll_sleeptime'])
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
+
+        self._log.info("Agent finalizes")
+        self._prof.prof('stop')
+
+        # FIXME: let logfiles settle before killing the components
+        time.sleep(1)
+
+        # burn the bridges, burn EVERYTHING
+        for sa in self._sub_agents:
+            self._log.info("closing sub-agent %s", sa)
+            sa['proc'].terminate()
+            sa['out'].close()
+            sa['err'].close()
+            sa['alive'] = False
+
+        for c in self._components:
+            self._log.info("closing component %s", c)
+            c['handle'].close()
+            c['alive'] = False
+
+        for w in self._workers:
+            self._log.info("closing worker %s", w)
+            w['handle'].close()
+            w['alive'] = False
+
+        for b in self._bridges:
+            self._log.info("closing bridge %s", b)
+            b['handle'].close()
+            b['alive'] = False
+
+        # communicate finalization
+        self.publish('command', {'cmd' : 'final',
+                                 'arg' : self.agent_name})
+
+        self._log.info("Agent finalized")
+        sys.exit()
 
 
     # --------------------------------------------------------------------------
@@ -5533,43 +5652,6 @@ class AgentWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def finalize(self):
-
-        self._log.info("Agent finalizes")
-        self._prof.prof('stop')
-
-        # FIXME: let logfiles settle before killing the components
-        time.sleep(1)
-
-        # burn the bridges, burn EVERYTHING
-        for sa in self._sub_agents:
-            self._log.info("closing sub-agent %s", sa)
-            sa['proc'].terminate()
-            sa['out'].close()
-            sa['err'].close()
-            sa['alive'] = False
-
-        for c in self._components:
-            self._log.info("closing component %s", c)
-            c['handle'].close()
-            c['alive'] = False
-
-        for w in self._workers:
-            self._log.info("closing worker %s", w)
-            w['handle'].close()
-            w['alive'] = False
-
-        for b in self._bridges:
-            self._log.info("closing bridge %s", b)
-            b['handle'].close()
-            b['alive'] = False
-
-        self._log.info("Agent finalized")
-        sys.exit()
-
-
-    # --------------------------------------------------------------------------
-    #
     def idle_cb(self):
         """
         This method will be driving all other agent components, in the sense
@@ -5776,7 +5858,6 @@ def bootstrap_3():
         agent = AgentWorker(cfg)
         agent.start()
         agent.join()
-        agent._finalize()   # FIXME: layer violation
         # ----------------------------------------------------------------------
 
     except SystemExit:

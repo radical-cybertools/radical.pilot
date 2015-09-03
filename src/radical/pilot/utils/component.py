@@ -141,6 +141,8 @@ class Component(mp.Process):
         self._idlers      = list()      # idle_callback registry
         self._threads     = list()      # subscriber threads
         self._terminate   = mt.Event()  # signal for thread termination
+        self._terminated  = False       # True during shutdown sequence
+        self._is_parent   = True        # set to False in run()
 
         # use agent_name for one log per agent, cname for one log per agent and component
         log_name = self._cname
@@ -196,6 +198,7 @@ class Component(mp.Process):
                 % (self._cname, os.getpid(), len(self._threads)))
 
         # tear down all subscriber threads
+        self.terminated = True
         self._terminate.set()
         for t in self._threads:
             self._log.debug('joining subscriber thread %s - %s' % (t, os.getpid()))
@@ -211,10 +214,12 @@ class Component(mp.Process):
         Shut down the process hosting the event loop
         """
         try:
-            self.terminate()
+            self.terminated = True
+            if self._is_parent:
+                self.terminate()
 
         except Exception as e:
-          self._log.error("error on closing %s: %s" % (self._cname, e))
+            self._log.exception("error on closing %s: %s" % (self._cname, e))
 
 
     # --------------------------------------------------------------------------
@@ -419,6 +424,8 @@ class Component(mp.Process):
         respective worker method.  Once the unit is worked upon, the next
         attempt ar getting a unit is up.
         """
+
+        self._is_parent = False
 
         # registering a sigterm handler will allow us to call an exit when the
         # parent calls terminate -- which is excepted in the loop below, and we
