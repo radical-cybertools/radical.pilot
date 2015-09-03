@@ -391,10 +391,14 @@ class Component(mp.Process):
 
         # ----------------------------------------------------------------------
         def _subscriber(q, callback):
-            while not self._terminate.is_set():
-                topic, msg = q.get_nowait(1000) # timout in ms
-                if topic and msg:
-                    callback (topic=topic, msg=msg)
+            try:
+                while not self._terminate.is_set():
+                    topic, msg = q.get_nowait(1000) # timout in ms
+                    if topic and msg:
+                        callback (topic=topic, msg=msg)
+            except Exception as e:
+                self._log.exception("subscriber failed")
+                self.close()
         # ----------------------------------------------------------------------
 
         # check if a remote address is configured for the queue
