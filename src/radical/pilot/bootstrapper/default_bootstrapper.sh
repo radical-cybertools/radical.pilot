@@ -1328,7 +1328,6 @@ export SAGA_VERBOSE=DEBUG
 export RADICAL_VERBOSE=DEBUG
 export RADICAL_UTIL_VERBOSE=DEBUG
 export RADICAL_PILOT_VERBOSE=DEBUG
-export RADICAL_PILOT_CFG=$RADICAL_PILOT_CFG
 
 # start agent, forward arguments
 $AGENT_CMD "\$1" 1>"\$1.bootstrap_2.out" 2>"\$1.bootstrap_2.err"

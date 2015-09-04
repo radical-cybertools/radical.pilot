@@ -5499,9 +5499,6 @@ def bootstrap_3():
     # --------------------------------------------------------------------------
     # load the agent config, and overload the config dicts
 
-    if not 'RADICAL_PILOT_CFG' in os.environ:
-        raise RuntimeError('RADICAL_PILOT_CFG is not set - abort')
-
     agent_cfg  = "%s/%s.cfg" % (os.getcwd(), agent_name)
     print "startup agent %s : %s" % (agent_name, agent_cfg)
 
@@ -5637,7 +5634,6 @@ if __name__ == "__main__":
     print "pilot : %-5s : %s" % (rp.version_detail, rp.__file__)
     print "        type  : multicore"
     print "        gitid : %s" % git_ident
-    print "        config: %s" % os.environ.get('RADICAL_PILOT_CFG')
     print
     print "---------------------------------------------------------------------"
     print
