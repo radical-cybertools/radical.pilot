@@ -635,7 +635,6 @@ class PilotLauncherWorker(threading.Thread):
                         logentries.append(Logentry (msg, logger=logger.debug))
                         ru.write_json(agent_cfg_dict, cf_tmp_file)
 
-                        cf_env = saga.Url("%s/agent.0.cfg" % pilot_sandbox).path # this is what the pilot sees
                         cf_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, cf_tmp_file))
                         msg = "Copying agent configuration file '%s' to sandbox (%s)." % (cf_url, pilot_sandbox)
                         logentries.append(Logentry (msg, logger=logger.debug))
@@ -678,9 +677,6 @@ class PilotLauncherWorker(threading.Thread):
                         jd.total_physical_memory = memory
                         jd.queue                 = queue
                         jd.environment           = dict()
-
-                        # inform the pilot about the location of the config file
-                        jd.environment['RADICAL_PILOT_CFG'] = cf_env
 
                         # Set the SPMD variation only if required
                         if spmd_variation:

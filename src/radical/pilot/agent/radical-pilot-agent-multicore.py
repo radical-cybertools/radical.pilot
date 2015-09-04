@@ -577,6 +577,7 @@ class AgentSchedulingComponent(rpu.Component):
                     self._wait_pool.remove(cu)
                     self._prof.prof('unqueue', msg="re-allocation done", uid=cu['_id'])
 
+        # Note: The extra space below is for visual alignment
         self._log.info("slot status after  reschedule: %s" % self.slot_status ())
         self._prof.prof('reschedule done')
 
@@ -602,6 +603,7 @@ class AgentSchedulingComponent(rpu.Component):
         # in a different thread....
         with self._slot_lock :
             self._release_slot(cu['opaque_slots'])
+            self._prof.prof('unschedule', msg='released', uid=cu['_id'])
 
         # notify the scheduling thread, ie. trigger a reschedule to utilize
         # the freed slots
@@ -609,6 +611,7 @@ class AgentSchedulingComponent(rpu.Component):
         #        should in principle suffice though.
         self.publish('reschedule', cu)
 
+        # Note: The extra space below is for visual alignment
         self._log.info("slot status after  unschedule: %s" % self.slot_status ())
 
 
@@ -1164,7 +1167,8 @@ class LaunchMethod(object):
         self._cfg = cfg
         self._log = logger
 
-        self._prof = rpu.Profiler('launch_method.prof')
+        # A per-launch_method list of environment to remove from the CU environment
+        self.env_removables = []
 
         self.launch_command = None
         self._configure()
@@ -1896,6 +1900,10 @@ class LaunchMethodORTE(LaunchMethod):
 
         LaunchMethod.__init__(self, cfg, logger)
 
+        # We remove all ORTE related environment variables from the launcher
+        # environment, so that we can use ORTE for both launch of the
+        # (sub-)agent and CU execution.
+        self.env_removables.extend(["OMPI_", "OPAL_", "PMIX_"])
 
     # --------------------------------------------------------------------------
     #
@@ -1929,8 +1937,7 @@ class LaunchMethodORTE(LaunchMethod):
         logger.info("Starting ORTE DVM on %d nodes ..." % vm_size)
 
         dvm_process = subprocess.Popen(
-            [stdbuf_cmd, stdbuf_arg, dvm_command, '--debug-devel',
-             '--mca', 'orte_max_vm_size', str(vm_size)],
+            [stdbuf_cmd, stdbuf_arg, dvm_command, '--debug-devel'],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT
         )
 
@@ -2038,7 +2045,7 @@ class LaunchMethodORTE(LaunchMethod):
         hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
         export_vars  = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
-        orte_command = '%s --hnp "%s" %s -np %s -host %s %s' % (
+        orte_command = '%s --debug-devel --hnp "%s" %s -np %s -host %s %s' % (
             self.launch_command, dvm_uri, export_vars, task_numcores, hosts_string, task_command)
 
         return orte_command, None
@@ -2231,7 +2238,7 @@ class LRMS(object):
                     self._log.exception("lrms config hook failed")
                     raise
 
-                self._log.exception("lrms config hook succeeded (%s)" % lm)
+                self._log.info("lrms config hook succeeded (%s)" % lm)
 
         # For now assume that all nodes have equal amount of cores
         cores_avail = len(self.node_list) * self.cores_per_node
@@ -3537,7 +3544,6 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         self._cus_to_cancel  = list()
         self._cus_to_watch   = list()
         self._watch_queue    = Queue.Queue ()
-        self._cu_environment = self._populate_cu_environment()
 
         # run watcher thread
         self._terminate = threading.Event()
@@ -3555,6 +3561,10 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 name   = self._cfg['mpi_launch_method'],
                 cfg    = self._cfg,
                 logger = self._log)
+
+        self._cu_environment = self._populate_cu_environment()
+
+        self.tmpdir = tempfile.gettempdir()
 
 
     # --------------------------------------------------------------------------
@@ -3608,6 +3618,13 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
         new_env.pop('VIRTUAL_ENV', None)
 
+        # Remove the configured set of environment variables from the
+        # environment that we pass to Popen.
+        for e in new_env.keys():
+            for r in self._mpi_launcher.env_removables + self._task_launcher.env_removables:
+                if e.startswith(r):
+                    new_env.pop(e, None)
+
         return new_env
 
 
@@ -3657,7 +3674,13 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
         self._prof.prof('spawn', msg='unit spawn', uid=cu['_id'])
 
-        launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu['workdir']
+        if False:
+            cu_tmpdir = '%s/%s' % (self.tmpdir, cu['_id'])
+            rec_makedir(cu_tmpdir)
+        else:
+            cu_tmpdir = cu['workdir']
+
+        launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu_tmpdir
         self._log.debug("Created launch_script: %s", launch_script_name)
 
         with open(launch_script_name, "w") as launch_script:
@@ -3667,7 +3690,11 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             launch_script.write("TIMESTAMP=`awk 'BEGIN{srand(); print srand()}'`\n")
             launch_script.write("}\n\n")
 
-            launch_script.write('\n# Change to working directory for unit\ncd %s\n' % cu['workdir'])
+            launch_script.write("timestamp\n")
+            launch_script.write("echo script start_script $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
+            launch_script.write('\n# Change to working directory for unit\ncd %s\n' % cu_tmpdir)
+            launch_script.write("timestamp\n")
+            launch_script.write("echo script after_cd $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
 
             # Before the Big Bang there was nothing
             if cu['description']['pre_exec']:
@@ -3677,12 +3704,13 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                         pre_exec_string += "%s\n" % elem
                 else:
                     pre_exec_string += "%s\n" % cu['description']['pre_exec']
+                # Note: extra spaces below are for visual alignment
                 launch_script.write("# Pre-exec commands\n")
                 launch_script.write("timestamp\n")
-                launch_script.write("echo pre  start $TIMESTAMP >> %s/PROF\n" % cu['workdir'])
+                launch_script.write("echo pre  start $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
                 launch_script.write(pre_exec_string)
                 launch_script.write("timestamp\n")
-                launch_script.write("echo pre  stop  $TIMESTAMP >> %s/PROF\n" % cu['workdir'])
+                launch_script.write("echo pre  stop $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
 
             # Create string for environment variable setting
             if cu['description']['environment'] and    \
@@ -3719,8 +3747,6 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 if hop_cmd : cmdline = hop_cmd
                 else       : cmdline = launch_script_name
 
-                self._prof.prof('command', msg='launch script constructed', uid=cu['_id'])
-
             except Exception as e:
                 msg = "Error in spawner (%s)" % e
                 self._log.exception(msg)
@@ -3728,6 +3754,9 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
             launch_script.write("# The command to run\n")
             launch_script.write("%s\n" % launch_command)
+            launch_script.write("RETVAL=$?\n")
+            launch_script.write("timestamp\n")
+            launch_script.write("echo script after_exec $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
 
             # After the universe dies the infrared death, there will be nothing
             if cu['description']['post_exec']:
@@ -3739,20 +3768,24 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                     post_exec_string += "%s\n" % cu['description']['post_exec']
                 launch_script.write("# Post-exec commands\n")
                 launch_script.write("timestamp\n")
-                launch_script.write("echo post start $TIMESTAMP >> %s/PROF\n" % cu['workdir'])
+                launch_script.write("echo post start $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
                 launch_script.write('%s\n' % post_exec_string)
                 launch_script.write("timestamp\n")
-                launch_script.write("echo post stop  $TIMESTAMP >> %s/PROF\n" % cu['workdir'])
+                launch_script.write("echo post stop  $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
+
+            launch_script.write("# Exit the script with the return code from the command\n")
+            launch_script.write("exit $RETVAL\n")
 
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
+        self._prof.prof('command', msg='launch script constructed', uid=cu['_id'])
 
         _stdout_file_h = open(cu['stdout_file'], "w")
         _stderr_file_h = open(cu['stderr_file'], "w")
+        self._prof.prof('command', msg='stdout and stderr files created', uid=cu['_id'])
 
-        self._log.info("Launching unit %s via %s in %s", cu['_id'], cmdline, cu['workdir'])
-        self._prof.prof('spawning pass to popen', uid=cu['_id'])
+        self._log.info("Launching unit %s via %s in %s", cu['_id'], cmdline, cu_tmpdir)
 
         proc = subprocess.Popen(args               = cmdline,
                                 bufsize            = 0,
@@ -3763,13 +3796,13 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                                 preexec_fn         = None,
                                 close_fds          = True,
                                 shell              = True,
-                                cwd                = cu['workdir'],
+                                cwd                = cu_tmpdir,
                                 env                = self._cu_environment,
                                 universal_newlines = False,
                                 startupinfo        = None,
                                 creationflags      = 0)
 
-        self._prof.prof('spawning passed to popen', uid=cu['_id'])
+        self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['_id'])
 
         cu['started'] = rpu.timestamp()
         cu['proc']    = proc
@@ -3806,9 +3839,8 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
                 except Queue.Empty:
 
-                    # nothing found -- no problem, see if any CUs finshed
+                    # nothing found -- no problem, see if any CUs finished
                     pass
-
 
                 # add all cus we found to the watchlist
                 for cu in cus :
@@ -3820,7 +3852,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 action = self._check_running()
 
                 if not action and not cus :
-                    # nothing happend at all!  Zzz for a bit.
+                    # nothing happened at all!  Zzz for a bit.
                     time.sleep(self._cfg['db_poll_sleeptime'])
 
         except Exception as e:
@@ -3879,17 +3911,6 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 del(cu['proc'])  # proc is not json serializable
                 self.publish('unschedule', cu)
 
-                if os.path.isfile("%s/PROF" % cu['workdir']):
-                    with open("%s/PROF" % cu['workdir'], 'r') as prof_f:
-                        try:
-                            txt = prof_f.read()
-                            for line in txt.split("\n"):
-                                if line:
-                                    x1, x2, x3 = line.split()
-                                    self._prof.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
-                        except Exception as e:
-                            self._log.error("Pre/Post profiling file read failed: `%s`" % e)
-
                 if exit_code != 0:
                     # The unit failed - fail after staging output
                     self._prof.prof('final', msg="execution failed", uid=cu['_id'])
@@ -3946,6 +3967,9 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         self._deactivate += 'unset VIRTUAL_ENV\n\n'
 
+        # FIXME: we should not alter the environment of the running agent, but
+        #        only make sure that the CU finds a pristine env.  That also
+        #        holds for the unsetting below -- AM
         if old_path: os.environ['PATH']        = old_path
         if old_home: os.environ['PYTHON_HOME'] = old_home
         if old_ps1:  os.environ['PS1']         = old_ps1
@@ -3955,6 +3979,14 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         # simplify shell startup / prompt detection
         os.environ['PS1'] = '$ '
+
+        # TODO: test that this actually works
+        # Remove the configured set of environment variables from the
+        # environment that we pass to Popen.
+        for e in os.environ.keys():
+            for r in self._mpi_launcher.env_removables + self._task_launcher.env_removables:
+                if e.startswith(r):
+                    del(os.environ[e])
 
         # the registry keeps track of units to watch, indexed by their shell
         # spawner process ID.  As the registry is shared between the spawner and
@@ -4437,6 +4469,8 @@ timestamp () {
                              pid, state, data)
             return
 
+        self._prof.prof('exec', msg='execution complete', uid=cu['_id'])
+
         # for final states, we can free the slots.
         self.publish('unschedule', cu)
 
@@ -4812,7 +4846,6 @@ class AgentStagingOutputComponent(rpu.Component):
 
                 cu['stderr'] += rpu.tail(txt)
 
-
         if os.path.isfile("%s/PROF" % cu['workdir']):
             try:
                 with open("%s/PROF" % cu['workdir'], 'r') as prof_f:
@@ -5162,7 +5195,7 @@ class AgentWorker(rpu.Worker):
             if target == 'local':
 
                 # start agent locally
-                cmd = "/bin/sh %s/bootstrap_2.sh %s" % (os.getcwd(), sa)
+                cmd = "/bin/sh -l %s/bootstrap_2.sh %s" % (os.getcwd(), sa)
 
             elif target == 'node':
 
@@ -5182,8 +5215,8 @@ class AgentWorker(rpu.Worker):
                         'task_slots'   : ['%s:0' % node], 
                         'task_offsets' : [], 
                         'lm_info'      : self._cfg['lrms_info']['lm_info']}
-                cmd, _ = agent_lm.construct_command(task_exec="/bin/sh", 
-                        task_args="%s/bootstrap_2.sh %s" % (os.getcwd(), sa), 
+                cmd, _ = agent_lm.construct_command(task_exec="/bin/sh",
+                        task_args="-l %s/bootstrap_2.sh %s" % (os.getcwd(), sa),
                         task_numcores=1, 
                         launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
                         opaque_slots=opaque_slots)
@@ -5289,7 +5322,7 @@ class AgentWorker(rpu.Worker):
     #
     def bootstrap_4(self):
         """
-        This method will instantiate all communitation and notification
+        This method will instantiate all communication and notification
         channels, and all components and workers.  It will then feed a set of
         units to the lead-in queue (staging_input).  A state notification
         callback will then register all units which reached a final state
@@ -5451,9 +5484,14 @@ def bootstrap_3():
     control to the Agent class which will spawn the functional components.
     """
 
+    # find out what agent instance name we have
+    if len(sys.argv) != 2:
+        raise RuntimeError('invalid number of parameters (%s)' % sys.argv)
+    agent_name = sys.argv[1]
+
     # set up a logger and profiler
-    prof = rpu.Profiler('bootstrap_3')
-    log  = ru.get_logger('bootstrap_3', 'bootstrap_3.log', 'DEBUG')  # FIXME?
+    prof = rpu.Profiler('%s.bootstrap_3' % agent_name)
+    log  = ru.get_logger('%s.bootstrap_3' % agent_name, '%s.bootstrap_3.log' % agent_name, 'DEBUG')  # FIXME?
     log.info('start')
 
     # FIXME: signal handlers need mongo_p, but we won't have that until later
@@ -5464,16 +5502,7 @@ def bootstrap_3():
     # --------------------------------------------------------------------------
     # load the agent config, and overload the config dicts
 
-    if not 'RADICAL_PILOT_CFG' in os.environ:
-        raise RuntimeError('RADICAL_PILOT_CFG is not set - abort')
-
-
-    # find out what agent instance name we have
-    if len(sys.argv) != 2: 
-        raise RuntimeError('invalid number of parameters (%s)' % sys.argv)
-    agent_name = sys.argv[1]
     agent_cfg  = "%s/%s.cfg" % (os.getcwd(), agent_name)
-
     print "startup agent %s : %s" % (agent_name, agent_cfg)
 
     cfg = ru.read_json_str(agent_cfg)
@@ -5549,7 +5578,7 @@ def bootstrap_3():
                 #        which hosts the bridge, not the local IP.  Until this
                 #        is fixed, bridges MUST run on agent.0 (which is what
                 #        LRMS.hostip() below will point to).
-                nodeip = LRMS.hostip()
+                nodeip = LRMS.hostip(LRMS.hostname())
 
                 # we should have at most one bridge for every type
                 for b in cfg['agent_layout'][sa].get('bridges', []):
@@ -5559,6 +5588,12 @@ def bootstrap_3():
 
             # add bridge addresses to the config
             cfg['bridge_addresses'] = bridge_addresses
+
+            hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
+            if hostport:
+                dburl = ru.Url(cfg['mongodb_url'])
+                dburl.host, dburl.port = hostport.split(':')
+                cfg['mongodb_url'] = str(dburl)
 
             # create a sub_config for each sub-agent (but skip master config)
             for sa in cfg['agent_layout']:
@@ -5602,7 +5637,6 @@ if __name__ == "__main__":
     print "pilot : %-5s : %s" % (rp.version_detail, rp.__file__)
     print "        type  : multicore"
     print "        gitid : %s" % git_ident
-    print "        config: %s" % os.environ.get('RADICAL_PILOT_CFG')
     print
     print "---------------------------------------------------------------------"
     print

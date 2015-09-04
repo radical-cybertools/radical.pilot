@@ -1122,7 +1122,8 @@ preprocess()
         echo "#ABORT"
         exit 1
     fi
-    PREPROCESS="$PREPROCESS\n$cmd"
+    PREPROCESS="$PREPROCESS
+$cmd"
 }
 
 
@@ -1226,8 +1227,8 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
     # Kill ssh process when bootstrap_1 dies, to prevent lingering ssh's
     trap 'jobs -p | xargs kill' EXIT
 
-    # Overwrite HOSTPORT
-    HOSTPORT=$BIND_ADDRESS:$DBPORT
+    # and export to agent
+    export RADICAL_PILOT_DB_HOSTPORT=$BIND_ADDRESS:$DBPORT
 
     profile_event 'tunnel setup done'
 
@@ -1305,11 +1306,14 @@ echo "# CMDLINE: $AGENT_CMD"
 # some inspection for logging
 hostname
 
+# On Crays we need pass $HOME to the Compute Nodes
+export HOME=$HOME
+
 # make sure we use the correct sandbox
 cd $SANDBOX
 
 # preprocessing commands
-$PREPROCESSING
+$PREPROCESS
 
 # activate virtenv
 . $VIRTENV/bin/activate
@@ -1326,7 +1330,7 @@ export RADICAL_UTIL_VERBOSE=DEBUG
 export RADICAL_PILOT_VERBOSE=DEBUG
 
 # start agent, forward arguments
-$AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
+$AGENT_CMD "\$1" 1>"\$1.bootstrap_2.out" 2>"\$1.bootstrap_2.err"
 
 EOT
 
@@ -1338,7 +1342,7 @@ profile_event 'agent start'
 
 # start the master agent instance (zero)
 profile_event 'sync rel' 'agent start'
-sh bootstrap_2.sh 'agent.0' 1>bootstrap_2.out 2>bootstrap_2.err
+sh bootstrap_2.sh 'agent.0' 1>agent.0.bootstrap_2.out 2>agent.0.bootstrap_2.err
 AGENT_EXITCODE=$?
 
 profile_event 'cleanup start'
