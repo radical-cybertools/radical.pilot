@@ -5512,6 +5512,12 @@ def bootstrap_3():
 
     print "Agent config (%s):\n%s\n\n" % (agent_cfg, pprint.pformat(cfg))
 
+    hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
+    if hostport:
+        dburl = ru.Url(cfg['mongodb_url'])
+        dburl.host, dburl.port = hostport.split(':')
+        cfg['mongodb_url'] = str(dburl)
+
     mongodb_url = cfg['mongodb_url']
     pilot_id    = cfg['pilot_id']
     session_id  = cfg['session_id']
@@ -5588,12 +5594,6 @@ def bootstrap_3():
 
             # add bridge addresses to the config
             cfg['bridge_addresses'] = bridge_addresses
-
-            hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
-            if hostport:
-                dburl = ru.Url(cfg['mongodb_url'])
-                dburl.host, dburl.port = hostport.split(':')
-                cfg['mongodb_url'] = str(dburl)
 
             # create a sub_config for each sub-agent (but skip master config)
             for sa in cfg['agent_layout']:
