@@ -5192,7 +5192,7 @@ class AgentWorker(rpu.Worker):
             if target == 'local':
 
                 # start agent locally
-                cmd = "/bin/sh %s/bootstrap_2.sh %s" % (os.getcwd(), sa)
+                cmd = "/bin/sh -l %s/bootstrap_2.sh %s" % (os.getcwd(), sa)
 
             elif target == 'node':
 
@@ -5212,8 +5212,8 @@ class AgentWorker(rpu.Worker):
                         'task_slots'   : ['%s:0' % node], 
                         'task_offsets' : [], 
                         'lm_info'      : self._cfg['lrms_info']['lm_info']}
-                cmd, _ = agent_lm.construct_command(task_exec="/bin/sh", 
-                        task_args="%s/bootstrap_2.sh %s" % (os.getcwd(), sa), 
+                cmd, _ = agent_lm.construct_command(task_exec="/bin/sh",
+                        task_args="-l %s/bootstrap_2.sh %s" % (os.getcwd(), sa),
                         task_numcores=1, 
                         launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
                         opaque_slots=opaque_slots)
