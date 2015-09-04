@@ -1937,8 +1937,7 @@ class LaunchMethodORTE(LaunchMethod):
         logger.info("Starting ORTE DVM on %d nodes ..." % vm_size)
 
         dvm_process = subprocess.Popen(
-            [stdbuf_cmd, stdbuf_arg, dvm_command, '--debug-devel',
-             '--mca', 'orte_max_vm_size', str(vm_size)],
+            [stdbuf_cmd, stdbuf_arg, dvm_command, '--debug-devel'],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT
         )
 
