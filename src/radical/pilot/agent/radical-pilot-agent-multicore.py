@@ -3967,6 +3967,9 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         self._deactivate += 'unset VIRTUAL_ENV\n\n'
 
+        # FIXME: we should not alter the environment of the running agent, but
+        #        only make sure that the CU finds a pristine env.  That also
+        #        holds for the unsetting below -- AM
         if old_path: os.environ['PATH']        = old_path
         if old_home: os.environ['PYTHON_HOME'] = old_home
         if old_ps1:  os.environ['PS1']         = old_ps1
