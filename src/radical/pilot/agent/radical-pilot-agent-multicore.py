@@ -5011,15 +5011,15 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
             # TODO: Change the construct command to use only the CU description
             self._log.debug("There was a YARN Launcher")
 
-            cmd, hop_cmd  = launcher.construct_command(descr['executable'], descr['environment'],
-                                                   descr['cores'],
-                                                   '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',(descr,cu['workdir']))
+            cmd, hop_cmd  = launcher.construct_command(
+                    descr['executable'], descr['environment'], descr['cores'],
+                    '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',(descr,cu['workdir']))
         else:
 
-            cmd, hop_cmd  = launcher.construct_command(descr['executable'], args,
-                                                   descr['cores'],
-                                                   '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
-                                                   cu['opaque_slots'])
+            cmd, hop_cmd  = launcher.construct_command(
+                    descr['executable'], args, descr['cores'],
+                    '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
+                    cu['opaque_slots'])
 
 
         script = """
