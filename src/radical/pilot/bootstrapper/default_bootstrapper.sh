@@ -1122,7 +1122,8 @@ preprocess()
         echo "#ABORT"
         exit 1
     fi
-    PREPROCESS="$PREPROCESS\n$cmd"
+    PREPROCESS="$PREPROCESS
+$cmd"
 }
 
 
@@ -1305,11 +1306,14 @@ echo "# CMDLINE: $AGENT_CMD"
 # some inspection for logging
 hostname
 
+# On Crays we need pass $HOME to the Compute Nodes
+export HOME=$HOME
+
 # make sure we use the correct sandbox
 cd $SANDBOX
 
 # preprocessing commands
-$PREPROCESSING
+$PREPROCESS
 
 # activate virtenv
 . $VIRTENV/bin/activate
@@ -1324,6 +1328,7 @@ export SAGA_VERBOSE=DEBUG
 export RADICAL_VERBOSE=DEBUG
 export RADICAL_UTIL_VERBOSE=DEBUG
 export RADICAL_PILOT_VERBOSE=DEBUG
+export RADICAL_PILOT_CFG=$RADICAL_PILOT_CFG
 
 # start agent, forward arguments
 $AGENT_CMD "\$1" 1>"\$1.bootstrap_2.out" 2>"\$1.bootstrap_2.err"
