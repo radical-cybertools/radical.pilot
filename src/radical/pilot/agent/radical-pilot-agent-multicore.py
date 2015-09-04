@@ -2042,14 +2042,15 @@ class LaunchMethodORTE(LaunchMethod):
             task_command = task_exec
 
         # Construct the hosts_string, env vars
-        hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
+        # On some Crays, like on ARCHER, the hostname is "archer_N".
+        # In that case we strip off the part upto and including the underscore.
+        hosts_string = ",".join([slot.split(':')[0].rsplit('_', 1)[-1] for slot in task_slots])
         export_vars  = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
         orte_command = '%s --debug-devel --hnp "%s" %s -np %s -host %s %s' % (
             self.launch_command, dvm_uri, export_vars, task_numcores, hosts_string, task_command)
 
         return orte_command, None
-
 
 
 # ==============================================================================
