@@ -1167,6 +1167,9 @@ class LaunchMethod(object):
         self._cfg = cfg
         self._log = logger
 
+        # A per-launch_method list of environment to remove from the CU environment
+        self.env_removables = []
+
         self.launch_command = None
         self._configure()
         # TODO: This doesn't make too much sense for LM's that use multiple
@@ -1897,6 +1900,10 @@ class LaunchMethodORTE(LaunchMethod):
 
         LaunchMethod.__init__(self, cfg, logger)
 
+        # We remove all ORTE related environment variables from the launcher
+        # environment, so that we can use ORTE for both launch of the
+        # (sub-)agent and CU execution.
+        self.env_removables.extend(["OMPI_", "OPAL_", "PMIX_"])
 
     # --------------------------------------------------------------------------
     #
@@ -3538,7 +3545,6 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         self._cus_to_cancel  = list()
         self._cus_to_watch   = list()
         self._watch_queue    = Queue.Queue ()
-        self._cu_environment = self._populate_cu_environment()
 
         # run watcher thread
         self._terminate = threading.Event()
@@ -3557,6 +3563,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 cfg    = self._cfg,
                 logger = self._log)
 
+        self._cu_environment = self._populate_cu_environment()
 
         self.tmpdir = tempfile.gettempdir()
 
@@ -3611,6 +3618,13 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             new_env['PS1'] = old_ps
 
         new_env.pop('VIRTUAL_ENV', None)
+
+        # Remove the configured set of environment variables from the
+        # environment that we pass to Popen.
+        for e in new_env.keys():
+            for r in self._mpi_launcher.env_removables + self._task_launcher.env_removables:
+                if e.startswith(r):
+                    new_env.pop(e, None)
 
         return new_env
 
@@ -3963,6 +3977,14 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         # simplify shell startup / prompt detection
         os.environ['PS1'] = '$ '
+
+        # TODO: test that this actually works
+        # Remove the configured set of environment variables from the
+        # environment that we pass to Popen.
+        for e in os.environ.keys():
+            for r in self._mpi_launcher.env_removables + self._task_launcher.env_removables:
+                if e.startswith(r):
+                    del(os.environ[e])
 
         # the registry keeps track of units to watch, indexed by their shell
         # spawner process ID.  As the registry is shared between the spawner and
