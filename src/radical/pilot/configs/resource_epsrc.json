@@ -47,6 +47,7 @@
         "mpi_launch_method"           : "ORTE",
         "forward_tunnel_endpoint"     : "10.60.0.52",
         "pre_bootstrap"               : [
+           # "source /opt/modules/3.2.10.2/etc/modules.sh",
             "module use --append /work/e290/e290/marksant/privatemodules",
             "module load openmpi/HEAD",
             "module switch anaconda python-compute"
