@@ -1122,7 +1122,8 @@ preprocess()
         echo "#ABORT"
         exit 1
     fi
-    PREPROCESS="$PREPROCESS\n$cmd"
+    PREPROCESS="$PREPROCESS
+$cmd"
 }
 
 
@@ -1305,11 +1306,14 @@ echo "# CMDLINE: $AGENT_CMD"
 # some inspection for logging
 hostname
 
+# On Crays we need pass $HOME to the Compute Nodes
+export HOME=$HOME
+
 # make sure we use the correct sandbox
 cd $SANDBOX
 
 # preprocessing commands
-$PREPROCESSING
+$PREPROCESS
 
 # activate virtenv
 . $VIRTENV/bin/activate

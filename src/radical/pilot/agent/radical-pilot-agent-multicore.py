@@ -1195,6 +1195,9 @@ class LaunchMethod(object):
         self._cfg = cfg
         self._log = logger
 
+        # A per-launch_method list of environment to remove from the CU environment
+        self.env_removables = []
+
         self.launch_command = None
         self._configure()
         # TODO: This doesn't make too much sense for LM's that use multiple
@@ -1925,6 +1928,10 @@ class LaunchMethodORTE(LaunchMethod):
 
         LaunchMethod.__init__(self, cfg, logger)
 
+        # We remove all ORTE related environment variables from the launcher
+        # environment, so that we can use ORTE for both launch of the
+        # (sub-)agent and CU execution.
+        self.env_removables.extend(["OMPI_", "OPAL_", "PMIX_"])
 
     # --------------------------------------------------------------------------
     #
@@ -1958,8 +1965,7 @@ class LaunchMethodORTE(LaunchMethod):
         logger.info("Starting ORTE DVM on %d nodes ..." % vm_size)
 
         dvm_process = subprocess.Popen(
-            [stdbuf_cmd, stdbuf_arg, dvm_command, '--debug-devel',
-             '--mca', 'orte_max_vm_size', str(vm_size)],
+            [stdbuf_cmd, stdbuf_arg, dvm_command, '--debug-devel'],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT
         )
 
@@ -2260,7 +2266,7 @@ class LRMS(object):
                     self._log.exception("lrms config hook failed")
                     raise
 
-                self._log.debug("lrms config hook succeeded (%s)" % lm)
+                self._log.info("lrms config hook succeeded (%s)" % lm)
 
         # For now assume that all nodes have equal amount of cores
         cores_avail = len(self.node_list) * self.cores_per_node
@@ -3568,7 +3574,6 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         self._cus_to_cancel  = list()
         self._cus_to_watch   = list()
         self._watch_queue    = Queue.Queue ()
-        self._cu_environment = self._populate_cu_environment()
 
         # run watcher thread
         self._terminate = threading.Event()
@@ -3591,6 +3596,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         self.publish('command', {'cmd' : 'alive',
                                  'arg' : self.cname})
 
+        self._cu_environment = self._populate_cu_environment()
 
         self.tmpdir = tempfile.gettempdir()
 
@@ -3650,6 +3656,13 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             new_env['PS1'] = old_ps
 
         new_env.pop('VIRTUAL_ENV', None)
+
+        # Remove the configured set of environment variables from the
+        # environment that we pass to Popen.
+        for e in new_env.keys():
+            for r in self._mpi_launcher.env_removables + self._task_launcher.env_removables:
+                if e.startswith(r):
+                    new_env.pop(e, None)
 
         return new_env
 
@@ -3995,6 +4008,9 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         self._deactivate += 'unset VIRTUAL_ENV\n\n'
 
+        # FIXME: we should not alter the environment of the running agent, but
+        #        only make sure that the CU finds a pristine env.  That also
+        #        holds for the unsetting below -- AM
         if old_path: os.environ['PATH']        = old_path
         if old_home: os.environ['PYTHON_HOME'] = old_home
         if old_ps1:  os.environ['PS1']         = old_ps1
@@ -4004,6 +4020,43 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         # simplify shell startup / prompt detection
         os.environ['PS1'] = '$ '
+
+        # FIXME: 
+        #
+        # The AgentExecutingComponent needs the LaunchMethods to construct
+        # commands.  Those need the scheduler for some lookups and helper
+        # methods, and the scheduler needs the LRMS.  The LRMS can in general
+        # only initialized in the original agent environment -- which ultimately
+        # limits our ability to place the CU execution on other nodes.  
+        #
+        # As a temporary workaround we pass a None-Scheduler -- this will only
+        # work for some launch methods, and specifically not for ORTE, DPLACE
+        # and RUNJOB.  
+        #
+        # The clean solution seems to be to make sure that, on 'allocating', the
+        # scheduler derives all information needed to use the allocation and
+        # attaches them to the CU, so that the launch methods don't need to look
+        # them up again.  This will make the 'opaque_slots' more opaque -- but
+        # that is the reason of their existence (and opaqueness) in the first
+        # place...
+
+        self._task_launcher = LaunchMethod.create(
+                name   = self._cfg['task_launch_method'],
+                cfg    = self._cfg,
+                logger = self._log)
+
+        self._mpi_launcher = LaunchMethod.create(
+                name   = self._cfg['mpi_launch_method'],
+                cfg    = self._cfg,
+                logger = self._log)
+
+        # TODO: test that this actually works
+        # Remove the configured set of environment variables from the
+        # environment that we pass to Popen.
+        for e in os.environ.keys():
+            for r in self._mpi_launcher.env_removables + self._task_launcher.env_removables:
+                if e.startswith(r):
+                    del(os.environ[e])
 
         # the registry keeps track of units to watch, indexed by their shell
         # spawner process ID.  As the registry is shared between the spawner and
@@ -4046,35 +4099,6 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         self._watcher.start ()
 
         self._prof.prof('run setup done')
-
-        # FIXME: 
-        #
-        # The AgentExecutingComponent needs the LaunchMethods to construct
-        # commands.  Those need the scheduler for some lookups and helper
-        # methods, and the scheduler needs the LRMS.  The LRMS can in general
-        # only initialized in the original agent environment -- which ultimately
-        # limits our ability to place the CU execution on other nodes.  
-        #
-        # As a temporary workaround we pass a None-Scheduler -- this will only
-        # work for some launch methods, and specifically not for ORTE, DPLACE
-        # and RUNJOB.  
-        #
-        # The clean solution seems to be to make sure that, on 'allocating', the
-        # scheduler derives all information needed to use the allocation and
-        # attaches them to the CU, so that the launch methods don't need to look
-        # them up again.  This will make the 'opaque_slots' more opaque -- but
-        # that is the reason of their existence (and opaqueness) in the first
-        # place...
-
-        self._task_launcher = LaunchMethod.create(
-                name   = self._cfg['task_launch_method'],
-                cfg    = self._cfg,
-                logger = self._log)
-
-        self._mpi_launcher = LaunchMethod.create(
-                name   = self._cfg['mpi_launch_method'],
-                cfg    = self._cfg,
-                logger = self._log)
 
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',
@@ -5478,7 +5502,7 @@ class AgentWorker(rpu.Worker):
             if target == 'local':
 
                 # start agent locally
-                cmd = "/bin/sh %s/bootstrap_2.sh %s" % (os.getcwd(), sa)
+                cmd = "/bin/sh -l %s/bootstrap_2.sh %s" % (os.getcwd(), sa)
 
             elif target == 'node':
 
@@ -5498,8 +5522,8 @@ class AgentWorker(rpu.Worker):
                         'task_slots'   : ['%s:0' % node], 
                         'task_offsets' : [], 
                         'lm_info'      : self._cfg['lrms_info']['lm_info']}
-                cmd, _ = agent_lm.construct_command(task_exec="/bin/sh", 
-                        task_args="%s/bootstrap_2.sh %s" % (os.getcwd(), sa), 
+                cmd, _ = agent_lm.construct_command(task_exec="/bin/sh",
+                        task_args="-l %s/bootstrap_2.sh %s" % (os.getcwd(), sa),
                         task_numcores=1, 
                         launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
                         opaque_slots=opaque_slots)
@@ -5779,9 +5803,6 @@ def bootstrap_3():
     log.info('start')
 
     # load the agent config, and overload the config dicts
-    if not 'RADICAL_PILOT_CFG' in os.environ:
-        raise RuntimeError('RADICAL_PILOT_CFG is not set - abort')
-
     agent_cfg  = "%s/%s.cfg" % (os.getcwd(), agent_name)
     print "startup agent %s : %s" % (agent_name, agent_cfg)
 
@@ -5866,7 +5887,7 @@ def bootstrap_3():
                 #        which hosts the bridge, not the local IP.  Until this
                 #        is fixed, bridges MUST run on agent.0 (which is what
                 #        LRMS.hostip() below will point to).
-                nodeip = LRMS.hostip()
+                nodeip = LRMS.hostip(LRMS.hostname())
 
                 # we should have at most one bridge for every type
                 for b in cfg['agent_layout'][sa].get('bridges', []):
@@ -5929,7 +5950,6 @@ if __name__ == "__main__":
     print "pilot : %-5s : %s" % (rp.version_detail, rp.__file__)
     print "        type  : multicore"
     print "        gitid : %s" % git_ident
-    print "        config: %s" % os.environ.get('RADICAL_PILOT_CFG')
     print
     print "---------------------------------------------------------------------"
     print
