@@ -1,10 +1,8 @@
-
 import os
 import csv
+import copy
 import time
-import tempfile
 import threading
-import radical.utils as ru
 
 
 # ------------------------------------------------------------------------------
@@ -18,7 +16,7 @@ _prof_fields  = ['time', 'name', 'uid', 'state', 'event', 'msg']
 #
 class Profiler (object):
     """
-    This class is really just a persistent file handle with a conventient way
+    This class is really just a persistent file handle with a convenient way
     (prof()) of writing lines with timestamp and events to that file.  Any
     profiling intelligence is applied when reading and evaluating the created
     profiles.
@@ -50,7 +48,7 @@ class Profiler (object):
         #       and downstream analysis tools too!
         self._handle.write("#time,name,uid,state,event,msg\n")
         self._handle.write("%.4f,%s:%s,%s,%s,%s,%s\n" % \
-                (0.0, self._name, "", "", "", 'sync abs',\
+                (0.0, self._name, "", "", "", 'sync abs',
                 "%s:%s:%s" % (time.time(), self._ts_zero, self._ts_abs)))
 
 
@@ -122,7 +120,7 @@ class Profiler (object):
             response = ntplib.NTPClient().request('0.pool.ntp.org')
             timestamp_sys  = response.orig_time
             timestamp_abs  = response.tx_time
-            return [timestamp_sys, timstamp_abs]
+            return [timestamp_sys, timestamp_abs]
         except:
             t = time.time()
             return [t,t]
@@ -151,7 +149,6 @@ def prof2frame(prof):
     """
 
     import pandas as pd
-    import numpy as np
 
     # create data frame from profile dicts
     frame = pd.DataFrame(prof)
