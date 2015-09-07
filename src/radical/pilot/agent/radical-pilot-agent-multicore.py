@@ -1206,6 +1206,8 @@ class SchedulerYarn(AgentSchedulingComponent):
 
             self._log.info('Checking rm_ip %s' % self._cfg['lrms_info']['lm_info']['rm_ip'])
             self._rm_ip = self._cfg['lrms_info']['lm_info']['rm_ip']
+            self._service_url = self._cfg['lrms_info']['lm_info']['service_url']
+            self._rm_url = self._cfg['lrms_info']['lm_info']['rm_url']
 
             sample_time = rpu.timestamp()
             yarn_status = ul.urlopen('http://{0}:8088/ws/v1/cluster/scheduler'.format(self._rm_ip))
@@ -1286,7 +1288,10 @@ class SchedulerYarn(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     #
     def _try_allocation(self, cu):  
-
+        """
+        Attempt to allocate cores for a specific CU.  If it succeeds, send the
+        CU off to the ExecutionWorker.
+        """
         #-----------------------------------------------------------------------
         # Check if the YARN scheduler queue has space to accept new CUs.
         # Check about racing conditions in the case that you allowed an
@@ -1297,23 +1302,49 @@ class SchedulerYarn(AgentSchedulingComponent):
         # Test 2: Run test to find out how YARN behaves in the case that there
         # is no more room
         
+        # needs to be locked as we try to acquire slots, but slots are freed
+        # in a different thread.  But we keep the lock duration short...
+        with self._slot_lock :        
 
-        self._log.info(self.slot_status())
-        cu['opaque_slot']=['localhost:0']
-        if self.avail_app['apps']==0 or not self._allocate_slot(cu['description']['cores']):
+            self._log.info(self.slot_status())
+            self._log.debug('Mpla: {0} - {1}'.format(self._service_url,self._rm_url))
+                    
+            cu['opaque_slots']={'lm_info':{'service_url':self._service_url,
+                                            'rm_url':self._rm_url}
+                                            }
+
+            alloc = self._allocate_slot(cu['description']['cores'])
+            self.avail_app['apps']-=1
+
+        if self.avail_app['apps']==-1 or not alloc:
             return False
 
-        cu_list, cu_dropped = rpu.blowup(self._cfg, cu, EXECUTION_QUEUE)
-        for _cu in cu_list :
-            if self.avail_app['apps'] > 0:
-                self.avail_app['apps']-=1
-                rpu.prof('put', msg="Scheduler to execution_queue (%s)" % _cu['state'], uid=_cu['_id'])
-                self._execution_queue.put(_cu)
-
-        # we need to free allocated cores for dropped CUs
-        self.unschedule(cu_dropped)
+        # got an allocation, go off and launch the process
+        self._prof.prof('schedule', msg="allocated", uid=cu['_id'])
+        self._log.info("slot status after allocated  : %s" % self.slot_status ())
 
         return True
+
+    # --------------------------------------------------------------------------
+    #
+    def work(self, cu):
+
+      # self.advance(cu, rp.AGENT_SCHEDULING, publish=True, push=False)
+        self._log.info("Overiding Parent's class method")
+        self.advance(cu, rp.ALLOCATING      , publish=True, push=False)
+
+        # we got a new unit to schedule.  Either we can place it
+        # straight away and move it to execution, or we have to
+        # put it on the wait queue.
+        if self._try_allocation(cu):
+            self._prof.prof('schedule', msg="allocation succeeded", uid=cu['_id'])
+            self.advance(cu, rp.EXECUTING_PENDING, publish=False, push=True)
+
+        else:
+            # No resources available, put in wait queue
+            self._prof.prof('schedule', msg="allocation failed", uid=cu['_id'])
+            with self._wait_lock :
+                self._wait_pool.append(cu)
 
 
 
@@ -2522,6 +2553,7 @@ class LaunchMethodYARN(LaunchMethod):
 
             service_url = node_name + ':54170',
             rm_url      = node_name
+            launch_command = yarn_home + 'bin/yarn'
 
           
         # The LRMS instance is only available here -- everything which is later
@@ -2533,7 +2565,8 @@ class LaunchMethodYARN(LaunchMethod):
                    'rm_url'       : rm_url,
                    'hadoop_home'  : hadoop_home,
                    'rm_ip'        : lrms.rm_ip,
-                   'name'         : lrms.name }
+                   'name'         : lrms.name,
+                   'launch_command': launch_command }
 
         return lm_info
 
@@ -2565,7 +2598,8 @@ class LaunchMethodYARN(LaunchMethod):
 
         # Single Node configuration
         # TODO : Multinode config
-
+        self._log.info(self._cfg['lrms_info']['lm_info'])
+        self.launch_command = self._cfg['lrms_info']['lm_info']['launch_command']
         self._log.info('YARN was called')
         
 
@@ -2577,6 +2611,8 @@ class LaunchMethodYARN(LaunchMethod):
         # Construct the args_string which is the arguments given as input to the
         # shell script. Needs to be a string
         self._log.debug("Constructing YARN command")
+
+        self._log.debug('Opaque Slots {0}'.format(opaque_slots))
 
         if 'lm_info' not in opaque_slots:
             raise RuntimeError('No lm_info to launch via %s: %s' \
@@ -4310,11 +4346,11 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
     #
     def work(self, cu):
 
-        if self._task_launcher.name !='YARN':
+        if self._task_launcher.name !='LaunchMethodYARN':
           # self.advance(cu, rp.AGENT_EXECUTING, publish=True, push=False)
             self.advance(cu, rp.EXECUTING,       publish=True, push=False)
         else:
-            self.advance(cu, rp.ALLOCATING, publish=True, push=False)
+            self.advance(cu, rp.EXECUTING_PENDING, publish=True, push=False)
 
 
         try: 
@@ -4397,7 +4433,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             # YARN pre execution folder permission change
             # TODO: This needs to move inside the construct command when the launcher
             #       takes only the CU description
-            if launcher.name == 'YARN':
+            if launcher.name == 'LaunchMethodYARN':
                 launch_script.write('\n## Changing Working Directory permissions for YARN\n')
                 launch_script.write('old_perm="`stat -c %a .`"\n')
                 launch_script.write('chmod 777 .\n')
@@ -4428,7 +4464,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
             # The actual command line, constructed per launch-method
             try:
-                if launcher.name == 'YARN':
+                if launcher.name == 'LaunchMethodYARN':
                     #---------------------------------------------------------------------
                     # 
                     self._log.debug("There was a YARN Launcher")
@@ -4437,7 +4473,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                         launcher.construct_command(cu['description']['executable'], 
                                                   cu['description']['environment'],
                                                    cu['description']['cores'],
-                                                   ' ',(cu['description'],cu['workdir']))
+                                                   ' ',cu['opaque_slots'],(cu['description'],cu['workdir']))
                 else:
                     launch_command, hop_cmd = \
                         launcher.construct_command(cu['description']['executable'],
@@ -4582,8 +4618,8 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             # This code snippet reads the YARN application report file and if
             # the application is RUNNING it update the state of the CU with the
             # right time stamp. In any other case it works as it was.
-            if self._task_launcher.name == 'YARN' \
-                    and cu['state']==rp.ALLOCATING \
+            if self._task_launcher.name == 'LaunchMethodYARN' \
+                    and cu['state']==rp.EXECUTING_PENDING \
                     and os.path.isfile(cu['workdir']+'/YarnApplicationReport.log'):
                 
                 yarnreport=open(cu['workdir']+'/YarnApplicationReport.log','r')
@@ -4595,10 +4631,13 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                     line = report_contents[3].split(',')
                     timestamp = datetime.utcfromtimestamp(int(line[3].split('=')[1])/1000)
 
-                    action += 1
+                    #action += 1
+                    self._log.debug('Trying to update CU state')
                     self.advance(cu, rp.EXECUTING, publish=True, push=False)
 
                     # FIXME: Ioannis, what is this supposed to do?
+                    # I wanted to update the state of the cu but keep it in the watching
+                    # queue. I am not sure it is needed anymore.
                     index = self._cus_to_watch.index(cu)
                     self._cus_to_watch[index]=cu
                 
