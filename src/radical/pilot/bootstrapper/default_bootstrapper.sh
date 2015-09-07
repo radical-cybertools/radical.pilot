@@ -1351,7 +1351,7 @@ export RADICAL_PILOT_VERBOSE=DEBUG
 $PREBOOTSTRAP2_EXPANDED
 
 # start agent, forward arguments
-$AGENT_CMD "\$1" 1>"\$1.bootstrap_2.out" 2>"\$1.bootstrap_2.err"
+$AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
 
 EOT
 
