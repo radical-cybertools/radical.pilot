@@ -2475,6 +2475,7 @@ class LaunchMethodYARN(LaunchMethod):
             logger.info('Hook called by YARN LRMS')
             service_url    = lrms.namenode_url
             rm_url         = "%s:%s" % (lrms.rm_ip, lrms.rm_port)
+            rm_ip          = lrms.rm_ip
             launch_command = cls._which('yarn')
 
         else:
@@ -2486,6 +2487,7 @@ class LaunchMethodYARN(LaunchMethod):
                 stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
             else:
                 node = commands.getstatusoutput('/bin/hostname')
+                logger.info('Entered Else creation')
                 node_name = node[1]
                 stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.0/hadoop-2.6.0.tar.gz")
                 stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
@@ -2551,9 +2553,10 @@ class LaunchMethodYARN(LaunchMethod):
             #             is already called during scheduler instantiation
             # self._scheduler._configure()
 
-            service_url = node_name + ':54170',
+            service_url = node_name + ':54170'
             rm_url      = node_name
-            launch_command = yarn_home + 'bin/yarn'
+            launch_command = yarn_home + '/bin/yarn'
+            rm_ip = node_name
 
           
         # The LRMS instance is only available here -- everything which is later
@@ -2564,7 +2567,7 @@ class LaunchMethodYARN(LaunchMethod):
         lm_info = {'service_url'  : service_url,
                    'rm_url'       : rm_url,
                    'hadoop_home'  : hadoop_home,
-                   'rm_ip'        : lrms.rm_ip,
+                   'rm_ip'        : rm_ip,
                    'name'         : lrms.name,
                    'launch_command': launch_command }
 
@@ -2708,7 +2711,7 @@ class LaunchMethodYARN(LaunchMethod):
         #    nmem_string = ''
 
         #Getting the namenode's address.
-        service_url = 'yarn://{0}?fs=hdfs://{1}'.format(rm_url, service_url)
+        service_url = 'yarn://%s?fs=hdfs://%s'%(rm_url, service_url)
 
         yarn_command = '%s -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
                        ' com.radical.pilot.Client -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
