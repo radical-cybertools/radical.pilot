@@ -4353,7 +4353,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
           # self.advance(cu, rp.AGENT_EXECUTING, publish=True, push=False)
             self.advance(cu, rp.EXECUTING,       publish=True, push=False)
         else:
-            self.advance(cu, rp.EXECUTING_PENDING, publish=True, push=False)
+            self.advance(cu, rp.ALLOCATING, publish=True, push=False)
 
 
         try: 
@@ -4622,7 +4622,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             # the application is RUNNING it update the state of the CU with the
             # right time stamp. In any other case it works as it was.
             if self._task_launcher.name == 'LaunchMethodYARN' \
-                    and cu['state']==rp.EXECUTING_PENDING \
+                    and cu['state']==rp.ALLOCATING \
                     and os.path.isfile(cu['workdir']+'/YarnApplicationReport.log'):
                 
                 yarnreport=open(cu['workdir']+'/YarnApplicationReport.log','r')
