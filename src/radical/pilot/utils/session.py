@@ -11,7 +11,7 @@ from db_utils import *
 
 # ------------------------------------------------------------------------------
 #
-def fetch_profiles (sid, dburl=None, src=None, tgt=None, session=None):
+def fetch_profiles (sid, dburl=None, src=None, tgt=None, session=None, skip_existing=False):
     '''
     sid: session for which all profiles are fetched
     src: dir to look for session profiles
@@ -62,11 +62,16 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, session=None):
         ftgt = '%s/%s' % (tgt_url, os.path.basename(prof))
         ret.append("%s/%s" % (tgt, os.path.basename(prof)))
 
+        if skip_existing and os.path.exists(saga.Url(ftgt).path) \
+                and os.stat(saga.Url(ftgt).path).st_size > 0:
+
+            print "Skipping fetching of '%s' to '%s'." % (prof, tgt_url)
+            continue
+
         print "fetching '%s' to '%s'." % (prof, tgt_url)
         prof_file = saga.filesystem.File(prof, session=session)
         prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
         prof_file.close()
-
 
     _, db, _, _, _ = ru.mongodb_connect (dburl)
 
@@ -88,6 +93,12 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, session=None):
 
             ftgt = '%s/%s' % (tgt_url, prof)
             ret.append("%s/%s" % (tgt, prof))
+
+            if skip_existing and os.path.exists(saga.Url(ftgt).path) \
+                             and os.stat(saga.Url(ftgt).path).st_size > 0:
+
+                print "Skipping fetching of '%s' to '%s'." % (prof, tgt_url)
+                continue
 
             print "fetching '%s/%s' to '%s'." % (pilot['sandbox'], prof, tgt_url)
             prof_file = saga.filesystem.File("%s/%s" % (pilot['sandbox'], prof), session=session)
