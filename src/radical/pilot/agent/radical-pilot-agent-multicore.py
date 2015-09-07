@@ -4631,9 +4631,12 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                     line = report_contents[3].split(',')
                     timestamp = datetime.utcfromtimestamp(int(line[3].split('=')[1])/1000)
 
-                    #action += 1
-                    self._log.debug('Trying to update CU state')
+                    action += 1
+                    proc = cu['proc']
+                    self._log.debug('Proc Print {0}'.format(proc))
+                    del(cu['proc'])  # proc is not json serializable
                     self.advance(cu, rp.EXECUTING, publish=True, push=False)
+                    cu['proc']    = proc
 
                     # FIXME: Ioannis, what is this supposed to do?
                     # I wanted to update the state of the cu but keep it in the watching
