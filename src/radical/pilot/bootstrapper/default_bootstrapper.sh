@@ -1285,6 +1285,7 @@ else
 fi
 
 
+# TODO: Can this be generalized with our new split-agent now?
 if test -z "$CCM"
 then
     AGENT_CMD="$PYTHON $PILOT_SCRIPT"
