@@ -3980,6 +3980,35 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         # simplify shell startup / prompt detection
         os.environ['PS1'] = '$ '
 
+        # FIXME:
+        #
+        # The AgentExecutingComponent needs the LaunchMethods to construct
+        # commands.  Those need the scheduler for some lookups and helper
+        # methods, and the scheduler needs the LRMS.  The LRMS can in general
+        # only initialized in the original agent environment -- which ultimately
+        # limits our ability to place the CU execution on other nodes.
+        #
+        # As a temporary workaround we pass a None-Scheduler -- this will only
+        # work for some launch methods, and specifically not for ORTE, DPLACE
+        # and RUNJOB.
+        #
+        # The clean solution seems to be to make sure that, on 'allocating', the
+        # scheduler derives all information needed to use the allocation and
+        # attaches them to the CU, so that the launch methods don't need to look
+        # them up again.  This will make the 'opaque_slots' more opaque -- but
+        # that is the reason of their existence (and opaqueness) in the first
+        # place...
+
+        self._task_launcher = LaunchMethod.create(
+            name   = self._cfg['task_launch_method'],
+            cfg    = self._cfg,
+            logger = self._log)
+
+        self._mpi_launcher = LaunchMethod.create(
+            name   = self._cfg['mpi_launch_method'],
+            cfg    = self._cfg,
+            logger = self._log)
+
         # TODO: test that this actually works
         # Remove the configured set of environment variables from the
         # environment that we pass to Popen.
@@ -4029,35 +4058,6 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         self._watcher.start ()
 
         self._prof.prof('run setup done')
-
-        # FIXME: 
-        #
-        # The AgentExecutingComponent needs the LaunchMethods to construct
-        # commands.  Those need the scheduler for some lookups and helper
-        # methods, and the scheduler needs the LRMS.  The LRMS can in general
-        # only initialized in the original agent environment -- which ultimately
-        # limits our ability to place the CU execution on other nodes.  
-        #
-        # As a temporary workaround we pass a None-Scheduler -- this will only
-        # work for some launch methods, and specifically not for ORTE, DPLACE
-        # and RUNJOB.  
-        #
-        # The clean solution seems to be to make sure that, on 'allocating', the
-        # scheduler derives all information needed to use the allocation and
-        # attaches them to the CU, so that the launch methods don't need to look
-        # them up again.  This will make the 'opaque_slots' more opaque -- but
-        # that is the reason of their existence (and opaqueness) in the first
-        # place...
-
-        self._task_launcher = LaunchMethod.create(
-                name   = self._cfg['task_launch_method'],
-                cfg    = self._cfg,
-                logger = self._log)
-
-        self._mpi_launcher = LaunchMethod.create(
-                name   = self._cfg['mpi_launch_method'],
-                cfg    = self._cfg,
-                logger = self._log)
 
 
     # --------------------------------------------------------------------------
