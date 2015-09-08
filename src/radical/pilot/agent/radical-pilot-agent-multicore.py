@@ -5395,9 +5395,11 @@ class AgentWorker(rpu.Worker):
         # bootstrap sub-agents, agent components, bridges etc.
         self.bootstrap_4()
 
-        # once bootstrap_4 is done, we signal success to the parent agent
-        self.publish('command', {'cmd' : 'alive',
-                                 'arg' : self.agent_name})
+        # once bootstrap_4 is done, we signal success to the parent agent -- if
+        # we have any parent, that is...
+        if self.agent_name != 'agent.0':
+            self.publish('command', {'cmd' : 'alive',
+                                     'arg' : self.agent_name})
 
         # the pulling agent registers the staging_input_queue as this is what we want to push to
         # FIXME: do a sanity check on the config that only one agent pulls, as

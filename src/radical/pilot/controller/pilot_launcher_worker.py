@@ -358,7 +358,8 @@ class PilotLauncherWorker(threading.Thread):
                         js_endpoint             = resource_cfg.get ('job_manager_endpoint')
                         lrms                    = resource_cfg.get ('lrms')
                         mpi_launch_method       = resource_cfg.get ('mpi_launch_method')
-                        pre_bootstrap           = resource_cfg.get ('pre_bootstrap')
+                        pre_bootstrap_1         = resource_cfg.get ('pre_bootstrap_1')
+                        pre_bootstrap_2         = resource_cfg.get ('pre_bootstrap_2')
                         python_interpreter      = resource_cfg.get ('python_interpreter')
                         spmd_variation          = resource_cfg.get ('spmd_variation')
                         task_launch_method      = resource_cfg.get ('task_launch_method')
@@ -604,7 +605,8 @@ class PilotLauncherWorker(threading.Thread):
                         # set optional args
                         if agent_type:              bootstrap_args += " -a '%s'" % agent_type
                         if lrms == "CCM":           bootstrap_args += " -c"
-                        if pre_bootstrap:           bootstrap_args += " -e '%s'" % "' -e '".join (pre_bootstrap)
+                        if pre_bootstrap_1:         bootstrap_args += " -e '%s'" % "' -e '".join (pre_bootstrap_1)
+                        if pre_bootstrap_2:         bootstrap_args += " -w '%s'" % "' -w '".join (pre_bootstrap_2)
                         if forward_tunnel_endpoint: bootstrap_args += " -f '%s'" % forward_tunnel_endpoint
                         if forward_tunnel_endpoint: bootstrap_args += " -h '%s'" % db_hostport
                         if python_interpreter:      bootstrap_args += " -i '%s'" % python_interpreter
