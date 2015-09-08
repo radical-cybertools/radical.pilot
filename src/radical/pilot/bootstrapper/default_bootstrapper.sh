@@ -81,9 +81,10 @@ fi
 
 # ------------------------------------------------------------------------------
 #
-PROFILE="$SESSION_ID.$$.Bootstrapper.prof"
 profile_event()
 {
+    PROFILE="$SESSIONID.$$.Bootstrapper.prof"
+
     if test -z "$RADICAL_PILOT_PROFILE"
     then
         return
