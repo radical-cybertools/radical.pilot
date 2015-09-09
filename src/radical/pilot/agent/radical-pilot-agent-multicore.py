@@ -5881,7 +5881,7 @@ def bootstrap_3():
                 #        which hosts the bridge, not the local IP.  Until this
                 #        is fixed, bridges MUST run on agent.0 (which is what
                 #        LRMS.hostip() below will point to).
-                nodeip = LRMS.hostip()
+                nodeip = LRMS.hostip(cfg.get('network_interface'))
 
                 # we should have at most one bridge for every type
                 for b in cfg['agent_layout'][sa].get('bridges', []):

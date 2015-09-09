@@ -18,6 +18,9 @@
     # time between checks of internal state and commands from mothership (seconds)
     "heartbeat_interval"   : 10,
 
+    # interface for binding zmq to
+    "network_interface"    : "ipogif0",
+
     "agent_layout": {
         "agent.0": {
             # Where to run this agent ("local" or "node")
