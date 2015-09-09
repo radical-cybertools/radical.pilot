@@ -4015,7 +4015,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         for e in os.environ.keys():
             for r in self._mpi_launcher.env_removables + self._task_launcher.env_removables:
                 if e.startswith(r):
-                    del(os.environ[e])
+                    os.environ.pop(e, None)
 
         # the registry keeps track of units to watch, indexed by their shell
         # spawner process ID.  As the registry is shared between the spawner and
