@@ -2242,6 +2242,8 @@ class LRMS(object):
 
         # For now assume that all nodes have equal amount of cores
         cores_avail = len(self.node_list) * self.cores_per_node
+        # TODO: This needs to be changed to deal with situations where we
+        # allocate nodes for sub-agents
         if 'RADICAL_PILOT_PROFILE' not in os.environ:
             if cores_avail < int(self.requested_cores):
                 raise ValueError("Not enough cores available (%s) to satisfy allocation request (%s)." \
