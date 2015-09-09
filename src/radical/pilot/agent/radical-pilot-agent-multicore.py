@@ -2270,6 +2270,8 @@ class LRMS(object):
 
         # For now assume that all nodes have equal amount of cores
         cores_avail = len(self.node_list) * self.cores_per_node
+        # TODO: This needs to be changed to deal with situations where we
+        # allocate nodes for sub-agents
         if 'RADICAL_PILOT_PROFILE' not in os.environ:
             if cores_avail < int(self.requested_cores):
                 raise ValueError("Not enough cores available (%s) to satisfy allocation request (%s)." \
@@ -4021,17 +4023,17 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         # simplify shell startup / prompt detection
         os.environ['PS1'] = '$ '
 
-        # FIXME: 
+        # FIXME:
         #
         # The AgentExecutingComponent needs the LaunchMethods to construct
         # commands.  Those need the scheduler for some lookups and helper
         # methods, and the scheduler needs the LRMS.  The LRMS can in general
         # only initialized in the original agent environment -- which ultimately
-        # limits our ability to place the CU execution on other nodes.  
+        # limits our ability to place the CU execution on other nodes.
         #
         # As a temporary workaround we pass a None-Scheduler -- this will only
         # work for some launch methods, and specifically not for ORTE, DPLACE
-        # and RUNJOB.  
+        # and RUNJOB.
         #
         # The clean solution seems to be to make sure that, on 'allocating', the
         # scheduler derives all information needed to use the allocation and
@@ -4056,7 +4058,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         for e in os.environ.keys():
             for r in self._mpi_launcher.env_removables + self._task_launcher.env_removables:
                 if e.startswith(r):
-                    del(os.environ[e])
+                    os.environ.pop(e, None)
 
         # the registry keeps track of units to watch, indexed by their shell
         # spawner process ID.  As the registry is shared between the spawner and
