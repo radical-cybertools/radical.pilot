@@ -4072,8 +4072,8 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         # get some threads going -- those will do all the work.
         import saga.utils.pty_shell as sups
-        self.launcher_shell = sups.PTYShell ("fork://localhost/")
-        self.monitor_shell  = sups.PTYShell ("fork://localhost/")
+        self.launcher_shell = sups.PTYShell("fork://localhost/", interactive=False)
+        self.monitor_shell  = sups.PTYShell("fork://localhost/", interactive=False)
 
         # run the spawner on the shells
         # tmp = tempfile.gettempdir()
@@ -5395,8 +5395,8 @@ class AgentWorker(rpu.Worker):
         # bootstrap sub-agents, agent components, bridges etc.
         self.bootstrap_4()
 
-        # once bootstrap_4 is done, we signal success to the parent agent -- if
-        # we have any parent, that is...
+        # once bootstrap_4 is done, we signal success to the parent agent 
+        # -- if we have any parent...
         if self.agent_name != 'agent.0':
             self.publish('command', {'cmd' : 'alive',
                                      'arg' : self.agent_name})
@@ -5471,9 +5471,11 @@ class AgentWorker(rpu.Worker):
       # self.publish('command', {'cmd' : 'shutdown',
       #                          'arg' : 'finalization fallback'})
 
-        # communicate finalization to parent agent
-        self.publish('command', {'cmd' : 'final',
-                                 'arg' : self.agent_name})
+        # communicate finalization to parent agent 
+        # -- if we have any parent...
+        if self.agent_name != 'agent.0':
+            self.publish('command', {'cmd' : 'final',
+                                     'arg' : self.agent_name})
 
         self._log.info("Agent finalized")
 
