@@ -534,7 +534,7 @@ class Component(mp.Process):
                     # depending on the queue we got the unit from, we can either
                     # drop units or clone them to inject new ones
                     self._log.debug('=== before drop (%s)' % uid)
-                    unit = drop_units(self._cfg, unit, self.ctype, 'input')
+                    unit = drop_units(self._cfg, unit, self.ctype, 'input', logger=self._log)
                     if not unit:
                         self._prof.prof(event='drop', state=state,
                                 uid=uid, msg=input.name)
@@ -667,7 +667,7 @@ class Component(mp.Process):
                 # depending on the queue we got the unit from, we can either
                 # drop units or clone them to inject new ones
                 self._log.debug('=== before drop: %s' % unit['_id'])
-                unit = drop_units(self._cfg, unit, self.ctype, 'output')
+                unit = drop_units(self._cfg, unit, self.ctype, 'output', logger=self._log)
                 if not unit:
                     self._prof.prof(event='drop', state=state, uid=uid, msg=output.name)
                     continue
@@ -682,7 +682,7 @@ class Component(mp.Process):
                     #
                     # push the unit down the drain
                     output.put(_unit)
-                    self._prof.prof('put', uid=uid, state=state, msg=output.name)
+                    self._prof.prof('put', uid=_unit['_id'], state=state, msg=output.name)
 
 
     # --------------------------------------------------------------------------

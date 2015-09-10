@@ -379,9 +379,11 @@ def drop_units(cfg, units, name, mode, prof=None, logger=None):
     if 'RADICAL_PILOT_PROFILE' not in os.environ:
         return
 
-    drop = cfg['drop'].get(name, {}).get(mode, 1)
+    drop = cfg.get('drop', {}).get(name, {}).get(mode, 1)
 
     if drop == 0:
+        if logger:
+            logger.debug('dropped nothing')
         return units
 
     return_list = True
@@ -390,6 +392,8 @@ def drop_units(cfg, units, name, mode, prof=None, logger=None):
         units = [units]
 
     if drop == 2:
+        if logger:
+            logger.debug('dropped everything')
         if return_list: return []
         else          : return None
 
@@ -401,6 +405,11 @@ def drop_units(cfg, units, name, mode, prof=None, logger=None):
     for unit in units :
         if '.clone_' not in unit['_id']:
             ret.append(unit)
+            if logger:
+                logger.debug('dropped not %s', unit['_id'])
+        else:
+            if logger:
+                logger.debug('dropped     %s', unit['_id'])
 
     if return_list: 
         return ret
@@ -428,7 +437,7 @@ def clone_units(cfg, units, name, mode, prof=None, logger=None):
     if not isinstance(units, list):
         units = [units]
 
-    factor = cfg['clone'].get(name, {}).get(mode, 1)
+    factor = cfg.get('clone', {}).get(name, {}).get(mode, 1)
 
   # if logger:
   #     logger.debug('=== clone factor [%s][%s]: %s' % (name, mode, factor))
