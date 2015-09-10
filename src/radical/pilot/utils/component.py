@@ -470,6 +470,12 @@ class Component(mp.Process):
                         raise RuntimeError("%s: no worker declared for input state %s" \
                                         % self._cname, state)
 
+        except Exception as e:
+            self._log.exception("component initialization error")
+            return
+
+
+        try:
             # The main event loop will repeatedly iterate over all input
             # channels, probing 
             while True:
