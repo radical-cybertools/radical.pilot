@@ -3483,8 +3483,10 @@ class ForkLRMS(LRMS):
                 self._log.warn("more cores available: using requested %d instead of available %d.",
                         selected_cpus, detected_cpus)
 
-        self.node_list = ["localhost"]
-        self.cores_per_node = selected_cpus
+        self.node_list = list()
+        for i in range(selected_cpus):
+            self.node_list.append("localhost")
+        self.cores_per_node = 1
 
 
 
