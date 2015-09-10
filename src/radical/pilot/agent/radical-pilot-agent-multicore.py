@@ -2205,6 +2205,9 @@ class LRMS(object):
         # right here.
         self._agent_reqs = []
         layout = self._cfg['agent_layout']
+        # FIXME: this loop iterates over all agents *defined* in the layout, not
+        #        over all agents which are to be actually executed, thus
+        #        potentially reserving too many nodes.
         for worker in layout:
             target = layout[worker].get('target')
             # make sure that the target either 'local', which we will ignore,
@@ -5907,12 +5910,17 @@ def bootstrap_3():
             # the bridge addresses themself will not change -- they are fine to
             # listen on tcp://*:[port]/.
             #
-            # Once we did those changes, we will write copies of the resulting config
-            # for each sub agent instance.  At the moment those configs are identical,
-            # and the sub_agent will pick its own layout section -- but in principle
-            # this is also the point where we would make individual config changes.
+            # Once we did those changes, we will write copies of the resulting
+            # config for each sub agent instance.  At the moment those configs
+            # are identical, and the sub_agent will pick its own layout section
+            # -- but in principle this is also the point where we would make
+            # individual config changes.
 
             # dig out bridges from all sub-agents (sa)
+            # FIXME: we only need configs for agents which will actually get
+            #        started, ie. for those which appear in some sub_agent key
+            #        -- but this loop iterates over all sub_agents which are
+            #        *defined*.  Same for the for-loop a couple of lines below.
             bridge_addresses = dict()
             for sa in cfg['agent_layout']:
 
