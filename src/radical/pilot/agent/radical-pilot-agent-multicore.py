@@ -423,7 +423,7 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def __init__(self, cfg):
 
-        rpu.Component.__init__(self, cfg)
+        rpu.Component.__init__(self, 'AgentSchedulingComponent', cfg)
 
 
     # --------------------------------------------------------------------------
@@ -3510,7 +3510,7 @@ class AgentExecutingComponent(rpu.Component):
     #
     def __init__(self, cfg):
 
-        rpu.Component.__init__(self, cfg)
+        rpu.Component.__init__(self, 'AgentExecutingComponent', cfg)
 
 
     # --------------------------------------------------------------------------
@@ -4570,7 +4570,7 @@ class AgentUpdateWorker(rpu.Worker):
     #
     def __init__(self, cfg):
 
-        rpu.Worker.__init__(self, cfg)
+        rpu.Worker.__init__(self, 'AgentUpdateWorker', cfg)
 
 
     # --------------------------------------------------------------------------
@@ -4759,7 +4759,7 @@ class AgentStagingInputComponent(rpu.Component):
     #
     def __init__(self, cfg):
 
-        rpu.Component.__init__(self, cfg)
+        rpu.Component.__init__(self, 'AgentStagingInputComponent', cfg)
 
 
     # --------------------------------------------------------------------------
@@ -4906,7 +4906,7 @@ class AgentStagingOutputComponent(rpu.Component):
     #
     def __init__(self, cfg):
 
-        rpu.Component.__init__(self, cfg)
+        rpu.Component.__init__(self, 'AgentStagingOutputComponent', cfg)
 
 
     # --------------------------------------------------------------------------
@@ -5075,7 +5075,7 @@ class AgentHeartbeatWorker(rpu.Worker):
     #
     def __init__(self, cfg):
 
-        rpu.Worker.__init__(self, cfg)
+        rpu.Worker.__init__(self, 'AgentHeartbeatWorker', cfg)
 
 
     # --------------------------------------------------------------------------
@@ -5210,7 +5210,7 @@ class AgentWorker(rpu.Worker):
     def __init__(self, cfg):
 
         self.agent_name = cfg['agent_name']
-        rpu.Worker.__init__(self, cfg)
+        rpu.Worker.__init__(self, 'AgentWorker', cfg)
 
         # everything which comes after the worker init is limited in scope to
         # the current process, and will not be available in the worker process.

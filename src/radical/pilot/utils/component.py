@@ -11,7 +11,7 @@ import radical.utils   as ru
 
 from ..states    import *
 
-from .prof_utils import Profiler
+from .prof_utils import Profiler, clone_units, drop_units
 
 from .queue      import Queue        as rpu_Queue
 from .queue      import QUEUE_ZMQ    as rpu_QUEUE_ZMQ
@@ -118,7 +118,7 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, ctype, cfg):
         """
         This constructor MUST be called by inheriting classes.  
         
@@ -127,6 +127,7 @@ class Component(mp.Process):
         initialize() method.
         """
 
+        self._ctype         = ctype
         self._cfg           = cfg
         self._debug         = cfg.get('debug', 'DEBUG') # FIXME
         self._agent_name    = cfg['agent_name']
@@ -155,6 +156,13 @@ class Component(mp.Process):
         # component will basically detach itself from the parent process, and
         # will only maintain a handle to be used for shutdown
         mp.Process.__init__(self, name=self._cname)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def ctype(self):
+        return self._ctype
 
 
     # --------------------------------------------------------------------------
@@ -488,46 +496,63 @@ class Component(mp.Process):
 
                     # FIXME: the timeouts have a large effect on throughput, but
                     #        I am not yet sure how best to set them...
-                    unit = input.get_nowait(1000) # timeout
+                    unit = input.get_nowait(1000) # timeout in microseconds
                     if not unit:
                         continue
 
-                    active = True
-                    self._prof.prof(event='get', state=unit['state'],
-                            uid=unit['_id'], msg=input.name)
+                    state = unit['state']
+                    uid   = unit['_id']
 
                     # assert that the unit is in an expected state
-                    state = unit['state']
                     if state not in states:
                         self.advance(unit, FAILED, publish=True, push=False)
                         self._prof.prof(event='failed', msg="unexpected state %s" % state,
                                 uid=unit['_id'], state=unit['state'], logger=self._log.error)
                         continue
 
-                    # check if we have a suitable worker (this should always be
-                    # the case, as per the assertion done before we started the
-                    # main loop.  But, hey... :P
-                    if not state in self._workers:
-                        self._log.error("%s cannot handle state %s: %s" \
-                                % (self._cname, state, unit))
+                    # depending on the queue we got the unit from, we can either
+                    # drop units or clone them to inject new ones
+                    self._log.debug('=== before drop (%s)' % uid)
+                    unit = drop_units(self._cfg, unit, self.ctype, 'input')
+                    if not unit:
+                        self._prof.prof(event='drop', state=state,
+                                uid=uid, msg=input.name)
                         continue
 
-                    # we have an acceptable state and a matching worker -- hand
-                    # it over, wait for completion, and then pull for the next
-                    # unit
-                    try:
-                        self._prof.prof(event='work start', state=unit['state'], uid=unit['_id'])
-                        self._workers[state](unit)
-                        self._prof.prof(event='work done ', state=unit['state'], uid=unit['_id'])
+                    self._log.debug('=== before clone (%s)' % uid)
+                    units = clone_units(self._cfg, unit, self.ctype, 'input', logger=self._log)
+                    self._log.debug('=== after  clone: %s' % [x['_id'] for x in units])
 
-                    except Exception as e:
-                        self.advance(unit, FAILED, publish=True, push=False)
-                        self._prof.prof(event='failed', msg=str(e), uid=unit['_id'],
-                                state=unit['state'])
-                        self._log.exception("unit %s failed" % unit['_id'])
+                    for _unit in units:
 
-                        if self._exit_on_error:
-                            raise
+                        uid = _unit['_id']
+                        active = True
+                        self._prof.prof(event='get', state=state, uid=uid, msg=input.name)
+
+
+                        # check if we have a suitable worker (this should always be
+                        # the case, as per the assertion done before we started the
+                        # main loop.  But, hey... :P
+                        if not state in self._workers:
+                            self._log.error("%s cannot handle state %s: %s" \
+                                    % (self._cname, state, _unit))
+                            continue
+
+                        # we have an acceptable state and a matching worker -- hand
+                        # it over, wait for completion, and then pull for the next
+                        # unit
+                        try:
+                            self._prof.prof(event='work start', state=state, uid=uid)
+                            self._workers[state](_unit)
+                            self._prof.prof(event='work done ', state=state, uid=uid)
+
+                        except Exception as e:
+                            self.advance(_unit, FAILED, publish=True, push=False)
+                            self._prof.prof(event='failed', msg=str(e), uid=uid, state=state)
+                            self._log.exception("unit %s failed" % uid)
+
+                            if self._exit_on_error:
+                                raise
 
 
                 # if nothing happened, we can call the idle callbacks.  Don't
@@ -590,9 +615,13 @@ class Component(mp.Process):
 
         for unit in units:
 
+            uid = unit['_id']
+
             if state:
                 unit['state'] = state
                 self._prof.prof('advance', uid=unit['_id'], state=state)
+            else:
+                state = unit['state']
 
             if publish:
                 # send state notifications
@@ -600,7 +629,6 @@ class Component(mp.Process):
                 self._prof.prof('publish', uid=unit['_id'], state=unit['state'])
 
             if push:
-                state = unit['state']
                 if state not in self._outputs:
                     # unknown target state -- error
                     self._log.error("%s can't route state %s (%s)" \
@@ -612,12 +640,28 @@ class Component(mp.Process):
                     self._log.debug('%s %s ===| %s' % ('state', unit['id'], unit['state']))
                     continue
 
-                # FIXME: we should assert that the unit is in a PENDING state.
-                #        Better yet, enact the *_PENDING transition right here...
-                #
-                # push the unit down the drain
-                self._outputs[state].put(unit)
-                self._prof.prof('put', uid=unit['_id'], state=unit['state'], msg=self._outputs[state].name)
+
+                output = self._outputs[state]
+
+                # depending on the queue we got the unit from, we can either
+                # drop units or clone them to inject new ones
+                self._log.debug('=== before drop: %s' % unit['_id'])
+                unit = drop_units(self._cfg, unit, self.ctype, 'output')
+                if not unit:
+                    self._prof.prof(event='drop', state=state, uid=uid, msg=output.name)
+                    continue
+
+                self._log.debug('=== before clone: %s' % unit['_id'])
+                units = clone_units(self._cfg, unit, self.ctype, 'output', logger=self._log)
+                self._log.debug('=== after  clone: %s' % [x['_id'] for x in units])
+
+                for _unit in units:
+                    # FIXME: we should assert that the unit is in a PENDING state.
+                    #        Better yet, enact the *_PENDING transition right here...
+                    #
+                    # push the unit down the drain
+                    output.put(_unit)
+                    self._prof.prof('put', uid=uid, state=state, msg=output.name)
 
 
     # --------------------------------------------------------------------------
@@ -658,9 +702,9 @@ class Worker(Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, ctype, cfg):
 
-        Component.__init__(self, cfg)
+        Component.__init__(self, ctype, cfg)
 
     # --------------------------------------------------------------------------
     #
