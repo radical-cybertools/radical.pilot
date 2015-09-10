@@ -148,6 +148,7 @@ import shutil
 import socket
 import hostlist
 import tempfile
+import netifaces
 import threading
 import traceback
 import subprocess
@@ -2189,8 +2190,6 @@ class LRMS(object):
         self.name            = type(self).__name__
         self._cfg            = cfg
         self._log            = logger
-        self._hostname       = None
-        self._hostip         = None
         self.requested_cores = self._cfg['cores']
 
         self._log.info("Configuring LRMS %s.", self.name)
@@ -2313,64 +2312,59 @@ class LRMS(object):
         raise NotImplementedError("_Configure not implemented for LRMS type: %s." % self.name)
 
 
-    # --------------------------------------------------------------------------
-    #
-    @staticmethod
-    def hostname(logger=None):
-
-        hostname = socket.getfqdn()
-
-        if not hostname:
-            hostname = os.uname()[1]
-
-        if not hostname:
-            if logger:
-                logger.error("could not detect hostname")
-            raise RuntimeError("could not detect hostname")
-
-        return hostname
-
 
     # --------------------------------------------------------------------------
     #
     @staticmethod
-    def hostip(host=None, logger=None):
+    def hostip(req=None, logger=None):
         """
-        look up the ip number for a given host name.  If hostname is not given,
-        look up IP for localhost.
+        Look up the ip number for a given requested interface name.
+        If interface is not given, do some magic.
         """
 
-        if not host:
+        # List of interfaces that we probably dont want to bind to
+        black_list = ['lo', 'sit0']
 
-            # try the simple and safe detection first -- which will fail though
-            # if we don't have any connectivity
-            try:
-                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                s.setblocking(False)
-                s.settimeout(1.0)
-                s.connect(('8.8.8.8', 53))
-                return s.getsockname()[0]
-            except Exception as e:
-                if logger:
-                    logger.exception("use fallback IP detection (%s)" % e)
+        # Known intefaces in preferred order
+        sorted_preferred = ['ipogif0', 'eth0']
+        
+        # Get a list of all network interfaces
+        all = netifaces.interfaces()
 
-            # if that did not work, fall back to the normal lookup for localhost
-            host = LRMS.hostname()
+        pref = None
+        # If we got a request, see if it is in the list that we detected
+        if req and req in all:
+            # Requested is available, set it
+            pref = req
+        else:
+            # No requested or request not found, create preference list
+            potentials = [iface for iface in all if iface not in black_list]
 
-        # a host is given, or is localhost now -- look it up.
+        # If we didn't select an interface already
+        if not pref:
+            # Go through the sorted list and see if it is available
+            for iface in sorted_preferred:
+                if iface in all:
+                    # Found something, get out of here
+                    pref = iface
+                    break
+       
+        # If we still didn't find something, grab the first one from the
+        # potentials if it has entries
+        if not pref and potentials:
+            pref = potentials[0]
 
-        # FIXME: move to ru?
-        if hasattr(socket, 'setdefaulttimeout'):
-            socket.setdefaulttimeout(1)
+        # If there were no potentials, see if we can find one in the blacklist
+        if not pref:
+            for iface in blacklist:
+                if iface in all:
+                    pref = iface
 
-        try:
-            iplist = socket.gethostbyaddr(host)[2]
-            if isinstance(iplist, list):
-                return iplist[0]
-            else:
-                return iplist
-        except:
-            raise LookupError("Can't get IP address for host %s" % host)
+        # Use IPv4, because, we can ...
+        af = netifaces.AF_INET    
+        ip = netifaces.ifaddresses(pref)[af][0]['addr']
+
+        return ip
 
 
 
@@ -5893,7 +5887,7 @@ def bootstrap_3():
                 #        which hosts the bridge, not the local IP.  Until this
                 #        is fixed, bridges MUST run on agent.0 (which is what
                 #        LRMS.hostip() below will point to).
-                nodeip = LRMS.hostip(LRMS.hostname())
+                nodeip = LRMS.hostip(cfg.get('network_interface'))
 
                 # we should have at most one bridge for every type
                 for b in cfg['agent_layout'][sa].get('bridges', []):
