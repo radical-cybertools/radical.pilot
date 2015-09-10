@@ -2,6 +2,7 @@
 import os
 import zmq
 import time
+import errno
 import pprint
 import Queue           as pyq
 import threading       as mt
@@ -34,6 +35,26 @@ _QUEUE_PORTS  = {
         'ping_queue'                 : 'tcp://*:20000',
         'pong_queue'                 : 'tcp://*:20002',
     }
+
+# --------------------------------------------------------------------------
+#
+# zmq will (rightly) barf at interrupted system calls.  We are able to rerun
+# those calls.
+# FIXME: how does that behave wrt. tomeouts?  We probably should include
+#        an explicit timeout parameter.
+def _uninterruptible(f, *args, **kwargs):
+    while True:
+        try:
+            return f(*args, **kwargs)
+        except zmq.ZMQError as e:
+            if e.errno == errno.EINTR:
+                # interrupted, try again
+                print 'interrupted! [%s] [%s] [%s]' % (f, args, kwargs)
+                continue
+            else:
+                # real error, raise it
+                raise
+
 
 # --------------------------------------------------------------------------
 #
@@ -389,7 +410,6 @@ class QueueZMQ(Queue):
 
         self._p         = None           # the bridge process
         self._q         = None           # the zmq queue
-        self._ctx       = zmq.Context()  # one zmq context suffices
         self._lock      = mt.RLock()     # for _requested
         self._requested = False          # send/recv sync
 
@@ -412,7 +432,8 @@ class QueueZMQ(Queue):
         # ----------------------------------------------------------------------
         # behavior depends on the role...
         if self._role == QUEUE_INPUT:
-            self._q = self._ctx.socket(zmq.PUSH)
+            ctx = zmq.Context()
+            self._q = ctx.socket(zmq.PUSH)
             self._q.connect(str(self._addr))
 
 
@@ -420,12 +441,13 @@ class QueueZMQ(Queue):
         elif self._role == QUEUE_BRIDGE:
 
             # ------------------------------------------------------------------
-            def _bridge(ctx, addr_in, addr_out):
+            def _bridge(addr_in, addr_out):
 
                 # FIXME: should we cache messages coming in at the pull/push 
                 #        side, so as not to block the push end?
 
               # self._log ('in  _bridge: %s %s' % (addr_in, addr_out))
+                ctx = zmq.Context()
                 _in = ctx.socket(zmq.PULL)
                 _in.bind(addr_in)
 
@@ -440,21 +462,22 @@ class QueueZMQ(Queue):
 
                   # self._log ('run _bridge: %s %s' % (addr_in, addr_out))
 
-                    events = dict(_poll.poll(1000)) # timeout in ms
+                    events = dict(_uninterruptible(_poll.poll, 1000)) # timeout in ms
 
                     if _out in events:
-                        req = _out.recv()
-                        _out.send_json(_in.recv_json())
+                        req = _uninterruptible(_out.recv)
+                        _uninterruptible(_out.send_json, _uninterruptible(_in.recv_json))
             # ------------------------------------------------------------------
 
             addr_in  = str(self._addr)
             addr_out = str(_port_inc(self._addr))
-            self._p  = mp.Process(target=_bridge, args=[self._ctx, addr_in, addr_out])
+            self._p  = mp.Process(target=_bridge, args=[addr_in, addr_out])
             self._p.start()
 
         # ----------------------------------------------------------------------
         elif self._role == QUEUE_OUTPUT:
-            self._q = self._ctx.socket(zmq.REQ)
+            ctx = zmq.Context()
+            self._q = ctx.socket(zmq.REQ)
             self._q.connect(str(_port_inc(self._addr)))
 
         # ----------------------------------------------------------------------
@@ -485,7 +508,7 @@ class QueueZMQ(Queue):
             raise RuntimeError("queue %s (%s) can't put()" % (self._qname, self._role))
 
       # self._log("-> %s" % pprint.pformat(msg))
-        self._q.send_json(msg)
+        _uninterruptible(self._q.send_json, msg)
 
 
     # --------------------------------------------------------------------------
@@ -495,9 +518,9 @@ class QueueZMQ(Queue):
         if not self._role == QUEUE_OUTPUT:
             raise RuntimeError("queue %s (%s) can't get()" % (self._qname, self._role))
 
-        self._q.send('request')
+        _uninterruptible(self._q.send, 'request')
 
-        msg = self._q.recv_json()
+        msg = _uninterruptible(self._q.recv_json)
       # self._log("<- %s" % pprint.pformat(msg))
         return msg
 
@@ -513,7 +536,7 @@ class QueueZMQ(Queue):
 
             if not self._requested:
                 # we can only send the request once per recieval
-                self._q.send('request')
+                _uninterruptible(self._q.send, 'request')
                 self._requested = True
 
           # try:
@@ -525,8 +548,8 @@ class QueueZMQ(Queue):
           # except zmq.Again:
           #     return None
 
-            if self._q.poll (flags=zmq.POLLIN, timeout=timeout):
-                msg = self._q.recv_json()
+            if _uninterruptible(self._q.poll, flags=zmq.POLLIN, timeout=timeout):
+                msg = _uninterruptible(self._q.recv_json)
                 self._requested = False
               # self._log("<< %s" % pprint.pformat(msg))
                 return msg
