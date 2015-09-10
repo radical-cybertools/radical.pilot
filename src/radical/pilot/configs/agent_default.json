@@ -41,10 +41,10 @@
             ],
             "components" : {
                 # how many instances of the respective components should be started
-                "agent_staging_input_component"  : 1,
-                "agent_scheduling_component"     : 1,
-                "agent_executing_component"      : 1,
-                "agent_staging_output_component" : 1
+                "AgentStagingInputComponent"  : 1,
+                "AgentSchedulingComponent"    : 1,
+                "AgentExecutingComponent"     : 1,
+                "AgentStagingOutputComponent" : 1
             }
         }
     },
