@@ -15,7 +15,7 @@
         "agent_launch_method"         : "APRUN",
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
-        "pre_bootstrap"               : ["module load python"],
+        "pre_bootstrap_1"             : ["module load python"],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/global", "/scratch",  "/scratch2"],
         "bootstrapper"                : "default_bootstrapper.sh",
@@ -49,12 +49,19 @@
         "mpi_launch_method"           : "ORTE",
         "forward_tunnel_endpoint"     : "BIND_ADDRESS",
         "tunnel_bind_device"          : "ipogif0",
-        "pre_bootstrap"               : [
+        "pre_bootstrap_1"             : [
             "module use --append /global/homes/m/marksant/privatemodules",
             "module load openmpi/HEAD",
             "module load python",
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
+        ],
+        "pre_bootstrap_2"             : [
+            "export HOME=$HOME",
+            "export PATH=$PATH",
+            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH",
+            "export LD_PRELOAD=/lib64/librt.so.1"
+            # Workaround for ZMQ runtime failure
         ],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/global", "/scratch1", "/scratch2"],
@@ -81,7 +88,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
-        "pre_bootstrap"               : [
+        "pre_bootstrap_1"             : [
             "module load ccm",
             "module load openmpi-ccm",
             "module load python"
@@ -118,7 +125,7 @@
         "agent_launch_method"         : "APRUN",
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
-        "pre_bootstrap"               : ["module load python"],
+        "pre_bootstrap_1"             : ["module load python"],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/global", "/scratch1", "/scratch2"],
         "bootstrapper"                : "default_bootstrapper.sh",
@@ -149,12 +156,19 @@
         "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",
-        "pre_bootstrap"               : [
+        "pre_bootstrap_1"             : [
             "module use --append /global/homes/m/marksant/privatemodules",
             "module load openmpi/HEAD",
             "module load python",
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
+        ],
+        "pre_bootstrap_2"             : [
+            "export HOME=$HOME",
+            "export PATH=$PATH",
+            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH",
+            "export LD_PRELOAD=/lib64/librt.so.1"
+            # Workaround for ZMQ runtime failure
         ],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/global", "/scratch1", "/scratch2"],
@@ -180,7 +194,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
-        "pre_bootstrap"               : [
+        "pre_bootstrap_1"             : [
             "module load ccm",
             "module load openmpi-ccm",
             "module load python"
