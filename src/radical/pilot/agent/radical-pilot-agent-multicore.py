@@ -5502,8 +5502,14 @@ class AgentWorker(rpu.Worker):
         # non-local sub_agents.
         agent_lm = None
 
+        print 'sa nodes'
+        pprint.pprint(self._cfg['lrms_info']['agent_nodes'])
+
         for sa in sa_list:
             target = self._cfg['agent_layout'][sa]['target']
+
+            print 'sa target: %s: %s' % (sa, target)
+            print 'sa lm    : %s' % self._cfg['agent_launch_method']
 
             if target == 'local':
 
@@ -5517,8 +5523,9 @@ class AgentWorker(rpu.Worker):
                         name   = self._cfg['agent_launch_method'],
                         cfg    = self._cfg,
                         logger = self._log)
+                print 'sa LM    : %s' % agent_lm
 
-                node = self._cfg['lrms_info']['agent_nodes'].get(sa)
+                node = self._cfg['lrms_info']['agent_nodes'][sa]
                 # start agent remotely, use launch method
                 # NOTE:  there is some implicit assumption that we can use
                 #        the 'agent_node' string as 'agent_string:0' and
