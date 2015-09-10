@@ -5425,7 +5425,7 @@ class AgentWorker(rpu.Worker):
         for name,sa in self._sub_agents.items():
             try:
                 self._log.info("closing sub-agent %s", sa)
-                sa['proc'].terminate()
+                sa['handle'].terminate()
                 sa['out'].close()
                 sa['err'].close()
                 sa['alive'] = False
@@ -5501,20 +5501,13 @@ class AgentWorker(rpu.Worker):
         # actually, we only create the agent_lm once we really need it for
         # non-local sub_agents.
         agent_lm = None
-
-        print 'sa nodes'
-        pprint.pprint(self._cfg['lrms_info']['agent_nodes'])
-
         for sa in sa_list:
             target = self._cfg['agent_layout'][sa]['target']
-
-            print 'sa target: %s: %s' % (sa, target)
-            print 'sa lm    : %s' % self._cfg['agent_launch_method']
 
             if target == 'local':
 
                 # start agent locally
-                cmd = "/bin/sh -l %s/bootstrap_2.sh %s" % (os.getcwd(), sa)
+                cmdline = "/bin/sh -l %s/bootstrap_2.sh %s" % (os.getcwd(), sa)
 
             elif target == 'node':
 
@@ -5523,7 +5516,6 @@ class AgentWorker(rpu.Worker):
                         name   = self._cfg['agent_launch_method'],
                         cfg    = self._cfg,
                         logger = self._log)
-                print 'sa LM    : %s' % agent_lm
 
                 node = self._cfg['lrms_info']['agent_nodes'][sa]
                 # start agent remotely, use launch method
@@ -5537,23 +5529,33 @@ class AgentWorker(rpu.Worker):
                 #        work with a number of launch methods.  Can the
                 #        offset computation be moved to the LRMS?
                 # FIXME: are we using the 'hop' correctly?
+                ls_name = "%s/%s.sh" % (os.getcwd(), sa)
                 opaque_slots = { 
                         'task_slots'   : ['%s:0' % node], 
                         'task_offsets' : [], 
                         'lm_info'      : self._cfg['lrms_info']['lm_info']}
-                cmd, _ = agent_lm.construct_command(task_exec="/bin/sh",
-                        task_args="-l %s/bootstrap_2.sh %s" % (os.getcwd(), sa),
+                cmd, hop = agent_lm.construct_command(task_exec="/bin/sh",
+                        task_args="%s/bootstrap_2.sh %s" % (os.getcwd(), sa),
                         task_numcores=1, 
-                        launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
+                        launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "%s"' % ls_name,
                         opaque_slots=opaque_slots)
+
+                with open (ls_name, 'w') as ls:
+                    ls.write('#!/bin/sh\n\n')
+                    ls.write("%s\n" % cmd)
+                    st = os.stat(ls_name)
+                    os.chmod(ls_name, st.st_mode | stat.S_IEXEC)
+
+                if hop : cmdline = hop
+                else   : cmdline = ls_name
 
             # spawn the sub-agent
             self._prof.prof("create", msg=sa)
-            self._log.info ("create sub-agent %s: %s" % (sa, cmd))
+            self._log.info ("create sub-agent %s: %s" % (sa, cmdline))
             sa_out = open("%s.out" % sa, "w")
             sa_err = open("%s.err" % sa, "w")
-            sa_proc = subprocess.Popen(cmd, shell=True, stdout=sa_out, stderr=sa_err)
-            self._sub_agents[sa] = {'proc'  : sa_proc,
+            sa_proc = subprocess.Popen(args=cmdline, shell=True, stdout=sa_out, stderr=sa_err)
+            self._sub_agents[sa] = {'handle': sa_proc,
                                     'out'   : sa_out,
                                     'err'   : sa_err,
                                     'alive' : False}
@@ -5704,13 +5706,25 @@ class AgentWorker(rpu.Worker):
                     len(self._workers   ) + \
                     len(self._sub_agents)
             while True:
-                alive = [v['alive'] for v in self._components.values()] + \
-                        [v['alive'] for v in self._workers   .values()] + \
-                        [v['alive'] for v in self._sub_agents.values()]
 
-                self._log.debug('found alive: %2d / %2d' % (alive.count(True), total))
+                # check the procs for all components which are not yet alive
+                to_check  = self._components.items() \
+                          + self._workers.items() \
+                          + self._sub_agents.items() 
 
-                if alive.count(True) == total:
+                alive_cnt = 0
+                total_cnt = len(to_check)
+                for name,c in to_check:
+                    if c['alive']:
+                        alive_cnt += 1
+                    else:
+                        if None != c['handle'].poll():
+                            # process is dead and has never been alive.  Oops
+                            raise RuntimeError('component %s did not come up' % name)
+
+                self._log.debug('found alive: %2d / %2d' % (alive_cnt, total_cnt))
+
+                if alive_cnt == total_cnt:
                     self._log.debug('bootstrap barrier success')
                     break
 

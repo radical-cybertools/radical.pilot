@@ -185,6 +185,21 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
+    def poll(self):
+        """
+        This is a wrapper around is_alive() which mimics the behavior of the same
+        call in the subprocess.Popen class with the same name.  It does not
+        return an exitcode though, but 'None' if the process is still
+        alive, and always '0' otherwise
+        """
+        if self.is_alive():
+            return None
+        else:
+            return 0
+
+
+    # --------------------------------------------------------------------------
+    #
     def finalize(self):
         """
         This method MAY be overloaded by the components.  It is called *once* in
