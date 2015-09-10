@@ -1,4 +1,3 @@
-
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
@@ -30,7 +29,8 @@ MANDATORY_ARGS              = 'mandatory_args'
 MPI_LAUNCH_METHOD           = 'mpi_launch_method'
 NOTES                       = 'notes'
 PILOT_AGENT                 = 'pilot_agent'
-PRE_BOOTSTRAP               = 'pre_bootstrap'
+PRE_BOOTSTRAP_1             = 'pre_bootstrap_1'
+PRE_BOOTSTRAP_2             = 'pre_bootstrap_2'
 RP_VERSION                  = 'rp_version'
 PYTHON_INTERPRETER          = 'python_interpreter'
 SCHEMAS                     = 'schemas'
@@ -58,7 +58,7 @@ class ResourceConfig(attributes.Attributes):
           rc.filesystem_endpoint  = "sftp://23.23.23.23"
           rc.default_queue        = "batch"
           rc.python_interpreter   = "/opt/python/2.7.6/bin/python"
-          rc.pre_bootstrap        = "module load mpi"
+          rc.pre_bootstrap_1      = "module load mpi"
           rc.valid_roots          = ["/home", "/work"]
           rc.bootstrapper         = "default_bootstrapper.sh"
 
@@ -106,7 +106,11 @@ class ResourceConfig(attributes.Attributes):
 
        [Type: `string`] [optional] TODO
 
-    .. data:: pre_bootstrap
+    .. data:: pre_bootstrap_1
+
+       [Type: `string`] [optional] TODO
+
+    .. data:: pre_bootstrap_2
 
        [Type: `string`] [optional] TODO
 
@@ -211,7 +215,8 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(MPI_LAUNCH_METHOD      ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(NOTES                  ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PILOT_AGENT            ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(PRE_BOOTSTRAP          ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(PRE_BOOTSTRAP_1        ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(PRE_BOOTSTRAP_2        ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(RP_VERSION             ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PYTHON_INTERPRETER     ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(SCHEMAS                ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
@@ -233,4 +238,3 @@ class ResourceConfig(attributes.Attributes):
 
 
 # ------------------------------------------------------------------------------
-
