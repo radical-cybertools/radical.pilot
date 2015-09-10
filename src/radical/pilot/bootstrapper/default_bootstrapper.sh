@@ -61,21 +61,36 @@ VIRTENV_IS_ACTIVATED=FALSE
 VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq"
 
 
-# --------------------------------------------------------------------
 #
-# it is suprisingly difficult to get seconds since epoch in POSIX --
-# 'date +%s' is a GNU extension...  Anyway, awk to the rescue!
+# If profiling is enabled, compile our little gtod app and take the first time
 #
-timestamp () {
-  TIMESTAMP=`\awk 'BEGIN{srand(); print srand()}'`
-}
-
-
 if ! test -z "$RADICAL_PILOT_PROFILE"
 then
-    timestamp
-    TIME_ZERO=$TIMESTAMP
+
+    cat > gtod.c <<EOT
+#include <stdio.h>
+#include <sys/time.h>
+
+int main ()
+{
+    struct timeval tv;
+    (void) gettimeofday (&tv, NULL);
+    fprintf (stdout, "%d.%06d\n", tv.tv_sec, tv.tv_usec);
+    return (0);
+}
+EOT
+    cc -o gtod gtod.c 1>/dev/null 2>/dev/null
+
+    if ! test -e "./gtod"
+    then
+        # we "should" be able to build this everywhere ...
+        echo "can't build gtod binary!"
+        exit 1
+    fi
+
+    TIME_ZERO=`./gtod`
     export TIME_ZERO
+
 fi
 
 
@@ -93,31 +108,7 @@ profile_event()
     event=$1
     msg=$2
 
-    if ! test -f 'gtod.c'
-    then
-        cat > gtod.c <<EOT
-            #include <stdio.h>
-            #include <sys/time.h>
-            
-            int main ()
-            {
-                struct timeval tv;
-                (void) gettimeofday (&tv, NULL);
-                fprintf (stdout, "%d.%06d\n", tv.tv_sec, tv.tv_usec);
-                return (0);
-            }
-EOT
-        cc -o gtod gtod.c 1>/dev/null 2>/dev/null
-    fi
-
-    if test -e "./gtod"
-    then
-        TIMESTAMP=`./gtod`
-        NOW=`echo "$TIMESTAMP" - "$TIME_ZERO" | bc`
-    else
-        timestamp
-        NOW=$((TIMESTAMP-TIME_ZERO))
-    fi
+    NOW=`echo \`./gtod\` - "$TIME_ZERO" | bc`
 
     if ! test -f "$PROFILE"
     then
