@@ -168,7 +168,7 @@
      "cp_project"      : "csc168",
      "cp_queue"        : "debug",
      "cp_runtime"      : 10,
-     "cp_cores"        : 16,
+     "cp_cores"        : 32,
      "cp_schema"       : "local",
      "cu_cores"        : 4,
      "cu_pre_exec"     : ["module load python python_mpi4py"],
