@@ -5487,16 +5487,22 @@ class AgentWorker(rpu.Worker):
 
         self._log.debug('start_sub_agents')
 
+        sa_list = self._sub_cfg.get('sub_agents', [])
+
+        if not sa_list:
+            self._log.debug('start_sub_agents noop')
+            return
+
         # the configs are written, and the sub-agents can be started.  To know
         # how to do that we create the agent launch method, have it creating
         # the respective command lines per agent instance, and run via
         # popen. 
-        agent_lm = LaunchMethod.create(
-            name   = self._cfg['agent_launch_method'],
-            cfg    = self._cfg,
-            logger = self._log)
+        #
+        # actually, we only create the agent_lm once we really need it for
+        # non-local sub_agents.
+        agent_lm = None
 
-        for sa in self._sub_cfg.get('sub_agents', []):
+        for sa in sa_list:
             target = self._cfg['agent_layout'][sa]['target']
 
             if target == 'local':
@@ -5505,6 +5511,12 @@ class AgentWorker(rpu.Worker):
                 cmd = "/bin/sh -l %s/bootstrap_2.sh %s" % (os.getcwd(), sa)
 
             elif target == 'node':
+
+                if not agent_lm:
+                    agent_lm = LaunchMethod.create(
+                        name   = self._cfg['agent_launch_method'],
+                        cfg    = self._cfg,
+                        logger = self._log)
 
                 node = self._cfg['lrms_info']['agent_nodes'].get(sa)
                 # start agent remotely, use launch method
