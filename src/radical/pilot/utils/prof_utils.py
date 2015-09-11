@@ -377,11 +377,21 @@ def drop_units(cfg, units, name, mode, prof=None, logger=None):
 
     # blowup is only enabled on profiling
     if 'RADICAL_PILOT_PROFILE' not in os.environ:
-        return
+        if logger:
+            logger.debug('no profiling - no dropping')
+        return units
 
-    drop = cfg['drop'].get(name, {}).get(mode, 1)
+    if not units:
+        # nothing to drop
+        if logger:
+            logger.debug('no units - no dropping')
+        return units
+
+    drop = cfg.get('drop', {}).get(name, {}).get(mode, 1)
 
     if drop == 0:
+        if logger:
+            logger.debug('dropped nothing')
         return units
 
     return_list = True
@@ -390,6 +400,8 @@ def drop_units(cfg, units, name, mode, prof=None, logger=None):
         units = [units]
 
     if drop == 2:
+        if logger:
+            logger.debug('dropped everything')
         if return_list: return []
         else          : return None
 
@@ -401,6 +413,11 @@ def drop_units(cfg, units, name, mode, prof=None, logger=None):
     for unit in units :
         if '.clone_' not in unit['_id']:
             ret.append(unit)
+            if logger:
+                logger.debug('dropped not %s', unit['_id'])
+        else:
+            if logger:
+                logger.debug('dropped     %s', unit['_id'])
 
     if return_list: 
         return ret
@@ -421,19 +438,31 @@ def clone_units(cfg, units, name, mode, prof=None, logger=None):
     'out').  This methid will always return a list.
     """
 
-    # blowup is only enabled on profiling
-    if 'RADICAL_PILOT_PROFILE' not in os.environ:
-        return
+    if units == None:
+        if logger:
+            logger.debug('no units - no cloning')
+        return list()
 
     if not isinstance(units, list):
         units = [units]
 
-    factor = cfg['clone'].get(name, {}).get(mode, 1)
+    # blowup is only enabled on profiling
+    if 'RADICAL_PILOT_PROFILE' not in os.environ:
+        if logger:
+            logger.debug('no profiling - no cloning')
+        return units
 
-  # if logger:
-  #     logger.debug('=== clone factor [%s][%s]: %s' % (name, mode, factor))
+    if not units:
+        # nothing to clone...
+        if logger:
+            logger.debug('No units - no cloning')
+        return units
+
+    factor = cfg.get('clone', {}).get(name, {}).get(mode, 1)
 
     if factor == 1:
+        if logger:
+            logger.debug('cloning with factor [%s][%s]: 1' % (name, mode))
         return units
 
     if factor < 1:
@@ -461,6 +490,9 @@ def clone_units(cfg, units, name, mode, prof=None, logger=None):
         # advanced (they'll get pushed onto queues earlier).  This cannot be
         # relied upon, obviously.
         ret.append(unit)
+
+    if logger:
+        logger.debug('cloning with factor [%s][%s]: %s gives %s units' % (name, mode, factor, len(ret)))
 
     return ret
 

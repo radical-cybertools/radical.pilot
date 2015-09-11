@@ -41,10 +41,10 @@
             ],
             "components" : {
                 # how many instances of the respective components should be started
-                "agent_staging_input_component"  : 1,
-                "agent_scheduling_component"     : 1,
-                "agent_executing_component"      : 1,
-                "agent_staging_output_component" : 1
+                "AgentStagingInputComponent"  : 1,
+                "AgentSchedulingComponent"    : 1,
+                "AgentExecutingComponent"     : 1,
+                "AgentStagingOutputComponent" : 1
             }
         }
     },
@@ -53,11 +53,11 @@
     # "1" will leave the units unchanged.  Any blowup will leave on unit as the
     # original, and will then create clones with an changed unit ID (see blowup()).
     "clone" : {
-        "AgentWorker"                 : {"input" :    1, "output" :    1},
-        "AgentStagingInputComponent"  : {"input" :    1, "output" :    1},
-        "AgentSchedulingComponent"    : {"input" :  200, "output" :    1},
-        "AgentExecutingComponent"     : {"input" :    1, "output" :    1},
-        "AgentStagingOutputComponent" : {"input" :    1, "output" :    1}
+        "AgentWorker"                 : {"input" : 1, "output" : 1},
+        "AgentStagingInputComponent"  : {"input" : 1, "output" : 1},
+        "AgentSchedulingComponent"    : {"input" : 1, "output" : 1},
+        "AgentExecutingComponent"     : {"input" : 1, "output" : 1},
+        "AgentStagingOutputComponent" : {"input" : 1, "output" : 1}
     },
 
     # flag to drop all blown-up units at some point in the pipeline.  The units
@@ -67,11 +67,11 @@
     # 1: drop clones
     # 2: drop everything
     "drop" : {
-        "AgentWorker"                 : {"input" :    1, "output" :    1},
-        "AgentStagingInputComponent"  : {"input" :    1, "output" :    1},
-        "AgentSchedulingComponent"    : {"input" :    1, "output" :    1},
-        "AgentExecutingComponent"     : {"input" :    1, "output" :    1},
-        "AgentStagingOutputComponent" : {"input" :    1, "output" :    1}
+        "AgentWorker"                 : {"input" : 1, "output" : 1},
+        "AgentStagingInputComponent"  : {"input" : 1, "output" : 1},
+        "AgentSchedulingComponent"    : {"input" : 1, "output" : 1},
+        "AgentExecutingComponent"     : {"input" : 1, "output" : 1},
+        "AgentStagingOutputComponent" : {"input" : 1, "output" : 1}
     }
 }
 

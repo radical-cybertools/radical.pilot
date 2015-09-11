@@ -2205,6 +2205,9 @@ class LRMS(object):
         # right here.
         self._agent_reqs = []
         layout = self._cfg['agent_layout']
+        # FIXME: this loop iterates over all agents *defined* in the layout, not
+        #        over all agents which are to be actually executed, thus
+        #        potentially reserving too many nodes.
         for worker in layout:
             target = layout[worker].get('target')
             # make sure that the target either 'local', which we will ignore,
@@ -3483,8 +3486,10 @@ class ForkLRMS(LRMS):
                 self._log.warn("more cores available: using requested %d instead of available %d.",
                         selected_cpus, detected_cpus)
 
-        self.node_list = ["localhost"]
-        self.cores_per_node = selected_cpus
+        self.node_list = list()
+        for i in range(selected_cpus):
+            self.node_list.append("localhost")
+        self.cores_per_node = 1
 
 
 
@@ -3711,10 +3716,10 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
         if False:
             cu_tmpdir = '%s/%s' % (self.tmpdir, cu['_id'])
-            rec_makedir(cu_tmpdir)
         else:
             cu_tmpdir = cu['workdir']
 
+        rec_makedir(cu_tmpdir)
         launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu_tmpdir
         self._log.debug("Created launch_script: %s", launch_script_name)
 
@@ -5425,7 +5430,7 @@ class AgentWorker(rpu.Worker):
         for name,sa in self._sub_agents.items():
             try:
                 self._log.info("closing sub-agent %s", sa)
-                sa['proc'].terminate()
+                sa['handle'].terminate()
                 sa['out'].close()
                 sa['err'].close()
                 sa['alive'] = False
@@ -5501,14 +5506,13 @@ class AgentWorker(rpu.Worker):
         # actually, we only create the agent_lm once we really need it for
         # non-local sub_agents.
         agent_lm = None
-
         for sa in sa_list:
             target = self._cfg['agent_layout'][sa]['target']
 
             if target == 'local':
 
                 # start agent locally
-                cmd = "/bin/sh -l %s/bootstrap_2.sh %s" % (os.getcwd(), sa)
+                cmdline = "/bin/sh -l %s/bootstrap_2.sh %s" % (os.getcwd(), sa)
 
             elif target == 'node':
 
@@ -5518,7 +5522,7 @@ class AgentWorker(rpu.Worker):
                         cfg    = self._cfg,
                         logger = self._log)
 
-                node = self._cfg['lrms_info']['agent_nodes'].get(sa)
+                node = self._cfg['lrms_info']['agent_nodes'][sa]
                 # start agent remotely, use launch method
                 # NOTE:  there is some implicit assumption that we can use
                 #        the 'agent_node' string as 'agent_string:0' and
@@ -5530,23 +5534,33 @@ class AgentWorker(rpu.Worker):
                 #        work with a number of launch methods.  Can the
                 #        offset computation be moved to the LRMS?
                 # FIXME: are we using the 'hop' correctly?
+                ls_name = "%s/%s.sh" % (os.getcwd(), sa)
                 opaque_slots = { 
                         'task_slots'   : ['%s:0' % node], 
                         'task_offsets' : [], 
                         'lm_info'      : self._cfg['lrms_info']['lm_info']}
-                cmd, _ = agent_lm.construct_command(task_exec="/bin/sh",
-                        task_args="-l %s/bootstrap_2.sh %s" % (os.getcwd(), sa),
+                cmd, hop = agent_lm.construct_command(task_exec="/bin/sh",
+                        task_args="%s/bootstrap_2.sh %s" % (os.getcwd(), sa),
                         task_numcores=1, 
-                        launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
+                        launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "%s"' % ls_name,
                         opaque_slots=opaque_slots)
+
+                with open (ls_name, 'w') as ls:
+                    ls.write('#!/bin/sh\n\n')
+                    ls.write("%s\n" % cmd)
+                    st = os.stat(ls_name)
+                    os.chmod(ls_name, st.st_mode | stat.S_IEXEC)
+
+                if hop : cmdline = hop
+                else   : cmdline = ls_name
 
             # spawn the sub-agent
             self._prof.prof("create", msg=sa)
-            self._log.info ("create sub-agent %s: %s" % (sa, cmd))
+            self._log.info ("create sub-agent %s: %s" % (sa, cmdline))
             sa_out = open("%s.out" % sa, "w")
             sa_err = open("%s.err" % sa, "w")
-            sa_proc = subprocess.Popen(cmd, shell=True, stdout=sa_out, stderr=sa_err)
-            self._sub_agents[sa] = {'proc'  : sa_proc,
+            sa_proc = subprocess.Popen(args=cmdline, shell=True, stdout=sa_out, stderr=sa_err)
+            self._sub_agents[sa] = {'handle': sa_proc,
                                     'out'   : sa_out,
                                     'err'   : sa_err,
                                     'alive' : False}
@@ -5608,10 +5622,10 @@ class AgentWorker(rpu.Worker):
         # We use a static map from component names to class types for now --
         # a factory might be more appropriate (FIXME)
         cmap = {
-            "agent_staging_input_component"  : AgentStagingInputComponent,
-            "agent_scheduling_component"     : AgentSchedulingComponent,
-            "agent_executing_component"      : AgentExecutingComponent,
-            "agent_staging_output_component" : AgentStagingOutputComponent
+            "AgentStagingInputComponent"  : AgentStagingInputComponent,
+            "AgentSchedulingComponent"    : AgentSchedulingComponent,
+            "AgentExecutingComponent"     : AgentExecutingComponent,
+            "AgentStagingOutputComponent" : AgentStagingOutputComponent
             }
         for cname, cnum in self._sub_cfg.get('components',{}).iteritems():
             for i in range(cnum):
@@ -5697,13 +5711,25 @@ class AgentWorker(rpu.Worker):
                     len(self._workers   ) + \
                     len(self._sub_agents)
             while True:
-                alive = [v['alive'] for v in self._components.values()] + \
-                        [v['alive'] for v in self._workers   .values()] + \
-                        [v['alive'] for v in self._sub_agents.values()]
 
-                self._log.debug('found alive: %2d / %2d' % (alive.count(True), total))
+                # check the procs for all components which are not yet alive
+                to_check  = self._components.items() \
+                          + self._workers.items() \
+                          + self._sub_agents.items() 
 
-                if alive.count(True) == total:
+                alive_cnt = 0
+                total_cnt = len(to_check)
+                for name,c in to_check:
+                    if c['alive']:
+                        alive_cnt += 1
+                    else:
+                        if None != c['handle'].poll():
+                            # process is dead and has never been alive.  Oops
+                            raise RuntimeError('component %s did not come up' % name)
+
+                self._log.debug('found alive: %2d / %2d' % (alive_cnt, total_cnt))
+
+                if alive_cnt == total_cnt:
                     self._log.debug('bootstrap barrier success')
                     break
 
@@ -5886,12 +5912,17 @@ def bootstrap_3():
             # the bridge addresses themself will not change -- they are fine to
             # listen on tcp://*:[port]/.
             #
-            # Once we did those changes, we will write copies of the resulting config
-            # for each sub agent instance.  At the moment those configs are identical,
-            # and the sub_agent will pick its own layout section -- but in principle
-            # this is also the point where we would make individual config changes.
+            # Once we did those changes, we will write copies of the resulting
+            # config for each sub agent instance.  At the moment those configs
+            # are identical, and the sub_agent will pick its own layout section
+            # -- but in principle this is also the point where we would make
+            # individual config changes.
 
             # dig out bridges from all sub-agents (sa)
+            # FIXME: we only need configs for agents which will actually get
+            #        started, ie. for those which appear in some sub_agent key
+            #        -- but this loop iterates over all sub_agents which are
+            #        *defined*.  Same for the for-loop a couple of lines below.
             bridge_addresses = dict()
             for sa in cfg['agent_layout']:
 
