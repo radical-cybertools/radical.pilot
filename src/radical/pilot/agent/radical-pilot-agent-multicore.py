@@ -5378,7 +5378,7 @@ class AgentWorker(rpu.Worker):
 
             self._p  = mongo_db["%s.p"  % self._session_id]
             self._cu = mongo_db["%s.cu" % self._session_id]
-            self._log.debug('conneced to mongodb')
+            self._log.debug('connected to mongodb')
 
         # first order of business: set the start time and state of the pilot
         # Only the master agent performs this action
