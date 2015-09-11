@@ -5213,6 +5213,8 @@ class AgentWorker(rpu.Worker):
         self.agent_name = cfg['agent_name']
         rpu.Worker.__init__(self, 'AgentWorker', cfg)
 
+        self._log.debug('starting AgentWorker for %s' % self.agent_name)
+
         # everything which comes after the worker init is limited in scope to
         # the current process, and will not be available in the worker process.
         self._pilot_id   = self._cfg['pilot_id']
@@ -5221,8 +5223,10 @@ class AgentWorker(rpu.Worker):
         # set up db connection for the command cb (the worker process gets its
         # own db handle)
         if self.agent_name == 'agent.0':
+            self._log.debug('connecting to mongodb at %s' % self._cfg['mongodb_url'])
             _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
             self._p  = mongo_db["%s.p"  % self._session_id]
+            self._log.debug('connected to mongodb')
 
         # all components use the command channel for control messages
         self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
@@ -5369,10 +5373,12 @@ class AgentWorker(rpu.Worker):
         # set up db connection -- only for the master agent and for the agent
         # which pulls units (which might be the same)
         if self.agent_name == 'agent.0' or self._pull_units:
+            self._log.debug('connecting to mongodb at %s for unit pull')
             _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
 
             self._p  = mongo_db["%s.p"  % self._session_id]
             self._cu = mongo_db["%s.cu" % self._session_id]
+            self._log.debug('conneced to mongodb')
 
         # first order of business: set the start time and state of the pilot
         # Only the master agent performs this action
@@ -5950,7 +5956,9 @@ def bootstrap_3():
             # create a sub_config for each sub-agent (but skip master config)
             for sa in cfg['agent_layout']:
                 if sa != 'agent.0':
-                    ru.write_json(cfg, './%s.cfg' % sa)
+                    sa_cfg = copy.deepcopy(cfg)
+                    sa_cfg['agent_name'] = sa
+                    ru.write_json(sa_cfg, './%s.cfg' % sa)
 
         # we now have correct bridge addresses added to the agent.0.cfg, and all
         # other agents will have picked that up from their config files -- we
