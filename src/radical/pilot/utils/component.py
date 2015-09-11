@@ -533,16 +533,13 @@ class Component(mp.Process):
 
                     # depending on the queue we got the unit from, we can either
                     # drop units or clone them to inject new ones
-                    self._log.debug('=== before drop (%s)' % uid)
                     unit = drop_units(self._cfg, unit, self.ctype, 'input', logger=self._log)
                     if not unit:
                         self._prof.prof(event='drop', state=state,
                                 uid=uid, msg=input.name)
                         continue
 
-                    self._log.debug('=== before clone (%s)' % uid)
                     units = clone_units(self._cfg, unit, self.ctype, 'input', logger=self._log)
-                    self._log.debug('=== after  clone: %s' % [x['_id'] for x in units])
 
                     for _unit in units:
 
@@ -603,7 +600,7 @@ class Component(mp.Process):
             # could in principle detect the latter within the loop -- - but
             # since we don't know what to do with the units it operated on, we
             # don't bother...
-            self._prof.prof("loop error", msg=str(e), logger=self._log.exception)
+            self._log.exception('loop error')
 
 
         finally:
@@ -666,15 +663,12 @@ class Component(mp.Process):
 
                 # depending on the queue we got the unit from, we can either
                 # drop units or clone them to inject new ones
-                self._log.debug('=== before drop: %s' % unit['_id'])
                 unit = drop_units(self._cfg, unit, self.ctype, 'output', logger=self._log)
                 if not unit:
                     self._prof.prof(event='drop', state=state, uid=uid, msg=output.name)
                     continue
-
-                self._log.debug('=== before clone: %s' % unit['_id'])
+               
                 units = clone_units(self._cfg, unit, self.ctype, 'output', logger=self._log)
-                self._log.debug('=== after  clone: %s' % [x['_id'] for x in units])
 
                 for _unit in units:
                     # FIXME: we should assert that the unit is in a PENDING state.

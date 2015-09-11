@@ -36,14 +36,22 @@ _USE_MULTIPART = False
 #
 # zmq will (rightly) barf at interrupted system calls.  We are able to rerun
 # those calls.
+#
 # FIXME: how does that behave wrt. tomeouts?  We probably should include
 #        an explicit timeout parameter.
+#
+# kudos: https://gist.github.com/minrk/5258909
+#
 def _uninterruptible(f, *args, **kwargs):
+    cnt = 0
     while True:
+        cnt += 1
         try:
             return f(*args, **kwargs)
         except zmq.ZMQError as e:
             if e.errno == errno.EINTR:
+                if cnt > 10:
+                    raise
                 # interrupted, try again
                 print 'interrupted! [%s] [%s] [%s]' % (f, args, kwargs)
                 continue
