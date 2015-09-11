@@ -3716,10 +3716,10 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
         if False:
             cu_tmpdir = '%s/%s' % (self.tmpdir, cu['_id'])
-            rec_makedir(cu_tmpdir)
         else:
             cu_tmpdir = cu['workdir']
 
+        rec_makedir(cu_tmpdir)
         launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu_tmpdir
         self._log.debug("Created launch_script: %s", launch_script_name)
 
