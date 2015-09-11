@@ -36,6 +36,10 @@
                                          "source ~train00/ssi_sourceme",
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
+        "pre_bootstrap_2"             : ["export HOME=$HOME",
+                                         "export PATH=$PATH",
+                                         "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+                                        ],
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
