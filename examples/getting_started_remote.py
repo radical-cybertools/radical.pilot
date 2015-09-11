@@ -29,10 +29,10 @@ resources = {
             'schema'   : 'ssh'
             },
 
-        'ncsa.bw' : {
-            'project'  : None,
+        'ncsa.bw_orte' : {
+            'project'  : 'gkd',
             'queue'    : 'debug',
-            'schema'   : None
+            'schema'   : 'gsissh'
             },
 
         'epsrc.archer' : {
