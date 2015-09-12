@@ -86,5 +86,26 @@
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_stampede",
         "virtenv_mode"                : "create"
+    },
+    "chameleon": {
+        "description"                 : "Your Chameleon Cloud VM.",
+        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
+        "schemas"                     : ["ssh"],
+        "ssh"                         : 
+        {
+            "job_manager_endpoint"    : "ssh://129.114.108.124/",
+            "filesystem_endpoint"     : "sftp://129.114.108.124/"
+        },
+        "default_remote_workdir"      : "$HOME",
+        "lrms"                        : "YARN",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "YARN",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "FORK",
+        "task_launch_method"          : "YARN",
+        "mpi_launch_method"           : "MPIEXEC",
+        "rp_version"                  : "debug",
+        "virtenv"                     : "%(global_sandbox)s/ve_chameleon",
+        "virtenv_mode"                : "create"
     }
 }
