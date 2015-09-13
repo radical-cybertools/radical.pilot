@@ -5229,12 +5229,7 @@ class AgentWorker(rpu.Worker):
             self._log.debug('connected to mongodb')
 
         # all components use the command channel for control messages
-        self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
         self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
-
-        # communicate successful startup
-        self.publish('command', {'cmd' : 'alive',
-                                 'arg' : self.cname})
 
 
     # --------------------------------------------------------------------------
