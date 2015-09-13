@@ -83,7 +83,7 @@ fi
 #
 profile_event()
 {
-    PROFILE="$SESSIONID.$$.Bootstrapper.prof"
+    PROFILE="bootstrap_1.prof"
 
     if test -z "$RADICAL_PILOT_PROFILE"
     then
@@ -126,7 +126,7 @@ EOT
     fi
 
     printf "%.4f,%s,%s,%s,%s,%s\n" \
-        "$NOW" "$$:Bootstrapper" "$PILOT_ID" "ACTIVE" "$event" "$msg" \
+        "$NOW" "bootstrap_1" "$PILOT_ID" "ACTIVE" "$event" "$msg" \
         >> "$PROFILE"
 }
 
