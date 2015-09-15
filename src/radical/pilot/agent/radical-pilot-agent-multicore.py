@@ -4708,6 +4708,14 @@ class AgentUpdateWorker(rpu.Worker):
                                              'state': state,
                                              'timestamp': rpu.timestamp()}}}
 
+            # when the unit is about to leave the agent, we also update stdout,
+            # stderr exit code etc
+            # FIXME: this probably should be a parameter ('FULL') on 'msg'
+            if state in [rp.DONE, rp.FAILED, rp.CANCELED, rp.PENDING_OUTPUT_STAGING]:
+                update_dict['$set']['stdout'   ] = cu.get('stdout')
+                update_dict['$set']['stderr'   ] = cu.get('stderr')
+                update_dict['$set']['exit_code'] = cu.get('exit_code')
+
             # check if we handled the collection before.  If not, initialize
             cname = self._session_id + cbase
 
