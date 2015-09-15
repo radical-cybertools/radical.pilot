@@ -87,7 +87,7 @@ class Session (saga.Session):
 
         # init the base class inits
         saga.Session.__init__ (self)
-        self._valid = True
+        self._valid = False
 
         # before doing anything else, set up the debug helper for the lifetime
         # of the session.
@@ -120,8 +120,11 @@ class Session (saga.Session):
 
         # ----------------------------------------------------------------------
         # create new session
+        self._dbs       = None
+        self._uid       = None
+        self._connected = None
+
         try:
-            self._connected  = None
 
             if name :
                 self._name = name
@@ -144,6 +147,9 @@ class Session (saga.Session):
             logger.exception ('session create failed')
             raise PilotException("Couldn't create new session (database URL '%s' incorrect?): %s" \
                             % (self._dburl, ex))  
+
+        # from here on we should be able to close the session again
+        self._valid = True
 
         # initialize profiling
         self.prof = Profiler('%s' % self._uid)
