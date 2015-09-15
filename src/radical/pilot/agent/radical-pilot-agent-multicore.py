@@ -3486,7 +3486,10 @@ class ForkLRMS(LRMS):
         # if cores_per_node is set in the agent config, we slice the number of
         # cores into that many virtual nodes.  cpn defaults to selected_cpus,
         # to preserve the previous behavior.
-        self.cores_per_node = self._cfg.get('cores_per_node', selected_cpus)
+        self.cores_per_node = self._cfg.get('cores_per_node')
+        if not self.cores_per_node:
+            self.cores_per_node = selected_cpus
+
         requested_nodes = int(math.ceil(float(selected_cpus) / float(self.cores_per_node)))
         self.node_list  = list()
         for i in range(requested_nodes):
