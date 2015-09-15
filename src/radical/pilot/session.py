@@ -148,12 +148,12 @@ class Session (saga.Session):
             raise PilotException("Couldn't create new session (database URL '%s' incorrect?): %s" \
                             % (self._dburl, ex))  
 
-        # from here on we should be able to close the session again
-        self._valid = True
-
         # initialize profiling
         self.prof = Profiler('%s' % self._uid)
         self.prof.prof('start session', uid=self._uid)
+
+        # from here on we should be able to close the session again
+        self._valid = True
 
         # Loading all "default" resource configurations
         module_path  = os.path.dirname(os.path.abspath(__file__))
@@ -244,13 +244,12 @@ class Session (saga.Session):
               or doesn't exist. 
         """
 
+        self._is_valid()
+
         logger.debug("session %s closing" % (str(self._uid)))
         self.prof.prof("close", uid=self._uid)
 
         uid = self._uid
-
-        if not self._valid:
-            raise RuntimeError("Session object already closed.")
 
         # set defaults
         if cleanup   == None: cleanup   = True
@@ -298,6 +297,10 @@ class Session (saga.Session):
     def as_dict(self):
         """Returns a Python dictionary representation of the object.
         """
+
+        self._is_valid()
+            return {}
+
         object_dict = {
             "uid"           : self._uid,
             "created"       : self._dbs.created,
@@ -323,11 +326,14 @@ class Session (saga.Session):
     #
     @property
     def dburl(self):
+        self._is_valid()
         return self._dbs.dburl
 
     #---------------------------------------------------------------------------
     #
     def get_db(self):
+
+        self._is_valid()
         return self._dbs.get_db()
 
     #---------------------------------------------------------------------------
