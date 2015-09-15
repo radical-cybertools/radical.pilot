@@ -3483,10 +3483,17 @@ class ForkLRMS(LRMS):
                 self._log.warn("more cores available: using requested %d instead of available %d.",
                         selected_cpus, detected_cpus)
 
-        self.node_list = list()
-        for i in range(selected_cpus):
+        # if cores_per_node is set in the agent config, we slice the number of
+        # cores into that many virtual nodes.  cpn defaults to selected_cpus,
+        # to preserve the previous behavior.
+        self.cores_per_node = self._cfg.get('cores_per_node', selected_cpus)
+        requested_nodes = int(math.ceil(float(selected_cpus) / float(self.cores_per_node)))
+        self.node_list  = list()
+        for i in range(requested_nodes):
             self.node_list.append("localhost")
-        self.cores_per_node = 1
+
+        self._log.debug('configure localhost to have %s nodes a %s cores',
+                len(self.node_list), self.cores_per_node)
 
 
 
