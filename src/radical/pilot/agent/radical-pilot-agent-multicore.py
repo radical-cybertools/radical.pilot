@@ -4712,8 +4712,6 @@ class AgentUpdateWorker(rpu.Worker):
             # stderr exit code etc
             # FIXME: this probably should be a parameter ('FULL') on 'msg'
             if state in [rp.DONE, rp.FAILED, rp.CANCELED, rp.PENDING_OUTPUT_STAGING]:
-                print 'CU DUMP'
-                pprint.pprint(cu)
                 update_dict['$set']['stdout'   ] = cu.get('stdout')
                 update_dict['$set']['stderr'   ] = cu.get('stderr')
                 update_dict['$set']['exit_code'] = cu.get('exit_code')
