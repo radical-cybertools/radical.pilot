@@ -124,36 +124,33 @@ class Session (saga.Session):
         self._uid       = None
         self._connected = None
 
+        if name :
+            self._name = name
+            self._uid  = name
+          # self._uid  = ru.generate_id ('rp.session.'+name+'.%(item_counter)06d', mode=ru.ID_CUSTOM)
+        else :
+            self._uid  = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
+            self._name = self._uid
+
+        # initialize profiling
+        self.prof = Profiler('%s' % self._uid)
+        self.prof.prof('start session', uid=self._uid)
+
         try:
-
-            if name :
-                self._name = name
-                self._uid  = name
-              # self._uid  = ru.generate_id ('rp.session.'+name+'.%(item_counter)06d', mode=ru.ID_CUSTOM)
-            else :
-                self._uid  = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
-                self._name = self._uid
-
-
             self._dbs = dbSession(sid   = self._uid,
                                   name  = self._name,
                                   dburl = self._dburl)
         
             self._dburl  = self._dbs._dburl
 
+            # from here on we should be able to close the session again
+            self._valid = True
             logger.info("New Session created: %s." % str(self))
 
         except Exception, ex:
             logger.exception ('session create failed')
             raise PilotException("Couldn't create new session (database URL '%s' incorrect?): %s" \
                             % (self._dburl, ex))  
-
-        # initialize profiling
-        self.prof = Profiler('%s' % self._uid)
-        self.prof.prof('start session', uid=self._uid)
-
-        # from here on we should be able to close the session again
-        self._valid = True
 
         # Loading all "default" resource configurations
         module_path  = os.path.dirname(os.path.abspath(__file__))
@@ -299,7 +296,6 @@ class Session (saga.Session):
         """
 
         self._is_valid()
-            return {}
 
         object_dict = {
             "uid"           : self._uid,
