@@ -2073,6 +2073,11 @@ class LaunchMethodORTE(LaunchMethod):
         # Construct the hosts_string, env vars
         # On some Crays, like on ARCHER, the hostname is "archer_N".
         # In that case we strip off the part upto and including the underscore.
+        #
+        # TODO: If this ever becomes a problem, i.e. we encounter "real" hostnames
+        #       with underscores in it, or other hostname mangling, we need to turn
+        #       this into a system specific regexp or so.
+        #
         hosts_string = ",".join([slot.split(':')[0].rsplit('_', 1)[-1] for slot in task_slots])
         export_vars  = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
