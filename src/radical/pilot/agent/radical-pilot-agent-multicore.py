@@ -3495,7 +3495,7 @@ class ForkLRMS(LRMS):
         for i in range(requested_nodes):
             self.node_list.append("localhost")
 
-        self._log.debug('configure localhost to have %s nodes a %s cores',
+        self._log.debug('configure localhost to behave as %s nodes with %s cores each.',
                 len(self.node_list), self.cores_per_node)
 
 
