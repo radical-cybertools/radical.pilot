@@ -3926,6 +3926,8 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                     # We got a request to cancel this cu
                     action += 1
                     cu['proc'].kill()
+                    cu['proc'].wait() # make sure proc is collected
+
                     with self._cancel_lock:
                         self._cus_to_cancel.remove(cu['_id'])
 
@@ -3937,6 +3939,9 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
             else:
                 self._prof.prof('exec', msg='execution complete', uid=cu['_id'])
+
+                # make sure proc is collected
+                cu['proc'].wait()
 
                 # we have a valid return code -- unit is final
                 action += 1
