@@ -35,6 +35,12 @@ resources = {
             'schema'   : 'gsissh'
             },
 
+        'nersc.edison_orte' : {
+            'project'  : None,
+            'queue'    : 'debug',
+            'schema'   : 'ssh'
+            },
+
         'epsrc.archer' : {
             'project'  : 'e290',
             'queue'    : 'short',
