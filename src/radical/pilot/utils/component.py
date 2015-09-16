@@ -11,7 +11,7 @@ import radical.utils   as ru
 
 from ..states    import *
 
-from .prof_utils import Profiler
+from .prof_utils import Profiler, clone_units, drop_units
 
 from .queue      import Queue        as rpu_Queue
 from .queue      import QUEUE_ZMQ    as rpu_QUEUE_ZMQ
@@ -112,13 +112,13 @@ class Component(mp.Process):
     # --------------------------------------------------------------------------
     #
     # FIXME: 
-    #  - *_PENDING -> *_QUEUED ?
+    #  - *_PENDING -> * ?
     #  - make state transitions more formal
     # --------------------------------------------------------------------------
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, ctype, cfg):
         """
         This constructor MUST be called by inheriting classes.  
         
@@ -127,20 +127,24 @@ class Component(mp.Process):
         initialize() method.
         """
 
-        self._cfg         = cfg
-        self._debug       = cfg.get('debug', 'DEBUG') # FIXME?
-        self._agent_name  = cfg['agent_name']
-        self._cname       = "%s.%s.%d" % (self._agent_name, type(self).__name__, cfg.get('number', 0))
-        self._addr_map    = cfg['bridge_addresses']
-        self._parent      = os.getpid() # pid of spawning process
-        self._inputs      = list()      # queues to get units from
-        self._outputs     = dict()      # queues to send units to
-        self._publishers  = dict()      # channels to send notifications to
-        self._subscribers = dict()      # callbacks for received notifications
-        self._workers     = dict()      # where units get worked upon
-        self._idlers      = list()      # idle_callback registry
-        self._threads     = list()      # subscriber threads
-        self._terminate   = mt.Event()  # signal for thread termination
+        self._ctype         = ctype
+        self._cfg           = cfg
+        self._debug         = cfg.get('debug', 'DEBUG') # FIXME
+        self._agent_name    = cfg['agent_name']
+        self._cname         = "%s.%s.%d" % (self._agent_name, type(self).__name__, cfg.get('number', 0))
+        self._addr_map      = cfg['bridge_addresses']
+        self._parent        = os.getpid() # pid of spawning process
+        self._inputs        = list()      # queues to get units from
+        self._outputs       = dict()      # queues to send units to
+        self._publishers    = dict()      # channels to send notifications to
+        self._subscribers   = dict()      # callbacks for received notifications
+        self._workers       = dict()      # where units get worked upon
+        self._idlers        = list()      # idle_callback registry
+        self._threads       = list()      # subscriber threads
+        self._terminate     = mt.Event()  # signal for thread termination
+        self._terminated    = False       # True during shutdown sequence
+        self._is_parent     = True        # set to False in run()
+        self._exit_on_error = True        # FIXME: make configurable
 
         # use agent_name for one log per agent, cname for one log per agent and component
         log_name = self._cname
@@ -152,6 +156,13 @@ class Component(mp.Process):
         # component will basically detach itself from the parent process, and
         # will only maintain a handle to be used for shutdown
         mp.Process.__init__(self, name=self._cname)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def ctype(self):
+        return self._ctype
 
 
     # --------------------------------------------------------------------------
@@ -170,6 +181,21 @@ class Component(mp.Process):
         state before units arrive
         """
         raise NotImplementedError("initialize() is not implemented by %s" % self._cname)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def poll(self):
+        """
+        This is a wrapper around is_alive() which mimics the behavior of the same
+        call in the subprocess.Popen class with the same name.  It does not
+        return an exitcode though, but 'None' if the process is still
+        alive, and always '0' otherwise
+        """
+        if self.is_alive():
+            return None
+        else:
+            return 0
 
 
     # --------------------------------------------------------------------------
@@ -196,6 +222,7 @@ class Component(mp.Process):
                 % (self._cname, os.getpid(), len(self._threads)))
 
         # tear down all subscriber threads
+        self._terminated = True
         self._terminate.set()
         for t in self._threads:
             self._log.debug('joining subscriber thread %s - %s' % (t, os.getpid()))
@@ -210,11 +237,17 @@ class Component(mp.Process):
         """
         Shut down the process hosting the event loop
         """
+
+        if self._terminated:
+            return
+
         try:
-            self.terminate()
+            self._terminated = True
+            if self._is_parent:
+                self.terminate()
 
         except Exception as e:
-          self._log.error("error on closing %s: %s" % (self._cname, e))
+            self._log.exception("error on closing %s: %s" % (self._cname, e))
 
 
     # --------------------------------------------------------------------------
@@ -361,6 +394,11 @@ class Component(mp.Process):
         self._log.debug('declared publisher : %s : %s : %s' \
                 % (topic, pubsub, q.name))
 
+        # FIXME: I am not exactly sure why this is 'needed', but declaring
+        #        a published as above and then immediately publishing on that
+        #        channel seems to sometimes lead to a loss of messages.
+        time.sleep(1)
+
 
     # --------------------------------------------------------------------------
     #
@@ -381,10 +419,14 @@ class Component(mp.Process):
 
         # ----------------------------------------------------------------------
         def _subscriber(q, callback):
-            while not self._terminate.is_set():
-                topic, msg = q.get_nowait(1000) # timout in ms
-                if topic and msg:
-                    callback (topic=topic, msg=msg)
+            try:
+                while not self._terminate.is_set():
+                    topic, msg = q.get_nowait(1000) # timout in ms
+                    if topic and msg:
+                        callback (topic=topic, msg=msg)
+            except Exception as e:
+                self._log.exception("subscriber failed")
+                self.close()
         # ----------------------------------------------------------------------
 
         # check if a remote address is configured for the queue
@@ -395,7 +437,7 @@ class Component(mp.Process):
         q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB, addr)
         q.subscribe(topic)
 
-        t = mt.Thread (target=_subscriber, args=[q,cb])
+        t = mt.Thread (target=_subscriber, args=[q,cb], name="%s.subscriber" % self.cname)
         t.start()
         self._threads.append(t)
 
@@ -415,13 +457,7 @@ class Component(mp.Process):
         attempt ar getting a unit is up.
         """
 
-        dh = ru.DebugHelper()
-
-        # configure the component's logger
-        log_name = self._cname
-        log_tgt  = self._cname + ".log"
-        self._log = ru.get_logger(log_name, log_tgt, self._debug)
-        self._log.info('running %s' % self._cname)
+        self._is_parent = False
 
         # registering a sigterm handler will allow us to call an exit when the
         # parent calls terminate -- which is excepted in the loop below, and we
@@ -430,22 +466,38 @@ class Component(mp.Process):
             sys.exit()
         signal.signal(signal.SIGTERM, sigterm_handler)
 
-        # initialize profiler
-        self._prof = Profiler(self._cname)
 
-        # Initialize() should declare all input and output channels, and all
-        # workers and notification callbacks
-        self._prof.prof('initialize')
-        self.initialize()
-        self._prof.prof('initialized')
+        try:
+            dh = ru.DebugHelper()
 
-        # perform a sanity check: for each declared input state, we expect
-        # a corresponding work method to be declared, too.
-        for input, states in self._inputs:
-            for state in states:
-                if not state in self._workers:
-                    raise RuntimeError("%s: no worker declared for input state %s" \
-                                    % self._cname, state)
+            # configure the component's logger
+            log_name = self._cname
+            log_tgt  = self._cname + ".log"
+            self._log = ru.get_logger(log_name, log_tgt, self._debug)
+            self._log.info('running %s' % self._cname)
+
+            # initialize profiler
+            self._prof = Profiler(self._cname)
+
+            # initialize() should declare all input and output channels, and all
+            # workers and notification callbacks
+            self._prof.prof('initialize')
+            self.initialize()
+            self._prof.prof('initialized')
+
+            # perform a sanity check: for each declared input state, we expect
+            # a corresponding work method to be declared, too.
+            for input, states in self._inputs:
+                for state in states:
+                    if not state in self._workers:
+                        raise RuntimeError("%s: no worker declared for input state %s" \
+                                        % self._cname, state)
+
+        except Exception as e:
+            self._log.exception("component initialization error")
+            return
+
+
         try:
             # The main event loop will repeatedly iterate over all input
             # channels, probing 
@@ -465,43 +517,60 @@ class Component(mp.Process):
 
                     # FIXME: the timeouts have a large effect on throughput, but
                     #        I am not yet sure how best to set them...
-                    unit = input.get_nowait(1000) # timeout
+                    unit = input.get_nowait(1000) # timeout in microseconds
                     if not unit:
                         continue
 
-                    active = True
-                    self._prof.prof(event='get', state=unit['state'],
-                            uid=unit['_id'], msg=input.name)
+                    state = unit['state']
+                    uid   = unit['_id']
 
                     # assert that the unit is in an expected state
-                    state = unit['state']
                     if state not in states:
                         self.advance(unit, FAILED, publish=True, push=False)
                         self._prof.prof(event='failed', msg="unexpected state %s" % state,
                                 uid=unit['_id'], state=unit['state'], logger=self._log.error)
                         continue
 
-                    # check if we have a suitable worker (this should always be
-                    # the case, as per the assertion done before we started the
-                    # main loop.  But, hey... :P
-                    if not state in self._workers:
-                        self._log.error("%s cannot handle state %s: %s" \
-                                % (self._cname, state, unit))
+                    # depending on the queue we got the unit from, we can either
+                    # drop units or clone them to inject new ones
+                    unit = drop_units(self._cfg, unit, self.ctype, 'input', logger=self._log)
+                    if not unit:
+                        self._prof.prof(event='drop', state=state,
+                                uid=uid, msg=input.name)
                         continue
 
-                    # we have an acceptable state and a matching worker -- hand
-                    # it over, wait for completion, and then pull for the next
-                    # unit
-                    try:
-                        self._prof.prof(event='work start', state=unit['state'], uid=unit['_id'])
-                        self._workers[state](unit)
-                        self._prof.prof(event='work done ', state=unit['state'], uid=unit['_id'])
+                    units = clone_units(self._cfg, unit, self.ctype, 'input', logger=self._log)
 
-                    except Exception as e:
-                        self.advance(unit, FAILED, publish=True, push=False)
-                        self._prof.prof(event='failed', msg=str(e), uid=unit['_id'],
-                                state=unit['state'])
-                        self._log.exception("unit %s failed" % unit['_id'])
+                    for _unit in units:
+
+                        uid = _unit['_id']
+                        active = True
+                        self._prof.prof(event='get', state=state, uid=uid, msg=input.name)
+
+
+                        # check if we have a suitable worker (this should always be
+                        # the case, as per the assertion done before we started the
+                        # main loop.  But, hey... :P
+                        if not state in self._workers:
+                            self._log.error("%s cannot handle state %s: %s" \
+                                    % (self._cname, state, _unit))
+                            continue
+
+                        # we have an acceptable state and a matching worker -- hand
+                        # it over, wait for completion, and then pull for the next
+                        # unit
+                        try:
+                            self._prof.prof(event='work start', state=state, uid=uid)
+                            self._workers[state](_unit)
+                            self._prof.prof(event='work done ', state=state, uid=uid)
+
+                        except Exception as e:
+                            self.advance(_unit, FAILED, publish=True, push=False)
+                            self._prof.prof(event='failed', msg=str(e), uid=uid, state=state)
+                            self._log.exception("unit %s failed" % uid)
+
+                            if self._exit_on_error:
+                                raise
 
 
                 # if nothing happened, we can call the idle callbacks.  Don't
@@ -531,17 +600,16 @@ class Component(mp.Process):
             # could in principle detect the latter within the loop -- - but
             # since we don't know what to do with the units it operated on, we
             # don't bother...
-            self._prof.prof("loop error", msg=str(e), logger=self._log.exception)
+            self._log.exception('loop error')
 
 
         finally:
             # call finalizers
-            self._log.debug('_finalize')
+            self._prof.prof("_finalize")
             self._finalize()
-            self._log.debug('finalize')
+            self._prof.prof("finalize")
             self.finalize()
-            self._log.debug('finalize complete')
-            self._prof.prof("final")
+            self._prof.prof("finalized")
             self._prof.flush()
 
 
@@ -565,9 +633,13 @@ class Component(mp.Process):
 
         for unit in units:
 
+            uid = unit['_id']
+
             if state:
                 unit['state'] = state
                 self._prof.prof('advance', uid=unit['_id'], state=state)
+            else:
+                state = unit['state']
 
             if publish:
                 # send state notifications
@@ -575,7 +647,6 @@ class Component(mp.Process):
                 self._prof.prof('publish', uid=unit['_id'], state=unit['state'])
 
             if push:
-                state = unit['state']
                 if state not in self._outputs:
                     # unknown target state -- error
                     self._log.error("%s can't route state %s (%s)" \
@@ -587,12 +658,25 @@ class Component(mp.Process):
                     self._log.debug('%s %s ===| %s' % ('state', unit['id'], unit['state']))
                     continue
 
-                # FIXME: we should assert that the unit is in a PENDING state.
-                #        Better yet, enact the *_PENDING transition right here...
-                #
-                # push the unit down the drain
-                self._outputs[state].put(unit)
-                self._prof.prof('put', uid=unit['_id'], state=unit['state'], msg=self._outputs[state].name)
+
+                output = self._outputs[state]
+
+                # depending on the queue we got the unit from, we can either
+                # drop units or clone them to inject new ones
+                unit = drop_units(self._cfg, unit, self.ctype, 'output', logger=self._log)
+                if not unit:
+                    self._prof.prof(event='drop', state=state, uid=uid, msg=output.name)
+                    continue
+               
+                units = clone_units(self._cfg, unit, self.ctype, 'output', logger=self._log)
+
+                for _unit in units:
+                    # FIXME: we should assert that the unit is in a PENDING state.
+                    #        Better yet, enact the *_PENDING transition right here...
+                    #
+                    # push the unit down the drain
+                    output.put(_unit)
+                    self._prof.prof('put', uid=_unit['_id'], state=state, msg=output.name)
 
 
     # --------------------------------------------------------------------------
@@ -633,9 +717,9 @@ class Worker(Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, ctype, cfg):
 
-        Component.__init__(self, cfg)
+        Component.__init__(self, ctype, cfg)
 
     # --------------------------------------------------------------------------
     #
