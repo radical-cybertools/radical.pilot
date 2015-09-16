@@ -1231,8 +1231,7 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
     trap 'jobs -p | xargs kill' EXIT
 
     # and export to agent
-    # TODO: We dont need mongodb on sub-agents anymore
-    #export RADICAL_PILOT_DB_HOSTPORT=$BIND_ADDRESS:$DBPORT
+    export RADICAL_PILOT_DB_HOSTPORT=$BIND_ADDRESS:$DBPORT
 
     profile_event 'tunnel setup done'
 
