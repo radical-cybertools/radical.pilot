@@ -615,7 +615,7 @@ class PilotLauncherWorker(threading.Thread):
 
                         # set some agent configuration
                         agent_cfg_dict['cores']              = number_cores
-                        agent_cfg_dict['debug']              = logger.getEffectiveLevel() 
+                        agent_cfg_dict['debug']              = logger.getEffectiveLevel()
                         agent_cfg_dict['mongodb_url']        = str(agent_dburl)
                         agent_cfg_dict['lrms']               = lrms
                         agent_cfg_dict['spawner']            = agent_spawner
@@ -626,6 +626,8 @@ class PilotLauncherWorker(threading.Thread):
                         agent_cfg_dict['agent_launch_method']= agent_launch_method
                         agent_cfg_dict['task_launch_method'] = task_launch_method
                         agent_cfg_dict['mpi_launch_method']  = mpi_launch_method
+                        if cores_per_node:
+                            agent_cfg_dict['cores_per_node'] = cores_per_node
 
                         # ------------------------------------------------------
                         # Write agent config dict to a json file in pilot sandbox.
