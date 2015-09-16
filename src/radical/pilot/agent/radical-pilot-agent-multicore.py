@@ -3486,8 +3486,20 @@ class ForkLRMS(LRMS):
                 self._log.warn("more cores available: using requested %d instead of available %d.",
                         selected_cpus, detected_cpus)
 
-        self.node_list = ["localhost"]
-        self.cores_per_node = selected_cpus
+        # if cores_per_node is set in the agent config, we slice the number of
+        # cores into that many virtual nodes.  cpn defaults to selected_cpus,
+        # to preserve the previous behavior.
+        self.cores_per_node = self._cfg.get('cores_per_node')
+        if not self.cores_per_node:
+            self.cores_per_node = selected_cpus
+
+        requested_nodes = int(math.ceil(float(selected_cpus) / float(self.cores_per_node)))
+        self.node_list  = list()
+        for i in range(requested_nodes):
+            self.node_list.append("localhost")
+
+        self._log.debug('configure localhost to behave as %s nodes with %s cores each.',
+                len(self.node_list), self.cores_per_node)
 
 
 
@@ -3723,16 +3735,10 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
         with open(launch_script_name, "w") as launch_script:
             launch_script.write('#!/bin/bash -l\n\n')
-            launch_script.write("# timestamp utility: seconds since epoch\n")
-            launch_script.write("timestamp () {\n")
-            launch_script.write("TIMESTAMP=`awk 'BEGIN{srand(); print srand()}'`\n")
-            launch_script.write("}\n\n")
 
-            launch_script.write("timestamp\n")
-            launch_script.write("echo script start_script $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
+            launch_script.write("echo script start_script `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
             launch_script.write('\n# Change to working directory for unit\ncd %s\n' % cu_tmpdir)
-            launch_script.write("timestamp\n")
-            launch_script.write("echo script after_cd $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
+            launch_script.write("echo script after_cd `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
             # Before the Big Bang there was nothing
             if cu['description']['pre_exec']:
@@ -3744,11 +3750,9 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                     pre_exec_string += "%s\n" % cu['description']['pre_exec']
                 # Note: extra spaces below are for visual alignment
                 launch_script.write("# Pre-exec commands\n")
-                launch_script.write("timestamp\n")
-                launch_script.write("echo pre  start $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
+                launch_script.write("echo pre  start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
                 launch_script.write(pre_exec_string)
-                launch_script.write("timestamp\n")
-                launch_script.write("echo pre  stop $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
+                launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
             # Create string for environment variable setting
             if cu['description']['environment'] and    \
@@ -3793,8 +3797,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             launch_script.write("# The command to run\n")
             launch_script.write("%s\n" % launch_command)
             launch_script.write("RETVAL=$?\n")
-            launch_script.write("timestamp\n")
-            launch_script.write("echo script after_exec $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
+            launch_script.write("echo script after_exec `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
             # After the universe dies the infrared death, there will be nothing
             if cu['description']['post_exec']:
@@ -3805,11 +3808,9 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 else:
                     post_exec_string += "%s\n" % cu['description']['post_exec']
                 launch_script.write("# Post-exec commands\n")
-                launch_script.write("timestamp\n")
-                launch_script.write("echo post start $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
+                launch_script.write("echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
                 launch_script.write('%s\n' % post_exec_string)
-                launch_script.write("timestamp\n")
-                launch_script.write("echo post stop  $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
+                launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
             launch_script.write("# Exit the script with the return code from the command\n")
             launch_script.write("exit $RETVAL\n")
@@ -4257,7 +4258,9 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         if  cu['workdir'] :
             cwd  += "# CU workdir\n"
             cwd  += "mkdir -p %s\n" % cu['workdir']
+            # TODO: how do we align this timing with the mkdir with POPEN? (do we at all?)
             cwd  += "cd       %s\n" % cu['workdir']
+            cwd  += "echo script after_cd `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             cwd  += "\n"
 
         if  descr['environment'] :
@@ -4268,22 +4271,18 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         if  descr['pre_exec'] :
             pre  += "# CU pre-exec\n"
-            pre  += "timestamp\n"
-            pre  += "echo pre  start $TIMESTAMP >> %s/PROF\n" % cu['workdir']
+            pre  += "echo pre  start `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             pre  += '\n'.join(descr['pre_exec' ])
             pre  += "\n"
-            pre  += "timestamp\n"
-            pre  += "echo pre  stop  $TIMESTAMP >> %s/PROF\n" % cu['workdir']
+            pre  += "echo pre  stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             pre  += "\n"
 
         if  descr['post_exec'] :
             post += "# CU post-exec\n"
-            post += "timestamp\n"
-            post += "echo post start $TIMESTAMP >> %s/PROF\n" % cu['workdir']
+            post += "echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             post += '\n'.join(descr['post_exec' ])
             post += "\n"
-            post += "timestamp\n"
-            post += "echo post stop  $TIMESTAMP >> %s/PROF\n" % cu['workdir']
+            post += "echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             post += "\n"
 
         if  descr['arguments']  :
@@ -4301,14 +4300,8 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
                                                    '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
                                                    cu['opaque_slots'])
 
+        script = "echo script start_script `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
 
-        script = """
-# timestamp utility: seconds since epoch
-timestamp () {
-  TIMESTAMP=`awk 'BEGIN{srand(); print srand()}'`
-}
-
-"""
         if hop_cmd :
             # the script will itself contain a remote callout which calls again
             # the script for the invokation of the real workload (cmd) -- we
@@ -4329,7 +4322,10 @@ timestamp () {
         script += "%s"        %  pre
         script += "# CU execution\n"
         script += "%s %s\n\n" % (cmd, io)
+        script += "RETVAL=$?\n"
+        script += "echo script after_exec `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
         script += "%s"        %  post
+        script += "exit $RETVAL\n"
         script += "# ------------------------------------------------------\n\n"
 
       # self._log.debug ("execution script:\n%s\n" % script)
@@ -4827,11 +4823,14 @@ class AgentStagingInputComponent(rpu.Component):
 
         workdir      = os.path.join(self._cfg['workdir'], '%s' % cu['_id'])
         staging_area = os.path.join(self._cfg['workdir'], self._cfg['staging_area'])
+        gtod = os.path.join(self._cfg['workdir'], 'gtod')
 
         cu['workdir']     = workdir
         cu['stdout']      = ''
         cu['stderr']      = ''
         cu['opaque_clot'] = None
+        # TODO: See if there is a more central place to put this
+        cu['gtod']        = gtod
 
         stdout_file       = cu['description'].get('stdout')
         stdout_file       = stdout_file if stdout_file else 'STDOUT'

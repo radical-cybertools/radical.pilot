@@ -43,7 +43,7 @@
             }
         },
         "agent.1"   : {
-            "target"     : "agent_node[0]",
+            "target"     : "node",
             "sub_agents" : [],
             "components" : {
                 "AgentStagingInputComponent"  : 4,
@@ -52,7 +52,7 @@
             }
         },
         "agent.2"   : {
-            "target"     : "agent_node[1]",
+            "target"     : "node",
             "sub_agents" : [],
             "components" : {
                 "AgentStagingInputComponent"  : 4,
