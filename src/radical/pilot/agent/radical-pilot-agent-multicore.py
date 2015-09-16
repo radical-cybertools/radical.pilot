@@ -5863,16 +5863,18 @@ def bootstrap_3():
 
     print "Agent config (%s):\n%s\n\n" % (agent_cfg, pprint.pformat(cfg))
 
-    # TODO: We dont need mongodb anymore on the worker nodes?
-    # hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
-    # if hostport:
-    #     dburl = ru.Url(cfg['mongodb_url'])
-    #     dburl.host, dburl.port = hostport.split(':')
-    #     cfg['mongodb_url'] = str(dburl)
-
     # quickly set up a mongodb handle so that we can report errors.
     # FIXME: signal handlers need mongo_p, but we won't have that until later
     if agent_name == 'agent.0':
+
+        # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold the
+        # address of the tunnelized DB endpoint.
+        # If it exists, we overrule the agent config with it.
+        hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
+        if hostport:
+            dburl = ru.Url(cfg['mongodb_url'])
+            dburl.host, dburl.port = hostport.split(':')
+            cfg['mongodb_url'] = str(dburl)
 
         _, mongo_db, _, _, _  = ru.mongodb_connect(cfg['mongodb_url'])
         mongo_p = mongo_db["%s.p" % cfg['session_id']]
