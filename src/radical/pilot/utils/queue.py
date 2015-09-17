@@ -451,6 +451,13 @@ class QueueZMQ(Queue):
             # ------------------------------------------------------------------
             def _bridge(addr_in, addr_out):
 
+                try:
+                    import setproctitle as spt
+                    spt.setproctitle('radical.pilot %s' % self._name)
+                except Exception as e:
+                    pass
+
+
                 # FIXME: should we cache messages coming in at the pull/push 
                 #        side, so as not to block the push end?
 

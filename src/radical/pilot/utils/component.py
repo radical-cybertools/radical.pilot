@@ -467,12 +467,20 @@ class Component(mp.Process):
         signal.signal(signal.SIGTERM, sigterm_handler)
 
 
-        try:
-            dh = ru.DebugHelper()
+        # set process name
+        self._cname = "%s.child" % self._cname
 
+        try:
+            import setproctitle as spt
+            spt.setproctitle('radical.pilot %s' % self._cname)
+        except Exception as e:
+            pass
+
+
+        try:
             # configure the component's logger
-            log_name = self._cname
-            log_tgt  = self._cname + ".log"
+            log_name  = self._cname
+            log_tgt   = self._cname + ".log"
             self._log = ru.get_logger(log_name, log_tgt, self._debug)
             self._log.info('running %s' % self._cname)
 
