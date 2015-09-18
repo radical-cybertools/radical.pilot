@@ -52,12 +52,14 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, session
     if skip_existing and os.path.exists(saga.Url(ftgt).path) \
             and os.stat(saga.Url(ftgt).path).st_size > 0:
 
-        print "Skipping fetching of '%s' to '%s'." % (client_profile, tgt_url)
+        print "Skip fetching of '%s' to '%s'." % (client_profile, tgt_url)
 
-    print "fetching '%s' to '%s'." % (client_profile, tgt_url)
-    prof_file = saga.filesystem.File(client_profile, session=session)
-    prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
-    prof_file.close()
+    else:
+
+        print "Fetching '%s' to '%s'." % (client_profile, tgt_url)
+        prof_file = saga.filesystem.File(client_profile, session=session)
+        prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
+        prof_file.close()
 
     _, db, _, _, _ = ru.mongodb_connect (dburl)
 
