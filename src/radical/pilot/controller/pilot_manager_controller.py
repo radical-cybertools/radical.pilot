@@ -409,9 +409,11 @@ class PilotManagerController(threading.Thread):
                 js_url.scheme = 'ssh'
             elif js_url.scheme.endswith('+gsissh'):
                 js_url.scheme = 'gsissh'
-            elif js_url.scheme == 'fork':
+            elif js_url.scheme in ['fork', 'ssh', 'gsissh']:
+                # Use the scheme as is for non-queuing adaptor mechanisms
                 pass
             elif '+' not in js_url.scheme:
+                # For local access to queueing systems use fork
                 js_url.scheme = 'fork'
             else:
                 raise Exception("Are there more flavours we need to support?! (%s)" % js_url.scheme)
