@@ -89,8 +89,6 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, session
         sandbox  = saga.filesystem.Directory (sandbox_url, session=session)
         profiles = sandbox.list('*.prof')
 
-        print "remote profiles: %s" % profiles
-
         for prof in profiles:
 
             ftgt = '%s/%s' % (tgt_url, prof)
