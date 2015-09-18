@@ -5558,7 +5558,7 @@ class AgentWorker(rpu.Worker):
 
                 with open (ls_name, 'w') as ls:
                     ls.write('#!/bin/sh\n\n')
-                    ls.write("%s\n" % cmd)
+                    ls.write("exec %s\n" % cmd)
                     st = os.stat(ls_name)
                     os.chmod(ls_name, st.st_mode | stat.S_IEXEC)
 
@@ -5570,10 +5570,11 @@ class AgentWorker(rpu.Worker):
             self._log.info ("create sub-agent %s: %s" % (sa, cmdline))
             sa_out = open("%s.out" % sa, "w")
             sa_err = open("%s.err" % sa, "w")
-            sa_proc = subprocess.Popen(args=cmdline, shell=True, stdout=sa_out, stderr=sa_err)
+            sa_proc = subprocess.Popen(args=cmdline, stdout=sa_out, stderr=sa_err)
             self._sub_agents[sa] = {'handle': sa_proc,
                                     'out'   : sa_out,
                                     'err'   : sa_err,
+                                    'pid'   : sa_proc.pid,
                                     'alive' : False}
             self._prof.prof("created", msg=sa)
 
@@ -5721,6 +5722,8 @@ class AgentWorker(rpu.Worker):
             total = len(self._components) + \
                     len(self._workers   ) + \
                     len(self._sub_agents)
+            start   = time.time()
+            timeout = 60
             while True:
 
                 # check the procs for all components which are not yet alive
@@ -5734,6 +5737,7 @@ class AgentWorker(rpu.Worker):
                     if c['alive']:
                         alive_cnt += 1
                     else:
+                        self._log.debug('checking %s: %s', name, c)
                         if None != c['handle'].poll():
                             # process is dead and has never been alive.  Oops
                             raise RuntimeError('component %s did not come up' % name)
@@ -5744,7 +5748,10 @@ class AgentWorker(rpu.Worker):
                     self._log.debug('bootstrap barrier success')
                     break
 
-                time.sleep(1)
+                if time.time() - timeout > start:
+                    raise RuntimeError('component barrier failed (timeout)')
+                else:
+                    time.sleep(1)
 
 
         except Exception as e:
