@@ -47,6 +47,12 @@ resources = {
             'schema'   : None
             },
 
+        'epsrc.archer_orte' : {
+            'project'  : 'e290',
+            'queue'    : 'short',
+            'schema'   : None
+            },
+
         'lrz.supermuc' : {
             'project'  : 'e290',
             'queue'    : 'short',
