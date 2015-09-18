@@ -406,8 +406,10 @@ class PilotManagerController(threading.Thread):
 
             # The PTYShell will swallow in the job part of the scheme
             if js_url.scheme.endswith('+ssh'):
+                # For remote adaptor usage over shh, use that here
                 js_url.scheme = 'ssh'
             elif js_url.scheme.endswith('+gsissh'):
+                # For remote adaptor usage over gsissh, use that here
                 js_url.scheme = 'gsissh'
             elif js_url.scheme in ['fork', 'ssh', 'gsissh']:
                 # Use the scheme as is for non-queuing adaptor mechanisms
