@@ -19,7 +19,7 @@
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
         "python_interpreter"          : "/usr/bin/python",
-        "pre_bootstrap"               : ["module load openmpi/gcc"],
+        "pre_bootstrap_1"             : ["module load openmpi/gcc"],
         "valid_roots"                 : ["/home", "/var/scratch"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_fs2",

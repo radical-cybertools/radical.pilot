@@ -41,7 +41,7 @@ PYTHON=
 SESSIONID=
 SANDBOX=`pwd`
 AGENT_TYPE='multicore'
-PREPROCESS=""
+PREBOOTSTRAP2=""
 
 # flag which is set when a system level RP installation is found, triggers
 # '--upgrade' flag for pip
@@ -61,29 +61,45 @@ VIRTENV_IS_ACTIVATED=FALSE
 VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq"
 
 
-# --------------------------------------------------------------------
 #
-# it is suprisingly difficult to get seconds since epoch in POSIX --
-# 'date +%s' is a GNU extension...  Anyway, awk to the rescue!
+# If profiling is enabled, compile our little gtod app and take the first time
 #
-timestamp () {
-  TIMESTAMP=`\awk 'BEGIN{srand(); print srand()}'`
-}
-
-
 if ! test -z "$RADICAL_PILOT_PROFILE"
 then
-    timestamp
-    TIME_ZERO=$TIMESTAMP
+
+    cat > gtod.c <<EOT
+#include <stdio.h>
+#include <sys/time.h>
+
+int main ()
+{
+    struct timeval tv;
+    (void) gettimeofday (&tv, NULL);
+    fprintf (stdout, "%d.%06d\n", tv.tv_sec, tv.tv_usec);
+    return (0);
+}
+EOT
+    cc -o gtod gtod.c 1>/dev/null 2>/dev/null
+
+    if ! test -e "./gtod"
+    then
+        # we "should" be able to build this everywhere ...
+        echo "can't build gtod binary!"
+        exit 1
+    fi
+
+    TIME_ZERO=`./gtod`
     export TIME_ZERO
+
 fi
 
 
 # ------------------------------------------------------------------------------
 #
-PROFILE="$SESSION_ID.$$.Bootstrapper.prof"
 profile_event()
 {
+    PROFILE="bootstrap_1.prof"
+
     if test -z "$RADICAL_PILOT_PROFILE"
     then
         return
@@ -92,31 +108,7 @@ profile_event()
     event=$1
     msg=$2
 
-    if ! test -f 'gtod.c'
-    then
-        cat > gtod.c <<EOT
-            #include <stdio.h>
-            #include <sys/time.h>
-            
-            int main ()
-            {
-                struct timeval tv;
-                (void) gettimeofday (&tv, NULL);
-                fprintf (stdout, "%d.%06d\n", tv.tv_sec, tv.tv_usec);
-                return (0);
-            }
-EOT
-        cc -o gtod gtod.c 1>/dev/null 2>/dev/null
-    fi
-
-    if test -e "./gtod"
-    then
-        TIMESTAMP=`./gtod`
-        NOW=`echo "$TIMESTAMP" - "$TIME_ZERO" | bc`
-    else
-        timestamp
-        NOW=$((TIMESTAMP-TIME_ZERO))
-    fi
+    NOW=`echo \`./gtod\` - "$TIME_ZERO" | bc`
 
     if ! test -f "$PROFILE"
     then
@@ -125,7 +117,7 @@ EOT
     fi
 
     printf "%.4f,%s,%s,%s,%s,%s\n" \
-        "$NOW" "$$:Bootstrapper" "$PILOT_ID" "ACTIVE" "$event" "$msg" \
+        "$NOW" "bootstrap_1" "$PILOT_ID" "ACTIVE" "$event" "$msg" \
         >> "$PROFILE"
 }
 
@@ -371,7 +363,7 @@ OPTIONS:
    -a   agent type (default: 'multicore')
    -c   ccm mode of agent startup
    -d   distribution source tarballs for radical stack install
-   -e   execute commands before bootstrapping
+   -e   execute commands before bootstrapping phase 1: the main agent
    -f   tunnel forward endpoint (MongoDB host:port)
    -h   hostport to create tunnel to
    -i   python Interpreter to use, e.g., python2.7
@@ -381,6 +373,7 @@ OPTIONS:
    -s   session ID
    -t   tunnel device for connection forwarding
    -v   virtualenv location (create if missing)
+   -w   execute commands before bootstrapping phase 2: the worker
    -x   exit cleanup - delete pilot sandbox, virtualenv etc. after completion
 
 EOF
@@ -1107,25 +1100,34 @@ find_available_port()
 
 # -------------------------------------------------------------------------------
 #
-# run a preprocess command -- and exit if it happens to fail
+# run a pre_bootstrap_1 command -- and exit if it happens to fail
 #
-# preprocess commands are executed right in arg parser loop because -e can be
+# pre_bootstrap_1 commands are executed right in arg parser loop because -e can be
 # passed multiple times
 #
-preprocess()
+pre_bootstrap_1()
 {
     cmd="$@"
-    run_cmd "Running pre-process command" "$cmd"
+    run_cmd "Running pre_bootstrap_1 command" "$cmd"
 
     if test $? -ne 0
     then
         echo "#ABORT"
         exit 1
     fi
-    PREPROCESS="$PREPROCESS
-$cmd"
 }
 
+# -------------------------------------------------------------------------------
+#
+# Build the PREBOOTSTRAP2 variable to pass down to sub-agents
+#
+pre_bootstrap_2()
+{
+    cmd="$@"
+
+    PREBOOTSTRAP2="$PREBOOTSTRAP2
+$cmd"
+}
 
 # ------------------------------------------------------------------------------
 #
@@ -1144,12 +1146,12 @@ env | sort
 echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
-while getopts "a:cd:e:f:h:i:m:p:r:s:t:v:x" OPTION; do
+while getopts "a:cd:e:f:h:i:m:p:r:s:t:v:w:x" OPTION; do
     case $OPTION in
         a)  AGENT_TYPE="$OPTARG"  ;;
         c)  CCM='TRUE'  ;;
         d)  SDISTS="$OPTARG"  ;;
-        e)  preprocess "$OPTARG"  ;;
+        e)  pre_bootstrap_1 "$OPTARG"  ;;
         f)  FORWARD_TUNNEL_ENDPOINT="$OPTARG"  ;;
         h)  HOSTPORT="$OPTARG"  ;;
         i)  PYTHON="$OPTARG"  ;;
@@ -1159,6 +1161,7 @@ while getopts "a:cd:e:f:h:i:m:p:r:s:t:v:x" OPTION; do
         s)  SESSIONID="$OPTARG"  ;;
         t)  TUNNEL_BIND_DEVICE="$OPTARG" ;;
         v)  VIRTENV=$(eval echo "$OPTARG")  ;;
+        w)  pre_bootstrap_2 "$OPTARG"  ;;
         x)  CLEANUP="$OPTARG"  ;;
         *)  usage "Unknown option: '$OPTION'='$OPTARG'"  ;;
     esac
@@ -1274,6 +1277,7 @@ else
 fi
 
 
+# TODO: Can this be generalized with our new split-agent now?
 if test -z "$CCM"
 then
     AGENT_CMD="$PYTHON $PILOT_SCRIPT"
@@ -1288,32 +1292,37 @@ echo "# -------------------------------------------------------------------"
 echo "# Launching radical-pilot-agent "
 echo "# CMDLINE: $AGENT_CMD"
 
-# before we start the agent proper, we'll create a bootstrap_2 script to do
-# so.  For a single agent this is not needed -- but in the case where we spawn
-# out additional agent instances later, that script can be reused to get proper
-# env settings etc, w/o running through bootstrap_1 again.  That includes
-# pre_exec commands, virtualenv settings and sourcing (again), and startup
-# command).  We don't include any error checking right now, assuming that if the
-# commands worked once to get to this point, they should work again for the next
-# agent.  Famous last words, I know...
+# At this point we expand the variables in $PREBOOTSTRAP2 to pick up the
+# changes made by the environment by pre_bootstrap_1.
+OLD_IFS=$IFS
+IFS=$'\n'
+for entry in $PREBOOTSTRAP2
+do
+    converted_entry=`eval echo $entry`
+    PREBOOTSTRAP2_EXPANDED="$PREBOOTSTRAP2_EXPANDED
+$converted_entry"
+done
+IFS=$OLD_IFS
+
+# Before we start the (sub-)agent proper, we'll create a bootstrap_2.sh script
+# to do so.  For a single agent this is not needed -- but in the case where
+# we spawn out additional agent instances later, that script can be reused to
+# get proper # env settings etc, w/o running through bootstrap_1 again.
+# That includes pre_exec commands, virtualenv settings and sourcing (again),
+# and startup command).
+# We don't include any error checking right now, assuming that if the commands
+# worked once to get to this point, they should work again for the next agent.
+# Famous last words, I know...
 # Arguments to that script are passed on to the agent, which is specifically
 # done to distinguish agent instances.
-#
-# ------------------------------------------------------------------------------
 (cat <<EOT
 #!/bin/sh
 
 # some inspection for logging
 hostname
 
-# On Crays we need pass $HOME to the Compute Nodes
-export HOME=$HOME
-
 # make sure we use the correct sandbox
 cd $SANDBOX
-
-# preprocessing commands
-$PREPROCESS
 
 # activate virtenv
 . $VIRTENV/bin/activate
@@ -1329,8 +1338,12 @@ export RADICAL_VERBOSE=DEBUG
 export RADICAL_UTIL_VERBOSE=DEBUG
 export RADICAL_PILOT_VERBOSE=DEBUG
 
+# pass environment variables down so that module load becomes effective at
+# the other side too (e.g. sub-agents).
+$PREBOOTSTRAP2_EXPANDED
+
 # start agent, forward arguments
-$AGENT_CMD "\$1" 1>"\$1.bootstrap_2.out" 2>"\$1.bootstrap_2.err"
+$AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
 
 EOT
 

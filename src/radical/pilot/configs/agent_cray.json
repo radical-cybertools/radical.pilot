@@ -18,6 +18,9 @@
     # time between checks of internal state and commands from mothership (seconds)
     "heartbeat_interval"   : 10,
 
+    # interface for binding zmq to
+    "network_interface"    : "ipogif0",
+
     "agent_layout": {
         "agent.0": {
             # Where to run this agent ("local" or "node")
@@ -41,8 +44,8 @@
             # which components to start on this agent
             "components": {
                 # how many instances of the respective components should be started
-                "agent_staging_input_component": 1,
-                "agent_staging_output_component": 1
+                "AgentStagingInputComponent" : 1,
+                "AgentStagingOutputComponent": 1
             }
         },
         "agent.1": {
@@ -51,8 +54,8 @@
             # which components to start on this agent
             "components": {
                 # how many instances of the respective components should be started
-                "agent_scheduling_component": 1,
-                "agent_executing_component": 1
+                "AgentSchedulingComponent": 1,
+                "AgentExecutingComponent" : 1
             }
         }
     }

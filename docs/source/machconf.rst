@@ -133,13 +133,16 @@ A configuration file has to be valid JSON. The structure is as follows:
             "mpi_launch_method"           : "MPIEXEC",
             "forward_tunnel_endpoint"     : "login03",
             "global_virtenv"              : "/home/hpc/pr87be/di29sut/pilotve",
-            "pre_bootstrap"               : ["source /etc/profile",
+            "pre_bootstrap_1"             : ["source /etc/profile",
                                              "source /etc/profile.d/modules.sh",
                                              "module load python/2.7.6",
                                              "module unload mpi.ibm", "module load mpi.intel",
                                              "source /home/hpc/pr87be/di29sut/pilotve/bin/activate"
                                             ],
             "valid_roots"                 : ["/home", "/gpfs/work", "/gpfs/scratch"],
+            "agent_type"                  : "multicore",
+            "agent_scheduler"             : "CONTINUOUS",
+            "agent_spawner"               : "POPEN",
             "pilot_agent"                 : "radical-pilot-agent-multicore.py"
         },
         "ANOTHER_KEY_NAME": 
@@ -165,7 +168,8 @@ All fields are mandatory, unless indicated otherwise below.
 * `task_launch_method`          : type of compute node access (required for non-MPI units: `SSH`,`APRUN` or `LOCAL`)
 * `mpi_launch_method`           : type of MPI support (required for MPI units: `MPIRUN`, `MPIEXEC`, `APRUN`, `IBRUN` or `POE`)
 * `python_interpreter`          : path to python (optional)
-* `pre_bootstrap`               : list of commands to execute for initialization (optional)
+* `pre_bootstrap_1`             : list of commands to execute for initialization of main agent (optional)
+* `pre_bootstrap_2`             : list of commands to execute for initialization of sub-agent (optional)
 * `valid_roots`                 : list of shared file system roots (optional).  Pilot sandboxes must lie under these roots.
 * `pilot_agent`                 : type of pilot agent to use (`radical-pilot-agent-multicore.py`)
 * `forward_tunnel_endpoint`     : name of host which can be used to create ssh tunnels from the compute nodes to the outside world (optional)

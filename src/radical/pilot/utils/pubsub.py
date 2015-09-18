@@ -3,6 +3,7 @@ import os
 import zmq
 import json
 import time
+import errno
 import pprint
 import threading       as mt
 import multiprocessing as mp
@@ -29,6 +30,34 @@ _PUBSUB_PORTS     = {
     }
 
 _USE_MULTIPART = False
+
+
+# --------------------------------------------------------------------------
+#
+# zmq will (rightly) barf at interrupted system calls.  We are able to rerun
+# those calls.
+#
+# FIXME: how does that behave wrt. tomeouts?  We probably should include
+#        an explicit timeout parameter.
+#
+# kudos: https://gist.github.com/minrk/5258909
+#
+def _uninterruptible(f, *args, **kwargs):
+    cnt = 0
+    while True:
+        cnt += 1
+        try:
+            return f(*args, **kwargs)
+        except zmq.ZMQError as e:
+            if e.errno == errno.EINTR:
+                if cnt > 10:
+                    raise
+                # interrupted, try again
+                print 'interrupted! [%s] [%s] [%s]' % (f, args, kwargs)
+                continue
+            else:
+                # real error, raise it
+                raise
 
 # --------------------------------------------------------------------------
 #
@@ -200,7 +229,6 @@ class PubsubZMQ(Pubsub):
         Pubsub.__init__(self, flavor, channel, role, address)
 
         self._p   = None           # the bridge process
-        self._ctx = zmq.Context()  # one zmq context suffices
 
         # zmq checks on address
         if  self._addr.path   != ''    or \
@@ -222,7 +250,8 @@ class PubsubZMQ(Pubsub):
         # behavior depends on the role...
         if self._role == PUBSUB_PUB:
 
-            self._q = self._ctx.socket(zmq.PUB)
+            ctx = zmq.Context()
+            self._q = ctx.socket(zmq.PUB)
             self._q.connect(str(self._addr))
 
 
@@ -230,9 +259,10 @@ class PubsubZMQ(Pubsub):
         elif self._role == PUBSUB_BRIDGE:
 
             # ------------------------------------------------------------------
-            def _bridge(ctx, addr_in, addr_out):
+            def _bridge(addr_in, addr_out):
 
               # self._log ('_bridge: %s %s' % (addr_in, addr_out))
+                ctx = zmq.Context()
                 _in = ctx.socket(zmq.XSUB)
                 _in.bind(addr_in)
 
@@ -245,37 +275,38 @@ class PubsubZMQ(Pubsub):
 
                 while True:
 
-                    _socks = dict(_poll.poll(timeout=1000)) # timeout in ms
+                    _socks = dict(_uninterruptible(_poll.poll, timeout=1000)) # timeout in ms
 
                     if _in in _socks:
                         if _USE_MULTIPART:
-                            msg = _in.recv_multipart(flags=zmq.NOBLOCK)
-                            _out.send_multipart(msg)
+                            msg = _uninterruptible(_in.recv_multipart, flags=zmq.NOBLOCK)
+                            _uninterruptible(_out.send_multipart, msg)
                         else:
-                            msg = _in.recv(flags=zmq.NOBLOCK)
-                            _out.send(msg)
+                            msg = _uninterruptible(_in.recv, flags=zmq.NOBLOCK)
+                            _uninterruptible(_out.send, msg)
                       # self._log("-> %s" % msg)
 
 
                     if _out in _socks:
                         if _USE_MULTIPART:
-                            msg = _out.recv_multipart()
-                            _in.send_multipart(msg)
+                            msg = _uninterruptible(_out.recv_multipart)
+                            _uninterruptible(_in.send_multipart, msg)
                         else:
-                            msg = _out.recv()
-                            _in.send(msg)
+                            msg = _uninterruptible(_out.recv)
+                            _uninterruptible(_in.send, msg)
                       # self._log("<- %s" % msg)
             # ------------------------------------------------------------------
 
             addr_in  = str(self._addr)
             addr_out = str(_port_inc(self._addr))
-            self._p  = mp.Process(target=_bridge, args=[self._ctx, addr_in, addr_out])
+            self._p  = mp.Process(target=_bridge, args=[addr_in, addr_out])
             self._p.start()
 
         # ----------------------------------------------------------------------
         elif self._role == PUBSUB_SUB:
 
-            self._q = self._ctx.socket(zmq.SUB)
+            ctx = zmq.Context()
+            self._q = ctx.socket(zmq.SUB)
             self._q.connect(str(_port_inc(self._addr)))
 
         # ----------------------------------------------------------------------
@@ -308,7 +339,7 @@ class PubsubZMQ(Pubsub):
         topic = topic.replace(' ', '_')
 
       # self._log("~~ %s" % topic)
-        self._q.setsockopt(zmq.SUBSCRIBE, topic)
+        _uninterruptible(self._q.setsockopt, zmq.SUBSCRIBE, topic)
 
 
     # --------------------------------------------------------------------------
@@ -323,11 +354,11 @@ class PubsubZMQ(Pubsub):
 
         if _USE_MULTIPART:
           # self._log("-> %s" % str([topic, data]))
-            self._q.send_multipart ([topic, data])
+            _uninterruptible(self._q.send_multipart, [topic, data])
 
         else:
           # self._log("-> %s %s" % (topic, data))
-            self._q.send ("%s %s" % (topic, data))
+            _uninterruptible(self._q.send, "%s %s" % (topic, data))
 
 
     # --------------------------------------------------------------------------
@@ -338,10 +369,10 @@ class PubsubZMQ(Pubsub):
             raise RuntimeError("channel %s (%s) can't get()" % (self._channel, self._role))
 
         if _USE_MULTIPART:
-            topic, data = self._q.recv_multipart()
+            topic, data = _uninterruptible(self._q.recv_multipart)
 
         else:
-            raw = self._q.recv()
+            raw = _uninterruptible(self._q.recv)
             topic, data = raw.split(' ', 1)
 
         msg = json.loads(data)
@@ -356,13 +387,13 @@ class PubsubZMQ(Pubsub):
         if not self._role == PUBSUB_SUB:
             raise RuntimeError("channel %s (%s) can't get_nowait()" % (self._channel, self._role))
 
-        if self._q.poll (flags=zmq.POLLIN, timeout=timeout):
+        if _uninterruptible(self._q.poll, flags=zmq.POLLIN, timeout=timeout):
 
             if _USE_MULTIPART:
-                topic, data = self._q.recv_multipart(flags=zmq.NOBLOCK)
+                topic, data = _uninterruptible(self._q.recv_multipart, flags=zmq.NOBLOCK)
 
             else:
-                raw = self._q.recv()
+                raw = _uninterruptible(self._q.recv)
                 topic, data = raw.split(' ', 1)
 
             msg = json.loads(data)
