@@ -5329,6 +5329,9 @@ class AgentWorker(rpu.Worker):
                 self._log.info('terminate: sub-agent %s got finalized' % arg)
                 self.close()
 
+            # other finalization messages are ignored -- we'll get our signal
+            # when its time...
+
 
     # --------------------------------------------------------------------------
     #
@@ -5876,6 +5879,8 @@ def bootstrap_3():
 
         _, mongo_db, _, _, _  = ru.mongodb_connect(cfg['mongodb_url'])
         mongo_p = mongo_db["%s.p" % cfg['session_id']]
+        pilot_id = cfg['pilot_id']
+
 
         # set up signal and exit handlers
         def exit_handler():
@@ -6017,7 +6022,6 @@ if __name__ == "__main__":
     print "---------------------------------------------------------------------"
     print
 
-    dh = ru.DebugHelper()
     bootstrap_3()
 
 #

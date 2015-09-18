@@ -145,12 +145,15 @@ class Component(mp.Process):
         self._terminated    = False       # True during shutdown sequence
         self._is_parent     = True        # set to False in run()
         self._exit_on_error = True        # FIXME: make configurable
+        self._cb_lock       = mt.Lock()   # guard threaded callback invokations
 
         # use agent_name for one log per agent, cname for one log per agent and component
         log_name = self._cname
         log_tgt  = self._cname + ".log"
         self._log = ru.get_logger(log_name, log_tgt, self._debug)
         self._log.info('creating %s' % self._cname)
+
+        self._prof = Profiler(self._cname)
 
         # start the main event loop in a separate process.  At that point, the
         # component will basically detach itself from the parent process, and
@@ -226,7 +229,10 @@ class Component(mp.Process):
         self._terminate.set()
         for t in self._threads:
             self._log.debug('joining subscriber thread %s - %s' % (t, os.getpid()))
-            t.join()
+            if mt.current_thread() != t:
+                t.join()
+            else:
+                self._log.debug('skippin current    thread %s - %s' % (t, os.getpid()))
         self._log.debug('all threads joined')
         self._threads = []
 
@@ -423,10 +429,12 @@ class Component(mp.Process):
                 while not self._terminate.is_set():
                     topic, msg = q.get_nowait(1000) # timout in ms
                     if topic and msg:
-                        callback (topic=topic, msg=msg)
+                        with self._cb_lock:
+                            callback (topic=topic, msg=msg)
             except Exception as e:
                 self._log.exception("subscriber failed")
-                self.close()
+                if self._exit_on_error:
+                    raise
         # ----------------------------------------------------------------------
 
         # check if a remote address is configured for the queue
@@ -561,7 +569,8 @@ class Component(mp.Process):
                         # unit
                         try:
                             self._prof.prof(event='work start', state=state, uid=uid)
-                            self._workers[state](_unit)
+                            with self._cb_lock:
+                                self._workers[state](_unit)
                             self._prof.prof(event='work done ', state=state, uid=uid)
 
                         except Exception as e:
@@ -583,11 +592,17 @@ class Component(mp.Process):
                     for idler in self._idlers:
 
                         if (now - idler['last']) > idler['timeout']:
-
-                            if idler['cb']():
-                                # something happend!
-                                idler['last'] = now
-                                active = True
+                        
+                            try:
+                                with self._cb_lock:
+                                    if idler['cb']():
+                                        # something happend!
+                                        idler['last'] = now
+                                        active = True
+                            except Exception as e:
+                                self._log.exception('idle cb failed')
+                                if self._exit_on_error:
+                                    raise
 
                 if not active:
                     # FIXME: make configurable
@@ -600,8 +615,10 @@ class Component(mp.Process):
             # could in principle detect the latter within the loop -- - but
             # since we don't know what to do with the units it operated on, we
             # don't bother...
-            self._log.exception('loop error')
+            self._log.exception('loop exception')
 
+        except:
+            self._log.exception('loop error')
 
         finally:
             # call finalizers
@@ -690,13 +707,13 @@ class Component(mp.Process):
             msg = [msg]
 
         if topic not in self._publishers:
-            self._log.error("%s can't route notification %s (%s)" \
-                    % (self._cname, topic, self._publishers.keys()))
+            self._log.error("%s can't route notification '%s:%s' (%s)" \
+                    % (self._cname, topic, msg, self._publishers.keys()))
             return
 
         if not self._publishers[topic]:
-            self._log.error("%s no route for notification %s (%s)" \
-                    % (self._cname, topic, self._publishers.keys()))
+            self._log.error("%s no route for notification '%s:%s' (%s)" \
+                    % (self._cname, topic, msg, self._publishers.keys()))
             return
 
         for m in msg:
