@@ -102,8 +102,8 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, session
                 print "Skipping fetching of '%s' to '%s'." % (prof, tgt_url)
                 continue
 
-            print "fetching '%s/%s' to '%s'." % (sandbox_url, prof, tgt_url)
-            prof_file = saga.filesystem.File("%s/%s" % (sandbox_url, prof), session=session)
+            print "Fetching '%s%s' to '%s'." % (sandbox_url, prof, tgt_url)
+            prof_file = saga.filesystem.File("%s%s" % (sandbox_url, prof), session=session)
             prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
             prof_file.close()
 
