@@ -17,14 +17,15 @@ def usage(msg=None, noexit=False):
         print "\n      Error: %s" % msg
 
     print """
-      usage   : %s <sid> [-t target] [-d dburl] [-s session] [-h]
+      usage   : %s <sid> [-t target] [-d dburl] [-c client] [-a sandbox] [-h]
       example : %s $SID -d mongodb://localhost/rp -t /tmp/
 
       options :
 
           sid : session ID for which to fetch profiles
-          -s  : source dir from where to fetch the local module profiles
+          -c  : location from where to fetch the client profiles
                 This defaults to $PWD
+          -a  : alternative agent sandbox access method
           -t  : target dir to fetch profiles to
                 A sub-dir <sid>/ will be created there.
                 This defaults to $PWD/profiles/
@@ -44,11 +45,7 @@ def usage(msg=None, noexit=False):
         sys.exit(0)
 
 
-# ------------------------------------------------------------------------------
-#
-def fetch_profiles(dburl, sid, src, tgt):
 
-    rpu.fetch_profiles(sid=sid, dburl=dburl, src=src, tgt=tgt)
 
 
 # ------------------------------------------------------------------------------
@@ -58,9 +55,10 @@ if __name__ == '__main__':
     import optparse
     parser = optparse.OptionParser(add_help_option=False)
 
+    parser.add_option('-a', '--access',  dest='access')
     parser.add_option('-d', '--dburl',   dest='dburl')
-    parser.add_option('-s', '--src',     dest='src')
-    parser.add_option('-t', '--tgt',     dest='tgt')
+    parser.add_option('-c', '--client',  dest='client')
+    parser.add_option('-t', '--target',  dest='target')
     parser.add_option('-h', '--help',    dest='help', action="store_true")
 
     options, args = parser.parse_args()
@@ -74,18 +72,21 @@ if __name__ == '__main__':
     if options.help:
         usage()
 
-    if not options.src   : options.src   = os.getcwd()
-    if not options.tgt   : options.tgt   = os.getcwd()
-    if not options.dburl : options.dburl = None
+    if not options.client:
+        options.client = os.getcwd()
+    if not options.target:
+        options.target = os.getcwd()
+    if not options.dburl:
+        options.dburl = None
+    if not options.access:
+        options.access = None
 
-
-    sid   = args[0]
-    src   = options.src 
-    tgt   = options.tgt 
+    sid = args[0]
+    client = options.client
+    target = options.target
     dburl = options.dburl
+    access = options.access
 
-    fetch_profiles(sid=sid, dburl=dburl, src=src, tgt=tgt)
-
+    rpu.fetch_profiles(sid=sid, dburl=dburl, client=client, tgt=target, access=access)
 
 # ------------------------------------------------------------------------------
-
