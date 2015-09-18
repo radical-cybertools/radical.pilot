@@ -5227,16 +5227,9 @@ class AgentWorker(rpu.Worker):
 
         # everything which comes after the worker init is limited in scope to
         # the current process, and will not be available in the worker process.
-        self._pilot_id   = self._cfg['pilot_id']
-        self._session_id = self._cfg['session_id']
-
-        # set up db connection for the command cb (the worker process gets its
-        # own db handle)
-        if self.agent_name == 'agent.0':
-            self._log.debug('connecting to mongodb at %s' % self._cfg['mongodb_url'])
-            _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
-            self._p  = mongo_db["%s.p"  % self._session_id]
-            self._log.debug('connected to mongodb')
+        self._pilot_id    = self._cfg['pilot_id']
+        self._session_id  = self._cfg['session_id']
+        self._final_cause = None
 
         # all components use the command channel for control messages
         self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
@@ -5261,17 +5254,11 @@ class AgentWorker(rpu.Worker):
 
         if cmd == 'shutdown':
 
-            self._log.info("shutdown command (%s)" % arg)
-            self._log.info("terminate")
-            self.terminate()
+            # let main thread know what caused the termination
+            self._final_cause = arg
 
-            if self.agent_name == 'agent.0':
-                if arg == 'timeout':
-                    pilot_DONE(self._p, self._pilot_id, self._log, "TIMEOUT received. Terminating.")
-                if arg == 'cancel':
-                    pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
-                else:
-                    pilot_FAILED(self._p, self._pilot_id, self._log, "TERMINATE (%s) received" % arg)
+            self._log.info("shutdown command (%s)" % arg)
+            self.close()
 
 
     # --------------------------------------------------------------------------
@@ -5982,21 +5969,34 @@ def bootstrap_3():
         # can start the agent and all its components!
         agent = AgentWorker(cfg)
         agent.start()
+        log.debug('waiting for agent %s to join' % agent_name)
         agent.join()
-        agent._finalize()   # FIXME: layer violation, see comment on barrier_cb
+        log.debug('agent %s joined' % agent_name)
+        agent.stop()
+        log.debug('agent %s finalized' % agent_name)
 
-        if agent_name == 'agent.0' :
-            pilot_DONE(mongo_p, cfg['pilot_id'], log, msg="AgentWorker joined. EXITING")
+        if agent_name == 'agent.0':
+            if self._final_cause == 'timeout':
+                pilot_DONE(mongo_p, pilot_id, log, "TIMEOUT received. Terminating.")
+            if self._final_cause == 'cancel':
+                pilot_CANCELED(mongo_p, pilot_id, log, "CANCEL received. Terminating.")
+            if self._final_cause == 'finalize':
+                log.info('shutdown due to component finalization -- assuming error')
+                pilot_FAILED(mongo_p, pilot_id, log, "FINALIZE (%s) received" % arg)
+            else:
+                pilot_FAILED(mongo_p, pilot_id, log, "TERMINATE (%s) received" % arg)
+
         # ----------------------------------------------------------------------
 
     except SystemExit:
         log.exception("Exit running agent: %s" % e)
-        pilot_FAILED(msg="Caught system exit. EXITING") 
+        if agent_name == 'agent.0':
+            pilot_FAILED(mongo_p, pilot_id, log, "Caught system exit. EXITING") 
         sys.exit(1)
 
     except Exception as e:
-        log.exception("Error running agent: %s" % e)
-        pilot_FAILED(msg="Error running agent: %s" % e)
+        if agent_name == 'agent.0':
+            pilot_FAILED(mongo_p, pilot_id, log, "Error running agent: %s" % e)
         sys.exit(2)
 
     finally:
