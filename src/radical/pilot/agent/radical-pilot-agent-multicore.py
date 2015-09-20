@@ -429,7 +429,7 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self):
+    def initialize_child(self):
 
       # self.declare_input (rp.AGENT_SCHEDULING_PENDING, rp.AGENT_SCHEDULING_QUEUE)
       # self.declare_worker(rp.AGENT_SCHEDULING_PENDING, self.work)
@@ -475,7 +475,7 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def finalize(self):
+    def finalize_child(self):
 
         # communicate finalization
         self.publish('command', {'cmd' : 'final',
@@ -518,7 +518,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         if cmd == 'shutdown':
             self._log.info('received shutdown command')
-            self.close()
+            self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -2020,7 +2020,9 @@ class LaunchMethodORTE(LaunchMethod):
             # TODO: Tear down everything?
         # ----------------------------------------------------------------------
 
-        dvm_watcher = threading.Thread(target=_watch_dvm, args=(dvm_process,), name="DVMWatcher")
+        dvm_watcher = threading.Thread(target=_watch_dvm, args=(dvm_process,),
+                                       name="DVMWatcher")
+        dvm_watcher.daemon = True
         dvm_watcher.start()
 
         lm_info = {'dvm_uri': dvm_uri}
@@ -3564,7 +3566,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self):
+    def initialize_child(self):
 
       # self.declare_input (rp.AGENT_EXECUTING_PENDING, rp.AGENT_EXECUTING_QUEUE)
       # self.declare_worker(rp.AGENT_EXECUTING_PENDING, self.work)
@@ -3589,6 +3591,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         # run watcher thread
         self._terminate = threading.Event()
         self._watcher   = threading.Thread(target=self._watch, name="Watcher")
+        self._watcher.daemon = True
         self._watcher.start ()
 
         # The AgentExecutingComponent needs the LaunchMethods to construct
@@ -3614,7 +3617,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def finalize(self):
+    def finalize_child(self):
 
         # terminate watcher thread
         self._terminate.set()
@@ -3640,7 +3643,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
         elif cmd == 'shutdown':
             self._log.info('received shutdown command')
-            self.close()
+            self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -3986,7 +3989,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self):
+    def initialize_child(self):
 
         self.declare_input (rp.EXECUTING_PENDING, rp.AGENT_EXECUTING_QUEUE)
         self.declare_worker(rp.EXECUTING_PENDING, self.work)
@@ -4101,6 +4104,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         # run watcher thread
         self._terminate = threading.Event()
         self._watcher   = threading.Thread(target=self._watch, name="Watcher")
+        self._watcher.daemon = True
         self._watcher.start ()
 
         self._prof.prof('run setup done')
@@ -4112,7 +4116,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def finalize(self):
+    def finalize_child(self):
 
         # communicate finalization
         self.publish('command', {'cmd' : 'final',
@@ -4134,7 +4138,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         elif cmd == 'shutdown':
             self._log.info('received shutdown command')
-            self.close()
+            self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -4583,7 +4587,7 @@ class AgentUpdateWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self):
+    def initialize_child(self):
 
         self._session_id    = self._cfg['session_id']
         self._mongodb_url   = self._cfg['mongodb_url']
@@ -4607,7 +4611,7 @@ class AgentUpdateWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def finalize(self):
+    def finalize_child(self):
 
         # communicate finalization
         self.publish('command', {'cmd' : 'final',
@@ -4623,7 +4627,7 @@ class AgentUpdateWorker(rpu.Worker):
 
         if cmd == 'shutdown':
             self._log.info('received shutdown command')
-            self.close()
+            self.stop()
 
 
     # ------------------------------------------------------------------
@@ -4780,7 +4784,7 @@ class AgentStagingInputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self):
+    def initialize_child(self):
 
         self.declare_input (rp.AGENT_STAGING_INPUT_PENDING, rp.AGENT_STAGING_INPUT_QUEUE)
         self.declare_worker(rp.AGENT_STAGING_INPUT_PENDING, self.work)
@@ -4800,7 +4804,7 @@ class AgentStagingInputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def finalize(self):
+    def finalize_child(self):
 
         # communicate finalization
         self.publish('command', {'cmd' : 'final',
@@ -4816,7 +4820,7 @@ class AgentStagingInputComponent(rpu.Component):
 
         if cmd == 'shutdown':
             self._log.info('received shutdown command')
-            self.close()
+            self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -4930,7 +4934,7 @@ class AgentStagingOutputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self):
+    def initialize_child(self):
 
         self.declare_input (rp.AGENT_STAGING_OUTPUT_PENDING, rp.AGENT_STAGING_OUTPUT_QUEUE)
         self.declare_worker(rp.AGENT_STAGING_OUTPUT_PENDING, self.work)
@@ -4951,7 +4955,7 @@ class AgentStagingOutputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def finalize(self):
+    def finalize_child(self):
 
         # communicate finalization
         self.publish('command', {'cmd' : 'final',
@@ -4967,7 +4971,7 @@ class AgentStagingOutputComponent(rpu.Component):
 
         if cmd == 'shutdown':
             self._log.info('received shutdown command')
-            self.close()
+            self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -5099,7 +5103,7 @@ class AgentHeartbeatWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self):
+    def initialize_child(self):
 
         self._session_id    = self._cfg['session_id']
         self._mongodb_url   = self._cfg['mongodb_url']
@@ -5128,7 +5132,7 @@ class AgentHeartbeatWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def finalize(self):
+    def finalize_child(self):
 
         # communicate finalization
         self.publish('command', {'cmd' : 'final',
@@ -5144,7 +5148,7 @@ class AgentHeartbeatWorker(rpu.Worker):
 
         if cmd == 'shutdown':
             self._log.info('received shutdown command')
-            self.close()
+            self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -5223,13 +5227,18 @@ class AgentWorker(rpu.Worker):
         self.agent_name = cfg['agent_name']
         rpu.Worker.__init__(self, 'AgentWorker', cfg)
 
+
+    # --------------------------------------------------------------------------
+    #
+    def initialize(self):
+
         self._log.debug('starting AgentWorker for %s' % self.agent_name)
 
         # everything which comes after the worker init is limited in scope to
         # the current process, and will not be available in the worker process.
         self._pilot_id    = self._cfg['pilot_id']
         self._session_id  = self._cfg['session_id']
-        self._final_cause = None
+        self.final_cause  = None
 
         # all components use the command channel for control messages
         self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
@@ -5254,11 +5263,15 @@ class AgentWorker(rpu.Worker):
 
         if cmd == 'shutdown':
 
-            # let main thread know what caused the termination
-            self._final_cause = arg
+            # let agent know what caused the termination (first cause)
+            if not self.final_cause:
+                self.final_cause = arg
 
-            self._log.info("shutdown command (%s)" % arg)
-            self.close()
+                self._log.info("shutdown command (%s)" % arg)
+                self.stop()
+
+            else:
+                self._log.info("shutdown command (%s) - ignore" % arg)
 
 
     # --------------------------------------------------------------------------
@@ -5298,31 +5311,9 @@ class AgentWorker(rpu.Worker):
                 self._sub_agents[name]['alive'] = True
 
 
-        elif cmd == 'final':
-            # finalization needs to happen in the main thread/process, thus we
-            # catch it in the command cb which is registered at __init__
-
-            if arg.startswith("%s." % self.agent_name):
-
-                # one of our components got finalized.  If we are not already
-                # shutting down, we do so now
-                if not self._terminated:
-                    self._log.info('terminate: component %s got finalized' % arg)
-                    self.close()
-
-            elif arg in self._sub_agents:
-
-                # one of our agents got finalized.  we now shut down, too.
-                self._log.info('terminate: sub-agent %s got finalized' % arg)
-                self.close()
-
-            # other finalization messages are ignored -- we'll get our signal
-            # when its time...
-
-
     # --------------------------------------------------------------------------
     #
-    def initialize(self):
+    def initialize_child(self):
         """
         Read the configuration file, setup logging and mongodb connection.
         This prepares the stage for the component setup (self._setup()).
@@ -5355,7 +5346,7 @@ class AgentWorker(rpu.Worker):
             if self._sub_cfg.get('target', 'local') != 'local':
                 raise ValueError("agent.0 must run on target 'local'")
 
-        # keep track of objects we need to close in the finally clause
+        # keep track of objects we need to stop in the finally clause
         self._sub_agents = dict()
         self._bridges    = dict()
         self._components = dict()
@@ -5394,8 +5385,43 @@ class AgentWorker(rpu.Worker):
         self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
         self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.barrier_cb)
 
-        # bootstrap sub-agents, agent components, bridges etc.
-        self.bootstrap_4()
+        # Now instantiate all communication and notification channels, and all
+        # components and workers.  It will then feed a set of units to the
+        # lead-in queue (staging_input).  A state notification callback will
+        # then register all units which reached a final state (DONE).  Once all
+        # units are accounted for, it will tear down all created objects.
+
+        # we pick the layout according to our role (name)
+        # NOTE: we don't do sanity checks on the agent layout (too lazy) -- but
+        #       we would hiccup badly over ill-formatted or incomplete layouts...
+        if not self.agent_name in self._cfg['agent_layout']:
+            raise RuntimeError("no agent layout section for %s" % self.agent_name)
+
+        try:
+            self.start_bridges()
+
+            # FIXME: make sure all communication channels are in place.  This could
+            # be replaced with a proper barrier, but not sure if that is worth it...
+            time.sleep (1)
+
+            self.start_sub_agents()
+            self.start_components()
+
+            # before we declare bootstrapping-success, the we wait for all
+            # components, workers and sub_agents to complete startup.  For that,
+            # all sub-agents will wait ALIVE messages on the COMMAND pubsub for
+            # all entities it spawned.  Only when all are alive, we will
+            # continue here.
+            self.alive_barrier()
+
+        except Exception as e:
+            self._log.exception("Agent setup error: %s" % e)
+            raise
+
+        self._prof.prof('Agent setup done', logger=self._log.debug)
+
+        # also watch all components (once per second)
+        self.declare_idle_cb(self.watcher_cb, 10.0)
 
         # once bootstrap_4 is done, we signal success to the parent agent 
         # -- if we have any parent...
@@ -5419,59 +5445,113 @@ class AgentWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def finalize(self):
+    def alive_barrier(self):
+
+        # FIXME: wait for bridges, too?  But we need pubsub for counting... Duh!
+        total = len(self._bridges)    + \
+                len(self._components) + \
+                len(self._workers   ) + \
+                len(self._sub_agents)
+        start   = time.time()
+        timeout = 60
+
+        while True:
+            # check the procs for all components which are not yet alive
+            to_check  = self._bridges.items() \
+                      + self._components.items() \
+                      + self._workers.items() \
+                      + self._sub_agents.items() 
+
+            alive_cnt = 0
+            total_cnt = len(to_check)
+            for name,c in to_check:
+                if c['alive']:
+                    alive_cnt += 1
+                else:
+                    self._log.debug('checking %s: %s', name, c)
+                    if None != c['handle'].poll():
+                        # process is dead and has never been alive.  Oops
+                        raise RuntimeError('component %s did not come up' % name)
+
+            self._log.debug('found alive: %2d / %2d' % (alive_cnt, total_cnt))
+
+            if alive_cnt == total_cnt:
+                self._log.debug('bootstrap barrier success')
+                break
+
+            if time.time() - timeout > start:
+                raise RuntimeError('component barrier failed (timeout)')
+            
+            time.sleep(1)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def watcher_cb(self):
+        """
+        we do a poll() on all our bridges, components, workers and sub-agent,
+        to check if they are still alive.  If any goes AWOL, we will begin to
+        tear down this agent.
+        """
+
+        to_watch = list(self._bridges.iteritems())    \
+                 + list(self._components.iteritems()) \
+                 + list(self._workers.iteritems())    \
+                 + list(self._sub_agents.iteritems())
+
+      # self._log.debug('watch: %s' % pprint.pformat(to_watch))
+
+        self._log.debug('checking %s things' % len(to_watch))
+        for name, thing in to_watch:
+            state = thing['handle'].poll()
+            if state == None:
+                self._log.debug('%30s: ok' % name)
+            else:
+                raise RuntimeError ('%s died - shutting down')
+
+        return True # always idle
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize_child(self):
 
         self._log.info("Agent finalizes")
         self._prof.prof('stop')
+      
+        # tell other sub-agents get lost
+        self.publish('command', {'cmd' : 'shutdown',
+                                 'arg' : '%s finalization' % self.agent_name})
 
-        # FIXME: let logfiles settle before killing the components
-        time.sleep(1)
 
         # burn the bridges, burn EVERYTHING
         for name,sa in self._sub_agents.items():
             try:
                 self._log.info("closing sub-agent %s", sa)
-                sa['handle'].terminate()
-                sa['out'].close()
-                sa['err'].close()
-                sa['alive'] = False
+                sa['handle'].stop()
             except Exception as e:
                 self._log.exception('ignore failing sub-agent terminate')
-
-        self._log.info("Agent finalizes 1")
 
         for name,c in self._components.items():
             try:
                 self._log.info("closing component %s", c)
-                c['handle'].close()
-                c['alive'] = False
+                c['handle'].stop()
             except Exception as e:
                 self._log.exception('ignore failing component terminate')
 
-        self._log.info("Agent finalizes 2")
         for name,w in self._workers.items():
             try:
                 self._log.info("closing worker %s", w)
-                w['handle'].close()
-                w['alive'] = False
+                w['handle'].stop()
             except Exception as e:
                 self._log.exception('ignore failing worker terminate')
 
-        self._log.info("Agent finalizes 3")
         for name,b in self._bridges.items():
             try:
                 self._log.info("closing bridge %s", b)
-                b['handle'].close()
-                b['alive'] = False
+                b['handle'].stop()
             except Exception as e:
                 self._log.exception('ignore failing bridge terminate')
-
-        self._log.info("Agent finalizes 4")
-
-      # # fallback shutdown requests in case any of the above close calls did
-      # # not reach the components
-      # self.publish('command', {'cmd' : 'shutdown',
-      #                          'arg' : 'finalization fallback'})
 
         # communicate finalization to parent agent 
         # -- if we have any parent...
@@ -5561,6 +5641,10 @@ class AgentWorker(rpu.Worker):
             sa_out = open("%s.out" % sa, "w")
             sa_err = open("%s.err" % sa, "w")
             sa_proc = subprocess.Popen(args=cmdline, stdout=sa_out, stderr=sa_err)
+
+            # make sure we can stop the sa_proc
+            sa_proc.stop = sa_proc.terminate
+
             self._sub_agents[sa] = {'handle': sa_proc,
                                     'out'   : sa_out,
                                     'err'   : sa_err,
@@ -5659,100 +5743,6 @@ class AgentWorker(rpu.Worker):
 
         self._log.debug("start_components done")
 
-    # --------------------------------------------------------------------------
-    #
-    def bootstrap_4(self):
-        """
-        This method will instantiate all communication and notification
-        channels, and all components and workers.  It will then feed a set of
-        units to the lead-in queue (staging_input).  A state notification
-        callback will then register all units which reached a final state
-        (DONE).  Once all units are accounted for, it will tear down all created
-        objects.
-
-        The agent accepts a config, which will specify in an agent_layout
-        section:
-          - what nodes should be used for sub-agent startup
-          - what bridges should be started
-          - what components should be started
-          - what are the endpoints for bridges which are not started
-
-        Before starting any sub-agent or component, the agent master (agent.0)
-        will collect information about the nodes required for all instances.
-        That is added to the config itself, for the benefit of the LRMS
-        initialisation which is expected to block those nodes from the
-        scheduler.
-        """
-
-        self._log.debug('bootstrap_4')
-
-        # we pick the layout according to our role (name)
-        # NOTE: we don't do sanity checks on the agent layout (too lazy) -- but
-        #       we would hiccup badly over ill-formatted or incomplete layouts...
-        if not self.agent_name in self._cfg['agent_layout']:
-            raise RuntimeError("no agent layout section for %s" % self.agent_name)
-
-        try:
-            self.start_bridges()
-
-            # FIXME: make sure all communication channels are in place.  This could
-            # be replaced with a proper barrier, but not sure if that is worth it...
-            time.sleep (1)
-
-            self.start_sub_agents()
-            self.start_components()
-
-            # before we declare bootstrapping-success, the we wait for all
-            # components, workers and sub_agents to complete startup.  For that,
-            # all sub-agents will wait ALIVE messages on the COMMAND pubsub for
-            # all entities it spawned.  Only when all are alive, we will
-            # continue here.
-            #
-            # FIXME: add bridges, too?  But we need pubsub for counting... Duh!
-            total = len(self._components) + \
-                    len(self._workers   ) + \
-                    len(self._sub_agents)
-            start   = time.time()
-            timeout = 60
-            while True:
-
-                # check the procs for all components which are not yet alive
-                to_check  = self._components.items() \
-                          + self._workers.items() \
-                          + self._sub_agents.items() 
-
-                alive_cnt = 0
-                total_cnt = len(to_check)
-                for name,c in to_check:
-                    if c['alive']:
-                        alive_cnt += 1
-                    else:
-                        self._log.debug('checking %s: %s', name, c)
-                        if None != c['handle'].poll():
-                            # process is dead and has never been alive.  Oops
-                            raise RuntimeError('component %s did not come up' % name)
-
-                self._log.debug('found alive: %2d / %2d' % (alive_cnt, total_cnt))
-
-                if alive_cnt == total_cnt:
-                    self._log.debug('bootstrap barrier success')
-                    break
-
-                if time.time() - timeout > start:
-                    raise RuntimeError('component barrier failed (timeout)')
-                else:
-                    time.sleep(1)
-
-
-        except Exception as e:
-            self._log.exception("Agent setup error: %s" % e)
-            raise
-
-        self._prof.prof('Agent setup done', logger=self._log.debug)
-
-        # FIXME: signal the other agents, and shot down all components and
-        #        bridges.
-
 
     # --------------------------------------------------------------------------
     #
@@ -5835,6 +5825,19 @@ def bootstrap_3():
 
     Most of bootstrap_3 applies only to agent.0, in particular all mongodb
     interactions remains excluded for other sub-agent instances.
+
+    The agent interprets a config file, which will specify in an agent_layout
+    section:
+      - what nodes should be used for sub-agent startup
+      - what bridges should be started
+      - what components should be started
+      - what are the endpoints for bridges which are not started
+    bootstrap_3 will create derived config files for all sub-agents.
+
+    The agent master (agent.0) will collect information about the nodes required
+    for all instances.  That is added to the config itself, for the benefit of
+    the LRMS initialisation which is expected to block those nodes from the
+    scheduler.
     """
 
     # find out what agent instance name we have
@@ -5975,6 +5978,7 @@ def bootstrap_3():
         # can start the agent and all its components!
         agent = AgentWorker(cfg)
         agent.start()
+
         log.debug('waiting for agent %s to join' % agent_name)
         agent.join()
         log.debug('agent %s joined' % agent_name)
@@ -5982,20 +5986,20 @@ def bootstrap_3():
         log.debug('agent %s finalized' % agent_name)
 
         if agent_name == 'agent.0':
-            if self._final_cause == 'timeout':
+            if agent.final_cause == 'timeout':
                 pilot_DONE(mongo_p, pilot_id, log, "TIMEOUT received. Terminating.")
-            if self._final_cause == 'cancel':
+            if agent.final_cause == 'cancel':
                 pilot_CANCELED(mongo_p, pilot_id, log, "CANCEL received. Terminating.")
-            if self._final_cause == 'finalize':
+            if agent.final_cause == 'finalize':
                 log.info('shutdown due to component finalization -- assuming error')
-                pilot_FAILED(mongo_p, pilot_id, log, "FINALIZE (%s) received" % arg)
+                pilot_FAILED(mongo_p, pilot_id, log, "FINALIZE received")
             else:
-                pilot_FAILED(mongo_p, pilot_id, log, "TERMINATE (%s) received" % arg)
+                pilot_FAILED(mongo_p, pilot_id, log, "TERMINATE received")
 
         # ----------------------------------------------------------------------
 
     except SystemExit:
-        log.exception("Exit running agent: %s" % e)
+        log.exception("Exit running agent: %s" % agent_name)
         if agent_name == 'agent.0':
             pilot_FAILED(mongo_p, pilot_id, log, "Caught system exit. EXITING") 
         sys.exit(1)
@@ -6029,6 +6033,8 @@ if __name__ == "__main__":
     print
 
     bootstrap_3()
+
+    print "bootstrap_3 done"
 
 #
 # ------------------------------------------------------------------------------
