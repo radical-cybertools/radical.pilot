@@ -5845,17 +5845,17 @@ def bootstrap_3():
         raise RuntimeError('invalid number of parameters (%s)' % sys.argv)
     agent_name = sys.argv[1]
 
-    try:
-        import setproctitle as spt
-        spt.setproctitle('radical.pilot %s' % agent_name)
-    except Exception as e:
-        self._log.debug('no setproctitle: %s', e)
-
     # set up a logger and profiler
     prof = rpu.Profiler ('%s.bootstrap_3' % agent_name)
     log  = ru.get_logger('%s.bootstrap_3' % agent_name, 
                          '%s.bootstrap_3.log' % agent_name, 'DEBUG')  # FIXME?
     log.info('start')
+
+    try:
+        import setproctitle as spt
+        spt.setproctitle('radical.pilot %s' % agent_name)
+    except Exception as e:
+        log.debug('no setproctitle: %s', e)
 
     # load the agent config, and overload the config dicts
     agent_cfg  = "%s/%s.cfg" % (os.getcwd(), agent_name)
