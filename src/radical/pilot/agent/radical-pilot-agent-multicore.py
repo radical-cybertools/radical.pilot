@@ -5627,6 +5627,8 @@ class AgentWorker(rpu.Worker):
                         opaque_slots=opaque_slots)
 
                 with open (ls_name, 'w') as ls:
+                    # note that 'exec' only makes sense if we don't add any
+                    # commands (such as post-processing) after it.
                     ls.write('#!/bin/sh\n\n')
                     ls.write("exec %s\n" % cmd)
                     st = os.stat(ls_name)
