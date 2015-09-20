@@ -5645,8 +5645,8 @@ class AgentWorker(rpu.Worker):
                 ccfg['number'] = i
                 comp = cmap[cname].create(ccfg)
                 comp.start()
-                self._components[comp.cname] = {'handle' : comp,
-                                                'alive'  : False}
+                self._components[comp.childname] = {'handle' : comp,
+                                                    'alive'  : False}
                 self._log.info('created component %s (%s): %s', cname, cnum, comp.cname)
 
         # we also create *one* instance of every 'worker' type -- which are the
@@ -5663,8 +5663,8 @@ class AgentWorker(rpu.Worker):
                 wcfg   = copy.deepcopy(self._cfg)
                 worker = wmap[wname].create(wcfg)
                 worker.start()
-                self._workers[worker.cname] = {'handle' : worker,
-                                               'alive'  : False}
+                self._workers[worker.childname] = {'handle' : worker,
+                                                   'alive'  : False}
 
         self._log.debug("start_components done")
 
@@ -5850,6 +5850,12 @@ def bootstrap_3():
     log  = ru.get_logger('%s.bootstrap_3' % agent_name, 
                          '%s.bootstrap_3.log' % agent_name, 'DEBUG')  # FIXME?
     log.info('start')
+
+    try:
+        import setproctitle as spt
+        spt.setproctitle('radical.pilot %s' % agent_name)
+    except Exception as e:
+        log.debug('no setproctitle: %s', e)
 
     # load the agent config, and overload the config dicts
     agent_cfg  = "%s/%s.cfg" % (os.getcwd(), agent_name)

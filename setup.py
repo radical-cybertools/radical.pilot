@@ -211,6 +211,9 @@ setup_args = {
 #   }
 }
 
+if 'RADICAL_DEBUG' in os.environ:
+    setup_args['install_requires'].append('setproctitle')
+
 # ------------------------------------------------------------------------------
 
 setup (**setup_args)
