@@ -261,6 +261,12 @@ class PubsubZMQ(Pubsub):
             # ------------------------------------------------------------------
             def _bridge(addr_in, addr_out):
 
+                try:
+                    import setproctitle as spt
+                    spt.setproctitle('radical.pilot %s' % self._name)
+                except Exception as e:
+                    pass
+
               # self._log ('_bridge: %s %s' % (addr_in, addr_out))
                 ctx = zmq.Context()
                 _in = ctx.socket(zmq.XSUB)

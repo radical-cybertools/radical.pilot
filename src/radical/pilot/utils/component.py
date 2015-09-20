@@ -132,6 +132,7 @@ class Component(mp.Process):
         self._debug         = cfg.get('debug', 'DEBUG') # FIXME
         self._agent_name    = cfg['agent_name']
         self._cname         = "%s.%s.%d" % (self._agent_name, type(self).__name__, cfg.get('number', 0))
+        self._childname     = "%s.child" % self._cname
         self._addr_map      = cfg['bridge_addresses']
         self._parent        = os.getpid() # pid of spawning process
         self._inputs        = list()      # queues to get units from
@@ -170,6 +171,13 @@ class Component(mp.Process):
     @property
     def cname(self):
         return self._cname
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def childname(self):
+        return self._childname
 
 
     # --------------------------------------------------------------------------
@@ -467,12 +475,20 @@ class Component(mp.Process):
         signal.signal(signal.SIGTERM, sigterm_handler)
 
 
-        try:
-            dh = ru.DebugHelper()
+        # set process name
+        self._cname = self.childname
 
+        try:
+            import setproctitle as spt
+            spt.setproctitle('radical.pilot %s' % self._cname)
+        except Exception as e:
+            pass
+
+
+        try:
             # configure the component's logger
-            log_name = self._cname
-            log_tgt  = self._cname + ".log"
+            log_name  = self._cname
+            log_tgt   = self._cname + ".log"
             self._log = ru.get_logger(log_name, log_tgt, self._debug)
             self._log.info('running %s' % self._cname)
 
