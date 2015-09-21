@@ -52,11 +52,11 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, session
     #        a sandbox like dir for storing profiles and logs?
     client_profile = "%s/%s.prof" % (client, sid)
 
-    ftgt = '%s/%s' % (tgt_url, os.path.basename(client_profile))
-    ret.append("%s/%s" % (tgt, os.path.basename(client_profile)))
+    ftgt = saga.Url('%s/%s' % (tgt_url, os.path.basename(client_profile)))
+    ret.append("%s" % ftgt.path)
 
-    if skip_existing and os.path.exists(saga.Url(ftgt).path) \
-            and os.stat(saga.Url(ftgt).path).st_size > 0:
+    if skip_existing and os.path.exists(ftgt.path) \
+            and os.stat(ftgt.path).st_size > 0:
 
         print "Skip fetching of '%s' to '%s'." % (client_profile, tgt_url)
 
@@ -97,11 +97,11 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, session
 
         for prof in profiles:
 
-            ftgt = '%s/%s' % (tgt_url, prof)
-            ret.append("%s/%s" % (tgt, prof))
+            ftgt = saga.Url('%s/%s' % (tgt_url, prof))
+            ret.append("%s" % ftgt.path)
 
-            if skip_existing and os.path.exists(saga.Url(ftgt).path) \
-                             and os.stat(saga.Url(ftgt).path).st_size > 0:
+            if skip_existing and os.path.exists(ftgt.path) \
+                             and os.stat(ftgt.path).st_size > 0:
 
                 print "Skipping fetching of '%s' to '%s'." % (prof, tgt_url)
                 continue
