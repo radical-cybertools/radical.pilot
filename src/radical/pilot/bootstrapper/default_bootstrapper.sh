@@ -61,11 +61,12 @@ VIRTENV_IS_ACTIVATED=FALSE
 VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq"
 
 
+# ------------------------------------------------------------------------------
 #
 # If profiling is enabled, compile our little gtod app and take the first time
 #
-if ! test -z "$RADICAL_PILOT_PROFILE"
-then
+create_gtod()
+{
 
     cat > gtod.c <<EOT
 #include <stdio.h>
@@ -91,8 +92,7 @@ EOT
     TIME_ZERO=`./gtod`
     export TIME_ZERO
 
-fi
-
+}
 
 # ------------------------------------------------------------------------------
 #
@@ -1173,6 +1173,7 @@ done
 # Create header for profile log
 if ! test -z "$RADICAL_PILOT_PROFILE"
 then
+    create_gtod
     profile_event 'bootstrap start'
 fi
 

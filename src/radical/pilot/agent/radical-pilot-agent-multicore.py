@@ -2073,14 +2073,20 @@ class LaunchMethodORTE(LaunchMethod):
             task_command = task_exec
 
         # Construct the hosts_string, env vars
-        hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
+        # On some Crays, like on ARCHER, the hostname is "archer_N".
+        # In that case we strip off the part upto and including the underscore.
+        #
+        # TODO: If this ever becomes a problem, i.e. we encounter "real" hostnames
+        #       with underscores in it, or other hostname mangling, we need to turn
+        #       this into a system specific regexp or so.
+        #
+        hosts_string = ",".join([slot.split(':')[0].rsplit('_', 1)[-1] for slot in task_slots])
         export_vars  = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
         orte_command = '%s --debug-devel --hnp "%s" %s -np %s -host %s %s' % (
             self.launch_command, dvm_uri, export_vars, task_numcores, hosts_string, task_command)
 
         return orte_command, None
-
 
 
 # ==============================================================================
@@ -5473,7 +5479,7 @@ class AgentWorker(rpu.Worker):
                 len(self._workers   ) + \
                 len(self._sub_agents)
         start   = time.time()
-        timeout = 60
+        timeout = 120
 
         while True:
             # check the procs for all components which are not yet alive
@@ -5890,10 +5896,18 @@ def bootstrap_3():
 
     print "Agent config (%s):\n%s\n\n" % (agent_cfg, pprint.pformat(cfg))
 
-
     # quickly set up a mongodb handle so that we can report errors.
     # FIXME: signal handlers need mongo_p, but we won't have that until later
     if agent_name == 'agent.0':
+
+        # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold the
+        # address of the tunnelized DB endpoint.
+        # If it exists, we overrule the agent config with it.
+        hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
+        if hostport:
+            dburl = ru.Url(cfg['mongodb_url'])
+            dburl.host, dburl.port = hostport.split(':')
+            cfg['mongodb_url'] = str(dburl)
 
         _, mongo_db, _, _, _  = ru.mongodb_connect(cfg['mongodb_url'])
         mongo_p = mongo_db["%s.p" % cfg['session_id']]
@@ -5981,12 +5995,6 @@ def bootstrap_3():
 
             # add bridge addresses to the config
             cfg['bridge_addresses'] = bridge_addresses
-
-            hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
-            if hostport:
-                dburl = ru.Url(cfg['mongodb_url'])
-                dburl.host, dburl.port = hostport.split(':')
-                cfg['mongodb_url'] = str(dburl)
 
             # create a sub_config for each sub-agent (but skip master config)
             for sa in cfg['agent_layout']:
