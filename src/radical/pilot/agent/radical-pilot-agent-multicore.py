@@ -2672,8 +2672,8 @@ class LaunchMethodYARN(LaunchMethod):
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
         print_str+="echo '# Staging Output Files'>>ExecScript.sh\n"
-        print_str+="echo 'cp stdout %s'>>ExecScript.sh\n"%(work_dir)
         print_str+="echo 'cp stderr %s'>>ExecScript.sh\n"%(work_dir)
+        print_str+="echo 'cp stdout %s'>>ExecScript.sh\n"%(work_dir)
 
         if cu_descr['output_staging']:
             for OutputFile in cu_descr['output_staging']:
@@ -4513,15 +4513,17 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 launch_script.write("timestamp\n")
                 launch_script.write("echo post stop  $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
 
-            launch_script.write("# Exit the script with the return code from the command\n")
-            launch_script.write("exit $RETVAL\n")
-
             # YARN pre execution folder permission change
             # TODO: This needs to move inside the construct command when the launcher
             #       takes only the CU description
-            if launcher.name == 'YARN':
+            if launcher.name == 'LaunchMethodYARN':
                 launch_script.write('\n## Changing Working Directory permissions for YARN\n')
                 launch_script.write('chmod $old_perm .\n')
+
+            launch_script.write("# Exit the script with the return code from the command\n")
+            launch_script.write("exit $RETVAL\n")
+
+            
 
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
@@ -5019,7 +5021,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         # YARN pre execution folder permission change
         # TODO: This needs to move inside the construct command when the launcher
         #       takes only the CU description
-        if launcher.name == 'YARN':
+        if launcher.name == 'LaunchMethodYARN':
             pre += '## Changing Working Directory permissions for YARN\n'
             pre += 'old_perm=`stat -c %a .`\n'
             pre += 'chmod 777 .\n\n'
@@ -5037,7 +5039,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         # YARN pre execution folder permission change
         # TODO: This needs to move inside the construct command when the launcher
         #       takes only the CU description
-        if launcher.name == 'YARN':
+        if launcher.name == 'LaunchMethodYARN':
             post += '## Changing Working Directory permissions for YARN\n'
             post += 'chmod $old_perm .\n\n'
 
