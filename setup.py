@@ -201,6 +201,7 @@ setup_args = {
     },
     'install_requires'   : ['saga-python',
                             'radical.utils',
+                            'ntplib',
                             'pymongo==2.8'],
     'tests_require'      : [],
     'test_suite'         : 'radical.pilot.tests',
