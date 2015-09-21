@@ -111,13 +111,13 @@ class Pubsub(object):
         self._addr    = ru.Url(address)
         self._debug   = False
         self._logfd   = None
-        self._name    = "pubsub.%s.%s.%d" % (self._channel, self._role, os.getpid())
+        self._name    = "pubsub.%s.%s" % (self._channel, self._role)
 
         if 'msg' in os.environ.get('RADICAL_DEBUG', '').lower():
             self._debug = True
 
         # sanity check on address
-        default_addr = ru.Url(_get_addr(channel, role))
+        default_addr = ru.Url(_get_addr(self._channel, self._role))
 
         # we replace only empty parts of the addr with default values
         if not self._addr       : self._addr        = default_addr
@@ -128,8 +128,7 @@ class Pubsub(object):
         if not self._addr:
             raise RuntimeError("no default address found for '%s'" % self._channel)
 
-        self._log ("create %s - %s - %s - %d" \
-                % (channel, role, self._addr, os.getpid()))
+        self._log ("create %s - %s - %s" % (self._channel, self._role, self._addr))
 
     @property
     def name(self):
@@ -182,6 +181,18 @@ class Pubsub(object):
 
     # --------------------------------------------------------------------------
     #
+    def poll(self):
+        """
+        check state of endpoint or bridge
+        None: RUNNING
+        0   : DONE
+        1   : FAILED
+        """
+        return None
+
+
+    # --------------------------------------------------------------------------
+    #
     def publish(self, topic):
         raise NotImplementedError('publish() is not implemented')
 
@@ -212,8 +223,8 @@ class Pubsub(object):
 
     # --------------------------------------------------------------------------
     #
-    def close(self):
-        raise NotImplementedError('close() is not implemented')
+    def stop(self):
+        raise NotImplementedError('stop() is not implemented')
 
 
 # ==============================================================================
@@ -324,12 +335,22 @@ class PubsubZMQ(Pubsub):
     #
     def __del__(self):
 
-        self.close()
+        self.stop()
 
 
     # --------------------------------------------------------------------------
     #
-    def close(self):
+    def poll(self):
+        """
+        Only check bridges -- endpoints are otherwise always considered valid
+        """
+        if self._p and not self._p.is_alive():
+            return 0
+
+
+    # --------------------------------------------------------------------------
+    #
+    def stop(self):
 
         if self._p:
             self._p.terminate()
