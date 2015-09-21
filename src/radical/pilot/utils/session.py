@@ -38,7 +38,7 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, session
         tgt = "%s/%s" % (os.getcwd(), tgt)
 
     # we always create a session dir as real target
-    tgt = "%s/%s/" % (tgt, sid)
+    tgt = "file://localhost/%s/%s/" % (tgt, sid)
     tgt_url = saga.Url(tgt)
 
     # first fetch session profile
