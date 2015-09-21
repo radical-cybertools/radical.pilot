@@ -5479,7 +5479,7 @@ class AgentWorker(rpu.Worker):
                 len(self._workers   ) + \
                 len(self._sub_agents)
         start   = time.time()
-        timeout = 60
+        timeout = 120
 
         while True:
             # check the procs for all components which are not yet alive
