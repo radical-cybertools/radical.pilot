@@ -49,6 +49,7 @@
         "pre_bootstrap_1"             : [
             "module use --append /work/e290/e290/marksant/privatemodules",
             "module load openmpi/HEAD",
+            "module switch PrgEnv-cray PrgEnv-gnu",
             "module switch anaconda python-compute/2.7.6"
         ],
         "pre_bootstrap_2"             : [
