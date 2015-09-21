@@ -196,7 +196,7 @@ class Queue(object):
         self._addr   = ru.Url(address)
         self._debug  = False
         self._logfd  = None
-        self._name   = "queue.%s.%s.%d" % (self._qname, self._role, os.getpid())
+        self._name   = "queue.%s.%s" % (self._qname, self._role)
 
         if 'msg' in os.environ.get('RADICAL_DEBUG', '').lower():
             self._debug = True
@@ -214,8 +214,7 @@ class Queue(object):
             raise RuntimeError("no default address found for '%s'" % self._qname)
 
         if role in [QUEUE_INPUT, QUEUE_OUTPUT]:
-            self._log ("create %s - %s - %s - %s - %d" \
-                    % (flavor, qname, role, address, os.getpid()))
+            self._log ("create %s - %s - %s - %s" % (flavor, qname, role, address))
 
     @property
     def name(self):
@@ -273,6 +272,18 @@ class Queue(object):
 
     # --------------------------------------------------------------------------
     #
+    def poll(self):
+        """
+        check state of endpoint or bridge
+        None: RUNNING
+        0   : DONE
+        1   : FAILED
+        """
+        return None
+
+
+    # --------------------------------------------------------------------------
+    #
     def put(self, msg):
         raise NotImplementedError('put() is not implemented')
 
@@ -291,8 +302,8 @@ class Queue(object):
 
     # --------------------------------------------------------------------------
     #
-    def close(self):
-        raise NotImplementedError('close() is not implemented')
+    def stop(self):
+        raise NotImplementedError('stop() is not implemented')
 
 
 # ==============================================================================
@@ -451,6 +462,13 @@ class QueueZMQ(Queue):
             # ------------------------------------------------------------------
             def _bridge(addr_in, addr_out):
 
+                try:
+                    import setproctitle as spt
+                    spt.setproctitle('radical.pilot %s' % self._name)
+                except Exception as e:
+                    pass
+
+
                 # FIXME: should we cache messages coming in at the pull/push 
                 #        side, so as not to block the push end?
 
@@ -497,12 +515,22 @@ class QueueZMQ(Queue):
     #
     def __del__(self):
 
-        self.close()
+        self.stop()
 
 
     # --------------------------------------------------------------------------
     #
-    def close(self):
+    def poll(self):
+        """
+        Only check bridges -- endpoints are otherwise always considered valid
+        """
+        if self._p and not self._p.is_alive():
+            return 0
+
+
+    # --------------------------------------------------------------------------
+    #
+    def stop(self):
 
         if self._p:
             self._p.terminate()
