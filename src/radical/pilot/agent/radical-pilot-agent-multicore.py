@@ -4831,8 +4831,9 @@ class AgentStagingInputComponent(rpu.Component):
         self._log.info('handle %s' % cu['_id'])
 
         workdir      = os.path.join(self._cfg['workdir'], '%s' % cu['_id'])
+        gtod         = os.path.join(self._cfg['workdir'], 'gtod')
         staging_area = os.path.join(self._cfg['workdir'], self._cfg['staging_area'])
-        gtod = os.path.join(self._cfg['workdir'], 'gtod')
+        staging_ok   = True
 
         cu['workdir']     = workdir
         cu['stdout']      = ''
@@ -4853,53 +4854,60 @@ class AgentStagingInputComponent(rpu.Component):
         rec_makedir(workdir)
         self._prof.prof('unit mkdir', uid=cu['_id'])
 
-        for directive in cu['Agent_Input_Directives']:
+        try:
+            for directive in cu['Agent_Input_Directives']:
 
-            self._prof.prof('Agent input_staging queue', uid=cu['_id'],
-                     msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
+                self._prof.prof('Agent input_staging queue', uid=cu['_id'],
+                         msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
 
-            # Perform input staging
-            self._log.info("unit input staging directives %s for cu: %s to %s",
-                           directive, cu['_id'], workdir)
+                # Perform input staging
+                self._log.info("unit input staging directives %s for cu: %s to %s",
+                               directive, cu['_id'], workdir)
 
-            # Convert the source_url into a SAGA Url object
-            source_url = rs.Url(directive['source'])
+                # Convert the source_url into a SAGA Url object
+                source_url = rs.Url(directive['source'])
 
-            # Handle special 'staging' scheme
-            if source_url.scheme == self._cfg['staging_scheme']:
-                self._log.info('Operating from staging')
-                # Remove the leading slash to get a relative path from the staging area
-                rel2staging = source_url.path.split('/',1)[1]
-                source = os.path.join(staging_area, rel2staging)
-            else:
-                self._log.info('Operating from absolute path')
-                source = source_url.path
+                # Handle special 'staging' scheme
+                if source_url.scheme == self._cfg['staging_scheme']:
+                    self._log.info('Operating from staging')
+                    # Remove the leading slash to get a relative path from the staging area
+                    rel2staging = source_url.path.split('/',1)[1]
+                    source = os.path.join(staging_area, rel2staging)
+                else:
+                    self._log.info('Operating from absolute path')
+                    source = source_url.path
 
-            # Get the target from the directive and convert it to the location
-            # in the workdir
-            target = directive['target']
-            abs_target = os.path.join(workdir, target)
+                # Get the target from the directive and convert it to the location
+                # in the workdir
+                target = directive['target']
+                abs_target = os.path.join(workdir, target)
 
-            # Create output directory in case it doesn't exist yet
-            rec_makedir(os.path.dirname(abs_target))
+                # Create output directory in case it doesn't exist yet
+                rec_makedir(os.path.dirname(abs_target))
 
-            self._log.info("Going to '%s' %s to %s", directive['action'], source, abs_target)
+                self._log.info("Going to '%s' %s to %s", directive['action'], source, abs_target)
 
-            if   directive['action'] == LINK: os.symlink     (source, abs_target)
-            elif directive['action'] == COPY: shutil.copyfile(source, abs_target)
-            elif directive['action'] == MOVE: shutil.move    (source, abs_target)
-            else:
-                # FIXME: implement TRANSFER mode
-                raise NotImplementedError('Action %s not supported' % directive['action'])
+                if   directive['action'] == LINK: os.symlink     (source, abs_target)
+                elif directive['action'] == COPY: shutil.copyfile(source, abs_target)
+                elif directive['action'] == MOVE: shutil.move    (source, abs_target)
+                else:
+                    # FIXME: implement TRANSFER mode
+                    raise NotImplementedError('Action %s not supported' % directive['action'])
 
-            log_message = "%s'ed %s to %s - success" % (directive['action'], source, abs_target)
-            self._log.info(log_message)
+                log_message = "%s'ed %s to %s - success" % (directive['action'], source, abs_target)
+                self._log.info(log_message)
+
+        except Exception as e:
+            self._log.exception("staging input failed -> unit failed")
+            staging_ok = False
 
 
-        self._prof.prof('log', msg="toward agent scheduling", uid=cu['_id'])
-
-      # self.advance(cu, rp.AGENT_SCHEDULING_PENDING, publish=True, push=True)
-        self.advance(cu, rp.ALLOCATING_PENDING, publish=True, push=True)
+        # Agent input staging is done (or failed)
+        if staging_ok:
+          # self.advance(cu, rp.AGENT_SCHEDULING_PENDING, publish=True, push=True)
+            self.advance(cu, rp.ALLOCATING_PENDING, publish=True, push=True)
+        else:
+            self.advance(cu, rp.FAILED, publish=True, push=False)
 
 
 # ==============================================================================
@@ -4981,6 +4989,7 @@ class AgentStagingOutputComponent(rpu.Component):
         self.advance(cu, rp.AGENT_STAGING_OUTPUT, publish=True, push=False)
 
         staging_area = os.path.join(self._cfg['workdir'], self._cfg['staging_area'])
+        staging_ok   = True
 
         workdir = cu['workdir']
 
@@ -5023,58 +5032,69 @@ class AgentStagingOutputComponent(rpu.Component):
             self.advance(cu, cu['target_state'], publish=True, push=False)
             return
 
-        # all other units get their (expectedly valid) output files staged
-        for directive in cu['Agent_Output_Directives']:
 
-            self._prof.prof('Agent output_staging', uid=cu['_id'],
-                     msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
+        try:
+            # all other units get their (expectedly valid) output files staged
+            for directive in cu['Agent_Output_Directives']:
 
-            # Perform output staging
-            self._log.info("unit output staging directives %s for cu: %s to %s",
-                    directive, cu['_id'], workdir)
+                self._prof.prof('Agent output_staging', uid=cu['_id'],
+                         msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
 
-            # Convert the target_url into a SAGA Url object
-            target_url = rs.Url(directive['target'])
+                # Perform output staging
+                self._log.info("unit output staging directives %s for cu: %s to %s",
+                        directive, cu['_id'], workdir)
 
-            # Handle special 'staging' scheme
-            if target_url.scheme == self._cfg['staging_scheme']:
-                self._log.info('Operating from staging')
-                # Remove the leading slash to get a relative path from
-                # the staging area
-                rel2staging = target_url.path.split('/',1)[1]
-                target = os.path.join(staging_area, rel2staging)
-            else:
-                self._log.info('Operating from absolute path')
+                # Convert the target_url into a SAGA Url object
+                target_url = rs.Url(directive['target'])
+
+                # Handle special 'staging' scheme
+                if target_url.scheme == self._cfg['staging_scheme']:
+                    self._log.info('Operating from staging')
+                    # Remove the leading slash to get a relative path from
+                    # the staging area
+                    rel2staging = target_url.path.split('/',1)[1]
+                    target = os.path.join(staging_area, rel2staging)
+                else:
+                    self._log.info('Operating from absolute path')
+                    # FIXME: will this work for TRANSFER mode?
+                    target = target_url.path
+
+                # Get the source from the directive and convert it to the location
+                # in the workdir
+                source = str(directive['source'])
+                abs_source = os.path.join(workdir, source)
+
+                # Create output directory in case it doesn't exist yet
                 # FIXME: will this work for TRANSFER mode?
-                target = target_url.path
+                rec_makedir(os.path.dirname(target))
 
-            # Get the source from the directive and convert it to the location
-            # in the workdir
-            source = str(directive['source'])
-            abs_source = os.path.join(workdir, source)
+                self._log.info("Going to '%s' %s to %s", directive['action'], abs_source, target)
 
-            # Create output directory in case it doesn't exist yet
-            # FIXME: will this work for TRANSFER mode?
-            rec_makedir(os.path.dirname(target))
+                if directive['action'] == LINK:
+                    # This is probably not a brilliant idea, so at least give a warning
+                    os.symlink(abs_source, target)
+                elif directive['action'] == COPY:
+                    shutil.copyfile(abs_source, target)
+                elif directive['action'] == MOVE:
+                    shutil.move(abs_source, target)
+                else:
+                    # FIXME: implement TRANSFER mode
+                    raise NotImplementedError('Action %s not supported' % directive['action'])
 
-            self._log.info("Going to '%s' %s to %s", directive['action'], abs_source, target)
+                log_message = "%s'ed %s to %s - success" %(directive['action'], abs_source, target)
+                self._log.info(log_message)
 
-            if directive['action'] == LINK:
-                # This is probably not a brilliant idea, so at least give a warning
-                os.symlink(abs_source, target)
-            elif directive['action'] == COPY:
-                shutil.copyfile(abs_source, target)
-            elif directive['action'] == MOVE:
-                shutil.move(abs_source, target)
-            else:
-                # FIXME: implement TRANSFER mode
-                raise NotImplementedError('Action %s not supported' % directive['action'])
+        except Exception as e:
+            self._log.exception("staging output failed -> unit failed")
+            staging_ok = False
 
-            log_message = "%s'ed %s to %s - success" %(directive['action'], abs_source, target)
-            self._log.info(log_message)
 
-        # Agent output staging is done.
-        self.advance(cu, rp.PENDING_OUTPUT_STAGING, publish=True, push=False)
+        # Agent output staging is done (or failed)
+        if staging_ok:
+          # self.advance(cu, rp.UMGR_STAGING_OUTPUT_PENDING, publish=True, push=True)
+            self.advance(cu, rp.PENDING_OUTPUT_STAGING, publish=True, push=False)
+        else:
+            self.advance(cu, rp.FAILED, publish=True, push=False)
 
 
 
@@ -5847,17 +5867,17 @@ def bootstrap_3():
         raise RuntimeError('invalid number of parameters (%s)' % sys.argv)
     agent_name = sys.argv[1]
 
-    try:
-        import setproctitle as spt
-        spt.setproctitle('radical.pilot %s' % agent_name)
-    except Exception as e:
-        self._log.debug('no setproctitle: %s', e)
-
     # set up a logger and profiler
     prof = rpu.Profiler ('%s.bootstrap_3' % agent_name)
     log  = ru.get_logger('%s.bootstrap_3' % agent_name, 
                          '%s.bootstrap_3.log' % agent_name, 'DEBUG')  # FIXME?
     log.info('start')
+
+    try:
+        import setproctitle as spt
+        spt.setproctitle('radical.pilot %s' % agent_name)
+    except Exception as e:
+        log.debug('no setproctitle: %s', e)
 
     # load the agent config, and overload the config dicts
     agent_cfg  = "%s/%s.cfg" % (os.getcwd(), agent_name)
