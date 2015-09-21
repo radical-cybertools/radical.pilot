@@ -1343,6 +1343,7 @@ export RADICAL_PILOT_VERBOSE=DEBUG
 $PREBOOTSTRAP2_EXPANDED
 
 # start agent, forward arguments
+# NOTE: exec only makes sense in the last line of the script
 exec $AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
 
 EOT
