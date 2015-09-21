@@ -38,8 +38,14 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, session
         tgt = "%s/%s" % (os.getcwd(), tgt)
 
     # we always create a session dir as real target
-    tgt = "file://localhost/%s/%s/" % (tgt, sid)
-    tgt_url = saga.Url(tgt)
+    tgt_url = saga.Url("%s/%s/" % (tgt, sid))
+
+    # Turn URLs without schema://host into file://localhost,
+    # so that they dont become interpreted as relative.
+    if not tgt_url.schema:
+        tgt_url.schema = 'file'
+    if not tgt_url.host:
+        tgt_url.host = 'localhost'
 
     # first fetch session profile
     # FIXME: should we record pwd or profile location in db session?  Or create
