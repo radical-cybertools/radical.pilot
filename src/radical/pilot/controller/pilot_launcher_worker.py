@@ -403,6 +403,7 @@ class PilotLauncherWorker(threading.Thread):
                                     agent_cfg_dict = ru.read_json(agent_cfg_file)
                             except Exception as e:
                                 logger.exception("Error reading agent config file: %s" % e)
+                                raise
 
                         else:
                             # we can't handle this type
