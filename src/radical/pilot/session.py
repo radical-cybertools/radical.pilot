@@ -16,6 +16,7 @@ import bson
 import glob
 import copy
 import saga
+import threading
 import radical.utils as ru
 
 from .utils           import *
@@ -87,7 +88,9 @@ class Session (saga.Session):
 
         # init the base class inits
         saga.Session.__init__ (self)
-        self._valid = True
+        self._valid     = True
+        self._terminate = threading.Event()
+        self._terminate.clear()
 
         # before doing anything else, set up the debug helper for the lifetime
         # of the session.
@@ -259,12 +262,15 @@ class Session (saga.Session):
             if  cleanup == True and terminate == True :
                 cleanup   = delete
                 terminate = delete
-                logger.warning("'delete' flag on session is deprecated. " \
-                               "Please use 'cleanup' and 'terminate' instead!")
+                logger.error("'delete' flag on session is deprecated. " \
+                             "Please use 'cleanup' and 'terminate' instead!")
 
         if  cleanup :
             # cleanup implies terminate
             terminate = True
+
+        if terminate:
+            self._terminate.set()
 
         for pmgr_uid, pmgr in self._pilot_manager_objects.iteritems():
             logger.debug("session %s closes   pmgr   %s" % (str(self._uid), pmgr_uid))
