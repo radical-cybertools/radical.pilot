@@ -178,7 +178,7 @@ class PilotManager(object):
             logger.debug("pmgr    %s canceled worker %s" % (str(self.uid), self._worker.name))
 
         logger.debug("pmgr    %s stops    worker %s" % (str(self.uid), self._worker.name))
-        self._worker.close(terminate=terminate)
+        self._worker.stop()
         self._worker.join()
         logger.debug("pmgr    %s stopped  worker %s" % (str(self.uid), self._worker.name))
         logger.debug("pmgr    %s closed" % (str(self.uid)))
