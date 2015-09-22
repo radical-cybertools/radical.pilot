@@ -62,9 +62,24 @@ class PilotLauncherWorker(threading.Thread):
         self.missing_pilots     = dict()
         self._shared_worker_data = shared_worker_data
 
+        # disable event for launcher functionality (not state check
+        # functionality)
+        self._disabled = threading.Event()
+        self._disabled.clear()
+
         # Stop event can be set to terminate the main loop
-        self._stop = threading.Event()
-        self._stop.clear()
+        self._terminate = threading.Event()
+        self._terminate.clear()
+
+    # ------------------------------------------------------------------------
+    #
+    def disable(self):
+        """disable() stops the launcher, but leaves the state checking alive
+        """
+        logger.debug("launcher %s disabling" % (self.name))
+        self._disabled.set()
+        logger.debug("launcher %s disabled" % (self.name))
+
 
     # ------------------------------------------------------------------------
     #
@@ -72,7 +87,7 @@ class PilotLauncherWorker(threading.Thread):
         """stop() signals the process to finish up and terminate.
         """
         logger.debug("launcher %s stopping" % (self.name))
-        self._stop.set()
+        self._terminate.set()
         self.join()
         logger.debug("launcher %s stopped" % (self.name))
       # logger.debug("Launcher thread (ID: %s[%s]) for PilotManager %s stopped." %
@@ -259,6 +274,8 @@ class PilotLauncherWorker(threading.Thread):
         """Starts the process when Process.start() is called.
         """
 
+        global JOB_CHECK_INTERVAL
+
         # make sure to catch sys.exit (which raises SystemExit)
         try :
             # Get directory where this module lives
@@ -276,7 +293,7 @@ class PilotLauncherWorker(threading.Thread):
 
             last_job_check = time.time()
 
-            while not self._stop.is_set():
+            while not self._terminate.is_set():
 
                 # Periodically, we pull up all ComputePilots that are pending 
                 # execution or were last seen executing and check if the corresponding  
@@ -286,6 +303,14 @@ class PilotLauncherWorker(threading.Thread):
                 if  last_job_check + JOB_CHECK_INTERVAL < time.time() :
                     last_job_check = time.time()
                     self.check_pilot_states (pilot_col)
+
+                if self._disabled.is_set():
+                    # don't process any new pilot start requests.  
+                    # run state checks more frequently.
+                    JOB_CHECK_INTERVAL = 3
+                    logger.debug('pilot launching is disabled')
+                    time.sleep(1)
+                    continue
 
 
                 # See if we can find a ComputePilot that is waiting to be launched.

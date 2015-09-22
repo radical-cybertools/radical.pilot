@@ -611,7 +611,8 @@ class UnitManager(object):
         all_ok = False
         states = list()
 
-        while not all_ok :
+        while not all_ok and \
+              not self._session._terminate.is_set():
 
             all_ok = True
             states = list()

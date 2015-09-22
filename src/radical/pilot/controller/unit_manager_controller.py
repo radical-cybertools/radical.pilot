@@ -224,7 +224,8 @@ class UnitManagerController(threading.Thread):
             # asynchronous transfer operations.
             transfer_results = list()
 
-            while not self._stop.is_set():
+            while not self._stop.is_set() and \
+                  not self._session._terminate.is_set():
 
                 # =================================================================
                 #
