@@ -116,11 +116,11 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, session
 
 # ------------------------------------------------------------------------------
 #
-def get_session_frames (db, sids, cachedir=None) :
+def get_session_frames (sids, dburl=None, cachedir=None) :
 
     # use like this: 
     #
-    # session_frame, pilot_frame, unit_frame = rpu.get_session_frames (db, session, cachedir)
+    # session_frame, pilot_frame, unit_frame = rpu.get_session_frames (session, db, cachedir)
     # pandas.set_option('display.width', 1000)
     # print session_frame
     # print pilot_frame
@@ -132,6 +132,12 @@ def get_session_frames (db, sids, cachedir=None) :
     # print u_max
     # print u_max - u_min
 
+    if not dburl:
+        dburl = os.environ['RADICAL_PILOT_DBURL']
+
+    if not dburl:
+        raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
+
 
     if not isinstance (sids, list) :
         sids = [sids]
@@ -142,7 +148,7 @@ def get_session_frames (db, sids, cachedir=None) :
 
     for sid in sids :
 
-        docs = get_session_docs (db, sid, cachedir=cachedir)
+        docs = get_session_docs (dburl, sid, cachedir=cachedir)
 
         session       = docs['session']
         session_start = session['created']
@@ -228,7 +234,7 @@ def get_session_frames (db, sids, cachedir=None) :
                 UNSCHEDULED            : None, 
                 PENDING_INPUT_STAGING  : None, 
                 STAGING_INPUT          : None, 
-                PENDING_EXECUTION      : None, 
+                EXECUTING_PENDING      : None,
                 SCHEDULING             : None, 
                 ALLOCATING             : None, 
                 EXECUTING              : None, 
@@ -283,7 +289,7 @@ def get_session_frames (db, sids, cachedir=None) :
             primary_states = [NEW                   ,
                               UNSCHEDULED           ,
                               STAGING_INPUT         ,
-                              PENDING_EXECUTION     ,
+                              EXECUTING_PENDING     ,
                               SCHEDULING            ,
                               ALLOCATING            ,
                               EXECUTING             ,

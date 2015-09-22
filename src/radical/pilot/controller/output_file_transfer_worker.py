@@ -71,7 +71,8 @@ class OutputFileTransferWorker(threading.Thread):
                 logger.exception("Connection error: %s" % e)
                 return
 
-            while not self._stop.is_set():
+            while not self._stop.is_set() and \
+                  not self._session._terminate.is_set():
 
                 # See if we can find a ComputeUnit that is waiting for client output file transfer.
                 # FIXME: this method is not bulkable.  See agent pulling for
