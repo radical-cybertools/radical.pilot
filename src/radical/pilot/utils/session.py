@@ -11,10 +11,10 @@ from db_utils import *
 
 # ------------------------------------------------------------------------------
 #
-def fetch_profiles (sid, dburl=None, src=None, tgt=None, session=None, skip_existing=False):
+def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, session=None, skip_existing=False):
     '''
     sid: session for which all profiles are fetched
-    src: dir to look for session profiles
+    client: dir to look for client session profiles
     tgt: dir to store the profile in
 
     returns list of file names
@@ -28,8 +28,8 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, session=None, skip_exis
     if not dburl:
         raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
 
-    if not src:
-        src = os.getcwd()
+    if not client:
+        client = os.getcwd()
             
     if not tgt:
         tgt = os.getcwd()
@@ -38,38 +38,32 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, session=None, skip_exis
         tgt = "%s/%s" % (os.getcwd(), tgt)
 
     # we always create a session dir as real target
-    tgt = "%s/%s/" % (tgt, sid)
+    tgt_url = saga.Url("%s/%s/" % (tgt, sid))
 
-    # at the moment, we only support localhost as fetch target
-    tgt_url = saga.Url(tgt)
-    if not saga.utils.misc.url_is_local (tgt_url):
-        raise ValueError('Only local fetch targets are supported (%s)' % tgt_url)
-
-    # make locality explicit
-    tgt_url.schema = 'file'
-    tgt_url.host   = 'localhost'
+    # Turn URLs without schema://host into file://localhost,
+    # so that they dont become interpreted as relative.
+    if not tgt_url.schema:
+        tgt_url.schema = 'file'
+    if not tgt_url.host:
+        tgt_url.host = 'localhost'
 
     # first fetch session profile
     # FIXME: should we record pwd or profile location in db session?  Or create
     #        a sandbox like dir for storing profiles and logs?
-    profiles = glob.glob("%s/%s.prof" % (src, sid))
+    client_profile = "%s/%s.prof" % (client, sid)
 
-    if not profiles:
-        raise ValueError("Cannot find any local profile for session %s" % sid)
+    ftgt = saga.Url('%s/%s' % (tgt_url, os.path.basename(client_profile)))
+    ret.append("%s" % ftgt.path)
 
-    for prof in profiles:
+    if skip_existing and os.path.exists(ftgt.path) \
+            and os.stat(ftgt.path).st_size > 0:
 
-        ftgt = '%s/%s' % (tgt_url, os.path.basename(prof))
-        ret.append("%s/%s" % (tgt, os.path.basename(prof)))
+        print "Skip fetching of '%s' to '%s'." % (client_profile, tgt_url)
 
-        if skip_existing and os.path.exists(saga.Url(ftgt).path) \
-                and os.stat(saga.Url(ftgt).path).st_size > 0:
+    else:
 
-            print "Skipping fetching of '%s' to '%s'." % (prof, tgt_url)
-            continue
-
-        print "fetching '%s' to '%s'." % (prof, tgt_url)
-        prof_file = saga.filesystem.File(prof, session=session)
+        print "Fetching '%s' to '%s'." % (client_profile, tgt_url)
+        prof_file = saga.filesystem.File(client_profile, session=session)
         prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
         prof_file.close()
 
@@ -86,22 +80,34 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, session=None, skip_exis
 
         print "Processing pilot '%s'" % pilot['_id']
 
-        sandbox  = saga.filesystem.Directory (pilot['sandbox'], session=session)
+        sandbox_url = saga.Url(pilot['sandbox'])
+
+        if access:
+            # Allow to use a different access scheme than used for the the run.
+            # Useful if you ran from the headnode, but would like to retrieve
+            # the profiles to your desktop (Hello Titan).
+            access_url = saga.Url(access)
+            sandbox_url.schema = access_url.schema
+            sandbox_url.host = access_url.host
+
+            print "Overriding remote sandbox: %s" % sandbox_url
+
+        sandbox  = saga.filesystem.Directory (sandbox_url, session=session)
         profiles = sandbox.list('*.prof')
 
         for prof in profiles:
 
-            ftgt = '%s/%s' % (tgt_url, prof)
-            ret.append("%s/%s" % (tgt, prof))
+            ftgt = saga.Url('%s/%s' % (tgt_url, prof))
+            ret.append("%s" % ftgt.path)
 
-            if skip_existing and os.path.exists(saga.Url(ftgt).path) \
-                             and os.stat(saga.Url(ftgt).path).st_size > 0:
+            if skip_existing and os.path.exists(ftgt.path) \
+                             and os.stat(ftgt.path).st_size > 0:
 
                 print "Skipping fetching of '%s' to '%s'." % (prof, tgt_url)
                 continue
 
-            print "fetching '%s/%s' to '%s'." % (pilot['sandbox'], prof, tgt_url)
-            prof_file = saga.filesystem.File("%s/%s" % (pilot['sandbox'], prof), session=session)
+            print "Fetching '%s%s' to '%s'." % (sandbox_url, prof, tgt_url)
+            prof_file = saga.filesystem.File("%s%s" % (sandbox_url, prof), session=session)
             prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
             prof_file.close()
 

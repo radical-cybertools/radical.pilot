@@ -7,8 +7,6 @@ import threading
 
 # ------------------------------------------------------------------------------
 #
-# "label", "component", "event", "message"
-#
 _prof_fields  = ['time', 'name', 'uid', 'state', 'event', 'msg']
 # ------------------------------------------------------------------------------
 #
@@ -369,80 +367,134 @@ def combine_profiles(profiles):
 
 # ------------------------------------------------------------------------------
 #
-def blowup(config, cus, component, logger=None):
-    # for each cu in cu_list, add 'factor' clones just like it, just with
-    # a different ID (<id>.clone_001)
-    #
-    # This method also *drops* clones as needed!
-    #
-    # return value: [list of original and expanded CUs, list of dropped CUs]
-
-    # TODO: I dont like it that there is non blow-up semantics in the blow-up function.
-    # Probably want to put the conditional somewhere else.
-    if not isinstance (cus, list) :
-        cus = [cus]
+def drop_units(cfg, units, name, mode, prof=None, logger=None):
+    """
+    For each unit in units, check if the queue is configured to drop
+    units in the given mode ('in' or 'out').  If drop is set to 0, the units
+    list is returned as is.  If drop is set to one, all cloned units are
+    removed from the list.  If drop is set to two, an empty list is returned.
+    """
 
     # blowup is only enabled on profiling
     if 'RADICAL_PILOT_PROFILE' not in os.environ:
-        return
+        if logger:
+            logger.debug('no profiling - no dropping')
+        return units
 
-    factor = config['blowup_factor'].get (component, 1)
-    drop   = config['drop_clones']  .get (component, 1)
+    if not units:
+        # nothing to drop
+        if logger:
+            logger.debug('no units - no dropping')
+        return units
 
-    # FIXME
-  # prof ("debug", msg="%s drops with %s" % (component, drop))
+    drop = cfg.get('drop', {}).get(name, {}).get(mode, 1)
 
-    cloned  = list()
-    dropped = list()
+    if drop == 0:
+        if logger:
+            logger.debug('dropped nothing')
+        return units
 
-    for cu in cus :
+    return_list = True
+    if not isinstance(units, list):
+        return_list = False
+        units = [units]
 
-        uid = cu['_id']
+    if drop == 2:
+        if logger:
+            logger.debug('dropped everything')
+        if return_list: return []
+        else          : return None
 
-        if drop >= 1:
-            # drop clones --> drop matching uid's
-            if '.clone_' in uid :
-                # FIXME
-              # prof ('drop clone', msg=component, uid=uid)
-                dropped.append(cu)
-                continue
+    if drop != 1:
+        raise ValueError('drop[%s][%s] not in [0, 1, 2], but is %s' \
+                      % (name, mode, drop))
 
-        if drop >= 2:
-            # drop everything, even original units
-            # FIXME
-          # prof ('drop', msg=component, uid=uid)
-            dropped.append(cu)
-            continue
+    ret = list()
+    for unit in units :
+        if '.clone_' not in unit['_id']:
+            ret.append(unit)
+            if logger:
+                logger.debug('dropped not %s', unit['_id'])
+        else:
+            if logger:
+                logger.debug('dropped     %s', unit['_id'])
 
-        if factor < 0:
-            # FIXME: we should print a warning or something?
-            # Anyway, we assume the default here, ie. no blowup, no drop.
-            factor = 1
+    if return_list: 
+        return ret
+    else: 
+        if ret:
+            return ret[0]
+        else:
+            return None
+
+
+# ------------------------------------------------------------------------------
+#
+def clone_units(cfg, units, name, mode, prof=None, logger=None):
+    """
+    For each unit in units, add 'factor' clones just like it, just with
+    a different ID (<id>.clone_001).  The factor depends on the context of
+    this clone call (ie. the queue name), and on mode (which is 'in' or
+    'out').  This methid will always return a list.
+    """
+
+    if units == None:
+        if logger:
+            logger.debug('no units - no cloning')
+        return list()
+
+    if not isinstance(units, list):
+        units = [units]
+
+    # blowup is only enabled on profiling
+    if 'RADICAL_PILOT_PROFILE' not in os.environ:
+        if logger:
+            logger.debug('no profiling - no cloning')
+        return units
+
+    if not units:
+        # nothing to clone...
+        if logger:
+            logger.debug('No units - no cloning')
+        return units
+
+    factor = cfg.get('clone', {}).get(name, {}).get(mode, 1)
+
+    if factor == 1:
+        if logger:
+            logger.debug('cloning with factor [%s][%s]: 1' % (name, mode))
+        return units
+
+    if factor < 1:
+        raise ValueError('clone factor must be >= 1 (not %s)' % factor)
+
+    ret = list()
+    for unit in units :
+
+        uid = unit['_id']
 
         for idx in range(factor-1) :
 
-            cu_clone = copy.deepcopy (dict(cu))
-            clone_id = '%s.clone_%05d' % (str(cu['_id']), idx+1)
+            clone    = copy.deepcopy(dict(unit))
+            clone_id = '%s.clone_%05d' % (uid, idx+1)
 
-            for key in cu_clone :
-                if isinstance (cu_clone[key], basestring) :
-                    cu_clone[key] = cu_clone[key].replace (uid, clone_id)
+            for key in clone :
+                if isinstance (clone[key], basestring) :
+                    clone[key] = clone[key].replace (uid, clone_id)
 
             idx += 1
-            cloned.append(cu_clone)
-            # FIXME
-          # prof('add clone', msg=component, uid=clone_id)
+            ret.append(clone)
 
-        # For any non-zero factor, append the original unit -- factor==0 lets us
-        # drop the cu.
-        #
         # Append the original cu last, to increase the likelyhood that
         # application state only advances once all clone states have also
         # advanced (they'll get pushed onto queues earlier).  This cannot be
         # relied upon, obviously.
-        if factor > 0: cloned.append(cu)
+        ret.append(unit)
 
-    return cloned, dropped
+    if logger:
+        logger.debug('cloning with factor [%s][%s]: %s gives %s units' % (name, mode, factor, len(ret)))
+
+    return ret
 
 
 # ------------------------------------------------------------------------------

@@ -61,11 +61,12 @@ VIRTENV_IS_ACTIVATED=FALSE
 VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq"
 
 
+# ------------------------------------------------------------------------------
 #
 # If profiling is enabled, compile our little gtod app and take the first time
 #
-if ! test -z "$RADICAL_PILOT_PROFILE"
-then
+create_gtod()
+{
 
     cat > gtod.c <<EOT
 #include <stdio.h>
@@ -91,14 +92,13 @@ EOT
     TIME_ZERO=`./gtod`
     export TIME_ZERO
 
-fi
-
+}
 
 # ------------------------------------------------------------------------------
 #
 profile_event()
 {
-    PROFILE="$SESSIONID.$$.Bootstrapper.prof"
+    PROFILE="bootstrap_1.prof"
 
     if test -z "$RADICAL_PILOT_PROFILE"
     then
@@ -117,7 +117,7 @@ profile_event()
     fi
 
     printf "%.4f,%s,%s,%s,%s,%s\n" \
-        "$NOW" "$$:Bootstrapper" "$PILOT_ID" "ACTIVE" "$event" "$msg" \
+        "$NOW" "bootstrap_1" "$PILOT_ID" "ACTIVE" "$event" "$msg" \
         >> "$PROFILE"
 }
 
@@ -1173,6 +1173,7 @@ done
 # Create header for profile log
 if ! test -z "$RADICAL_PILOT_PROFILE"
 then
+    create_gtod
     profile_event 'bootstrap start'
 fi
 
@@ -1343,7 +1344,8 @@ export RADICAL_PILOT_VERBOSE=DEBUG
 $PREBOOTSTRAP2_EXPANDED
 
 # start agent, forward arguments
-$AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
+# NOTE: exec only makes sense in the last line of the script
+exec $AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
 
 EOT
 
