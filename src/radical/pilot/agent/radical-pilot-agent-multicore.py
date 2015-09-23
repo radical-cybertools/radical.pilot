@@ -5368,9 +5368,9 @@ class AgentWorker(rpu.Worker):
         self._pull_units = self._sub_cfg.get('pull_units', False)
 
         # another sanity check
-        if self.agent_name == 'agent.0':
+        if self.agent_name == 'agent_0':
             if self._sub_cfg.get('target', 'local') != 'local':
-                raise ValueError("agent.0 must run on target 'local'")
+                raise ValueError("agent_0 must run on target 'local'")
 
         # keep track of objects we need to stop in the finally clause
         self._sub_agents = dict()
@@ -5384,7 +5384,7 @@ class AgentWorker(rpu.Worker):
 
         # set up db connection -- only for the master agent and for the agent
         # which pulls units (which might be the same)
-        if self.agent_name == 'agent.0' or self._pull_units:
+        if self.agent_name == 'agent_0' or self._pull_units:
             self._log.debug('connecting to mongodb at %s for unit pull')
             _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
 
@@ -5394,7 +5394,7 @@ class AgentWorker(rpu.Worker):
 
         # first order of business: set the start time and state of the pilot
         # Only the master agent performs this action
-        if self.agent_name == 'agent.0':
+        if self.agent_name == 'agent_0':
             now = rpu.timestamp()
             ret = self._p.update(
                 {"_id": self._pilot_id},
@@ -5451,7 +5451,7 @@ class AgentWorker(rpu.Worker):
 
         # once bootstrap_4 is done, we signal success to the parent agent 
         # -- if we have any parent...
-        if self.agent_name != 'agent.0':
+        if self.agent_name != 'agent_0':
             self.publish('command', {'cmd' : 'alive',
                                      'arg' : self.agent_name})
 
@@ -5581,7 +5581,7 @@ class AgentWorker(rpu.Worker):
 
         # communicate finalization to parent agent 
         # -- if we have any parent...
-        if self.agent_name != 'agent.0':
+        if self.agent_name != 'agent_0':
             self.publish('command', {'cmd' : 'final',
                                      'arg' : self.agent_name})
 
@@ -5754,9 +5754,9 @@ class AgentWorker(rpu.Worker):
 
         # we also create *one* instance of every 'worker' type -- which are the
         # heartbeat and update worker.  To ensure this, we only create workers
-        # in agent.0.  
+        # in agent_0.
         # FIXME: make this configurable, both number and placement
-        if self.agent_name == 'agent.0':
+        if self.agent_name == 'agent_0':
             wmap = {
                 rp.AGENT_UPDATE_WORKER    : AgentUpdateWorker,
                 rp.AGENT_HEARTBEAT_WORKER : AgentHeartbeatWorker
@@ -5851,7 +5851,7 @@ def bootstrap_3():
     This method continues where the bootstrapper left off, but will quickly pass
     control to the Agent class which will spawn the functional components.
 
-    Most of bootstrap_3 applies only to agent.0, in particular all mongodb
+    Most of bootstrap_3 applies only to agent_0, in particular all mongodb
     interactions remains excluded for other sub-agent instances.
 
     The agent interprets a config file, which will specify in an agent_layout
@@ -5862,7 +5862,7 @@ def bootstrap_3():
       - what are the endpoints for bridges which are not started
     bootstrap_3 will create derived config files for all sub-agents.
 
-    The agent master (agent.0) will collect information about the nodes required
+    The agent master (agent_0) will collect information about the nodes required
     for all instances.  That is added to the config itself, for the benefit of
     the LRMS initialisation which is expected to block those nodes from the
     scheduler.
@@ -5898,7 +5898,7 @@ def bootstrap_3():
 
     # quickly set up a mongodb handle so that we can report errors.
     # FIXME: signal handlers need mongo_p, but we won't have that until later
-    if agent_name == 'agent.0':
+    if agent_name == 'agent_0':
 
         # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold the
         # address of the tunnelized DB endpoint.
@@ -5943,7 +5943,7 @@ def bootstrap_3():
         # ----------------------------------------------------------------------
         # des Pudels Kern: merge LRMS info into cfg and get the agent started
 
-        if agent_name == 'agent.0':
+        if agent_name == 'agent_0':
 
             # only the master agent creates LRMS and sub-agent config files.
             # The LRMS which will give us the set of agent_nodes to use for
@@ -5983,7 +5983,7 @@ def bootstrap_3():
 
                 # FIXME: we should point the address to the node of the subagent
                 #        which hosts the bridge, not the local IP.  Until this
-                #        is fixed, bridges MUST run on agent.0 (which is what
+                #        is fixed, bridges MUST run on agent_0 (which is what
                 #        LRMS.hostip() below will point to).
                 nodeip = LRMS.hostip(cfg.get('network_interface'))
 
@@ -5998,12 +5998,12 @@ def bootstrap_3():
 
             # create a sub_config for each sub-agent (but skip master config)
             for sa in cfg['agent_layout']:
-                if sa != 'agent.0':
+                if sa != 'agent_0':
                     sa_cfg = copy.deepcopy(cfg)
                     sa_cfg['agent_name'] = sa
                     ru.write_json(sa_cfg, './%s.cfg' % sa)
 
-        # we now have correct bridge addresses added to the agent.0.cfg, and all
+        # we now have correct bridge addresses added to the agent_0.cfg, and all
         # other agents will have picked that up from their config files -- we
         # can start the agent and all its components!
         agent = AgentWorker(cfg)
@@ -6015,7 +6015,7 @@ def bootstrap_3():
         agent.stop()
         log.debug('agent %s finalized' % agent_name)
 
-        if agent_name == 'agent.0':
+        if agent_name == 'agent_0':
             if agent.final_cause == 'timeout':
                 pilot_DONE(mongo_p, pilot_id, log, "TIMEOUT received. Terminating.")
             elif agent.final_cause == 'cancel':
@@ -6030,12 +6030,12 @@ def bootstrap_3():
 
     except SystemExit:
         log.exception("Exit running agent: %s" % agent_name)
-        if agent_name == 'agent.0':
+        if agent_name == 'agent_0':
             pilot_FAILED(mongo_p, pilot_id, log, "Caught system exit. EXITING") 
         sys.exit(1)
 
     except Exception as e:
-        if agent_name == 'agent.0':
+        if agent_name == 'agent_0':
             pilot_FAILED(mongo_p, pilot_id, log, "Error running agent: %s" % e)
         sys.exit(2)
 
