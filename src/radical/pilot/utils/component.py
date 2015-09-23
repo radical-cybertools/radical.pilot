@@ -11,7 +11,7 @@ import radical.utils   as ru
 
 from ..states    import *
 
-from .prof_utils import Profiler, clone_units, drop_units
+from .prof_utils import Profiler, clone_units, drop_clones
 
 from .queue      import Queue        as rpu_Queue
 from .queue      import QUEUE_ZMQ    as rpu_QUEUE_ZMQ
@@ -156,6 +156,7 @@ class Component(mp.Process):
         self._is_parent     = None        # guard initialize/initialize_child
         self._exit_on_error = True        # FIXME: make configurable
         self._cb_lock       = mt.Lock()   # guard threaded callback invokations
+        self._drop_cb       = None        # free resources on dropping clones
 
         # use agent_name for one log per agent, cname for one log per agent and component
         log_name = self._cname
@@ -562,6 +563,19 @@ class Component(mp.Process):
         self._log.debug('%s declared subscriber: %s : %s : %s : %s' \
                 % (self._cname, topic, pubsub, cb, t.name))
 
+    # --------------------------------------------------------------------------
+    #
+    def declare_drop_cb(self, drop_cb):
+        """
+        The drop callback will be invoked whenever a unit is dropped after
+        passing this component.  So, whenever the component allocates some
+        resources for a cloned unit which could otherwise not be reaped anymore,
+        because the unit would not pass some reaping state or something, this
+        callback allows to perform the required action (hi scheduler!).
+        """
+        self._log.debug('declare drop_cb %s (%s)', drop_cb, os.getpid())
+        self._drop_cb = drop_cb
+
 
     # --------------------------------------------------------------------------
     #
@@ -652,7 +666,8 @@ class Component(mp.Process):
 
                     # depending on the queue we got the unit from, we can either
                     # drop units or clone them to inject new ones
-                    unit = drop_units(self._cfg, unit, self.ctype, 'input', logger=self._log)
+                    unit = drop_clones(self._cfg, unit, self.ctype, 'input'
+                                       drop_cb=self._drop_cb, logger=self._log)
                     if not unit:
                         self._prof.prof(event='drop', state=state,
                                 uid=uid, msg=input.name)
@@ -784,9 +799,10 @@ class Component(mp.Process):
 
                 output = self._outputs[state]
 
-                # depending on the queue we got the unit from, we can either
+                # depending on the queue we got the unit from, we can now either
                 # drop units or clone them to inject new ones
-                unit = drop_units(self._cfg, unit, self.ctype, 'output', logger=self._log)
+                unit = drop_clones(self._cfg, unit, self.ctype, 'output',
+                                   drop_cb=self._drop_cb, logger=self._log)
                 if not unit:
                     self._prof.prof(event='drop', state=state, uid=uid, msg=output.name)
                     continue
