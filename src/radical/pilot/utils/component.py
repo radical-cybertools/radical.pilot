@@ -666,7 +666,7 @@ class Component(mp.Process):
 
                     # depending on the queue we got the unit from, we can either
                     # drop units or clone them to inject new ones
-                    unit = drop_clones(self._cfg, unit, self.ctype, 'input'
+                    unit = drop_clones(self._cfg, unit, self.ctype, 'input',
                                        drop_cb=self._drop_cb, logger=self._log)
                     if not unit:
                         self._prof.prof(event='drop', state=state,

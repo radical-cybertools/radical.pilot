@@ -5944,12 +5944,7 @@ def bootstrap_3():
             print 'sigint'
             sys.exit(2)
 
-        def sigterm_handler(signum, frame):
-            pilot_FAILED(msg='Caught SIGTERM. EXITING (%s)' % frame)
-            print 'sigterm'
-            sys.exit(2)
-
-        def sigalrm_handler(signum, frame):
+        def sigalarm_handler(signum, frame):
             pilot_FAILED(msg='Caught SIGALRM (Walltime limit?). EXITING (%s)' % frame)
             print 'sigalrm'
             sys.exit(3)
@@ -5957,8 +5952,7 @@ def bootstrap_3():
         import atexit
         atexit.register(exit_handler)
         signal.signal(signal.SIGINT,  sigint_handler)
-        signal.signal(signal.SIGTERM, sigterm_handler)
-        signal.signal(signal.SIGALRM, sigalrm_handler)
+        signal.signal(signal.SIGALRM, sigalarm_handler)
 
     # if anything went wrong up to this point, we would have been unable to
     # report errors into mongodb.  From here on, any fatal error should result

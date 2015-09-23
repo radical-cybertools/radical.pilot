@@ -407,8 +407,9 @@ def drop_clones(cfg, units, name, mode, drop_cb=None, prof=None, logger=None):
     if drop == 2:
         if logger:
             logger.debug('dropped all')
-        for unit in units:
-            drop_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
+        if drop_cb:
+            for unit in units:
+                drop_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
         if return_list: return []
         else          : return None
 
@@ -423,7 +424,8 @@ def drop_clones(cfg, units, name, mode, drop_cb=None, prof=None, logger=None):
             if logger:
                 logger.debug('dropped not %s', unit['_id'])
         else:
-            drop_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
+            if drop_cb:
+                drop_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
             if logger:
                 logger.debug('dropped one %s', unit['_id'])
 
