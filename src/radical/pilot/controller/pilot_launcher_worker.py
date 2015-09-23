@@ -116,21 +116,21 @@ class PilotLauncherWorker(threading.Thread):
             MAX_IO_LOGLENGTH = 10240    # 10k should be enough for anybody...
 
             try :
-                f_out = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent.0.out'))
+                f_out = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent_0.out'))
                 out   = f_out.read()[-MAX_IO_LOGLENGTH:]
                 f_out.close ()
             except :
                 pass
 
             try :
-                f_err = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent.0.err'))
+                f_err = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent_0.err'))
                 err   = f_err.read()[-MAX_IO_LOGLENGTH:]
                 f_err.close ()
             except :
                 pass
 
             try :
-                f_log = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent.0.log'))
+                f_log = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent_0.log'))
                 log   = f_log.read()[-MAX_IO_LOGLENGTH:]
                 f_log.close ()
             except :
@@ -668,7 +668,7 @@ class PilotLauncherWorker(threading.Thread):
                         cf_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, cf_tmp_file))
                         msg = "Copying agent configuration file '%s' to sandbox (%s)." % (cf_url, pilot_sandbox)
                         logentries.append(Logentry (msg, logger=logger.debug))
-                        sandbox_tgt.copy(cf_url, 'agent.0.cfg')
+                        sandbox_tgt.copy(cf_url, 'agent_0.cfg')
 
                         # close and remove temp file
                         os.close(cfg_tmp_handle)
