@@ -729,6 +729,8 @@ class Component(mp.Process):
             self._log.exception('loop exception')
 
         except:
+            # This is most likely a sys.exit, but can be any other signal or
+            # interrupt.
             self._log.exception('loop error')
 
         finally:
