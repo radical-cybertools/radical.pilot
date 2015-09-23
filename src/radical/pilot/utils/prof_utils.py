@@ -114,6 +114,7 @@ class Profiler (object):
         # We first try to contact a network time service for a timestamp, if that
         # fails we use the current system time.
         try:
+            assert True == False
             import ntplib
             response = ntplib.NTPClient().request('0.pool.ntp.org')
             timestamp_sys  = response.orig_time
