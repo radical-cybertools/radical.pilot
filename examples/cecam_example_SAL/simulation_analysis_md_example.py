@@ -11,7 +11,7 @@ import os
 
 dh = ru.DebugHelper ()
 
-RUNTIME         =   15
+RUNTIME         =   10
 CORES           =   16
 SIM_INSTANCES   =   16
 ANA_INSTANCES   =   1           # DO NOT CHANGE !
@@ -76,13 +76,14 @@ remote_env = {
 
             
         'xsede.stampede': [
- 
+                            "module load TACC",
                             "module load intel/13.0.2.146",
                             "module load python/2.7.9",
                             "module load netcdf/4.3.2",
                             "module load hdf5/1.8.13",
                             "export PYTHONPATH=/opt/apps/intel13/mvapich2_1_9/python/2.7.9/lib/python2.7/site-packages:/work/02998/ardi/coco-0.19_installation/lib/python2.7/site-packages:$PYTHONPATH",
-                            "export PATH=/work/02998/ardi/coco-0.19_installation/bin:$PATH"
+                            "export PATH=/work/02998/ardi/coco-0.19_installation/bin:$PATH",
+                            "module load amber"
                         ],
 
     },
@@ -412,7 +413,7 @@ if __name__ == "__main__":
                                 '--grid','5',
                                 '--dims','3',
                                 '--frontpoints',SIM_INSTANCES,
-                                '--topfile','top_file',
+                                '--topfile',top_file,
                                 '--mdfile','*.ncdf',
                                 '--output','pdbs',
                                 '--logfile','coco.log',
@@ -460,7 +461,7 @@ if __name__ == "__main__":
             for inst in range(0,SIM_INSTANCES):
                 dir = {
                         'source': 'min{0}{1}.crd'.format(cycle,inst),
-                        'target': MY_STAGING_AREA + 'iter{0}/min{0}{1}.crd'.format(cycle,inst),
+                        'target': MY_STAGING_AREA + 'iter{2}/min{0}{1}.crd'.format(cycle,inst,cycle+1),
                         'action': radical.pilot.LINK
                         }
                 cud.output_staging.append(dir)
@@ -471,7 +472,7 @@ if __name__ == "__main__":
             for inst in range(0,SIM_INSTANCES):
                 dir = {
                         'source': 'min{0}{1}.crd'.format(cycle,inst),
-                        'target': 'backup/iter{0}/min{0}{1}.crd'.format(cycle,inst),
+                        'target': 'backup/iter{1}/min{0}.crd'.format(inst,cycle+1),
                         }
                 cud.output_staging.append(dir)
             #------------------------------------------------------------------
