@@ -201,7 +201,7 @@ setup_args = {
     },
     'install_requires'   : ['saga-python',
                             'radical.utils',
-                            'pymongo==2.8'
+                            'pymongo==2.8',
                             'python-hostlist',
                             'netifaces',
                             'setproctitle',
