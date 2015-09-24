@@ -204,6 +204,7 @@ setup_args = {
                             'pymongo==2.8',
                             'python-hostlist',
                             'netifaces',
+                            'setproctitle',
                             'ntplib',
                             'pyzmq'],
     'tests_require'      : [],
@@ -218,9 +219,6 @@ setup_args = {
 #       'upload-dir'     : 'docs/build/html',
 #   }
 }
-
-if 'RADICAL_DEBUG' in os.environ:
-    setup_args['install_requires'].append('setproctitle')
 
 # ------------------------------------------------------------------------------
 
