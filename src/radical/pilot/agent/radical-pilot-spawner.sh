@@ -421,13 +421,14 @@ cmd_monitor () {
 
 # echo "start monitoring mode ($GID)" >> $LOG
 
-  # 'touch' to make sure the file exists, and use '-n 0' so that we don't 
-  # read old notifications'
-  # NOTE: tail complains on inotify handle shortage, and then continues 
-  #       by using pulling.  We redirect stderr to /dev/null -- lets pray 
+  # 'touch' to make sure the file exists, and use '-n +1' so that we
+  # replay old notifications (to cater for startup races).  Note this
+  # can create a large number of monitor events for re-used workdirs!
+  # NOTE: tail complains on inotify handle shortage, and then continues
+  #       by using pulling.  We redirect stderr to /dev/null -- lets pray
   #       that we don't miss any other notifications... :/
-  \touch        "$NOTIFICATIONS"
-  \tail -f -n 0 "$NOTIFICATIONS" 2>/dev/null
+  \touch         "$NOTIFICATIONS"
+  \tail -f -n +1 "$NOTIFICATIONS" 2>/dev/null
 
 # echo "end monitoring mode ($GID)" >> $LOG
 

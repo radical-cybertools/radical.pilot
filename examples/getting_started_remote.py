@@ -10,7 +10,7 @@ import radical.utils as ru
 dh = ru.DebugHelper ()
 
 CNT      =     0
-RUNTIME  =    10
+RUNTIME  =    20
 SLEEP    =     0
 CORES    =    64
 UNITS    =   128
@@ -29,13 +29,25 @@ resources = {
             'schema'   : 'ssh'
             },
 
-        'ncsa.bw' : {
+        'ncsa.bw_orte' : {
+            'project'  : 'gkd',
+            'queue'    : 'debug',
+            'schema'   : 'gsissh'
+            },
+
+        'nersc.edison_orte' : {
             'project'  : None,
             'queue'    : 'debug',
-            'schema'   : None
+            'schema'   : 'ssh'
             },
 
         'epsrc.archer' : {
+            'project'  : 'e290',
+            'queue'    : 'short',
+            'schema'   : None
+            },
+
+        'epsrc.archer_orte' : {
             'project'  : 'e290',
             'queue'    : 'short',
             'schema'   : None

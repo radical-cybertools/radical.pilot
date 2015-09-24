@@ -54,8 +54,8 @@ class PilotManagerController(threading.Thread):
         threading.Thread.__init__(self)
 
         # Stop event can be set to terminate the main loop
-        self._stop = threading.Event()
-        self._stop.clear()
+        self._terminate = threading.Event()
+        self._terminate.clear()
 
         # Initialized is set, once the run loop has pulled status
         # at least once. Other functions use it as a guard.
@@ -176,6 +176,17 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
+    def disable_launcher(self):
+        """disable pilot launching
+        """
+        for worker in self._pilot_launcher_worker_pool:
+            logger.debug("pworker %s disables launcher %s" % (self.name, worker.name))
+            worker.disable ()
+            logger.debug("pworker %s disabled launcher %s" % (self.name, worker.name))
+
+
+    # ------------------------------------------------------------------------
+    #
     def cancel_launcher(self):
         """cancel the launcher threads
         """
@@ -192,7 +203,7 @@ class PilotManagerController(threading.Thread):
         """stop() signals the process to finish up and terminate.
         """
         logger.debug("pworker %s stopping" % (self.name))
-        self._stop.set()
+        self._terminate.set()
         self.join()
         logger.debug("pworker %s stopped" % (self.name))
 
@@ -263,33 +274,7 @@ class PilotManagerController(threading.Thread):
             logger.debug("Worker thread (ID: %s[%s]) for PilotManager %s started." %
                         (self.name, self.ident, self._pm_id))
 
-            while not self._stop.is_set():
-
-                # # Check if one or more startup requests have finished.
-                # self.startup_results_lock.acquire()
-
-                # new_startup_results = list()
-
-                # for transfer_result in self.startup_results:
-                #     if transfer_result.ready():
-                #         result = transfer_result.get()
-
-                #         self._dbs.update_pilot_state(
-                #             pilot_uid=result["pilot_uid"],
-                #             state=result["state"],
-                #             sagajobid=result["saga_job_id"],
-                #             pilot_sandbox=result["sandbox"],
-                #             global_sandbox=result["global_sandbox"],
-                #             submitted=result["submitted"],
-                #             logs=result["logs"]
-                #         )
-
-                #     else:
-                #         new_startup_results.append(transfer_result)
-
-                # self.startup_results = new_startup_results
-
-                # self.startup_results_lock.release()
+            while not self._terminate.is_set():
 
                 # Check and update pilots. This needs to be optimized at
                 # some point, i.e., state pulling should be conditional
@@ -373,7 +358,11 @@ class PilotManagerController(threading.Thread):
             thread.interrupt_main ()
 
         finally :
-            # shut down the autonomous pilot launcher worker(s)
+            # shut down the autonomous pilot launcher worker(s).  
+            # This uses terminate=True, so that on loop errors we'll terminate
+            # all pilots.  Note however that this instance had
+            # a 'close(terminate=True)' called before, then the stop below is
+            # a NOOP, and pilots will continue running.
             for worker in self._pilot_launcher_worker_pool:
                 logger.debug("pworker %s stops   launcher %s" % (self.name, worker.name))
                 worker.stop ()
@@ -406,12 +395,16 @@ class PilotManagerController(threading.Thread):
 
             # The PTYShell will swallow in the job part of the scheme
             if js_url.scheme.endswith('+ssh'):
+                # For remote adaptor usage over shh, use that here
                 js_url.scheme = 'ssh'
             elif js_url.scheme.endswith('+gsissh'):
+                # For remote adaptor usage over gsissh, use that here
                 js_url.scheme = 'gsissh'
-            elif js_url.scheme == 'fork':
+            elif js_url.scheme in ['fork', 'ssh', 'gsissh']:
+                # Use the scheme as is for non-queuing adaptor mechanisms
                 pass
             elif '+' not in js_url.scheme:
+                # For local access to queueing systems use fork
                 js_url.scheme = 'fork'
             else:
                 raise Exception("Are there more flavours we need to support?! (%s)" % js_url.scheme)
@@ -568,8 +561,8 @@ class PilotManagerController(threading.Thread):
                         job = js.get_job (job_id)
                         job.cancel ()
                     except Exception as e :
-                        logger.warn ('delayed pilot cancelation failed. '
-                                'This is not necessarily a problem.')
+                        logger.info ('delayed pilot cancelation failed. '
+                                     'This is not necessarily a problem.')
 
                 else :
                     logger.warn ("can't actively cancel pilot %s: no job id known (delayed)" % pilot_id)

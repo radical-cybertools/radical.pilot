@@ -35,24 +35,25 @@
         "lrms"                        : "TORQUE",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "SHELL",
+        "agent_spawner"               : "POPEN",
         "agent_config"                : "cray",
         "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",
         "tunnel_bind_device"          : "ipogif0",
         "forward_tunnel_endpoint"     : "BIND_ADDRESS",
-        #"forward_tunnel_endpoint"     : "localhost",
         "pre_bootstrap_1"             : [
+            "module switch PrgEnv-cray PrgEnv-gnu",
             "module load bw-python",
             "module use --append /u/sciteam/marksant/privatemodules",
-            "module load openmpi/HEAD"
+            "module load openmpi/HEAD",
+            # Workaround to be able to build netifaces python module
+            "export LIBRARY_PATH=$LIBRARY_PATH:$BWP_INTERP_LIBRARY_PATH"
         ],
         "pre_bootstrap_2"             : [
             "export HOME=$HOME",
             "export PATH=$PATH",
             "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
-            #"export LD_PRELOAD=/lib64/librt.so.1"
         ],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],

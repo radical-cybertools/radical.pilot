@@ -58,32 +58,47 @@ LOCK_TIMEOUT=180 # 3 min
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
 VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
-VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq"
+VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces setproctitle"
 
 
-# --------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
-# it is suprisingly difficult to get seconds since epoch in POSIX --
-# 'date +%s' is a GNU extension...  Anyway, awk to the rescue!
+# If profiling is enabled, compile our little gtod app and take the first time
 #
-timestamp () {
-  TIMESTAMP=`\awk 'BEGIN{srand(); print srand()}'`
+create_gtod()
+{
+
+    cat > gtod.c <<EOT
+#include <stdio.h>
+#include <sys/time.h>
+
+int main ()
+{
+    struct timeval tv;
+    (void) gettimeofday (&tv, NULL);
+    fprintf (stdout, "%d.%06d\n", tv.tv_sec, tv.tv_usec);
+    return (0);
 }
+EOT
+    cc -o gtod gtod.c 1>/dev/null 2>/dev/null
 
+    if ! test -e "./gtod"
+    then
+        # we "should" be able to build this everywhere ...
+        echo "can't build gtod binary!"
+        exit 1
+    fi
 
-if ! test -z "$RADICAL_PILOT_PROFILE"
-then
-    timestamp
-    TIME_ZERO=$TIMESTAMP
+    TIME_ZERO=`./gtod`
     export TIME_ZERO
-fi
 
+}
 
 # ------------------------------------------------------------------------------
 #
 profile_event()
 {
-    PROFILE="$SESSIONID.$$.Bootstrapper.prof"
+    PROFILE="bootstrap_1.prof"
 
     if test -z "$RADICAL_PILOT_PROFILE"
     then
@@ -93,31 +108,7 @@ profile_event()
     event=$1
     msg=$2
 
-    if ! test -f 'gtod.c'
-    then
-        cat > gtod.c <<EOT
-            #include <stdio.h>
-            #include <sys/time.h>
-            
-            int main ()
-            {
-                struct timeval tv;
-                (void) gettimeofday (&tv, NULL);
-                fprintf (stdout, "%d.%06d\n", tv.tv_sec, tv.tv_usec);
-                return (0);
-            }
-EOT
-        cc -o gtod gtod.c 1>/dev/null 2>/dev/null
-    fi
-
-    if test -e "./gtod"
-    then
-        TIMESTAMP=`./gtod`
-        NOW=`echo "$TIMESTAMP" - "$TIME_ZERO" | bc`
-    else
-        timestamp
-        NOW=$((TIMESTAMP-TIME_ZERO))
-    fi
+    NOW=`echo \`./gtod\` - "$TIME_ZERO" | bc`
 
     if ! test -f "$PROFILE"
     then
@@ -126,7 +117,7 @@ EOT
     fi
 
     printf "%.4f,%s,%s,%s,%s,%s\n" \
-        "$NOW" "$$:Bootstrapper" "$PILOT_ID" "ACTIVE" "$event" "$msg" \
+        "$NOW" "bootstrap_1" "$PILOT_ID" "ACTIVE" "$event" "$msg" \
         >> "$PROFILE"
 }
 
@@ -1182,6 +1173,7 @@ done
 # Create header for profile log
 if ! test -z "$RADICAL_PILOT_PROFILE"
 then
+    create_gtod
     profile_event 'bootstrap start'
 fi
 
@@ -1313,6 +1305,12 @@ $converted_entry"
 done
 IFS=$OLD_IFS
 
+
+# we can't always lookup the ntp pool on compute nodes -- so do it once here,
+# and communicate the IP to the agent.  The agent may still not be able to
+# connect, but then a sensible timeout will kick in on ntplib.
+RADICAL_PILOT_NTPHOST=`dig +short 0.pool.ntp.org | grep -v -e ";;" -e "\.$" | head -n 1`
+
 # Before we start the (sub-)agent proper, we'll create a bootstrap_2.sh script
 # to do so.  For a single agent this is not needed -- but in the case where
 # we spawn out additional agent instances later, that script can be reused to
@@ -1347,12 +1345,16 @@ export RADICAL_VERBOSE=DEBUG
 export RADICAL_UTIL_VERBOSE=DEBUG
 export RADICAL_PILOT_VERBOSE=DEBUG
 
+# avoid ntphost lookups on compute nodes
+export RADICAL_PILOT_NTPHOST=$RADICAL_PILOT_NTPHOST
+
 # pass environment variables down so that module load becomes effective at
 # the other side too (e.g. sub-agents).
 $PREBOOTSTRAP2_EXPANDED
 
 # start agent, forward arguments
-$AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
+# NOTE: exec only makes sense in the last line of the script
+exec $AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
 
 EOT
 
@@ -1364,7 +1366,7 @@ profile_event 'agent start'
 
 # start the master agent instance (zero)
 profile_event 'sync rel' 'agent start'
-sh bootstrap_2.sh 'agent.0' 1>agent.0.bootstrap_2.out 2>agent.0.bootstrap_2.err
+sh bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
 AGENT_EXITCODE=$?
 
 profile_event 'cleanup start'

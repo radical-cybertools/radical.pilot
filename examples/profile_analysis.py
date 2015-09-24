@@ -234,6 +234,9 @@ if __name__ == "__main__":
         rpu.add_frequency(adv, 'f_exe', 0.5, {'state' : 'Executing', 'event' : 'advance'})
         print adv[['time', 'f_exe']].dropna(subset=['f_exe'])
 
+        s_frame, p_frame, u_frame = rpu.get_session_frames(session_id)
+        print str(u_frame)
+
         for f in profiles:
             os.unlink(f)
 
