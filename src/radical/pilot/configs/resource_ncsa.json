@@ -43,6 +43,7 @@
         "tunnel_bind_device"          : "ipogif0",
         "forward_tunnel_endpoint"     : "BIND_ADDRESS",
         "pre_bootstrap_1"             : [
+            "module switch PrgEnv-cray PrgEnv-gnu",
             "module load bw-python",
             "module use --append /u/sciteam/marksant/privatemodules",
             "module load openmpi/HEAD",
