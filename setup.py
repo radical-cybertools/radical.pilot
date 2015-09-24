@@ -201,7 +201,6 @@ setup_args = {
     },
     'install_requires'   : ['saga-python',
                             'radical.utils',
-                            'ntplib',
                             'pymongo==2.8'
                             'python-hostlist',
                             'netifaces',
