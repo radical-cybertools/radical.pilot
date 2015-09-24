@@ -10,7 +10,7 @@ import radical.utils as ru
 dh = ru.DebugHelper ()
 
 CNT      =     0
-RUNTIME  =    10
+RUNTIME  =    20
 SLEEP    =     0
 CORES    =    64
 UNITS    =   128

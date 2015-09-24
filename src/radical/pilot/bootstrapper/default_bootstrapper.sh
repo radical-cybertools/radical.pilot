@@ -1309,7 +1309,7 @@ IFS=$OLD_IFS
 # we can't always lookup the ntp pool on compute nodes -- so do it once here,
 # and communicate the IP to the agent.  The agent may still not be able to
 # connect, but then a sensible timeout will kick in on ntplib.
-RADICAL_PILOT_NTPHOST=`dig +short 0.pool.ntp.org | grep -v "\.$" | head -n 1`
+RADICAL_PILOT_NTPHOST=`dig +short 0.pool.ntp.org | grep -v -e ";;" -e "\.$" | head -n 1`
 
 # Before we start the (sub-)agent proper, we'll create a bootstrap_2.sh script
 # to do so.  For a single agent this is not needed -- but in the case where

@@ -100,7 +100,6 @@ class Profiler (object):
         #       and downstream analysis tools too!
         self._handle.write("%.4f,%s:%s,%s,%s,%s,%s\n" \
                 % (timestamp, self._name, tid, uid, state, event, msg))
-        self.flush()
 
 
     # --------------------------------------------------------------------------
@@ -115,15 +114,19 @@ class Profiler (object):
         # We first try to contact a network time service for a timestamp, if that
         # fails we use the current system time.
         try:
-            import ntplib
-            ntphost  = os.environ.get('RADICAL_PILOT_NTPHOST', '0.pool.ntp.org')
-            response = ntplib.NTPClient().request(ntphost, timeout=1)
-            timestamp_sys  = response.orig_time
-            timestamp_abs  = response.tx_time
-            return [timestamp_sys, timestamp_abs, 'ntp']
+            ntphost = os.environ.get('RADICAL_PILOT_NTPHOST', '0.pool.ntp.org').strip()
+
+            if ntphost:
+                import ntplib
+                response = ntplib.NTPClient().request(ntphost, timeout=1)
+                timestamp_sys  = response.orig_time
+                timestamp_abs  = response.tx_time
+                return [timestamp_sys, timestamp_abs, 'ntp']
         except:
-            t = time.time()
-            return [t,t, 'sys']
+            pass
+
+        t = time.time()
+        return [t,t, 'sys']
 
 
     # --------------------------------------------------------------------------
