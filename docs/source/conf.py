@@ -103,11 +103,6 @@ List of Pre-Configured Resources
             except Exception, ex:
                 access_schemas = ['n/a']
 
-            print '---------------'
-            print config
-            import pprint
-            pprint.pprint(resource_config)
-
             resources_rst.write("{0}\n".format(host_key.upper()))
             resources_rst.write("{0}\n\n".format("*"*len(host_key)))
             resources_rst.write("{0}\n\n".format(resource_config["description"]))

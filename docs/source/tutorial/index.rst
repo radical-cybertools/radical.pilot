@@ -9,6 +9,7 @@ examples illustrate some common usage patterns in distributed environments.
 
 **Prerequisites:**
 
+* You read the installation section.
 * You are familiar with Linux or UNIX.
 * You can read and write Python code.
 * You can use SSH and understand how public and private keys work.
@@ -17,10 +18,10 @@ examples illustrate some common usage patterns in distributed environments.
 **You will learn how to:**
 
 * Submit multiple jobs through a 'pilot job' to your local workstation as well as a remote machine.
-* Write programs that run multiple jobs concurrently, sequentially, or both, 
-  based on their requirements and dependencies.
-* How to specify input files for tasks.
-* MPI tasks are different from regular tasks.
+* Write programs that run multiple jobs concurrently, sequentially, or both;
+  based on their requirements and dependencies;
+* How to specify input files for tasks;
+* MPI tasks are different from non-MPI tasks.
 
 **Contents:**
 
