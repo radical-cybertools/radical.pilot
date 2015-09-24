@@ -114,7 +114,7 @@ class Profiler (object):
         # We first try to contact a network time service for a timestamp, if that
         # fails we use the current system time.
         try:
-            ntphost = os.environ.get('RADICAL_PILOT_NTPHOST', '0.pool.ntp.org').strip()
+            ntphost = os.environ.get('RADICAL_PILOT_NTPHOST', '').strip()
 
             if ntphost:
                 import ntplib
