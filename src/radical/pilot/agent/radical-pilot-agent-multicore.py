@@ -5345,7 +5345,12 @@ class AgentWorker(rpu.Worker):
         This prepares the stage for the component setup (self._setup()).
         """
 
-        self._cfg['workdir'] = os.getcwd() # this better be on a shared FS!
+        # keep track of objects we need to stop in the finally clause
+        self._sub_agents = dict()
+        self._bridges    = dict()
+        self._components = dict()
+        self._workers    = dict()
+
 
         # sanity check on config settings
         if not 'cores'               in self._cfg: raise ValueError("Missing number of cores")
@@ -5367,16 +5372,13 @@ class AgentWorker(rpu.Worker):
         self._sub_cfg    = self._cfg['agent_layout'][self.agent_name]
         self._pull_units = self._sub_cfg.get('pull_units', False)
 
+        # this better be on a shared FS!
+        self._cfg['workdir'] = os.getcwd()
+
         # another sanity check
         if self.agent_name == 'agent_0':
             if self._sub_cfg.get('target', 'local') != 'local':
                 raise ValueError("agent_0 must run on target 'local'")
-
-        # keep track of objects we need to stop in the finally clause
-        self._sub_agents = dict()
-        self._bridges    = dict()
-        self._components = dict()
-        self._workers    = dict()
 
         # configure the agent logger
         self._log.setLevel(self._cfg['debug'])
