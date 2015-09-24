@@ -304,7 +304,6 @@ class Component(mp.Process):
 
         self._prof.prof("closing")
         self._log.info("closing (%d threads)" % (len(self._threads)))
-        self._log.error(ru.get_trace())
 
         # tear down all subscriber threads
         self._terminate.set()
