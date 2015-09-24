@@ -36,7 +36,7 @@ class Profiler (object):
             self._enabled = False
             return
 
-        self._ts_zero, self._ts_abs = self._timestamp_init()
+        self._ts_zero, self._ts_abs, self._ts_mode = self._timestamp_init()
 
         self._name  = name
         self._handle = open("%s.prof"  % self._name, 'a')
@@ -46,8 +46,9 @@ class Profiler (object):
         #       and downstream analysis tools too!
         self._handle.write("#time,name,uid,state,event,msg\n")
         self._handle.write("%.4f,%s:%s,%s,%s,%s,%s\n" % \
-                (0.0, self._name, "", "", "", 'sync abs',
-                "%s:%s:%s" % (time.time(), self._ts_zero, self._ts_abs)))
+                           (0.0, self._name, "", "", "", 'sync abs',
+                            "%s:%s:%s:%s" % (self._ts_mode, time.time(),
+                                             self._ts_zero, self._ts_abs)))
 
 
     # ------------------------------------------------------------------------------
@@ -115,13 +116,14 @@ class Profiler (object):
         # fails we use the current system time.
         try:
             import ntplib
-            response = ntplib.NTPClient().request('0.pool.ntp.org')
+            ntphost  = os.environ.get('RADICAL_PILOT_NTPHOST', '0.pool.ntp.org')
+            response = ntplib.NTPClient().request(ntphost, timeout=1)
             timestamp_sys  = response.orig_time
             timestamp_abs  = response.tx_time
-            return [timestamp_sys, timestamp_abs]
+            return [timestamp_sys, timestamp_abs, 'ntp']
         except:
             t = time.time()
-            return [t,t]
+            return [t,t, 'sys']
 
 
     # --------------------------------------------------------------------------

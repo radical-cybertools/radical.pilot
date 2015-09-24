@@ -1305,6 +1305,12 @@ $converted_entry"
 done
 IFS=$OLD_IFS
 
+
+# we can't always lookup the ntp pool on compute nodes -- so do it once here,
+# and communicate the IP to the agent.  The agent may still not be able to
+# connect, but then a sensible timeout will kick in on ntplib.
+RADICAL_PILOT_NTPHOST=`dig +short 0.pool.ntp.org | grep -v "\.$" | head -n 1`
+
 # Before we start the (sub-)agent proper, we'll create a bootstrap_2.sh script
 # to do so.  For a single agent this is not needed -- but in the case where
 # we spawn out additional agent instances later, that script can be reused to
@@ -1338,6 +1344,9 @@ export SAGA_VERBOSE=DEBUG
 export RADICAL_VERBOSE=DEBUG
 export RADICAL_UTIL_VERBOSE=DEBUG
 export RADICAL_PILOT_VERBOSE=DEBUG
+
+# avoid ntphost lookups on compute nodes
+export RADICAL_PILOT_NTPHOST=$RADICAL_PILOT_NTPHOST
 
 # pass environment variables down so that module load becomes effective at
 # the other side too (e.g. sub-agents).
