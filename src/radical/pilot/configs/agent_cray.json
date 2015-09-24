@@ -1,0 +1,62 @@
+# This config is an examplary for a pilot on a Cray machine
+{
+    # directory for staging files inside the agent sandbox
+    "staging_area"         : "staging_area",
+
+    # url scheme to indicate the use of staging_area
+    "staging_scheme"       : "staging",
+
+    # max number of cu out/err chars to push to db
+    "max_io_loglength"     : 1024,
+
+    # max time period to collect db notifications into bulks (seconds)
+    "bulk_collection_time" : 1.0,
+
+    # time to sleep between database polls (seconds)
+    "db_poll_sleeptime"    : 0.1,
+
+    # time between checks of internal state and commands from mothership (seconds)
+    "heartbeat_interval"   : 10,
+
+    # interface for binding zmq to
+    "network_interface"    : "ipogif0",
+
+    "agent_layout": {
+        "agent_0": {
+            # Where to run this agent ("local" or "node")
+            "target": "local",
+            # Which sub_agents should I look for?
+            "sub_agents": ["agent_1"],
+            # One of the agents need to pull the actual tasks from MongoDB
+            "pull_units": true,
+            # which bridges are to be started by this agent
+            "bridges": [
+                "agent_staging_input_queue",
+                "agent_scheduling_queue",
+                "agent_executing_queue",
+                "agent_staging_output_queue",
+
+                "agent_unschedule_pubsub",
+                "agent_reschedule_pubsub",
+                "agent_command_pubsub",
+                "agent_state_pubsub"
+            ],
+            # which components to start on this agent
+            "components": {
+                # how many instances of the respective components should be started
+                "AgentStagingInputComponent" : 1,
+                "AgentStagingOutputComponent": 1
+            }
+        },
+        "agent_1": {
+            # Where to run this agent ("local" or "node")
+            "target": "node",
+            # which components to start on this agent
+            "components": {
+                # how many instances of the respective components should be started
+                "AgentSchedulingComponent": 1,
+                "AgentExecutingComponent" : 1
+            }
+        }
+    }
+}

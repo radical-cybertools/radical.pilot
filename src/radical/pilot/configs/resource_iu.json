@@ -13,9 +13,10 @@
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "APRUN",
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
-        "pre_bootstrap"               : ["module load python/2.7.8"],
+        "pre_bootstrap_1"             : ["module load python/2.7.8"],
         "valid_roots"                 : ["/N"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_br2",
@@ -35,9 +36,10 @@
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
-        "pre_bootstrap"               :
+        "pre_bootstrap_1"             :
         [
           "module switch PrgEnv-cray PrgEnv-gnu",
           "module load ccm",

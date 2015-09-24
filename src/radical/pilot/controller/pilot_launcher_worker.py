@@ -10,7 +10,6 @@ import os
 import copy
 import math
 import time
-import datetime
 import traceback
 import threading
 import tempfile
@@ -18,11 +17,11 @@ import tempfile
 import saga
 import radical.utils as ru
 
-from radical.pilot.states import *
-
-from radical.pilot.utils.logger  import logger
-from radical.pilot.context       import Context
-from radical.pilot.logentry      import Logentry
+from ..states    import *
+from ..utils     import logger
+from ..utils     import timestamp
+from ..context   import Context
+from ..logentry  import Logentry
 
 pwd = os.path.dirname(__file__)
 root = "%s/../" % pwd
@@ -38,6 +37,7 @@ DEFAULT_AGENT_SPAWNER = 'POPEN'
 DEFAULT_RP_VERSION    = 'local'
 DEFAULT_VIRTENV       = '%(global_sandbox)s/ve'
 DEFAULT_VIRTENV_MODE  = 'update'
+DEFAULT_AGENT_CONFIG  = 'default'
 
 # ----------------------------------------------------------------------------
 #
@@ -48,7 +48,7 @@ class PilotLauncherWorker(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, session, db_connection_info, pilot_manager_id,
+    def __init__(self, session, pilot_manager_id,
                  shared_worker_data, number=None):
         """Creates a new pilot launcher background process.
         """
@@ -57,15 +57,29 @@ class PilotLauncherWorker(threading.Thread):
         # threading stuff
         threading.Thread.__init__(self)
 
-        self.db_connection_info = db_connection_info
         self.pilot_manager_id   = pilot_manager_id
         self.name               = "PilotLauncherWorker-%s" % str(number)
         self.missing_pilots     = dict()
         self._shared_worker_data = shared_worker_data
 
+        # disable event for launcher functionality (not state check
+        # functionality)
+        self._disabled = threading.Event()
+        self._disabled.clear()
+
         # Stop event can be set to terminate the main loop
-        self._stop = threading.Event()
-        self._stop.clear()
+        self._terminate = threading.Event()
+        self._terminate.clear()
+
+    # ------------------------------------------------------------------------
+    #
+    def disable(self):
+        """disable() stops the launcher, but leaves the state checking alive
+        """
+        logger.debug("launcher %s disabling" % (self.name))
+        self._disabled.set()
+        logger.debug("launcher %s disabled" % (self.name))
+
 
     # ------------------------------------------------------------------------
     #
@@ -73,7 +87,7 @@ class PilotLauncherWorker(threading.Thread):
         """stop() signals the process to finish up and terminate.
         """
         logger.debug("launcher %s stopping" % (self.name))
-        self._stop.set()
+        self._terminate.set()
         self.join()
         logger.debug("launcher %s stopped" % (self.name))
       # logger.debug("Launcher thread (ID: %s[%s]) for PilotManager %s stopped." %
@@ -102,21 +116,21 @@ class PilotLauncherWorker(threading.Thread):
             MAX_IO_LOGLENGTH = 10240    # 10k should be enough for anybody...
 
             try :
-                f_out = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent.out'))
+                f_out = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent_0.out'))
                 out   = f_out.read()[-MAX_IO_LOGLENGTH:]
                 f_out.close ()
             except :
                 pass
 
             try :
-                f_err = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent.err'))
+                f_err = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent_0.err'))
                 err   = f_err.read()[-MAX_IO_LOGLENGTH:]
                 f_err.close ()
             except :
                 pass
 
             try :
-                f_log = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent.log'))
+                f_log = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent_0.log'))
                 log   = f_log.read()[-MAX_IO_LOGLENGTH:]
                 f_log.close ()
             except :
@@ -191,7 +205,7 @@ class PilotLauncherWorker(threading.Thread):
 
             if  pilot_failed :
                 out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
-                ts = datetime.datetime.utcnow()
+                ts = timestamp()
                 pilot_col.update(
                     {"_id"  : pilot_id,
                      "state": {"$ne"     : DONE}},
@@ -221,7 +235,7 @@ class PilotLauncherWorker(threading.Thread):
                 # FIXME: this should only be done if the state is not yet
                 # done...
                 out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
-                ts = datetime.datetime.utcnow()
+                ts = timestamp()
                 pilot_col.update(
                     {"_id"  : pilot_id,
                      "state": {"$ne"     : DONE}},
@@ -260,6 +274,8 @@ class PilotLauncherWorker(threading.Thread):
         """Starts the process when Process.start() is called.
         """
 
+        global JOB_CHECK_INTERVAL
+
         # make sure to catch sys.exit (which raises SystemExit)
         try :
             # Get directory where this module lives
@@ -267,9 +283,8 @@ class PilotLauncherWorker(threading.Thread):
 
             # Try to connect to the database
             try:
-                connection = self.db_connection_info.get_db_handle()
-                db = connection[self.db_connection_info.dbname]
-                pilot_col = db["%s.p" % self.db_connection_info.session_id]
+                db = self._session.get_db()
+                pilot_col = db["%s.p" % self._session.uid]
                 logger.debug("Connected to MongoDB. Serving requests for PilotManager %s." % self.pilot_manager_id)
 
             except Exception as e :
@@ -278,7 +293,7 @@ class PilotLauncherWorker(threading.Thread):
 
             last_job_check = time.time()
 
-            while not self._stop.is_set():
+            while not self._terminate.is_set():
 
                 # Periodically, we pull up all ComputePilots that are pending 
                 # execution or were last seen executing and check if the corresponding  
@@ -289,6 +304,14 @@ class PilotLauncherWorker(threading.Thread):
                     last_job_check = time.time()
                     self.check_pilot_states (pilot_col)
 
+                if self._disabled.is_set():
+                    # don't process any new pilot start requests.  
+                    # run state checks more frequently.
+                    JOB_CHECK_INTERVAL = 3
+                    logger.debug('pilot launching is disabled')
+                    time.sleep(1)
+                    continue
+
 
                 # See if we can find a ComputePilot that is waiting to be launched.
                 # If we find one, we use SAGA to create a job service, a job
@@ -297,7 +320,7 @@ class PilotLauncherWorker(threading.Thread):
                 # state to pending, otherwise to failed.
                 compute_pilot = None
 
-                ts = datetime.datetime.utcnow()
+                ts = timestamp()
                 compute_pilot = pilot_col.find_and_modify(
                     query={"pilotmanager": self.pilot_manager_id,
                            "state" : PENDING_LAUNCH},
@@ -322,10 +345,8 @@ class PilotLauncherWorker(threading.Thread):
 
                         # ------------------------------------------------------
                         # Database connection parameters
-                        session_uid   = self.db_connection_info.session_id
-                        database_url  = self.db_connection_info.dburl
-                        database_name = self.db_connection_info.dbname
-                        database_auth = self.db_connection_info.dbauth
+                        session_id    = self._session.uid
+                        database_url  = self._session.dburl
 
                         # ------------------------------------------------------
                         # pilot description and resource configuration
@@ -340,10 +361,6 @@ class PilotLauncherWorker(threading.Thread):
                         pilot_sandbox  = compute_pilot['sandbox']
                         global_sandbox = compute_pilot['global_sandbox']
 
-                        # Agent configuration that is not part of the API, but
-                        # rather for debugging and experimentation purposes for now.
-                        agent_config = compute_pilot['description']['_config']
-
                         # we expand and exchange keys in the resource config,
                         # depending on the selected schema so better use a deep
                         # copy..
@@ -354,9 +371,11 @@ class PilotLauncherWorker(threading.Thread):
 
                         # ------------------------------------------------------
                         # get parameters from cfg, set defaults where needed
-                        agent_mongodb_endpoint  = resource_cfg.get ('agent_mongodb_endpoint', database_url)
+                        agent_launch_method     = resource_cfg.get ('agent_launch_method')
+                        agent_dburl             = resource_cfg.get ('agent_mongodb_endpoint', database_url)
                         agent_spawner           = resource_cfg.get ('agent_spawner',       DEFAULT_AGENT_SPAWNER)
                         agent_type              = resource_cfg.get ('agent_type',          DEFAULT_AGENT_TYPE)
+                        rc_agent_config         = resource_cfg.get ('agent_config',        DEFAULT_AGENT_CONFIG)
                         agent_scheduler         = resource_cfg.get ('agent_scheduler')
                         tunnel_bind_device      = resource_cfg.get ('tunnel_bind_device')
                         default_queue           = resource_cfg.get ('default_queue')
@@ -364,7 +383,8 @@ class PilotLauncherWorker(threading.Thread):
                         js_endpoint             = resource_cfg.get ('job_manager_endpoint')
                         lrms                    = resource_cfg.get ('lrms')
                         mpi_launch_method       = resource_cfg.get ('mpi_launch_method')
-                        pre_bootstrap           = resource_cfg.get ('pre_bootstrap')
+                        pre_bootstrap_1         = resource_cfg.get ('pre_bootstrap_1')
+                        pre_bootstrap_2         = resource_cfg.get ('pre_bootstrap_2')
                         python_interpreter      = resource_cfg.get ('python_interpreter')
                         spmd_variation          = resource_cfg.get ('spmd_variation')
                         task_launch_method      = resource_cfg.get ('task_launch_method')
@@ -374,11 +394,51 @@ class PilotLauncherWorker(threading.Thread):
                         stage_cacerts           = resource_cfg.get ('stage_cacerts',       'False')
                         cores_per_node          = resource_cfg.get ('cores_per_node')
 
+
+                        # Agent configuration that is not part of the public API.
+                        # The agent config can either be a config dict, or
+                        # a string pointing to a configuration name.  If neither
+                        # is given, check if 'RADICAL_PILOT_AGENT_CONFIG' is
+                        # set.  The last fallback is 'agent_default'
+                        agent_config = compute_pilot['description'].get('_config')
+                        if not agent_config:
+                            agent_config = os.environ.get('RADICAL_PILOT_AGENT_CONFIG')
+                        if not agent_config:
+                            agent_config = rc_agent_config
+
+                        if isinstance(agent_config, dict):
+                            # nothing to do
+                            agent_cfg_dict = agent_config
+                            pass
+
+                        elif isinstance(agent_config, basestring):
+                            try:
+                                if os.path.exists(agent_config):
+                                    # try to open as file name
+                                    logger.info("Read agent config file: %s" % agent_config)
+                                    agent_cfg_dict = ru.read_json(agent_config)
+                                else:
+                                    # otherwise interpret as a config name
+                                    # FIXME: load in session just like resource
+                                    #        configs, including user level overloads
+                                    module_path = os.path.dirname(os.path.abspath(__file__))
+                                    config_path = "%s/../configs/" % module_path
+                                    agent_cfg_file = os.path.join(config_path, "agent_%s.json" % agent_config)
+                                    logger.info("Read agent config file: %s" % agent_cfg_file)
+                                    agent_cfg_dict = ru.read_json(agent_cfg_file)
+                            except Exception as e:
+                                logger.exception("Error reading agent config file: %s" % e)
+                                raise
+
+                        else:
+                            # we can't handle this type
+                            raise TypeError('agent config must be string (filename) or dict')
+
+                        # TODO: use booleans all the way?
                         if stage_cacerts.lower() == 'true':
                             stage_cacerts = True
                         else:
                             stage_cacerts = False
-
 
                         # expand variables in virtenv string
                         virtenv = virtenv % {'pilot_sandbox' : saga.Url(pilot_sandbox).path,
@@ -391,30 +451,26 @@ class PilotLauncherWorker(threading.Thread):
                             virtenv = global_virtenv
                             virtenv_mode = 'use'
 
-                        # set default scheme, host, port and dbname if not set
-                        db_url = saga.Url(agent_mongodb_endpoint)
-                        if not db_url.scheme: db_url.scheme = 'mongodb'
-                        if not db_url.host  : db_url.host   = 'localhost'
-                        if not db_url.port  : db_url.port   = 27017
-                        if not database_name: database_name = 'radicalpilot'
-
-                        # Create a host:port string for use by the bootstrapper.
-                        database_hostport = "%s:%d" % (db_url.host, db_url.port)
+                        # Create a host:port string for use by the bootstrap_1.
+                        db_url = saga.Url(agent_dburl)
+                        if db_url.port:
+                            db_hostport = "%s:%d" % (db_url.host, db_url.port)
+                        else:
+                            db_hostport = "%s:" % db_url.host
 
                         # Open the remote sandbox
                         sandbox_tgt = saga.filesystem.Directory(pilot_sandbox,
                                                                 session=self._session,
                                                                 flags=saga.filesystem.CREATE_PARENTS)
 
-                        BOOTSTRAPPER_SCRIPT = "default_bootstrapper.sh"
-                        AGENT_SCRIPT = 'radical-pilot-agent.py'
+                        BOOTSTRAPPER_SCRIPT = "bootstrap_1.sh"
                         LOCAL_SCHEME = 'file'
 
                         # ------------------------------------------------------
                         # Copy the bootstrap shell script.  This also creates
                         # the sandbox. We use always "default_bootstrapper.sh"
                         # TODO: Is this still configurable and/or in the resource configs?
-                        bootstrapper = BOOTSTRAPPER_SCRIPT
+                        bootstrapper = "default_bootstrapper.sh"
                         bootstrapper_path = os.path.abspath("%s/../bootstrapper/%s" \
                                 % (mod_dir, bootstrapper))
 
@@ -531,58 +587,16 @@ class PilotLauncherWorker(threading.Thread):
                             logentries.append(Logentry (msg, logger=logger.debug))
                             sandbox_tgt.copy(cc_url, os.path.basename(str(cc_url)))
 
-
-                        # ------------------------------------------------------
-                        # Write agent config dict to a json file in pilot sandbox.
-                        # Not to be used by the faint of heart
-                        if agent_config:
-
-                            if not isinstance(agent_config, dict):
-                                raise Exception("Can't deal with non_dict _config: %s" % agent_config)
-
-                            cfg_tmp_handle, cf_tmp_file = tempfile.mkstemp(suffix='.json', prefix='rp_agent_config_')
-
-                            # Convert dict to json file
-                            msg = "Writing agent configuration to file '%s'." % cf_tmp_file
-                            logentries.append(Logentry (msg, logger=logger.debug))
-                            ru.write_json(agent_config, cf_tmp_file)
-
-                            cf_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, cf_tmp_file))
-                            msg = "Copying agent configuration file '%s' to sandbox (%s)." % (cf_url, pilot_sandbox)
-                            logentries.append(Logentry (msg, logger=logger.debug))
-                            sandbox_tgt.copy(cf_url, 'agent.cfg')
-
-                            # close and remove temp file
-                            os.close(cfg_tmp_handle)
-                            os.unlink(cf_tmp_file)
-
-
-                        # ------------------------------------------------------
-                        # Done with all transfers to pilot sandbox, close handle
-                        sandbox_tgt.close()
-
                         # ------------------------------------------------------
                         # sanity checks
                         if not agent_spawner      : raise RuntimeError("missing agent spawner")
                         if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
                         if not lrms               : raise RuntimeError("missing LRMS")
-                        if not mpi_launch_method  : raise RuntimeError("missing mpi launch method")
+                        if not agent_launch_method: raise RuntimeError("missing agentlaunch method")
                         if not task_launch_method : raise RuntimeError("missing task launch method")
+                        if not mpi_launch_method  : raise RuntimeError("missing mpi launch method")
 
                         # massage some values
-                        debug_level = os.environ.get ('RADICAL_PILOT_AGENT_VERBOSE', logger.level)
-                        try:
-                            debug_level = int(debug_level)
-                        except ValueError:
-                            debug_level = {
-                                'CRITICAL' : 1,
-                                'ERROR'    : 2,
-                                'WARNING'  : 3,
-                                'WARN'     : 3,
-                                'INFO'     : 4,
-                                'DEBUG'    : 5
-                            }.get(debug_level, 0)
-
                         if not queue :
                             queue = default_queue
 
@@ -607,40 +621,65 @@ class PilotLauncherWorker(threading.Thread):
 
                         # set mandatory args
                         bootstrap_args  = ""
-                        bootstrap_args += " -b '%s'" % sdists
-                        bootstrap_args += " -c '%s'" % number_cores
-                        bootstrap_args += " -d '%s'" % debug_level
-                        bootstrap_args += " -g '%s'" % virtenv
-                        bootstrap_args += " -j '%s'" % task_launch_method
-                        bootstrap_args += " -k '%s'" % mpi_launch_method
-                        bootstrap_args += " -l '%s'" % lrms
-                        bootstrap_args += " -m '%s'" % database_hostport
-                        bootstrap_args += " -n '%s'" % database_name
-                        bootstrap_args += " -o '%s'" % agent_spawner
+                        bootstrap_args += " -d '%s'" % sdists
+                        bootstrap_args += " -m '%s'" % virtenv_mode
                         bootstrap_args += " -p '%s'" % pilot_id
-                        bootstrap_args += " -q '%s'" % agent_scheduler
-                        bootstrap_args += " -r '%s'" % runtime
-                        bootstrap_args += " -s '%s'" % session_uid
-                        bootstrap_args += " -t '%s'" % agent_type
-                        bootstrap_args += " -u '%s'" % virtenv_mode
-                        bootstrap_args += " -v '%s'" % rp_version
+                        bootstrap_args += " -r '%s'" % rp_version
+                        bootstrap_args += " -s '%s'" % session_id
+                        bootstrap_args += " -v '%s'" % virtenv
 
                         # set optional args
-                        if database_auth:
-                            bootstrap_args += " -a '%s'" % database_auth
-                        if tunnel_bind_device:
-                            bootstrap_args += " -D '%s'" % tunnel_bind_device
-                        if pre_bootstrap:
-                            bootstrap_args += " -e '%s'" % "' -e '".join (pre_bootstrap)
-                        if forward_tunnel_endpoint:
-                            bootstrap_args += " -f '%s'" % forward_tunnel_endpoint
-                        if python_interpreter:
-                            bootstrap_args += " -i '%s'" % python_interpreter
-                        if cleanup:
-                            bootstrap_args += " -x '%s'" % cleanup
+                        if agent_type:              bootstrap_args += " -a '%s'" % agent_type
+                        if lrms == "CCM":           bootstrap_args += " -c"
+                        if pre_bootstrap_1:         bootstrap_args += " -e '%s'" % "' -e '".join (pre_bootstrap_1)
+                        if pre_bootstrap_2:         bootstrap_args += " -w '%s'" % "' -w '".join (pre_bootstrap_2)
+                        if forward_tunnel_endpoint: bootstrap_args += " -f '%s'" % forward_tunnel_endpoint
+                        if forward_tunnel_endpoint: bootstrap_args += " -h '%s'" % db_hostport
+                        if python_interpreter:      bootstrap_args += " -i '%s'" % python_interpreter
+                        if tunnel_bind_device:      bootstrap_args += " -t '%s'" % tunnel_bind_device
+                        if cleanup:                 bootstrap_args += " -x '%s'" % cleanup
+
+                        # set some agent configuration
+                        agent_cfg_dict['cores']              = number_cores
+                        agent_cfg_dict['debug']              = logger.getEffectiveLevel()
+                        agent_cfg_dict['mongodb_url']        = str(agent_dburl)
+                        agent_cfg_dict['lrms']               = lrms
+                        agent_cfg_dict['spawner']            = agent_spawner
+                        agent_cfg_dict['scheduler']          = agent_scheduler
+                        agent_cfg_dict['runtime']            = runtime
+                        agent_cfg_dict['pilot_id']           = pilot_id
+                        agent_cfg_dict['session_id']         = session_id
+                        agent_cfg_dict['agent_launch_method']= agent_launch_method
+                        agent_cfg_dict['task_launch_method'] = task_launch_method
+                        agent_cfg_dict['mpi_launch_method']  = mpi_launch_method
+                        if cores_per_node:
+                            agent_cfg_dict['cores_per_node'] = cores_per_node
 
                         # ------------------------------------------------------
-                        # now that the script is in place and we know where it is,
+                        # Write agent config dict to a json file in pilot sandbox.
+                        
+                        cfg_tmp_handle, cf_tmp_file = tempfile.mkstemp(suffix='.json', prefix='rp_agent_cfg_')
+
+                        # Convert dict to json file
+                        msg = "Writing agent configuration to file '%s'." % cf_tmp_file
+                        logentries.append(Logentry (msg, logger=logger.debug))
+                        ru.write_json(agent_cfg_dict, cf_tmp_file)
+
+                        cf_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, cf_tmp_file))
+                        msg = "Copying agent configuration file '%s' to sandbox (%s)." % (cf_url, pilot_sandbox)
+                        logentries.append(Logentry (msg, logger=logger.debug))
+                        sandbox_tgt.copy(cf_url, 'agent_0.cfg')
+
+                        # close and remove temp file
+                        os.close(cfg_tmp_handle)
+                        os.unlink(cf_tmp_file)
+
+                        # ------------------------------------------------------
+                        # Done with all transfers to pilot sandbox, close handle
+                        sandbox_tgt.close()
+
+                        # ------------------------------------------------------
+                        # now that the scripts are in place and configured, 
                         # we can launch the agent
                         js_url = saga.Url(js_endpoint)
                         logger.debug ("saga.job.Service ('%s')" % js_url)
@@ -660,20 +699,21 @@ class PilotLauncherWorker(threading.Thread):
                         jd.arguments             = ["-l %s" % BOOTSTRAPPER_SCRIPT, bootstrap_args]
                         jd.working_directory     = saga.Url(pilot_sandbox).path
                         jd.project               = project
-                        jd.output                = "agent.out"
-                        jd.error                 = "agent.err"
+                        jd.output                = "bootstrap_1.out"
+                        jd.error                 = "bootstrap_1.err"
                         jd.total_cpu_count       = number_cores
                         jd.processes_per_host    = cores_per_node
                         jd.wall_time_limit       = runtime
                         jd.total_physical_memory = memory
                         jd.queue                 = queue
+                        jd.environment           = dict()
 
                         # Set the SPMD variation only if required
                         if spmd_variation:
                             jd.spmd_variation = spmd_variation
 
                         if 'RADICAL_PILOT_PROFILE' in os.environ :
-                            jd.environment = {'RADICAL_PILOT_PROFILE' : 'TRUE'}
+                            jd.environment['RADICAL_PILOT_PROFILE'] = 'TRUE'
 
                         logger.debug("Bootstrap command line: %s %s" % (jd.executable, jd.arguments))
 
@@ -701,7 +741,7 @@ class PilotLauncherWorker(threading.Thread):
                             log_dicts.append (le.as_dict())
 
                         # Update the Pilot's state to 'PENDING_ACTIVE' if SAGA job submission was successful.
-                        ts = datetime.datetime.utcnow()
+                        ts = timestamp()
                         ret = pilot_col.update(
                             {"_id"  : pilot_id,
                              "state": 'Launching'},
@@ -728,7 +768,7 @@ class PilotLauncherWorker(threading.Thread):
                     except Exception as e:
                         # Update the Pilot's state 'FAILED'.
                         out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
-                        ts = datetime.datetime.utcnow()
+                        ts = timestamp()
 
                         # FIXME: we seem to be unable to bson/json handle saga
                         # log messages containing an '#'.  This shows up here.

@@ -11,7 +11,6 @@ import time
 import saga
 import bson
 import pprint
-import datetime
 import traceback
 import thread
 import threading
@@ -21,12 +20,12 @@ from multiprocessing import Pool
 
 import radical.utils as ru
 
-from radical.pilot.states       import *
-from radical.pilot.utils.logger import logger
+from ..states       import *
+from ..utils        import logger
+from ..utils        import timestamp
+from ..db.database  import COMMAND_CANCEL_PILOT
 
-from radical.pilot.controller.pilot_launcher_worker import PilotLauncherWorker
-
-from radical.pilot.db.database import COMMAND_CANCEL_PILOT
+from .pilot_launcher_worker import PilotLauncherWorker
 
 import saga.utils.pty_shell as sup
 
@@ -42,21 +41,21 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, pilot_manager_uid, pilot_manager_data, 
-        session, db_connection, db_connection_info, pilot_launcher_workers=1):
+    def __init__(self, pmgr_uid, pilot_manager_data, 
+        session, pilot_launcher_workers=1):
         """Le constructeur.
         """
         self._session = session
 
         # The MongoDB database handle.
-        self._db = db_connection
+        self._dbs = self._session.get_dbs()
 
         # Multithreading stuff
         threading.Thread.__init__(self)
 
         # Stop event can be set to terminate the main loop
-        self._stop = threading.Event()
-        self._stop.clear()
+        self._terminate = threading.Event()
+        self._terminate.clear()
 
         # Initialized is set, once the run loop has pulled status
         # at least once. Other functions use it as a guard.
@@ -93,17 +92,13 @@ class PilotManagerController(threading.Thread):
         # that are passed to the worker. Command queues are inspected during
         # runtime in the run() loop and the worker acts upon them accordingly.
         #
-        if pilot_manager_uid is None:
-            # Try to register the PilotManager with the database.
-            self._pm_id = self._db.insert_pilot_manager(
-                pilot_manager_data=pilot_manager_data,
-                pilot_launcher_workers=pilot_launcher_workers
-            )
-            self._num_pilot_launcher_workers = pilot_launcher_workers
-        else:
-            pm_json = self._db.get_pilot_manager(pilot_manager_id=pilot_manager_uid)
-            self._pm_id = pilot_manager_uid
-            self._num_pilot_launcher_workers = pm_json["pilot_launcher_workers"]
+        # Try to register the PilotManager with the database.
+        self._pm_id = self._dbs.insert_pilot_manager(
+            pmgr_uid=pmgr_uid,
+            pilot_manager_data=pilot_manager_data,
+            pilot_launcher_workers=pilot_launcher_workers
+        )
+        self._num_pilot_launcher_workers = pilot_launcher_workers
 
         # The pilot launcher worker(s) are autonomous processes that
         # execute pilot bootstrap / launcher requests concurrently.
@@ -111,7 +106,6 @@ class PilotManagerController(threading.Thread):
         for worker_number in range(1, self._num_pilot_launcher_workers+1):
             worker = PilotLauncherWorker(
                 session=self._session,
-                db_connection_info=db_connection_info, 
                 pilot_manager_id=self._pm_id,
                 shared_worker_data=self._shared_worker_data,
                 number=worker_number
@@ -147,7 +141,7 @@ class PilotManagerController(threading.Thread):
     def list_pilots(self):
         """List all known pilots.
         """
-        return self._db.list_pilot_uids(self._pm_id)
+        return self._dbs.list_pilot_uids(self._pm_id)
 
     # ------------------------------------------------------------------------
     #
@@ -182,6 +176,17 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
+    def disable_launcher(self):
+        """disable pilot launching
+        """
+        for worker in self._pilot_launcher_worker_pool:
+            logger.debug("pworker %s disables launcher %s" % (self.name, worker.name))
+            worker.disable ()
+            logger.debug("pworker %s disabled launcher %s" % (self.name, worker.name))
+
+
+    # ------------------------------------------------------------------------
+    #
     def cancel_launcher(self):
         """cancel the launcher threads
         """
@@ -198,7 +203,7 @@ class PilotManagerController(threading.Thread):
         """stop() signals the process to finish up and terminate.
         """
         logger.debug("pworker %s stopping" % (self.name))
-        self._stop.set()
+        self._terminate.set()
         self.join()
         logger.debug("pworker %s stopped" % (self.name))
 
@@ -217,7 +222,7 @@ class PilotManagerController(threading.Thread):
         if  not pilot_id in self._callback_histories :
             self._callback_histories[pilot_id] = list()
         self._callback_histories[pilot_id].append (
-                {'timestamp' : datetime.datetime.utcnow(), 
+                {'timestamp' : timestamp(), 
                  'state'     : new_state})
 
         for [cb, cb_data] in self._shared_data[pilot_id]['callbacks']:
@@ -252,7 +257,7 @@ class PilotManagerController(threading.Thread):
         # if we meet a final state, we record the object's callback history for
         # later evalutation
         if  new_state in (DONE, FAILED, CANCELED) :
-            self._db.publish_compute_pilot_callback_history (pilot_id, self._callback_histories[pilot_id])
+            self._dbs.publish_compute_pilot_callback_history (pilot_id, self._callback_histories[pilot_id])
       # print 'publishing Callback history for %s' % pilot_id
 
 
@@ -269,38 +274,12 @@ class PilotManagerController(threading.Thread):
             logger.debug("Worker thread (ID: %s[%s]) for PilotManager %s started." %
                         (self.name, self.ident, self._pm_id))
 
-            while not self._stop.is_set():
-
-                # # Check if one or more startup requests have finished.
-                # self.startup_results_lock.acquire()
-
-                # new_startup_results = list()
-
-                # for transfer_result in self.startup_results:
-                #     if transfer_result.ready():
-                #         result = transfer_result.get()
-
-                #         self._db.update_pilot_state(
-                #             pilot_uid=result["pilot_uid"],
-                #             state=result["state"],
-                #             sagajobid=result["saga_job_id"],
-                #             pilot_sandbox=result["sandbox"],
-                #             global_sandbox=result["global_sandbox"],
-                #             submitted=result["submitted"],
-                #             logs=result["logs"]
-                #         )
-
-                #     else:
-                #         new_startup_results.append(transfer_result)
-
-                # self.startup_results = new_startup_results
-
-                # self.startup_results_lock.release()
+            while not self._terminate.is_set():
 
                 # Check and update pilots. This needs to be optimized at
                 # some point, i.e., state pulling should be conditional
                 # or triggered by a tailable MongoDB cursor, etc.
-                pilot_list = self._db.get_pilots(pilot_manager_id=self._pm_id)
+                pilot_list = self._dbs.get_pilots(pilot_manager_id=self._pm_id)
                 action = False
 
                 for pilot in pilot_list:
@@ -352,8 +331,8 @@ class PilotManagerController(threading.Thread):
                     # set the state of the compute unit accordingly (but only
                     # for non-final units)
                     if new_state in [FAILED, DONE, CANCELED]:
-                        unit_ids = self._db.pilot_list_compute_units(pilot_uid=pilot_id)
-                        self._db.set_compute_unit_state (
+                        unit_ids = self._dbs.pilot_list_compute_units(pilot_uid=pilot_id)
+                        self._dbs.set_compute_unit_state (
                             unit_ids=unit_ids, 
                             state=CANCELED,
                             src_states=[ PENDING_INPUT_STAGING,
@@ -379,7 +358,11 @@ class PilotManagerController(threading.Thread):
             thread.interrupt_main ()
 
         finally :
-            # shut down the autonomous pilot launcher worker(s)
+            # shut down the autonomous pilot launcher worker(s).  
+            # This uses terminate=True, so that on loop errors we'll terminate
+            # all pilots.  Note however that this instance had
+            # a 'close(terminate=True)' called before, then the stop below is
+            # a NOOP, and pilots will continue running.
             for worker in self._pilot_launcher_worker_pool:
                 logger.debug("pworker %s stops   launcher %s" % (self.name, worker.name))
                 worker.stop ()
@@ -412,11 +395,17 @@ class PilotManagerController(threading.Thread):
 
             # The PTYShell will swallow in the job part of the scheme
             if js_url.scheme.endswith('+ssh'):
+                # For remote adaptor usage over shh, use that here
                 js_url.scheme = 'ssh'
             elif js_url.scheme.endswith('+gsissh'):
+                # For remote adaptor usage over gsissh, use that here
                 js_url.scheme = 'gsissh'
-            elif js_url.scheme == 'fork':
+            elif js_url.scheme in ['fork', 'ssh', 'gsissh']:
+                # Use the scheme as is for non-queuing adaptor mechanisms
                 pass
+            elif '+' not in js_url.scheme:
+                # For local access to queueing systems use fork
+                js_url.scheme = 'fork'
             else:
                 raise Exception("Are there more flavours we need to support?! (%s)" % js_url.scheme)
 
@@ -427,7 +416,7 @@ class PilotManagerController(threading.Thread):
                 url = "%s://%s/" % (js_url.schema, js_url.host)
 
             logger.debug("saga.utils.PTYShell ('%s')" % url)
-            shell = sup.PTYShell(url, self._session, logger)
+            shell = sup.PTYShell(url, self._session)
 
             ret, out, err = shell.run_sync(' echo "WORKDIR: %s"' % workdir_raw)
             if ret == 0 and 'WORKDIR:' in out :
@@ -447,7 +436,7 @@ class PilotManagerController(threading.Thread):
         agent_dir_url = saga.Url("%s/%s-%s/" % (str(fs_url), self._session.uid, pilot_uid))
 
         # Create a database entry for the new pilot.
-        pilot_uid, pilot_json = self._db.insert_pilot(
+        pilot_uid, pilot_json = self._dbs.insert_pilot(
             pilot_uid=pilot_uid,
             pilot_manager_uid=self._pm_id,
             pilot_description=pilot.description,
@@ -501,11 +490,11 @@ class PilotManagerController(threading.Thread):
 
             pilot_ids = list()
 
-            for pilot in self._db.get_pilots(pilot_manager_id=self._pm_id) :
+            for pilot in self._dbs.get_pilots(pilot_manager_id=self._pm_id) :
                 pilot_ids.append (str(pilot["_id"]))
 
 
-        self._db.send_command_to_pilot(COMMAND_CANCEL_PILOT, pilot_ids=pilot_ids)
+        self._dbs.send_command_to_pilot(COMMAND_CANCEL_PILOT, pilot_ids=pilot_ids)
         logger.info("Sent 'COMMAND_CANCEL_PILOT' command to pilots %s.", pilot_ids)
 
         # pilots which are in ACTIVE state should now have time to react on the
@@ -572,8 +561,8 @@ class PilotManagerController(threading.Thread):
                         job = js.get_job (job_id)
                         job.cancel ()
                     except Exception as e :
-                        logger.warn ('delayed pilot cancelation failed. '
-                                'This is not necessarily a problem.')
+                        logger.info ('delayed pilot cancelation failed. '
+                                     'This is not necessarily a problem.')
 
                 else :
                     logger.warn ("can't actively cancel pilot %s: no job id known (delayed)" % pilot_id)

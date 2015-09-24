@@ -18,11 +18,31 @@
         "default_queue"               : "batch",
         "lrms"                        : "TORQUE",
         "agent_type"                  : "multicore",
+        "agent_config"                : "cray",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "task_launch_method"          : "APRUN",
-        "mpi_launch_method"           : "APRUN",
-        "pre_bootstrap"               : ["module load python"],
+        "agent_launch_method"         : "ORTE",
+        "task_launch_method"          : "ORTE",
+        "mpi_launch_method"           : "ORTE",
+        # The python module file expands differently on login/mom/compute
+        # nodes, therefore use a binary that works on all three.
+        "python_interpreter"          : "/lustre/atlas/sw/xk7/python/2.7.9/sles11.3_gnu4.3.4/bin/python",
+        "pre_bootstrap_1"             : [
+            "module use --append /ccs/home/marksant1/privatemodules",
+            "module load openmpi/HEAD",
+            "module load python",
+            # Workaround for ZMQ runtime failure
+            "export LD_PRELOAD=/lib64/librt.so.1"
+        ],
+        "pre_bootstrap_2"             : [
+            "export HOME=$HOME",
+            # TODO: investigate PYTHONHOME further
+            "export PYTHONHOME=/lustre/atlas2/csc168/scratch/marksant1/radical.pilot.sandbox/ve_titan",
+            "export PATH=$PATH",
+            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH",
+            # Workaround for ZMQ runtime failure
+            "export LD_PRELOAD=/lib64/librt.so.1"
+        ],
         "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",

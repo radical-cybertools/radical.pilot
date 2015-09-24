@@ -15,14 +15,13 @@ import os
 import time
 import saga
 
-from radical.pilot.states import *
-from radical.pilot.logentry import *
-from radical.pilot.exceptions import *
+from .states     import *
+from .logentry   import *
+from .exceptions import *
+from .utils      import logger
 
-from radical.pilot.utils.logger import logger
-
-from radical.pilot.staging_directives import TRANSFER, COPY, LINK, MOVE, \
-    STAGING_AREA, expand_staging_directive
+from .staging_directives import TRANSFER, COPY, LINK, MOVE, STAGING_AREA, \
+                                expand_staging_directive
 
 # -----------------------------------------------------------------------------
 #
@@ -476,7 +475,7 @@ class ComputePilot (object):
             raise Exception("Pilot already finished, no need to stage anymore!")
 
         # Iterate over all directives
-        for directive in expand_staging_directive(directives, logger):
+        for directive in expand_staging_directive(directives):
 
             # TODO: respect flags in directive
 

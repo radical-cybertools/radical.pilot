@@ -12,9 +12,10 @@
         "lrms"                        : "LOADL",
         "agent_scheduler"             : "TORUS",
         "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "RUNJOB",
         "task_launch_method"          : "RUNJOB",
         "mpi_launch_method"           : "RUNJOB",
-        "pre_bootstrap"               : [
+        "pre_bootstrap_1"             : [
             "llq -l $LOADL_JOB_NAME",
             "source /etc/profile.d/modules.sh",
             "export MODULEPATH=/gpfs/packages/Modules/modulefiles/production:/gpfs/packages/Modules/modulefiles/packages:/gpfs/packages/Modules/modulefiles/other",
