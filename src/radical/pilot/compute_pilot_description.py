@@ -143,7 +143,6 @@ class ComputePilotDescription(attributes.Attributes):
 
         # Attributes not part of the published API
         self._attributes_register    (_CONFIG,          None, attributes.ANY,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (_LAYOUT,          None, attributes.ANY,    attributes.SCALAR, attributes.WRITEABLE)
 
         # explicitly set attrib defaults so they get listed and included via as_dict()
         self.set_attribute (RESOURCE,         None)
@@ -156,7 +155,6 @@ class ComputePilotDescription(attributes.Attributes):
         self.set_attribute (PROJECT,          None)
         self.set_attribute (CLEANUP,          None)
         self.set_attribute (_CONFIG,          None)
-        self.set_attribute (_LAYOUT,          None)
 
 
     # -------------------------------------------------------------------------
