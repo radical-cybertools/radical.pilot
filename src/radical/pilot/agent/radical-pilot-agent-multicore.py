@@ -3907,7 +3907,8 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             self._log.exception("Error in ExecWorker watch loop (%s)" % e)
             # FIXME: this should signal the ExecWorker for shutdown...
 
-        self._prof.prof ('stop')
+        self._prof.prof('stop')
+        self._prof.flush()
 
 
     # --------------------------------------------------------------------------
@@ -4514,7 +4515,8 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
             self._log.exception("Exception in job monitoring thread: %s", e)
             self._terminate.set()
 
-        self._prof.prof ('stop')
+        self._prof.prof('stop')
+        self._prof.flush()
 
 
     # --------------------------------------------------------------------------
@@ -6044,6 +6046,7 @@ def bootstrap_3():
     finally:
         log.info('stop')
         prof.prof('stop', msg='finally clause agent')
+        prof.flush()
 
 
 
