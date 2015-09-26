@@ -28,7 +28,6 @@ RUNTIME           = 'runtime'
 CLEANUP           = 'cleanup'
 PROJECT           = 'project'
 _CONFIG           = '_config'
-_LAYOUT           = '_layout'
 
 
 # -----------------------------------------------------------------------------
