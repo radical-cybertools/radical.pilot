@@ -1208,6 +1208,7 @@ class SchedulerYarn(AgentSchedulingComponent):
             self._rm_ip = self._cfg['lrms_info']['lm_info']['rm_ip']
             self._service_url = self._cfg['lrms_info']['lm_info']['service_url']
             self._rm_url = self._cfg['lrms_info']['lm_info']['rm_url']
+            self._client_node = self._cfg['lrms_info']['lm_info']['nodename']
 
             sample_time = rpu.timestamp()
             yarn_status = ul.urlopen('http://{0}:8088/ws/v1/cluster/scheduler'.format(self._rm_ip))
@@ -1310,7 +1311,8 @@ class SchedulerYarn(AgentSchedulingComponent):
             self._log.debug('Mpla: {0} - {1}'.format(self._service_url,self._rm_url))
                     
             cu['opaque_slots']={'lm_info':{'service_url':self._service_url,
-                                            'rm_url':self._rm_url}
+                                            'rm_url':self._rm_url,
+                                            'nodename':self._client_node}
                                             }
 
             alloc = self._allocate_slot(cu['description']['cores'])
@@ -2564,12 +2566,13 @@ class LaunchMethodYARN(LaunchMethod):
         # dict.  That lm_info dict will be attached to the scheduler's lrms_info
         # dict, and will be passed around as part of the opaque_slots structure,
         # so it is available on all LM create_command calls.
-        lm_info = {'service_url'  : service_url,
-                   'rm_url'       : rm_url,
-                   'hadoop_home'  : hadoop_home,
-                   'rm_ip'        : rm_ip,
-                   'name'         : lrms.name,
-                   'launch_command': launch_command }
+        lm_info = {'service_url'   : service_url,
+                   'rm_url'        : rm_url,
+                   'hadoop_home'   : hadoop_home,
+                   'rm_ip'         : rm_ip,
+                   'name'          : lrms.name,
+                   'launch_command': launch_command,
+                   'nodename'      : lrms.node_list[0] }
 
         return lm_info
 
@@ -2633,8 +2636,14 @@ class LaunchMethodYARN(LaunchMethod):
             raise RuntimeError('rm_url not in lm_info for %s: %s' \
                     % (self.name, opaque_slots))
 
+
+        if 'nodename' not in opaque_slots['lm_info']:
+            raise RuntimeError('nodename not in lm_info for %s: %s' \
+                    % (self.name, opaque_slots))
+
         service_url = opaque_slots['lm_info']['service_url']
         rm_url      = opaque_slots['lm_info']['rm_url']
+        client_node = opaque_slots['lm_info']['nodename']
 
 
         #-----------------------------------------------------------------------
@@ -2666,18 +2675,19 @@ class LaunchMethodYARN(LaunchMethod):
             for arg in cu_descr['arguments']:
                 arg_str+='%s '%str(arg)
 
-        print_str+="echo '%s %s 1>stdout 2>stderr'>>ExecScript.sh\n"%(cu_descr['executable'],arg_str)
+        print_str+="echo '%s %s 1>Ystdout 2>Ystderr'>>ExecScript.sh\n"%(cu_descr['executable'],arg_str)
 
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
         print_str+="echo '# Staging Output Files'>>ExecScript.sh\n"
-        print_str+="echo 'cp stderr %s'>>ExecScript.sh\n"%(work_dir)
-        print_str+="echo 'cp stdout %s'>>ExecScript.sh\n"%(work_dir)
+        print_str+="echo 'YarnUser=$(/bin/whoami)'>>ExecScript.sh\n"
+        print_str+="echo 'scp Ystderr $YarnUser@%s:%s'>>ExecScript.sh\n"%(client_node,work_dir)
+        print_str+="echo 'scp Ystdout $YarnUser@%s:%s'>>ExecScript.sh\n"%(client_node,work_dir)
 
         if cu_descr['output_staging']:
             for OutputFile in cu_descr['output_staging']:
-                print_str+="echo 'cp %s %s'>>ExecScript.sh\n"%(OutputFile['source'],work_dir)
+                print_str+="echo 'scp %s $YarnUser@%s:%s'>>ExecScript.sh\n"%(OutputFile['source'],self.client_node,work_dir)
 
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo ''>>ExecScript.sh\n"
@@ -2715,7 +2725,7 @@ class LaunchMethodYARN(LaunchMethod):
 
         yarn_command = '%s -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
                        ' com.radical.pilot.Client -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
-                       ' -shell_script ExecScript.sh %s %s -service_url %s\ncat stdout' % (self.launch_command, 
+                       ' -shell_script ExecScript.sh %s %s -service_url %s\ncat Ystdout' % (self.launch_command, 
                         args_string, ncores_string,service_url)
 
         self._log.debug("Yarn Command %s"%yarn_command)
@@ -4174,7 +4184,12 @@ class YARNLRMS(LRMS):
                     self.rm_ip=settings.split(':')[0]
                     self.rm_port=settings.split(':')[1]
 
-        self.node_list = ["localhost"]
+        hostname = os.environ.get('HOSTNAME')
+
+        if hostname == None:
+            self.node_list = ['localhost']
+        else:
+            self.node_list = [hostname]
         self.cores_per_node = selected_cpus
 
 # ==============================================================================
