@@ -127,6 +127,11 @@ class UnitManager(object):
         # of units, fire callbacks and so on.
         self._session._unit_manager_objects[self.uid] = self
 
+        # we always register our default unit state callback and our default
+        # wait queue size callback
+        self.register_callback(self._default_unit_state_cb,      UNIT_STATE)
+        self.register_callback(self._default_wait_queue_size_cb, WAIT_QUEUE_SIZE)
+
         self._valid = True
 
 
@@ -167,6 +172,25 @@ class UnitManager(object):
         """Returns a string representation of the UnitManager object.
         """
         return str(self.as_dict())
+
+    #------------------------------------------------------------------------------
+    #
+    @staticmethod
+    def _default_unit_state_cb (unit, state):
+
+        if not unit:
+            return
+
+        logger.info("[Callback]: unit %s state on pilot %s: %s.", unit.uid, unit.pilot_id, state)
+
+
+    #------------------------------------------------------------------------------
+    #
+    @staticmethod
+    def _default_wait_queue_size_cb(umgr, wait_queue_size):
+
+        logger.info("[Callback]: wait_queue_size: %s.", wait_queue_size)
+
 
     #--------------------------------------------------------------------------
     #

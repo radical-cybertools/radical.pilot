@@ -12,6 +12,7 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 import os
+import sys
 import time
 import glob
 import copy
@@ -205,6 +206,31 @@ class PilotManager(object):
         """
         return str(self.as_dict())
 
+
+    #------------------------------------------------------------------------------
+    #
+    @staticmethod
+    def _default_pilot_state_cb(pilot, state):
+
+        if not pilot:
+            return
+
+        logger.info("[Callback]: ComputePilot '%s' state: %s.", pilot.uid, state)
+
+
+    #------------------------------------------------------------------------------
+    #
+    @staticmethod
+    def _default_pilot_error_cb(pilot, state):
+
+        if not pilot:
+            return
+
+        if state == FAILED:
+            logger.error("[Callback]: ComputePilot '%s' failed -- calling exit", pilot.uid)
+            sys.exit(1)
+
+
     # -------------------------------------------------------------------------
     #
     def submit_pilots(self, pilot_descriptions):
@@ -309,6 +335,15 @@ class PilotManager(object):
             pilot._uid = pilot_uid
 
             pilot_obj_list.append(pilot)
+
+            # we always add the default state logging callback
+            pilot.register_callback(self._default_pilot_state_cb)
+
+            # if the pilot description asks for it, we add the default error
+            # handling callback
+            if pd.exit_on_error:
+                pilot.register_callback(self._default_pilot_error_cb)
+
 
             if self._session._rec:
                 import radical.utils as ru

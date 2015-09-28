@@ -104,47 +104,6 @@ resources = {
 
 #------------------------------------------------------------------------------
 #
-def pilot_state_cb (pilot, state):
-
-    if not pilot:
-        return
-
-    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
-
-    if state == rp.FAILED:
-        sys.exit (1)
-
-
-#------------------------------------------------------------------------------
-#
-def unit_state_cb (unit, state):
-
-    if not unit:
-        return
-
-    global CNT
-
-    print "[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot_id, state)
-
-    if state in [rp.FAILED, rp.DONE, rp.CANCELED]:
-        CNT += 1
-        print "[Callback]: # %6d" % CNT
-
-
-    if state == rp.FAILED:
-        print "stderr: %s" % unit.stderr
-        sys.exit(2)
-
-
-#------------------------------------------------------------------------------
-#
-def wait_queue_size_cb(umgr, wait_queue_size):
-
-    print "[Callback]: wait_queue_size: %s." % wait_queue_size
-
-
-#------------------------------------------------------------------------------
-#
 if __name__ == "__main__":
 
     # we can optionally pass session name to RP
@@ -167,7 +126,6 @@ if __name__ == "__main__":
     try:
 
         pmgr = rp.PilotManager(session=session)
-        pmgr.register_callback(pilot_state_cb)
 
         pdesc = rp.ComputePilotDescription()
         pdesc.resource      = resource
@@ -177,6 +135,7 @@ if __name__ == "__main__":
         pdesc.runtime       = RUNTIME
         pdesc.cleanup       = False
         pdesc.access_schema = resources[resource]['schema']
+        pdesc.exit_on_error = True
 
         pilot = pmgr.submit_pilots(pdesc)
 
@@ -188,8 +147,6 @@ if __name__ == "__main__":
       # pilot.stage_in (input_sd_pilot)
 
         umgr = rp.UnitManager(session=session, scheduler=SCHED)
-        umgr.register_callback(unit_state_cb,      rp.UNIT_STATE)
-        umgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
         umgr.add_pilots(pilot)
 
       # input_sd_umgr   = {'source':'/etc/group',        'target': 'f2',                'action': rp.TRANSFER}
@@ -224,7 +181,7 @@ if __name__ == "__main__":
         raise
 
     except (KeyboardInterrupt, SystemExit) as e:
-        # the callback called sys.exit(), and we can here catch the
+        # some callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
