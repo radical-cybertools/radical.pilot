@@ -322,7 +322,7 @@ class PilotManager(object):
                 import radical.utils as ru
                 ru.write_json(pd.as_dict(), "%s/%s.json" 
                         % (self._session._rec, pilot_uid))
-            logger.demo('ok', '.')
+            logger.demo('info', '.')
 
         logger.demo('ok', '\\ok\n')
 
@@ -460,7 +460,7 @@ class PilotManager(object):
 
             # sleep a little if this cycle was idle
             if  not all_ok :
-                time.sleep (0.1)
+                time.sleep (0.5)
 
         # done waiting
         if  return_list_type :

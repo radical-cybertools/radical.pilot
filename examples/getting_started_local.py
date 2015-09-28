@@ -24,7 +24,7 @@ UNITS = 10  # how many units to create
 if __name__ == "__main__":
 
     # we use a reporter class for nicer output
-    report = ru.Reporter("Getting Started\n")
+    report = ru.Reporter("Getting Started")
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -36,7 +36,7 @@ if __name__ == "__main__":
     # clause...
     try:
 
-        report.header('submit pilots\n')
+        report.header('submit pilots')
 
         # prepare some input files for the compute units
         os.system ('hostname > file1.dat')
@@ -55,7 +55,7 @@ if __name__ == "__main__":
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
     
-        report.header('submit units\n')
+        report.header('submit units')
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
@@ -84,7 +84,7 @@ if __name__ == "__main__":
           # cud.arguments     = ["1"]
             cud.cores         = 1
             cuds.append(cud)
-            report.ok('.')
+            report.info('.')
         report.ok('\\ok\n')
     
         # Submit the previously created ComputeUnit descriptions to the
@@ -92,18 +92,18 @@ if __name__ == "__main__":
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(cuds)
     
-        report.header('gather results\n')
+        report.header('gather results')
 
         # Wait for all compute units to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
     
-        report.info('results\n')
+        report.info('\n')
         for unit in units:
             if unit.state == rp.DONE:
-                report.ok("\t* Unit %s, state %s, exit code: %s, stdout: %s\n" \
+                report.ok("  * %s: %s, exit code: %s, stdout: %s\n" \
                 % (unit.uid, unit.state, unit.exit_code, unit.stdout.strip()))
             else:
-                report.error("\t* Unit %s, state %s, exit code: %s, stderr: %s\n" \
+                report.error("  * %s: %s, exit code: %s, stderr: %s\n" \
                 % (unit.uid, unit.state, unit.exit_code, unit.stderr.strip()))
     
         # delete the test data files
@@ -127,10 +127,10 @@ if __name__ == "__main__":
         # always clean up the session, no matter if we caught an exception or
         # not.  This will both clean out the session's database record, and kill
         # all remaining pilots.
-        report.header('finalize\n')
+        report.header('finalize')
         session.close ()
 
-    report.header('\n')
+    report.header('')
 
 
 #-------------------------------------------------------------------------------

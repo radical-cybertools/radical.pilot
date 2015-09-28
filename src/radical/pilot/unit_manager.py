@@ -406,7 +406,7 @@ class UnitManager(object):
                 import radical.utils as ru
                 ru.write_json(ud.as_dict(), "%s/%s.batch.%03d.json" \
                         % (self._session._rec, u.uid, self._rec_id))
-            logger.demo('ok', '.')
+            logger.demo('info', '.')
 
         if self._session._rec:
             self._rec_id += 1
@@ -647,9 +647,9 @@ class UnitManager(object):
 
             # sleep a little if this cycle was idle
             if  not all_ok :
-                time.sleep (0.1)
+                time.sleep (0.5)
 
-            logger.demo('warn', '.')
+            logger.demo('info', '.')
 
         logger.demo('ok', '\\ok\n')
 
