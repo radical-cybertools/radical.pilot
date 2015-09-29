@@ -624,7 +624,6 @@ class UnitManager(object):
         start  = time.time()
         all_ok = False
         states = list()
-        progress = 0
 
         logger.demo('info', 'wait for %d unit(s)' % len(units))
 
@@ -632,14 +631,13 @@ class UnitManager(object):
               not self._session._terminate.is_set():
 
             all_ok = True
-            ok_count = 0
             states = list()
 
             for unit in units :
                 if  unit.state not in state :
                     all_ok = False
                 else:
-                    ok_count += 1
+                    logger.demo('progress')
 
                 states.append (unit.state)
 
@@ -652,11 +650,6 @@ class UnitManager(object):
             # sleep a little if this cycle was idle
             if  not all_ok :
                 time.sleep (0.5)
-
-            for _ in range(ok_count - progress):
-                logger.demo('progress')
-
-            progress = ok_count
 
         logger.demo('ok', '\\ok\n')
 
