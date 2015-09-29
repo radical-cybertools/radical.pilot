@@ -100,7 +100,7 @@ if __name__ == "__main__":
         report.info('\n')
         for unit in units:
             if unit.state == rp.DONE:
-                report.ok("  * %s: %s, exit code: %s, stdout: %s\n" \
+                report.plain("  * %s: %s, exit code: %s, stdout: %s\n" \
                 % (unit.uid, unit.state, unit.exit_code, unit.stdout.strip()))
             else:
                 report.error("  * %s: %s, exit code: %s, stderr: %s\n" \
