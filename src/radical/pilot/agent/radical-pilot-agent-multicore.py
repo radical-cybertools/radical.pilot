@@ -1265,7 +1265,7 @@ class LaunchMethod(object):
           # LAUNCH_METHOD_APRUN         : LaunchMethodAPRUN,
           # LAUNCH_METHOD_CCMRUN        : LaunchMethodCCMRUN,
           # LAUNCH_METHOD_DPLACE        : LaunchMethodDPLACE,
-          # LAUNCH_METHOD_FORK          : LaunchMethodFORK,
+            LAUNCH_METHOD_FORK          : LaunchMethodFORK,
           # LAUNCH_METHOD_IBRUN         : LaunchMethodIBRUN,
           # LAUNCH_METHOD_MPIEXEC       : LaunchMethodMPIEXEC,
           # LAUNCH_METHOD_MPIRUN_CCMRUN : LaunchMethodMPIRUNCCMRUN,
@@ -1360,6 +1360,12 @@ class LaunchMethodFORK(LaunchMethod):
         # "Regular" tasks
         self.launch_command = ''
 
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def lrms_config_hook(cls, name, cfg, lrms, logger):
+        return {'version_info': {
+            name: {'version': '0.42', 'version_detail': 'There is no spoon'}}}
 
     # --------------------------------------------------------------------------
     #
@@ -1372,7 +1378,6 @@ class LaunchMethodFORK(LaunchMethod):
             command = task_exec
 
         return command, None
-
 
 
 # ==============================================================================
@@ -1951,6 +1956,21 @@ class LaunchMethodORTE(LaunchMethod):
         if not dvm_command:
             raise Exception("Couldn't find orte-dvm")
 
+        # Now that we found the orte-dvm, get ORTE version
+        orte_info = {}
+        oi_output = subprocess.check_output(['orte-info|grep "Open RTE"'], shell=True)
+        oi_lines = oi_output.split('\n')
+        for line in oi_lines:
+            if not line:
+                continue
+            key, val = line.split(':')
+            if 'Open RTE' == key.strip():
+                orte_info['version'] = val.strip()
+            elif  'Open RTE repo revision' == key.strip():
+                orte_info['version_detail'] = val.strip()
+        logger.info("Found Open RTE: %s / %s",
+                    orte_info['version'], orte_info['version_detail'])
+
         # Use (g)stdbuf to disable buffering.
         # We need this to get the "DVM ready",
         # without waiting for orte-dvm to complete.
@@ -2025,7 +2045,7 @@ class LaunchMethodORTE(LaunchMethod):
         dvm_watcher.daemon = True
         dvm_watcher.start()
 
-        lm_info = {'dvm_uri': dvm_uri}
+        lm_info = {'dvm_uri': dvm_uri, 'version_info': {name: orte_info}}
 
         # we need to inform the actual LM instance about the DVM URI.  So we
         # pass it back to the LRMS which will keep it in an 'lm_info', which
@@ -5885,7 +5905,8 @@ def bootstrap_3():
 
     # set up a logger and profiler
     prof = rpu.Profiler ('%s.bootstrap_3' % agent_name)
-    log  = ru.get_logger('%s.bootstrap_3' % agent_name, 
+    prof.prof('sync ref', msg='agent start')
+    log  = ru.get_logger('%s.bootstrap_3' % agent_name,
                          '%s.bootstrap_3.log' % agent_name, 'DEBUG')  # FIXME?
     log.info('start')
 
@@ -5968,6 +5989,11 @@ def bootstrap_3():
             cfg['lrms_info']['node_list']      = lrms.node_list
             cfg['lrms_info']['cores_per_node'] = lrms.cores_per_node
             cfg['lrms_info']['agent_nodes']    = lrms.agent_nodes
+
+            # Store some runtime information into the session
+            if 'version_info' in lrms.lm_info:
+                mongo_p.update({"_id": pilot_id},
+                               {"$set": {"lm_info": lrms.lm_info['version_info']}})
 
             # Based on the LRMS info, and specifically the agent_nodes, we now
             # know where each sub_agent will run.  We will sift through the
