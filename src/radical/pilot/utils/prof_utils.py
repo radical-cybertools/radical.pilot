@@ -47,8 +47,8 @@ class Profiler (object):
         self._handle.write("#time,name,uid,state,event,msg\n")
         self._handle.write("%.4f,%s:%s,%s,%s,%s,%s\n" % \
                            (0.0, self._name, "", "", "", 'sync abs',
-                            "%s:%s:%s:%s" % (self._ts_mode, time.time(),
-                                             self._ts_zero, self._ts_abs)))
+                            "%s:%s:%s:%s" % (time.time(), self._ts_zero, 
+                                             self._ts_abs, self._ts_mode)))
 
 
     # ------------------------------------------------------------------------------
