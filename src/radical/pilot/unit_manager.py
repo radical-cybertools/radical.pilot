@@ -636,6 +636,8 @@ class UnitManager(object):
             for unit in units :
                 if  unit.state not in state :
                     all_ok = False
+                else:
+                    logger.demo('progress')
 
                 states.append (unit.state)
 
@@ -648,8 +650,6 @@ class UnitManager(object):
             # sleep a little if this cycle was idle
             if  not all_ok :
                 time.sleep (0.5)
-
-            logger.demo('progress')
 
         logger.demo('ok', '\\ok\n')
 
