@@ -3680,7 +3680,10 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         # Remove the configured set of environment variables from the
         # environment that we pass to Popen.
         for e in new_env.keys():
-            for r in self._mpi_launcher.env_removables + self._task_launcher.env_removables:
+            env_removables = list()
+            if self._mpi_launcher : env_removables += self._mpi_launcher.env_removables
+            if self._task_launcher: env_removables += self._task_launcher.env_removables
+            for r in  env_removables:
                 if e.startswith(r):
                     new_env.pop(e, None)
 
@@ -4069,7 +4072,10 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         # Remove the configured set of environment variables from the
         # environment that we pass to Popen.
         for e in os.environ.keys():
-            for r in self._mpi_launcher.env_removables + self._task_launcher.env_removables:
+            env_removables = list()
+            if self._mpi_launcher : env_removables += self._mpi_launcher.env_removables
+            if self._task_launcher: env_removables += self._task_launcher.env_removables
+            for r in  env_removables:
                 if e.startswith(r):
                     os.environ.pop(e, None)
 
