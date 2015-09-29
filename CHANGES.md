@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.35.1 Release                                             2015-09-29
+--------------------------------------------------------------------------------
+
+  - hotfix to use popen on localhost
+
+
 0.35 Release                                               2015-07-14
 --------------------------------------------------------------------------------
 
