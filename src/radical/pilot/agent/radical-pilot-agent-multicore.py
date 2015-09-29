@@ -5902,6 +5902,7 @@ def bootstrap_3():
     log  = ru.get_logger('%s.bootstrap_3' % agent_name, 
                          '%s.bootstrap_3.log' % agent_name, 'DEBUG')  # FIXME?
     log.info('start')
+    prof.prof('sync ref', msg='agent start')
 
     try:
         import setproctitle as spt
