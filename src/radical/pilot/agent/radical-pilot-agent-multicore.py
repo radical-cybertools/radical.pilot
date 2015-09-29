@@ -5899,7 +5899,8 @@ def bootstrap_3():
 
     # set up a logger and profiler
     prof = rpu.Profiler ('%s.bootstrap_3' % agent_name)
-    log  = ru.get_logger('%s.bootstrap_3' % agent_name, 
+    prof.prof('sync ref', msg='agent start')
+    log  = ru.get_logger('%s.bootstrap_3' % agent_name,
                          '%s.bootstrap_3.log' % agent_name, 'DEBUG')  # FIXME?
     log.info('start')
 
