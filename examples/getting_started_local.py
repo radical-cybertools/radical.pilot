@@ -84,7 +84,7 @@ if __name__ == "__main__":
           # cud.arguments     = ["1"]
             cud.cores         = 1
             cuds.append(cud)
-            report.progress('.')
+            report.progress()
         report.ok('\\ok\n')
     
         # Submit the previously created ComputeUnit descriptions to the
