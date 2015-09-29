@@ -322,7 +322,7 @@ class PilotManager(object):
                 import radical.utils as ru
                 ru.write_json(pd.as_dict(), "%s/%s.json" 
                         % (self._session._rec, pilot_uid))
-            logger.demo('info', '.')
+            logger.demo('progress', '.')
 
         logger.demo('ok', '\\ok\n')
 
