@@ -449,6 +449,8 @@ class PilotManager(object):
             for pilot in pilots :
                 if  pilot['state'] not in state :
                     all_ok = False
+                else:
+                    logger.demo('progress')
 
                 states.append (pilot['state'])
 
