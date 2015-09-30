@@ -1265,7 +1265,7 @@ class LaunchMethod(object):
           # LAUNCH_METHOD_APRUN         : LaunchMethodAPRUN,
           # LAUNCH_METHOD_CCMRUN        : LaunchMethodCCMRUN,
           # LAUNCH_METHOD_DPLACE        : LaunchMethodDPLACE,
-          # LAUNCH_METHOD_FORK          : LaunchMethodFORK,
+            LAUNCH_METHOD_FORK          : LaunchMethodFORK,
           # LAUNCH_METHOD_IBRUN         : LaunchMethodIBRUN,
           # LAUNCH_METHOD_MPIEXEC       : LaunchMethodMPIEXEC,
           # LAUNCH_METHOD_MPIRUN_CCMRUN : LaunchMethodMPIRUNCCMRUN,
@@ -1360,6 +1360,12 @@ class LaunchMethodFORK(LaunchMethod):
         # "Regular" tasks
         self.launch_command = ''
 
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def lrms_config_hook(cls, name, cfg, lrms, logger):
+        return {'version_info': {
+            name: {'version': '0.42', 'version_detail': 'There is no spoon'}}}
 
     # --------------------------------------------------------------------------
     #
@@ -1372,7 +1378,6 @@ class LaunchMethodFORK(LaunchMethod):
             command = task_exec
 
         return command, None
-
 
 
 # ==============================================================================
@@ -1951,6 +1956,21 @@ class LaunchMethodORTE(LaunchMethod):
         if not dvm_command:
             raise Exception("Couldn't find orte-dvm")
 
+        # Now that we found the orte-dvm, get ORTE version
+        orte_info = {}
+        oi_output = subprocess.check_output(['orte-info|grep "Open RTE"'], shell=True)
+        oi_lines = oi_output.split('\n')
+        for line in oi_lines:
+            if not line:
+                continue
+            key, val = line.split(':')
+            if 'Open RTE' == key.strip():
+                orte_info['version'] = val.strip()
+            elif  'Open RTE repo revision' == key.strip():
+                orte_info['version_detail'] = val.strip()
+        logger.info("Found Open RTE: %s / %s",
+                    orte_info['version'], orte_info['version_detail'])
+
         # Use (g)stdbuf to disable buffering.
         # We need this to get the "DVM ready",
         # without waiting for orte-dvm to complete.
@@ -2025,7 +2045,7 @@ class LaunchMethodORTE(LaunchMethod):
         dvm_watcher.daemon = True
         dvm_watcher.start()
 
-        lm_info = {'dvm_uri': dvm_uri}
+        lm_info = {'dvm_uri': dvm_uri, 'version_info': {name: orte_info}}
 
         # we need to inform the actual LM instance about the DVM URI.  So we
         # pass it back to the LRMS which will keep it in an 'lm_info', which
@@ -3680,7 +3700,10 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         # Remove the configured set of environment variables from the
         # environment that we pass to Popen.
         for e in new_env.keys():
-            for r in self._mpi_launcher.env_removables + self._task_launcher.env_removables:
+            env_removables = list()
+            if self._mpi_launcher : env_removables += self._mpi_launcher.env_removables
+            if self._task_launcher: env_removables += self._task_launcher.env_removables
+            for r in  env_removables:
                 if e.startswith(r):
                     new_env.pop(e, None)
 
@@ -4069,7 +4092,10 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         # Remove the configured set of environment variables from the
         # environment that we pass to Popen.
         for e in os.environ.keys():
-            for r in self._mpi_launcher.env_removables + self._task_launcher.env_removables:
+            env_removables = list()
+            if self._mpi_launcher : env_removables += self._mpi_launcher.env_removables
+            if self._task_launcher: env_removables += self._task_launcher.env_removables
+            for r in  env_removables:
                 if e.startswith(r):
                     os.environ.pop(e, None)
 
@@ -5913,6 +5939,7 @@ def bootstrap_3():
     log  = ru.get_logger('%s.bootstrap_3' % agent_name, 
                          '%s.bootstrap_3.log' % agent_name, 'DEBUG')  # FIXME?
     log.info('start')
+    prof.prof('sync ref', msg='agent start')
 
     try:
         import setproctitle as spt
@@ -5995,6 +6022,7 @@ def bootstrap_3():
             cfg['lrms_info']['cores_per_node'] = lrms.cores_per_node
             cfg['lrms_info']['agent_nodes']    = lrms.agent_nodes
 
+
             # the master agent also is the only one which starts bridges.  It
             # has to do so before creating the AgentWorker instance, as that is
             # using the bridges already.
@@ -6016,6 +6044,10 @@ def bootstrap_3():
             nodeip = LRMS.hostip(cfg.get('network_interface'))
             write_sub_configs(cfg, bridges, nodeip, log)
 
+            # Store some runtime information into the session
+            if 'version_info' in lrms.lm_info:
+                mongo_p.update({"_id": pilot_id},
+                               {"$set": {"lm_info": lrms.lm_info['version_info']}})
 
         # we now have correct bridge addresses added to the agent_0.cfg, and all
         # other agents will have picked that up from their config files -- we

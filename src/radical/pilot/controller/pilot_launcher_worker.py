@@ -744,9 +744,10 @@ class PilotLauncherWorker(threading.Thread):
                         ts = timestamp()
                         ret = pilot_col.update(
                             {"_id"  : pilot_id,
-                             "state": 'Launching'},
+                             "state": LAUNCHING},
                             {"$set" : {"state": PENDING_ACTIVE,
-                                      "saga_job_id": saga_job_id},
+                                       "saga_job_id": saga_job_id,
+                                       "agent_config": agent_cfg_dict},
                              "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
                              "$pushAll": {"log": log_dicts}
                             }
