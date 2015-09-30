@@ -453,6 +453,8 @@ class AgentSchedulingComponent(rpu.Component):
         self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
         self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
 
+        self._pilot_id = self._cfg['pilot_id']
+
         # The scheduler needs the LRMS information which have been collected
         # during agent startup.  We dig them out of the config at this point.
         self._cores = self._cfg['cores']
@@ -588,7 +590,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         cu = msg
 
-        self._prof.prof('reschedule')
+        self._prof.prof('reschedule', uid=self._pilot_id)
         self._log.info("slot status before reschedule: %s" % self.slot_status())
 
         # cycle through wait queue, and see if we get anything running now.  We
@@ -3614,6 +3616,8 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         self._cus_to_watch   = list()
         self._watch_queue    = Queue.Queue ()
 
+        self._pilot_id = self._cfg['pilot_id']
+
         # run watcher thread
         self._terminate = threading.Event()
         self._watcher   = threading.Thread(target=self._watch, name="Watcher")
@@ -3887,7 +3891,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
         cname = self.name.replace('Component', 'Watcher')
         self._prof = rpu.Profiler(cname)
-        self._prof.prof('run')
+        self._prof.prof('run', uid=self._pilot_id)
         try:
             self._log = ru.get_logger(cname, target="%s.log" % cname,
                                       level='DEBUG') # FIXME?
@@ -3930,7 +3934,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             self._log.exception("Error in ExecWorker watch loop (%s)" % e)
             # FIXME: this should signal the ExecWorker for shutdown...
 
-        self._prof.prof('stop')
+        self._prof.prof('stop', uid=self._pilot_id)
         self._prof.flush()
 
 
@@ -4121,16 +4125,16 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         # Moving back to shared file system again, until it reaches maturity,
         # as this breaks launch methods with a hop, e.g. ssh.
         tmp = os.getcwd() # FIXME: see #658
-        pilot_id = self._cfg['pilot_id']
+        self._pilot_id = self._cfg['pilot_id']
         ret, out, _  = self.launcher_shell.run_sync \
                            ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
-                           % (os.path.dirname (rp.__file__), tmp, pilot_id, self._cname))
+                           % (os.path.dirname (rp.__file__), tmp, self._pilot_id, self._cname))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
 
         ret, out, _  = self.monitor_shell.run_sync \
                            ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
-                           % (os.path.dirname (rp.__file__), tmp, pilot_id, self._cname))
+                           % (os.path.dirname (rp.__file__), tmp, self._pilot_id, self._cname))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
 
@@ -4140,7 +4144,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         self._watcher.daemon = True
         self._watcher.start ()
 
-        self._prof.prof('run setup done')
+        self._prof.prof('run setup done', uid=self._pilot_id)
 
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',
@@ -4443,7 +4447,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         MONITOR_READ_TIMEOUT = 1.0   # check for stop signal now and then
         static_cnt           = 0
 
-        self._prof.prof('run')
+        self._prof.prof('run', uid=self._pilot_id)
         try:
             self._log = ru.get_logger(cname, target="%s.log" % cname,
                                       level='DEBUG') # FIXME?
@@ -4541,7 +4545,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
             self._log.exception("Exception in job monitoring thread: %s", e)
             self._terminate.set()
 
-        self._prof.prof('stop')
+        self._prof.prof('stop', uid=self._pilot_id)
         self._prof.flush()
 
 
@@ -4625,6 +4629,7 @@ class AgentUpdateWorker(rpu.Worker):
 
         self._session_id    = self._cfg['session_id']
         self._mongodb_url   = self._cfg['mongodb_url']
+        self._pilot_id      = self._cfg['pilot_id']
 
         _, db, _, _, _      = ru.mongodb_connect(self._mongodb_url)
         self._mongo_db      = db
@@ -4682,7 +4687,7 @@ class AgentUpdateWorker(rpu.Worker):
         res = cinfo['bulk'].execute()
         self._log.debug("bulk update result: %s", res)
 
-        self._prof.prof('unit update bulk pushed (%d)' % len(cinfo['uids']))
+        self._prof.prof('unit update bulk pushed (%d)' % len(cinfo['uids']), uid=self._pilot_id)
         for entry in cinfo['uids']:
             uid   = entry[0]
             state = entry[1]
@@ -5210,7 +5215,7 @@ class AgentHeartbeatWorker(rpu.Worker):
     def idle_cb(self):
 
         try:
-            self._prof.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!')
+            self._prof.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!', uid=self._pilot_id)
             self._check_commands()
             self._check_state   ()
             return True
@@ -5239,7 +5244,7 @@ class AgentHeartbeatWorker(rpu.Worker):
             cmd = command[COMMAND_TYPE]
             arg = command[COMMAND_ARG]
 
-            self._prof.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" % (cmd, arg))
+            self._prof.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" % (cmd, arg), uid=self._pilot_id)
 
             if cmd == COMMAND_CANCEL_PILOT:
                 self._log.info('cancel pilot cmd')
@@ -5474,7 +5479,7 @@ class AgentWorker(rpu.Worker):
             self._log.exception("Agent setup error: %s" % e)
             raise
 
-        self._prof.prof('Agent setup done', logger=self._log.debug)
+        self._prof.prof('Agent setup done', logger=self._log.debug, uid=self._pilot_id)
 
         # also watch all components (once per second)
         self.declare_idle_cb(self.watcher_cb, 10.0)
@@ -5573,7 +5578,7 @@ class AgentWorker(rpu.Worker):
     def finalize_child(self):
 
         self._log.info("Agent finalizes")
-        self._prof.prof('stop')
+        self._prof.prof('stop', uid=self._pilot_id)
       
         # tell other sub-agents get lost
         self.publish('command', {'cmd' : 'shutdown',
@@ -5694,7 +5699,7 @@ class AgentWorker(rpu.Worker):
                 else   : cmdline = ls_name
 
             # spawn the sub-agent
-            self._prof.prof("create", msg=sa)
+            self._prof.prof("create", msg=sa, uid=self._pilot_id)
             self._log.info ("create sub-agent %s: %s" % (sa, cmdline))
             sa_out = open("%s.out" % sa, "w")
             sa_err = open("%s.err" % sa, "w")
@@ -5708,7 +5713,7 @@ class AgentWorker(rpu.Worker):
                                     'err'   : sa_err,
                                     'pid'   : sa_proc.pid,
                                     'alive' : False}
-            self._prof.prof("created", msg=sa)
+            self._prof.prof("created", msg=sa, uid=self._pilot_id)
 
         self._log.debug('start_sub_agents done')
 
@@ -5858,7 +5863,7 @@ class AgentWorker(rpu.Worker):
                         document = {"$set"  : {"control" : 'agent'}})
 
         self._log.info("units pulled: %4d"   % len(cu_list))
-        self._prof.prof('get', msg="bulk size: %d" % len(cu_list))
+        self._prof.prof('get', msg="bulk size: %d" % len(cu_list), uid=self._pilot_id)
         for cu in cu_list:
             self._prof.prof('get', msg="bulk size: %d" % len(cu_list), uid=cu['_id'])
 
@@ -5903,9 +5908,18 @@ def bootstrap_3():
         raise RuntimeError('invalid number of parameters (%s)' % sys.argv)
     agent_name = sys.argv[1]
 
+    # load the agent config, and overload the config dicts
+    agent_cfg  = "%s/%s.cfg" % (os.getcwd(), agent_name)
+    print "startup agent %s : %s" % (agent_name, agent_cfg)
+
+    cfg = ru.read_json_str(agent_cfg)
+    cfg['agent_name'] = agent_name
+    pilot_id = cfg['pilot_id']
+
     # set up a logger and profiler
     prof = rpu.Profiler ('%s.bootstrap_3' % agent_name)
-    log  = ru.get_logger('%s.bootstrap_3' % agent_name, 
+    prof.prof('sync ref', msg='agent start', uid=pilot_id)
+    log  = ru.get_logger('%s.bootstrap_3' % agent_name,
                          '%s.bootstrap_3.log' % agent_name, 'DEBUG')  # FIXME?
     log.info('start')
     prof.prof('sync ref', msg='agent start')
@@ -5915,13 +5929,6 @@ def bootstrap_3():
         spt.setproctitle('radical.pilot %s' % agent_name)
     except Exception as e:
         log.debug('no setproctitle: %s', e)
-
-    # load the agent config, and overload the config dicts
-    agent_cfg  = "%s/%s.cfg" % (os.getcwd(), agent_name)
-    print "startup agent %s : %s" % (agent_name, agent_cfg)
-
-    cfg = ru.read_json_str(agent_cfg)
-    cfg['agent_name'] = agent_name
 
     log.setLevel(cfg.get('debug', 'INFO'))
 
@@ -5942,7 +5949,6 @@ def bootstrap_3():
 
         _, mongo_db, _, _, _  = ru.mongodb_connect(cfg['mongodb_url'])
         mongo_p = mongo_db["%s.p" % cfg['session_id']]
-        pilot_id = cfg['pilot_id']
 
 
         # set up signal and exit handlers
@@ -6077,7 +6083,7 @@ def bootstrap_3():
 
     finally:
         log.info('stop')
-        prof.prof('stop', msg='finally clause agent')
+        prof.prof('stop', msg='finally clause agent', uid=pilot_id)
         prof.flush()
 
 
