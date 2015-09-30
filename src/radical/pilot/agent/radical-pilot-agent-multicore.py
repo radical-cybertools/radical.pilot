@@ -5349,7 +5349,6 @@ class AgentWorker(rpu.Worker):
 
         # keep track of objects we need to stop in the finally clause
         self._sub_agents = dict()
-        self._bridges    = dict()
         self._components = dict()
         self._workers    = dict()
 
@@ -5472,8 +5471,7 @@ class AgentWorker(rpu.Worker):
     def alive_barrier(self):
 
         # FIXME: wait for bridges, too?  But we need pubsub for counting... Duh!
-        total = len(self._bridges)    + \
-                len(self._components) + \
+        total = len(self._components) + \
                 len(self._workers   ) + \
                 len(self._sub_agents)
         start   = time.time()
@@ -5481,8 +5479,7 @@ class AgentWorker(rpu.Worker):
 
         while True:
             # check the procs for all components which are not yet alive
-            to_check  = self._bridges.items() \
-                      + self._components.items() \
+            to_check  = self._components.items() \
                       + self._workers.items() \
                       + self._sub_agents.items() 
 
@@ -5518,8 +5515,7 @@ class AgentWorker(rpu.Worker):
         tear down this agent.
         """
 
-        to_watch = list(self._bridges.iteritems())    \
-                 + list(self._components.iteritems()) \
+        to_watch = list(self._components.iteritems()) \
                  + list(self._workers.iteritems())    \
                  + list(self._sub_agents.iteritems())
 
@@ -5569,13 +5565,6 @@ class AgentWorker(rpu.Worker):
                 w['handle'].stop()
             except Exception as e:
                 self._log.exception('ignore failing worker terminate')
-
-        for name,b in self._bridges.items():
-            try:
-                self._log.info("closing bridge %s", b)
-                b['handle'].stop()
-            except Exception as e:
-                self._log.exception('ignore failing bridge terminate')
 
         # communicate finalization to parent agent 
         # -- if we have any parent...
@@ -5985,6 +5974,7 @@ def bootstrap_3():
     # in one of the above handlers or exit handlers being activated, thuse
     # reporting the error dutifully.
 
+    bridges = dict()  # avoid undefined dict on finalization
     try:
         # ----------------------------------------------------------------------
         # des Pudels Kern: merge LRMS info into cfg and get the agent started
@@ -6064,6 +6054,13 @@ def bootstrap_3():
         sys.exit(2)
 
     finally:
+        for name,b in bridges.items():
+            try:
+                log.info("closing bridge %s", b)
+                b['handle'].stop()
+            except Exception as e:
+                log.exception('ignore failing bridge terminate (%s)', e)
+
         log.info('stop')
         prof.prof('stop', msg='finally clause agent')
         prof.flush()
