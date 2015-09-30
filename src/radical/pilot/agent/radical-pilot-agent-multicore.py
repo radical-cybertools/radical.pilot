@@ -5428,12 +5428,6 @@ class AgentWorker(rpu.Worker):
             raise RuntimeError("no agent layout section for %s" % self.agent_name)
 
         try:
-            self.start_bridges()
-
-            # FIXME: make sure all communication channels are in place.  This could
-            # be replaced with a proper barrier, but not sure if that is worth it...
-            time.sleep (1)
-
             self.start_sub_agents()
             self.start_components()
 
@@ -5688,47 +5682,6 @@ class AgentWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def start_bridges(self):
-        """
-        For all bridges defined on this agent instance, create that bridge.
-        Keep a handle around for shutting them down later.
-        """
-
-        self._log.debug('start_bridges')
-
-        # ----------------------------------------------------------------------
-        # shortcut for bridge creation
-        bridge_type = {rp.AGENT_STAGING_INPUT_QUEUE  : 'queue',
-                       rp.AGENT_SCHEDULING_QUEUE     : 'queue',
-                       rp.AGENT_EXECUTING_QUEUE      : 'queue',
-                       rp.AGENT_STAGING_OUTPUT_QUEUE : 'queue',
-                       rp.AGENT_UNSCHEDULE_PUBSUB    : 'pubsub',
-                       rp.AGENT_RESCHEDULE_PUBSUB    : 'pubsub',
-                       rp.AGENT_COMMAND_PUBSUB       : 'pubsub',
-                       rp.AGENT_STATE_PUBSUB         : 'pubsub'}
-
-        def _create_bridge(name):
-            if bridge_type[name] == 'queue':
-                return rpu.Queue.create(rpu.QUEUE_ZMQ, name, rpu.QUEUE_BRIDGE)
-            elif bridge_type[name] == 'pubsub':
-                return rpu.Pubsub.create(rpu.PUBSUB_ZMQ, name, rpu.PUBSUB_BRIDGE)
-            else:
-                raise ValueError('unknown bridge type for %s' % name)
-        # ----------------------------------------------------------------------
-
-        # create all bridges we need.  Use the default addresses,
-        # ie. they will bind to all local interfacces on ports 10.000++.
-        for name in self._sub_cfg.get('bridges', []):
-            b = _create_bridge(name)
-            self._bridges[name] = {'handle' : b,
-                                   'alive'  : True}  # no alive check done, yet
-            self._log.info('created bridge %s: %s', name, b.name)
-
-        self._log.debug('start_bridges done')
-
-
-    # --------------------------------------------------------------------------
-    #
     def start_components(self):
         """
         For all componants defined on this agent instance, create the required
@@ -5850,6 +5803,95 @@ class AgentWorker(rpu.Worker):
 # Agent bootstrap stage 3
 #
 # ==============================================================================
+#
+def start_bridges(cfg, log):
+    """
+    For all bridges defined on this agent instance, create that bridge.
+    Keep a handle around for shutting them down later.
+    """
+
+    log.debug('start_bridges')
+
+    # ----------------------------------------------------------------------
+    # shortcut for bridge creation
+    bridge_type = {rp.AGENT_STAGING_INPUT_QUEUE  : 'queue',
+                   rp.AGENT_SCHEDULING_QUEUE     : 'queue',
+                   rp.AGENT_EXECUTING_QUEUE      : 'queue',
+                   rp.AGENT_STAGING_OUTPUT_QUEUE : 'queue',
+                   rp.AGENT_UNSCHEDULE_PUBSUB    : 'pubsub',
+                   rp.AGENT_RESCHEDULE_PUBSUB    : 'pubsub',
+                   rp.AGENT_COMMAND_PUBSUB       : 'pubsub',
+                   rp.AGENT_STATE_PUBSUB         : 'pubsub'}
+
+    def _create_bridge(name):
+        if bridge_type[name] == 'queue':
+            return rpu.Queue.create(rpu.QUEUE_ZMQ, name, rpu.QUEUE_BRIDGE)
+        elif bridge_type[name] == 'pubsub':
+            return rpu.Pubsub.create(rpu.PUBSUB_ZMQ, name, rpu.PUBSUB_BRIDGE)
+        else:
+            raise ValueError('unknown bridge type for %s' % name)
+    # ----------------------------------------------------------------------
+
+    # create all bridges we need.  Use the default addresses,
+    # ie. they will bind to all local interfacces on ports 10.000++.
+    bridges = dict()
+    sub_cfg = cfg['agent_layout']['agent_0']
+    for b in sub_cfg.get('bridges', []):
+
+        bridge     = _create_bridge(b)
+        bridge_in  = bridge.bridge_in
+        bridge_out = bridge.bridge_out
+        bridges[b] = {'handle' : bridge,
+                      'in'     : bridge_in, 
+                      'out'    : bridge_out,
+                      'alive'  : True}  # no alive check done, yet
+        log.info('created bridge %s: %s', b, bridge.name)
+
+    log.debug('start_bridges done')
+
+    return bridges
+
+
+# --------------------------------------------------------------------------
+#
+def write_sub_configs(cfg, bridges, nodeip, log):
+    """
+    create a sub_config for each sub-agent we intent to spawn
+    """
+
+    # get bridge addresses from our bridges, and append them to the config
+    if not 'bridge_addresses' in cfg:
+        cfg['bridge_addresses'] = dict()
+
+    for b in bridges:
+        # to avoid confusion with component input and output, we call bridge
+        # input a 'sink', and a bridge output a 'source' (from the component
+        # perspective)
+        sink   = ru.Url(bridges[b]['in'])
+        source = ru.Url(bridges[b]['out'])
+
+        # we replace the ip address with what we got from LRMS (nodeip).  The
+        # bridge should be listening on all interfaces, but we want to make sure
+        # the sub-agents connect on an IP which is accessible to them
+        sink.host   = nodeip
+        source.host = nodeip
+
+        # keep the resultin URLs as strings, to be used as addresses
+        cfg['bridge_addresses'][b] = dict()
+        cfg['bridge_addresses'][b]['sink']   = str(sink)
+        cfg['bridge_addresses'][b]['source'] = str(source)
+
+    # write deep-copies of the config (with the corrected agent_name) for each
+    # sub-agent (apart from agent_0, obviously)
+    for sa in cfg.get('agent_layout'):
+        if sa != 'agent_0':
+            sa_cfg = copy.deepcopy(cfg)
+            sa_cfg['agent_name'] = sa
+            ru.write_json(sa_cfg, './%s.cfg' % sa)
+
+
+# --------------------------------------------------------------------------
+#
 def bootstrap_3():
     """
     This method continues where the bootstrapper left off, but will quickly pass
@@ -5963,49 +6005,27 @@ def bootstrap_3():
             cfg['lrms_info']['cores_per_node'] = lrms.cores_per_node
             cfg['lrms_info']['agent_nodes']    = lrms.agent_nodes
 
-            # Based on the LRMS info, and specifically the agent_nodes, we now
-            # know where each sub_agent will run.  We will sift through the
-            # config, find where the bridges are to be created, thus can
-            # determine their addresses, and will then apply those addresses to
-            # the queue and pubsub endpoints in all agent components.  Note that
-            # the bridge addresses themself will not change -- they are fine to
-            # listen on tcp://*:[port]/.
+            # the master agent also is the only one which starts bridges.  It
+            # has to do so before creating the AgentWorker instance, as that is
+            # using the bridges already.
+
+            bridges = start_bridges(cfg, log)
+            # FIXME: make sure all communication channels are in place.  This could
+            # be replaced with a proper barrier, but not sure if that is worth it...
+            time.sleep (1)
+
+            # after we started bridges, we'll add their in and out addresses
+            # to the config, so that the communication channels can connect to
+            # them.  At this point we also write configs for all sub-agents this
+            # instance intents to spawn.
             #
-            # Once we did those changes, we will write copies of the resulting
-            # config for each sub agent instance.  At the moment those configs
-            # are identical, and the sub_agent will pick its own layout section
-            # -- but in principle this is also the point where we would make
-            # individual config changes.
+            # FIXME: we should point the address to the node of the subagent
+            #        which hosts the bridge, not the local IP.  Until this
+            #        is fixed, bridges MUST run on agent_0 (which is what
+            #        LRMS.hostip() below will point to).
+            nodeip = LRMS.hostip(cfg.get('network_interface'))
+            write_sub_configs(cfg, bridges, nodeip, log)
 
-            # dig out bridges from all sub-agents (sa)
-            # FIXME: we only need configs for agents which will actually get
-            #        started, ie. for those which appear in some sub_agent key
-            #        -- but this loop iterates over all sub_agents which are
-            #        *defined*.  Same for the for-loop a couple of lines below.
-            bridge_addresses = dict()
-            for sa in cfg['agent_layout']:
-
-                # FIXME: we should point the address to the node of the subagent
-                #        which hosts the bridge, not the local IP.  Until this
-                #        is fixed, bridges MUST run on agent_0 (which is what
-                #        LRMS.hostip() below will point to).
-                nodeip = LRMS.hostip(cfg.get('network_interface'))
-
-                # we should have at most one bridge for every type
-                for b in cfg['agent_layout'][sa].get('bridges', []):
-                    if b in bridge_addresses:
-                        raise RuntimeError('duplicated bridge entry for %s' % b)
-                    bridge_addresses[b] = "tcp://%s" % nodeip
-
-            # add bridge addresses to the config
-            cfg['bridge_addresses'] = bridge_addresses
-
-            # create a sub_config for each sub-agent (but skip master config)
-            for sa in cfg['agent_layout']:
-                if sa != 'agent_0':
-                    sa_cfg = copy.deepcopy(cfg)
-                    sa_cfg['agent_name'] = sa
-                    ru.write_json(sa_cfg, './%s.cfg' % sa)
 
         # we now have correct bridge addresses added to the agent_0.cfg, and all
         # other agents will have picked that up from their config files -- we
