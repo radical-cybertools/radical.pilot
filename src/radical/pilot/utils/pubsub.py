@@ -74,7 +74,7 @@ class Pubsub(object):
         self._channel    = channel
         self._role       = role
         self._addr       = address
-        self._debug      = True
+        self._debug      = False
         self._logfd      = None
         self._name       = "pubsub.%s.%s" % (self._channel, self._role)
         self._bridge_in  = None           # bridge input  addr

@@ -149,7 +149,7 @@ class Queue(object):
         self._qname  = qname
         self._role   = role
         self._addr   = address
-        self._debug  = True
+        self._debug  = False
         self._logfd  = None
         self._name   = "queue.%s.%s" % (self._qname, self._role)
 
