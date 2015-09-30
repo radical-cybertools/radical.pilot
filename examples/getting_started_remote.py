@@ -29,25 +29,19 @@ resources = {
             'schema'   : 'ssh'
             },
 
-        'ncsa.bw_orte' : {
+        'ncsa.bw' : {
             'project'  : 'gkd',
             'queue'    : 'debug',
             'schema'   : 'gsissh'
             },
 
-        'nersc.edison_orte' : {
+        'nersc.edison' : {
             'project'  : None,
             'queue'    : 'debug',
             'schema'   : 'ssh'
             },
 
         'epsrc.archer' : {
-            'project'  : 'e290',
-            'queue'    : 'short',
-            'schema'   : None
-            },
-
-        'epsrc.archer_orte' : {
             'project'  : 'e290',
             'queue'    : 'short',
             'schema'   : None
@@ -93,6 +87,12 @@ resources = {
             'project'  : None,
             'queue'    : None,
             'schema'   : None
+            },
+
+        'ornl.titan'   : {
+            'project'  : 'csc168',
+            'queue'    : 'batch',
+            'schema'   : 'local'
             },
 
         'nersc.hopper' : {
