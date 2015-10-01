@@ -139,6 +139,10 @@ Suppose the url used to access a specific machine is ``foo@machine.example.com``
 
 Now you can login to the machine by ``ssh mach1``.
 
+
+Source: http://nerderati.com/2011/03/17/simplify-your-life-with-an-ssh-config-file/
+
+
 Troubleshooting
 ===============
 
