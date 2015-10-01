@@ -209,7 +209,7 @@ class Session (saga.Session):
         else:
             self._rec = None
 
-        logger.demo('ok', '\\ok\n')
+        logger.demo('ok', '>>ok\n')
 
 
 
@@ -297,7 +297,7 @@ class Session (saga.Session):
 
         self._valid = False
 
-        logger.demo('ok', '\\ok\n')
+        logger.demo('ok', '>>ok\n')
 
 
     #---------------------------------------------------------------------------

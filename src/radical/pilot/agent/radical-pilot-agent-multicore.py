@@ -5558,7 +5558,7 @@ class AgentWorker(rpu.Worker):
             if state == None:
                 self._log.debug('%30s: ok' % name)
             else:
-                raise RuntimeError ('%s died - shutting down')
+                raise RuntimeError ('%s died - shutting down' % name)
 
         return True # always idle
 

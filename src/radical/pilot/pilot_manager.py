@@ -98,7 +98,7 @@ class PilotManager(object):
         **Raises:**
             * :class:`radical.pilot.PilotException`
         """
-        logger.demo('info', 'create pilot manager')
+        logger.demo('info', '<<create pilot manager')
 
         self._session = session
         self._worker = None
@@ -125,7 +125,7 @@ class PilotManager(object):
 
         self._valid = True
 
-        logger.demo('ok', '\\ok\n')
+        logger.demo('ok', '>>ok\n')
 
 
     #---------------------------------------------------------------------------
@@ -149,6 +149,7 @@ class PilotManager(object):
         """
 
         logger.debug("pmgr    %s closing" % (str(self.uid)))
+        logger.demo('info', '<<close pilot manager')
 
         # Spit out a warning in case the object was already closed.
         if not self.uid:
@@ -188,6 +189,8 @@ class PilotManager(object):
         logger.debug("pmgr    %s closed" % (str(self.uid)))
 
         self._valid = False
+
+        logger.demo('ok', '>>ok\n')
 
 
     # -------------------------------------------------------------------------
@@ -234,7 +237,7 @@ class PilotManager(object):
             return_list_type   = False
             pilot_descriptions = [pilot_descriptions]
 
-        logger.demo('info', 'submit %d pilot(s)' % len(pilot_descriptions))
+        logger.demo('info', '<<submit %d pilot(s)' % len(pilot_descriptions))
 
         # Itereate over the pilot descriptions, try to create a pilot for
         # each one and append it to 'pilot_obj_list'.
@@ -324,7 +327,7 @@ class PilotManager(object):
                         % (self._session._rec, pilot_uid))
             logger.demo('progress')
 
-        logger.demo('ok', '\\ok\n')
+        logger.demo('ok', '>>ok\n')
 
         # Implicit return value conversion
         if  return_list_type :

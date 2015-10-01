@@ -95,7 +95,7 @@ class UnitManager(object):
         **Raises:**
             * :class:`radical.pilot.PilotException`
         """
-        logger.demo('info', 'create unit manager')
+        logger.demo('info', '<<create unit manager')
 
         self._session = session
         self._worker  = None 
@@ -131,7 +131,7 @@ class UnitManager(object):
 
         self._valid = True
 
-        logger.demo('ok', '\\ok\n')
+        logger.demo('ok', '>>ok\n')
 
 
     #--------------------------------------------------------------------------
@@ -143,6 +143,8 @@ class UnitManager(object):
         if not self._valid:
             raise RuntimeError("instance is already closed")
 
+        logger.demo('info', '<<close unit manager')
+
         if self._worker:
             self._worker.stop()
 
@@ -150,6 +152,8 @@ class UnitManager(object):
         logger.info("Closed UnitManager %s." % str(self._uid))
 
         self._valid = False
+
+        logger.demo('ok', '>>ok\n')
 
 
     # -------------------------------------------------------------------------
@@ -223,7 +227,7 @@ class UnitManager(object):
         if not isinstance(pilots, list):
             pilots = [pilots]
 
-        logger.demo('info', 'add %d pilot(s)' % len(pilots))
+        logger.demo('info', '<<add %d pilot(s)' % len(pilots))
 
         pilot_ids = self.list_pilots()
 
@@ -242,7 +246,7 @@ class UnitManager(object):
         for pilot in pilots :
             self._pilots.append (pilot)
 
-        logger.demo('ok', '\\ok\n')
+        logger.demo('ok', '>>ok\n')
 
     # -------------------------------------------------------------------------
     #
@@ -379,7 +383,7 @@ class UnitManager(object):
             return_list_type  = False
             unit_descriptions = [unit_descriptions]
 
-        logger.demo('info', 'submit %d unit(s)' % len(unit_descriptions))
+        logger.demo('info', '<<submit %d unit(s)\n\t' % len(unit_descriptions))
 
         # we return a list of compute units
         ret = list()
@@ -423,7 +427,7 @@ class UnitManager(object):
 
         self.handle_schedule (schedule)
 
-        logger.demo('ok', '\\ok\n')
+        logger.demo('ok', '>>ok\n')
 
         if  return_list_type :
             return units
@@ -620,38 +624,53 @@ class UnitManager(object):
             unit_ids = [unit_ids]
 
 
-        units  = self.get_units (unit_ids)
+        units  = self.get_units(unit_ids)
         start  = time.time()
         all_ok = False
         states = list()
 
-        logger.demo('info', 'wait for %d unit(s)' % len(units))
+        logger.demo('info', '<<wait for %d unit(s)\n\t' % len(units))
 
-        while not all_ok and \
-              not self._session._terminate.is_set():
+        # we don't want to iterate over all units again and again, as that would
+        # duplicate checks on units which were found in matching states.  So we
+        # create a dict, record states there, and filter which ones we check.
+        check = dict()
+        for unit in units:
+            check[unit] = True
 
-            all_ok = True
-            states = list()
+        # filter for all units we still need to check
+        to_check = [x for x in check if check[x]]
 
-            for unit in units :
-                if  unit.state not in state :
-                    all_ok = False
-                else:
-                    logger.demo('progress')
+        while to_check and not self._session._terminate.is_set():
 
-                states.append (unit.state)
+            for unit in to_check:
+                if unit.state in state:
+                    # stop watching this unit
+                    check[unit] = False
+                    if unit.state in [FAILED]:
+                        logger.demo('error', '.')
+                    elif unit.state in [CANCELED]:
+                        logger.demo('warn', '.')
+                    else:
+                        logger.demo('ok', '.')
+
+            # check if units remain to be waited for.
+            to_check = [x for x in check if check[x]]
 
             # check timeout
             if  (None != timeout) and (timeout <= (time.time() - start)):
-                if  not all_ok :
+                if  to_check :
                     logger.debug ("wait timed out: %s" % states)
                 break
 
-            # sleep a little if this cycle was idle
-            if  not all_ok :
+            # if units remain to be watched and we have still time
+            if to_check:
                 time.sleep (0.5)
 
-        logger.demo('ok', '\\ok\n')
+        logger.demo('ok', '>>ok\n')
+
+        # grab the current states to return
+        states = [x.state for x in check]
 
         # done waiting
         if  return_list_type :
