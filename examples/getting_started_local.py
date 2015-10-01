@@ -17,10 +17,9 @@ import radical.utils as ru
 
 
 RUNTIME  =    20  # how long to run the pilot
-CORES    =    64  # how many cores to use for one pilot
-UNITS    =   139  # how many units to create
+CORES    =    32  # how many cores to use for one pilot
+UNITS    =   128  # how many units to create
 SLEEP    =     0  # how long each unit sleeps
-SCHED    = rp.SCHED_ROUND_ROBIN
 
 
 #------------------------------------------------------------------------------
@@ -70,6 +69,12 @@ if __name__ == "__main__":
 
         # Launch the pilot.
         pilots = pmgr.submit_pilots(pdescs)
+
+        # use different schedulers, depending on number of pilots
+        report.info('select scheduler')
+        if len(pilots) == 1: SCHED = rp.SCHED_DIRECT
+        else               : SCHED = rp.SCHED_BACKFILLING
+        report.info('>>%s\n' % SCHED)
     
         report.info('stage data to pilot')
         input_sd_pilot = {
@@ -107,13 +112,16 @@ if __name__ == "__main__":
         #
         report.info('create %d unit description(s)\n\t' % UNITS)
         cuds = list()
-        for unit_count in range(0, UNITS):
+        for i in range(0, UNITS):
             cud = rp.ComputeUnitDescription()
-            cud.name          = "unit_%03d" % unit_count
-            cud.executable    = "/bin/date"
-            cud.pre_exec      = ["sleep 1"]
+            cud.name          = "unit_%03d" % i
+            if i == 10:
+                cud.executable    = "/bin/data"
+            else:
+                cud.executable    = "/bin/date"
+            cud.arguments     = ["-u"]
+            cud.pre_exec      = ["sleep a"]
             cud.post_exec     = ["sleep 1"]
-          # cud.arguments     = ["1"]
             cud.cores         = 1
           # cud.input_staging  = [ input_sd_umgr,  input_sd_agent]
           # cud.output_staging = [output_sd_umgr, output_sd_agent]
@@ -134,15 +142,15 @@ if __name__ == "__main__":
         report.info('\n')
         for unit in units:
             if unit.state == rp.DONE:
-                report.plain("  * %s: %s, exit code: %s, stdout: %s" \
-                          % (unit.uid, unit.state, 
-                             unit.exit_code, unit.stdout.strip()))
+                report.plain("  * %s: %s, exit code: %3s, stdout: %s" \
+                        % (unit.uid, unit.state[:4], 
+                            unit.exit_code, unit.stdout.strip()[:26]))
                 report.ok(">>ok\n")
             else:
-                report.error("  * %s: %s, exit code: %s, stderr: %s\n" \
-                         % (unit.uid, unit.state, 
-                            unit.exit_code, unit.stderr.strip()))
-                report.ok(">>err\n")
+                report.plain("  * %s: %s, exit code: %3s, stderr: %s" \
+                        % (unit.uid, unit.state[:4], 
+                           unit.exit_code, unit.stderr.strip()[-26:]))
+                report.error(">>err\n")
     
         # delete the test data files
         os.system ('rm file1.dat')
