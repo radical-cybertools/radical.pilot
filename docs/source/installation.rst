@@ -106,7 +106,7 @@ multiple users use Ensemble MD Toolkit applications, a single MongoDB server
 for all users / hosts is usually sufficient.
 
 Install your own MongoDB
-^^^^^^^^^^^^^^^^^^^^^^^^
+------------------------
 
 Once you have identified a host that can serve as the new home for MongoDB,
 installation is straight forward. You can either install the MongoDB
@@ -116,12 +116,28 @@ follow the installation instructions on the MongoDB website:
 http://docs.mongodb.org/manual/installation/
 
 MongoDB-as-a-Service
-^^^^^^^^^^^^^^^^^^^^
+--------------------
 
 There are multiple commercial providers of hosted MongoDB services, some of them
 offering free usage tiers. We have had some good experience with the following:
 
 * https://mongolab.com/
+
+
+Setup an easy method for SSH Access to machines
+-----------------------------------------------
+
+An easy way to setup SSH Access to multiple remote machines is to create a file ``~/.ssh/config``.
+Suppose the url used to access a specific machine is ``foo@machine.example.com``. You can create an entry in this config file as follows:
+
+.. parsed-literal::
+
+    # contents of $HOME/.ssh/config
+    Host mach1
+        HostName machine.example.com
+        User foo
+
+Now you can login to the machine by ``ssh mach1``.
 
 Troubleshooting
 ===============
