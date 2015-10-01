@@ -74,7 +74,7 @@ if __name__ == "__main__":
         report.info('select scheduler')
         if len(pilots) == 1: SCHED = rp.SCHED_DIRECT
         else               : SCHED = rp.SCHED_BACKFILLING
-        report.info('>>%s\n' % SCHED)
+        report.ok('>>%s\n' % SCHED)
     
         report.info('stage data to pilot')
         input_sd_pilot = {
