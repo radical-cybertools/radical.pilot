@@ -2273,7 +2273,7 @@ class LRMS(object):
 
         if self.agent_nodes:
             self._log.info('Reserved agent node(s): %s' % self.agent_nodes.values())
-            self._log.info('Agent(s) running on node(s): %s' % self.agent_nodes.keys())
+            self._log.info('Utilized agent node(s): %s' % self.agent_nodes.keys())
             self._log.info('Remaining work node(s): %s' % self.node_list)
 
         # Check if we can do any work
