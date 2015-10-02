@@ -2388,7 +2388,7 @@ class LRMS(object):
 
         # If there were no potentials, see if we can find one in the blacklist
         if not pref:
-            for iface in blacklist:
+            for iface in black_list:
                 if iface in all:
                     pref = iface
 
