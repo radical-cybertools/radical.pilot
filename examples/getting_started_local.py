@@ -27,7 +27,7 @@ SLEEP    =     0  # how long each unit sleeps
 if __name__ == "__main__":
 
     # we use a reporter class for nicer output
-    report = ru.Reporter()
+    report = ru.LogReporter()
     report.title("Getting Started")
 
     # Create a new session. No need to try/except this: if session creation
