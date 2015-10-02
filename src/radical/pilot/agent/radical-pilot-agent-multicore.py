@@ -145,7 +145,6 @@ import Queue
 import pprint
 import signal
 import shutil
-import socket
 import hostlist
 import tempfile
 import netifaces
