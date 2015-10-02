@@ -145,7 +145,6 @@ import Queue
 import pprint
 import signal
 import shutil
-import socket
 import hostlist
 import tempfile
 import netifaces
@@ -1992,6 +1991,7 @@ class LaunchMethodORTE(LaunchMethod):
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT
         )
 
+        dvm_uri = None
         while True:
 
             line = dvm_process.stdout.readline().strip()
@@ -2389,7 +2389,7 @@ class LRMS(object):
 
         # If there were no potentials, see if we can find one in the blacklist
         if not pref:
-            for iface in blacklist:
+            for iface in black_list:
                 if iface in all:
                     pref = iface
 

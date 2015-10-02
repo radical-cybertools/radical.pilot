@@ -6,9 +6,7 @@ import time
 import errno
 import pprint
 import Queue           as pyq
-import threading       as mt
 import multiprocessing as mp
-import radical.utils   as ru
 
 # --------------------------------------------------------------------------
 # defines for pubsub roles
@@ -315,7 +313,7 @@ class PubsubZMQ(Pubsub):
 
         # ----------------------------------------------------------------------
         else:
-            raise RuntimeError ("unsupported pubsub role '%s' (%s)" % (self._role, _PUBSUB_ROLES))
+            raise RuntimeError ("unsupported pubsub role '%s' (%s)" % (self._role, PUBSUB_ROLES))
 
 
     # --------------------------------------------------------------------------
