@@ -2272,9 +2272,9 @@ class LRMS(object):
                     break
 
         if self.agent_nodes:
-            self._log.info('Reserved agent nodes: %s' % self.agent_nodes.values())
-            self._log.info('Agent running on nodes: %s' % self.agent_nodes.keys())
-            self._log.info('Remaining work nodes: %s' % self.node_list)
+            self._log.info('Reserved agent node(s): %s' % self.agent_nodes.values())
+            self._log.info('Agent(s) running on node(s): %s' % self.agent_nodes.keys())
+            self._log.info('Remaining work node(s): %s' % self.node_list)
 
         # Check if we can do any work
         if not self.node_list:
@@ -2300,9 +2300,7 @@ class LRMS(object):
                 self._log.info("lrms config hook succeeded (%s)" % lm)
 
         # For now assume that all nodes have equal amount of cores
-        cores_avail = len(self.node_list) * self.cores_per_node
-        # TODO: This needs to be changed to deal with situations where we
-        # allocate nodes for sub-agents
+        cores_avail = (len(self.node_list) + len(self.agent_nodes)) * self.cores_per_node
         if 'RADICAL_PILOT_PROFILE' not in os.environ:
             if cores_avail < int(self.requested_cores):
                 raise ValueError("Not enough cores available (%s) to satisfy allocation request (%s)." \
