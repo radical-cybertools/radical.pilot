@@ -402,7 +402,7 @@ EOF
 # (private + location in pilot sandbox == old behavior)
 #
 # That locking will likely not scale nicely for larger numbers of concurrent
-# pilot, at least not for slow running updates (time for update of n pilots
+# pilots, at least not for slow running updates (time for update of n pilots
 # needs to be smaller than lock timeout).  OTOH, concurrent pip updates should
 # not have a negative impact on the virtenv in the first place, AFAIU -- lock on
 # create is more important, and should be less critical
@@ -534,15 +534,12 @@ virtenv_setup()
     #       a SANDBOX install target.  SANDBOX installation will only work with 
     #       'python setup.py install' (pip cannot handle it), so we have to use 
     #       the sdist, and the RP_INSTALL_SOURCES has to point to directories.
-    #       A ve lock is not needed (nor desired) on sandbox installs.
-    RP_INSTALL_LOCK='TRUE'
     if test "$virtenv_mode" = "use"
     then
         if test "$RP_INSTALL_TARGET" = "VIRTENV"
         then
             echo "WARNING: virtenv immutable - install RP locally"
             RP_INSTALL_TARGET='SANDBOX'
-            RP_INSTALL_LOCK='FALSE'
         fi
 
         if ! test -z "$RP_INSTALL_TARGET"
@@ -561,6 +558,13 @@ virtenv_setup()
         fi
     fi
 
+    # A ve lock is not needed (nor desired) on sandbox installs.
+    RP_INSTALL_LOCK='FALSE'
+    if test "$RP_INSTALL_TARGET" = "VIRTENV"
+    then
+        RP_INSTALL_LOCK='TRUE'
+    fi
+
     echo "rp install sources: $RP_INSTALL_SOURCES"
     echo "rp install target : $RP_INSTALL_TARGET"
     echo "rp install lock   : $RP_INSTALL_LOCK"
@@ -571,6 +575,7 @@ virtenv_setup()
     then
         if ! test -f "$virtenv/bin/activate"
         then
+            echo 'rp lock for ve create'
             lock "$pid" "$virtenv" # use default timeout
             virtenv_create "$virtenv"
             if ! test "$?" = 0
@@ -594,6 +599,7 @@ virtenv_setup()
     # update virtenv if needed.  This also activates the virtenv.
     if test "$virtenv_update" = "TRUE"
     then
+        echo 'rp lock for ve update'
         lock "$pid" "$virtenv" # use default timeout
         virtenv_update "$virtenv"
         if ! test "$?" = 0
@@ -610,6 +616,7 @@ virtenv_setup()
     # install RP
     if test "$RP_INSTALL_LOCK" = 'TRUE'
     then
+        echo "rp lock for rp install (target: $RP_INSTALL_TARGET)"
         lock "$pid" "$virtenv" # use default timeout
     fi
     rp_install "$RP_INSTALL_SOURCES" "$RP_INSTALL_TARGET" "$RP_INSTALL_SDIST"
