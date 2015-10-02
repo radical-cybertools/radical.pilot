@@ -405,11 +405,12 @@ class Session():
                  "unitmanager": unit_manager_id}
             )
 
-        units_json = []
+        # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
+        units_json = dict()
         for obj in cursor:
-            units_json.append(obj)
+            units_json[obj['_id']] = obj
 
-        return units_json
+        return units_json.values()
 
     #--------------------------------------------------------------------------
     #
