@@ -461,6 +461,12 @@ virtenv_setup()
         exit 1
     fi
 
+    if test "$virtenv_create" = 'TRUE'
+    then
+        # no need to update a fresh ve
+        virtenv_update=FALSE
+    fi
+
     echo "virtenv_create   : $virtenv_create"
     echo "virtenv_update   : $virtenv_update"
 
