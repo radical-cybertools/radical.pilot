@@ -1991,6 +1991,7 @@ class LaunchMethodORTE(LaunchMethod):
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT
         )
 
+        dvm_uri = None
         while True:
 
             line = dvm_process.stdout.readline().strip()
