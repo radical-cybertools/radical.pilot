@@ -415,17 +415,14 @@ virtenv_setup()
     virtenv="$2"
     virtenv_mode="$3"
 
-    virtenv_create=TRUE
-    virtenv_update=TRUE
-
-    lock "$pid" "$virtenv" # use default timeout
+    virtenv_create=UNDEFINED
+    virtenv_update=UNDEFINED
 
     if test "$virtenv_mode" = "private"
     then
         if test -f "$virtenv/bin/activate"
         then
             printf "\nERROR: private virtenv already exists at $virtenv\n\n"
-            unlock "$pid" "$virtenv"
             exit 1
         fi
         virtenv_create=TRUE
@@ -433,8 +430,9 @@ virtenv_setup()
 
     elif test "$virtenv_mode" = "update"
     then
-        test -f "$virtenv/bin/activate" || virtenv_create=TRUE
+        virtenv_create=FALSE
         virtenv_update=TRUE
+        test -f "$virtenv/bin/activate" || virtenv_create=TRUE
 
     elif test "$virtenv_mode" = "create"
     then
@@ -446,7 +444,6 @@ virtenv_setup()
         if ! test -f "$virtenv/bin/activate"
         then
             printf "\nERROR: given virtenv does not exists at $virtenv\n\n"
-            unlock "$pid" "$virtenv"
             exit 1
         fi
         virtenv_create=FALSE
@@ -458,8 +455,9 @@ virtenv_setup()
         virtenv_create=TRUE
         virtenv_update=FALSE
     else
+        virtenv_create=FALSE
+        virtenv_update=FALSE
         printf "\nERROR: virtenv mode invalid: $virtenv_mode\n\n"
-        unlock "$pid" "$virtenv"
         exit 1
     fi
 
@@ -536,12 +534,15 @@ virtenv_setup()
     #       a SANDBOX install target.  SANDBOX installation will only work with 
     #       'python setup.py install' (pip cannot handle it), so we have to use 
     #       the sdist, and the RP_INSTALL_SOURCES has to point to directories.
+    #       A ve lock is not needed (nor desired) on sandbox installs.
+    RP_INSTALL_LOCK='TRUE'
     if test "$virtenv_mode" = "use"
     then
         if test "$RP_INSTALL_TARGET" = "VIRTENV"
         then
             echo "WARNING: virtenv immutable - install RP locally"
             RP_INSTALL_TARGET='SANDBOX'
+            RP_INSTALL_LOCK='FALSE'
         fi
 
         if ! test -z "$RP_INSTALL_TARGET"
@@ -562,6 +563,7 @@ virtenv_setup()
 
     echo "rp install sources: $RP_INSTALL_SOURCES"
     echo "rp install target : $RP_INSTALL_TARGET"
+    echo "rp install lock   : $RP_INSTALL_LOCK"
 
 
     # create virtenv if needed.  This also activates the virtenv.
@@ -569,6 +571,7 @@ virtenv_setup()
     then
         if ! test -f "$virtenv/bin/activate"
         then
+            lock "$pid" "$virtenv" # use default timeout
             virtenv_create "$virtenv"
             if ! test "$?" = 0
             then
@@ -576,6 +579,7 @@ virtenv_setup()
                unlock "$pid" "$virtenv"
                exit 1
             fi
+            unlock "$pid" "$virtenv"
         else
             echo "virtenv $virtenv exists"
         fi
@@ -590,6 +594,7 @@ virtenv_setup()
     # update virtenv if needed.  This also activates the virtenv.
     if test "$virtenv_update" = "TRUE"
     then
+        lock "$pid" "$virtenv" # use default timeout
         virtenv_update "$virtenv"
         if ! test "$?" = 0
         then
@@ -597,14 +602,21 @@ virtenv_setup()
            unlock "$pid" "$virtenv"
            exit 1
        fi
+       unlock "$pid" "$virtenv"
     else
         echo "do not update virtenv $virtenv"
     fi
 
     # install RP
+    if test "$RP_INSTALL_LOCK" = 'TRUE'
+    then
+        lock "$pid" "$virtenv" # use default timeout
+    fi
     rp_install "$RP_INSTALL_SOURCES" "$RP_INSTALL_TARGET" "$RP_INSTALL_SDIST"
-
-    unlock "$pid" "$virtenv"
+    if test "$RP_INSTALL_LOCK" = 'TRUE'
+    then
+       unlock "$pid" "$virtenv"
+    fi
 
     profile_event 'virtenv_setup end'
 }
