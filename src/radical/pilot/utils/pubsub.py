@@ -315,7 +315,7 @@ class PubsubZMQ(Pubsub):
 
         # ----------------------------------------------------------------------
         else:
-            raise RuntimeError ("unsupported pubsub role '%s' (%s)" % (self._role, _PUBSUB_ROLES))
+            raise RuntimeError ("unsupported pubsub role '%s' (%s)" % (self._role, PUBSUB_ROLES))
 
 
     # --------------------------------------------------------------------------
