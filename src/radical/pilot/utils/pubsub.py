@@ -6,9 +6,7 @@ import time
 import errno
 import pprint
 import Queue           as pyq
-import threading       as mt
 import multiprocessing as mp
-import radical.utils   as ru
 
 # --------------------------------------------------------------------------
 # defines for pubsub roles

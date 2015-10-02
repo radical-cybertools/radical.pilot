@@ -2,7 +2,6 @@
 import os
 import sys
 import time
-import pprint
 import signal
 
 import threading       as mt
