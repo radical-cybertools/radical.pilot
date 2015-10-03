@@ -405,10 +405,11 @@ class PilotManagerController(threading.Thread):
             js_url = saga.Url(resource_config['job_manager_endpoint'])
 
             # The PTYShell will swallow in the job part of the scheme
-            logger.debug('HEY!!!! js_url access scheme is: %s'%js_url.scheme)
             if js_url.scheme.endswith('+ssh'):
+                # For remote adaptor usage over ssh, us that here
                 js_url.scheme = 'ssh'
             elif js_url.scheme.endswith('+gsissh'):
+                # For remote adaptor usage over gsissh, use that here
                 js_url.scheme = 'gsissh'
             elif js_url.scheme in ['fork', 'ssh', 'gsissh']:
                 # Use the scheme as is for non-queuing adaptor mechanisms
@@ -418,8 +419,6 @@ class PilotManagerController(threading.Thread):
                 js_url.scheme = 'fork'
             else:
                 raise Exception("Are there more flavours we need to support?! (%s)" % js_url.scheme)
-
-            logger.debug('HEY!!!! js_url access scheme is: %s'%js_url.scheme)
 
             # TODO: Why is this 'translation' required?
             if js_url.port is not None:
