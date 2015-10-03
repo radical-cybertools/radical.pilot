@@ -2663,7 +2663,7 @@ class LaunchMethodYARN(LaunchMethod):
         print_str+="echo '# Staging Input Files'>>ExecScript.sh\n"
         if cu_descr['input_staging']:
             for InputFile in cu_descr['input_staging']:
-                print_str+="echo 'cp %s/%s .'>>ExecScript.sh\n"%(work_dir,InputFile['target'])
+                print_str+="echo 'scp $YarnUser@%s:%s/%s .'>>ExecScript.sh\n"%(client_node,work_dir,InputFile['target'])
     
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo ''>>ExecScript.sh\n"
@@ -2687,7 +2687,7 @@ class LaunchMethodYARN(LaunchMethod):
 
         if cu_descr['output_staging']:
             for OutputFile in cu_descr['output_staging']:
-                print_str+="echo 'scp %s $YarnUser@%s:%s'>>ExecScript.sh\n"%(OutputFile['source'],self.client_node,work_dir)
+                print_str+="echo 'scp %s $YarnUser@%s:%s'>>ExecScript.sh\n"%(OutputFile['source'],client_node,work_dir)
 
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo ''>>ExecScript.sh\n"
