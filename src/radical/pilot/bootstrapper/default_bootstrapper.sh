@@ -402,7 +402,7 @@ EOF
 # (private + location in pilot sandbox == old behavior)
 #
 # That locking will likely not scale nicely for larger numbers of concurrent
-# pilot, at least not for slow running updates (time for update of n pilots
+# pilots, at least not for slow running updates (time for update of n pilots
 # needs to be smaller than lock timeout).  OTOH, concurrent pip updates should
 # not have a negative impact on the virtenv in the first place, AFAIU -- lock on
 # create is more important, and should be less critical
@@ -415,17 +415,14 @@ virtenv_setup()
     virtenv="$2"
     virtenv_mode="$3"
 
-    virtenv_create=TRUE
-    virtenv_update=TRUE
-
-    lock "$pid" "$virtenv" # use default timeout
+    virtenv_create=UNDEFINED
+    virtenv_update=UNDEFINED
 
     if test "$virtenv_mode" = "private"
     then
         if test -f "$virtenv/bin/activate"
         then
             printf "\nERROR: private virtenv already exists at $virtenv\n\n"
-            unlock "$pid" "$virtenv"
             exit 1
         fi
         virtenv_create=TRUE
@@ -433,8 +430,9 @@ virtenv_setup()
 
     elif test "$virtenv_mode" = "update"
     then
-        test -f "$virtenv/bin/activate" || virtenv_create=TRUE
+        virtenv_create=FALSE
         virtenv_update=TRUE
+        test -f "$virtenv/bin/activate" || virtenv_create=TRUE
 
     elif test "$virtenv_mode" = "create"
     then
@@ -446,7 +444,6 @@ virtenv_setup()
         if ! test -f "$virtenv/bin/activate"
         then
             printf "\nERROR: given virtenv does not exists at $virtenv\n\n"
-            unlock "$pid" "$virtenv"
             exit 1
         fi
         virtenv_create=FALSE
@@ -458,9 +455,16 @@ virtenv_setup()
         virtenv_create=TRUE
         virtenv_update=FALSE
     else
+        virtenv_create=FALSE
+        virtenv_update=FALSE
         printf "\nERROR: virtenv mode invalid: $virtenv_mode\n\n"
-        unlock "$pid" "$virtenv"
         exit 1
+    fi
+
+    if test "$virtenv_create" = 'TRUE'
+    then
+        # no need to update a fresh ve
+        virtenv_update=FALSE
     fi
 
     echo "virtenv_create   : $virtenv_create"
@@ -560,8 +564,16 @@ virtenv_setup()
         fi
     fi
 
+    # A ve lock is not needed (nor desired) on sandbox installs.
+    RP_INSTALL_LOCK='FALSE'
+    if test "$RP_INSTALL_TARGET" = "VIRTENV"
+    then
+        RP_INSTALL_LOCK='TRUE'
+    fi
+
     echo "rp install sources: $RP_INSTALL_SOURCES"
     echo "rp install target : $RP_INSTALL_TARGET"
+    echo "rp install lock   : $RP_INSTALL_LOCK"
 
 
     # create virtenv if needed.  This also activates the virtenv.
@@ -569,6 +581,8 @@ virtenv_setup()
     then
         if ! test -f "$virtenv/bin/activate"
         then
+            echo 'rp lock for ve create'
+            lock "$pid" "$virtenv" # use default timeout
             virtenv_create "$virtenv"
             if ! test "$?" = 0
             then
@@ -576,6 +590,7 @@ virtenv_setup()
                unlock "$pid" "$virtenv"
                exit 1
             fi
+            unlock "$pid" "$virtenv"
         else
             echo "virtenv $virtenv exists"
         fi
@@ -590,6 +605,8 @@ virtenv_setup()
     # update virtenv if needed.  This also activates the virtenv.
     if test "$virtenv_update" = "TRUE"
     then
+        echo 'rp lock for ve update'
+        lock "$pid" "$virtenv" # use default timeout
         virtenv_update "$virtenv"
         if ! test "$?" = 0
         then
@@ -597,14 +614,22 @@ virtenv_setup()
            unlock "$pid" "$virtenv"
            exit 1
        fi
+       unlock "$pid" "$virtenv"
     else
         echo "do not update virtenv $virtenv"
     fi
 
     # install RP
+    if test "$RP_INSTALL_LOCK" = 'TRUE'
+    then
+        echo "rp lock for rp install (target: $RP_INSTALL_TARGET)"
+        lock "$pid" "$virtenv" # use default timeout
+    fi
     rp_install "$RP_INSTALL_SOURCES" "$RP_INSTALL_TARGET" "$RP_INSTALL_SDIST"
-
-    unlock "$pid" "$virtenv"
+    if test "$RP_INSTALL_LOCK" = 'TRUE'
+    then
+       unlock "$pid" "$virtenv"
+    fi
 
     profile_event 'virtenv_setup end'
 }
