@@ -1206,6 +1206,9 @@ class SchedulerYarn(AgentSchedulingComponent):
 
             self._log.info('Checking rm_ip %s' % self._cfg['lrms_info']['lm_info']['rm_ip'])
             self._rm_ip = self._cfg['lrms_info']['lm_info']['rm_ip']
+            self._service_url = self._cfg['lrms_info']['lm_info']['service_url']
+            self._rm_url = self._cfg['lrms_info']['lm_info']['rm_url']
+            self._client_node = self._cfg['lrms_info']['lm_info']['nodename']
 
             sample_time = rpu.timestamp()
             yarn_status = ul.urlopen('http://{0}:8088/ws/v1/cluster/scheduler'.format(self._rm_ip))
@@ -1286,7 +1289,10 @@ class SchedulerYarn(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     #
     def _try_allocation(self, cu):  
-
+        """
+        Attempt to allocate cores for a specific CU.  If it succeeds, send the
+        CU off to the ExecutionWorker.
+        """
         #-----------------------------------------------------------------------
         # Check if the YARN scheduler queue has space to accept new CUs.
         # Check about racing conditions in the case that you allowed an
@@ -1297,23 +1303,50 @@ class SchedulerYarn(AgentSchedulingComponent):
         # Test 2: Run test to find out how YARN behaves in the case that there
         # is no more room
         
+        # needs to be locked as we try to acquire slots, but slots are freed
+        # in a different thread.  But we keep the lock duration short...
+        with self._slot_lock :        
 
-        self._log.info(self.slot_status())
-        cu['opaque_slot']=['localhost:0']
-        if self.avail_app['apps']==0 or not self._allocate_slot(cu['description']['cores']):
+            self._log.info(self.slot_status())
+            self._log.debug('Mpla: {0} - {1}'.format(self._service_url,self._rm_url))
+                    
+            cu['opaque_slots']={'lm_info':{'service_url':self._service_url,
+                                            'rm_url':self._rm_url,
+                                            'nodename':self._client_node}
+                                            }
+
+            alloc = self._allocate_slot(cu['description']['cores'])
+            self.avail_app['apps']-=1
+
+        if self.avail_app['apps']==-1 or not alloc:
             return False
 
-        cu_list, cu_dropped = rpu.blowup(self._cfg, cu, EXECUTION_QUEUE)
-        for _cu in cu_list :
-            if self.avail_app['apps'] > 0:
-                self.avail_app['apps']-=1
-                rpu.prof('put', msg="Scheduler to execution_queue (%s)" % _cu['state'], uid=_cu['_id'])
-                self._execution_queue.put(_cu)
-
-        # we need to free allocated cores for dropped CUs
-        self.unschedule(cu_dropped)
+        # got an allocation, go off and launch the process
+        self._prof.prof('schedule', msg="allocated", uid=cu['_id'])
+        self._log.info("slot status after allocated  : %s" % self.slot_status ())
 
         return True
+
+    # --------------------------------------------------------------------------
+    #
+    def work(self, cu):
+
+      # self.advance(cu, rp.AGENT_SCHEDULING, publish=True, push=False)
+        self._log.info("Overiding Parent's class method")
+        self.advance(cu, rp.ALLOCATING      , publish=True, push=False)
+
+        # we got a new unit to schedule.  Either we can place it
+        # straight away and move it to execution, or we have to
+        # put it on the wait queue.
+        if self._try_allocation(cu):
+            self._prof.prof('schedule', msg="allocation succeeded", uid=cu['_id'])
+            self.advance(cu, rp.EXECUTING_PENDING, publish=False, push=True)
+
+        else:
+            # No resources available, put in wait queue
+            self._prof.prof('schedule', msg="allocation failed", uid=cu['_id'])
+            with self._wait_lock :
+                self._wait_pool.append(cu)
 
 
 
@@ -2444,6 +2477,7 @@ class LaunchMethodYARN(LaunchMethod):
             logger.info('Hook called by YARN LRMS')
             service_url    = lrms.namenode_url
             rm_url         = "%s:%s" % (lrms.rm_ip, lrms.rm_port)
+            rm_ip          = lrms.rm_ip
             launch_command = cls._which('yarn')
 
         else:
@@ -2455,6 +2489,7 @@ class LaunchMethodYARN(LaunchMethod):
                 stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
             else:
                 node = commands.getstatusoutput('/bin/hostname')
+                logger.info('Entered Else creation')
                 node_name = node[1]
                 stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.0/hadoop-2.6.0.tar.gz")
                 stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
@@ -2520,8 +2555,10 @@ class LaunchMethodYARN(LaunchMethod):
             #             is already called during scheduler instantiation
             # self._scheduler._configure()
 
-            service_url = node_name + ':54170',
+            service_url = node_name + ':54170'
             rm_url      = node_name
+            launch_command = yarn_home + '/bin/yarn'
+            rm_ip = node_name
 
           
         # The LRMS instance is only available here -- everything which is later
@@ -2529,11 +2566,13 @@ class LaunchMethodYARN(LaunchMethod):
         # dict.  That lm_info dict will be attached to the scheduler's lrms_info
         # dict, and will be passed around as part of the opaque_slots structure,
         # so it is available on all LM create_command calls.
-        lm_info = {'service_url'  : service_url,
-                   'rm_url'       : rm_url,
-                   'hadoop_home'  : hadoop_home,
-                   'rm_ip'        : lrms.rm_ip,
-                   'name'         : lrms.name }
+        lm_info = {'service_url'   : service_url,
+                   'rm_url'        : rm_url,
+                   'hadoop_home'   : hadoop_home,
+                   'rm_ip'         : rm_ip,
+                   'name'          : lrms.name,
+                   'launch_command': launch_command,
+                   'nodename'      : lrms.node_list[0] }
 
         return lm_info
 
@@ -2565,7 +2604,8 @@ class LaunchMethodYARN(LaunchMethod):
 
         # Single Node configuration
         # TODO : Multinode config
-
+        self._log.info(self._cfg['lrms_info']['lm_info'])
+        self.launch_command = self._cfg['lrms_info']['lm_info']['launch_command']
         self._log.info('YARN was called')
         
 
@@ -2577,6 +2617,8 @@ class LaunchMethodYARN(LaunchMethod):
         # Construct the args_string which is the arguments given as input to the
         # shell script. Needs to be a string
         self._log.debug("Constructing YARN command")
+
+        self._log.debug('Opaque Slots {0}'.format(opaque_slots))
 
         if 'lm_info' not in opaque_slots:
             raise RuntimeError('No lm_info to launch via %s: %s' \
@@ -2594,8 +2636,14 @@ class LaunchMethodYARN(LaunchMethod):
             raise RuntimeError('rm_url not in lm_info for %s: %s' \
                     % (self.name, opaque_slots))
 
+
+        if 'nodename' not in opaque_slots['lm_info']:
+            raise RuntimeError('nodename not in lm_info for %s: %s' \
+                    % (self.name, opaque_slots))
+
         service_url = opaque_slots['lm_info']['service_url']
         rm_url      = opaque_slots['lm_info']['rm_url']
+        client_node = opaque_slots['lm_info']['nodename']
 
 
         #-----------------------------------------------------------------------
@@ -2615,7 +2663,7 @@ class LaunchMethodYARN(LaunchMethod):
         print_str+="echo '# Staging Input Files'>>ExecScript.sh\n"
         if cu_descr['input_staging']:
             for InputFile in cu_descr['input_staging']:
-                print_str+="echo 'cp %s/%s .'>>ExecScript.sh\n"%(work_dir,InputFile['target'])
+                print_str+="echo 'scp $YarnUser@%s:%s/%s .'>>ExecScript.sh\n"%(client_node,work_dir,InputFile['target'])
     
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo ''>>ExecScript.sh\n"
@@ -2627,18 +2675,19 @@ class LaunchMethodYARN(LaunchMethod):
             for arg in cu_descr['arguments']:
                 arg_str+='%s '%str(arg)
 
-        print_str+="echo '%s %s 1>stdout 2>stderr'>>ExecScript.sh\n"%(cu_descr['executable'],arg_str)
+        print_str+="echo '%s %s 1>Ystdout 2>Ystderr'>>ExecScript.sh\n"%(cu_descr['executable'],arg_str)
 
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
         print_str+="echo '# Staging Output Files'>>ExecScript.sh\n"
-        print_str+="echo 'cp stdout %s'>>ExecScript.sh\n"%(work_dir)
-        print_str+="echo 'cp stderr %s'>>ExecScript.sh\n"%(work_dir)
+        print_str+="echo 'YarnUser=$(/bin/whoami)'>>ExecScript.sh\n"
+        print_str+="echo 'scp Ystderr $YarnUser@%s:%s'>>ExecScript.sh\n"%(client_node,work_dir)
+        print_str+="echo 'scp Ystdout $YarnUser@%s:%s'>>ExecScript.sh\n"%(client_node,work_dir)
 
         if cu_descr['output_staging']:
             for OutputFile in cu_descr['output_staging']:
-                print_str+="echo 'cp %s %s'>>ExecScript.sh\n"%(OutputFile['source'],work_dir)
+                print_str+="echo 'scp %s $YarnUser@%s:%s'>>ExecScript.sh\n"%(OutputFile['source'],client_node,work_dir)
 
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo ''>>ExecScript.sh\n"
@@ -2672,11 +2721,11 @@ class LaunchMethodYARN(LaunchMethod):
         #    nmem_string = ''
 
         #Getting the namenode's address.
-        service_url = 'yarn://{0}?fs=hdfs://{1}'.format(rm_url, service_url)
+        service_url = 'yarn://%s?fs=hdfs://%s'%(rm_url, service_url)
 
         yarn_command = '%s -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
                        ' com.radical.pilot.Client -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
-                       ' -shell_script ExecScript.sh %s %s -service_url %s\ncat stdout' % (self.launch_command, 
+                       ' -shell_script ExecScript.sh %s %s -service_url %s\ncat Ystdout' % (self.launch_command, 
                         args_string, ncores_string,service_url)
 
         self._log.debug("Yarn Command %s"%yarn_command)
@@ -4135,7 +4184,12 @@ class YARNLRMS(LRMS):
                     self.rm_ip=settings.split(':')[0]
                     self.rm_port=settings.split(':')[1]
 
-        self.node_list = ["localhost"]
+        hostname = os.environ.get('HOSTNAME')
+
+        if hostname == None:
+            self.node_list = ['localhost']
+        else:
+            self.node_list = [hostname]
         self.cores_per_node = selected_cpus
 
 # ==============================================================================
@@ -4310,7 +4364,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
     #
     def work(self, cu):
 
-        if self._task_launcher.name !='YARN':
+        if self._task_launcher.name !='LaunchMethodYARN':
           # self.advance(cu, rp.AGENT_EXECUTING, publish=True, push=False)
             self.advance(cu, rp.EXECUTING,       publish=True, push=False)
         else:
@@ -4397,7 +4451,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             # YARN pre execution folder permission change
             # TODO: This needs to move inside the construct command when the launcher
             #       takes only the CU description
-            if launcher.name == 'YARN':
+            if launcher.name == 'LaunchMethodYARN':
                 launch_script.write('\n## Changing Working Directory permissions for YARN\n')
                 launch_script.write('old_perm="`stat -c %a .`"\n')
                 launch_script.write('chmod 777 .\n')
@@ -4428,7 +4482,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
             # The actual command line, constructed per launch-method
             try:
-                if launcher.name == 'YARN':
+                if launcher.name == 'LaunchMethodYARN':
                     #---------------------------------------------------------------------
                     # 
                     self._log.debug("There was a YARN Launcher")
@@ -4437,7 +4491,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                         launcher.construct_command(cu['description']['executable'], 
                                                   cu['description']['environment'],
                                                    cu['description']['cores'],
-                                                   ' ',(cu['description'],cu['workdir']))
+                                                   ' ',cu['opaque_slots'],(cu['description'],cu['workdir']))
                 else:
                     launch_command, hop_cmd = \
                         launcher.construct_command(cu['description']['executable'],
@@ -4474,15 +4528,17 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 launch_script.write("timestamp\n")
                 launch_script.write("echo post stop  $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
 
-            launch_script.write("# Exit the script with the return code from the command\n")
-            launch_script.write("exit $RETVAL\n")
-
             # YARN pre execution folder permission change
             # TODO: This needs to move inside the construct command when the launcher
             #       takes only the CU description
-            if launcher.name == 'YARN':
+            if launcher.name == 'LaunchMethodYARN':
                 launch_script.write('\n## Changing Working Directory permissions for YARN\n')
                 launch_script.write('chmod $old_perm .\n')
+
+            launch_script.write("# Exit the script with the return code from the command\n")
+            launch_script.write("exit $RETVAL\n")
+
+            
 
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
@@ -4582,7 +4638,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             # This code snippet reads the YARN application report file and if
             # the application is RUNNING it update the state of the CU with the
             # right time stamp. In any other case it works as it was.
-            if self._task_launcher.name == 'YARN' \
+            if self._task_launcher.name == 'LaunchMethodYARN' \
                     and cu['state']==rp.ALLOCATING \
                     and os.path.isfile(cu['workdir']+'/YarnApplicationReport.log'):
                 
@@ -4596,9 +4652,15 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                     timestamp = datetime.utcfromtimestamp(int(line[3].split('=')[1])/1000)
 
                     action += 1
+                    proc = cu['proc']
+                    self._log.debug('Proc Print {0}'.format(proc))
+                    del(cu['proc'])  # proc is not json serializable
                     self.advance(cu, rp.EXECUTING, publish=True, push=False)
+                    cu['proc']    = proc
 
                     # FIXME: Ioannis, what is this supposed to do?
+                    # I wanted to update the state of the cu but keep it in the watching
+                    # queue. I am not sure it is needed anymore.
                     index = self._cus_to_watch.index(cu)
                     self._cus_to_watch[index]=cu
                 
@@ -4974,7 +5036,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         # YARN pre execution folder permission change
         # TODO: This needs to move inside the construct command when the launcher
         #       takes only the CU description
-        if launcher.name == 'YARN':
+        if launcher.name == 'LaunchMethodYARN':
             pre += '## Changing Working Directory permissions for YARN\n'
             pre += 'old_perm=`stat -c %a .`\n'
             pre += 'chmod 777 .\n\n'
@@ -4992,7 +5054,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         # YARN pre execution folder permission change
         # TODO: This needs to move inside the construct command when the launcher
         #       takes only the CU description
-        if launcher.name == 'YARN':
+        if launcher.name == 'LaunchMethodYARN':
             post += '## Changing Working Directory permissions for YARN\n'
             post += 'chmod $old_perm .\n\n'
 
