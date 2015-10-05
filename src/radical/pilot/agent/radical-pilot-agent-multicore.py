@@ -1281,7 +1281,8 @@ class SchedulerYarn(AgentSchedulingComponent):
     def _release_slot(self, opaque_slot):
         #-----------------------------------------------------------------------
         # One application has finished, increase the number of available slots.
-        self.avail_app['apps']+=1
+        with self._slot_lock:
+            self.avail_app['apps']+=1
         return True
 
 
@@ -2661,10 +2662,14 @@ class LaunchMethodYARN(LaunchMethod):
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
         print_str+="echo '# Staging Input Files'>>ExecScript.sh\n"
+        
         if cu_descr['input_staging']:
+            scp_input_files='"'
             for InputFile in cu_descr['input_staging']:
-                print_str+="echo 'scp $YarnUser@%s:%s/%s .'>>ExecScript.sh\n"%(client_node,work_dir,InputFile['target'])
-    
+                scp_input_files+='%s/%s '%(work_dir,InputFile['target'])
+            scp_input_files+='"'
+            print_str+="echo 'scp $YarnUser@%s:%s .'>>ExecScript.sh\n"%(client_node,scp_input_files)
+
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
@@ -2682,12 +2687,11 @@ class LaunchMethodYARN(LaunchMethod):
         print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
         print_str+="echo '# Staging Output Files'>>ExecScript.sh\n"
         print_str+="echo 'YarnUser=$(/bin/whoami)'>>ExecScript.sh\n"
-        print_str+="echo 'scp Ystderr $YarnUser@%s:%s'>>ExecScript.sh\n"%(client_node,work_dir)
-        print_str+="echo 'scp Ystdout $YarnUser@%s:%s'>>ExecScript.sh\n"%(client_node,work_dir)
-
+        scp_output_files='Ystderr Ystdout'
         if cu_descr['output_staging']:
             for OutputFile in cu_descr['output_staging']:
-                print_str+="echo 'scp %s $YarnUser@%s:%s'>>ExecScript.sh\n"%(OutputFile['source'],client_node,work_dir)
+                scp_output_files+=' %s'%(OutputFile['source'])
+        print_str+="echo 'scp %s $YarnUser@%s:%s'>>ExecScript.sh\n"%(scp_output_files,client_node,work_dir)
 
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo ''>>ExecScript.sh\n"
