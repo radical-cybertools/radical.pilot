@@ -122,7 +122,7 @@ class ComputeUnitDescription(attributes.Attributes) :
        before cleanup.
 
     """
-    def __init__(self):
+    def __init__(self, init_dict=None):
         """Le constructeur.
         """ 
 
@@ -186,6 +186,15 @@ class ComputeUnitDescription(attributes.Attributes) :
         self.set_attribute (MPI,           False)
         self.set_attribute (RESTARTABLE,   False)
         self.set_attribute (CLEANUP,       False)
+
+        # apply initialization dict
+        if init_dict:
+            self.from_dict(init_dict)
+
+            if RESOURCE in init_dict and CORES in init_dict:
+                logger.demo('plain', ' [%s:%s]' % (init_dict[RESOURCE], init_dict[CORES]))
+            elif RESOURCE in init_dict:
+                logger.demo('plain', ' [%s]' % init_dict[RESOURCE])
 
 
     #------------------------------------------------------------------------------

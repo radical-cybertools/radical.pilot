@@ -237,7 +237,10 @@ class PilotManager(object):
             return_list_type   = False
             pilot_descriptions = [pilot_descriptions]
 
-        logger.demo('info', '<<submit %d pilot(s)' % len(pilot_descriptions))
+        if len(pilot_descriptions) == 0:
+            raise ValueError('cannot submit no pilot descriptions')
+
+        logger.demo('info', '<<submit %d pilot(s) ' % len(pilot_descriptions))
 
         # Itereate over the pilot descriptions, try to create a pilot for
         # each one and append it to 'pilot_obj_list'.
@@ -438,34 +441,52 @@ class PilotManager(object):
             return_list_type = False
             pilot_ids = [pilot_ids]
 
-
+        pilots = self._worker.get_compute_pilot_data(pilot_ids=pilot_ids)
         start  = time.time()
-        all_ok = False
         states = list()
 
-        while not all_ok :
+        logger.demo('info', '<<wait for %d pilot(s) ' % len(pilots))
 
-            pilots = self._worker.get_compute_pilot_data(pilot_ids=pilot_ids)
-            all_ok = True
-            states = list()
+        # we don't want to iterate over all pilots again and again, as that would
+        # duplicate checks on pilots which were found in matching states.  So we
+        # create a dict, record states there, and filter which ones we check.
+        check = dict()
+        for pilot in pilots:
+            check[pilot['_id']] = [True, pilot]
 
-            for pilot in pilots :
-                if  pilot['state'] not in state :
-                    all_ok = False
-                else:
-                    logger.demo('progress')
+        # filter for all pilots we still need to check
+        to_check = [check[x][1] for x in check if check[x][0]]
+        while to_check:
 
-                states.append (pilot['state'])
+            for pilot in to_check:
+                if pilot['state'] in state:
+                    # stop watching this pilot
+                    check[pilot['_id']][0] = False
+                    if pilot['state'] in [FAILED]:
+                        logger.demo('error', '.')
+                    elif pilot['state'] in [CANCELED]:
+                        logger.demo('warn', '.')
+                    else:
+                        logger.demo('ok', '.')
+
+            # check if pilots remain to be waited for.
+            to_check = [check[x][1] for x in check if check[x][0]]
 
             # check timeout
-            if  (None != timeout) and (timeout <= (time.time() - start)):
-                if  not all_ok :
-                    logger.debug ("wait timed out: %s" % states)
+            if (None != timeout) and (timeout <= (time.time() - start)):
+                if to_check:
+                    logger.debug("wait timed out: %s" % states)
                 break
 
             # sleep a little if this cycle was idle
-            if  not all_ok :
-                time.sleep (0.5)
+            if to_check:
+                time.sleep(0.5)
+
+        if not to_check: logger.demo('ok',   '>>ok\n')
+        else           : logger.demo('warn', '>>timeout\n')
+
+        # grab the current states to return
+        states = [check[x][1]['state'] for x in check]
 
         # done waiting
         if  return_list_type :

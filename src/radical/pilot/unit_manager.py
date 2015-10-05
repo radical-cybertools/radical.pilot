@@ -227,6 +227,9 @@ class UnitManager(object):
         if not isinstance(pilots, list):
             pilots = [pilots]
 
+        if len(pilots) == 0:
+            raise ValueError('cannot add no pilots')
+
         logger.demo('info', '<<add %d pilot(s)' % len(pilots))
 
         pilot_ids = self.list_pilots()
@@ -382,6 +385,10 @@ class UnitManager(object):
         if not isinstance(unit_descriptions, list):
             return_list_type  = False
             unit_descriptions = [unit_descriptions]
+
+        if len(unit_descriptions) == 0:
+            raise ValueError('cannot submit no unit descriptions')
+
 
         logger.demo('info', '<<submit %d unit(s)\n\t' % len(unit_descriptions))
 
@@ -626,7 +633,6 @@ class UnitManager(object):
 
         units  = self.get_units(unit_ids)
         start  = time.time()
-        all_ok = False
         states = list()
 
         logger.demo('info', '<<wait for %d unit(s)\n\t' % len(units))
@@ -667,7 +673,8 @@ class UnitManager(object):
             if to_check:
                 time.sleep (0.5)
 
-        logger.demo('ok', '>>ok\n')
+        if not to_check: logger.demo('ok',   '>>ok\n')
+        else           : logger.demo('warn', '>>timeout\n')
 
         # grab the current states to return
         states = [x.state for x in check]

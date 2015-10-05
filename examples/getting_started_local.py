@@ -6,20 +6,17 @@ __license__   = "MIT"
 import os
 import sys
 
+os.environ['RADICAL_PILOT_VERBOSE'] = 'DEMO'
+
 import radical.pilot as rp
 import radical.utils as ru
 
-# READ: The RADICAL-Pilot documentation: 
-#   http://radicalpilot.readthedocs.org/
+
+# ------------------------------------------------------------------------------
 #
-# Try running this example with RADICAL_PILOT_VERBOSE=debug 
-# set if you want to see what happens behind the scences!
-
-
-RUNTIME  =    20  # how long to run the pilot
-CORES    =    32  # how many cores to use for one pilot
-UNITS    =   128  # how many units to create
-SLEEP    =     0  # how long each unit sleeps
+# READ the RADICAL-Pilot documentation: http://radicalpilot.readthedocs.org/
+#
+# ------------------------------------------------------------------------------
 
 
 #------------------------------------------------------------------------------
@@ -27,8 +24,14 @@ SLEEP    =     0  # how long each unit sleeps
 if __name__ == "__main__":
 
     # we use a reporter class for nicer output
-    report = ru.LogReporter()
+    report = ru.LogReporter(name='radical.pilot', level='DEMO')
     report.title("Getting Started")
+
+    # make sure we have all we need
+    if len(sys.argv) < 2:
+        report.error("missing arguments\n\n\t%s <resource> [...]\n\n" % sys.argv[0])
+        sys.exit(1)
+
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -39,9 +42,8 @@ if __name__ == "__main__":
     # the whole RP stack down via a 'session.close()' call in the 'finally'
     # clause...
     try:
-        report.info('read configs')
         config = ru.read_json('%s/config.json' % os.path.dirname(__file__))
-        report.ok('>>ok\n')
+
 
         report.header('submit pilots')
 
@@ -58,8 +60,8 @@ if __name__ == "__main__":
         for resource in sys.argv[1:]:
             pd_init = {
                     'resource'      : resource,
-                    'cores'         : CORES,
-                    'runtime'       : RUNTIME,
+                    'cores'         : 64,  # pilot size
+                    'runtime'       : 10,  # pilot runtime (min)
                     'project'       : config[resource]['project'],
                     'queue'         : config[resource]['queue'],
                     'access_schema' : config[resource]['schema']
@@ -70,13 +72,8 @@ if __name__ == "__main__":
         # Launch the pilot.
         pilots = pmgr.submit_pilots(pdescs)
 
-        # use different schedulers, depending on number of pilots
-        report.info('select scheduler')
-        if len(pilots) == 1: SCHED = rp.SCHED_DIRECT
-        else               : SCHED = rp.SCHED_BACKFILLING
-        report.ok('>>%s\n' % SCHED)
-    
-        report.info('stage data to pilot')
+        # get shared unit data to the pilot
+        report.info('stage data to pilot ')
         input_sd_pilot = {
                 'source': 'file:///etc/passwd',
                 'target': 'staging:///f1',
@@ -87,17 +84,24 @@ if __name__ == "__main__":
             report.progress()
         report.ok('>>ok\n')
 
+
         report.header('submit units')
 
+        # use different schedulers, depending on number of pilots
+        report.info('select scheduler')
+        if len(pilots) == 1: SCHED = rp.SCHED_DIRECT
+        else               : SCHED = rp.SCHED_ROUND_ROBIN
+        report.ok('>>%s\n' % SCHED)
+    
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
         umgr = rp.UnitManager(session=session, scheduler=SCHED)
         umgr.add_pilots(pilots)
 
-      # input_sd_umgr   = {'source':'/etc/group',        'target': 'f2',                'action': rp.TRANSFER}
-      # input_sd_agent  = {'source':'staging:///f1',     'target': 'f1',                'action': rp.COPY}
-      # output_sd_agent = {'source':'f1',                'target': 'staging:///f1.bak', 'action': rp.COPY}
-      # output_sd_umgr  = {'source':'f2',                'target': 'f2.bak',            'action': rp.TRANSFER}
+        input_sd_umgr   = {'source':'/etc/group',        'target': 'f2',                'action': rp.TRANSFER}
+        input_sd_agent  = {'source':'staging:///f1',     'target': 'f1',                'action': rp.COPY}
+        output_sd_agent = {'source':'f1',                'target': 'staging:///f1.bak', 'action': rp.COPY}
+        output_sd_umgr  = {'source':'f2',                'target': 'f2.bak',            'action': rp.TRANSFER}
 
         # Create a workload of ComputeUnits (tasks). Each compute unit
         # uses /bin/cat to concatenate two input files, file1.dat and
@@ -109,22 +113,26 @@ if __name__ == "__main__":
         #    export INPUT1=file1.dat
         #    export INPUT2=file2.dat
         #    /bin/cat $INPUT1 $INPUT2
-        #
-        report.info('create %d unit description(s)\n\t' % UNITS)
+
+        n = 12   # number of units to run
+        report.info('create %d unit description(s)\n\t' % n)
+
         cuds = list()
-        for i in range(0, UNITS):
+        for i in range(0, n):
+
+            # create a new CU description, and fill it
+            # (this could also be done with a dict)
             cud = rp.ComputeUnitDescription()
-            cud.name          = "unit_%03d" % i
-            if i == 10:
-                cud.executable    = "/bin/data"
-            else:
-                cud.executable    = "/bin/date"
-            cud.arguments     = ["-u"]
-            cud.pre_exec      = ["sleep a"]
-            cud.post_exec     = ["sleep 1"]
-            cud.cores         = 1
-          # cud.input_staging  = [ input_sd_umgr,  input_sd_agent]
-          # cud.output_staging = [output_sd_umgr, output_sd_agent]
+
+            # trigger an error now and then
+            if not i % 10: cud.executable = "/bin/data"
+            else         : cud.executable = "/bin/date"
+            cud.arguments      = ["-u"]
+            cud.pre_exec       = ["sleep a"]
+            cud.post_exec      = ["sleep 1"]
+            cud.cores          = 1
+            cud.input_staging  = [ input_sd_umgr,  input_sd_agent]
+            cud.output_staging = [output_sd_umgr, output_sd_agent]
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -134,22 +142,22 @@ if __name__ == "__main__":
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(cuds)
 
-        report.header('gather results')
 
-        # Wait for all compute units to reach a terminal state (DONE or FAILED).
+        # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
+        report.header('gather results')
         umgr.wait_units()
     
         report.info('\n')
         for unit in units:
             if unit.state == rp.DONE:
-                report.plain("  * %s: %s, exit code: %3s, stdout: %s" \
+                report.plain("  * %s: %s, exit: %3s, out: %s" \
                         % (unit.uid, unit.state[:4], 
-                            unit.exit_code, unit.stdout.strip()[:26]))
+                            unit.exit_code, unit.stdout.strip()[:35]))
                 report.ok(">>ok\n")
             else:
-                report.plain("  * %s: %s, exit code: %3s, stderr: %s" \
+                report.plain("  * %s: %s, exit: %3s, err: %s" \
                         % (unit.uid, unit.state[:4], 
-                           unit.exit_code, unit.stderr.strip()[-26:]))
+                           unit.exit_code, unit.stderr.strip()[-20:]))
                 report.error(">>err\n")
     
         # delete the test data files
@@ -160,21 +168,20 @@ if __name__ == "__main__":
     except Exception as e:
         # Something unexpected happened in the pilot code above
         report.error("caught Exception: %s\n" % e)
-        raise
 
     except (KeyboardInterrupt, SystemExit) as e:
         # the callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        report.warn("need to exit now: %s\n" % e)
+        report.warn("exit requested\n")
 
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots, but leave the database
         # entries alone.
         report.header('finalize')
-        session.close (terminate=True, cleanup=False)
+        session.close ()
 
     report.header()
 
