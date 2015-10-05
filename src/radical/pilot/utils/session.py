@@ -55,7 +55,7 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, session
     ftgt = saga.Url('%s/%s' % (tgt_url, os.path.basename(client_profile)))
     ret.append("%s" % ftgt.path)
 
-    if skip_existing and os.path.exists(ftgt.path) \
+    if skip_existing and os.path.isfile(ftgt.path) \
             and os.stat(ftgt.path).st_size > 0:
 
         print "Skip fetching of '%s' to '%s'." % (client_profile, tgt_url)
@@ -100,7 +100,7 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, session
             ftgt = saga.Url('%s/%s' % (tgt_url, prof))
             ret.append("%s" % ftgt.path)
 
-            if skip_existing and os.path.exists(ftgt.path) \
+            if skip_existing and os.path.isfile(ftgt.path) \
                              and os.stat(ftgt.path).st_size > 0:
 
                 print "Skipping fetching of '%s' to '%s'." % (prof, tgt_url)
@@ -376,32 +376,43 @@ def get_session_frames (sids, dburl=None, cachedir=None) :
 
 # ------------------------------------------------------------------------------
 #
-def fetch_json (sid, dburl=None, tgt=None) :
+def fetch_json(sid, dburl=None, tgt=None, skip_existing=False):
 
     '''
     returns file name
     '''
 
-    if not dburl:
-        dburl = os.environ['RADICAL_PILOT_DBURL']
-
-    if not dburl:
-        raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
-
     if not tgt:
         tgt = '.'
 
-    _, db, _, _, _ = ru.mongodb_connect (dburl)
-
-    json_docs = get_session_docs(db, sid)
-
     if tgt.startswith('/'):
-        dst = '/%s/%s.json' % (tgt, sid)
+        # Assume an absolute path
+        dst = os.path.join(tgt, '%s.json' % sid)
     else:
-        dst = '/%s/%s/%s.json' % (os.getcwd(), tgt, sid)
+        # Assume a relative path
+        dst = os.path.join(os.getcwd(), tgt, '%s.json' % sid)
 
-    ru.write_json (json_docs, dst)
-    print "session written to %s" % dst
+    if skip_existing and os.path.isfile(dst) \
+            and os.stat(dst).st_size > 0:
+
+        print "session already in %s" % dst
+
+    else:
+
+        if not dburl:
+            dburl = os.environ['RADICAL_PILOT_DBURL']
+
+        if not dburl:
+            raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
+
+        mongo, db, _, _, _ = ru.mongodb_connect(dburl)
+
+        json_docs = get_session_docs(db, sid)
+        ru.write_json(json_docs, dst)
+
+        print "session written to %s" % dst
+
+        mongo.close()
 
     return dst
 
