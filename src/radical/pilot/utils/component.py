@@ -2,7 +2,6 @@
 import os
 import sys
 import time
-import pprint
 import signal
 
 import threading       as mt
@@ -224,6 +223,7 @@ class Component(mp.Process):
         tear down component state after units have been processed.
         """
         self._log.debug('base finalize (NOOP)')
+        self._prof.flush()
 
 
     # --------------------------------------------------------------------------
@@ -328,6 +328,7 @@ class Component(mp.Process):
                 self._finalized = True
                 self.finalize()
                 self._prof.prof("finalized")
+                self._prof.flush()
             self.terminate()
 
         else:
@@ -336,6 +337,7 @@ class Component(mp.Process):
                 self._prof.prof("finalize")
                 self.finalize_child()
                 self._prof.prof("finalized")
+                self._prof.flush()
             sys.exit()
 
 
@@ -349,6 +351,7 @@ class Component(mp.Process):
             sys.exit()
 
         self._prof.prof("stopped")
+        self._prof.flush()
 
 
     # --------------------------------------------------------------------------
@@ -382,8 +385,8 @@ class Component(mp.Process):
         if not isinstance(states, list):
             states = [states]
 
-        # check if a remote address is configured for the queue
-        addr = self._addr_map.get (input)
+        # get address for the queue
+        addr = self._addr_map[input]['source']
         self._log.debug("using addr %s for input %s" % (addr, input))
 
         q = rpu_Queue.create(rpu_QUEUE_ZMQ, input, rpu_QUEUE_OUTPUT, addr)
@@ -425,8 +428,8 @@ class Component(mp.Process):
                 # this indicates a final state
                 self._outputs[state] = None
             else:
-                # check if a remote address is configured for the queue
-                addr = self._addr_map.get (output)
+                # get address for the queue
+                addr = self._addr_map[output]['sink']
                 self._log.debug("using addr %s for output %s" % (addr, output))
 
                 # non-final state, ie. we want a queue to push to
@@ -500,8 +503,8 @@ class Component(mp.Process):
         if topic not in self._publishers:
             self._publishers[topic] = list()
 
-        # check if a remote address is configured for the queue
-        addr = self._addr_map.get (pubsub)
+        # get address for pubsub
+        addr = self._addr_map[pubsub]['sink']
         self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
 
         q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_PUB, addr)
@@ -547,8 +550,8 @@ class Component(mp.Process):
                     raise
         # ----------------------------------------------------------------------
 
-        # check if a remote address is configured for the queue
-        addr = self._addr_map.get (pubsub)
+        # get address for pubsub
+        addr = self._addr_map[pubsub]['source']
         self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
 
         # create a pubsub subscriber, and subscribe to the given topic
