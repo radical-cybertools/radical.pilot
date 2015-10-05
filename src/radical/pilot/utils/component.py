@@ -223,6 +223,7 @@ class Component(mp.Process):
         tear down component state after units have been processed.
         """
         self._log.debug('base finalize (NOOP)')
+        self._prof.flush()
 
 
     # --------------------------------------------------------------------------
@@ -304,7 +305,6 @@ class Component(mp.Process):
 
         self._prof.prof("closing")
         self._log.info("closing (%d threads)" % (len(self._threads)))
-        self._log.error(ru.get_trace())
 
         # tear down all subscriber threads
         self._terminate.set()
@@ -328,6 +328,7 @@ class Component(mp.Process):
                 self._finalized = True
                 self.finalize()
                 self._prof.prof("finalized")
+                self._prof.flush()
             self.terminate()
 
         else:
@@ -336,6 +337,7 @@ class Component(mp.Process):
                 self._prof.prof("finalize")
                 self.finalize_child()
                 self._prof.prof("finalized")
+                self._prof.flush()
             sys.exit()
 
 
@@ -349,6 +351,7 @@ class Component(mp.Process):
             sys.exit()
 
         self._prof.prof("stopped")
+        self._prof.flush()
 
 
     # --------------------------------------------------------------------------

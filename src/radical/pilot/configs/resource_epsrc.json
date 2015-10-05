@@ -1,5 +1,5 @@
 {
-    "archer": {
+    "archer_aprun": {
         "description"                 : "The EPSRC Archer Cray XC30 system (https://www.archer.ac.uk/)",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh"],
@@ -26,7 +26,7 @@
         "virtenv_mode"                : "use",
         "rp_version"                  : "debug"
     },
-    "archer_orte": {
+    "archer": {
         "description"                 : "The EPSRC Archer Cray XC30 system (https://www.archer.ac.uk/)",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh"],
@@ -59,9 +59,8 @@
         ],
         "default_remote_workdir"      : "/work/`id -gn`/`id -gn`/$USER",
         "valid_roots"                 : ["/work"],
-        "virtenv"                     : "/work/e290/shared/shared_pilot_ve_20150916/",
+        "virtenv"                     : "/work/e290/shared/shared_pilot_ve_20150924/",
         "virtenv_mode"                : "use",
         "rp_version"                  : "debug"
     }
 }
-

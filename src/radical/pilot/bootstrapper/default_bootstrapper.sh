@@ -58,7 +58,7 @@ LOCK_TIMEOUT=180 # 3 min
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
 VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
-VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq"
+VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces setproctitle"
 
 
 # ------------------------------------------------------------------------------
@@ -1305,6 +1305,12 @@ $converted_entry"
 done
 IFS=$OLD_IFS
 
+
+# we can't always lookup the ntp pool on compute nodes -- so do it once here,
+# and communicate the IP to the agent.  The agent may still not be able to
+# connect, but then a sensible timeout will kick in on ntplib.
+RADICAL_PILOT_NTPHOST=`dig +short 0.pool.ntp.org | grep -v -e ";;" -e "\.$" | head -n 1`
+
 # Before we start the (sub-)agent proper, we'll create a bootstrap_2.sh script
 # to do so.  For a single agent this is not needed -- but in the case where
 # we spawn out additional agent instances later, that script can be reused to
@@ -1339,6 +1345,9 @@ export RADICAL_VERBOSE=DEBUG
 export RADICAL_UTIL_VERBOSE=DEBUG
 export RADICAL_PILOT_VERBOSE=DEBUG
 
+# avoid ntphost lookups on compute nodes
+export RADICAL_PILOT_NTPHOST=$RADICAL_PILOT_NTPHOST
+
 # pass environment variables down so that module load becomes effective at
 # the other side too (e.g. sub-agents).
 $PREBOOTSTRAP2_EXPANDED
@@ -1357,7 +1366,7 @@ profile_event 'agent start'
 
 # start the master agent instance (zero)
 profile_event 'sync rel' 'agent start'
-sh bootstrap_2.sh 'agent.0' 1>agent.0.bootstrap_2.out 2>agent.0.bootstrap_2.err
+sh bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
 AGENT_EXITCODE=$?
 
 profile_event 'cleanup start'

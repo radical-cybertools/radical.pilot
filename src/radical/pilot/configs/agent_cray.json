@@ -22,11 +22,11 @@
     "network_interface"    : "ipogif0",
 
     "agent_layout": {
-        "agent.0": {
+        "agent_0": {
             # Where to run this agent ("local" or "node")
             "target": "local",
             # Which sub_agents should I look for?
-            "sub_agents": ["agent.1"],
+            "sub_agents": ["agent_1"],
             # One of the agents need to pull the actual tasks from MongoDB
             "pull_units": true,
             # which bridges are to be started by this agent
@@ -48,7 +48,7 @@
                 "AgentStagingOutputComponent": 1
             }
         },
-        "agent.1": {
+        "agent_1": {
             # Where to run this agent ("local" or "node")
             "target": "node",
             # which components to start on this agent
