@@ -325,11 +325,12 @@ class TestLocalOne(object):
 
 #-------------------------------------------------------------------------------
 # 
+
 class TestLocalTwo(object):
 
     #---------------------------------------------------------------------------
     #
-    def test_pass_issue114_3(rp_setup_short):
+    def test_fail_issue114_3(rp_setup_short):
 
         pilot, pmgr, umgr = rp_setup_short
 
@@ -351,6 +352,7 @@ class TestLocalTwo(object):
         
         assert state       == [rp.DONE], 'state      : %s' % state        
         assert pilot.state ==  rp.DONE , 'pilot state: %s' % pilot.state 
+
 
 #-------------------------------------------------------------------------------
 # 

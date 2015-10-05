@@ -1,5 +1,4 @@
-
-# this is the default agent config which is used if no other config is 
+# this is the default agent config which is used if no other config is
 # specified for an agent.  It contains the minimal set of settings required for
 # a functional pilot agent, and does not reserve any nodes for the agent
 # components.
@@ -23,7 +22,7 @@
     "heartbeat_interval"   : 10,
 
     "agent_layout" : {
-        "agent.0"   : {
+        "agent_0"   : {
             "target"     : "local",
             "sub_agents" : [],
             "pull_units" : true,
