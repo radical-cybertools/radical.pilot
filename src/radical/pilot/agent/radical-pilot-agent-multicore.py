@@ -145,7 +145,6 @@ import Queue
 import pprint
 import signal
 import shutil
-import socket
 import hostlist
 import tempfile
 import netifaces
@@ -453,9 +452,10 @@ class AgentSchedulingComponent(rpu.Component):
         self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
         self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
 
+        self._pilot_id = self._cfg['pilot_id']
+
         # The scheduler needs the LRMS information which have been collected
         # during agent startup.  We dig them out of the config at this point.
-        self._cores = self._cfg['cores']
         self._lrms_lm_info        = self._cfg['lrms_info']['lm_info']
         self._lrms_node_list      = self._cfg['lrms_info']['node_list']
         self._lrms_cores_per_node = self._cfg['lrms_info']['cores_per_node']
@@ -588,7 +588,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         cu = msg
 
-        self._prof.prof('reschedule')
+        self._prof.prof('reschedule', uid=self._pilot_id)
         self._log.info("slot status before reschedule: %s" % self.slot_status())
 
         # cycle through wait queue, and see if we get anything running now.  We
@@ -1990,6 +1990,7 @@ class LaunchMethodORTE(LaunchMethod):
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT
         )
 
+        dvm_uri = None
         while True:
 
             line = dvm_process.stdout.readline().strip()
@@ -2271,9 +2272,9 @@ class LRMS(object):
                     break
 
         if self.agent_nodes:
-            self._log.info('Reserved agent nodes: %s' % self.agent_nodes.values())
-            self._log.info('Agent running on nodes: %s' % self.agent_nodes.keys())
-            self._log.info('Remaining work nodes: %s' % self.node_list)
+            self._log.info('Reserved agent node(s): %s' % self.agent_nodes.values())
+            self._log.info('Agent(s) running on node(s): %s' % self.agent_nodes.keys())
+            self._log.info('Remaining work node(s): %s' % self.node_list)
 
         # Check if we can do any work
         if not self.node_list:
@@ -2299,9 +2300,7 @@ class LRMS(object):
                 self._log.info("lrms config hook succeeded (%s)" % lm)
 
         # For now assume that all nodes have equal amount of cores
-        cores_avail = len(self.node_list) * self.cores_per_node
-        # TODO: This needs to be changed to deal with situations where we
-        # allocate nodes for sub-agents
+        cores_avail = (len(self.node_list) + len(self.agent_nodes)) * self.cores_per_node
         if 'RADICAL_PILOT_PROFILE' not in os.environ:
             if cores_avail < int(self.requested_cores):
                 raise ValueError("Not enough cores available (%s) to satisfy allocation request (%s)." \
@@ -2387,7 +2386,7 @@ class LRMS(object):
 
         # If there were no potentials, see if we can find one in the blacklist
         if not pref:
-            for iface in blacklist:
+            for iface in black_list:
                 if iface in all:
                     pref = iface
 
@@ -3614,6 +3613,8 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         self._cus_to_watch   = list()
         self._watch_queue    = Queue.Queue ()
 
+        self._pilot_id = self._cfg['pilot_id']
+
         # run watcher thread
         self._terminate = threading.Event()
         self._watcher   = threading.Thread(target=self._watch, name="Watcher")
@@ -3700,7 +3701,10 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         # Remove the configured set of environment variables from the
         # environment that we pass to Popen.
         for e in new_env.keys():
-            for r in self._mpi_launcher.env_removables + self._task_launcher.env_removables:
+            env_removables = list()
+            if self._mpi_launcher : env_removables += self._mpi_launcher.env_removables
+            if self._task_launcher: env_removables += self._task_launcher.env_removables
+            for r in  env_removables:
                 if e.startswith(r):
                     new_env.pop(e, None)
 
@@ -3884,7 +3888,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
         cname = self.name.replace('Component', 'Watcher')
         self._prof = rpu.Profiler(cname)
-        self._prof.prof('run')
+        self._prof.prof('run', uid=self._pilot_id)
         try:
             self._log = ru.get_logger(cname, target="%s.log" % cname,
                                       level='DEBUG') # FIXME?
@@ -3927,7 +3931,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             self._log.exception("Error in ExecWorker watch loop (%s)" % e)
             # FIXME: this should signal the ExecWorker for shutdown...
 
-        self._prof.prof('stop')
+        self._prof.prof('stop', uid=self._pilot_id)
         self._prof.flush()
 
 
@@ -4089,7 +4093,10 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         # Remove the configured set of environment variables from the
         # environment that we pass to Popen.
         for e in os.environ.keys():
-            for r in self._mpi_launcher.env_removables + self._task_launcher.env_removables:
+            env_removables = list()
+            if self._mpi_launcher : env_removables += self._mpi_launcher.env_removables
+            if self._task_launcher: env_removables += self._task_launcher.env_removables
+            for r in  env_removables:
                 if e.startswith(r):
                     os.environ.pop(e, None)
 
@@ -4115,16 +4122,16 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         # Moving back to shared file system again, until it reaches maturity,
         # as this breaks launch methods with a hop, e.g. ssh.
         tmp = os.getcwd() # FIXME: see #658
-        pilot_id = self._cfg['pilot_id']
+        self._pilot_id = self._cfg['pilot_id']
         ret, out, _  = self.launcher_shell.run_sync \
                            ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
-                           % (os.path.dirname (rp.__file__), tmp, pilot_id, self._cname))
+                           % (os.path.dirname (rp.__file__), tmp, self._pilot_id, self._cname))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
 
         ret, out, _  = self.monitor_shell.run_sync \
                            ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
-                           % (os.path.dirname (rp.__file__), tmp, pilot_id, self._cname))
+                           % (os.path.dirname (rp.__file__), tmp, self._pilot_id, self._cname))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
 
@@ -4134,7 +4141,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         self._watcher.daemon = True
         self._watcher.start ()
 
-        self._prof.prof('run setup done')
+        self._prof.prof('run setup done', uid=self._pilot_id)
 
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',
@@ -4437,7 +4444,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         MONITOR_READ_TIMEOUT = 1.0   # check for stop signal now and then
         static_cnt           = 0
 
-        self._prof.prof('run')
+        self._prof.prof('run', uid=self._pilot_id)
         try:
             self._log = ru.get_logger(cname, target="%s.log" % cname,
                                       level='DEBUG') # FIXME?
@@ -4535,7 +4542,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
             self._log.exception("Exception in job monitoring thread: %s", e)
             self._terminate.set()
 
-        self._prof.prof('stop')
+        self._prof.prof('stop', uid=self._pilot_id)
         self._prof.flush()
 
 
@@ -4619,6 +4626,7 @@ class AgentUpdateWorker(rpu.Worker):
 
         self._session_id    = self._cfg['session_id']
         self._mongodb_url   = self._cfg['mongodb_url']
+        self._pilot_id      = self._cfg['pilot_id']
 
         _, db, _, _, _      = ru.mongodb_connect(self._mongodb_url)
         self._mongo_db      = db
@@ -4676,7 +4684,7 @@ class AgentUpdateWorker(rpu.Worker):
         res = cinfo['bulk'].execute()
         self._log.debug("bulk update result: %s", res)
 
-        self._prof.prof('unit update bulk pushed (%d)' % len(cinfo['uids']))
+        self._prof.prof('unit update bulk pushed (%d)' % len(cinfo['uids']), uid=self._pilot_id)
         for entry in cinfo['uids']:
             uid   = entry[0]
             state = entry[1]
@@ -5204,7 +5212,7 @@ class AgentHeartbeatWorker(rpu.Worker):
     def idle_cb(self):
 
         try:
-            self._prof.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!')
+            self._prof.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!', uid=self._pilot_id)
             self._check_commands()
             self._check_state   ()
             return True
@@ -5233,7 +5241,7 @@ class AgentHeartbeatWorker(rpu.Worker):
             cmd = command[COMMAND_TYPE]
             arg = command[COMMAND_ARG]
 
-            self._prof.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" % (cmd, arg))
+            self._prof.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" % (cmd, arg), uid=self._pilot_id)
 
             if cmd == COMMAND_CANCEL_PILOT:
                 self._log.info('cancel pilot cmd')
@@ -5369,7 +5377,6 @@ class AgentWorker(rpu.Worker):
 
         # keep track of objects we need to stop in the finally clause
         self._sub_agents = dict()
-        self._bridges    = dict()
         self._components = dict()
         self._workers    = dict()
 
@@ -5448,12 +5455,6 @@ class AgentWorker(rpu.Worker):
             raise RuntimeError("no agent layout section for %s" % self.agent_name)
 
         try:
-            self.start_bridges()
-
-            # FIXME: make sure all communication channels are in place.  This could
-            # be replaced with a proper barrier, but not sure if that is worth it...
-            time.sleep (1)
-
             self.start_sub_agents()
             self.start_components()
 
@@ -5468,7 +5469,7 @@ class AgentWorker(rpu.Worker):
             self._log.exception("Agent setup error: %s" % e)
             raise
 
-        self._prof.prof('Agent setup done', logger=self._log.debug)
+        self._prof.prof('Agent setup done', logger=self._log.debug, uid=self._pilot_id)
 
         # also watch all components (once per second)
         self.declare_idle_cb(self.watcher_cb, 10.0)
@@ -5498,8 +5499,7 @@ class AgentWorker(rpu.Worker):
     def alive_barrier(self):
 
         # FIXME: wait for bridges, too?  But we need pubsub for counting... Duh!
-        total = len(self._bridges)    + \
-                len(self._components) + \
+        total = len(self._components) + \
                 len(self._workers   ) + \
                 len(self._sub_agents)
         start   = time.time()
@@ -5507,8 +5507,7 @@ class AgentWorker(rpu.Worker):
 
         while True:
             # check the procs for all components which are not yet alive
-            to_check  = self._bridges.items() \
-                      + self._components.items() \
+            to_check  = self._components.items() \
                       + self._workers.items() \
                       + self._sub_agents.items() 
 
@@ -5544,8 +5543,7 @@ class AgentWorker(rpu.Worker):
         tear down this agent.
         """
 
-        to_watch = list(self._bridges.iteritems())    \
-                 + list(self._components.iteritems()) \
+        to_watch = list(self._components.iteritems()) \
                  + list(self._workers.iteritems())    \
                  + list(self._sub_agents.iteritems())
 
@@ -5567,7 +5565,7 @@ class AgentWorker(rpu.Worker):
     def finalize_child(self):
 
         self._log.info("Agent finalizes")
-        self._prof.prof('stop')
+        self._prof.prof('stop', uid=self._pilot_id)
       
         # tell other sub-agents get lost
         self.publish('command', {'cmd' : 'shutdown',
@@ -5595,13 +5593,6 @@ class AgentWorker(rpu.Worker):
                 w['handle'].stop()
             except Exception as e:
                 self._log.exception('ignore failing worker terminate')
-
-        for name,b in self._bridges.items():
-            try:
-                self._log.info("closing bridge %s", b)
-                b['handle'].stop()
-            except Exception as e:
-                self._log.exception('ignore failing bridge terminate')
 
         # communicate finalization to parent agent 
         # -- if we have any parent...
@@ -5688,7 +5679,7 @@ class AgentWorker(rpu.Worker):
                 else   : cmdline = ls_name
 
             # spawn the sub-agent
-            self._prof.prof("create", msg=sa)
+            self._prof.prof("create", msg=sa, uid=self._pilot_id)
             self._log.info ("create sub-agent %s: %s" % (sa, cmdline))
             sa_out = open("%s.out" % sa, "w")
             sa_err = open("%s.err" % sa, "w")
@@ -5702,50 +5693,9 @@ class AgentWorker(rpu.Worker):
                                     'err'   : sa_err,
                                     'pid'   : sa_proc.pid,
                                     'alive' : False}
-            self._prof.prof("created", msg=sa)
+            self._prof.prof("created", msg=sa, uid=self._pilot_id)
 
         self._log.debug('start_sub_agents done')
-
-    # --------------------------------------------------------------------------
-    #
-    def start_bridges(self):
-        """
-        For all bridges defined on this agent instance, create that bridge.
-        Keep a handle around for shutting them down later.
-        """
-
-        self._log.debug('start_bridges')
-
-        # ----------------------------------------------------------------------
-        # shortcut for bridge creation
-        bridge_type = {rp.AGENT_STAGING_INPUT_QUEUE  : 'queue',
-                       rp.AGENT_SCHEDULING_QUEUE     : 'queue',
-                       rp.AGENT_EXECUTING_QUEUE      : 'queue',
-                       rp.AGENT_STAGING_OUTPUT_QUEUE : 'queue',
-                       rp.AGENT_UNSCHEDULE_PUBSUB    : 'pubsub',
-                       rp.AGENT_RESCHEDULE_PUBSUB    : 'pubsub',
-                       rp.AGENT_COMMAND_PUBSUB       : 'pubsub',
-                       rp.AGENT_STATE_PUBSUB         : 'pubsub'}
-
-        def _create_bridge(name):
-            if bridge_type[name] == 'queue':
-                return rpu.Queue.create(rpu.QUEUE_ZMQ, name, rpu.QUEUE_BRIDGE)
-            elif bridge_type[name] == 'pubsub':
-                return rpu.Pubsub.create(rpu.PUBSUB_ZMQ, name, rpu.PUBSUB_BRIDGE)
-            else:
-                raise ValueError('unknown bridge type for %s' % name)
-        # ----------------------------------------------------------------------
-
-        # create all bridges we need.  Use the default addresses,
-        # ie. they will bind to all local interfacces on ports 10.000++.
-        for name in self._sub_cfg.get('bridges', []):
-            b = _create_bridge(name)
-            self._bridges[name] = {'handle' : b,
-                                   'alive'  : True}  # no alive check done, yet
-            self._log.info('created bridge %s: %s', name, b.name)
-
-        self._log.debug('start_bridges done')
-
 
     # --------------------------------------------------------------------------
     #
@@ -5852,7 +5802,7 @@ class AgentWorker(rpu.Worker):
                         document = {"$set"  : {"control" : 'agent'}})
 
         self._log.info("units pulled: %4d"   % len(cu_list))
-        self._prof.prof('get', msg="bulk size: %d" % len(cu_list))
+        self._prof.prof('get', msg="bulk size: %d" % len(cu_list), uid=self._pilot_id)
         for cu in cu_list:
             self._prof.prof('get', msg="bulk size: %d" % len(cu_list), uid=cu['_id'])
 
@@ -5870,6 +5820,95 @@ class AgentWorker(rpu.Worker):
 # Agent bootstrap stage 3
 #
 # ==============================================================================
+#
+def start_bridges(cfg, log):
+    """
+    For all bridges defined on this agent instance, create that bridge.
+    Keep a handle around for shutting them down later.
+    """
+
+    log.debug('start_bridges')
+
+    # ----------------------------------------------------------------------
+    # shortcut for bridge creation
+    bridge_type = {rp.AGENT_STAGING_INPUT_QUEUE  : 'queue',
+                   rp.AGENT_SCHEDULING_QUEUE     : 'queue',
+                   rp.AGENT_EXECUTING_QUEUE      : 'queue',
+                   rp.AGENT_STAGING_OUTPUT_QUEUE : 'queue',
+                   rp.AGENT_UNSCHEDULE_PUBSUB    : 'pubsub',
+                   rp.AGENT_RESCHEDULE_PUBSUB    : 'pubsub',
+                   rp.AGENT_COMMAND_PUBSUB       : 'pubsub',
+                   rp.AGENT_STATE_PUBSUB         : 'pubsub'}
+
+    def _create_bridge(name):
+        if bridge_type[name] == 'queue':
+            return rpu.Queue.create(rpu.QUEUE_ZMQ, name, rpu.QUEUE_BRIDGE)
+        elif bridge_type[name] == 'pubsub':
+            return rpu.Pubsub.create(rpu.PUBSUB_ZMQ, name, rpu.PUBSUB_BRIDGE)
+        else:
+            raise ValueError('unknown bridge type for %s' % name)
+    # ----------------------------------------------------------------------
+
+    # create all bridges we need.  Use the default addresses,
+    # ie. they will bind to all local interfacces on ports 10.000++.
+    bridges = dict()
+    sub_cfg = cfg['agent_layout']['agent_0']
+    for b in sub_cfg.get('bridges', []):
+
+        bridge     = _create_bridge(b)
+        bridge_in  = bridge.bridge_in
+        bridge_out = bridge.bridge_out
+        bridges[b] = {'handle' : bridge,
+                      'in'     : bridge_in, 
+                      'out'    : bridge_out,
+                      'alive'  : True}  # no alive check done, yet
+        log.info('created bridge %s: %s', b, bridge.name)
+
+    log.debug('start_bridges done')
+
+    return bridges
+
+
+# --------------------------------------------------------------------------
+#
+def write_sub_configs(cfg, bridges, nodeip, log):
+    """
+    create a sub_config for each sub-agent we intent to spawn
+    """
+
+    # get bridge addresses from our bridges, and append them to the config
+    if not 'bridge_addresses' in cfg:
+        cfg['bridge_addresses'] = dict()
+
+    for b in bridges:
+        # to avoid confusion with component input and output, we call bridge
+        # input a 'sink', and a bridge output a 'source' (from the component
+        # perspective)
+        sink   = ru.Url(bridges[b]['in'])
+        source = ru.Url(bridges[b]['out'])
+
+        # we replace the ip address with what we got from LRMS (nodeip).  The
+        # bridge should be listening on all interfaces, but we want to make sure
+        # the sub-agents connect on an IP which is accessible to them
+        sink.host   = nodeip
+        source.host = nodeip
+
+        # keep the resultin URLs as strings, to be used as addresses
+        cfg['bridge_addresses'][b] = dict()
+        cfg['bridge_addresses'][b]['sink']   = str(sink)
+        cfg['bridge_addresses'][b]['source'] = str(source)
+
+    # write deep-copies of the config (with the corrected agent_name) for each
+    # sub-agent (apart from agent_0, obviously)
+    for sa in cfg.get('agent_layout'):
+        if sa != 'agent_0':
+            sa_cfg = copy.deepcopy(cfg)
+            sa_cfg['agent_name'] = sa
+            ru.write_json(sa_cfg, './%s.cfg' % sa)
+
+
+# --------------------------------------------------------------------------
+#
 def bootstrap_3():
     """
     This method continues where the bootstrapper left off, but will quickly pass
@@ -5897,24 +5936,27 @@ def bootstrap_3():
         raise RuntimeError('invalid number of parameters (%s)' % sys.argv)
     agent_name = sys.argv[1]
 
-    # set up a logger and profiler
-    prof = rpu.Profiler ('%s.bootstrap_3' % agent_name)
-    log  = ru.get_logger('%s.bootstrap_3' % agent_name, 
-                         '%s.bootstrap_3.log' % agent_name, 'DEBUG')  # FIXME?
-    log.info('start')
-
-    try:
-        import setproctitle as spt
-        spt.setproctitle('radical.pilot %s' % agent_name)
-    except Exception as e:
-        log.debug('no setproctitle: %s', e)
-
     # load the agent config, and overload the config dicts
     agent_cfg  = "%s/%s.cfg" % (os.getcwd(), agent_name)
     print "startup agent %s : %s" % (agent_name, agent_cfg)
 
     cfg = ru.read_json_str(agent_cfg)
     cfg['agent_name'] = agent_name
+    pilot_id = cfg['pilot_id']
+
+    # set up a logger and profiler
+    prof = rpu.Profiler ('%s.bootstrap_3' % agent_name)
+    prof.prof('sync ref', msg='agent start', uid=pilot_id)
+    log  = ru.get_logger('%s.bootstrap_3' % agent_name,
+                         '%s.bootstrap_3.log' % agent_name, 'DEBUG')  # FIXME?
+    log.info('start')
+    prof.prof('sync ref', msg='agent start')
+
+    try:
+        import setproctitle as spt
+        spt.setproctitle('radical.pilot %s' % agent_name)
+    except Exception as e:
+        log.debug('no setproctitle: %s', e)
 
     log.setLevel(cfg.get('debug', 'INFO'))
 
@@ -5935,7 +5977,6 @@ def bootstrap_3():
 
         _, mongo_db, _, _, _  = ru.mongodb_connect(cfg['mongodb_url'])
         mongo_p = mongo_db["%s.p" % cfg['session_id']]
-        pilot_id = cfg['pilot_id']
 
 
         # set up signal and exit handlers
@@ -5963,6 +6004,7 @@ def bootstrap_3():
     # in one of the above handlers or exit handlers being activated, thuse
     # reporting the error dutifully.
 
+    bridges = dict()  # avoid undefined dict on finalization
     try:
         # ----------------------------------------------------------------------
         # des Pudels Kern: merge LRMS info into cfg and get the agent started
@@ -5983,54 +6025,32 @@ def bootstrap_3():
             cfg['lrms_info']['cores_per_node'] = lrms.cores_per_node
             cfg['lrms_info']['agent_nodes']    = lrms.agent_nodes
 
+
+            # the master agent also is the only one which starts bridges.  It
+            # has to do so before creating the AgentWorker instance, as that is
+            # using the bridges already.
+
+            bridges = start_bridges(cfg, log)
+            # FIXME: make sure all communication channels are in place.  This could
+            # be replaced with a proper barrier, but not sure if that is worth it...
+            time.sleep (1)
+
+            # after we started bridges, we'll add their in and out addresses
+            # to the config, so that the communication channels can connect to
+            # them.  At this point we also write configs for all sub-agents this
+            # instance intents to spawn.
+            #
+            # FIXME: we should point the address to the node of the subagent
+            #        which hosts the bridge, not the local IP.  Until this
+            #        is fixed, bridges MUST run on agent_0 (which is what
+            #        LRMS.hostip() below will point to).
+            nodeip = LRMS.hostip(cfg.get('network_interface'))
+            write_sub_configs(cfg, bridges, nodeip, log)
+
             # Store some runtime information into the session
             if 'version_info' in lrms.lm_info:
                 mongo_p.update({"_id": pilot_id},
                                {"$set": {"lm_info": lrms.lm_info['version_info']}})
-
-            # Based on the LRMS info, and specifically the agent_nodes, we now
-            # know where each sub_agent will run.  We will sift through the
-            # config, find where the bridges are to be created, thus can
-            # determine their addresses, and will then apply those addresses to
-            # the queue and pubsub endpoints in all agent components.  Note that
-            # the bridge addresses themself will not change -- they are fine to
-            # listen on tcp://*:[port]/.
-            #
-            # Once we did those changes, we will write copies of the resulting
-            # config for each sub agent instance.  At the moment those configs
-            # are identical, and the sub_agent will pick its own layout section
-            # -- but in principle this is also the point where we would make
-            # individual config changes.
-
-            # dig out bridges from all sub-agents (sa)
-            # FIXME: we only need configs for agents which will actually get
-            #        started, ie. for those which appear in some sub_agent key
-            #        -- but this loop iterates over all sub_agents which are
-            #        *defined*.  Same for the for-loop a couple of lines below.
-            bridge_addresses = dict()
-            for sa in cfg['agent_layout']:
-
-                # FIXME: we should point the address to the node of the subagent
-                #        which hosts the bridge, not the local IP.  Until this
-                #        is fixed, bridges MUST run on agent_0 (which is what
-                #        LRMS.hostip() below will point to).
-                nodeip = LRMS.hostip(cfg.get('network_interface'))
-
-                # we should have at most one bridge for every type
-                for b in cfg['agent_layout'][sa].get('bridges', []):
-                    if b in bridge_addresses:
-                        raise RuntimeError('duplicated bridge entry for %s' % b)
-                    bridge_addresses[b] = "tcp://%s" % nodeip
-
-            # add bridge addresses to the config
-            cfg['bridge_addresses'] = bridge_addresses
-
-            # create a sub_config for each sub-agent (but skip master config)
-            for sa in cfg['agent_layout']:
-                if sa != 'agent_0':
-                    sa_cfg = copy.deepcopy(cfg)
-                    sa_cfg['agent_name'] = sa
-                    ru.write_json(sa_cfg, './%s.cfg' % sa)
 
         # we now have correct bridge addresses added to the agent_0.cfg, and all
         # other agents will have picked that up from their config files -- we
@@ -6069,8 +6089,15 @@ def bootstrap_3():
         sys.exit(2)
 
     finally:
+        for name,b in bridges.items():
+            try:
+                log.info("closing bridge %s", b)
+                b['handle'].stop()
+            except Exception as e:
+                log.exception('ignore failing bridge terminate (%s)', e)
+
         log.info('stop')
-        prof.prof('stop', msg='finally clause agent')
+        prof.prof('stop', msg='finally clause agent', uid=pilot_id)
         prof.flush()
 
 

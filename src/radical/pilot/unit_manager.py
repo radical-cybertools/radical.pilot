@@ -95,6 +95,8 @@ class UnitManager(object):
         **Raises:**
             * :class:`radical.pilot.PilotException`
         """
+        logger.demo('info', 'create unit manager')
+
         self._session = session
         self._worker  = None 
         self._pilots  = list()
@@ -133,6 +135,8 @@ class UnitManager(object):
         self.register_callback(self._default_wait_queue_size_cb, WAIT_QUEUE_SIZE)
 
         self._valid = True
+
+        logger.demo('ok', '\\ok\n')
 
 
     #--------------------------------------------------------------------------
@@ -243,11 +247,14 @@ class UnitManager(object):
         if not isinstance(pilots, list):
             pilots = [pilots]
 
+        logger.demo('info', 'add %d pilot(s)' % len(pilots))
+
         pilot_ids = self.list_pilots()
 
         for pilot in pilots :
             if  pilot.uid in pilot_ids :
                 logger.warning ('adding the same pilot twice (%s)' % pilot.uid)
+                logger.demo('\n')
 
         self._worker.add_pilots(pilots)
 
@@ -259,6 +266,7 @@ class UnitManager(object):
         for pilot in pilots :
             self._pilots.append (pilot)
 
+        logger.demo('ok', '\\ok\n')
 
     # -------------------------------------------------------------------------
     #
@@ -395,6 +403,8 @@ class UnitManager(object):
             return_list_type  = False
             unit_descriptions = [unit_descriptions]
 
+        logger.demo('info', 'submit %d unit(s)' % len(unit_descriptions))
+
         # we return a list of compute units
         ret = list()
 
@@ -420,6 +430,7 @@ class UnitManager(object):
                 import radical.utils as ru
                 ru.write_json(ud.as_dict(), "%s/%s.batch.%03d.json" \
                         % (self._session._rec, u.uid, self._rec_id))
+            logger.demo('progress')
 
         if self._session._rec:
             self._rec_id += 1
@@ -435,6 +446,8 @@ class UnitManager(object):
             raise 
 
         self.handle_schedule (schedule)
+
+        logger.demo('ok', '\\ok\n')
 
         if  return_list_type :
             return units
@@ -630,10 +643,13 @@ class UnitManager(object):
             return_list_type = False
             unit_ids = [unit_ids]
 
+
         units  = self.get_units (unit_ids)
         start  = time.time()
         all_ok = False
         states = list()
+
+        logger.demo('info', 'wait for %d unit(s)' % len(units))
 
         while not all_ok and \
               not self._session._terminate.is_set():
@@ -644,6 +660,8 @@ class UnitManager(object):
             for unit in units :
                 if  unit.state not in state :
                     all_ok = False
+                else:
+                    logger.demo('progress')
 
                 states.append (unit.state)
 
@@ -655,7 +673,9 @@ class UnitManager(object):
 
             # sleep a little if this cycle was idle
             if  not all_ok :
-                time.sleep (0.1)
+                time.sleep (0.5)
+
+        logger.demo('ok', '\\ok\n')
 
         # done waiting
         if  return_list_type :

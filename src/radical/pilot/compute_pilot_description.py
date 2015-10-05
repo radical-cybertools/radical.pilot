@@ -13,6 +13,8 @@ __license__   = "MIT"
 
 import saga.attributes  as attributes
 
+from .utils import logger
+
 
 # -----------------------------------------------------------------------------
 # Attribute description keys
@@ -125,6 +127,8 @@ class ComputePilotDescription(attributes.Attributes):
     def __init__(self):
         """Le constructeur.
         """ 
+        logger.demo('info', 'create pilot description')
+
         # initialize attributes
         attributes.Attributes.__init__(self)
 
@@ -158,6 +162,8 @@ class ComputePilotDescription(attributes.Attributes):
         self.set_attribute (CLEANUP,          None)
         self.set_attribute (EXIT_ON_ERROR,    False)
         self.set_attribute (_CONFIG,          None)
+
+        logger.demo('ok', '\\ok\n')
 
 
     # -------------------------------------------------------------------------
