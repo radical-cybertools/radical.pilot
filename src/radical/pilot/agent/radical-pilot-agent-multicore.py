@@ -5377,15 +5377,8 @@ class AgentWorker(rpu.Worker):
 
         # keep track of objects we need to stop in the finally clause
         self._sub_agents = dict()
-<<<<<<< HEAD
-        self._bridges    = dict()
         self._components = dict()
         self._workers    = dict()
-=======
-        self._components = dict()
-        self._workers    = dict()
-
->>>>>>> devel
 
         # sanity check on config settings
         if not 'cores'               in self._cfg: raise ValueError("Missing number of cores")
