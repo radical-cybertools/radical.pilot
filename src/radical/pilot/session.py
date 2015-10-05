@@ -134,6 +134,8 @@ class Session (saga.Session):
                 self._uid  = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
                 self._name = self._uid
 
+            logger.demo('info', 'create session %s' % self._uid)
+
 
             self._dbs = dbSession(sid   = self._uid,
                                   name  = self._name,
@@ -207,6 +209,8 @@ class Session (saga.Session):
         else:
             self._rec = None
 
+        logger.demo('ok', '\\ok\n')
+
 
 
     #---------------------------------------------------------------------------
@@ -241,6 +245,7 @@ class Session (saga.Session):
               or doesn't exist. 
         """
 
+        logger.demo('info', 'closing session %s' % self._uid)
         logger.debug("session %s closing" % (str(self._uid)))
         self.prof.prof("close", uid=self._uid)
 
@@ -291,6 +296,8 @@ class Session (saga.Session):
         self.prof.prof("closed", uid=self._uid)
 
         self._valid = False
+
+        logger.demo('ok', '\\ok\n')
 
 
     #---------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 {
-    "bw": {
+    "bw_aprun": {
         "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system (https://bluewaters.ncsa.illinois.edu/)",
         "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
         "schemas"                     : ["gsissh"],
@@ -23,7 +23,7 @@
         "virtenv_mode"                : "create",
         "stage_cacerts"               : "True"
     },
-    "bw_orte": {
+    "bw": {
         "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system (https://bluewaters.ncsa.illinois.edu/)",
         "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
         "schemas"                     : ["gsissh"],

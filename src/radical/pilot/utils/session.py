@@ -1,4 +1,3 @@
-
 import os
 import sys
 import glob
@@ -6,6 +5,7 @@ import saga
 
 import radical.utils as ru
 from   radical.pilot.states import *
+from . import version_detail as rp_version_detail
 
 from db_utils import *
 
@@ -406,3 +406,27 @@ def fetch_json (sid, dburl=None, tgt=None) :
     return dst
 
 
+#--------------------------------------------------------------------------
+#
+# Insert (experiment) metadata into an active session
+# RP stack version info always get added.
+#
+def inject_metadata(session, metadata):
+
+    if not isinstance(metadata, dict):
+        raise Exception("Session metadata should be a dict!")
+
+    if session is None:
+        raise Exception("No session specified.")
+
+    # Always record the radical software stack
+    metadata['radical_stack'] = {
+        'rp': rp_version_detail,
+        'rs': saga.version_detail,
+        'ru': ru.version_detail
+    }
+
+    result = session._dbs._s.update(
+        {"_id": session._uid},
+        {"$set" : {"metadata": metadata}}
+    )

@@ -114,8 +114,8 @@ def get_session_docs (db, sid, cache=None, cachedir=None) :
     # if we got here, we did not find a cached version -- thus add this dataset
     # to the cache
     try :
-        os.system ('mkdir -p %s' % _CACHE_BASEDIR)
-        ru.write_json (json_data, "%s/%s.json" % (_CACHE_BASEDIR, sid))
+        os.system ('mkdir -p %s' % cachedir)
+        ru.write_json (json_data, "%s/%s.json" % (cachedir, sid))
     except Exception as e :
         # we can live without cache, no problem...
         pass
