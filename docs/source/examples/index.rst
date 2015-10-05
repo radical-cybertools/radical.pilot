@@ -16,4 +16,5 @@ Examples & Best Practice
    async.rst
    mandelbrot.rst
    kmeans.rst
+   simple_bot_multi.rst
 .. condor_grids.rst
