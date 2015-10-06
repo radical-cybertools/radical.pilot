@@ -5986,12 +5986,14 @@ def bootstrap_3():
         sys.exit(1)
 
     def sigint_handler(signum, frame):
-        pilot_FAILED(msg='Caught SIGINT. EXITING (%s)' % frame)
+        if agent_name == 'agent_0':
+            pilot_FAILED(msg='Caught SIGINT. EXITING (%s)' % frame)
         print 'sigint'
         sys.exit(2)
 
     def sigalarm_handler(signum, frame):
-        pilot_FAILED(msg='Caught SIGALRM (Walltime limit?). EXITING (%s)' % frame)
+        if agent_name == 'agent_0':
+            pilot_FAILED(msg='Caught SIGALRM (Walltime limit?). EXITING (%s)' % frame)
         print 'sigalrm'
         sys.exit(3)
 
