@@ -339,7 +339,6 @@ class Component(mp.Process):
                 self._prof.flush()
             sys.exit()
 
-
         # if we are called from within a callback, that we will have skipped one
         # thread for joining above.  For a child that's ok, because there is
         # that exit call above -- for a parent, we'll call that exit right here.

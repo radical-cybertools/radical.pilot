@@ -64,6 +64,7 @@ class Profiler (object):
     def flush(self):
 
         if self._enabled:
+            self.prof("flush")
             self._handle.flush()
 
 
