@@ -5979,25 +5979,26 @@ def bootstrap_3():
         mongo_p = mongo_db["%s.p" % cfg['session_id']]
 
 
-        # set up signal and exit handlers
-        def exit_handler():
-          # rpu.flush_prof()
-            print 'atexit'
+    # set up signal and exit handlers
+    def exit_handler():
+        prof.flush()
+        print 'atexit'
+        sys.exit(1)
 
-        def sigint_handler(signum, frame):
-            pilot_FAILED(msg='Caught SIGINT. EXITING (%s)' % frame)
-            print 'sigint'
-            sys.exit(2)
+    def sigint_handler(signum, frame):
+        pilot_FAILED(msg='Caught SIGINT. EXITING (%s)' % frame)
+        print 'sigint'
+        sys.exit(2)
 
-        def sigalarm_handler(signum, frame):
-            pilot_FAILED(msg='Caught SIGALRM (Walltime limit?). EXITING (%s)' % frame)
-            print 'sigalrm'
-            sys.exit(3)
+    def sigalarm_handler(signum, frame):
+        pilot_FAILED(msg='Caught SIGALRM (Walltime limit?). EXITING (%s)' % frame)
+        print 'sigalrm'
+        sys.exit(3)
 
-        import atexit
-        atexit.register(exit_handler)
-        signal.signal(signal.SIGINT,  sigint_handler)
-        signal.signal(signal.SIGALRM, sigalarm_handler)
+    import atexit
+    atexit.register(exit_handler)
+    signal.signal(signal.SIGINT,  sigint_handler)
+    signal.signal(signal.SIGALRM, sigalarm_handler)
 
     # if anything went wrong up to this point, we would have been unable to
     # report errors into mongodb.  From here on, any fatal error should result
