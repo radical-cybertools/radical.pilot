@@ -6004,7 +6004,7 @@ def bootstrap_3():
 
     # if anything went wrong up to this point, we would have been unable to
     # report errors into mongodb.  From here on, any fatal error should result
-    # in one of the above handlers or exit handlers being activated, thuse
+    # in one of the above handlers or exit handlers being activated, thus
     # reporting the error dutifully.
 
     bridges = dict()  # avoid undefined dict on finalization
