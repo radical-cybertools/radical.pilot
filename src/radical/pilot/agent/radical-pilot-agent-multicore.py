@@ -1186,6 +1186,7 @@ class LaunchMethod(object):
         'PATH',
         'PYTHONPATH',
         'PYTHON_DIR',
+        'RADICAL_PILOT_PROFILE'
     ]
 
     # --------------------------------------------------------------------------
@@ -3776,9 +3777,11 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         with open(launch_script_name, "w") as launch_script:
             launch_script.write('#!/bin/bash -l\n\n')
 
-            launch_script.write("echo script start_script `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                launch_script.write("echo script start_script `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
             launch_script.write('\n# Change to working directory for unit\ncd %s\n' % cu_tmpdir)
-            launch_script.write("echo script after_cd `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                launch_script.write("echo script after_cd `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
             # Before the Big Bang there was nothing
             if cu['description']['pre_exec']:
@@ -3790,9 +3793,11 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                     pre_exec_string += "%s\n" % cu['description']['pre_exec']
                 # Note: extra spaces below are for visual alignment
                 launch_script.write("# Pre-exec commands\n")
-                launch_script.write("echo pre  start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+                if 'RADICAL_PILOT_PROFILE' in os.environ:
+                    launch_script.write("echo pre  start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
                 launch_script.write(pre_exec_string)
-                launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+                if 'RADICAL_PILOT_PROFILE' in os.environ:
+                    launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
             # Create string for environment variable setting
             if cu['description']['environment'] and    \
@@ -3835,7 +3840,8 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             launch_script.write("# The command to run\n")
             launch_script.write("%s\n" % launch_command)
             launch_script.write("RETVAL=$?\n")
-            launch_script.write("echo script after_exec `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                launch_script.write("echo script after_exec `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
             # After the universe dies the infrared death, there will be nothing
             if cu['description']['post_exec']:
@@ -3846,9 +3852,11 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 else:
                     post_exec_string += "%s\n" % cu['description']['post_exec']
                 launch_script.write("# Post-exec commands\n")
-                launch_script.write("echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+                if 'RADICAL_PILOT_PROFILE' in os.environ:
+                    launch_script.write("echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
                 launch_script.write('%s\n' % post_exec_string)
-                launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+                if 'RADICAL_PILOT_PROFILE' in os.environ:
+                    launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
             launch_script.write("# Exit the script with the return code from the command\n")
             launch_script.write("exit $RETVAL\n")
@@ -4308,7 +4316,8 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
             cwd  += "mkdir -p %s\n" % cu['workdir']
             # TODO: how do we align this timing with the mkdir with POPEN? (do we at all?)
             cwd  += "cd       %s\n" % cu['workdir']
-            cwd  += "echo script after_cd `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                cwd  += "echo script after_cd `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             cwd  += "\n"
 
         if  descr['environment'] :
@@ -4319,18 +4328,22 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         if  descr['pre_exec'] :
             pre  += "# CU pre-exec\n"
-            pre  += "echo pre  start `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                pre  += "echo pre  start `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             pre  += '\n'.join(descr['pre_exec' ])
             pre  += "\n"
-            pre  += "echo pre  stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                pre  += "echo pre  stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             pre  += "\n"
 
         if  descr['post_exec'] :
             post += "# CU post-exec\n"
-            post += "echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                post += "echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             post += '\n'.join(descr['post_exec' ])
             post += "\n"
-            post += "echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                post += "echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             post += "\n"
 
         if  descr['arguments']  :
@@ -4348,7 +4361,9 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
                                                    '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
                                                    cu['opaque_slots'])
 
-        script = "echo script start_script `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+        script = ''
+        if 'RADICAL_PILOT_PROFILE' in os.environ:
+            script += "echo script start_script `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
 
         if hop_cmd :
             # the script will itself contain a remote callout which calls again
@@ -4371,7 +4386,8 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         script += "# CU execution\n"
         script += "%s %s\n\n" % (cmd, io)
         script += "RETVAL=$?\n"
-        script += "echo script after_exec `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+        if 'RADICAL_PILOT_PROFILE' in os.environ:
+            script += "echo script after_exec `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
         script += "%s"        %  post
         script += "exit $RETVAL\n"
         script += "# ------------------------------------------------------\n\n"
@@ -5053,16 +5069,17 @@ class AgentStagingOutputComponent(rpu.Component):
 
                 cu['stderr'] += rpu.tail(txt)
 
-        if os.path.isfile("%s/PROF" % cu['workdir']):
-            try:
-                with open("%s/PROF" % cu['workdir'], 'r') as prof_f:
-                    txt = prof_f.read()
-                    for line in txt.split("\n"):
-                        if line:
-                            x1, x2, x3 = line.split()
-                            self._prof.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
-            except Exception as e:
-                self._log.error("Pre/Post profiling file read failed: `%s`" % e)
+        if 'RADICAL_PILOT_PROFILE' in os.environ:
+            if os.path.isfile("%s/PROF" % cu['workdir']):
+                try:
+                    with open("%s/PROF" % cu['workdir'], 'r') as prof_f:
+                        txt = prof_f.read()
+                        for line in txt.split("\n"):
+                            if line:
+                                x1, x2, x3 = line.split()
+                                self._prof.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
+                except Exception as e:
+                    self._log.error("Pre/Post profiling file read failed: `%s`" % e)
 
         # NOTE: all units get here after execution, even those which did not
         #       finish successfully.  We do that so that we can make 
