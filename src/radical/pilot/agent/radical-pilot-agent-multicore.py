@@ -1491,12 +1491,14 @@ class LaunchMethodSSH(LaunchMethod):
         else:
             task_command = task_exec
 
+        # Pass configured and available environment variables to the remote shell
+        export_vars = ' '.join(['%s=%s' % (var, os.environ[var]) for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
+
         # Command line to execute launch script via ssh on host
-        ssh_hop_cmd = "%s %s %s" % (self.launch_command, host, launch_script_hop)
+        ssh_hop_cmd = "%s %s %s %s" % (self.launch_command, host, export_vars, launch_script_hop)
 
         # Special case, return a tuple that overrides the default command line.
         return task_command, ssh_hop_cmd
-
 
 
 # ==============================================================================
