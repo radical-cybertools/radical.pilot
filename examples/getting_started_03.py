@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2013-2014, http://radical.rutgers.edu'
+__license__   = 'MIT'
 
 import os
 import sys
@@ -21,17 +21,17 @@ import radical.utils as ru
 
 #------------------------------------------------------------------------------
 #
-if __name__ == "__main__":
+if __name__ == '__main__':
 
     # we use a reporter class for nicer output
     report = ru.LogReporter(name='radical.pilot')
-    report.title("Getting Started")
+    report.title('Getting Started')
 
     # use the resource specified as argument, fall back to localhost
-    if len(sys.argv) < 2:
-        resources = ['local.localhost']
-    else:
+    if len(sys.argv) >= 2:
         resources = sys.argv[1:]
+    else:
+        resources = ['local.localhost']
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -44,9 +44,9 @@ if __name__ == "__main__":
     try:
 
         # read the config used for resource details
-        report.info('read configs')
+        report.info('read config')
         config = ru.read_json('%s/config.json' % os.path.dirname(__file__))
-        report.ok('\\ok\n')
+        report.ok('>>ok\n')
 
         report.header('submit pilots')
 
@@ -80,7 +80,7 @@ if __name__ == "__main__":
         umgr.add_pilots(pilots)
 
         # Create a workload of ComputeUnits. Each compute unit
-        # runs '/bin/date'.
+        # reports the id of the pilot it runs on
 
         n = 128   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
@@ -92,8 +92,9 @@ if __name__ == "__main__":
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
 
-            # trigger an error now and then
-            cud.executable = "/bin/date"
+            cud.executable = '/bin/echo'
+            cud.arguments  = ['$RP_PILOT_ID']
+
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -110,21 +111,14 @@ if __name__ == "__main__":
     
         report.info('\n')
         for unit in units:
-            if unit.state == rp.DONE:
-                report.plain("  * %s: %s, exit: %3s, out: %s" \
-                        % (unit.uid, unit.state[:4], 
-                            unit.exit_code, unit.stdout.strip()[:35]))
-                report.ok(">>ok\n")
-            else:
-                report.plain("  * %s: %s, exit: %3s, err: %s" \
-                        % (unit.uid, unit.state[:4], 
-                           unit.exit_code, unit.stderr.strip()[-20:]))
-                report.error(">>err\n")
+            report.plain('  * %s: %s, exit: %3s, out: %s\n' \
+                    % (unit.uid, unit.state[:4], 
+                        unit.exit_code, unit.stdout.strip()[:35]))
     
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        report.error("caught Exception: %s\n" % e)
+        report.error('caught Exception: %s\n' % e)
         raise
 
     except (KeyboardInterrupt, SystemExit) as e:
@@ -132,7 +126,7 @@ if __name__ == "__main__":
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        report.warn("exit requested\n")
+        report.warn('exit requested\n')
 
     finally:
         # always clean up the session, no matter if we caught an exception or

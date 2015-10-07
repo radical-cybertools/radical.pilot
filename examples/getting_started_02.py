@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2013-2014, http://radical.rutgers.edu'
+__license__   = 'MIT'
 
 import os
 import sys
@@ -21,15 +21,15 @@ import radical.utils as ru
 
 #------------------------------------------------------------------------------
 #
-if __name__ == "__main__":
+if __name__ == '__main__':
 
     # we use a reporter class for nicer output
     report = ru.LogReporter(name='radical.pilot')
-    report.title("Getting Started")
+    report.title('Getting Started')
 
     # use the resource specified as argument, fall back to localhost
     if len(sys.argv) > 2:
-        report.error("Usage:\t%s [resource]\n\n" % sys.argv[0])
+        report.error('Usage:\t%s [resource]\n\n' % sys.argv[0])
         sys.exit(0)
     elif len(sys.argv) == 2:
         resource = sys.argv[1]
@@ -47,9 +47,9 @@ if __name__ == "__main__":
     try:
 
         # read the config used for resource details
-        report.info('read configs')
+        report.info('read config')
         config = ru.read_json('%s/config.json' % os.path.dirname(__file__))
-        report.ok('\\ok\n')
+        report.ok('>>ok\n')
 
         report.header('submit pilots')
 
@@ -59,7 +59,7 @@ if __name__ == "__main__":
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pdescs = list()
-        report.info('create pilot descriptions')
+        report.info('create pilot description')
         pd_init = {
                 'resource'      : resource,
                 'cores'         : 64,  # pilot size
@@ -95,8 +95,8 @@ if __name__ == "__main__":
             cud = rp.ComputeUnitDescription()
 
             # trigger an error now and then
-            if not i % 10: cud.executable = "/bin/data" # does not exist
-            else         : cud.executable = "/bin/date"
+            if not i % 10: cud.executable = '/bin/data' # does not exist
+            else         : cud.executable = '/bin/date'
 
             cuds.append(cud)
             report.progress()
@@ -115,20 +115,20 @@ if __name__ == "__main__":
         report.info('\n')
         for unit in units:
             if unit.state == rp.DONE:
-                report.plain("  * %s: %s, exit: %3s, out: %s" \
+                report.plain('  * %s: %s, exit: %3s, out: %s' \
                         % (unit.uid, unit.state[:4], 
                             unit.exit_code, unit.stdout.strip()[:35]))
-                report.ok(">>ok\n")
+                report.ok('>>ok\n')
             else:
-                report.plain("  * %s: %s, exit: %3s, err: %s" \
+                report.plain('  * %s: %s, exit: %3s, err: %s' \
                         % (unit.uid, unit.state[:4], 
-                           unit.exit_code, unit.stderr.strip()[-20:]))
-                report.error(">>err\n")
+                           unit.exit_code, unit.stderr.strip()[-35:]))
+                report.error('>>err\n')
     
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        report.error("caught Exception: %s\n" % e)
+        report.error('caught Exception: %s\n' % e)
         raise
 
     except (KeyboardInterrupt, SystemExit) as e:
@@ -136,7 +136,7 @@ if __name__ == "__main__":
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        report.warn("exit requested\n")
+        report.warn('exit requested\n')
 
     finally:
         # always clean up the session, no matter if we caught an exception or

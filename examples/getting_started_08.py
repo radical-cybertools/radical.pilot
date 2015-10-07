@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2013-2014, http://radical.rutgers.edu'
+__license__   = 'MIT'
 
 import os
 import sys
@@ -21,15 +21,15 @@ import radical.utils as ru
 
 #------------------------------------------------------------------------------
 #
-if __name__ == "__main__":
+if __name__ == '__main__':
 
     # we use a reporter class for nicer output
     report = ru.LogReporter(name='radical.pilot')
-    report.title("Getting Started")
+    report.title('Getting Started')
 
     # use the resource specified as argument, fall back to localhost
     if len(sys.argv) > 2:
-        report.error("Usage:\t%s [resource]\n\n" % sys.argv[0])
+        report.error('Usage:\t%s [resource]\n\n' % sys.argv[0])
         sys.exit(0)
     elif len(sys.argv) == 2:
         resource = sys.argv[1]
@@ -47,15 +47,11 @@ if __name__ == "__main__":
     try:
 
         # read the config used for resource details
-        report.info('read configs')
+        report.info('read config')
         config = ru.read_json('%s/config.json' % os.path.dirname(__file__))
-        report.ok('\\ok\n')
+        report.ok('>>ok\n')
 
         report.header('submit pilots')
-
-        # prepare some input files for the compute units
-        os.system ('hostname > file1.dat')
-        os.system ('date     > file2.dat')
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = rp.PilotManager(session=session)
@@ -63,63 +59,30 @@ if __name__ == "__main__":
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pdescs = list()
-        report.info('create pilot descriptions')
-        for resource in sys.argv[1:]:
-            pd_init = {
-                    'resource'      : resource,
-                    'cores'         : 64,  # pilot size
-                    'runtime'       : 10,  # pilot runtime (min)
-                    'project'       : config[resource]['project'],
-                    'queue'         : config[resource]['queue'],
-                    'access_schema' : config[resource]['schema']
-                    }
-            pdescs.append(rp.ComputePilotDescription(pd_init))
+        report.info('create pilot description')
+        pd_init = {
+                'resource'      : resource,
+                'cores'         : 64,  # pilot size
+                'runtime'       : 10,  # pilot runtime (min)
+                'project'       : config[resource]['project'],
+                'queue'         : config[resource]['queue'],
+                'access_schema' : config[resource]['schema']
+                }
+        pdesc = rp.ComputePilotDescription(pd_init)
         report.ok('>>ok\n')
 
         # Launch the pilot.
-        pilots = pmgr.submit_pilots(pdescs)
-
-        # get shared unit data to the pilot
-        report.info('stage data to pilot')
-        input_sd_pilot = {
-                'source': 'file:///etc/passwd',
-                'target': 'staging:///f1',
-                'action': rp.TRANSFER
-                }
-        for pilot in pilots:
-            pilot.stage_in (input_sd_pilot)
-            report.progress()
-        report.ok('>>ok\n')
+        pilot = pmgr.submit_pilots(pdesc)
 
 
         report.header('submit units')
 
-        # use different schedulers, depending on number of pilots
-        report.info('select scheduler')
-        if len(pilots) == 1: SCHED = rp.SCHED_DIRECT
-        else               : SCHED = rp.SCHED_ROUND_ROBIN
-        report.ok('>>%s\n' % SCHED)
-    
-        # Combine the ComputePilot, the ComputeUnits and a scheduler via
-        # a UnitManager object.
-        umgr = rp.UnitManager(session=session, scheduler=SCHED)
-        umgr.add_pilots(pilots)
+        # Register the ComputePilot in a UnitManager object.
+        umgr = rp.UnitManager(session=session)
+        umgr.add_pilots(pilot)
 
-        input_sd_umgr   = {'source':'/etc/group',        'target': 'f2',                'action': rp.TRANSFER}
-        input_sd_agent  = {'source':'staging:///f1',     'target': 'f1',                'action': rp.COPY}
-        output_sd_agent = {'source':'f1',                'target': 'staging:///f1.bak', 'action': rp.COPY}
-        output_sd_umgr  = {'source':'f2',                'target': 'f2.bak',            'action': rp.TRANSFER}
-
-        # Create a workload of ComputeUnits (tasks). Each compute unit
-        # uses /bin/cat to concatenate two input files, file1.dat and
-        # file2.dat. The output is written to STDOUT. cu.environment is
-        # used to demonstrate how to set environment variables within a
-        # ComputeUnit - it's not strictly necessary for this example. As
-        # a shell script, the ComputeUnits would look something like this:
-        #
-        #    export INPUT1=file1.dat
-        #    export INPUT2=file2.dat
-        #    /bin/cat $INPUT1 $INPUT2
+        # Create a workload of ComputeUnits. Each compute unit
+        # runs '/bin/date'.
 
         n = 128   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
@@ -127,19 +90,14 @@ if __name__ == "__main__":
         cuds = list()
         for i in range(0, n):
 
-            # create a new CU description, and fill it
-            # (this could also be done with a dict)
+            # create a new CU description, and fill it.
+            # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
 
-            # trigger an error now and then
-            if not i % 10: cud.executable = "/bin/data"
-            else         : cud.executable = "/bin/date"
-            cud.arguments      = ["-u"]
-            cud.pre_exec       = ["sleep a"]
-            cud.post_exec      = ["sleep 1"]
-            cud.cores          = 1
-            cud.input_staging  = [ input_sd_umgr,  input_sd_agent]
-            cud.output_staging = [output_sd_umgr, output_sd_agent]
+            cud.executable  = '/bin/echo'
+            cud.arguments   = ['$RP_UNIT_ID greets $TEST']
+            cud.environment = {'TEST' : 'jabberwocky'}
+
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -156,25 +114,14 @@ if __name__ == "__main__":
     
         report.info('\n')
         for unit in units:
-            if unit.state == rp.DONE:
-                report.plain("  * %s: %s, exit: %3s, out: %s" \
-                        % (unit.uid, unit.state[:4], 
-                            unit.exit_code, unit.stdout.strip()[:35]))
-                report.ok(">>ok\n")
-            else:
-                report.plain("  * %s: %s, exit: %3s, err: %s" \
-                        % (unit.uid, unit.state[:4], 
-                           unit.exit_code, unit.stderr.strip()[-20:]))
-                report.error(">>err\n")
+            report.plain('  * %s: %s, exit: %3s, out: %s\n' \
+                    % (unit.uid, unit.state[:4], 
+                        unit.exit_code, unit.stdout.strip()[:35]))
     
-        # delete the test data files
-        os.system ('rm file1.dat')
-        os.system ('rm file2.dat')
-
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        report.error("caught Exception: %s\n" % e)
+        report.error('caught Exception: %s\n' % e)
         raise
 
     except (KeyboardInterrupt, SystemExit) as e:
@@ -182,7 +129,7 @@ if __name__ == "__main__":
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        report.warn("exit requested\n")
+        report.warn('exit requested\n')
 
     finally:
         # always clean up the session, no matter if we caught an exception or
