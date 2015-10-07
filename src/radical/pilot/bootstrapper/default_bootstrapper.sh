@@ -1414,6 +1414,22 @@ profile_event 'cleanup done'
 echo "#"
 echo "# -------------------------------------------------------------------"
 
+echo
+echo "# -------------------------------------------------------------------"
+echo "#"
+echo "# Tarring profiles ..."
+PROFILES_TARBALL="profiles.tgz"
+tar -czf $PROFILES_TARBALL *.prof
+ls -l $PROFILES_TARBALL
+echo "#"
+echo "# -------------------------------------------------------------------"
+
+echo
+echo "# -------------------------------------------------------------------"
+echo "#"
+echo "# Done, exiting!"
+echo "#"
+echo "# -------------------------------------------------------------------"
+
 # ... and exit
 exit $AGENT_EXITCODE
-
