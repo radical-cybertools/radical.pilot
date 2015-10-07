@@ -33,9 +33,6 @@ if __name__ == "__main__":
         sys.exit(1)
 
 
-    # read the config used for resource details
-    config = ru.read_json('%s/config.json' % os.path.dirname(__file__))
-
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
     session = rp.Session()
@@ -45,6 +42,11 @@ if __name__ == "__main__":
     # the whole RP stack down via a 'session.close()' call in the 'finally'
     # clause...
     try:
+
+        # read the config used for resource details
+        report.info('read configs')
+        resources = ru.read_json('%s/config.json' % os.path.dirname(__file__))
+        report.ok('\\ok\n')
 
         report.header('submit pilots')
 
@@ -63,9 +65,9 @@ if __name__ == "__main__":
                     'resource'      : resource,
                     'cores'         : 64,  # pilot size
                     'runtime'       : 10,  # pilot runtime (min)
-                    'project'       : config[resource]['project'],
-                    'queue'         : config[resource]['queue'],
-                    'access_schema' : config[resource]['schema']
+                    'project'       : resources[resource]['project'],
+                    'queue'         : resources[resource]['queue'],
+                    'access_schema' : resources[resource]['schema']
                     }
             pdescs.append(rp.ComputePilotDescription(pd_init))
         report.ok('>>ok\n')
@@ -74,7 +76,7 @@ if __name__ == "__main__":
         pilots = pmgr.submit_pilots(pdescs)
 
         # get shared unit data to the pilot
-        report.info('stage data to pilot ')
+        report.info('stage data to pilot')
         input_sd_pilot = {
                 'source': 'file:///etc/passwd',
                 'target': 'staging:///f1',
@@ -169,6 +171,7 @@ if __name__ == "__main__":
     except Exception as e:
         # Something unexpected happened in the pilot code above
         report.error("caught Exception: %s\n" % e)
+        raise
 
     except (KeyboardInterrupt, SystemExit) as e:
         # the callback called sys.exit(), and we can here catch the
@@ -182,7 +185,7 @@ if __name__ == "__main__":
         # not.  This will kill all remaining pilots, but leave the database
         # entries alone.
         report.header('finalize')
-        session.close ()
+        session.close(terminate=True, delete=False)
 
     report.header()
 
