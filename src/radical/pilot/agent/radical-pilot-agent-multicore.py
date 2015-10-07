@@ -3788,12 +3788,16 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
             # Create string for environment variable setting
-            if cu['description']['environment'] and    \
-                cu['description']['environment'].keys():
-                env_string = 'export'
+            env_string = 'export'
+            if cu['description']['environment']:
                 for key,val in cu['description']['environment'].iteritems():
                     env_string += ' %s=%s' % (key, val)
-                launch_script.write('# Environment variables\n%s\n' % env_string)
+            env_string += " RP_SESSION_ID=%s" % self._cfg['session_id']
+            env_string += " RP_PILOT_ID=%s"   % self._cfg['pilot_id']
+            env_string += " RP_AGENT_ID=%s"   % self._cfg['agent_name']
+            env_string += " RP_SPAWNER_ID=%s" % self.cname
+            env_string += " RP_UNIT_ID=%s"    % cu['_id']
+            launch_script.write('# Environment variables\n%s\n' % env_string)
 
             # unit Arguments (if any)
             task_args_string = ''
@@ -4306,11 +4310,16 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
             cwd  += "echo script after_cd `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             cwd  += "\n"
 
-        if  descr['environment'] :
-            env  += "# CU environment\n"
+        env  += "# CU environment\n"
+        if descr['environment']:
             for e in descr['environment'] :
                 env += "export %s=%s\n"  %  (e, descr['environment'][e])
-            env  += "\n"
+        env  += "export RP_SESSION_ID=%s\n" % self._cfg['session_id']
+        env  += "export RP_PILOT_ID=%s\n"   % self._cfg['pilot_id']
+        env  += "export RP_AGENT_ID=%s\n"   % self._cfg['agent_name']
+        env  += "export RP_SPAWNER_ID=%s\n" % self.cname
+        env  += "export RP_UNIT_ID=%s\n"    % cu['_id']
+        env  += "\n"
 
         if  descr['pre_exec'] :
             pre  += "# CU pre-exec\n"
