@@ -6,7 +6,7 @@ __license__   = "MIT"
 import os
 import sys
 
-os.environ['RADICAL_PILOT_VERBOSE'] = 'DEMO'
+os.environ['RADICAL_VERBOSE'] = 'DEMO'
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -27,11 +27,14 @@ if __name__ == "__main__":
     report = ru.LogReporter(name='radical.pilot')
     report.title("Getting Started")
 
-    # make sure we have all we need
-    if len(sys.argv) < 2:
-        report.error("missing arguments\n\n\t%s <resource> [...]\n\n" % sys.argv[0])
-        sys.exit(1)
-
+    # use the resource specified as argument, fall back to localhost
+    if len(sys.argv) > 2:
+        report.error("Usage:\t%s [resource]\n\n" % sys.argv[0])
+        sys.exit(0)
+    elif len(sys.argv) == 2:
+        resource = sys.argv[1]
+    else:
+        resource = 'local.localhost'
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -45,7 +48,7 @@ if __name__ == "__main__":
 
         # read the config used for resource details
         report.info('read configs')
-        resources = ru.read_json('%s/config.json' % os.path.dirname(__file__))
+        config = ru.read_json('%s/config.json' % os.path.dirname(__file__))
         report.ok('\\ok\n')
 
         report.header('submit pilots')
@@ -58,6 +61,7 @@ if __name__ == "__main__":
         pmgr = rp.PilotManager(session=session)
 
         # Define an [n]-core local pilot that runs for [x] minutes
+        # Here we use a dict to initialize the description object
         pdescs = list()
         report.info('create pilot descriptions')
         for resource in sys.argv[1:]:
@@ -65,9 +69,9 @@ if __name__ == "__main__":
                     'resource'      : resource,
                     'cores'         : 64,  # pilot size
                     'runtime'       : 10,  # pilot runtime (min)
-                    'project'       : resources[resource]['project'],
-                    'queue'         : resources[resource]['queue'],
-                    'access_schema' : resources[resource]['schema']
+                    'project'       : config[resource]['project'],
+                    'queue'         : config[resource]['queue'],
+                    'access_schema' : config[resource]['schema']
                     }
             pdescs.append(rp.ComputePilotDescription(pd_init))
         report.ok('>>ok\n')
@@ -185,7 +189,7 @@ if __name__ == "__main__":
         # not.  This will kill all remaining pilots, but leave the database
         # entries alone.
         report.header('finalize')
-        session.close(terminate=True, delete=False)
+        session.close(terminate=True, cleanup=False)
 
     report.header()
 
