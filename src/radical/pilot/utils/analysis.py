@@ -519,7 +519,7 @@ def get_info_df(df):
         for i in set(l):
             cols.add(i)
             if l.count(i)>1:
-                raise ValueError('doubled info entry %s' % i)
+                raise ValueError('doubled info entry %s (uid:%s)' % (i, uid))
 
         dicts[uid] = tmp1_d
 
