@@ -11,9 +11,7 @@ import radical.pilot as rp
 
 logging.raiseExceptions = False
 
-db_url     = "mongodb://ec2-54-221-194-147.compute-1.amazonaws.com:24242/"
-
-#py.test --junitxml result.xml test_suite_remote_generic.py::
+db_url     = "mongodb://ec2-54-221-194-147.compute-1.amazonaws.com:24242/jenkins-tests"
 
 json_data=open("../pytest_config.json")
 CONFIG = json.load(json_data)
@@ -44,8 +42,8 @@ def unit_state_cb (unit, state):
     if not unit :
         return
 
-    global cb_counter
-    cb_counter += 1
+    #global cb_counter
+    #cb_counter += 1
 
     print "[Callback]: ComputeUnit  '%s: %s' (on %s) state: %s." \
         % (unit.name, unit.uid, unit.pilot_id, state)
@@ -105,13 +103,13 @@ def setup_local_1(request):
 
     return session1, pilot1, pmgr1, umgr1, "local.localhost" 
 
+
 #-------------------------------------------------------------------------------
 #
 @pytest.fixture(scope="module")
 def setup_local_2(request):
 
-    session1 = rp.Session(database_url=db_url, 
-                         database_name='rp-testing')
+    session1 = rp.Session(database_url=db_url)
 
     print "session id local_2: {0}".format(session1.uid)
 
@@ -151,13 +149,13 @@ def setup_local_2(request):
 
     return session1, pilot1, pmgr1, umgr1, "local.localhost"
 
+
 #-------------------------------------------------------------------------------
 #
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="class")
 def setup_gordon(request):
 
-    session1 = rp.Session(database_url=db_url, 
-                         database_name='rp-testing')
+    session1 = rp.Session(database_url=db_url)
 
     print "session id gordon: {0}".format(session1.uid)
 
@@ -203,13 +201,13 @@ def setup_gordon(request):
 
     return session1, pilot1, pmgr1, umgr1, "xsede.gordon"
 
+
 #-------------------------------------------------------------------------------
 #
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="class")
 def setup_comet(request):
 
-    session2 = rp.Session(database_url=db_url, 
-                         database_name='rp-testing')
+    session2 = rp.Session(database_url=db_url)
 
     print "session id comet: {0}".format(session2.uid)
 
@@ -253,13 +251,13 @@ def setup_comet(request):
 
     return session2, pilot2, pmgr2, umgr2, "xsede.comet"
 
+
 #-------------------------------------------------------------------------------
 #
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="class")
 def setup_stampede(request):
 
-    session3 = rp.Session(database_url=db_url, 
-                          database_name='rp-testing')
+    session3 = rp.Session(database_url=db_url)
 
     print "session id stampede: {0}".format(session3.uid)
 
@@ -303,13 +301,13 @@ def setup_stampede(request):
 
     return session3, pilot3, pmgr3, umgr3, "xsede.stampede"
 
+
 #-------------------------------------------------------------------------------
 #
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="class")
 def setup_stampede_two(request):
 
-    session3 = rp.Session(database_url=db_url, 
-                          database_name='rp-testing')
+    session3 = rp.Session(database_url=db_url)
 
     print "session id stampede: {0}".format(session3.uid)
 
@@ -328,7 +326,7 @@ def setup_stampede_two(request):
         pdesc3 = rp.ComputePilotDescription()
         pdesc3.resource = "xsede.stampede"
         pdesc3.project  = CONFIG["xsede.stampede"]["project"]
-        pdesc3.runtime  = 40
+        pdesc3.runtime  = 20
         pdesc3.cores    = int(CONFIG["xsede.stampede"]["cores"])*2
         pdesc3.cleanup  = False
 
@@ -353,104 +351,161 @@ def setup_stampede_two(request):
 
     return session3, pilot3, pmgr3, umgr3, "xsede.stampede"
 
+
 #-------------------------------------------------------------------------------
 # add tests below...
 #-------------------------------------------------------------------------------
-# multi-node mpi executable
-#
-def test_pass_mpi_two(setup_stampede_two):
+# 
+class TestLocalOne(object):
 
-    session, pilot, pmgr, umgr, resource = setup_stampede_two
+    def test_pass_one(self, setup_stampede):
 
-    umgr.register_callback(unit_state_cb)
+        session, pilot, pmgr, umgr, resource = setup_stampede
 
-    compute_units = []
+        umgr.register_callback(unit_state_cb)
 
-    proc = int(CONFIG[resource]["cores"])*2
+        print "session id test: {0}".format(session.uid)
 
-    for i in range(16):
-        cudesc = rp.ComputeUnitDescription()
-        cudesc.pre_exec      = CONFIG[resource]["pre_exec"]
-        cudesc.executable    = ["python"]
-        cudesc.arguments     = ["helloworld_mpi.py"]
-        cudesc.input_staging = ["../helloworld_mpi.py"]
-        cudesc.cores         = proc
-        cudesc.mpi           = True
+        compute_units = []
+        for unit_count in range(0, 4):
+            cu = rp.ComputeUnitDescription()
+            cu.executable = "/bin/date"
+            cu.cores = 1
 
-        compute_units.append(cudesc)
+            compute_units.append(cu)
 
-    units = umgr.submit_units(compute_units)
+        units = umgr.submit_units(compute_units)
 
-    umgr.wait_units()
+        try:
+            umgr.wait_units()
 
-    for unit in units:
-        #print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
-        #      % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
+            # Wait for all compute units to finish.
+            for unit in units:
+                unit.wait()
+        except:
+            pass
 
-        assert (unit.state == rp.DONE)
-        for i in range(proc):
-            assert ('mpi rank %d/%d' % (i, proc) in unit.stdout)
+        for unit in units:
+            assert (unit.state == rp.DONE)
+
+    #---------------------------------------------------------------------------
+    #
+    def test_pass_mpi_one(self, setup_stampede):
+
+        session, pilot, pmgr, umgr, resource = setup_stampede
+
+        umgr.register_callback(unit_state_cb)
+
+        compute_units = []
+
+        for i in range(16):
+            cudesc = rp.ComputeUnitDescription()
+            cudesc.pre_exec      = CONFIG[resource]["pre_exec"]
+            cudesc.executable    = ["python"]
+            cudesc.arguments     = ["helloworld_mpi.py"]
+            cudesc.input_staging = ["../helloworld_mpi.py"]
+            cudesc.cores         = int(CONFIG[resource]["cores"])
+            cudesc.mpi           = True
+
+            compute_units.append(cudesc)
+
+        units = umgr.submit_units(compute_units)
+
+        try:
+            umgr.wait_units()
+        except:
+            pass
+
+        for unit in units:
+            #print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
+            #      % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
+
+            assert (unit.state == rp.DONE)
+            for i in range(int(CONFIG[resource]["cores"])):
+                assert ('mpi rank %d/%d' % (i, int(CONFIG[resource]["cores"])) in unit.stdout)
+
+    #---------------------------------------------------------------------------
+    # issue 572
+    #
+    def test_fail_issue_572(self, setup_stampede):
+
+        session, pilot, pmgr, umgr, resource = setup_stampede
+
+        umgr.register_callback(unit_state_cb)
+
+        cuds = []
+        for unit_count in range(0, 5):
+            cud = rp.ComputeUnitDescription()
+            cud.pre_exec = [
+                'module load gromacs',
+                'echo 2 | trjconv -f tmp.gro -s tmp.gro -o tmpha.gro',
+                'module load -intel +intel/14.0.1.106',
+                'export PYTHONPATH=/home1/03036/jp43/.local/lib/python2.7/site-packages',
+                'module load python/2.7.6',
+                'export PATH=/home1/03036/jp43/.local/bin:$PATH',
+                'echo "Using mpirun_rsh: `which mpirun_rsh`"'
+            ]
+            cud.executable = "/opt/apps/intel14/mvapich2_2_0/python/2.7.6/lib/python2.7/site-packages/mpi4py/bin/python-mpi"
+            cud.arguments = ["lsdm.py", "-f", "config.ini", "-c",
+                "tmpha.gro", "-n" "neighbors.nn", "-w", "weight.w"]
+            cud.cores = 4
+            cud.mpi = True
+            cud.input_staging  = ['../issue_572_files/config.ini',
+                                  '../issue_572_files/lsdm.py',
+                                  '../issue_572_files/tmp.gro']
+            cuds.append(cud)
+
+        units = umgr.submit_units(cuds)
+
+        try:
+            umgr.wait_units()
+
+            for cu in units:
+                cu.wait()
+        except:
+            pass
+
+        for cu in units:
+            assert (cu.state == rp.DONE)
 
 #-------------------------------------------------------------------------------
 #
-def test_pass_one(setup_stampede):
+class TestLocalTwo(object):
+    #---------------------------------------------------------------------------
+    # multi-node mpi executable
+    #
+    def test_pass_mpi_two(self, setup_stampede_two):
 
-    session, pilot, pmgr, umgr, resource = setup_stampede
+        session, pilot, pmgr, umgr, resource = setup_stampede_two
 
-    umgr.register_callback(unit_state_cb)
+        umgr.register_callback(unit_state_cb)
 
-    print "session id test: {0}".format(session.uid)
+        compute_units = []
 
-    compute_units = []
-    for unit_count in range(0, 4):
-        cu = rp.ComputeUnitDescription()
-        cu.executable = "/bin/date"
-        cu.cores = 1
+        proc = int(CONFIG[resource]["cores"])*2
 
-        compute_units.append(cu)
+        for i in range(16):
+            cudesc = rp.ComputeUnitDescription()
+            cudesc.pre_exec      = CONFIG[resource]["pre_exec"]
+            cudesc.executable    = ["python"]
+            cudesc.arguments     = ["helloworld_mpi.py"]
+            cudesc.input_staging = ["../helloworld_mpi.py"]
+            cudesc.cores         = proc
+            cudesc.mpi           = True
 
-    units = umgr.submit_units(compute_units)
-    umgr.wait_units()
+            compute_units.append(cudesc)
 
-    # Wait for all compute units to finish.
-    for unit in units:
-        unit.wait()
+        units = umgr.submit_units(compute_units)
 
-    for unit in units:
-        assert (unit.state == rp.DONE)
+        try:
+            umgr.wait_units()
+        except:
+            pass
 
-#-------------------------------------------------------------------------------
-#
-def test_pass_mpi_one(setup_stampede):
-
-    session, pilot, pmgr, umgr, resource = setup_stampede
-
-    umgr.register_callback(unit_state_cb)
-
-    compute_units = []
-
-    for i in range(16):
-        cudesc = rp.ComputeUnitDescription()
-        cudesc.pre_exec      = CONFIG[resource]["pre_exec"]
-        cudesc.executable    = ["python"]
-        cudesc.arguments     = ["helloworld_mpi.py"]
-        cudesc.input_staging = ["../helloworld_mpi.py"]
-        cudesc.cores         = int(CONFIG[resource]["cores"])
-        cudesc.mpi           = True
-
-        compute_units.append(cudesc)
-
-    units = umgr.submit_units(compute_units)
-
-    umgr.wait_units()
-
-    for unit in units:
-        #print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
-        #      % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
-
-        assert (unit.state == rp.DONE)
-        for i in range(int(CONFIG[resource]["cores"])):
-            assert ('mpi rank %d/%d' % (i, int(CONFIG[resource]["cores"])) in unit.stdout)
+        for unit in units:
+            assert (unit.state == rp.DONE)
+            for i in range(proc):
+                assert ('mpi rank %d/%d' % (i, proc) in unit.stdout)
 
 #-------------------------------------------------------------------------------
 # issue 172
@@ -539,8 +594,7 @@ def test_fail_issue_172(setup_stampede):
 #
 def test_fail_issue_359():
 
-    session = rp.Session(database_url=db_url, 
-                         database_name='rp-testing')
+    session = rp.Session(database_url=db_url)
 
     try:
         c = rp.Context('ssh')
@@ -555,7 +609,7 @@ def test_fail_issue_359():
         umgr_list = []
         for cores in core_configs:
 
-            umgr = rp.UnitManager(session=session, scheduler=rp.SCHED_DIRECT)
+            umgr = rp.UnitManager(session=session, scheduler=rp.SCHED_DIRECT_SUBMISSION)
 
             umgr.register_callback(unit_state_cb)
 
@@ -647,8 +701,7 @@ def test_pass_issue_57():
 
     for i in [16, 32, 64]:
 
-        session = rp.Session(database_url=db_url, 
-                             database_name='rp-testing')
+        session = rp.Session(database_url=db_url)
 
         try:
 
@@ -680,11 +733,14 @@ def test_pass_issue_57():
         
             units = umgr.submit_units(unit_descrs)
         
-            umgr.wait_units()
+            try:
+                umgr.wait_units()
 
-            for unit in units:
-                unit.wait()
-        
+                for unit in units:
+                    unit.wait()
+            except:
+                pass
+
             pmgr.cancel_pilots()       
             pmgr.wait_pilots()
 
@@ -694,45 +750,4 @@ def test_pass_issue_57():
 
         finally:
             session.close()
-
-#-------------------------------------------------------------------------------
-# issue 572
-#
-def test_pass_issue_572(setup_stampede):
-
-    session, pilot, pmgr, umgr, resource = setup_stampede
-
-    umgr.register_callback(unit_state_cb)
-
-    cuds = []
-    for unit_count in range(0, 5):
-        cud = rp.ComputeUnitDescription()
-        cud.pre_exec = [
-            'module load gromacs',
-            'echo 2 | trjconv -f tmp.gro -s tmp.gro -o tmpha.gro',
-            'module load -intel +intel/14.0.1.106',
-            'export PYTHONPATH=/home1/03036/jp43/.local/lib/python2.7/site-packages',
-            'module load python/2.7.6',
-            'export PATH=/home1/03036/jp43/.local/bin:$PATH',
-            'echo "Using mpirun_rsh: `which mpirun_rsh`"'
-        ]
-        cud.executable = "/opt/apps/intel14/mvapich2_2_0/python/2.7.6/lib/python2.7/site-packages/mpi4py/bin/python-mpi"
-        cud.arguments = ["lsdm.py", "-f", "config.ini", "-c",
-            "tmpha.gro", "-n" "neighbors.nn", "-w", "weight.w"]
-        cud.cores = 4
-        cud.mpi = True
-        cud.input_staging  = ['../issue_572_files/config.ini',
-                              '../issue_572_files/lsdm.py',
-                              '../issue_572_files/tmp.gro']
-        cuds.append(cud)
-
-    units = umgr.submit_units(cuds)
-
-    umgr.wait_units()
-
-    for cu in units:
-        cu.wait()
-
-    for cu in units:
-        assert (cu.state == rp.DONE)
 
