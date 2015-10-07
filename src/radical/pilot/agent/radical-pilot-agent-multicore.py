@@ -1439,6 +1439,11 @@ class LaunchMethodSSH(LaunchMethod):
 
         LaunchMethod.__init__(self, cfg, logger)
 
+        # Instruct the ExecWorkers to unset this environment variable.
+        # Otherwise this will break nested SSH with SHELL spawner, i.e. when
+        # both the sub-agent and CUs are started using SSH.
+        self.env_removables.extend(["RP_SPAWNER_HOP"])
+
 
     # --------------------------------------------------------------------------
     #
