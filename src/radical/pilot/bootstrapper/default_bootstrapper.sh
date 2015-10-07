@@ -80,7 +80,7 @@ int main ()
     return (0);
 }
 EOT
-    cc -o gtod gtod.c 1>/dev/null 2>/dev/null
+    cc -o gtod gtod.c
 
     if ! test -e "./gtod"
     then
