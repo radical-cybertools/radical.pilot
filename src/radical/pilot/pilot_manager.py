@@ -171,7 +171,8 @@ class PilotManager(object):
             for pilot in self.get_pilots () :
                 logger.debug("pmgr    %s cancels  pilot  %s" % (str(self.uid), pilot.uid))
             self.cancel_pilots()
-            self.wait_pilots()
+            states = self.wait_pilots()
+          # logger.report.plain("pilot states: %s\n" % states)
             # we leave it to the worker shutdown below to ensure that pilots are
             # final before joining
 
@@ -380,7 +381,7 @@ class PilotManager(object):
         """
         self._is_valid()
 
-        
+
         return_list_type = True
         if (not isinstance(pilot_ids, list)) and (pilot_ids is not None):
             return_list_type = False
@@ -447,46 +448,57 @@ class PilotManager(object):
 
         logger.demo('info', '<<wait for %d pilot(s) ' % len(pilots))
 
-        # we don't want to iterate over all pilots again and again, as that would
-        # duplicate checks on pilots which were found in matching states.  So we
-        # create a dict, record states there, and filter which ones we check.
-        check = dict()
-        for pilot in pilots:
-            check[pilot['_id']] = [True, pilot]
-
         # filter for all pilots we still need to check
-        to_check = [check[x][1] for x in check if check[x][0]]
-        while to_check:
+        logger.report.idle(mode='start')
+        pilots  = self._worker.get_compute_pilot_data(pilot_ids=pilot_ids)
+        checked = list()
+        while True:
 
-            for pilot in to_check:
+            logger.report.idle()
+
+            for pilot in pilots:
+
+                pid = pilot['_id']
+
+                if pid in checked:
+                    # already handled
+                    continue
+
                 if pilot['state'] in state:
                     # stop watching this pilot
-                    check[pilot['_id']][0] = False
-                    if pilot['state'] in [FAILED]:
-                        logger.demo('error', '.')
-                    elif pilot['state'] in [CANCELED]:
-                        logger.demo('warn', '.')
-                    else:
-                        logger.demo('ok', '.')
+                    checked.append(pid)
 
-            # check if pilots remain to be waited for.
-            to_check = [check[x][1] for x in check if check[x][0]]
+                    if pilot['state'] in [FAILED]:
+                        logger.report.idle(color='error', c='- ')
+                    elif pilot['state'] in [CANCELED]:
+                        logger.report.idle(color='warn', c='* ')
+                    else:
+                        logger.report.idle(color='ok', c='+ ')
 
             # check timeout
             if (None != timeout) and (timeout <= (time.time() - start)):
-                if to_check:
+                if len(checked) < len(pilots):
                     logger.debug("wait timed out: %s" % states)
-                break
+                    break
 
-            # sleep a little if this cycle was idle
-            if to_check:
+            # if we need to wait longer, sleep a little and get new state info
+            if len(checked) < len(pilots):
                 time.sleep(0.5)
+                pilots = self._worker.get_compute_pilot_data(pilot_ids=pilot_ids)
+                continue
 
-        if not to_check: logger.demo('ok',   '>>ok\n')
-        else           : logger.demo('warn', '>>timeout\n')
+            # otherwise we are done
+            break
+
+        logger.report.idle(mode='stop')
+
+        if len(checked) == len(pilots):
+            logger.demo('ok',   '>>ok\n')
+        else:
+            logger.demo('warn', '>>timeout\n')
 
         # grab the current states to return
-        states = [check[x][1]['state'] for x in check]
+        states = [p['state'] for p in pilots]
 
         # done waiting
         if  return_list_type :

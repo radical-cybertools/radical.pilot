@@ -647,18 +647,21 @@ class UnitManager(object):
         # filter for all units we still need to check
         to_check = [x for x in check if check[x]]
 
+        logger.report.idle(mode='start')
         while to_check and not self._session._terminate.is_set():
+
+            logger.report.idle()
 
             for unit in to_check:
                 if unit.state in state:
                     # stop watching this unit
                     check[unit] = False
                     if unit.state in [FAILED]:
-                        logger.demo('error', '.')
+                        logger.report.idle(color='error', c='- ')
                     elif unit.state in [CANCELED]:
-                        logger.demo('warn', '.')
+                        logger.report.idle(color='warn', c='* ')
                     else:
-                        logger.demo('ok', '.')
+                        logger.report.idle(color='ok', c='+ ')
 
             # check if units remain to be waited for.
             to_check = [x for x in check if check[x]]
@@ -672,6 +675,8 @@ class UnitManager(object):
             # if units remain to be watched and we have still time
             if to_check:
                 time.sleep (0.5)
+
+        logger.report.idle(mode='stop')
 
         if not to_check: logger.demo('ok',   '>>ok\n')
         else           : logger.demo('warn', '>>timeout\n')

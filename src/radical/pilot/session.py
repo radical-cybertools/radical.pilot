@@ -309,7 +309,7 @@ class Session (saga.Session):
             "uid"           : self._uid,
             "created"       : self._dbs.created,
             "connected"     : self._dbs.connected,
-            "database_url"  : self._dbs.dburl
+            "database_url"  : str(self._dbs.dburl)
         }
         return object_dict
 

@@ -24,7 +24,7 @@ import radical.utils as ru
 if __name__ == "__main__":
 
     # we use a reporter class for nicer output
-    report = ru.LogReporter(name='radical.pilot', level='DEMO')
+    report = ru.LogReporter(name='radical.pilot')
     report.title("Getting Started")
 
     # make sure we have all we need
@@ -32,6 +32,9 @@ if __name__ == "__main__":
         report.error("missing arguments\n\n\t%s <resource> [...]\n\n" % sys.argv[0])
         sys.exit(1)
 
+
+    # read the config used for resource details
+    config = ru.read_json('%s/config.json' % os.path.dirname(__file__))
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -42,8 +45,6 @@ if __name__ == "__main__":
     # the whole RP stack down via a 'session.close()' call in the 'finally'
     # clause...
     try:
-        config = ru.read_json('%s/config.json' % os.path.dirname(__file__))
-
 
         report.header('submit pilots')
 
@@ -114,7 +115,7 @@ if __name__ == "__main__":
         #    export INPUT2=file2.dat
         #    /bin/cat $INPUT1 $INPUT2
 
-        n = 12   # number of units to run
+        n = 128   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
