@@ -95,7 +95,7 @@ class UnitManager(object):
         **Raises:**
             * :class:`radical.pilot.PilotException`
         """
-        logger.demo('info', '<<create unit manager')
+        logger.report.info('<<create unit manager')
 
         self._session = session
         self._worker  = None 
@@ -131,7 +131,7 @@ class UnitManager(object):
 
         self._valid = True
 
-        logger.demo('ok', '>>ok\n')
+        logger.report.ok('>>ok\n')
 
 
     #--------------------------------------------------------------------------
@@ -143,7 +143,7 @@ class UnitManager(object):
         if not self._valid:
             raise RuntimeError("instance is already closed")
 
-        logger.demo('info', '<<close unit manager')
+        logger.report.info('<<close unit manager')
 
         if self._worker:
             self._worker.stop()
@@ -153,7 +153,7 @@ class UnitManager(object):
 
         self._valid = False
 
-        logger.demo('ok', '>>ok\n')
+        logger.report.ok('>>ok\n')
 
 
     # -------------------------------------------------------------------------
@@ -230,15 +230,13 @@ class UnitManager(object):
         if len(pilots) == 0:
             raise ValueError('cannot add no pilots')
 
-        logger.demo('info', '<<add %d pilot(s)' % len(pilots))
+        logger.report.info('<<add %d pilot(s)' % len(pilots))
 
         pilot_ids = self.list_pilots()
 
         for pilot in pilots :
-            if  pilot.uid in pilot_ids :
-                logger.warning ('adding the same pilot twice (%s)' % pilot.uid)
-                logger.demo('\n')
-
+            if pilot.uid in pilot_ids :
+                logger.warning('adding the same pilot twice (%s)' % pilot.uid)
         self._worker.add_pilots(pilots)
 
         # let the scheduler know...
@@ -249,7 +247,7 @@ class UnitManager(object):
         for pilot in pilots :
             self._pilots.append (pilot)
 
-        logger.demo('ok', '>>ok\n')
+        logger.report.ok('>>ok\n')
 
     # -------------------------------------------------------------------------
     #
@@ -390,7 +388,7 @@ class UnitManager(object):
             raise ValueError('cannot submit no unit descriptions')
 
 
-        logger.demo('info', '<<submit %d unit(s)\n\t' % len(unit_descriptions))
+        logger.report.info('<<submit %d unit(s)\n\t' % len(unit_descriptions))
 
         # we return a list of compute units
         ret = list()
@@ -417,8 +415,7 @@ class UnitManager(object):
                 import radical.utils as ru
                 ru.write_json(ud.as_dict(), "%s/%s.batch.%03d.json" \
                         % (self._session._rec, u.uid, self._rec_id))
-            logger.demo('progress')
-
+            logger.report.progress()
         if self._session._rec:
             self._rec_id += 1
 
@@ -434,7 +431,7 @@ class UnitManager(object):
 
         self.handle_schedule (schedule)
 
-        logger.demo('ok', '>>ok\n')
+        logger.report.ok('>>ok\n')
 
         if  return_list_type :
             return units
@@ -635,7 +632,7 @@ class UnitManager(object):
         start  = time.time()
         states = list()
 
-        logger.demo('info', '<<wait for %d unit(s)\n\t' % len(units))
+        logger.report.info('<<wait for %d unit(s)\n\t' % len(units))
 
         # we don't want to iterate over all units again and again, as that would
         # duplicate checks on units which were found in matching states.  So we
@@ -678,8 +675,8 @@ class UnitManager(object):
 
         logger.report.idle(mode='stop')
 
-        if not to_check: logger.demo('ok',   '>>ok\n')
-        else           : logger.demo('warn', '>>timeout\n')
+        if not to_check: logger.report.ok(  '>>ok\n')
+        else           : logger.report.warn('>>timeout\n')
 
         # grab the current states to return
         states = [x.state for x in check]

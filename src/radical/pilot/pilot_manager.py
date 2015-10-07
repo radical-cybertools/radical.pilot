@@ -98,7 +98,7 @@ class PilotManager(object):
         **Raises:**
             * :class:`radical.pilot.PilotException`
         """
-        logger.demo('info', '<<create pilot manager')
+        logger.report.info('<<create pilot manager')
 
         self._session = session
         self._worker = None
@@ -125,7 +125,7 @@ class PilotManager(object):
 
         self._valid = True
 
-        logger.demo('ok', '>>ok\n')
+        logger.report.ok('>>ok\n')
 
 
     #---------------------------------------------------------------------------
@@ -149,7 +149,7 @@ class PilotManager(object):
         """
 
         logger.debug("pmgr    %s closing" % (str(self.uid)))
-        logger.demo('info', '<<close pilot manager')
+        logger.report.info('<<close pilot manager')
 
         # Spit out a warning in case the object was already closed.
         if not self.uid:
@@ -191,7 +191,7 @@ class PilotManager(object):
 
         self._valid = False
 
-        logger.demo('ok', '>>ok\n')
+        logger.report.ok('>>ok\n')
 
 
     # -------------------------------------------------------------------------
@@ -241,7 +241,7 @@ class PilotManager(object):
         if len(pilot_descriptions) == 0:
             raise ValueError('cannot submit no pilot descriptions')
 
-        logger.demo('info', '<<submit %d pilot(s) ' % len(pilot_descriptions))
+        logger.report.info('<<submit %d pilot(s) ' % len(pilot_descriptions))
 
         # Itereate over the pilot descriptions, try to create a pilot for
         # each one and append it to 'pilot_obj_list'.
@@ -329,9 +329,8 @@ class PilotManager(object):
                 import radical.utils as ru
                 ru.write_json(pd.as_dict(), "%s/%s.json" 
                         % (self._session._rec, pilot_uid))
-            logger.demo('progress')
-
-        logger.demo('ok', '>>ok\n')
+            logger.report.progress()
+        logger.report.ok('>>ok\n')
 
         # Implicit return value conversion
         if  return_list_type :
@@ -446,7 +445,7 @@ class PilotManager(object):
         start  = time.time()
         states = list()
 
-        logger.demo('info', '<<wait for %d pilot(s) ' % len(pilots))
+        logger.report.info('<<wait for %d pilot(s) ' % len(pilots))
 
         # filter for all pilots we still need to check
         logger.report.idle(mode='start')
@@ -493,9 +492,9 @@ class PilotManager(object):
         logger.report.idle(mode='stop')
 
         if len(checked) == len(pilots):
-            logger.demo('ok',   '>>ok\n')
+            logger.report.ok(  '>>ok\n')
         else:
-            logger.demo('warn', '>>timeout\n')
+            logger.report.warn('>>timeout\n')
 
         # grab the current states to return
         states = [p['state'] for p in pilots]

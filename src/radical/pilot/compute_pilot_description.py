@@ -126,7 +126,7 @@ class ComputePilotDescription(attributes.Attributes):
     def __init__(self, init_dict=None):
         """Le constructeur.
         """ 
-        logger.demo('info', '<<create pilot description')
+        logger.report.info('<<create pilot description')
 
         # initialize attributes
         attributes.Attributes.__init__(self)
@@ -165,11 +165,11 @@ class ComputePilotDescription(attributes.Attributes):
             self.from_dict(init_dict)
 
             if RESOURCE in init_dict and CORES in init_dict:
-                logger.demo('plain', ' [%s:%s]' % (init_dict[RESOURCE], init_dict[CORES]))
+                logger.report.plain(' [%s:%s]' % (init_dict[RESOURCE], init_dict[CORES]))
             elif RESOURCE in init_dict:
-                logger.demo('plain', ' [%s]' % init_dict[RESOURCE])
+                logger.report.plain(' [%s]' % init_dict[RESOURCE])
 
-        logger.demo('ok', '>>ok\n')
+        logger.report.ok('>>ok\n')
 
 
     # -------------------------------------------------------------------------
