@@ -5999,6 +5999,7 @@ def bootstrap_3():
         _, mongo_db, _, _, _  = ru.mongodb_connect(cfg['mongodb_url'])
         mongo_p = mongo_db["%s.p" % cfg['session_id']]
 
+
     # set up signal and exit handlers
     def exit_handler():
         prof.flush()
