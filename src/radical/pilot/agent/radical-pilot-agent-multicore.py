@@ -5683,7 +5683,8 @@ class AgentWorker(rpu.Worker):
             self._log.info ("create sub-agent %s: %s" % (sa, cmdline))
             sa_out = open("%s.out" % sa, "w")
             sa_err = open("%s.err" % sa, "w")
-            sa_proc = subprocess.Popen(args=cmdline, stdout=sa_out, stderr=sa_err)
+            sa_proc = subprocess.Popen(args=cmdline.strip().split(),
+                                       stdout=sa_out, stderr=sa_err)
 
             # make sure we can stop the sa_proc
             sa_proc.stop = sa_proc.terminate
