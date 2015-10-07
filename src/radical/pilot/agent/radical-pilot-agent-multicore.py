@@ -1439,6 +1439,11 @@ class LaunchMethodSSH(LaunchMethod):
 
         LaunchMethod.__init__(self, cfg, logger)
 
+        # Instruct the ExecWorkers to unset this environment variable.
+        # Otherwise this will break nested SSH with SHELL spawner, i.e. when
+        # both the sub-agent and CUs are started using SSH.
+        self.env_removables.extend(["RP_SPAWNER_HOP"])
+
 
     # --------------------------------------------------------------------------
     #
@@ -3813,15 +3818,13 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                     else:
                         task_args_string += '"%s" ' % arg  # Otherwise return between double quotes.
 
-            launch_script_hop = "/usr/bin/env RP_SPAWNER_HOP=TRUE %s" % launch_script_name
-
             # The actual command line, constructed per launch-method
             try:
                 launch_command, hop_cmd = \
                     launcher.construct_command(cu['description']['executable'],
                                                task_args_string,
                                                cu['description']['cores'],
-                                               launch_script_hop,
+                                               launch_script_name,
                                                cu['opaque_slots'])
                 if hop_cmd : cmdline = hop_cmd
                 else       : cmdline = launch_script_name
@@ -5699,7 +5702,7 @@ class AgentWorker(rpu.Worker):
             self._log.info ("create sub-agent %s: %s" % (sa, cmdline))
             sa_out = open("%s.out" % sa, "w")
             sa_err = open("%s.err" % sa, "w")
-            sa_proc = subprocess.Popen(args=cmdline, stdout=sa_out, stderr=sa_err)
+            sa_proc = subprocess.Popen(args=cmdline.split(), stdout=sa_out, stderr=sa_err)
 
             # make sure we can stop the sa_proc
             sa_proc.stop = sa_proc.terminate

@@ -80,7 +80,7 @@ int main ()
     return (0);
 }
 EOT
-    cc -o gtod gtod.c 1>/dev/null 2>/dev/null
+    cc -o gtod gtod.c
 
     if ! test -e "./gtod"
     then
@@ -1414,6 +1414,22 @@ profile_event 'cleanup done'
 echo "#"
 echo "# -------------------------------------------------------------------"
 
+echo
+echo "# -------------------------------------------------------------------"
+echo "#"
+echo "# Tarring profiles ..."
+PROFILES_TARBALL="profiles.tgz"
+tar -czf $PROFILES_TARBALL *.prof
+ls -l $PROFILES_TARBALL
+echo "#"
+echo "# -------------------------------------------------------------------"
+
+echo
+echo "# -------------------------------------------------------------------"
+echo "#"
+echo "# Done, exiting!"
+echo "#"
+echo "# -------------------------------------------------------------------"
+
 # ... and exit
 exit $AGENT_EXITCODE
-
