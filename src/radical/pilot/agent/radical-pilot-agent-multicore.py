@@ -6000,35 +6000,39 @@ def bootstrap_3():
         mongo_p = mongo_db["%s.p" % cfg['session_id']]
 
 
-        # set up signal and exit handlers
-        def exit_handler():
-          # rpu.flush_prof()
-            print 'atexit'
+    # set up signal and exit handlers
+    def exit_handler():
+        prof.flush()
+        print 'atexit'
+        sys.exit(1)
 
-        def sigint_handler(signum, frame):
+    def sigint_handler(signum, frame):
+        if agent_name == 'agent_0':
             pilot_FAILED(msg='Caught SIGINT. EXITING (%s)' % frame)
-            print 'sigint'
-            sys.exit(2)
+        print 'sigint'
+        sys.exit(2)
 
-        def sigterm_handler(signum, frame):
+    def sigterm_handler(signum, frame):
+        if agent_name == 'agent_0':
             pilot_FAILED(msg='Caught SIGTERM. EXITING (%s)' % frame)
-            print 'sigterm'
-            sys.exit(2)
+        print 'sigterm'
+        sys.exit(3)
 
-        def sigalrm_handler(signum, frame):
+    def sigalarm_handler(signum, frame):
+        if agent_name == 'agent_0':
             pilot_FAILED(msg='Caught SIGALRM (Walltime limit?). EXITING (%s)' % frame)
-            print 'sigalrm'
-            sys.exit(3)
+        print 'sigalrm'
+        sys.exit(4)
 
-        import atexit
-        atexit.register(exit_handler)
-        signal.signal(signal.SIGINT,  sigint_handler)
-        signal.signal(signal.SIGTERM, sigterm_handler)
-        signal.signal(signal.SIGALRM, sigalrm_handler)
+    import atexit
+    atexit.register(exit_handler)
+    signal.signal(signal.SIGINT,  sigint_handler)
+    signal.signal(signal.SIGTERM, sigterm_handler)
+    signal.signal(signal.SIGALRM, sigalarm_handler)
 
     # if anything went wrong up to this point, we would have been unable to
     # report errors into mongodb.  From here on, any fatal error should result
-    # in one of the above handlers or exit handlers being activated, thuse
+    # in one of the above handlers or exit handlers being activated, thus
     # reporting the error dutifully.
 
     bridges = dict()  # avoid undefined dict on finalization
