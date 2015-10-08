@@ -5,7 +5,7 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
-0.36 Release                                                          2015-09-25
+0.36 Release                                                          2015-10-08
 --------------------------------------------------------------------------------
 
   (the release notes also cover some changes from 0.34 to 0.35)
