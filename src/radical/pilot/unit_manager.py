@@ -72,7 +72,7 @@ class UnitManager(object):
     # -------------------------------------------------------------------------
     #
     def __init__(self, session, scheduler=None, input_transfer_workers=2,
-                 output_transfer_workers=2):
+                 output_transfer_workers=2, report_state=True):
         """Creates a new UnitManager and attaches it to the session.
 
         **Args:**
@@ -101,6 +101,7 @@ class UnitManager(object):
         self._worker  = None 
         self._pilots  = list()
         self._rec_id  = 0
+        self._report_state = report_state
 
         self._uid = ru.generate_id ('umgr') 
 
@@ -131,8 +132,9 @@ class UnitManager(object):
 
         # we always register our default unit state callback and our default
         # wait queue size callback
-        self.register_callback(self._default_unit_state_cb,      UNIT_STATE)
-        self.register_callback(self._default_wait_queue_size_cb, WAIT_QUEUE_SIZE)
+        if self._report_state:
+            self.register_callback(self._default_unit_state_cb,      UNIT_STATE)
+            self.register_callback(self._default_wait_queue_size_cb, WAIT_QUEUE_SIZE)
 
         self._valid = True
 

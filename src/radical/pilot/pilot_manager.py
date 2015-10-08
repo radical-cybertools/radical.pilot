@@ -55,7 +55,7 @@ class PilotManager(object):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self, session, pilot_launcher_workers=1):
+    def __init__(self, session, pilot_launcher_workers=1, report_state=True):
         """Creates a new PilotManager and attaches is to the session.
 
         .. note:: The `resource_configurations` (see :ref:`chapter_machconf`)
@@ -103,6 +103,7 @@ class PilotManager(object):
 
         self._session = session
         self._worker = None
+        self._report_state = report_state
 
         self.uid = ru.generate_id ('pmgr')
 
@@ -345,7 +346,8 @@ class PilotManager(object):
             pilot_obj_list.append(pilot)
 
             # we always add the default state logging callback
-            pilot.register_callback(self._default_pilot_state_cb)
+            if self._report_state:
+                pilot.register_callback(self._default_pilot_state_cb)
 
             # if the pilot description asks for it, we add the default error
             # handling callback
