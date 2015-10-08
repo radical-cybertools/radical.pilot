@@ -31,7 +31,9 @@ Contents:
    :maxdepth: 2
 
    intro.rst
+   overview.rst
    installation.rst
+   getting_started.rst
    machconf.rst
    datastaging.rst
    examples/index.rst
