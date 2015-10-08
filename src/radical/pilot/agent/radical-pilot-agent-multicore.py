@@ -1281,8 +1281,8 @@ class SchedulerYarn(AgentSchedulingComponent):
     def _release_slot(self, opaque_slot):
         #-----------------------------------------------------------------------
         # One application has finished, increase the number of available slots.
-        with self._slot_lock:
-            self.avail_app['apps']+=1
+        #with self._slot_lock:
+        self.avail_app['apps']+=1
         return True
 
 
@@ -1309,7 +1309,7 @@ class SchedulerYarn(AgentSchedulingComponent):
         with self._slot_lock :        
 
             self._log.info(self.slot_status())
-            self._log.debug('Mpla: {0} - {1}'.format(self._service_url,self._rm_url))
+            self._log.debug('YARN Service and RM URLs: {0} - {1}'.format(self._service_url,self._rm_url))
                     
             cu['opaque_slots']={'lm_info':{'service_url':self._service_url,
                                             'rm_url':self._rm_url,
@@ -1318,6 +1318,7 @@ class SchedulerYarn(AgentSchedulingComponent):
 
             alloc = self._allocate_slot(cu['description']['cores'])
             self.avail_app['apps']-=1
+            time.sleep(1)
 
         if self.avail_app['apps']==-1 or not alloc:
             return False
