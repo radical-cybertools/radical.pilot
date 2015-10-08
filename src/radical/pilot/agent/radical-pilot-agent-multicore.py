@@ -2364,7 +2364,11 @@ class LRMS(object):
         black_list = ['lo', 'sit0']
 
         # Known intefaces in preferred order
-        sorted_preferred = ['ipogif0', 'eth0']
+        sorted_preferred = [
+            'ipogif0', # Cray's
+            'br0', # SuperMIC
+            'eth0'
+        ]
         
         # Get a list of all network interfaces
         all = netifaces.interfaces()
