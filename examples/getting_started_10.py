@@ -6,7 +6,7 @@ __license__   = 'MIT'
 import os
 import sys
 
-os.environ['RADICAL_VERBOSE'] = 'DEMO'
+os.environ['RADICAL_PILOT_VERBOSE'] = 'DEMO'
 
 import radical.pilot as rp
 import radical.utils as ru

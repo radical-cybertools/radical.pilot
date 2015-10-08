@@ -6,7 +6,8 @@ __license__   = 'MIT'
 import os
 import sys
 
-os.environ['RADICAL_VERBOSE'] = 'DEMO'
+os.environ['RADICAL_PILOT_VERBOSE'] = 'DEMO'
+os.environ['RADICAL_PILOT_PROFILE'] = 'TRUE'
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -18,6 +19,52 @@ import radical.utils as ru
 #
 # ------------------------------------------------------------------------------
 
+def myplot():
+
+    import radical.pilot.utils as rpu
+    import pprint
+
+    sid = "rp.session.cameo.merzky.016716.0004"
+
+    report = ru.LogReporter(name='radical.pilot')
+    report.header('profile analysis')
+    report.info('fetch profiles, create data frames, plot\n')
+
+    profiles   = rpu.fetch_profiles(sid=sid, skip_existing=True);    report.progress() 
+    profile    = rpu.combine_profiles(profiles); report.progress() 
+    frame      = rpu.prof2frame(profile);        report.progress() 
+    sf, pf, uf = rpu.split_frame(frame);         report.progress()
+    uf         = rpu.add_states(uf);             report.progress()
+    uf         = rpu.add_info(uf);               report.progress()
+    idf        = rpu.get_info_df(uf);            report.progress()
+    sdf        = rpu.get_state_df(idf);          report.progress()
+
+    cols = sorted(list(idf.columns.values))
+    pprint.pprint(cols)
+
+  # for col in cols:
+  #     print col
+  #     print sdf[col][0:3]
+
+    exe_filter = {'in'  : [{'state' : 'Executing'}],
+                  'out' : [{'state' : 'AgentStagingOutputPending'}]}
+    rpu.add_concurrency(sdf, tgt='cc_exe', spec=exe_filter)
+    fin_sdf = sdf[np.isfinite(sdf['cc_exe'])]
+
+    ax_ops = create_figure('Number of concurrently executing CUs over time')
+    fin_sdf.plot(x='time', y='cc_exe', ax=ax_ops)
+
+    plot       = rpu.create_plot();              report.progress()
+  # rpu.frame_plot ([[sdf, 'frame']], 
+  #                 [['time', 'Time (s)'], 
+  #                  ['Executing', 'Executing']], 
+  #                 title='title', logx=False, logy=False, 
+  #                 legend=True, figdir=None)
+
+    report.ok('>>ok\n')
+
+    report.header()
+
 
 #------------------------------------------------------------------------------
 #
@@ -26,6 +73,9 @@ if __name__ == '__main__':
     # we use a reporter class for nicer output
     report = ru.LogReporter(name='radical.pilot')
     report.title('Getting Started')
+
+    myplot()
+    sys.exit()
 
     # use the resource specified as argument, fall back to localhost
     if len(sys.argv) > 2:
@@ -53,73 +103,36 @@ if __name__ == '__main__':
 
         report.header('submit pilots')
 
-        # prepare some input files for the compute units
-        os.system ('hostname > file1.dat')
-        os.system ('date     > file2.dat')
-
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = rp.PilotManager(session=session)
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pdescs = list()
-        report.info('create pilot descriptions')
-        for resource in sys.argv[1:]:
-            pd_init = {
-                    'resource'      : resource,
-                    'cores'         : 64,  # pilot size
-                    'runtime'       : 10,  # pilot runtime (min)
-                    'project'       : config[resource]['project'],
-                    'queue'         : config[resource]['queue'],
-                    'access_schema' : config[resource]['schema']
-                    }
-            pdescs.append(rp.ComputePilotDescription(pd_init))
+        report.info('create pilot description')
+        pd_init = {
+                'resource'      : resource,
+                'cores'         : 64,  # pilot size
+                'runtime'       : 10,  # pilot runtime (min)
+                'project'       : config[resource]['project'],
+                'queue'         : config[resource]['queue'],
+                'access_schema' : config[resource]['schema']
+                }
+        pdesc = rp.ComputePilotDescription(pd_init)
         report.ok('>>ok\n')
 
         # Launch the pilot.
-        pilots = pmgr.submit_pilots(pdescs)
-
-        # get shared unit data to the pilot
-        report.info('stage data to pilot')
-        input_sd_pilot = {
-                'source': 'file:///etc/passwd',
-                'target': 'staging:///f1',
-                'action': rp.TRANSFER
-                }
-        for pilot in pilots:
-            pilot.stage_in (input_sd_pilot)
-            report.progress()
-        report.ok('>>ok\n')
+        pilot = pmgr.submit_pilots(pdesc)
 
 
         report.header('submit units')
 
-        # use different schedulers, depending on number of pilots
-        report.info('select scheduler')
-        if len(pilots) == 1: SCHED = rp.SCHED_DIRECT
-        else               : SCHED = rp.SCHED_ROUND_ROBIN
-        report.ok('>>%s\n' % SCHED)
-    
-        # Combine the ComputePilot, the ComputeUnits and a scheduler via
-        # a UnitManager object.
-        umgr = rp.UnitManager(session=session, scheduler=SCHED)
-        umgr.add_pilots(pilots)
+        # Register the ComputePilot in a UnitManager object.
+        umgr = rp.UnitManager(session=session)
+        umgr.add_pilots(pilot)
 
-        input_sd_umgr   = {'source':'/etc/group',        'target': 'f2',                'action': rp.TRANSFER}
-        input_sd_agent  = {'source':'staging:///f1',     'target': 'f1',                'action': rp.COPY}
-        output_sd_agent = {'source':'f1',                'target': 'staging:///f1.bak', 'action': rp.COPY}
-        output_sd_umgr  = {'source':'f2',                'target': 'f2.bak',            'action': rp.TRANSFER}
-
-        # Create a workload of ComputeUnits (tasks). Each compute unit
-        # uses /bin/cat to concatenate two input files, file1.dat and
-        # file2.dat. The output is written to STDOUT. cu.environment is
-        # used to demonstrate how to set environment variables within a
-        # ComputeUnit - it's not strictly necessary for this example. As
-        # a shell script, the ComputeUnits would look something like this:
-        #
-        #    export INPUT1=file1.dat
-        #    export INPUT2=file2.dat
-        #    /bin/cat $INPUT1 $INPUT2
+        # Create a workload of ComputeUnits. Each compute unit
+        # runs '/bin/date'.
 
         n = 128   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
@@ -127,19 +140,10 @@ if __name__ == '__main__':
         cuds = list()
         for i in range(0, n):
 
-            # create a new CU description, and fill it
-            # (this could also be done with a dict)
+            # create a new CU description, and fill it.
+            # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-
-            # trigger an error now and then
-            if not i % 10: cud.executable = '/bin/data'
-            else         : cud.executable = '/bin/date'
-            cud.arguments      = ['-u']
-            cud.pre_exec       = ['sleep a']
-            cud.post_exec      = ['sleep 1']
-            cud.cores          = 1
-            cud.input_staging  = [ input_sd_umgr,  input_sd_agent]
-            cud.output_staging = [output_sd_umgr, output_sd_agent]
+            cud.executable = '/bin/date'
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -156,20 +160,9 @@ if __name__ == '__main__':
     
         report.info('\n')
         for unit in units:
-            if unit.state == rp.DONE:
-                report.plain('  * %s: %s, exit: %3s, out: %s' \
-                        % (unit.uid, unit.state[:4], 
-                            unit.exit_code, unit.stdout.strip()[:35]))
-                report.ok('>>ok\n')
-            else:
-                report.plain('  * %s: %s, exit: %3s, err: %s' \
-                        % (unit.uid, unit.state[:4], 
-                           unit.exit_code, unit.stderr.strip()[-35:]))
-                report.error('>>err\n')
-    
-        # delete the test data files
-        os.system ('rm file1.dat')
-        os.system ('rm file2.dat')
+            report.plain('  * %s: %s, exit: %3s, out: %s\n' \
+                    % (unit.uid, unit.state[:4], 
+                        unit.exit_code, unit.stdout.strip()[:35]))
 
 
     except Exception as e:
@@ -191,7 +184,6 @@ if __name__ == '__main__':
         report.header('finalize')
         session.close(terminate=True, cleanup=False)
 
-    report.header()
 
 
 #-------------------------------------------------------------------------------
