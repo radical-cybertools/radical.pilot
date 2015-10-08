@@ -2,6 +2,7 @@ import os
 import sys
 import glob
 import saga
+import tarfile
 
 import radical.utils as ru
 from   radical.pilot.states import *
@@ -58,7 +59,7 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
     ftgt = saga.Url('%s/%s' % (tgt_url, os.path.basename(client_profile)))
     ret.append("%s" % ftgt.path)
 
-    if skip_existing and os.path.exists(ftgt.path) \
+    if skip_existing and os.path.isfile(ftgt.path) \
             and os.stat(ftgt.path).st_size > 0:
 
         logger.report.info("\t- %s\n" % client_profile.split('/')[-1])
@@ -96,6 +97,49 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
           # print "Overriding remote sandbox: %s" % sandbox_url
 
         sandbox  = saga.filesystem.Directory (sandbox_url, session=session)
+
+        # Try to fetch a tarball of profiles, so that we can get them all in one (SAGA) go!
+        PROFILES_TARBALL = 'profiles.tgz'
+        tarball_available = False
+        try:
+            if sandbox.is_file(PROFILES_TARBALL):
+                print "Profiles tarball exists!"
+
+                ftgt = saga.Url('%s/%s' % (tgt_url, PROFILES_TARBALL))
+
+                if skip_existing and os.path.isfile(ftgt.path) \
+                        and os.stat(ftgt.path).st_size > 0:
+
+                    print "Skipping fetching of '%s/%s' to '%s'." % (sandbox_url, PROFILES_TARBALL, tgt_url)
+                    tarball_available = True
+                else:
+
+                    print "Fetching '%s%s' to '%s'." % (sandbox_url, PROFILES_TARBALL, tgt_url)
+                    prof_file = saga.filesystem.File("%s%s" % (sandbox_url, PROFILES_TARBALL), session=session)
+                    prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
+                    prof_file.close()
+
+                    tarball_available = True
+            else:
+                print "Profiles tarball doesnt exists!"
+
+        except saga.DoesNotExist:
+            print "exception(TODO): profiles tarball doesnt exists!"
+
+        # We now have a local tarball
+        if tarball_available:
+            print "Extracting tarball %s into '%s'." % (ftgt.path, tgt_url.path)
+            tarball = tarfile.open(ftgt.path)
+            tarball.extractall(tgt_url.path)
+
+            profiles = glob.glob("%s/*.prof" % tgt_url.path)
+            print "Tarball %s extracted to '%s'." % (ftgt.path, profiles)
+            ret.extend(profiles)
+
+            # If extract succeeded, no need to fetch individual profiles
+            continue
+
+        # If we dont have a tarball (for whichever reason), fetch individual profiles
         profiles = sandbox.list('*.prof')
 
         for prof in profiles:
@@ -103,7 +147,7 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
             ftgt = saga.Url('%s/%s' % (tgt_url, prof))
             ret.append("%s" % ftgt.path)
 
-            if skip_existing and os.path.exists(ftgt.path) \
+            if skip_existing and os.path.isfile(ftgt.path) \
                              and os.stat(ftgt.path).st_size > 0:
 
                 logger.report.info("\t- %s\n" % str(prof).split('/')[-1])
@@ -379,32 +423,43 @@ def get_session_frames (sids, dburl=None, cachedir=None) :
 
 # ------------------------------------------------------------------------------
 #
-def fetch_json (sid, dburl=None, tgt=None) :
+def fetch_json(sid, dburl=None, tgt=None, skip_existing=False):
 
     '''
     returns file name
     '''
 
-    if not dburl:
-        dburl = os.environ['RADICAL_PILOT_DBURL']
-
-    if not dburl:
-        raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
-
     if not tgt:
         tgt = '.'
 
-    _, db, _, _, _ = ru.mongodb_connect (dburl)
-
-    json_docs = get_session_docs(db, sid)
-
     if tgt.startswith('/'):
-        dst = '/%s/%s.json' % (tgt, sid)
+        # Assume an absolute path
+        dst = os.path.join(tgt, '%s.json' % sid)
     else:
-        dst = '/%s/%s/%s.json' % (os.getcwd(), tgt, sid)
+        # Assume a relative path
+        dst = os.path.join(os.getcwd(), tgt, '%s.json' % sid)
 
-    ru.write_json (json_docs, dst)
-    print "session written to %s" % dst
+    if skip_existing and os.path.isfile(dst) \
+            and os.stat(dst).st_size > 0:
+
+        print "session already in %s" % dst
+
+    else:
+
+        if not dburl:
+            dburl = os.environ['RADICAL_PILOT_DBURL']
+
+        if not dburl:
+            raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
+
+        mongo, db, _, _, _ = ru.mongodb_connect(dburl)
+
+        json_docs = get_session_docs(db, sid)
+        ru.write_json(json_docs, dst)
+
+        print "session written to %s" % dst
+
+        mongo.close()
 
     return dst
 
