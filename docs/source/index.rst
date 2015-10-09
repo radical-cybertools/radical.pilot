@@ -31,16 +31,17 @@ Contents:
    :maxdepth: 2
 
    intro.rst
+   overview.rst
    installation.rst
-   machconf.rst
-   datastaging.rst
-   examples/index.rst
+   user_guide.rst
    tutorial/index.rst
+   apidoc.rst
+   datastaging.rst
+   machconf.rst
    schedulers.rst
    testing.rst
    benchmarks.rst
    faq.rst
    developer.rst
-   apidoc.rst
    release_notes.rst
 
