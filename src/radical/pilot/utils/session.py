@@ -96,7 +96,7 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, session
         sandbox  = saga.filesystem.Directory (sandbox_url, session=session)
 
         # Try to fetch a tarball of profiles, so that we can get them all in one (SAGA) go!
-        PROFILES_TARBALL = 'profiles.tgz'
+        PROFILES_TARBALL = '%s.prof.tgz' % pilot['_id']
         tarball_available = False
         try:
             if sandbox.is_file(PROFILES_TARBALL):
@@ -125,12 +125,17 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, session
 
         # We now have a local tarball
         if tarball_available:
+            try:
+                os.mkdir("%s/%s" % (tgt_url.path, pilot['_id']))
+            except OSError:
+                pass
+
             print "Extracting tarball %s into '%s'." % (ftgt.path, tgt_url.path)
             tarball = tarfile.open(ftgt.path)
-            tarball.extractall(tgt_url.path)
+            tarball.extractall("%s/%s" % (tgt_url.path, pilot['_id']))
 
             profiles = glob.glob("%s/*.prof" % tgt_url.path)
-            print "Tarball %s extracted to '%s'." % (ftgt.path, profiles)
+            print "Tarball %s extracted to '%s/%s/'." % (ftgt.path, tgt_url.path, pilot['_id'])
             ret.extend(profiles)
 
             # If extract succeeded, no need to fetch individual profiles
