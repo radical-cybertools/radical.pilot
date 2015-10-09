@@ -2093,7 +2093,7 @@ class LaunchMethodORTE(LaunchMethod):
         dvm_watcher.start()
 
         lm_info = {'dvm_uri'     : dvm_uri,
-                   'dvm_process' : dvm_process,
+                   'dvm_pid'     : dvm_process.pid,
                    'version_info': {name: orte_info}}
 
         # we need to inform the actual LM instance about the DVM URI.  So we
@@ -2113,10 +2113,10 @@ class LaunchMethodORTE(LaunchMethod):
         shutdown sequence, for the sake of freeing allocated resources.
         """
 
-        if 'dvm_process' in lm_info:
+        if 'dvm_pid' in lm_info:
             try:
                 logger.info('terminating dvm')
-                lm_info['dvm_process'].terminate()
+                os.kill(lm_info['dvm_pid'], signal.SIGTERM)
             except Exception as e:
                 logger.exception('dmv termination failed')
 
@@ -2415,7 +2415,7 @@ class LRMS(object):
             if lm:
                 try:
                     LaunchMethod.lrms_shutdown_hook(lm, self._cfg, self,
-                                                    self.lm_info, self._log))
+                                                    self.lm_info, self._log)
                 except Exception as e:
                     self._log.exception("lrms shutdown hook failed")
                     raise
