@@ -1287,6 +1287,44 @@ class LaunchMethod(object):
         return impl.lrms_config_hook(name, cfg, lrms, logger)
 
 
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
+        """
+        This hook is symmetric to the config hook above, and is called during
+        shutdown sequence, for the sake of freeing allocated resources.
+        """
+
+        # Make sure that we are the base-class!
+        if cls != LaunchMethod:
+            raise TypeError("LaunchMethod shutdown hook only available to base class!")
+
+        impl = {
+          # LAUNCH_METHOD_APRUN         : LaunchMethodAPRUN,
+          # LAUNCH_METHOD_CCMRUN        : LaunchMethodCCMRUN,
+          # LAUNCH_METHOD_DPLACE        : LaunchMethodDPLACE,
+          # LAUNCH_METHOD_FORK          : LaunchMethodFORK,
+          # LAUNCH_METHOD_IBRUN         : LaunchMethodIBRUN,
+          # LAUNCH_METHOD_MPIEXEC       : LaunchMethodMPIEXEC,
+          # LAUNCH_METHOD_MPIRUN_CCMRUN : LaunchMethodMPIRUNCCMRUN,
+          # LAUNCH_METHOD_MPIRUN_DPLACE : LaunchMethodMPIRUNDPLACE,
+          # LAUNCH_METHOD_MPIRUN        : LaunchMethodMPIRUN,
+          # LAUNCH_METHOD_MPIRUN_RSH    : LaunchMethodMPIRUNRSH,
+            LAUNCH_METHOD_ORTE          : LaunchMethodORTE,
+          # LAUNCH_METHOD_POE           : LaunchMethodPOE,
+          # LAUNCH_METHOD_RUNJOB        : LaunchMethodRUNJOB,
+          # LAUNCH_METHOD_SSH           : LaunchMethodSSH
+        }.get(name)
+
+        if not impl:
+            logger.info('no LRMS shutdown hook defined for LaunchMethod %s' % name)
+            return None
+
+        logger.info('call LRMS shutdown hook for LaunchMethod %s: %s' % (name, impl))
+        return impl.lrms_shutdown_hook(name, cfg, lrms, lm_info, logger)
+
+
 
 
     # --------------------------------------------------------------------------
@@ -2054,7 +2092,9 @@ class LaunchMethodORTE(LaunchMethod):
         dvm_watcher.daemon = True
         dvm_watcher.start()
 
-        lm_info = {'dvm_uri': dvm_uri, 'version_info': {name: orte_info}}
+        lm_info = {'dvm_uri'     : dvm_uri,
+                   'dvm_process' : dvm_process,
+                   'version_info': {name: orte_info}}
 
         # we need to inform the actual LM instance about the DVM URI.  So we
         # pass it back to the LRMS which will keep it in an 'lm_info', which
@@ -2063,6 +2103,22 @@ class LaunchMethodORTE(LaunchMethod):
 
     # TODO: Create teardown() function for LaunchMethod's (in this case to terminate the dvm)
     #subprocess.Popen([self.launch_command, "--hnp", orte_vm_uri_filename, "--terminate"])
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
+        """
+        This hook is symmetric to the config hook above, and is called during
+        shutdown sequence, for the sake of freeing allocated resources.
+        """
+
+        if 'dvm_process' in lm_info:
+            try:
+                logger.info('terminating dvm')
+                lm_info['dvm_process'].terminate()
+            except Exception as e:
+                logger.exception('dmv termination failed')
 
 
     # --------------------------------------------------------------------------
@@ -2346,9 +2402,31 @@ class LRMS(object):
 
     # --------------------------------------------------------------------------
     #
+    def stop(self):
+
+        # During LRMS termination, we call any existing shutdown hooks on the
+        # launch methods.  We only call LM shutdown hooks *once*
+        launch_methods = set() # set keeps entries unique
+        launch_methods.add(self._cfg['mpi_launch_method'])
+        launch_methods.add(self._cfg['task_launch_method'])
+        launch_methods.add(self._cfg['agent_launch_method'])
+
+        for lm in launch_methods:
+            if lm:
+                try:
+                    LaunchMethod.lrms_shutdown_hook(lm, self._cfg, self,
+                                                    self.lm_info, self._log))
+                except Exception as e:
+                    self._log.exception("lrms shutdown hook failed")
+                    raise
+
+                self._log.info("lrms shutdown hook succeeded (%s)" % lm)
+
+
+    # --------------------------------------------------------------------------
+    #
     def _configure(self):
         raise NotImplementedError("_Configure not implemented for LRMS type: %s." % self.name)
-
 
 
     # --------------------------------------------------------------------------
@@ -6040,6 +6118,7 @@ def bootstrap_3():
     # reporting the error dutifully.
 
     bridges = dict()  # avoid undefined dict on finalization
+    lrms    = None
     try:
         # ----------------------------------------------------------------------
         # des Pudels Kern: merge LRMS info into cfg and get the agent started
@@ -6130,6 +6209,10 @@ def bootstrap_3():
                 b['handle'].stop()
             except Exception as e:
                 log.exception('ignore failing bridge terminate (%s)', e)
+
+        # make sure the lrms release whatever it acquired
+        if lrms:
+            lrms.stop()
 
         log.info('stop')
         prof.prof('stop', msg='finally clause agent', uid=pilot_id)
