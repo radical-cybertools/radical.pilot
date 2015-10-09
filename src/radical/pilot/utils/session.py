@@ -123,13 +123,13 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, session
         except saga.DoesNotExist:
             print "exception(TODO): profiles tarball doesnt exists!"
 
+        try:
+            os.mkdir("%s/%s" % (tgt_url.path, pilot['_id']))
+        except OSError:
+            pass
+
         # We now have a local tarball
         if tarball_available:
-            try:
-                os.mkdir("%s/%s" % (tgt_url.path, pilot['_id']))
-            except OSError:
-                pass
-
             print "Extracting tarball %s into '%s'." % (ftgt.path, tgt_url.path)
             tarball = tarfile.open(ftgt.path)
             tarball.extractall("%s/%s" % (tgt_url.path, pilot['_id']))
@@ -146,7 +146,7 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, session
 
         for prof in profiles:
 
-            ftgt = saga.Url('%s/%s' % (tgt_url, prof))
+            ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['_id'], prof))
             ret.append("%s" % ftgt.path)
 
             if skip_existing and os.path.isfile(ftgt.path) \
