@@ -134,7 +134,7 @@ class Session (saga.Session):
                 self._uid  = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
                 self._name = self._uid
 
-            logger.report.info('create session %s' % self._uid)
+            logger.report.info('<<create session %s' % self._uid)
 
 
             self._dbs = dbSession(sid   = self._uid,

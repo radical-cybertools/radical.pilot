@@ -33,7 +33,7 @@ Contents:
    intro.rst
    overview.rst
    installation.rst
-   user_guide.rst
+   user_guide/index.rst
    tutorial/index.rst
    apidoc.rst
    datastaging.rst
@@ -43,5 +43,4 @@ Contents:
    benchmarks.rst
    faq.rst
    developer.rst
-   release_notes.rst
 

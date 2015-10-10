@@ -1,27 +1,23 @@
-.. _chapter_example_gettinstarted:
+
+.. _chapter_example_getting_started:
 
 ***************
-Getting Started 
+Getting Started
 ***************
 
-**This is where you should start if you are new to RADICAL-Pilot. It is highly
-recommended that you carefully read and understand all of this before you go
-off and start developing your own applications.**
+In this chapter we will walk the reader through the most basic RP application
+example.  After you have worked through this chapter, you will understand how to
+launch a local ComputePilot and use a UnitManager to schedule and run
+ComputeUnits (tasks) on it.
 
-In this chapter we explain the main components of RADICAL-Pilot and the
-foundations of their function and their interplay. For your convenience, you can find a fully working example at the end of this page.
-
-After you have worked through this chapter, you will understand how to launch
-a local ComputePilot and use a UnitManager to schedule and run ComputeUnits
-(tasks) on it. Throughout this chapter you will also find links to more
-advanced topics like launching ComputePilots on remote HPC clusters and 
-scheduling. 
+.. note:: The reader is assumed to be familiar with the general RP concepts as
+          described in :ref:`chapter_overview` for reference.
 
 .. note:: This chapter assumes that you have successfully installed RADICAL-Pilot on
           (see chapter :ref:`chapter_installation`).
 
 
-Loading the Module
+Loading the Module, Follow the application execution
 ------------------
 
 In order to use RADICAL-Pilot in your Python application, you need to import the
@@ -38,66 +34,40 @@ You can check / print the version of your RADICAL-Pilot installation via the
 
     print radical.pilot.version
 
+All example application scripts used in this user guide use the `Reporter`
+facility of RADICAL-Utils to print runtime and progress information.  You can
+control that output with the `RADICAL_PILOT_VERBOSE` variable, which can be set
+to the normal Python logging levels, and to the value `REPORT` to obtain well
+formatted output.  We assume the `REPORT` setting to be used when referencing
+any output.
+
+
 Creating a Session
 ------------------
 
-A :class:`radical.pilot.Session` is the root object for all other objects in RADICAL-
-Pilot. You can think of it as a *tree* or a *directory structure* with a
-Session as root. Each Session can have  zero or more
-:class:`radical.pilot.Context`, :class:`radical.pilot.PilotManager` and
-:class:`radical.pilot.UnitManager` attached to it.
+A :class:`radical.pilot.Session` is the root object for all other objects in
+RADICAL- Pilot.  :class:`radical.pilot.PilotManager` and
+:class:`radical.pilot.UnitManager` instances are always attached to a session,
+and their lifetime is controlled by their session.
 
-.. code-block:: text
-
-     (~~~~~~~~~)
-     (         ) <---- [Session]
-     ( MongoDB )       |
-     (         )       |---- Context
-     (_________)       |---- ....
-                       |
-                       |---- [PilotManager]
-                       |     |
-                       |     |---- ComputePilot
-                       |     |---- ComputePilot
-                       |  
-                       |---- [UnitManager]
-                       |     |
-                       |     |---- ComputeUnit
-                       |     |---- ComputeUnit
-                       |     |....
-                       |
-                       |---- [UnitManager]
-                       |     |
-                       |     |....
-                       |
-                       |....
-
-
-A Session also encapsulates the connection(s) to a back end `MongoDB
-<http://www.mongodb.org/>`_ server which is the *brain* and *central nervous
-system* of RADICAL-Pilot. More information about how RADICAL-Pilot uses MongoDB can
-be found in the :ref:`chapter_intro` section.
+A Session also encapsulates the connection(s) to a backend `MongoDB
+<http://www.mongodb.org/>`_ server which facilitates the communication between
+the RP application and the remote pilot jobs.  More information about how
+RADICAL-Pilot uses MongoDB can be found in the :ref:`chapter_intro` section.
 
 To create a new Session, the only thing you need to provide is the URL of a
 MongoDB server:
 
 .. code-block:: python
 
-    session = radical.pilot.Session(database_url="mongodb://my-mongodb-server.edu:27017")
+    session = radical.pilot.Session(database_url="mongodb://db.host.net:27017/<db_name>")
 
-Each Session has a unique identifier (`uid`) and methods to traverse its
-members. The  Session `uid` can be used to disconnect and reconnect to a
-Session as required. This  is covered in :ref:`chapter_example_disconnect_reconnect`.
-
-.. code-block:: python
-
-    print "UID           : %s" % session.uid
-    print "Contexts      : %s" % session.list_contexts()
-    print "UnitManagers  : %s" % session.list_unit_managers()
-    print "PilotManagers : %s" % session.list_pilot_managers()
+If no mongodb URL is specified on session creation, RP attempts to use the value
+specified via the `RADICAL_PILOT_DBURL` environment variable.
 
 .. warning:: Always call  :func:`radical.pilot.Session.close` before your application 
-   terminates. This will ensure that RADICAL-Pilot shuts down properly.
+   terminates. This will terminate all lingering pilots and clean out the
+   database entries of the session.
 
 
 Creating a ComputePilot

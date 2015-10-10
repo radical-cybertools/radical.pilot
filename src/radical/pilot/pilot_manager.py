@@ -468,11 +468,11 @@ class PilotManager(object):
                     checked.append(pid)
 
                     if pilot['state'] in [FAILED]:
-                        logger.report.idle(color='error', c='- ')
+                        logger.report.idle(color='error', c='-')
                     elif pilot['state'] in [CANCELED]:
-                        logger.report.idle(color='warn', c='* ')
+                        logger.report.idle(color='warn', c='*')
                     else:
-                        logger.report.idle(color='ok', c='+ ')
+                        logger.report.idle(color='ok', c='+')
 
             # check timeout
             if (None != timeout) and (timeout <= (time.time() - start)):

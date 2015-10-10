@@ -24,12 +24,12 @@ The EPSRC Archer Cray XC30 system (https://www.archer.ac.uk/)
 
 * **Available schemas**   : ``ssh``
 
-ARCHER_ORTE
-***********
+ARCHER_APRUN
+************
 
 The EPSRC Archer Cray XC30 system (https://www.archer.ac.uk/)
 
-* **Resource label**      : ``epsrc.archer_orte``
+* **Resource label**      : ``epsrc.archer_aprun``
 * **Raw config**          : :download:`resource_epsrc.json <../../src/radical/pilot/configs/resource_epsrc.json>`
 * **Note**            : Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
 * **Default values** for ComputePilotDescription attributes:
@@ -103,7 +103,7 @@ The NERSC Edison Cray XC30 (https://www.nersc.gov/users/computational-systems/ed
 
 * **Resource label**      : ``nersc.edison``
 * **Raw config**          : :download:`resource_nersc.json <../../src/radical/pilot/configs/resource_nersc.json>`
-* **Note**            : Only one CU per node in APRUN mode
+* **Note**            : 
 * **Default values** for ComputePilotDescription attributes:
 
  * ``queue         : regular``
@@ -119,6 +119,22 @@ The NERSC Hopper Cray XE6 (https://www.nersc.gov/users/computational-systems/hop
 
 * **Resource label**      : ``nersc.hopper``
 * **Raw config**          : :download:`resource_nersc.json <../../src/radical/pilot/configs/resource_nersc.json>`
+* **Note**            : 
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         : regular``
+ * ``sandbox       : $SCRATCH``
+ * ``access_schema : ssh``
+
+* **Available schemas**   : ``ssh, go``
+
+HOPPER_APRUN
+************
+
+The NERSC Hopper Cray XE6 (https://www.nersc.gov/users/computational-systems/hopper/)
+
+* **Resource label**      : ``nersc.hopper_aprun``
+* **Raw config**          : :download:`resource_nersc.json <../../src/radical/pilot/configs/resource_nersc.json>`
 * **Note**            : Only one CU per node in APRUN mode
 * **Default values** for ComputePilotDescription attributes:
 
@@ -127,38 +143,6 @@ The NERSC Hopper Cray XE6 (https://www.nersc.gov/users/computational-systems/hop
  * ``access_schema : ssh``
 
 * **Available schemas**   : ``ssh``
-
-HOPPER_ORTE
-***********
-
-The NERSC Hopper Cray XE6 (https://www.nersc.gov/users/computational-systems/hopper/)
-
-* **Resource label**      : ``nersc.hopper_orte``
-* **Raw config**          : :download:`resource_nersc.json <../../src/radical/pilot/configs/resource_nersc.json>`
-* **Note**            : 
-* **Default values** for ComputePilotDescription attributes:
-
- * ``queue         : regular``
- * ``sandbox       : $SCRATCH``
- * ``access_schema : ssh``
-
-* **Available schemas**   : ``ssh, go``
-
-EDISON_ORTE
-***********
-
-The NERSC Edison Cray XC30 (https://www.nersc.gov/users/computational-systems/edison/)
-
-* **Resource label**      : ``nersc.edison_orte``
-* **Raw config**          : :download:`resource_nersc.json <../../src/radical/pilot/configs/resource_nersc.json>`
-* **Note**            : 
-* **Default values** for ComputePilotDescription attributes:
-
- * ``queue         : regular``
- * ``sandbox       : $SCRATCH``
- * ``access_schema : ssh``
-
-* **Available schemas**   : ``ssh, go``
 
 HOPPER_CCM
 **********
@@ -175,6 +159,22 @@ The NERSC Hopper Cray XE6 in Cluster Compatibility Mode (https://www.nersc.gov/u
  * ``access_schema : ssh``
 
 * **Available schemas**   : ``ssh``
+
+EDISON_APRUN
+************
+
+The NERSC Edison Cray XC30 (https://www.nersc.gov/users/computational-systems/edison/)
+
+* **Resource label**      : ``nersc.edison_aprun``
+* **Raw config**          : :download:`resource_nersc.json <../../src/radical/pilot/configs/resource_nersc.json>`
+* **Note**            : Only one CU per node in APRUN mode
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         : regular``
+ * ``sandbox       : $SCRATCH``
+ * ``access_schema : ssh``
+
+* **Available schemas**   : ``ssh, go``
 
 RESOURCE_FUTUREGRID
 ===================
@@ -328,12 +328,12 @@ The NCSA Blue Waters Cray XE6/XK7 system (https://bluewaters.ncsa.illinois.edu/)
 
 * **Available schemas**   : ``gsissh``
 
-BW_ORTE
-*******
+BW_APRUN
+********
 
 The NCSA Blue Waters Cray XE6/XK7 system (https://bluewaters.ncsa.illinois.edu/)
 
-* **Resource label**      : ``ncsa.bw_orte``
+* **Resource label**      : ``ncsa.bw_aprun``
 * **Raw config**          : :download:`resource_ncsa.json <../../src/radical/pilot/configs/resource_ncsa.json>`
 * **Note**            : Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.
 * **Default values** for ComputePilotDescription attributes:

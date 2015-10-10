@@ -88,6 +88,7 @@ if __name__ == '__main__':
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
+    report.info('<<using rp %s\n' % rp.version)
     session = rp.Session()
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we

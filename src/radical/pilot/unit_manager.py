@@ -654,11 +654,11 @@ class UnitManager(object):
                     # stop watching this unit
                     check[unit] = False
                     if unit.state in [FAILED]:
-                        logger.report.idle(color='error', c='- ')
+                        logger.report.idle(color='error', c='-')
                     elif unit.state in [CANCELED]:
-                        logger.report.idle(color='warn', c='* ')
+                        logger.report.idle(color='warn', c='*')
                     else:
-                        logger.report.idle(color='ok', c='+ ')
+                        logger.report.idle(color='ok', c='+')
 
             # check if units remain to be waited for.
             to_check = [x for x in check if check[x]]
