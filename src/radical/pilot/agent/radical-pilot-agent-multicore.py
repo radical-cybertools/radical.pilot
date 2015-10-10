@@ -1263,20 +1263,8 @@ class LaunchMethod(object):
             raise TypeError("LaunchMethod config hook only available to base class!")
 
         impl = {
-          # LAUNCH_METHOD_APRUN         : LaunchMethodAPRUN,
-          # LAUNCH_METHOD_CCMRUN        : LaunchMethodCCMRUN,
-          # LAUNCH_METHOD_DPLACE        : LaunchMethodDPLACE,
             LAUNCH_METHOD_FORK          : LaunchMethodFORK,
-          # LAUNCH_METHOD_IBRUN         : LaunchMethodIBRUN,
-          # LAUNCH_METHOD_MPIEXEC       : LaunchMethodMPIEXEC,
-          # LAUNCH_METHOD_MPIRUN_CCMRUN : LaunchMethodMPIRUNCCMRUN,
-          # LAUNCH_METHOD_MPIRUN_DPLACE : LaunchMethodMPIRUNDPLACE,
-          # LAUNCH_METHOD_MPIRUN        : LaunchMethodMPIRUN,
-          # LAUNCH_METHOD_MPIRUN_RSH    : LaunchMethodMPIRUNRSH,
-            LAUNCH_METHOD_ORTE          : LaunchMethodORTE,
-          # LAUNCH_METHOD_POE           : LaunchMethodPOE,
-          # LAUNCH_METHOD_RUNJOB        : LaunchMethodRUNJOB,
-          # LAUNCH_METHOD_SSH           : LaunchMethodSSH
+            LAUNCH_METHOD_ORTE          : LaunchMethodORTE
         }.get(name)
 
         if not impl:
@@ -1301,20 +1289,7 @@ class LaunchMethod(object):
             raise TypeError("LaunchMethod shutdown hook only available to base class!")
 
         impl = {
-          # LAUNCH_METHOD_APRUN         : LaunchMethodAPRUN,
-          # LAUNCH_METHOD_CCMRUN        : LaunchMethodCCMRUN,
-          # LAUNCH_METHOD_DPLACE        : LaunchMethodDPLACE,
-          # LAUNCH_METHOD_FORK          : LaunchMethodFORK,
-          # LAUNCH_METHOD_IBRUN         : LaunchMethodIBRUN,
-          # LAUNCH_METHOD_MPIEXEC       : LaunchMethodMPIEXEC,
-          # LAUNCH_METHOD_MPIRUN_CCMRUN : LaunchMethodMPIRUNCCMRUN,
-          # LAUNCH_METHOD_MPIRUN_DPLACE : LaunchMethodMPIRUNDPLACE,
-          # LAUNCH_METHOD_MPIRUN        : LaunchMethodMPIRUN,
-          # LAUNCH_METHOD_MPIRUN_RSH    : LaunchMethodMPIRUNRSH,
-            LAUNCH_METHOD_ORTE          : LaunchMethodORTE,
-          # LAUNCH_METHOD_POE           : LaunchMethodPOE,
-          # LAUNCH_METHOD_RUNJOB        : LaunchMethodRUNJOB,
-          # LAUNCH_METHOD_SSH           : LaunchMethodSSH
+            LAUNCH_METHOD_ORTE          : LaunchMethodORTE
         }.get(name)
 
         if not impl:
@@ -1325,12 +1300,11 @@ class LaunchMethod(object):
         return impl.lrms_shutdown_hook(name, cfg, lrms, lm_info, logger)
 
 
-
-
     # --------------------------------------------------------------------------
     #
     def _configure(self):
         raise NotImplementedError("_configure() not implemented for LaunchMethod: %s." % self.name)
+
 
     # --------------------------------------------------------------------------
     #
