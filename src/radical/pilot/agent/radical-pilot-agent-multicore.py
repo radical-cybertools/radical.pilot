@@ -1223,10 +1223,15 @@ class SchedulerYarn(AgentSchedulingComponent):
             cluster_metrics = ul.urlopen('http://{0}:8088/ws/v1/cluster/metrics'.format(self._rm_ip))
 
             metrics = json.loads(cluster_metrics.read())
-            self._num_of_cores = metrics['clusterMetrics']['totalVirtualCores']
-            self._mem_size = metrics['clusterMetrics']['totalMB']
+            self._mnum_of_cores = metrics['clusterMetrics']['totalVirtualCores']
+            self._mmem_size = metrics['clusterMetrics']['totalMB']
+            self._num_of_cores = metrics['clusterMetrics']['allocatedVirtualCores']
+            self._mem_size = metrics['clusterMetrics']['allocatedMB']
 
             self.avail_app = {'apps':max_num_app - num_app,'timestamp':sample_time}
+            self.avail_cores = self._mnum_of_cores - self._num_of_cores
+            self.avail_mem = self._mmem_size - self._mem_size
+
 
             return True
         except:
@@ -1255,12 +1260,12 @@ class SchedulerYarn(AgentSchedulingComponent):
             self.avail_app['apps'] = max_num_app - num_app 
             self.avail_app['timestamp']=sample
 
-        return 'Can accept up to {0} applications per user'.format(self.avail_app['apps'])
+        return 'Can accept up to {0} applications per user. Free cores {1} Free Mem {2}'.format(self.avail_app['apps'],self.avail_cores,self.avail_mem)
 
 
     # --------------------------------------------------------------------------
     #
-    def _allocate_slot(self, cores_requested):
+    def _allocate_slot(self, cores_requested,mem_requested):
         """
         In this implementation it checks if the number of cores and memory size
         that exist in the YARN cluster are enough for an application to fit in it.
@@ -1270,7 +1275,12 @@ class SchedulerYarn(AgentSchedulingComponent):
         # If the application requests resources that exist in the cluster, not
         # necessarily free, then it returns true else it returns false
         #TODO: Add provision for memory request
-        if cores_requested <= self._num_of_cores:
+        if (cores_requested+1) <= self.avail_cores and \
+              mem_requested<=self.avail_mem and \
+              self.avail_app['apps'] != 0:
+            self.avail_cores -=cores_requested
+            self.avail_mem -=mem_requested
+            self.avail_app['apps']-=1
             return True
         else:
             return False
@@ -1282,6 +1292,8 @@ class SchedulerYarn(AgentSchedulingComponent):
         #-----------------------------------------------------------------------
         # One application has finished, increase the number of available slots.
         #with self._slot_lock:
+        self.avail_cores +=opaque_slot['task_slots'][0]
+        self.avail_mem +=opaque_slot['task_slots'][1]
         self.avail_app['apps']+=1
         return True
 
@@ -1299,10 +1311,10 @@ class SchedulerYarn(AgentSchedulingComponent):
         # Check about racing conditions in the case that you allowed an
         # application to start executing and before the statistics in yarn have
         # refreshed, to send another one that does not fit.
-        # Test 1: Stress the YARN scheduler queue and see how an application
-        # behaves.
-        # Test 2: Run test to find out how YARN behaves in the case that there
-        # is no more room
+
+        # TODO: Allocation should be based on the minimum memor allocation per
+        # container. Each YARN application needs two containers, one for the 
+        # Application Master and one for the Container that will run.
         
         # needs to be locked as we try to acquire slots, but slots are freed
         # in a different thread.  But we keep the lock duration short...
@@ -1313,14 +1325,14 @@ class SchedulerYarn(AgentSchedulingComponent):
                     
             cu['opaque_slots']={'lm_info':{'service_url':self._service_url,
                                             'rm_url':self._rm_url,
-                                            'nodename':self._client_node}
+                                            'nodename':self._client_node},
+                                'task_slots':[cu['description']['cores'],4096]
                                             }
 
-            alloc = self._allocate_slot(cu['description']['cores'])
-            self.avail_app['apps']-=1
+            alloc = self._allocate_slot(cu['description']['cores'],4096)
             time.sleep(1)
 
-        if self.avail_app['apps']==-1 or not alloc:
+        if not alloc:
             return False
 
         # got an allocation, go off and launch the process
