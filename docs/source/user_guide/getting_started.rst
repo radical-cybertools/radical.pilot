@@ -13,33 +13,39 @@ ComputeUnits (tasks) on it.
 .. note:: The reader is assumed to be familiar with the general RP concepts as
           described in :ref:`chapter_overview` for reference.
 
-.. note:: This chapter assumes that you have successfully installed RADICAL-Pilot on
-          (see chapter :ref:`chapter_installation`).
+.. note:: This chapter assumes that you have successfully installed
+          RADICAL-Pilot, and also configured access to the resources you intent
+          to use for the examples (see chapter :ref:`chapter_installation`).
 
 
 Loading the Module, Follow the application execution
 ------------------
 
 In order to use RADICAL-Pilot in your Python application, you need to import the
-``radical.pilot`` module.
+``radical.pilot`` module (we use the `rp` abbreviation for the module name).
 
 .. code-block:: python
 
-    import radical.pilot
+    import radical.pilot as rp
 
-You can check / print the version of your RADICAL-Pilot installation via the
-``version`` property.
 
-.. code-block:: python
-
-    print radical.pilot.version
-
-All example application scripts used in this user guide use the `Reporter`
+All example application scripts used in this user guide use the `LogReporter`
 facility of RADICAL-Utils to print runtime and progress information.  You can
 control that output with the `RADICAL_PILOT_VERBOSE` variable, which can be set
 to the normal Python logging levels, and to the value `REPORT` to obtain well
 formatted output.  We assume the `REPORT` setting to be used when referencing
-any output.
+any output in this chapter.
+
+.. code-block:: python
+
+    os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
+
+    import radical.pilot as rp
+    import radical.utils as ru
+
+    report = ru.LogReporter(name='radical.pilot')
+    report.title('Getting Started (RP version %s)' % rp.version)
+
 
 
 Creating a Session
@@ -48,113 +54,94 @@ Creating a Session
 A :class:`radical.pilot.Session` is the root object for all other objects in
 RADICAL- Pilot.  :class:`radical.pilot.PilotManager` and
 :class:`radical.pilot.UnitManager` instances are always attached to a session,
-and their lifetime is controlled by their session.
+and their lifetime is controlled by the session.
 
 A Session also encapsulates the connection(s) to a backend `MongoDB
 <http://www.mongodb.org/>`_ server which facilitates the communication between
 the RP application and the remote pilot jobs.  More information about how
 RADICAL-Pilot uses MongoDB can be found in the :ref:`chapter_intro` section.
 
-To create a new Session, the only thing you need to provide is the URL of a
-MongoDB server:
+To create a new Session, the only thing you need to provide is the URL of
+a MongoDB server.  If no MongoDB URL is specified on session creation, RP
+attempts to use the value specified via the `RADICAL_PILOT_DBURL` environment
+variable.
 
 .. code-block:: python
 
-    session = radical.pilot.Session(database_url="mongodb://db.host.net:27017/<db_name>")
+    os.environ['RADICAL_PILOT_DBURL'] = 'mongodb://db.host.net:27017/<db_name>'
 
-If no mongodb URL is specified on session creation, RP attempts to use the value
-specified via the `RADICAL_PILOT_DBURL` environment variable.
-
-.. warning:: Always call  :func:`radical.pilot.Session.close` before your application 
-   terminates. This will terminate all lingering pilots and clean out the
-   database entries of the session.
+    session = rp.Session()
 
 
-Creating a ComputePilot
------------------------
-
-A :class:`radical.pilot.ComputePilot` is responsible for ComputeUnit (task)
-execution. ComputePilots can be launched either locally or remotely, on a single
-machine or on one or more HPC clusters. In this example we just use local
-ComputePilots, but more on remote ComputePilots and how to launch them on HPC
-clusters can be found in :ref:`chapter_example_remote_and_hpc_pilots`.
-
-As shown in the hierarchy above, ComputePilots are grouped in
-:class:`radical.pilot.PilotManager` *containers*, so before you can launch a
-ComputePilot, you need to add a PilotManager to your Session. Just like a
-Session, a PilotManager has a unique id (`uid`) as well as a traversal method
-(`list_pilots`).
-
-.. code-block:: python
-
-    pmgr = radical.pilot.PilotManager(session=session)
-    print "PM UID        : %s" % pmgr.uid
-    print "Pilots        : %s" % pmgr.list_pilots()
+.. warning:: Always call  :func:`radical.pilot.Session.close` before your
+   application terminates. This will terminate all lingering pilots and cleans
+   out the database entries of the session.
 
 
-In order to create a new ComputePilot, you first need to describe its
-requirements and properties. This is done with the help of a
-:class:`radical.pilot.ComputePilotDescription` object. The mandatory properties
-that you need to define are:
+Creating ComputePilots
+----------------------
 
-   * `resource` - The name (hostname) of the target system or ``localhost`` to launch a local ComputePilot.
-   * `runtime` - The runtime (in minutes) of the ComputePilot agent.
-   * `cores` - The number or cores the ComputePilot agent will try to allocate.
+A :class:`radical.pilot.ComputePilot` is responsible for ComputeUnit execution.
+ComputePilots can be launched either locally or remotely, and they can manage
+a single node or a large number of nodes on a cluster.
 
-You can define and submit a 2-core local pilot that runs for 5 minutes like this:
+Pilots are created via a :class:`radical.pilot.PilotManager`, by passing
+a :class:`radical.pilot.ComputePilotDescription`.  The most important elements
+of that description are
+
+    * `resource`: a label which specifies the target resource to run the pilot
+      on, ie. the location of the pilot;
+    * `cores`   : the number of CPU cores the pilot is expected to manage, ie.
+      the size of the pilot;
+    * `runtime` : the numbers of minutes the pilot is expected to be active, ie.
+      the runtime of the pilot.
+
+Depending on the specific target resource and use case, other properties need to
+be specified -- for more details see TODO.  In our user guide examples, we use
+a separate `config.json` file to store a number of properties per resource
+label, to simplify the example code.  The examples themselves then accept one or
+more resource labels, and create the pilots on those resources:
+
 
 .. code-block:: python
 
-    pdesc = radical.pilot.ComputePilotDescription()
-    pdesc.resource  = "local.localhost"
-    pdesc.runtime   = 5 # minutes
-    pdesc.cores     = 2
+    # use the resource specified as argument, fall back to localhost
+    try   : resource = sys.argv[1]
+    except: resource = 'local.localhost'
 
-A ComputePilot is launched by passing the ComputePilotDescription to the 
-``submit_pilots()`` method of the PilotManager. This automatically adds the 
-ComputePilot to the PilotManager. Like any other object in RADICAL-Pilot, a 
-ComputePilot also has a unique identifier (``uid``)
+    # create a pilot manage in the session
+    pmgr = rp.PilotManager(session=session)
 
-.. code-block:: python
+    # define an [n]-core local pilot that runs for [x] minutes
+    pdesc = rp.ComputePilotDescription({
+            'resource'      : resource,
+            'cores'         : 64,  # pilot size
+            'runtime'       : 10,  # pilot runtime (min)
+            'project'       : config[resource]['project'],
+            'queue'         : config[resource]['queue'],
+            'access_schema' : config[resource]['schema']
+            }
 
+    # submit the pilot for launching
     pilot = pmgr.submit_pilots(pdesc)
-    print "Pilot UID     : %s" % pilot.uid
 
-.. warning:: Note that ``submit_pilots()`` is a non-blocking call and that 
-   the submitted ComputePilot agent **will not terminate** when your Python
-   scripts finishes. ComputePilot agents terminate only after they have 
-   reached their ``runtime`` limit or if you call :func:`radical.pilot.PilotManager.cancel_pilots`
-   or :func:`radical.pilot.ComputePilot.cancel`.
+TODO: ref resource list
+TODO: ref pilot description details
+TODO: ref multi pilot example
+
+.. warning:: Note that ``submit_pilots()`` is a non-blocking call and that the
+    submitted ComputePilot agent **will not terminate** when your Python scripts
+    finishes. ComputePilot agents terminate only after they have reached their
+    ``runtime`` limit, are killed by the target system, or if you explicitly
+    cancel them via :func:`radical.pilot.Pilot.cancel`,
+    :func:`radical.pilot.PilotManager.cancel_pilots`, or
+    :func:`radical.pilot.Session.close(terminate=True)`, 
 
 
+Creating ComputeUnits
+---------------------
 
-.. note:: You can change to the ComputePilot sandbox directory
-        (``/tmp/radical.pilot.sandbox`` in the above example) to see the raw logs and output
-        files of the ComputePilot agent(s) ``[pilot-<uid>]`` as well as the working
-        directories and output of the individual ComputeUnits (``[task-<uid>]``).
-
-        .. code-block:: text
-
-            [/<sandbox-dir>/]
-            |
-            |----[pilot-<uid>/]
-            |    |
-            |    |---- STDERR
-            |    |---- STDOUT
-            |    |---- AGENT.LOG
-            |    |---- [task-<uid>/]
-            |    |---- [task-<uid>/]
-            |    |....
-            |
-            |....
-
-        *Knowing where to find these files might come in handy for
-        debugging  purposes but it is not required for regular RADICAL-Pilot usage.*
-
-Creating ComputeUnits (Tasks)
------------------------------
-
-After you have launched a ComputePilot, you can now generate a few
+After you have launched a ComputePilot, you can now generate
 :class:`radical.pilot.ComputeUnit`  objects for the ComputePilot to execute. You
 can think of a ComputeUnit as something very similar to an operating system
 process that consists of an ``executable``, a list of ``arguments``, and an
@@ -164,200 +151,40 @@ Analogous to ComputePilots, a ComputeUnit is described via a
 :class:`radical.pilot.ComputeUnitDescription` object. The mandatory properties
 that you need to define are:
 
-   * ``executable`` - The executable to launch.
-   * ``arguments`` - The arguments to pass to the executable.
-   * ``cores`` - The number of cores required by the executable.
+   * ``executable`` - the executable to launch
+   * ``cores``      - the number of cores required by the executable
 
-For example, you can create a workload of 8 '/bin/sleep' ComputeUnits like this:
-
-.. code-block:: python
-
-    compute_units = []
-
-    for unit_count in range(0, 8):
-        cu = radical.pilot.ComputeUnitDescription()
-        cu.environment = {"SLEEP_TIME" : "10"}
-        cu.executable  = "/bin/sleep"
-        cu.arguments   = ["$SLEEP_TIME"]
-        cu.cores       = 1
-
-        compute_units.append(cu)
-
-.. note:: The example above uses a single executable that requires only one core. It is 
-          however possible to run multiple commands in one ComputeUnit. This is described
-          in :ref:`chapter_example_multiple_commands`. If you want to run multi-core 
-          executables, like for example MPI programs, check out :ref:`chapter_example_multicore`.
-
-
-Input- / Output-File Transfer
------------------------------
-
-Often, a computational task doesn't just consist of an executable with some 
-arguments but also needs some input data. For this reason, a 
-:class:`radical.pilot.ComputeUnitDescription` allows the definition of ``input_staging``
-and ``output_staging``:
-
-    * ``input_staging`` defines a list of local files that need to be transferred 
-      to the execution resource before a ComputeUnit can start running. 
-
-    * ``output_staging`` defines a list of remote files that need to be
-      transferred back to the local machine after a ComputeUnit has finished
-      execution. 
-
-See  :ref:`chapter_data_staging` for more information on data staging.
-
-Furthermore, a ComputeUnit provides two properties 
-:data:`radical.pilot.ComputeUnit.stdout` and :data:`radical.pilot.ComputeUnit.stderr`
-that can be used to access a ComputeUnit's STDOUT and STDERR files after it
-has finished execution. 
-
-Example: 
+Our basic example creates 128 ComputeUnits which each run `/bin/date`:
 
 .. code-block:: python
 
-      cu = radical.pilot.ComputeUnitDescription()
-      cu.executable    = "/bin/cat"
-      cu.arguments     = ["file1.dat", "file2.dat"]
-      cu.cores         = 1
-      cu.input_staging = ["./file1.dat", "./file2.dat"]
+        n    = 128   # number of units to run
+        cuds = list()
+        for i in range(0, n):
+            # create a new CU description, and fill it.
+            cud = rp.ComputeUnitDescription()
+            cud.executable = '/bin/date'
+            cuds.append(cud)
 
 
-Adding Callbacks 
-----------------
-
-Events in RADICAL-Pilot are mostly asynchronous as they happen at one or more
-distributed components, namely the ComputePilot agents. At any time during the 
-execution of a workload, ComputePilots and ComputeUnits can begin or finish 
-execution or fail with an error. 
-
-RADICAL-Pilot provides callbacks as a method to react to these events
-asynchronously when they occur. ComputePilots, PilotManagers, ComputeUnits
-and UnitManagers all have a ``register_callbacks`` method:
-
-  * :func:`radical.pilot.UnitManager.register_callback`
-  * :func:`radical.pilot.PilotManager.register_callback`
-  * :func:`radical.pilot.ComputePilot.register_callback`
-  * :func:`radical.pilot.ComputeUnit.register_callback`
-
-A simple callback that prints the state of all pilots would look something 
-like this:
-
-.. code-block:: python
-
-      def pilot_state_cb(pilot, state):
-          print "[Callback]: ComputePilot '%s' state changed to '%s'."% (pilot.uid, state)
-
-      pmgr = radical.pilot.PilotManager(session=session)
-      pmgr.register_callback(pilot_state_cb)
-
-
-.. note:: Using callbacks can greatly improve the performance of an application
-          since it eradicates the  necessity for global / blocking ``wait()`` 
-          calls and state polling. More about callbacks can be read in 
-          :ref:`chapter_programming_with_callbacks`.
-
-
-Scheduling ComputeUnits 
+Submitting ComputeUnits
 -----------------------
 
-In the previous steps we have created and launched a ComputePilot (via a
-PilotManager) and created a list of ComputeUnitDescriptions. In order to put
-it all together and execute the ComputeUnits on the ComputePilot, we need to
-create a :class:`radical.pilot.UnitManager` instance.
-
-As shown in the diagram below, a UnitManager combines three things: the
-ComputeUnits, added via :func:`radical.pilot.UnitManager.submit_units`, one or
-more ComputePilots, added via :func:`radical.pilot.UnitManager.add_pilots` and a
-:ref:`chapter_schedulers`. Once instantiated, a UnitManager assigns the
-submitted CUs to one of its ComputePilots based on the selected scheduling
-algorithm.
-
-.. code-block:: text
-
-      +----+  +----+  +----+  +----+       +----+ 
-      | CU |  | CU |  | CU |  | CU |  ...  | CU |
-      +----+  +----+  +----+  +----+       +----+
-         |       |       |       |            |
-         |_______|_______|_______|____________|
-                           |
-                           v submit_units()
-                   +---------------+
-                   |  UnitManager  |
-                   |---------------|
-                   |               |
-                   |  <SCHEDULER>  |
-                   +---------------+
-                           ^ add_pilots()
-                           |
-                 __________|___________
-                 |       |            |
-              +~~~~+  +~~~~+       +~~~~+  
-              | CP |  | CP |  ...  | CP |
-              +~~~~+  +~~~~+       +~~~~+ 
-
-Since we have only one ComputePilot, we don't need any specific scheduling 
-algorithm for our example. We choose ``SCHED_DIRECT_SUBMISSION`` which simply 
-passes the ComputeUnits on to the ComputePilot.
+Compute units are executed by pilots -- but how does a pilot know which units to
+execute?  That relation is established by the `:class:radical.pilot.UnitManager`
+class which accepts ComputeUnitDescriptions as we created above, and assigns
+them, according to some scheduling algorithm, to the set of available pilots.
+It returns the respectively create `:class:radical.pilot.ComputeUnit` handles,
+for whose completion the application can then wait:
 
 .. code-block:: python
 
-    umgr = radical.pilot.UnitManager(session=session, scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION)
+        # create a unit manager, submit units, and wait for their completion
+        umgr = rp.UnitManager(session=session)
+        umgr.add_pilots(pilot)
+        umgr.submit_units(cuds)
+        umgr.wait_units()
 
-    umgr.add_pilots(pilot)
-    umgr.submit_units(compute_units)
-
-    umgr.wait_units()
-
-The :func:`radical.pilot.UnitManager.wait_units` call blocks until all ComputeUnits have
-been  executed by the UnitManager. Simple control flows / dependencies can be
-realized with ``wait_units()``, however, for more complex control flows it can
-become inefficient due to its blocking nature. To address this, RADICAL-Pilot also
-provides mechanisms for asynchronous notifications and callbacks. This is 
-discussed in more detail in :ref:`chapter_example_async`.
-
-.. note:: The ``SCHED_DIRECT_SUBMISSION`` only works with a sinlge ComputePilot. If you add more
-          than one ComputePilot to a UnitManager, you will end up with an error. If you want to
-          use RADICAL-Pilot to run multiple ComputePilots concurrently, possibly on different 
-          machines, check out :ref:`chapter_example_remote_and_hpc_pilots`.
-
-Results and Inspection
-----------------------
-
-.. code-block:: python
-
-    for unit in umgr.get_units():
-        print "unit id  : %s" % unit.uid
-        print "  state  : %s" % unit.state
-        print "  history:" 
-        for entry in unit.state_history :
-            print "           %s : %s" (entry.timestamp, entry.state)
-
-Cleanup and Shutdown
---------------------
-
-When your application has finished executing all ComputeUnits, it should make an
-attempt to cancel the ComputePilot. If a ComputePilot is not canceled, it will 
-continue running until it reaches its ``runtime`` limit, even if application 
-has terminated. 
-
-An individual ComputePilot is canceled by calling :func:`radical.pilot.ComputePilot.cancel`.
-Alternatively, all ComputePilots of a PilotManager can be canceled by calling 
-:func:`radical.pilot.PilotManager.cancel_pilots`.
-
-.. code-block:: python 
-
-    pmgr.cancel_pilots()
-
-Before your application terminates, you should always call :func:`radical.pilot.Session.close`
-to ensure that your RADICAL-Pilot session terminates properly. If you haven't 
-canceled the pilots before explicitly, ``close()`` will take care of that
-implicitly (control it via the `terminate` parameter).  ``close()`` will also
-delete all traces of the session from the database (control this with the
-`cleanup` parameter). 
-
-.. code-block:: python 
-
-    session.close(cleanup=True, terminate=True)
 
 What's Next?
 ------------

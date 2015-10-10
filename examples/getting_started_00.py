@@ -54,7 +54,6 @@ if __name__ == '__main__':
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
-        pdescs = list()
         report.info('create pilot description')
         pd_init = {
                 'resource'      : resource,
@@ -97,8 +96,7 @@ if __name__ == '__main__':
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(cuds)
-
+        umgr.submit_units(cuds)
 
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')

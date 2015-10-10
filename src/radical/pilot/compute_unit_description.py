@@ -191,11 +191,6 @@ class ComputeUnitDescription(attributes.Attributes) :
         if init_dict:
             self.from_dict(init_dict)
 
-            if RESOURCE in init_dict and CORES in init_dict:
-                logger.demo('plain', ' [%s:%s]' % (init_dict[RESOURCE], init_dict[CORES]))
-            elif RESOURCE in init_dict:
-                logger.demo('plain', ' [%s]' % init_dict[RESOURCE])
-
 
     #------------------------------------------------------------------------------
     #
