@@ -2067,7 +2067,6 @@ class LaunchMethodORTE(LaunchMethod):
         dvm_watcher.start()
 
         lm_info = {'dvm_uri'     : dvm_uri,
-                   'dvm_pid'     : dvm_process.pid,
                    'version_info': {name: orte_info}}
 
         # we need to inform the actual LM instance about the DVM URI.  So we
@@ -2075,8 +2074,6 @@ class LaunchMethodORTE(LaunchMethod):
         # will then be passed as part of the opaque_slots via the scheduler
         return lm_info
 
-    # TODO: Create teardown() function for LaunchMethod's (in this case to terminate the dvm)
-    #subprocess.Popen([self.launch_command, "--hnp", orte_vm_uri_filename, "--terminate"])
 
     # --------------------------------------------------------------------------
     #
@@ -2087,10 +2084,13 @@ class LaunchMethodORTE(LaunchMethod):
         shutdown sequence, for the sake of freeing allocated resources.
         """
 
-        if 'dvm_pid' in lm_info:
+        if 'dvm_uri' in lm_info:
             try:
                 logger.info('terminating dvm')
-                os.kill(lm_info['dvm_pid'], signal.SIGTERM)
+                orte_submit = cls._which('orte-submit')
+                if not orte_submit:
+                    raise Exception("Couldn't find orte-submit")
+                subprocess.Popen([orte_submit, "--hnp", lm_info['dvm_uri'], "--terminate"])
             except Exception as e:
                 logger.exception('dmv termination failed')
 
