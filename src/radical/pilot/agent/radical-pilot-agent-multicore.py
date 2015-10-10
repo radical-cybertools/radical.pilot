@@ -6039,7 +6039,9 @@ def bootstrap_3():
     # in one of the above handlers or exit handlers being activated, thus
     # reporting the error dutifully.
 
-    bridges = dict()  # avoid undefined dict on finalization
+    # avoid undefined vars on finalization
+    bridges = dict()
+    agent   = None
     try:
         # ----------------------------------------------------------------------
         # des Pudels Kern: merge LRMS info into cfg and get the agent started
@@ -6096,6 +6098,24 @@ def bootstrap_3():
         log.debug('waiting for agent %s to join' % agent_name)
         agent.join()
         log.debug('agent %s joined' % agent_name)
+
+        # ----------------------------------------------------------------------
+
+    except SystemExit:
+        log.exception("Exit running agent: %s" % agent_name)
+        if not agent.final_cause:
+            agent.final_cause = "sys.exit"
+
+    except Exception as e:
+        log.exception("Error running agent: %s" % agent_name)
+        if not agent.final_cause:
+            agent.final_cause = "error"
+
+    finally:
+
+        # in all cases, make sure we perform an orderly shutdown.  I hope python
+        # does not mind doing all those things in a finally clause of
+        # (essentially) main...
         agent.stop()
         log.debug('agent %s finalized' % agent_name)
 
@@ -6110,20 +6130,7 @@ def bootstrap_3():
             else:
                 pilot_FAILED(mongo_p, pilot_id, log, "TERMINATE received")
 
-        # ----------------------------------------------------------------------
-
-    except SystemExit:
-        log.exception("Exit running agent: %s" % agent_name)
-        if agent_name == 'agent_0':
-            pilot_FAILED(mongo_p, pilot_id, log, "Caught system exit. EXITING") 
-        sys.exit(1)
-
-    except Exception as e:
-        if agent_name == 'agent_0':
-            pilot_FAILED(mongo_p, pilot_id, log, "Error running agent: %s" % e)
-        sys.exit(2)
-
-    finally:
+        # agent.stop will not tear down bridges -- we do that here at last
         for name,b in bridges.items():
             try:
                 log.info("closing bridge %s", b)
