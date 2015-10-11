@@ -2,6 +2,7 @@
 import os
 import zmq
 import time
+import errno
 import pprint
 import Queue           as pyq
 import threading       as mt
@@ -21,51 +22,34 @@ QUEUE_PROCESS = 'process'
 QUEUE_ZMQ     = 'zmq'
 QUEUE_TYPES   = [QUEUE_THREAD, QUEUE_PROCESS, QUEUE_ZMQ]
 
-# some predefined port numbers
-_QUEUE_PORTS  = {
-        'pilot_launching_queue'      : 'tcp://*:10002',
-        'umgr_scheduling_queue'      : 'tcp://*:10004',
-        'umgr_staging_input_queue'   : 'tcp://*:10006',
-        'agent_staging_input_queue'  : 'tcp://*:10008',
-        'agent_scheduling_queue'     : 'tcp://*:10010',
-        'agent_executing_queue'      : 'tcp://*:10012',
-        'agent_staging_output_queue' : 'tcp://*:10014',
-        'umgr_staging_output_queue'  : 'tcp://*:10016',
-        'ping_queue'                 : 'tcp://*:20000',
-        'pong_queue'                 : 'tcp://*:20002',
-    }
+_BRIDGE_TIMEOUT = 5.0  # how long to wait for bridge startup
 
 # --------------------------------------------------------------------------
 #
-# the input-to-bridge end of the queue uses a different port than the
-# bridge-to-output end...
+# zmq will (rightly) barf at interrupted system calls.  We are able to rerun
+# those calls.
 #
-def _port_inc(addr):
-
-    u = ru.Url(addr)
-    u.port += 1
-    return str(u)
-
-
-# --------------------------------------------------------------------------
+# FIXME: how does that behave wrt. tomeouts?  We probably should include
+#        an explicit timeout parameter.
 #
-# bridges by default bind to all interfaces on a given port, inputs and outputs
-# connect to localhost (127.0.0.1)
-# bridge-output end...
+# kudos: https://gist.github.com/minrk/5258909
 #
-def _get_addr(name, role):
-
-    addr = _QUEUE_PORTS.get(name)
-
-    if not addr:
-        raise LookupError("no addr for queue type '%s'" % name)
-
-    if role != QUEUE_BRIDGE:
-        u = ru.Url(addr)
-        u.host = '127.0.0.1'
-        addr = str(u)
-
-    return addr
+def _uninterruptible(f, *args, **kwargs):
+    cnt = 0
+    while True:
+        cnt += 1
+        try:
+            return f(*args, **kwargs)
+        except zmq.ZMQError as e:
+            if e.errno == errno.EINTR:
+                if cnt > 10:
+                    raise
+                # interrupted, try again
+                print 'interrupted! [%s] [%s] [%s]' % (f, args, kwargs)
+                continue
+            else:
+                # real error, raise it
+                raise
 
 
 # ==============================================================================
@@ -164,29 +148,19 @@ class Queue(object):
         self._flavor = flavor
         self._qname  = qname
         self._role   = role
-        self._addr   = ru.Url(address)
+        self._addr   = address
         self._debug  = False
         self._logfd  = None
-        self._name   = "queue.%s.%s.%d" % (self._qname, self._role, os.getpid())
+        self._name   = "queue.%s.%s" % (self._qname, self._role)
 
         if 'msg' in os.environ.get('RADICAL_DEBUG', '').lower():
             self._debug = True
 
-        # sanity check on address
-        default_addr = ru.Url(_get_addr(qname, role))
-
-        # we replace only empty parts of the addr with default values
-        if not self._addr       : self._addr        = default_addr
-        if not self._addr.schema: self._addr.schema = default_addr.schema
-        if not self._addr.host  : self._addr.host   = default_addr.host
-        if not self._addr.port  : self._addr.port   = default_addr.port
-
         if not self._addr:
-            raise RuntimeError("no default address found for '%s'" % self._qname)
+            self._addr = 'tcp://*:*'
 
         if role in [QUEUE_INPUT, QUEUE_OUTPUT]:
-            self._log ("create %s - %s - %s - %s - %d" \
-                    % (flavor, qname, role, address, os.getpid()))
+            self._log ("create %s - %s - %s - %s" % (flavor, qname, role, address))
 
     @property
     def name(self):
@@ -244,6 +218,18 @@ class Queue(object):
 
     # --------------------------------------------------------------------------
     #
+    def poll(self):
+        """
+        check state of endpoint or bridge
+        None: RUNNING
+        0   : DONE
+        1   : FAILED
+        """
+        return None
+
+
+    # --------------------------------------------------------------------------
+    #
     def put(self, msg):
         raise NotImplementedError('put() is not implemented')
 
@@ -262,8 +248,8 @@ class Queue(object):
 
     # --------------------------------------------------------------------------
     #
-    def close(self):
-        raise NotImplementedError('close() is not implemented')
+    def stop(self):
+        raise NotImplementedError('stop() is not implemented')
 
 
 # ==============================================================================
@@ -305,7 +291,7 @@ class QueueThread(Queue):
 
         try:
             return self._q.get_nowait()
-        except Queue.Empty:
+        except pyq.Empty:
             return None
 
 
@@ -348,7 +334,7 @@ class QueueProcess(Queue):
 
         try:
             return self._q.get_nowait()
-        except Queue.Empty:
+        except pyq.Empty:
             return None
 
 
@@ -373,89 +359,98 @@ class QueueZMQ(Queue):
         and output type endpoints 'connect()' to it.  It is the callees
         responsibility to ensure that only one bridge of a given type exists.
 
-        All component will specify the same address.  Addresses are of the form
-        'tcp://ip-number:port'.  
-
-        Note that the address is both used for binding and connecting -- so if
-        any component lives on a remote host, all components need to use
-        a publicly visible ip number, ie. not '127.0.0.1/localhost'.  The
-        bridge-to-output communication needs to use a different port number than
-        the input-to-bridge communication.  To simplify setup, we expect
-        a single address to be used for all components, and will auto-increase
-        the bridge-output port by one.  All given port numbers should be *even*.
-
+        Addresses are of the form 'tcp://host:port'.  Both 'host' and 'port' can
+        be wildcards for BRIDGE roles -- the bridge will report the in and out
+        addresses as obj.bridge_in and obj.bridge_out.
         """
         Queue.__init__(self, flavor, name, role, address)
 
-        self._p         = None           # the bridge process
-        self._q         = None           # the zmq queue
-        self._ctx       = zmq.Context()  # one zmq context suffices
-        self._lock      = mt.RLock()     # for _requested
-        self._requested = False          # send/recv sync
-
-        # zmq checks on address
-        if  self._addr.path   != ''    or \
-            self._addr.schema != 'tcp' :
-            raise ValueError("url '%s' cannot be used for zmq queues" % self._addr)
-
-        if self._addr.port:
-            if (self._addr.port % 2):
-                raise ValueError("port numbers must be even, not '%d'" % self._addr.port)
-
-        if self._role != QUEUE_BRIDGE:
-            if self._addr.host == '*':
-                self._addr.host = '127.0.0.1'
-
-        self._log('%s/%s uses addr %s' % (self._qname, self._role, self._addr))
+        self._p          = None           # the bridge process
+        self._q          = None           # the zmq queue
+        self._lock       = mt.RLock()     # for _requested
+        self._requested  = False          # send/recv sync
+        self._bridge_in  = None           # bridge input  addr
+        self._bridge_out = None           # bridge output addr
 
 
         # ----------------------------------------------------------------------
         # behavior depends on the role...
         if self._role == QUEUE_INPUT:
-            self._q = self._ctx.socket(zmq.PUSH)
-            self._q.connect(str(self._addr))
+            ctx = zmq.Context()
+            self._q = ctx.socket(zmq.PUSH)
+            self._q.connect(self._addr)
 
 
         # ----------------------------------------------------------------------
         elif self._role == QUEUE_BRIDGE:
 
+            # we expect bridges to always use a port wildcard. Make sure
+            # that's the case
+            elems = self._addr.split(':')
+            if len(elems) > 2 and elems[2] and elems[2] != '*':
+                raise RuntimeError('wildcard port (*) required for bridge addresses (%s)' \
+                                % self._addr)
+
             # ------------------------------------------------------------------
-            def _bridge(ctx, addr_in, addr_out):
+            def _bridge(addr, pqueue):
 
-                # FIXME: should we cache messages coming in at the pull/push 
-                #        side, so as not to block the push end?
+                try:
+                    import setproctitle as spt
+                    spt.setproctitle('radical.pilot %s' % self._name)
+                except Exception as e:
+                    pass
 
-              # self._log ('in  _bridge: %s %s' % (addr_in, addr_out))
-                _in = ctx.socket(zmq.PULL)
-                _in.bind(addr_in)
+                try:
+                    self._log('start bridge %s on %s' % (self._name, addr))
 
-              # self._log ('out _bridge: %s %s' % (addr_in, addr_out))
-                _out = ctx.socket(zmq.REP)
-                _out.bind(addr_out)
+                    # FIXME: should we cache messages coming in at the pull/push 
+                    #        side, so as not to block the push end?
 
-                _poll = zmq.Poller()
-                _poll.register(_out, zmq.POLLIN)
+                    ctx = zmq.Context()
+                    _in = ctx.socket(zmq.PULL)
+                    _in.bind(addr)
 
-                while True:
+                    _out = ctx.socket(zmq.REP)
+                    _out.bind(addr)
 
-                  # self._log ('run _bridge: %s %s' % (addr_in, addr_out))
+                    # communicate the bridge ports to the parent process
+                    _in_port  =  _in.getsockopt(zmq.LAST_ENDPOINT)
+                    _out_port = _out.getsockopt(zmq.LAST_ENDPOINT)
+                    self._log('bound bridge %s to %s : %s' % (self._name, _in_port, _out_port))
 
-                    events = dict(_poll.poll(1000)) # timeout in ms
+                    pqueue.put([_in_port, _out_port])
+                    self._log('BOUND bridge %s to %s : %s' % (self._name, _in_port, _out_port))
 
-                    if _out in events:
-                        req = _out.recv()
-                        _out.send_json(_in.recv_json())
+                    # start polling for messages
+                    _poll = zmq.Poller()
+                    _poll.register(_out, zmq.POLLIN)
+
+                    while True:
+
+                        events = dict(_uninterruptible(_poll.poll, 1000)) # timeout in ms
+
+                        if _out in events:
+                            req = _uninterruptible(_out.recv)
+                            _uninterruptible(_out.send_json, _uninterruptible(_in.recv_json))
+
+                except Exception as e:
+                    self._log('bridge error: %s' % e)
             # ------------------------------------------------------------------
 
-            addr_in  = str(self._addr)
-            addr_out = str(_port_inc(self._addr))
-            self._p  = mp.Process(target=_bridge, args=[self._ctx, addr_in, addr_out])
+            pqueue   = mp.Queue()
+            self._p  = mp.Process(target=_bridge, args=[self._addr, pqueue])
             self._p.start()
+
+            try:
+                self._bridge_in, self._bridge_out = pqueue.get(True, _BRIDGE_TIMEOUT)
+            except pyq.Empty as e:
+                raise RuntimeError ("bridge did not come up! (%s)" % e)
 
         # ----------------------------------------------------------------------
         elif self._role == QUEUE_OUTPUT:
-            self._q = self._ctx.socket(zmq.REQ)
-            self._q.connect(str(_port_inc(self._addr)))
+            ctx = zmq.Context()
+            self._q = ctx.socket(zmq.REQ)
+            self._q.connect(self._addr)
 
         # ----------------------------------------------------------------------
         else:
@@ -466,12 +461,40 @@ class QueueZMQ(Queue):
     #
     def __del__(self):
 
-        self.close()
+        self.stop()
 
 
     # --------------------------------------------------------------------------
     #
-    def close(self):
+    @property
+    def bridge_in(self):
+        if self._role != QUEUE_BRIDGE:
+            raise TypeError('bridge_in is only defined on a bridge')
+        return self._bridge_in
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def bridge_out(self):
+        if self._role != QUEUE_BRIDGE:
+            raise TypeError('bridge_out is only defined on a bridge')
+        return self._bridge_out
+
+
+    # --------------------------------------------------------------------------
+    #
+    def poll(self):
+        """
+        Only check bridges -- endpoints are otherwise always considered valid
+        """
+        if self._p and not self._p.is_alive():
+            return 0
+
+
+    # --------------------------------------------------------------------------
+    #
+    def stop(self):
 
         if self._p:
             self._p.terminate()
@@ -485,7 +508,7 @@ class QueueZMQ(Queue):
             raise RuntimeError("queue %s (%s) can't put()" % (self._qname, self._role))
 
       # self._log("-> %s" % pprint.pformat(msg))
-        self._q.send_json(msg)
+        _uninterruptible(self._q.send_json, msg)
 
 
     # --------------------------------------------------------------------------
@@ -495,9 +518,9 @@ class QueueZMQ(Queue):
         if not self._role == QUEUE_OUTPUT:
             raise RuntimeError("queue %s (%s) can't get()" % (self._qname, self._role))
 
-        self._q.send('request')
+        _uninterruptible(self._q.send, 'request')
 
-        msg = self._q.recv_json()
+        msg = _uninterruptible(self._q.recv_json)
       # self._log("<- %s" % pprint.pformat(msg))
         return msg
 
@@ -513,7 +536,7 @@ class QueueZMQ(Queue):
 
             if not self._requested:
                 # we can only send the request once per recieval
-                self._q.send('request')
+                _uninterruptible(self._q.send, 'request')
                 self._requested = True
 
           # try:
@@ -525,8 +548,8 @@ class QueueZMQ(Queue):
           # except zmq.Again:
           #     return None
 
-            if self._q.poll (flags=zmq.POLLIN, timeout=timeout):
-                msg = self._q.recv_json()
+            if _uninterruptible(self._q.poll, flags=zmq.POLLIN, timeout=timeout):
+                msg = _uninterruptible(self._q.recv_json)
                 self._requested = False
               # self._log("<< %s" % pprint.pformat(msg))
                 return msg

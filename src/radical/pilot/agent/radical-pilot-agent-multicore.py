@@ -145,9 +145,9 @@ import Queue
 import pprint
 import signal
 import shutil
-import socket
 import hostlist
 import tempfile
+import netifaces
 import threading
 import traceback
 import subprocess
@@ -431,12 +431,12 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def __init__(self, cfg):
 
-        rpu.Component.__init__(self, cfg)
+        rpu.Component.__init__(self, 'AgentSchedulingComponent', cfg)
 
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self):
+    def initialize_child(self):
 
       # self.declare_input (rp.AGENT_SCHEDULING_PENDING, rp.AGENT_SCHEDULING_QUEUE)
       # self.declare_worker(rp.AGENT_SCHEDULING_PENDING, self.work)
@@ -460,9 +460,10 @@ class AgentSchedulingComponent(rpu.Component):
         self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
         self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
 
+        self._pilot_id = self._cfg['pilot_id']
+
         # The scheduler needs the LRMS information which have been collected
         # during agent startup.  We dig them out of the config at this point.
-        self._cores = self._cfg['cores']
         self._lrms_lm_info        = self._cfg['lrms_info']['lm_info']
         self._lrms_node_list      = self._cfg['lrms_info']['node_list']
         self._lrms_cores_per_node = self._cfg['lrms_info']['cores_per_node']
@@ -482,7 +483,7 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def finalize(self):
+    def finalize_child(self):
 
         # communicate finalization
         self.publish('command', {'cmd' : 'final',
@@ -526,7 +527,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         if cmd == 'shutdown':
             self._log.info('received shutdown command')
-            self.close()
+            self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -596,7 +597,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         cu = msg
 
-        self._prof.prof('reschedule')
+        self._prof.prof('reschedule', uid=self._pilot_id)
         self._log.info("slot status before reschedule: %s" % self.slot_status())
 
         # cycle through wait queue, and see if we get anything running now.  We
@@ -1378,6 +1379,7 @@ class LaunchMethod(object):
         'PATH',
         'PYTHONPATH',
         'PYTHON_DIR',
+        'RADICAL_PILOT_PROFILE'
     ]
 
     # --------------------------------------------------------------------------
@@ -1387,6 +1389,9 @@ class LaunchMethod(object):
         self.name = type(self).__name__
         self._cfg = cfg
         self._log = logger
+
+        # A per-launch_method list of environment to remove from the CU environment
+        self.env_removables = []
 
         self.launch_command = None
         self._configure()
@@ -1452,21 +1457,9 @@ class LaunchMethod(object):
             raise TypeError("LaunchMethod config hook only available to base class!")
 
         impl = {
-          # LAUNCH_METHOD_APRUN         : LaunchMethodAPRUN,
-          # LAUNCH_METHOD_CCMRUN        : LaunchMethodCCMRUN,
-          # LAUNCH_METHOD_DPLACE        : LaunchMethodDPLACE,
-          # LAUNCH_METHOD_FORK          : LaunchMethodFORK,
-          # LAUNCH_METHOD_IBRUN         : LaunchMethodIBRUN,
-          # LAUNCH_METHOD_MPIEXEC       : LaunchMethodMPIEXEC,
-          # LAUNCH_METHOD_MPIRUN_CCMRUN : LaunchMethodMPIRUNCCMRUN,
-          # LAUNCH_METHOD_MPIRUN_DPLACE : LaunchMethodMPIRUNDPLACE,
-          # LAUNCH_METHOD_MPIRUN        : LaunchMethodMPIRUN,
-          # LAUNCH_METHOD_MPIRUN_RSH    : LaunchMethodMPIRUNRSH,
+            LAUNCH_METHOD_FORK          : LaunchMethodFORK,
             LAUNCH_METHOD_ORTE          : LaunchMethodORTE,
-            LAUNCH_METHOD_YARN          : LaunchMethodYARN,
-          # LAUNCH_METHOD_POE           : LaunchMethodPOE,
-          # LAUNCH_METHOD_RUNJOB        : LaunchMethodRUNJOB,
-          # LAUNCH_METHOD_SSH           : LaunchMethodSSH,
+            LAUNCH_METHOD_YARN          : LaunchMethodYARN
         }.get(name)
 
         if not impl:
@@ -1477,6 +1470,29 @@ class LaunchMethod(object):
         return impl.lrms_config_hook(name, cfg, lrms, logger)
 
 
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
+        """
+        This hook is symmetric to the config hook above, and is called during
+        shutdown sequence, for the sake of freeing allocated resources.
+        """
+
+        # Make sure that we are the base-class!
+        if cls != LaunchMethod:
+            raise TypeError("LaunchMethod shutdown hook only available to base class!")
+
+        impl = {
+            LAUNCH_METHOD_ORTE          : LaunchMethodORTE
+        }.get(name)
+
+        if not impl:
+            logger.info('no LRMS shutdown hook defined for LaunchMethod %s' % name)
+            return None
+
+        logger.info('call LRMS shutdown hook for LaunchMethod %s: %s' % (name, impl))
+        return impl.lrms_shutdown_hook(name, cfg, lrms, lm_info, logger)
 
     # --------------------------------------------------------------------------
     #
@@ -1525,6 +1541,7 @@ class LaunchMethod(object):
     #
     def _configure(self):
         raise NotImplementedError("_configure() not implemented for LaunchMethod: %s." % self.name)
+
 
     # --------------------------------------------------------------------------
     #
@@ -1594,6 +1611,12 @@ class LaunchMethodFORK(LaunchMethod):
         # "Regular" tasks
         self.launch_command = ''
 
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def lrms_config_hook(cls, name, cfg, lrms, logger):
+        return {'version_info': {
+            name: {'version': '0.42', 'version_detail': 'There is no spoon'}}}
 
     # --------------------------------------------------------------------------
     #
@@ -1607,7 +1630,6 @@ class LaunchMethodFORK(LaunchMethod):
 
         self._log.info('LaunchMethodFORK returns command : %s'%command)
         return command, None
-
 
 
 # ==============================================================================
@@ -1669,6 +1691,11 @@ class LaunchMethodSSH(LaunchMethod):
 
         LaunchMethod.__init__(self, cfg, logger)
 
+        # Instruct the ExecWorkers to unset this environment variable.
+        # Otherwise this will break nested SSH with SHELL spawner, i.e. when
+        # both the sub-agent and CUs are started using SSH.
+        self.env_removables.extend(["RP_SPAWNER_HOP"])
+
 
     # --------------------------------------------------------------------------
     #
@@ -1715,12 +1742,14 @@ class LaunchMethodSSH(LaunchMethod):
         else:
             task_command = task_exec
 
+        # Pass configured and available environment variables to the remote shell
+        export_vars = ' '.join(['%s=%s' % (var, os.environ[var]) for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
+
         # Command line to execute launch script via ssh on host
-        ssh_hop_cmd = "%s %s %s" % (self.launch_command, host, launch_script_hop)
+        ssh_hop_cmd = "%s %s %s %s" % (self.launch_command, host, export_vars, launch_script_hop)
 
         # Special case, return a tuple that overrides the default command line.
         return task_command, ssh_hop_cmd
-
 
 
 # ==============================================================================
@@ -2164,6 +2193,10 @@ class LaunchMethodORTE(LaunchMethod):
 
         LaunchMethod.__init__(self, cfg, logger)
 
+        # We remove all ORTE related environment variables from the launcher
+        # environment, so that we can use ORTE for both launch of the
+        # (sub-)agent and CU execution.
+        self.env_removables.extend(["OMPI_", "OPAL_", "PMIX_"])
 
     # --------------------------------------------------------------------------
     #
@@ -2182,6 +2215,21 @@ class LaunchMethodORTE(LaunchMethod):
         if not dvm_cmd:
             raise Exception("Couldn't find orte-dvm")
 
+        # Now that we found the orte-dvm, get ORTE version
+        orte_info = {}
+        oi_output = subprocess.check_output(['orte-info|grep "Open RTE"'], shell=True)
+        oi_lines = oi_output.split('\n')
+        for line in oi_lines:
+            if not line:
+                continue
+            key, val = line.split(':')
+            if 'Open RTE' == key.strip():
+                orte_info['version'] = val.strip()
+            elif  'Open RTE repo revision' == key.strip():
+                orte_info['version_detail'] = val.strip()
+        logger.info("Found Open RTE: %s / %s",
+                    orte_info['version'], orte_info['version_detail'])
+
         # Use (g)stdbuf to disable buffering.
         # We need this to get the "DVM ready",
         # without waiting for orte-dvm to complete.
@@ -2197,11 +2245,11 @@ class LaunchMethodORTE(LaunchMethod):
         logger.info("Starting ORTE DVM on %d nodes ..." % vm_size)
 
         dvm_process = subprocess.Popen(
-            [stdbuf_cmd, stdbuf_arg, dvm_cmd, '--debug-devel',
-             '--mca', 'orte_max_vm_size', str(vm_size)],
+            [stdbuf_cmd, stdbuf_arg, dvm_command, '--debug-devel'],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT
         )
 
+        dvm_uri = None
         while True:
 
             line = dvm_process.stdout.readline().strip()
@@ -2252,11 +2300,13 @@ class LaunchMethodORTE(LaunchMethod):
             # TODO: Tear down everything?
         # ----------------------------------------------------------------------
 
-        dvm_watcher = threading.Thread(target=_watch_dvm, args=(dvm_process,), name="DVMWatcher")
+        dvm_watcher = threading.Thread(target=_watch_dvm, args=(dvm_process,),
+                                       name="DVMWatcher")
+        dvm_watcher.daemon = True
         dvm_watcher.start()
 
-        lm_info = {'dvm_uri' : dvm_uri,
-                   'dvm_cmd' : dvm_cmd}
+        lm_info = {'dvm_uri'     : dvm_uri,
+                   'version_info': {name: orte_info}}
 
         # we need to inform the actual LM instance about the DVM URI.  So we
         # pass it back to the LRMS which will keep it in an 'lm_info', which
@@ -2267,11 +2317,21 @@ class LaunchMethodORTE(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_final_hook(cls, lm_info, logger):
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
+        """
+        This hook is symmetric to the config hook above, and is called during
+        shutdown sequence, for the sake of freeing allocated resources.
+        """
 
-        logger.info('DVM shutdow')
-        subprocess.Popen([lm_info['dvm_cmd'], "--hnp",
-                          lm_info['dvm_uri'], "--terminate"])
+        if 'dvm_uri' in lm_info:
+            try:
+                logger.info('terminating dvm')
+                orte_submit = cls._which('orte-submit')
+                if not orte_submit:
+                    raise Exception("Couldn't find orte-submit")
+                subprocess.Popen([orte_submit, "--hnp", lm_info['dvm_uri'], "--terminate"])
+            except Exception as e:
+                logger.exception('dmv termination failed')
 
 
     # --------------------------------------------------------------------------
@@ -2311,14 +2371,20 @@ class LaunchMethodORTE(LaunchMethod):
             task_command = task_exec
 
         # Construct the hosts_string, env vars
-        hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
+        # On some Crays, like on ARCHER, the hostname is "archer_N".
+        # In that case we strip off the part upto and including the underscore.
+        #
+        # TODO: If this ever becomes a problem, i.e. we encounter "real" hostnames
+        #       with underscores in it, or other hostname mangling, we need to turn
+        #       this into a system specific regexp or so.
+        #
+        hosts_string = ",".join([slot.split(':')[0].rsplit('_', 1)[-1] for slot in task_slots])
         export_vars  = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
         orte_command = '%s --debug-devel --hnp "%s" %s -np %s -host %s %s' % (
             self.launch_command, dvm_uri, export_vars, task_numcores, hosts_string, task_command)
 
         return orte_command, None
-
 
 
 # ==============================================================================
@@ -2594,7 +2660,7 @@ class LaunchMethodYARN(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_final_hook(cls, lm_info, logger):
+    def lrms_shutdown_hook(cls, lm_info, logger):
         if 'name' not in lm_info:
             raise RuntimeError('rm_ip not in lm_info for %s' \
                     % (self.name))
@@ -2803,8 +2869,6 @@ class LRMS(object):
         self.name            = type(self).__name__
         self._cfg            = cfg
         self._log            = logger
-        self._hostname       = None
-        self._hostip         = None
         self.requested_cores = self._cfg['cores']
 
         self._log.info("Configuring LRMS %s.", self.name)
@@ -2821,6 +2885,9 @@ class LRMS(object):
         # right here.
         self._agent_reqs = []
         layout = self._cfg['agent_layout']
+        # FIXME: this loop iterates over all agents *defined* in the layout, not
+        #        over all agents which are to be actually executed, thus
+        #        potentially reserving too many nodes.
         for worker in layout:
             target = layout[worker].get('target')
             # make sure that the target either 'local', which we will ignore,
@@ -2856,9 +2923,9 @@ class LRMS(object):
                     break
 
         if self.agent_nodes:
-            self._log.info('Reserved agent nodes: %s' % self.agent_nodes.values())
-            self._log.info('Agent running on nodes: %s' % self.agent_nodes.keys())
-            self._log.info('Remaining work nodes: %s' % self.node_list)
+            self._log.info('Reserved agent node(s): %s' % self.agent_nodes.values())
+            self._log.info('Agent(s) running on node(s): %s' % self.agent_nodes.keys())
+            self._log.info('Remaining work node(s): %s' % self.node_list)
 
         # Check if we can do any work
         if not self.node_list:
@@ -2881,10 +2948,10 @@ class LRMS(object):
                     self._log.exception("lrms config hook failed")
                     raise
 
-                self._log.debug("lrms config hook succeeded (%s)" % lm)
+                self._log.info("lrms config hook succeeded (%s)" % lm)
 
         # For now assume that all nodes have equal amount of cores
-        cores_avail = len(self.node_list) * self.cores_per_node
+        cores_avail = (len(self.node_list) + len(self.agent_nodes)) * self.cores_per_node
         if 'RADICAL_PILOT_PROFILE' not in os.environ:
             if cores_avail < int(self.requested_cores):
                 raise ValueError("Not enough cores available (%s) to satisfy allocation request (%s)." \
@@ -2942,10 +3009,10 @@ class LRMS(object):
 
     # --------------------------------------------------------------------------
     #
-    def finalize(self):
+    def stop(self):
 
-        # After all is said and done, we now also call the LM finalization
-        # hooks.  We only pass the lm_info back to them
+        # During LRMS termination, we call any existing shutdown hooks on the
+        # launch methods.  We only call LM shutdown hooks *once*
         launch_methods = set() # set keeps entries unique
         launch_methods.add(self._cfg['mpi_launch_method'])
         launch_methods.add(self._cfg['task_launch_method'])
@@ -2954,12 +3021,13 @@ class LRMS(object):
         for lm in launch_methods:
             if lm:
                 try:
-                    LaunchMethod.lrms_final_hook(lm, self.lm_info, self._log)
+                    LaunchMethod.lrms_shutdown_hook(lm, self._cfg, self,
+                                                    self.lm_info, self._log)
                 except Exception as e:
-                    self._log.exception("lrms final hook failed")
+                    self._log.exception("lrms shutdown hook failed")
                     raise
 
-                self._log.exception("lrms final hook succeeded (%s)" % lm)
+                self._log.info("lrms shutdown hook succeeded (%s)" % lm)
 
 
     # --------------------------------------------------------------------------
@@ -2971,61 +3039,59 @@ class LRMS(object):
     # --------------------------------------------------------------------------
     #
     @staticmethod
-    def hostname(logger=None):
-
-        hostname = socket.getfqdn()
-
-        if not hostname:
-            hostname = os.uname()[1]
-
-        if not hostname:
-            if logger:
-                logger.error("could not detect hostname")
-            raise RuntimeError("could not detect hostname")
-
-        return hostname
-
-
-    # --------------------------------------------------------------------------
-    #
-    @staticmethod
-    def hostip(host=None, logger=None):
+    def hostip(req=None, logger=None):
         """
-        look up the ip number for a given host name.  If hostname is not given,
-        look up IP for localhost.
+        Look up the ip number for a given requested interface name.
+        If interface is not given, do some magic.
         """
 
-        if not host:
+        # List of interfaces that we probably dont want to bind to
+        black_list = ['lo', 'sit0']
 
-            # try the simple and safe detection first -- which will fail though
-            # if we don't have any connectivity
-            try:
-                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                s.setblocking(False)
-                s.settimeout(1.0)
-                s.connect(('8.8.8.8', 53))
-                return s.getsockname()[0]
-            except Exception as e:
-                if logger:
-                    logger.exception("use fallback IP detection (%s)" % e)
+        # Known intefaces in preferred order
+        sorted_preferred = [
+            'ipogif0', # Cray's
+            'br0', # SuperMIC
+            'eth0'
+        ]
+        
+        # Get a list of all network interfaces
+        all = netifaces.interfaces()
 
-            # if that did not work, fall back to the normal lookup for localhost
-            host = LRMS.hostname()
+        pref = None
+        # If we got a request, see if it is in the list that we detected
+        if req and req in all:
+            # Requested is available, set it
+            pref = req
+        else:
+            # No requested or request not found, create preference list
+            potentials = [iface for iface in all if iface not in black_list]
 
-        # a host is given, or is localhost now -- look it up.
+        # If we didn't select an interface already
+        if not pref:
+            # Go through the sorted list and see if it is available
+            for iface in sorted_preferred:
+                if iface in all:
+                    # Found something, get out of here
+                    pref = iface
+                    break
+       
+        # If we still didn't find something, grab the first one from the
+        # potentials if it has entries
+        if not pref and potentials:
+            pref = potentials[0]
 
-        # FIXME: move to ru?
-        if hasattr(socket, 'setdefaulttimeout'):
-            socket.setdefaulttimeout(1)
+        # If there were no potentials, see if we can find one in the blacklist
+        if not pref:
+            for iface in black_list:
+                if iface in all:
+                    pref = iface
 
-        try:
-            iplist = socket.gethostbyaddr(host)[2]
-            if isinstance(iplist, list):
-                return iplist[0]
-            else:
-                return iplist
-        except:
-            raise LookupError("Can't get IP address for host %s" % host)
+        # Use IPv4, because, we can ...
+        af = netifaces.AF_INET    
+        ip = netifaces.ifaddresses(pref)[af][0]['addr']
+
+        return ip
 
 
 
@@ -4144,8 +4210,20 @@ class ForkLRMS(LRMS):
                 self._log.warn("more cores available: using requested %d instead of available %d.",
                         selected_cpus, detected_cpus)
 
-        self.node_list = ["localhost"]
-        self.cores_per_node = selected_cpus
+        # if cores_per_node is set in the agent config, we slice the number of
+        # cores into that many virtual nodes.  cpn defaults to selected_cpus,
+        # to preserve the previous behavior.
+        self.cores_per_node = self._cfg.get('cores_per_node')
+        if not self.cores_per_node:
+            self.cores_per_node = selected_cpus
+
+        requested_nodes = int(math.ceil(float(selected_cpus) / float(self.cores_per_node)))
+        self.node_list  = list()
+        for i in range(requested_nodes):
+            self.node_list.append("localhost")
+
+        self._log.debug('configure localhost to behave as %s nodes with %s cores each.',
+                len(self.node_list), self.cores_per_node)
 
 # ==============================================================================
 #
@@ -4227,7 +4305,7 @@ class AgentExecutingComponent(rpu.Component):
     #
     def __init__(self, cfg):
 
-        rpu.Component.__init__(self, cfg)
+        rpu.Component.__init__(self, 'AgentExecutingComponent', cfg)
 
 
     # --------------------------------------------------------------------------
@@ -4270,7 +4348,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self):
+    def initialize_child(self):
 
       # self.declare_input (rp.AGENT_EXECUTING_PENDING, rp.AGENT_EXECUTING_QUEUE)
       # self.declare_worker(rp.AGENT_EXECUTING_PENDING, self.work)
@@ -4291,11 +4369,13 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         self._cus_to_cancel  = list()
         self._cus_to_watch   = list()
         self._watch_queue    = Queue.Queue ()
-        self._cu_environment = self._populate_cu_environment()
+
+        self._pilot_id = self._cfg['pilot_id']
 
         # run watcher thread
         self._terminate = threading.Event()
         self._watcher   = threading.Thread(target=self._watch, name="Watcher")
+        self._watcher.daemon = True
         self._watcher.start ()
 
         # The AgentExecutingComponent needs the LaunchMethods to construct
@@ -4314,13 +4394,14 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         self.publish('command', {'cmd' : 'alive',
                                  'arg' : self.cname})
 
+        self._cu_environment = self._populate_cu_environment()
 
         self.tmpdir = tempfile.gettempdir()
 
 
     # --------------------------------------------------------------------------
     #
-    def finalize(self):
+    def finalize_child(self):
 
         # terminate watcher thread
         self._terminate.set()
@@ -4346,7 +4427,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
         elif cmd == 'shutdown':
             self._log.info('received shutdown command')
-            self.close()
+            self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -4373,6 +4454,16 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             new_env['PS1'] = old_ps
 
         new_env.pop('VIRTUAL_ENV', None)
+
+        # Remove the configured set of environment variables from the
+        # environment that we pass to Popen.
+        for e in new_env.keys():
+            env_removables = list()
+            if self._mpi_launcher : env_removables += self._mpi_launcher.env_removables
+            if self._task_launcher: env_removables += self._task_launcher.env_removables
+            for r in  env_removables:
+                if e.startswith(r):
+                    new_env.pop(e, None)
 
         return new_env
 
@@ -4429,25 +4520,21 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
         if False:
             cu_tmpdir = '%s/%s' % (self.tmpdir, cu['_id'])
-            rec_makedir(cu_tmpdir)
         else:
             cu_tmpdir = cu['workdir']
 
+        rec_makedir(cu_tmpdir)
         launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu_tmpdir
         self._log.debug("Created launch_script: %s", launch_script_name)
 
         with open(launch_script_name, "w") as launch_script:
             launch_script.write('#!/bin/bash -l\n\n')
-            launch_script.write("# timestamp utility: seconds since epoch\n")
-            launch_script.write("timestamp () {\n")
-            launch_script.write("TIMESTAMP=`awk 'BEGIN{srand(); print srand()}'`\n")
-            launch_script.write("}\n\n")
 
-            launch_script.write("timestamp\n")
-            launch_script.write("echo script start_script $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                launch_script.write("echo script start_script `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
             launch_script.write('\n# Change to working directory for unit\ncd %s\n' % cu_tmpdir)
-            launch_script.write("timestamp\n")
-            launch_script.write("echo script after_cd $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                launch_script.write("echo script after_cd `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
             # Before the Big Bang there was nothing
             if cu['description']['pre_exec']:
@@ -4459,11 +4546,11 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                     pre_exec_string += "%s\n" % cu['description']['pre_exec']
                 # Note: extra spaces below are for visual alignment
                 launch_script.write("# Pre-exec commands\n")
-                launch_script.write("timestamp\n")
-                launch_script.write("echo pre  start $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
+                if 'RADICAL_PILOT_PROFILE' in os.environ:
+                    launch_script.write("echo pre  start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
                 launch_script.write(pre_exec_string)
-                launch_script.write("timestamp\n")
-                launch_script.write("echo pre  stop $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
+                if 'RADICAL_PILOT_PROFILE' in os.environ:
+                    launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
             # YARN pre execution folder permission change
             # TODO: This needs to move inside the construct command when the launcher
@@ -4495,8 +4582,6 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                     else:
                         task_args_string += '"%s" ' % arg  # Otherwise return between double quotes.
 
-            launch_script_hop = "/usr/bin/env RP_SPAWNER_HOP=TRUE %s" % launch_script_name
-
             # The actual command line, constructed per launch-method
             try:
                 if launcher.name == 'LaunchMethodYARN':
@@ -4514,7 +4599,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                         launcher.construct_command(cu['description']['executable'],
                                                task_args_string,
                                                cu['description']['cores'],
-                                               launch_script_hop,
+                                               launch_script_name,
                                                cu['opaque_slots'])
                 if hop_cmd : cmdline = hop_cmd
                 else       : cmdline = launch_script_name
@@ -4527,8 +4612,8 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             launch_script.write("# The command to run\n")
             launch_script.write("%s\n" % launch_command)
             launch_script.write("RETVAL=$?\n")
-            launch_script.write("timestamp\n")
-            launch_script.write("echo script after_exec $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                launch_script.write("echo script after_exec `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
             # After the universe dies the infrared death, there will be nothing
             if cu['description']['post_exec']:
@@ -4539,11 +4624,11 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 else:
                     post_exec_string += "%s\n" % cu['description']['post_exec']
                 launch_script.write("# Post-exec commands\n")
-                launch_script.write("timestamp\n")
-                launch_script.write("echo post start $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
+                if 'RADICAL_PILOT_PROFILE' in os.environ:
+                    launch_script.write("echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
                 launch_script.write('%s\n' % post_exec_string)
-                launch_script.write("timestamp\n")
-                launch_script.write("echo post stop  $TIMESTAMP >> %s/PROF\n" % cu_tmpdir)
+                if 'RADICAL_PILOT_PROFILE' in os.environ:
+                    launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
             # YARN pre execution folder permission change
             # TODO: This needs to move inside the construct command when the launcher
@@ -4597,7 +4682,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
         cname = self.name.replace('Component', 'Watcher')
         self._prof = rpu.Profiler(cname)
-        self._prof.prof('run')
+        self._prof.prof('run', uid=self._pilot_id)
         try:
             self._log = ru.get_logger(cname, target="%s.log" % cname,
                                       level='DEBUG') # FIXME?
@@ -4640,7 +4725,8 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             self._log.exception("Error in ExecWorker watch loop (%s)" % e)
             # FIXME: this should signal the ExecWorker for shutdown...
 
-        self._prof.prof ('stop')
+        self._prof.prof('stop', uid=self._pilot_id)
+        self._prof.flush()
 
 
     # --------------------------------------------------------------------------
@@ -4694,22 +4780,29 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                         # FIXME: there is a race condition between the state poll
                         # above and the kill command below.  We probably should pull
                         # state after kill again?
+                    
+                    # We got a request to cancel this cu
+                    action += 1
+                    cu['proc'].kill()
+                    cu['proc'].wait() # make sure proc is collected
 
-                        # We got a request to cancel this cu
-                        action += 1
-                        cu['proc'].kill()
-                        with self._cancel_lock:
-                            self._cus_to_cancel.remove(cu['_id'])
+                    with self._cancel_lock:
+                        self._cus_to_cancel.remove(cu['_id'])
 
-                        self._prof.prof('final', msg="execution canceled", uid=cu['_id'])
+                    self._prof.prof('final', msg="execution canceled", uid=cu['_id'])
 
-                        self._cus_to_watch.remove(cu)
-                        del(cu['proc'])  # proc is not json serializable
-                        self.publish('unschedule', cu)
-                        self.advance(cu, rp.CANCELED, publish=True, push=False)
+                    self._cus_to_watch.remove(cu)
+                    
+                    del(cu['proc'])  # proc is not json serializable
+                    self.publish('unschedule', cu)
+                    self.advance(cu, rp.CANCELED, publish=True, push=False)
 
                 else:
                     self._prof.prof('exec', msg='execution complete', uid=cu['_id'])
+
+
+                    # make sure proc is collected
+                    cu['proc'].wait()
 
                     # we have a valid return code -- unit is final
                     action += 1
@@ -4765,7 +4858,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self):
+    def initialize_child(self):
 
         self.declare_input (rp.EXECUTING_PENDING, rp.AGENT_EXECUTING_QUEUE)
         self.declare_worker(rp.EXECUTING_PENDING, self.work)
@@ -4792,6 +4885,9 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         self._deactivate += 'unset VIRTUAL_ENV\n\n'
 
+        # FIXME: we should not alter the environment of the running agent, but
+        #        only make sure that the CU finds a pristine env.  That also
+        #        holds for the unsetting below -- AM
         if old_path: os.environ['PATH']        = old_path
         if old_home: os.environ['PYTHON_HOME'] = old_home
         if old_ps1:  os.environ['PS1']         = old_ps1
@@ -4802,59 +4898,17 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         # simplify shell startup / prompt detection
         os.environ['PS1'] = '$ '
 
-        # the registry keeps track of units to watch, indexed by their shell
-        # spawner process ID.  As the registry is shared between the spawner and
-        # watcher thread, we use a lock while accessing it.
-        self._registry      = dict()
-        self._registry_lock = threading.RLock()
-
-        self._cus_to_cancel  = list()
-        self._cancel_lock    = threading.RLock()
-
-        self._cached_events = list() # keep monitoring events for pid's which
-                                     # are not yet known
-
-        # get some threads going -- those will do all the work.
-        import saga.utils.pty_shell as sups
-        self.launcher_shell = sups.PTYShell ("fork://localhost/")
-        self.monitor_shell  = sups.PTYShell ("fork://localhost/")
-
-        # run the spawner on the shells
-        # tmp = tempfile.gettempdir()
-        # Moving back to shared file system again, until it reaches maturity,
-        # as this breaks launch methods with a hop, e.g. ssh.
-        tmp = os.getcwd() # FIXME: see #658
-        pilot_id = self._cfg['pilot_id']
-        ret, out, _  = self.launcher_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
-                           % (os.path.dirname (rp.__file__), tmp, pilot_id, self._cname))
-        if  ret != 0 :
-            raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
-
-        ret, out, _  = self.monitor_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
-                           % (os.path.dirname (rp.__file__), tmp, pilot_id, self._cname))
-        if  ret != 0 :
-            raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
-
-        # run watcher thread
-        self._terminate = threading.Event()
-        self._watcher   = threading.Thread(target=self._watch, name="Watcher")
-        self._watcher.start ()
-
-        self._prof.prof('run setup done')
-
-        # FIXME: 
+        # FIXME:
         #
         # The AgentExecutingComponent needs the LaunchMethods to construct
         # commands.  Those need the scheduler for some lookups and helper
         # methods, and the scheduler needs the LRMS.  The LRMS can in general
         # only initialized in the original agent environment -- which ultimately
-        # limits our ability to place the CU execution on other nodes.  
+        # limits our ability to place the CU execution on other nodes.
         #
         # As a temporary workaround we pass a None-Scheduler -- this will only
         # work for some launch methods, and specifically not for ORTE, DPLACE
-        # and RUNJOB.  
+        # and RUNJOB.
         #
         # The clean solution seems to be to make sure that, on 'allocating', the
         # scheduler derives all information needed to use the allocation and
@@ -4873,6 +4927,60 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
                 cfg    = self._cfg,
                 logger = self._log)
 
+        # TODO: test that this actually works
+        # Remove the configured set of environment variables from the
+        # environment that we pass to Popen.
+        for e in os.environ.keys():
+            env_removables = list()
+            if self._mpi_launcher : env_removables += self._mpi_launcher.env_removables
+            if self._task_launcher: env_removables += self._task_launcher.env_removables
+            for r in  env_removables:
+                if e.startswith(r):
+                    os.environ.pop(e, None)
+
+        # the registry keeps track of units to watch, indexed by their shell
+        # spawner process ID.  As the registry is shared between the spawner and
+        # watcher thread, we use a lock while accessing it.
+        self._registry      = dict()
+        self._registry_lock = threading.RLock()
+
+        self._cus_to_cancel  = list()
+        self._cancel_lock    = threading.RLock()
+
+        self._cached_events = list() # keep monitoring events for pid's which
+                                     # are not yet known
+
+        # get some threads going -- those will do all the work.
+        import saga.utils.pty_shell as sups
+        self.launcher_shell = sups.PTYShell("fork://localhost/")
+        self.monitor_shell  = sups.PTYShell("fork://localhost/")
+
+        # run the spawner on the shells
+        # tmp = tempfile.gettempdir()
+        # Moving back to shared file system again, until it reaches maturity,
+        # as this breaks launch methods with a hop, e.g. ssh.
+        tmp = os.getcwd() # FIXME: see #658
+        self._pilot_id = self._cfg['pilot_id']
+        ret, out, _  = self.launcher_shell.run_sync \
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
+                           % (os.path.dirname (rp.__file__), tmp, self._pilot_id, self._cname))
+        if  ret != 0 :
+            raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
+
+        ret, out, _  = self.monitor_shell.run_sync \
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
+                           % (os.path.dirname (rp.__file__), tmp, self._pilot_id, self._cname))
+        if  ret != 0 :
+            raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
+
+        # run watcher thread
+        self._terminate = threading.Event()
+        self._watcher   = threading.Thread(target=self._watch, name="Watcher")
+        self._watcher.daemon = True
+        self._watcher.start ()
+
+        self._prof.prof('run setup done', uid=self._pilot_id)
+
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',
                                  'arg' : self.cname})
@@ -4880,7 +4988,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def finalize(self):
+    def finalize_child(self):
 
         # communicate finalization
         self.publish('command', {'cmd' : 'final',
@@ -4902,7 +5010,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         elif cmd == 'shutdown':
             self._log.info('received shutdown command')
-            self.close()
+            self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -5031,7 +5139,10 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         if  cu['workdir'] :
             cwd  += "# CU workdir\n"
             cwd  += "mkdir -p %s\n" % cu['workdir']
+            # TODO: how do we align this timing with the mkdir with POPEN? (do we at all?)
             cwd  += "cd       %s\n" % cu['workdir']
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                cwd  += "echo script after_cd `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             cwd  += "\n"
 
         if  descr['environment'] :
@@ -5042,12 +5153,12 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         if  descr['pre_exec'] :
             pre  += "# CU pre-exec\n"
-            pre  += "timestamp\n"
-            pre  += "echo pre  start $TIMESTAMP >> %s/PROF\n" % cu['workdir']
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                pre  += "echo pre  start `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             pre  += '\n'.join(descr['pre_exec' ])
             pre  += "\n"
-            pre  += "timestamp\n"
-            pre  += "echo pre  stop  $TIMESTAMP >> %s/PROF\n" % cu['workdir']
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                pre  += "echo pre  stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             pre  += "\n"
 
         # YARN pre execution folder permission change
@@ -5060,13 +5171,13 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         if  descr['post_exec'] :
             post += "# CU post-exec\n"
-            post += "timestamp\n"
-            post += "echo post start $TIMESTAMP >> %s/PROF\n" % cu['workdir']
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                post += "echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             post += '\n'.join(descr['post_exec' ])
             post += "\n"
-            post += "timestamp\n"
-            post += "echo post stop  $TIMESTAMP >> %s/PROF\n" % cu['workdir']
-            post += "\n\n"
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                post += "echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+            post += "\n"
         
         # YARN pre execution folder permission change
         # TODO: This needs to move inside the construct command when the launcher
@@ -5100,14 +5211,10 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
                     '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
                     cu['opaque_slots'])
 
+        script = ''
+        if 'RADICAL_PILOT_PROFILE' in os.environ:
+            script += "echo script start_script `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
 
-        script = """
-# timestamp utility: seconds since epoch
-timestamp () {
-  TIMESTAMP=`awk 'BEGIN{srand(); print srand()}'`
-}
-
-"""
         if hop_cmd :
             # the script will itself contain a remote callout which calls again
             # the script for the invokation of the real workload (cmd) -- we
@@ -5131,7 +5238,11 @@ timestamp () {
 
         script += "# CU execution\n"
         script += "%s %s\n\n" % (cmd, io)
+        script += "RETVAL=$?\n"
+        if 'RADICAL_PILOT_PROFILE' in os.environ:
+            script += "echo script after_exec `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
         script += "%s"        %  post
+        script += "exit $RETVAL\n"
         script += "# ------------------------------------------------------\n\n"
 
       # self._log.debug ("execution script:\n%s\n" % script)
@@ -5211,7 +5322,7 @@ timestamp () {
         MONITOR_READ_TIMEOUT = 1.0   # check for stop signal now and then
         static_cnt           = 0
 
-        self._prof.prof('run')
+        self._prof.prof('run', uid=self._pilot_id)
         try:
             self._log = ru.get_logger(cname, target="%s.log" % cname,
                                       level='DEBUG') # FIXME?
@@ -5310,7 +5421,8 @@ timestamp () {
             self._log.exception("Exception in job monitoring thread: %s", e)
             self._terminate.set()
 
-        self._prof.prof ('stop')
+        self._prof.prof('stop', uid=self._pilot_id)
+        self._prof.flush()
 
 
     # --------------------------------------------------------------------------
@@ -5378,7 +5490,7 @@ class AgentUpdateWorker(rpu.Worker):
     #
     def __init__(self, cfg):
 
-        rpu.Worker.__init__(self, cfg)
+        rpu.Worker.__init__(self, 'AgentUpdateWorker', cfg)
 
 
     # --------------------------------------------------------------------------
@@ -5391,10 +5503,11 @@ class AgentUpdateWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self):
+    def initialize_child(self):
 
         self._session_id    = self._cfg['session_id']
         self._mongodb_url   = self._cfg['mongodb_url']
+        self._pilot_id      = self._cfg['pilot_id']
 
         _, db, _, _, _      = ru.mongodb_connect(self._mongodb_url)
         self._mongo_db      = db
@@ -5415,7 +5528,7 @@ class AgentUpdateWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def finalize(self):
+    def finalize_child(self):
 
         # communicate finalization
         self.publish('command', {'cmd' : 'final',
@@ -5431,7 +5544,7 @@ class AgentUpdateWorker(rpu.Worker):
 
         if cmd == 'shutdown':
             self._log.info('received shutdown command')
-            self.close()
+            self.stop()
 
 
     # ------------------------------------------------------------------
@@ -5452,7 +5565,7 @@ class AgentUpdateWorker(rpu.Worker):
         res = cinfo['bulk'].execute()
         self._log.debug("bulk update result: %s", res)
 
-        self._prof.prof('unit update bulk pushed (%d)' % len(cinfo['uids']))
+        self._prof.prof('unit update bulk pushed (%d)' % len(cinfo['uids']), uid=self._pilot_id)
         for entry in cinfo['uids']:
             uid   = entry[0]
             state = entry[1]
@@ -5515,6 +5628,14 @@ class AgentUpdateWorker(rpu.Worker):
                                              'state': state,
                                              'timestamp': rpu.timestamp()}}}
 
+            # when the unit is about to leave the agent, we also update stdout,
+            # stderr exit code etc
+            # FIXME: this probably should be a parameter ('FULL') on 'msg'
+            if state in [rp.DONE, rp.FAILED, rp.CANCELED, rp.PENDING_OUTPUT_STAGING]:
+                update_dict['$set']['stdout'   ] = cu.get('stdout')
+                update_dict['$set']['stderr'   ] = cu.get('stderr')
+                update_dict['$set']['exit_code'] = cu.get('exit_code')
+
             # check if we handled the collection before.  If not, initialize
             cname = self._session_id + cbase
 
@@ -5567,7 +5688,7 @@ class AgentStagingInputComponent(rpu.Component):
     #
     def __init__(self, cfg):
 
-        rpu.Component.__init__(self, cfg)
+        rpu.Component.__init__(self, 'AgentStagingInputComponent', cfg)
 
 
     # --------------------------------------------------------------------------
@@ -5580,7 +5701,7 @@ class AgentStagingInputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self):
+    def initialize_child(self):
 
         self.declare_input (rp.AGENT_STAGING_INPUT_PENDING, rp.AGENT_STAGING_INPUT_QUEUE)
         self.declare_worker(rp.AGENT_STAGING_INPUT_PENDING, self.work)
@@ -5600,7 +5721,7 @@ class AgentStagingInputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def finalize(self):
+    def finalize_child(self):
 
         # communicate finalization
         self.publish('command', {'cmd' : 'final',
@@ -5616,7 +5737,7 @@ class AgentStagingInputComponent(rpu.Component):
 
         if cmd == 'shutdown':
             self._log.info('received shutdown command')
-            self.close()
+            self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -5627,12 +5748,16 @@ class AgentStagingInputComponent(rpu.Component):
         self._log.info('handle %s' % cu['_id'])
 
         workdir      = os.path.join(self._cfg['workdir'], '%s' % cu['_id'])
+        gtod         = os.path.join(self._cfg['workdir'], 'gtod')
         staging_area = os.path.join(self._cfg['workdir'], self._cfg['staging_area'])
+        staging_ok   = True
 
         cu['workdir']     = workdir
         cu['stdout']      = ''
         cu['stderr']      = ''
         cu['opaque_clot'] = None
+        # TODO: See if there is a more central place to put this
+        cu['gtod']        = gtod
 
         stdout_file       = cu['description'].get('stdout')
         stdout_file       = stdout_file if stdout_file else 'STDOUT'
@@ -5646,53 +5771,60 @@ class AgentStagingInputComponent(rpu.Component):
         rec_makedir(workdir)
         self._prof.prof('unit mkdir', uid=cu['_id'])
 
-        for directive in cu['Agent_Input_Directives']:
+        try:
+            for directive in cu['Agent_Input_Directives']:
 
-            self._prof.prof('Agent input_staging queue', uid=cu['_id'],
-                     msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
+                self._prof.prof('Agent input_staging queue', uid=cu['_id'],
+                         msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
 
-            # Perform input staging
-            self._log.info("unit input staging directives %s for cu: %s to %s",
-                           directive, cu['_id'], workdir)
+                # Perform input staging
+                self._log.info("unit input staging directives %s for cu: %s to %s",
+                               directive, cu['_id'], workdir)
 
-            # Convert the source_url into a SAGA Url object
-            source_url = rs.Url(directive['source'])
+                # Convert the source_url into a SAGA Url object
+                source_url = rs.Url(directive['source'])
 
-            # Handle special 'staging' scheme
-            if source_url.scheme == self._cfg['staging_scheme']:
-                self._log.info('Operating from staging')
-                # Remove the leading slash to get a relative path from the staging area
-                rel2staging = source_url.path.split('/',1)[1]
-                source = os.path.join(staging_area, rel2staging)
-            else:
-                self._log.info('Operating from absolute path')
-                source = source_url.path
+                # Handle special 'staging' scheme
+                if source_url.scheme == self._cfg['staging_scheme']:
+                    self._log.info('Operating from staging')
+                    # Remove the leading slash to get a relative path from the staging area
+                    rel2staging = source_url.path.split('/',1)[1]
+                    source = os.path.join(staging_area, rel2staging)
+                else:
+                    self._log.info('Operating from absolute path')
+                    source = source_url.path
 
-            # Get the target from the directive and convert it to the location
-            # in the workdir
-            target = directive['target']
-            abs_target = os.path.join(workdir, target)
+                # Get the target from the directive and convert it to the location
+                # in the workdir
+                target = directive['target']
+                abs_target = os.path.join(workdir, target)
 
-            # Create output directory in case it doesn't exist yet
-            rec_makedir(os.path.dirname(abs_target))
+                # Create output directory in case it doesn't exist yet
+                rec_makedir(os.path.dirname(abs_target))
 
-            self._log.info("Going to '%s' %s to %s", directive['action'], source, abs_target)
+                self._log.info("Going to '%s' %s to %s", directive['action'], source, abs_target)
 
-            if   directive['action'] == LINK: os.symlink     (source, abs_target)
-            elif directive['action'] == COPY: shutil.copyfile(source, abs_target)
-            elif directive['action'] == MOVE: shutil.move    (source, abs_target)
-            else:
-                # FIXME: implement TRANSFER mode
-                raise NotImplementedError('Action %s not supported' % directive['action'])
+                if   directive['action'] == LINK: os.symlink     (source, abs_target)
+                elif directive['action'] == COPY: shutil.copyfile(source, abs_target)
+                elif directive['action'] == MOVE: shutil.move    (source, abs_target)
+                else:
+                    # FIXME: implement TRANSFER mode
+                    raise NotImplementedError('Action %s not supported' % directive['action'])
 
-            log_message = "%s'ed %s to %s - success" % (directive['action'], source, abs_target)
-            self._log.info(log_message)
+                log_message = "%s'ed %s to %s - success" % (directive['action'], source, abs_target)
+                self._log.info(log_message)
+
+        except Exception as e:
+            self._log.exception("staging input failed -> unit failed")
+            staging_ok = False
 
 
-        self._prof.prof('log', msg="toward agent scheduling", uid=cu['_id'])
-
-      # self.advance(cu, rp.AGENT_SCHEDULING_PENDING, publish=True, push=True)
-        self.advance(cu, rp.ALLOCATING_PENDING, publish=True, push=True)
+        # Agent input staging is done (or failed)
+        if staging_ok:
+          # self.advance(cu, rp.AGENT_SCHEDULING_PENDING, publish=True, push=True)
+            self.advance(cu, rp.ALLOCATING_PENDING, publish=True, push=True)
+        else:
+            self.advance(cu, rp.FAILED, publish=True, push=False)
 
 
 # ==============================================================================
@@ -5714,7 +5846,7 @@ class AgentStagingOutputComponent(rpu.Component):
     #
     def __init__(self, cfg):
 
-        rpu.Component.__init__(self, cfg)
+        rpu.Component.__init__(self, 'AgentStagingOutputComponent', cfg)
 
 
     # --------------------------------------------------------------------------
@@ -5727,7 +5859,7 @@ class AgentStagingOutputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self):
+    def initialize_child(self):
 
         self.declare_input (rp.AGENT_STAGING_OUTPUT_PENDING, rp.AGENT_STAGING_OUTPUT_QUEUE)
         self.declare_worker(rp.AGENT_STAGING_OUTPUT_PENDING, self.work)
@@ -5748,7 +5880,7 @@ class AgentStagingOutputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def finalize(self):
+    def finalize_child(self):
 
         # communicate finalization
         self.publish('command', {'cmd' : 'final',
@@ -5764,7 +5896,7 @@ class AgentStagingOutputComponent(rpu.Component):
 
         if cmd == 'shutdown':
             self._log.info('received shutdown command')
-            self.close()
+            self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -5774,6 +5906,7 @@ class AgentStagingOutputComponent(rpu.Component):
         self.advance(cu, rp.AGENT_STAGING_OUTPUT, publish=True, push=False)
 
         staging_area = os.path.join(self._cfg['workdir'], self._cfg['staging_area'])
+        staging_ok   = True
 
         workdir = cu['workdir']
 
@@ -5796,16 +5929,17 @@ class AgentStagingOutputComponent(rpu.Component):
 
                 cu['stderr'] += rpu.tail(txt)
 
-        if os.path.isfile("%s/PROF" % cu['workdir']):
-            try:
-                with open("%s/PROF" % cu['workdir'], 'r') as prof_f:
-                    txt = prof_f.read()
-                    for line in txt.split("\n"):
-                        if line:
-                            x1, x2, x3 = line.split()
-                            self._prof.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
-            except Exception as e:
-                self._log.error("Pre/Post profiling file read failed: `%s`" % e)
+        if 'RADICAL_PILOT_PROFILE' in os.environ:
+            if os.path.isfile("%s/PROF" % cu['workdir']):
+                try:
+                    with open("%s/PROF" % cu['workdir'], 'r') as prof_f:
+                        txt = prof_f.read()
+                        for line in txt.split("\n"):
+                            if line:
+                                x1, x2, x3 = line.split()
+                                self._prof.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
+                except Exception as e:
+                    self._log.error("Pre/Post profiling file read failed: `%s`" % e)
 
         # NOTE: all units get here after execution, even those which did not
         #       finish successfully.  We do that so that we can make 
@@ -5816,58 +5950,69 @@ class AgentStagingOutputComponent(rpu.Component):
             self.advance(cu, cu['target_state'], publish=True, push=False)
             return
 
-        # all other units get their (expectedly valid) output files staged
-        for directive in cu['Agent_Output_Directives']:
 
-            self._prof.prof('Agent output_staging', uid=cu['_id'],
-                     msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
+        try:
+            # all other units get their (expectedly valid) output files staged
+            for directive in cu['Agent_Output_Directives']:
 
-            # Perform output staging
-            self._log.info("unit output staging directives %s for cu: %s to %s",
-                    directive, cu['_id'], workdir)
+                self._prof.prof('Agent output_staging', uid=cu['_id'],
+                         msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
 
-            # Convert the target_url into a SAGA Url object
-            target_url = rs.Url(directive['target'])
+                # Perform output staging
+                self._log.info("unit output staging directives %s for cu: %s to %s",
+                        directive, cu['_id'], workdir)
 
-            # Handle special 'staging' scheme
-            if target_url.scheme == self._cfg['staging_scheme']:
-                self._log.info('Operating from staging')
-                # Remove the leading slash to get a relative path from
-                # the staging area
-                rel2staging = target_url.path.split('/',1)[1]
-                target = os.path.join(staging_area, rel2staging)
-            else:
-                self._log.info('Operating from absolute path')
+                # Convert the target_url into a SAGA Url object
+                target_url = rs.Url(directive['target'])
+
+                # Handle special 'staging' scheme
+                if target_url.scheme == self._cfg['staging_scheme']:
+                    self._log.info('Operating from staging')
+                    # Remove the leading slash to get a relative path from
+                    # the staging area
+                    rel2staging = target_url.path.split('/',1)[1]
+                    target = os.path.join(staging_area, rel2staging)
+                else:
+                    self._log.info('Operating from absolute path')
+                    # FIXME: will this work for TRANSFER mode?
+                    target = target_url.path
+
+                # Get the source from the directive and convert it to the location
+                # in the workdir
+                source = str(directive['source'])
+                abs_source = os.path.join(workdir, source)
+
+                # Create output directory in case it doesn't exist yet
                 # FIXME: will this work for TRANSFER mode?
-                target = target_url.path
+                rec_makedir(os.path.dirname(target))
 
-            # Get the source from the directive and convert it to the location
-            # in the workdir
-            source = str(directive['source'])
-            abs_source = os.path.join(workdir, source)
+                self._log.info("Going to '%s' %s to %s", directive['action'], abs_source, target)
 
-            # Create output directory in case it doesn't exist yet
-            # FIXME: will this work for TRANSFER mode?
-            rec_makedir(os.path.dirname(target))
+                if directive['action'] == LINK:
+                    # This is probably not a brilliant idea, so at least give a warning
+                    os.symlink(abs_source, target)
+                elif directive['action'] == COPY:
+                    shutil.copyfile(abs_source, target)
+                elif directive['action'] == MOVE:
+                    shutil.move(abs_source, target)
+                else:
+                    # FIXME: implement TRANSFER mode
+                    raise NotImplementedError('Action %s not supported' % directive['action'])
 
-            self._log.info("Going to '%s' %s to %s", directive['action'], abs_source, target)
+                log_message = "%s'ed %s to %s - success" %(directive['action'], abs_source, target)
+                self._log.info(log_message)
 
-            if directive['action'] == LINK:
-                # This is probably not a brilliant idea, so at least give a warning
-                os.symlink(abs_source, target)
-            elif directive['action'] == COPY:
-                shutil.copyfile(abs_source, target)
-            elif directive['action'] == MOVE:
-                shutil.move(abs_source, target)
-            else:
-                # FIXME: implement TRANSFER mode
-                raise NotImplementedError('Action %s not supported' % directive['action'])
+        except Exception as e:
+            self._log.exception("staging output failed -> unit failed")
+            staging_ok = False
 
-            log_message = "%s'ed %s to %s - success" %(directive['action'], abs_source, target)
-            self._log.info(log_message)
 
-        # Agent output staging is done.
-        self.advance(cu, rp.PENDING_OUTPUT_STAGING, publish=True, push=False)
+        # Agent output staging is done (or failed)
+        if staging_ok:
+          # self.advance(cu, rp.UMGR_STAGING_OUTPUT_PENDING, publish=True, push=True)
+            self.advance(cu, rp.PENDING_OUTPUT_STAGING, publish=True, push=False)
+        else:
+            self.advance(cu, rp.FAILED, publish=True, push=False)
 
 
 
@@ -5883,7 +6028,7 @@ class AgentHeartbeatWorker(rpu.Worker):
     #
     def __init__(self, cfg):
 
-        rpu.Worker.__init__(self, cfg)
+        rpu.Worker.__init__(self, 'AgentHeartbeatWorker', cfg)
 
 
     # --------------------------------------------------------------------------
@@ -5896,7 +6041,7 @@ class AgentHeartbeatWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self):
+    def initialize_child(self):
 
         self._session_id    = self._cfg['session_id']
         self._mongodb_url   = self._cfg['mongodb_url']
@@ -5925,7 +6070,7 @@ class AgentHeartbeatWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def finalize(self):
+    def finalize_child(self):
 
         # communicate finalization
         self.publish('command', {'cmd' : 'final',
@@ -5941,7 +6086,7 @@ class AgentHeartbeatWorker(rpu.Worker):
 
         if cmd == 'shutdown':
             self._log.info('received shutdown command')
-            self.close()
+            self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -5949,7 +6094,7 @@ class AgentHeartbeatWorker(rpu.Worker):
     def idle_cb(self):
 
         try:
-            self._prof.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!')
+            self._prof.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!', uid=self._pilot_id)
             self._check_commands()
             self._check_state   ()
             return True
@@ -5978,7 +6123,7 @@ class AgentHeartbeatWorker(rpu.Worker):
             cmd = command[COMMAND_TYPE]
             arg = command[COMMAND_ARG]
 
-            self._prof.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" % (cmd, arg))
+            self._prof.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" % (cmd, arg), uid=self._pilot_id)
 
             if cmd == COMMAND_CANCEL_PILOT:
                 self._log.info('cancel pilot cmd')
@@ -6018,26 +6163,23 @@ class AgentWorker(rpu.Worker):
     def __init__(self, cfg):
 
         self.agent_name = cfg['agent_name']
-        rpu.Worker.__init__(self, cfg)
+        rpu.Worker.__init__(self, 'AgentWorker', cfg)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def initialize(self):
+
+        self._log.debug('starting AgentWorker for %s' % self.agent_name)
 
         # everything which comes after the worker init is limited in scope to
         # the current process, and will not be available in the worker process.
-        self._pilot_id   = self._cfg['pilot_id']
-        self._session_id = self._cfg['session_id']
-
-        # set up db connection for the command cb (the worker process gets its
-        # own db handle)
-        if self.agent_name == 'agent.0':
-            _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
-            self._p  = mongo_db["%s.p"  % self._session_id]
+        self._pilot_id    = self._cfg['pilot_id']
+        self._session_id  = self._cfg['session_id']
+        self.final_cause  = None
 
         # all components use the command channel for control messages
-        self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
         self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
-
-        # communicate successful startup
-        self.publish('command', {'cmd' : 'alive',
-                                 'arg' : self.cname})
 
 
     # --------------------------------------------------------------------------
@@ -6059,17 +6201,15 @@ class AgentWorker(rpu.Worker):
 
         if cmd == 'shutdown':
 
-            self._log.info("shutdown command (%s)" % arg)
-            self._log.info("terminate")
-            self.terminate()
+            # let agent know what caused the termination (first cause)
+            if not self.final_cause:
+                self.final_cause = arg
 
-            if self.agent_name == 'agent.0':
-                if arg == 'timeout':
-                    pilot_DONE(self._p, self._pilot_id, self._log, "TIMEOUT received. Terminating.")
-                if arg == 'cancel':
-                    pilot_CANCELED(self._p, self._pilot_id, self._log, "CANCEL received. Terminating.")
-                else:
-                    pilot_FAILED(self._p, self._pilot_id, self._log, "TERMINATE (%s) received" % arg)
+                self._log.info("shutdown command (%s)" % arg)
+                self.stop()
+
+            else:
+                self._log.info("shutdown command (%s) - ignore" % arg)
 
 
     # --------------------------------------------------------------------------
@@ -6109,34 +6249,18 @@ class AgentWorker(rpu.Worker):
                 self._sub_agents[name]['alive'] = True
 
 
-        elif cmd == 'final':
-            # finalization needs to happen in the main thread/process, thus we
-            # catch it in the command cb which is registered at __init__
-
-            if arg.startswith("%s." % self.agent_name):
-
-                # one of our components got finalized.  If we are not already
-                # shutting down, we do so now
-                if not self._terminated:
-                    self._log.info('terminate: component %s got finalized' % arg)
-                    self.close()
-
-            elif arg in self._sub_agents:
-
-                # one of our agents got finalized.  we now shut down, too.
-                self._log.info('terminate: sub-agent %s got finalized' % arg)
-                self.close()
-
-
     # --------------------------------------------------------------------------
     #
-    def initialize(self):
+    def initialize_child(self):
         """
         Read the configuration file, setup logging and mongodb connection.
         This prepares the stage for the component setup (self._setup()).
         """
 
-        self._cfg['workdir'] = os.getcwd() # this better be on a shared FS!
+        # keep track of objects we need to stop in the finally clause
+        self._sub_agents = dict()
+        self._components = dict()
+        self._workers    = dict()
 
         # sanity check on config settings
         if not 'cores'               in self._cfg: raise ValueError("Missing number of cores")
@@ -6158,16 +6282,13 @@ class AgentWorker(rpu.Worker):
         self._sub_cfg    = self._cfg['agent_layout'][self.agent_name]
         self._pull_units = self._sub_cfg.get('pull_units', False)
 
-        # another sanity check
-        if self.agent_name == 'agent.0':
-            if self._sub_cfg.get('target', 'local') != 'local':
-                raise ValueError("agent.0 must run on target 'local'")
+        # this better be on a shared FS!
+        self._cfg['workdir'] = os.getcwd()
 
-        # keep track of objects we need to close in the finally clause
-        self._sub_agents = dict()
-        self._bridges    = dict()
-        self._components = dict()
-        self._workers    = dict()
+        # another sanity check
+        if self.agent_name == 'agent_0':
+            if self._sub_cfg.get('target', 'local') != 'local':
+                raise ValueError("agent_0 must run on target 'local'")
 
         # configure the agent logger
         self._log.setLevel(self._cfg['debug'])
@@ -6175,15 +6296,17 @@ class AgentWorker(rpu.Worker):
 
         # set up db connection -- only for the master agent and for the agent
         # which pulls units (which might be the same)
-        if self.agent_name == 'agent.0' or self._pull_units:
+        if self.agent_name == 'agent_0' or self._pull_units:
+            self._log.debug('connecting to mongodb at %s for unit pull')
             _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
 
             self._p  = mongo_db["%s.p"  % self._session_id]
             self._cu = mongo_db["%s.cu" % self._session_id]
+            self._log.debug('connected to mongodb')
 
         # first order of business: set the start time and state of the pilot
         # Only the master agent performs this action
-        if self.agent_name == 'agent.0':
+        if self.agent_name == 'agent_0':
             now = rpu.timestamp()
             ret = self._p.update(
                 {"_id": self._pilot_id},
@@ -6200,12 +6323,43 @@ class AgentWorker(rpu.Worker):
         self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
         self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.barrier_cb)
 
-        # bootstrap sub-agents, agent components, bridges etc.
-        self.bootstrap_4()
+        # Now instantiate all communication and notification channels, and all
+        # components and workers.  It will then feed a set of units to the
+        # lead-in queue (staging_input).  A state notification callback will
+        # then register all units which reached a final state (DONE).  Once all
+        # units are accounted for, it will tear down all created objects.
 
-        # once bootstrap_4 is done, we signal success to the parent agent
-        self.publish('command', {'cmd' : 'alive',
-                                 'arg' : self.agent_name})
+        # we pick the layout according to our role (name)
+        # NOTE: we don't do sanity checks on the agent layout (too lazy) -- but
+        #       we would hiccup badly over ill-formatted or incomplete layouts...
+        if not self.agent_name in self._cfg['agent_layout']:
+            raise RuntimeError("no agent layout section for %s" % self.agent_name)
+
+        try:
+            self.start_sub_agents()
+            self.start_components()
+
+            # before we declare bootstrapping-success, the we wait for all
+            # components, workers and sub_agents to complete startup.  For that,
+            # all sub-agents will wait ALIVE messages on the COMMAND pubsub for
+            # all entities it spawned.  Only when all are alive, we will
+            # continue here.
+            self.alive_barrier()
+
+        except Exception as e:
+            self._log.exception("Agent setup error: %s" % e)
+            raise
+
+        self._prof.prof('Agent setup done', logger=self._log.debug, uid=self._pilot_id)
+
+        # also watch all components (once per second)
+        self.declare_idle_cb(self.watcher_cb, 10.0)
+
+        # once bootstrap_4 is done, we signal success to the parent agent 
+        # -- if we have any parent...
+        if self.agent_name != 'agent_0':
+            self.publish('command', {'cmd' : 'alive',
+                                     'arg' : self.agent_name})
 
         # the pulling agent registers the staging_input_queue as this is what we want to push to
         # FIXME: do a sanity check on the config that only one agent pulls, as
@@ -6223,63 +6377,109 @@ class AgentWorker(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def finalize(self):
+    def alive_barrier(self):
+
+        # FIXME: wait for bridges, too?  But we need pubsub for counting... Duh!
+        total = len(self._components) + \
+                len(self._workers   ) + \
+                len(self._sub_agents)
+        start   = time.time()
+        timeout = 120
+
+        while True:
+            # check the procs for all components which are not yet alive
+            to_check  = self._components.items() \
+                      + self._workers.items() \
+                      + self._sub_agents.items() 
+
+            alive_cnt = 0
+            total_cnt = len(to_check)
+            for name,c in to_check:
+                if c['alive']:
+                    alive_cnt += 1
+                else:
+                    self._log.debug('checking %s: %s', name, c)
+                    if None != c['handle'].poll():
+                        # process is dead and has never been alive.  Oops
+                        raise RuntimeError('component %s did not come up' % name)
+
+            self._log.debug('found alive: %2d / %2d' % (alive_cnt, total_cnt))
+
+            if alive_cnt == total_cnt:
+                self._log.debug('bootstrap barrier success')
+                break
+
+            if time.time() - timeout > start:
+                raise RuntimeError('component barrier failed (timeout)')
+            
+            time.sleep(1)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def watcher_cb(self):
+        """
+        we do a poll() on all our bridges, components, workers and sub-agent,
+        to check if they are still alive.  If any goes AWOL, we will begin to
+        tear down this agent.
+        """
+
+        to_watch = list(self._components.iteritems()) \
+                 + list(self._workers.iteritems())    \
+                 + list(self._sub_agents.iteritems())
+
+      # self._log.debug('watch: %s' % pprint.pformat(to_watch))
+
+        self._log.debug('checking %s things' % len(to_watch))
+        for name, thing in to_watch:
+            state = thing['handle'].poll()
+            if state == None:
+                self._log.debug('%30s: ok' % name)
+            else:
+                raise RuntimeError ('%s died - shutting down')
+
+        return True # always idle
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize_child(self):
 
         self._log.info("Agent finalizes")
-        self._prof.prof('stop')
+        self._prof.prof('stop', uid=self._pilot_id)
+      
+        # tell other sub-agents get lost
+        self.publish('command', {'cmd' : 'shutdown',
+                                 'arg' : '%s finalization' % self.agent_name})
 
-        # FIXME: let logfiles settle before killing the components
-        time.sleep(1)
 
         # burn the bridges, burn EVERYTHING
         for name,sa in self._sub_agents.items():
             try:
                 self._log.info("closing sub-agent %s", sa)
-                sa['proc'].terminate()
-                sa['out'].close()
-                sa['err'].close()
-                sa['alive'] = False
+                sa['handle'].stop()
             except Exception as e:
                 self._log.exception('ignore failing sub-agent terminate')
-
-        self._log.info("Agent finalizes 1")
 
         for name,c in self._components.items():
             try:
                 self._log.info("closing component %s", c)
-                c['handle'].close()
-                c['alive'] = False
+                c['handle'].stop()
             except Exception as e:
                 self._log.exception('ignore failing component terminate')
 
-        self._log.info("Agent finalizes 2")
         for name,w in self._workers.items():
             try:
                 self._log.info("closing worker %s", w)
-                w['handle'].close()
-                w['alive'] = False
+                w['handle'].stop()
             except Exception as e:
                 self._log.exception('ignore failing worker terminate')
 
-        self._log.info("Agent finalizes 3")
-        for name,b in self._bridges.items():
-            try:
-                self._log.info("closing bridge %s", b)
-                b['handle'].close()
-                b['alive'] = False
-            except Exception as e:
-                self._log.exception('ignore failing bridge terminate')
-
-        self._log.info("Agent finalizes 4")
-
-      # # fallback shutdown requests in case any of the above close calls did
-      # # not reach the components
-      # self.publish('command', {'cmd' : 'shutdown',
-      #                          'arg' : 'finalization fallback'})
-
-        # communicate finalization to parent agent
-        self.publish('command', {'cmd' : 'final',
-                                 'arg' : self.agent_name})
+        # communicate finalization to parent agent 
+        # -- if we have any parent...
+        if self.agent_name != 'agent_0':
+            self.publish('command', {'cmd' : 'final',
+                                     'arg' : self.agent_name})
 
         self._log.info("Agent finalized")
 
@@ -6295,26 +6495,37 @@ class AgentWorker(rpu.Worker):
 
         self._log.debug('start_sub_agents')
 
+        sa_list = self._sub_cfg.get('sub_agents', [])
+
+        if not sa_list:
+            self._log.debug('start_sub_agents noop')
+            return
+
         # the configs are written, and the sub-agents can be started.  To know
         # how to do that we create the agent launch method, have it creating
         # the respective command lines per agent instance, and run via
         # popen. 
-        agent_lm = LaunchMethod.create(
-            name   = self._cfg['agent_launch_method'],
-            cfg    = self._cfg,
-            logger = self._log)
-
-        for sa in self._sub_cfg.get('sub_agents', []):
+        #
+        # actually, we only create the agent_lm once we really need it for
+        # non-local sub_agents.
+        agent_lm = None
+        for sa in sa_list:
             target = self._cfg['agent_layout'][sa]['target']
 
             if target == 'local':
 
                 # start agent locally
-                cmd = "/bin/sh %s/bootstrap_2.sh %s" % (os.getcwd(), sa)
+                cmdline = "/bin/sh -l %s/bootstrap_2.sh %s" % (os.getcwd(), sa)
 
             elif target == 'node':
 
-                node = self._cfg['lrms_info']['agent_nodes'].get(sa)
+                if not agent_lm:
+                    agent_lm = LaunchMethod.create(
+                        name   = self._cfg['agent_launch_method'],
+                        cfg    = self._cfg,
+                        logger = self._log)
+
+                node = self._cfg['lrms_info']['agent_nodes'][sa]
                 # start agent remotely, use launch method
                 # NOTE:  there is some implicit assumption that we can use
                 #        the 'agent_node' string as 'agent_string:0' and
@@ -6326,70 +6537,46 @@ class AgentWorker(rpu.Worker):
                 #        work with a number of launch methods.  Can the
                 #        offset computation be moved to the LRMS?
                 # FIXME: are we using the 'hop' correctly?
+                ls_name = "%s/%s.sh" % (os.getcwd(), sa)
                 opaque_slots = { 
                         'task_slots'   : ['%s:0' % node], 
                         'task_offsets' : [], 
                         'lm_info'      : self._cfg['lrms_info']['lm_info']}
-                cmd, _ = agent_lm.construct_command(task_exec="/bin/sh", 
-                        task_args="%s/bootstrap_2.sh %s" % (os.getcwd(), sa), 
+                cmd, hop = agent_lm.construct_command(task_exec="/bin/sh",
+                        task_args="%s/bootstrap_2.sh %s" % (os.getcwd(), sa),
                         task_numcores=1, 
-                        launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
+                        launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "%s"' % ls_name,
                         opaque_slots=opaque_slots)
 
+                with open (ls_name, 'w') as ls:
+                    # note that 'exec' only makes sense if we don't add any
+                    # commands (such as post-processing) after it.
+                    ls.write('#!/bin/sh\n\n')
+                    ls.write("exec %s\n" % cmd)
+                    st = os.stat(ls_name)
+                    os.chmod(ls_name, st.st_mode | stat.S_IEXEC)
+
+                if hop : cmdline = hop
+                else   : cmdline = ls_name
+
             # spawn the sub-agent
-            self._prof.prof("create", msg=sa)
-            self._log.info ("create sub-agent %s: %s" % (sa, cmd))
+            self._prof.prof("create", msg=sa, uid=self._pilot_id)
+            self._log.info ("create sub-agent %s: %s" % (sa, cmdline))
             sa_out = open("%s.out" % sa, "w")
             sa_err = open("%s.err" % sa, "w")
-            sa_proc = subprocess.Popen(cmd, shell=True, stdout=sa_out, stderr=sa_err)
-            self._sub_agents[sa] = {'proc'  : sa_proc,
+            sa_proc = subprocess.Popen(args=cmdline.split(), stdout=sa_out, stderr=sa_err)
+
+            # make sure we can stop the sa_proc
+            sa_proc.stop = sa_proc.terminate
+
+            self._sub_agents[sa] = {'handle': sa_proc,
                                     'out'   : sa_out,
                                     'err'   : sa_err,
+                                    'pid'   : sa_proc.pid,
                                     'alive' : False}
-            self._prof.prof("created", msg=sa)
+            self._prof.prof("created", msg=sa, uid=self._pilot_id)
 
         self._log.debug('start_sub_agents done')
-
-    # --------------------------------------------------------------------------
-    #
-    def start_bridges(self):
-        """
-        For all bridges defined on this agent instance, create that bridge.
-        Keep a handle around for shutting them down later.
-        """
-
-        self._log.debug('start_bridges')
-
-        # ----------------------------------------------------------------------
-        # shortcut for bridge creation
-        bridge_type = {rp.AGENT_STAGING_INPUT_QUEUE  : 'queue',
-                       rp.AGENT_SCHEDULING_QUEUE     : 'queue',
-                       rp.AGENT_EXECUTING_QUEUE      : 'queue',
-                       rp.AGENT_STAGING_OUTPUT_QUEUE : 'queue',
-                       rp.AGENT_UNSCHEDULE_PUBSUB    : 'pubsub',
-                       rp.AGENT_RESCHEDULE_PUBSUB    : 'pubsub',
-                       rp.AGENT_COMMAND_PUBSUB       : 'pubsub',
-                       rp.AGENT_STATE_PUBSUB         : 'pubsub'}
-
-        def _create_bridge(name):
-            if bridge_type[name] == 'queue':
-                return rpu.Queue.create(rpu.QUEUE_ZMQ, name, rpu.QUEUE_BRIDGE)
-            elif bridge_type[name] == 'pubsub':
-                return rpu.Pubsub.create(rpu.PUBSUB_ZMQ, name, rpu.PUBSUB_BRIDGE)
-            else:
-                raise ValueError('unknown bridge type for %s' % name)
-        # ----------------------------------------------------------------------
-
-        # create all bridges we need.  Use the default addresses,
-        # ie. they will bind to all local interfacces on ports 10.000++.
-        for name in self._sub_cfg.get('bridges', []):
-            b = _create_bridge(name)
-            self._bridges[name] = {'handle' : b,
-                                   'alive'  : True}  # no alive check done, yet
-            self._log.info('created bridge %s: %s', name, b.name)
-
-        self._log.debug('start_bridges done')
-
 
     # --------------------------------------------------------------------------
     #
@@ -6404,10 +6591,10 @@ class AgentWorker(rpu.Worker):
         # We use a static map from component names to class types for now --
         # a factory might be more appropriate (FIXME)
         cmap = {
-            "agent_staging_input_component"  : AgentStagingInputComponent,
-            "agent_scheduling_component"     : AgentSchedulingComponent,
-            "agent_executing_component"      : AgentExecutingComponent,
-            "agent_staging_output_component" : AgentStagingOutputComponent
+            "AgentStagingInputComponent"  : AgentStagingInputComponent,
+            "AgentSchedulingComponent"    : AgentSchedulingComponent,
+            "AgentExecutingComponent"     : AgentExecutingComponent,
+            "AgentStagingOutputComponent" : AgentStagingOutputComponent
             }
         for cname, cnum in self._sub_cfg.get('components',{}).iteritems():
             for i in range(cnum):
@@ -6416,15 +6603,15 @@ class AgentWorker(rpu.Worker):
                 ccfg['number'] = i
                 comp = cmap[cname].create(ccfg)
                 comp.start()
-                self._components[comp.cname] = {'handle' : comp,
-                                                'alive'  : False}
+                self._components[comp.childname] = {'handle' : comp,
+                                                    'alive'  : False}
                 self._log.info('created component %s (%s): %s', cname, cnum, comp.cname)
 
         # we also create *one* instance of every 'worker' type -- which are the
         # heartbeat and update worker.  To ensure this, we only create workers
-        # in agent.0.  
+        # in agent_0.
         # FIXME: make this configurable, both number and placement
-        if self.agent_name == 'agent.0':
+        if self.agent_name == 'agent_0':
             wmap = {
                 rp.AGENT_UPDATE_WORKER    : AgentUpdateWorker,
                 rp.AGENT_HEARTBEAT_WORKER : AgentHeartbeatWorker
@@ -6434,86 +6621,10 @@ class AgentWorker(rpu.Worker):
                 wcfg   = copy.deepcopy(self._cfg)
                 worker = wmap[wname].create(wcfg)
                 worker.start()
-                self._workers[worker.cname] = {'handle' : worker,
-                                               'alive'  : False}
+                self._workers[worker.childname] = {'handle' : worker,
+                                                   'alive'  : False}
 
         self._log.debug("start_components done")
-
-    # --------------------------------------------------------------------------
-    #
-    def bootstrap_4(self):
-        """
-        This method will instantiate all communication and notification
-        channels, and all components and workers.  It will then feed a set of
-        units to the lead-in queue (staging_input).  A state notification
-        callback will then register all units which reached a final state
-        (DONE).  Once all units are accounted for, it will tear down all created
-        objects.
-
-        The agent accepts a config, which will specify in an agent_layout
-        section:
-          - what nodes should be used for sub-agent startup
-          - what bridges should be started
-          - what components should be started
-          - what are the endpoints for bridges which are not started
-
-        Before starting any sub-agent or component, the agent master (agent.0)
-        will collect information about the nodes required for all instances.
-        That is added to the config itself, for the benefit of the LRMS
-        initialisation which is expected to block those nodes from the
-        scheduler.
-        """
-
-        self._log.debug('bootstrap_4')
-
-        # we pick the layout according to our role (name)
-        # NOTE: we don't do sanity checks on the agent layout (too lazy) -- but
-        #       we would hiccup badly over ill-formatted or incomplete layouts...
-        if not self.agent_name in self._cfg['agent_layout']:
-            raise RuntimeError("no agent layout section for %s" % self.agent_name)
-
-        try:
-            self.start_bridges()
-
-            # FIXME: make sure all communication channels are in place.  This could
-            # be replaced with a proper barrier, but not sure if that is worth it...
-            time.sleep (1)
-
-            self.start_sub_agents()
-            self.start_components()
-
-            # before we declare bootstrapping-success, the we wait for all
-            # components, workers and sub_agents to complete startup.  For that,
-            # all sub-agents will wait ALIVE messages on the COMMAND pubsub for
-            # all entities it spawned.  Only when all are alive, we will
-            # continue here.
-            #
-            # FIXME: add bridges, too?  But we need pubsub for counting... Duh!
-            total = len(self._components) + \
-                    len(self._workers   ) + \
-                    len(self._sub_agents)
-            while True:
-                alive = [v['alive'] for v in self._components.values()] + \
-                        [v['alive'] for v in self._workers   .values()] + \
-                        [v['alive'] for v in self._sub_agents.values()]
-
-                self._log.debug('found alive: %2d / %2d' % (alive.count(True), total))
-
-                if alive.count(True) == total:
-                    self._log.debug('bootstrap barrier success')
-                    break
-
-                time.sleep(1)
-
-
-        except Exception as e:
-            self._log.exception("Agent setup error: %s" % e)
-            raise
-
-        self._prof.prof('Agent setup done', logger=self._log.debug)
-
-        # FIXME: signal the other agents, and shot down all components and
-        #        bridges.
 
 
     # --------------------------------------------------------------------------
@@ -6572,7 +6683,7 @@ class AgentWorker(rpu.Worker):
                         document = {"$set"  : {"control" : 'agent'}})
 
         self._log.info("units pulled: %4d"   % len(cu_list))
-        self._prof.prof('get', msg="bulk size: %d" % len(cu_list))
+        self._prof.prof('get', msg="bulk size: %d" % len(cu_list), uid=self._pilot_id)
         for cu in cu_list:
             self._prof.prof('get', msg="bulk size: %d" % len(cu_list), uid=cu['_id'])
 
@@ -6590,13 +6701,115 @@ class AgentWorker(rpu.Worker):
 # Agent bootstrap stage 3
 #
 # ==============================================================================
+#
+def start_bridges(cfg, log):
+    """
+    For all bridges defined on this agent instance, create that bridge.
+    Keep a handle around for shutting them down later.
+    """
+
+    log.debug('start_bridges')
+
+    # ----------------------------------------------------------------------
+    # shortcut for bridge creation
+    bridge_type = {rp.AGENT_STAGING_INPUT_QUEUE  : 'queue',
+                   rp.AGENT_SCHEDULING_QUEUE     : 'queue',
+                   rp.AGENT_EXECUTING_QUEUE      : 'queue',
+                   rp.AGENT_STAGING_OUTPUT_QUEUE : 'queue',
+                   rp.AGENT_UNSCHEDULE_PUBSUB    : 'pubsub',
+                   rp.AGENT_RESCHEDULE_PUBSUB    : 'pubsub',
+                   rp.AGENT_COMMAND_PUBSUB       : 'pubsub',
+                   rp.AGENT_STATE_PUBSUB         : 'pubsub'}
+
+    def _create_bridge(name):
+        if bridge_type[name] == 'queue':
+            return rpu.Queue.create(rpu.QUEUE_ZMQ, name, rpu.QUEUE_BRIDGE)
+        elif bridge_type[name] == 'pubsub':
+            return rpu.Pubsub.create(rpu.PUBSUB_ZMQ, name, rpu.PUBSUB_BRIDGE)
+        else:
+            raise ValueError('unknown bridge type for %s' % name)
+    # ----------------------------------------------------------------------
+
+    # create all bridges we need.  Use the default addresses,
+    # ie. they will bind to all local interfacces on ports 10.000++.
+    bridges = dict()
+    sub_cfg = cfg['agent_layout']['agent_0']
+    for b in sub_cfg.get('bridges', []):
+
+        bridge     = _create_bridge(b)
+        bridge_in  = bridge.bridge_in
+        bridge_out = bridge.bridge_out
+        bridges[b] = {'handle' : bridge,
+                      'in'     : bridge_in, 
+                      'out'    : bridge_out,
+                      'alive'  : True}  # no alive check done, yet
+        log.info('created bridge %s: %s', b, bridge.name)
+
+    log.debug('start_bridges done')
+
+    return bridges
+
+
+# --------------------------------------------------------------------------
+#
+def write_sub_configs(cfg, bridges, nodeip, log):
+    """
+    create a sub_config for each sub-agent we intent to spawn
+    """
+
+    # get bridge addresses from our bridges, and append them to the config
+    if not 'bridge_addresses' in cfg:
+        cfg['bridge_addresses'] = dict()
+
+    for b in bridges:
+        # to avoid confusion with component input and output, we call bridge
+        # input a 'sink', and a bridge output a 'source' (from the component
+        # perspective)
+        sink   = ru.Url(bridges[b]['in'])
+        source = ru.Url(bridges[b]['out'])
+
+        # we replace the ip address with what we got from LRMS (nodeip).  The
+        # bridge should be listening on all interfaces, but we want to make sure
+        # the sub-agents connect on an IP which is accessible to them
+        sink.host   = nodeip
+        source.host = nodeip
+
+        # keep the resultin URLs as strings, to be used as addresses
+        cfg['bridge_addresses'][b] = dict()
+        cfg['bridge_addresses'][b]['sink']   = str(sink)
+        cfg['bridge_addresses'][b]['source'] = str(source)
+
+    # write deep-copies of the config (with the corrected agent_name) for each
+    # sub-agent (apart from agent_0, obviously)
+    for sa in cfg.get('agent_layout'):
+        if sa != 'agent_0':
+            sa_cfg = copy.deepcopy(cfg)
+            sa_cfg['agent_name'] = sa
+            ru.write_json(sa_cfg, './%s.cfg' % sa)
+
+
+# --------------------------------------------------------------------------
+#
 def bootstrap_3():
     """
     This method continues where the bootstrapper left off, but will quickly pass
     control to the Agent class which will spawn the functional components.
 
-    Most of bootstrap_3 applies only to agent.0, in particular all mongodb
+    Most of bootstrap_3 applies only to agent_0, in particular all mongodb
     interactions remains excluded for other sub-agent instances.
+
+    The agent interprets a config file, which will specify in an agent_layout
+    section:
+      - what nodes should be used for sub-agent startup
+      - what bridges should be started
+      - what components should be started
+      - what are the endpoints for bridges which are not started
+    bootstrap_3 will create derived config files for all sub-agents.
+
+    The agent master (agent_0) will collect information about the nodes required
+    for all instances.  That is added to the config itself, for the benefit of
+    the LRMS initialisation which is expected to block those nodes from the
+    scheduler.
     """
 
     # find out what agent instance name we have
@@ -6604,65 +6817,93 @@ def bootstrap_3():
         raise RuntimeError('invalid number of parameters (%s)' % sys.argv)
     agent_name = sys.argv[1]
 
-    # set up a logger and profiler
-    prof = rpu.Profiler ('%s.bootstrap_3' % agent_name)
-    log  = ru.get_logger('%s.bootstrap_3' % agent_name, 
-                         '%s.bootstrap_3.log' % agent_name, 'DEBUG')  # FIXME?
-    log.info('start')
-
     # load the agent config, and overload the config dicts
-    if not 'RADICAL_PILOT_CFG' in os.environ:
-        raise RuntimeError('RADICAL_PILOT_CFG is not set - abort')
-
     agent_cfg  = "%s/%s.cfg" % (os.getcwd(), agent_name)
     print "startup agent %s : %s" % (agent_name, agent_cfg)
 
     cfg = ru.read_json_str(agent_cfg)
     cfg['agent_name'] = agent_name
+    pilot_id = cfg['pilot_id']
+
+    # set up a logger and profiler
+    prof = rpu.Profiler ('%s.bootstrap_3' % agent_name)
+    prof.prof('sync ref', msg='agent start', uid=pilot_id)
+    log  = ru.get_logger('%s.bootstrap_3' % agent_name,
+                         '%s.bootstrap_3.log' % agent_name, 'DEBUG')  # FIXME?
+    log.info('start')
+    prof.prof('sync ref', msg='agent start')
+
+    try:
+        import setproctitle as spt
+        spt.setproctitle('radical.pilot %s' % agent_name)
+    except Exception as e:
+        log.debug('no setproctitle: %s', e)
 
     log.setLevel(cfg.get('debug', 'INFO'))
 
     print "Agent config (%s):\n%s\n\n" % (agent_cfg, pprint.pformat(cfg))
 
-
     # quickly set up a mongodb handle so that we can report errors.
     # FIXME: signal handlers need mongo_p, but we won't have that until later
-    if agent_name == 'agent.0':
+    if agent_name == 'agent_0':
+
+        # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold the
+        # address of the tunnelized DB endpoint.
+        # If it exists, we overrule the agent config with it.
+        hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
+        if hostport:
+            dburl = ru.Url(cfg['mongodb_url'])
+            dburl.host, dburl.port = hostport.split(':')
+            cfg['mongodb_url'] = str(dburl)
 
         _, mongo_db, _, _, _  = ru.mongodb_connect(cfg['mongodb_url'])
         mongo_p = mongo_db["%s.p" % cfg['session_id']]
 
-        # set up signal and exit handlers
-        def exit_handler():
-          # rpu.flush_prof()
-            print 'atexit'
 
-        def sigint_handler(signum, frame):
+    # set up signal and exit handlers
+    def exit_handler():
+        prof.flush()
+        print 'atexit'
+        sys.exit(1)
+
+    def sigint_handler(signum, frame):
+        if agent_name == 'agent_0':
             pilot_FAILED(msg='Caught SIGINT. EXITING (%s)' % frame)
-            print 'sigint'
-            sys.exit(2)
+        print 'sigint'
+        sys.exit(2)
 
-        def sigalarm_handler(signum, frame):
+    def sigterm_handler(signum, frame):
+        if agent_name == 'agent_0':
+            pilot_FAILED(msg='Caught SIGTERM. EXITING (%s)' % frame)
+        print 'sigterm'
+        sys.exit(3)
+
+    def sigalarm_handler(signum, frame):
+        if agent_name == 'agent_0':
             pilot_FAILED(msg='Caught SIGALRM (Walltime limit?). EXITING (%s)' % frame)
-            print 'sigalrm'
-            sys.exit(3)
+        print 'sigalrm'
+        sys.exit(4)
 
-        import atexit
-        atexit.register(exit_handler)
-        signal.signal(signal.SIGINT,  sigint_handler)
-        signal.signal(signal.SIGALRM, sigalarm_handler)
+    import atexit
+    atexit.register(exit_handler)
+    signal.signal(signal.SIGINT,  sigint_handler)
+    signal.signal(signal.SIGTERM, sigterm_handler)
+    signal.signal(signal.SIGALRM, sigalarm_handler)
 
     # if anything went wrong up to this point, we would have been unable to
     # report errors into mongodb.  From here on, any fatal error should result
-    # in one of the above handlers or exit handlers being activated, thuse
+    # in one of the above handlers or exit handlers being activated, thus
     # reporting the error dutifully.
 
+    # avoid undefined vars on finalization
+    bridges = dict()
+    agent   = None
+    lrms    = None
     try:
         # ----------------------------------------------------------------------
         # des Pudels Kern: merge LRMS info into cfg and get the agent started
 
-        lrms = None
-        if agent_name == 'agent.0':
+        if agent_name == 'agent_0':
 
             # only the master agent creates LRMS and sub-agent config files.
             # The LRMS which will give us the set of agent_nodes to use for
@@ -6674,80 +6915,89 @@ def bootstrap_3():
                                logger = log)
             cfg['lrms_info'] = lrms.lrms_info
 
-            # Based on the LRMS info, and specifically the agent_nodes, we now
-            # know where each sub_agent will run.  We will sift through the
-            # config, find where the bridges are to be created, thus can
-            # determine their addresses, and will then apply those addresses to
-            # the queue and pubsub endpoints in all agent components.  Note that
-            # the bridge addresses themself will not change -- they are fine to
-            # listen on tcp://*:[port]/.
+
+            # the master agent also is the only one which starts bridges.  It
+            # has to do so before creating the AgentWorker instance, as that is
+            # using the bridges already.
+
+            bridges = start_bridges(cfg, log)
+            # FIXME: make sure all communication channels are in place.  This could
+            # be replaced with a proper barrier, but not sure if that is worth it...
+            time.sleep (1)
+
+            # after we started bridges, we'll add their in and out addresses
+            # to the config, so that the communication channels can connect to
+            # them.  At this point we also write configs for all sub-agents this
+            # instance intents to spawn.
             #
-            # Once we did those changes, we will write copies of the resulting config
-            # for each sub agent instance.  At the moment those configs are identical,
-            # and the sub_agent will pick its own layout section -- but in principle
-            # this is also the point where we would make individual config changes.
+            # FIXME: we should point the address to the node of the subagent
+            #        which hosts the bridge, not the local IP.  Until this
+            #        is fixed, bridges MUST run on agent_0 (which is what
+            #        LRMS.hostip() below will point to).
+            nodeip = LRMS.hostip(cfg.get('network_interface'))
+            write_sub_configs(cfg, bridges, nodeip, log)
 
-            # dig out bridges from all sub-agents (sa)
-            bridge_addresses = dict()
-            for sa in cfg['agent_layout']:
+            # Store some runtime information into the session
+            if 'version_info' in lrms.lm_info:
+                mongo_p.update({"_id": pilot_id},
+                               {"$set": {"lm_info": lrms.lm_info['version_info']}})
 
-                # FIXME: we should point the address to the node of the subagent
-                #        which hosts the bridge, not the local IP.  Until this
-                #        is fixed, bridges MUST run on agent.0 (which is what
-                #        LRMS.hostip() below will point to).
-                nodeip = LRMS.hostip()
-
-                # we should have at most one bridge for every type
-                for b in cfg['agent_layout'][sa].get('bridges', []):
-                    if b in bridge_addresses:
-                        raise RuntimeError('duplicated bridge entry for %s' % b)
-                    bridge_addresses[b] = "tcp://%s" % nodeip
-
-            # add bridge addresses to the config
-            cfg['bridge_addresses'] = bridge_addresses
-
-            hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
-            if hostport:
-                dburl = ru.Url(cfg['mongodb_url'])
-                dburl.host, dburl.port = hostport.split(':')
-                cfg['mongodb_url'] = str(dburl)
-
-            # create a sub_config for each sub-agent (but skip master config)
-            for sa in cfg['agent_layout']:
-                if sa != 'agent.0':
-                    ru.write_json(cfg, './%s.cfg' % sa)
-
-        # we now have correct bridge addresses added to the agent.0.cfg, and all
+        # we now have correct bridge addresses added to the agent_0.cfg, and all
         # other agents will have picked that up from their config files -- we
         # can start the agent and all its components!
         agent = AgentWorker(cfg)
         agent.start()
+
+        log.debug('waiting for agent %s to join' % agent_name)
         agent.join()
+        log.debug('agent %s joined' % agent_name)
 
-        agent._finalize()   # FIXME: layer violation, see comment on barrier_cb
-
-        if agent_name == 'agent.0':
-            # tear down LRMS and anything which has been initialized in the lrms
-            # config hooks
-            if lrms:
-                lrms.finalize()
-
-            pilot_DONE(mongo_p, cfg['pilot_id'], log, msg="AgentWorker joined. EXITING")
         # ----------------------------------------------------------------------
 
     except SystemExit:
-        log.exception("Exit running agent: %s" % e)
-        pilot_FAILED(msg="Caught system exit. EXITING") 
-        sys.exit(1)
+        log.exception("Exit running agent: %s" % agent_name)
+        if not agent.final_cause:
+            agent.final_cause = "sys.exit"
 
     except Exception as e:
-        log.exception("Error running agent: %s" % e)
-        pilot_FAILED(msg="Error running agent: %s" % e)
-        sys.exit(2)
+        log.exception("Error running agent: %s" % agent_name)
+        if not agent.final_cause:
+            agent.final_cause = "error"
 
     finally:
+
+        # in all cases, make sure we perform an orderly shutdown.  I hope python
+        # does not mind doing all those things in a finally clause of
+        # (essentially) main...
+        agent.stop()
+        log.debug('agent %s finalized' % agent_name)
+
+        if agent_name == 'agent_0':
+            if agent.final_cause == 'timeout':
+                pilot_DONE(mongo_p, pilot_id, log, "TIMEOUT received. Terminating.")
+            elif agent.final_cause == 'cancel':
+                pilot_CANCELED(mongo_p, pilot_id, log, "CANCEL received. Terminating.")
+            elif agent.final_cause == 'finalize':
+                log.info('shutdown due to component finalization -- assuming error')
+                pilot_FAILED(mongo_p, pilot_id, log, "FINALIZE received")
+            else:
+                pilot_FAILED(mongo_p, pilot_id, log, "TERMINATE received")
+
+        # agent.stop will not tear down bridges -- we do that here at last
+        for name,b in bridges.items():
+            try:
+                log.info("closing bridge %s", b)
+                b['handle'].stop()
+            except Exception as e:
+                log.exception('ignore failing bridge terminate (%s)', e)
+
+        # make sure the lrms release whatever it acquired
+        if lrms:
+            lrms.stop()
+
         log.info('stop')
-        prof.prof('stop', msg='finally clause agent')
+        prof.prof('stop', msg='finally clause agent', uid=pilot_id)
+        prof.flush()
 
 
 
@@ -6764,13 +7014,13 @@ if __name__ == "__main__":
     print "pilot : %-5s : %s" % (rp.version_detail, rp.__file__)
     print "        type  : multicore"
     print "        gitid : %s" % git_ident
-    print "        config: %s" % os.environ.get('RADICAL_PILOT_CFG')
     print
     print "---------------------------------------------------------------------"
     print
 
-    dh = ru.DebugHelper()
     bootstrap_3()
+
+    print "bootstrap_3 done"
 
 #
 # ------------------------------------------------------------------------------

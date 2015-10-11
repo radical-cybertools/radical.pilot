@@ -14,7 +14,11 @@ import sys
 import shutil
 import subprocess as sp
 
-from setuptools import setup, Command, find_packages
+try:
+    from setuptools import setup, Command, find_packages
+except ImportError as e:
+    print("radical.pilot needs setuptools to install")
+    sys.exit(1)
 
 name     = 'radical.pilot'
 mod_root = 'src/radical/pilot/'
@@ -67,7 +71,7 @@ def get_version (mod_root):
                         'branch=`git branch | grep -e "^*" | cut -f 2- -d " "` 2>/dev/null ; '\
                         'echo $tag@$branch'  % src_root,
                         stdout=sp.PIPE, stderr=sp.STDOUT, shell=True)
-        version_detail = p.communicate()[0].strip()
+        version_detail = str(p.communicate()[0].strip())
         version_detail = version_detail.replace('detached from ', 'detached-')
 
         # remove all non-alphanumeric (and then some) chars
@@ -82,12 +86,12 @@ def get_version (mod_root):
             'fatal'          in version_detail :
             version_detail =  version
 
-        print 'version: %s (%s)' % (version, version_detail)
+        print('version: %s (%s)' % (version, version_detail))
 
 
         # make sure the version files exist for the runtime version inspection
         path = '%s/%s' % (src_root, mod_root)
-        print 'creating %s/VERSION' % path
+        print('creating %s/VERSION' % path)
         with open (path + "/VERSION", "w") as f : f.write (version_detail + "\n")
 
         sdist_name = "%s-%s.tar.gz" % (name, version_detail)
@@ -107,7 +111,7 @@ def get_version (mod_root):
                          '%s/%s'   % (mod_root, sdist_name)) # copy into tree
             shutil.move ("VERSION.bak", "VERSION")           # restore version
 
-        print 'creating %s/SDIST' % path
+        print('creating %s/SDIST' % path)
         with open (path + "/SDIST", "w") as f : f.write (sdist_name + "\n")
 
         return version, version_detail, sdist_name
@@ -117,14 +121,14 @@ def get_version (mod_root):
 
 
 # ------------------------------------------------------------------------------
-# get version info -- this will create VERSION and srcroot/VERSION
-version, version_detail, sdist_name = get_version (mod_root)
-
-
-# ------------------------------------------------------------------------------
 # check python version. we need >= 2.7, <3.x
 if  sys.hexversion < 0x02070000 or sys.hexversion >= 0x03000000:
     raise RuntimeError("%s requires Python 2.x (2.7 or higher)" % name)
+
+
+# ------------------------------------------------------------------------------
+# get version info -- this will create VERSION and srcroot/VERSION
+version, version_detail, sdist_name = get_version (mod_root)
 
 
 # ------------------------------------------------------------------------------
@@ -199,6 +203,8 @@ setup_args = {
                             'radical.utils',
                             'pymongo==2.8',
                             'python-hostlist',
+                            'netifaces',
+                            'setproctitle',
                             'ntplib',
                             'pyzmq'],
     'tests_require'      : [],

@@ -98,6 +98,8 @@ class PilotManager(object):
         **Raises:**
             * :class:`radical.pilot.PilotException`
         """
+        logger.demo('info', 'create pilot manager')
+
         self._session = session
         self._worker = None
 
@@ -122,6 +124,8 @@ class PilotManager(object):
         self._session._pilot_manager_objects[self.uid] = self
 
         self._valid = True
+
+        logger.demo('ok', '\\ok\n')
 
 
     #---------------------------------------------------------------------------
@@ -151,14 +155,13 @@ class PilotManager(object):
             logger.error("PilotManager object already closed.")
             return
 
-        # before we terminate pilots, we have to kill the pilot launcher threads
-        # -- otherwise we'll run into continous race conditions due to the
-        # ongoing state checks...
+        # before we terminate pilots, we have to disable the pilot launcher, so
+        # that no new pilots are getting started.  threads.  This will not stop
+        # the state monitor, as we'll need that to have a functional pilot.wait.
         if self._worker is not None:
-            # Stop the worker process
-            logger.debug("pmgr    %s cancel   worker %s" % (str(self.uid), self._worker.name))
-            self._worker.cancel_launcher()
-            logger.debug("pmgr    %s canceled worker %s" % (str(self.uid), self._worker.name))
+            logger.debug("pmgr    %s cancel   launcher %s" % (str(self.uid), self._worker.name))
+            self._worker.disable_launcher()
+            logger.debug("pmgr    %s canceled launcher %s" % (str(self.uid), self._worker.name))
 
         # If terminate is set, we cancel all pilots. 
         if  terminate :
@@ -166,43 +169,17 @@ class PilotManager(object):
             # managers.
             for pilot in self.get_pilots () :
                 logger.debug("pmgr    %s cancels  pilot  %s" % (str(self.uid), pilot.uid))
-            self.cancel_pilots ()
+            self.cancel_pilots()
+            self.wait_pilots()
+            # we leave it to the worker shutdown below to ensure that pilots are
+            # final before joining
 
-          # FIXME:
-          #
-          # wait_pilots() will wait until all pilots picked up the sent cancel
-          # signal and died.  However, that can take a loooong time.  For
-          # example, if a pilot is in 'PENDING_ACTIVE' state, this will have to
-          # wait until the pilot is bootstrapped, started, connected to the DB,
-          # and shut down again.  Or, for a pilot which just got a shitload of
-          # units, it will have to wait until the pilot started all those units
-          # and then checks its command queue again.  Or, if the pilot job
-          # already died, wait will block until the state checker kicks in and
-          # declares the pilot as dead, which takes a couple of minutes.
-          #
-          # Solution would be to add a CANCELING state and to wait for that one,
-          # too, which basically means to wait until the cancel signal has been
-          # sent.  There is not much more to do at this point anyway.  This is at
-          # the moment faked in the manager controler, which sets that state
-          # after sending the cancel command.  This should be converted into
-          # a proper state -- that would, btw, remove the need for a cancel
-          # command in the first place, as the pilot can just pull its own state
-          # instead, and cancel on CANCELING...
-          #
-          # self.wait_pilots ()
-            wait_for_cancel = True
-            all_pilots = self.get_pilots ()
-            while wait_for_cancel :
-                wait_for_cancel = False
-                for pilot in all_pilots :
-                    logger.debug("pmgr    %s wait for pilot  %s (%s)" % (str(self.uid), pilot.uid, pilot.state))
-                    if  pilot.state not in [DONE, FAILED, CANCELED, CANCELING] :
-                        time.sleep (1)
-                        wait_for_cancel = True
-                        break
-            for pilot in self.get_pilots () :
-                logger.debug("pmgr    %s canceled pilot  %s" % (str(self.uid), pilot.uid))
-
+        # not that all pilots are dead, we can terminate the launcher altogether
+        # (incl. state checker)
+        if self._worker is not None:
+            logger.debug("pmgr    %s cancel   worker %s" % (str(self.uid), self._worker.name))
+            self._worker.cancel_launcher()
+            logger.debug("pmgr    %s canceled worker %s" % (str(self.uid), self._worker.name))
 
         logger.debug("pmgr    %s stops    worker %s" % (str(self.uid), self._worker.name))
         self._worker.stop()
@@ -246,6 +223,8 @@ class PilotManager(object):
 
             * :class:`radical.pilot.PilotException`
         """
+
+
         # Check if the object instance is still valid.
         self._is_valid()
 
@@ -254,6 +233,8 @@ class PilotManager(object):
         if  not isinstance(pilot_descriptions, list):
             return_list_type   = False
             pilot_descriptions = [pilot_descriptions]
+
+        logger.demo('info', 'submit %d pilot(s)' % len(pilot_descriptions))
 
         # Itereate over the pilot descriptions, try to create a pilot for
         # each one and append it to 'pilot_obj_list'.
@@ -341,7 +322,9 @@ class PilotManager(object):
                 import radical.utils as ru
                 ru.write_json(pd.as_dict(), "%s/%s.json" 
                         % (self._session._rec, pilot_uid))
+            logger.demo('progress')
 
+        logger.demo('ok', '\\ok\n')
 
         # Implicit return value conversion
         if  return_list_type :
@@ -466,6 +449,8 @@ class PilotManager(object):
             for pilot in pilots :
                 if  pilot['state'] not in state :
                     all_ok = False
+                else:
+                    logger.demo('progress')
 
                 states.append (pilot['state'])
 
@@ -477,7 +462,7 @@ class PilotManager(object):
 
             # sleep a little if this cycle was idle
             if  not all_ok :
-                time.sleep (0.1)
+                time.sleep (0.5)
 
         # done waiting
         if  return_list_type :

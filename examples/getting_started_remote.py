@@ -10,7 +10,7 @@ import radical.utils as ru
 dh = ru.DebugHelper ()
 
 CNT      =     0
-RUNTIME  =    10
+RUNTIME  =    20
 SLEEP    =     0
 CORES    =    64
 UNITS    =   128
@@ -30,9 +30,15 @@ resources = {
             },
 
         'ncsa.bw' : {
+            'project'  : 'gkd',
+            'queue'    : 'debug',
+            'schema'   : 'gsissh'
+            },
+
+        'nersc.edison' : {
             'project'  : None,
             'queue'    : 'debug',
-            'schema'   : None
+            'schema'   : 'ssh'
             },
 
         'epsrc.archer' : {
@@ -59,6 +65,12 @@ resources = {
             'schema'   : None
             },
 
+        'xsede.supermic': {
+            'project'  : 'TG-MCB090174',
+            'queue'    : 'workq',
+            'schema'   : None
+            },
+
         'xsede.gordon' : {
             'project'  : None,
             'queue'    : 'debug',
@@ -81,6 +93,12 @@ resources = {
             'project'  : None,
             'queue'    : None,
             'schema'   : None
+            },
+
+        'ornl.titan'   : {
+            'project'  : 'csc168',
+            'queue'    : 'batch',
+            'schema'   : 'local'
             },
 
         'nersc.hopper' : {

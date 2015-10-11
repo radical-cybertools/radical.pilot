@@ -62,9 +62,24 @@ class PilotLauncherWorker(threading.Thread):
         self.missing_pilots     = dict()
         self._shared_worker_data = shared_worker_data
 
+        # disable event for launcher functionality (not state check
+        # functionality)
+        self._disabled = threading.Event()
+        self._disabled.clear()
+
         # Stop event can be set to terminate the main loop
-        self._stop = threading.Event()
-        self._stop.clear()
+        self._terminate = threading.Event()
+        self._terminate.clear()
+
+    # ------------------------------------------------------------------------
+    #
+    def disable(self):
+        """disable() stops the launcher, but leaves the state checking alive
+        """
+        logger.debug("launcher %s disabling" % (self.name))
+        self._disabled.set()
+        logger.debug("launcher %s disabled" % (self.name))
+
 
     # ------------------------------------------------------------------------
     #
@@ -72,7 +87,7 @@ class PilotLauncherWorker(threading.Thread):
         """stop() signals the process to finish up and terminate.
         """
         logger.debug("launcher %s stopping" % (self.name))
-        self._stop.set()
+        self._terminate.set()
         self.join()
         logger.debug("launcher %s stopped" % (self.name))
       # logger.debug("Launcher thread (ID: %s[%s]) for PilotManager %s stopped." %
@@ -101,21 +116,21 @@ class PilotLauncherWorker(threading.Thread):
             MAX_IO_LOGLENGTH = 10240    # 10k should be enough for anybody...
 
             try :
-                f_out = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent.0.out'))
+                f_out = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent_0.out'))
                 out   = f_out.read()[-MAX_IO_LOGLENGTH:]
                 f_out.close ()
             except :
                 pass
 
             try :
-                f_err = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent.0.err'))
+                f_err = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent_0.err'))
                 err   = f_err.read()[-MAX_IO_LOGLENGTH:]
                 f_err.close ()
             except :
                 pass
 
             try :
-                f_log = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent.0.log'))
+                f_log = saga.filesystem.File ("%s/%s" % (pilot['sandbox'], 'agent_0.log'))
                 log   = f_log.read()[-MAX_IO_LOGLENGTH:]
                 f_log.close ()
             except :
@@ -259,6 +274,8 @@ class PilotLauncherWorker(threading.Thread):
         """Starts the process when Process.start() is called.
         """
 
+        global JOB_CHECK_INTERVAL
+
         # make sure to catch sys.exit (which raises SystemExit)
         try :
             # Get directory where this module lives
@@ -276,7 +293,7 @@ class PilotLauncherWorker(threading.Thread):
 
             last_job_check = time.time()
 
-            while not self._stop.is_set():
+            while not self._terminate.is_set():
 
                 # Periodically, we pull up all ComputePilots that are pending 
                 # execution or were last seen executing and check if the corresponding  
@@ -286,6 +303,14 @@ class PilotLauncherWorker(threading.Thread):
                 if  last_job_check + JOB_CHECK_INTERVAL < time.time() :
                     last_job_check = time.time()
                     self.check_pilot_states (pilot_col)
+
+                if self._disabled.is_set():
+                    # don't process any new pilot start requests.  
+                    # run state checks more frequently.
+                    JOB_CHECK_INTERVAL = 3
+                    logger.debug('pilot launching is disabled')
+                    time.sleep(1)
+                    continue
 
 
                 # See if we can find a ComputePilot that is waiting to be launched.
@@ -358,7 +383,8 @@ class PilotLauncherWorker(threading.Thread):
                         js_endpoint             = resource_cfg.get ('job_manager_endpoint')
                         lrms                    = resource_cfg.get ('lrms')
                         mpi_launch_method       = resource_cfg.get ('mpi_launch_method')
-                        pre_bootstrap           = resource_cfg.get ('pre_bootstrap')
+                        pre_bootstrap_1         = resource_cfg.get ('pre_bootstrap_1')
+                        pre_bootstrap_2         = resource_cfg.get ('pre_bootstrap_2')
                         python_interpreter      = resource_cfg.get ('python_interpreter')
                         spmd_variation          = resource_cfg.get ('spmd_variation')
                         task_launch_method      = resource_cfg.get ('task_launch_method')
@@ -402,6 +428,7 @@ class PilotLauncherWorker(threading.Thread):
                                     agent_cfg_dict = ru.read_json(agent_cfg_file)
                             except Exception as e:
                                 logger.exception("Error reading agent config file: %s" % e)
+                                raise
 
                         else:
                             # we can't handle this type
@@ -429,7 +456,7 @@ class PilotLauncherWorker(threading.Thread):
                         if db_url.port:
                             db_hostport = "%s:%d" % (db_url.host, db_url.port)
                         else:
-                            db_hostport = "%s:" % db_url.host
+                            db_hostport = "%s:%d" % (db_url.host, 27017) # mongodb default
 
                         # Open the remote sandbox
                         sandbox_tgt = saga.filesystem.Directory(pilot_sandbox,
@@ -620,7 +647,8 @@ class PilotLauncherWorker(threading.Thread):
                         # set optional args
                         if agent_type:              bootstrap_args += " -a '%s'" % agent_type
                         if lrms == "CCM":           bootstrap_args += " -c"
-                        if pre_bootstrap:           bootstrap_args += " -e '%s'" % "' -e '".join (pre_bootstrap)
+                        if pre_bootstrap_1:         bootstrap_args += " -e '%s'" % "' -e '".join (pre_bootstrap_1)
+                        if pre_bootstrap_2:         bootstrap_args += " -w '%s'" % "' -w '".join (pre_bootstrap_2)
                         if forward_tunnel_endpoint: bootstrap_args += " -f '%s'" % forward_tunnel_endpoint
                         if forward_tunnel_endpoint: bootstrap_args += " -h '%s'" % db_hostport
                         if python_interpreter:      bootstrap_args += " -i '%s'" % python_interpreter
@@ -629,7 +657,7 @@ class PilotLauncherWorker(threading.Thread):
 
                         # set some agent configuration
                         agent_cfg_dict['cores']              = number_cores
-                        agent_cfg_dict['debug']              = logger.getEffectiveLevel() 
+                        agent_cfg_dict['debug']              = logger.getEffectiveLevel()
                         agent_cfg_dict['mongodb_url']        = str(agent_dburl)
                         agent_cfg_dict['lrms']               = lrms
                         agent_cfg_dict['spawner']            = agent_spawner
@@ -640,6 +668,8 @@ class PilotLauncherWorker(threading.Thread):
                         agent_cfg_dict['agent_launch_method']= agent_launch_method
                         agent_cfg_dict['task_launch_method'] = task_launch_method
                         agent_cfg_dict['mpi_launch_method']  = mpi_launch_method
+                        if cores_per_node:
+                            agent_cfg_dict['cores_per_node'] = cores_per_node
 
                         # ------------------------------------------------------
                         # Write agent config dict to a json file in pilot sandbox.
@@ -651,11 +681,10 @@ class PilotLauncherWorker(threading.Thread):
                         logentries.append(Logentry (msg, logger=logger.debug))
                         ru.write_json(agent_cfg_dict, cf_tmp_file)
 
-                        cf_env = saga.Url("%s/agent.0.cfg" % pilot_sandbox).path # this is what the pilot sees
                         cf_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, cf_tmp_file))
                         msg = "Copying agent configuration file '%s' to sandbox (%s)." % (cf_url, pilot_sandbox)
                         logentries.append(Logentry (msg, logger=logger.debug))
-                        sandbox_tgt.copy(cf_url, 'agent.0.cfg')
+                        sandbox_tgt.copy(cf_url, 'agent_0.cfg')
 
                         # close and remove temp file
                         os.close(cfg_tmp_handle)
@@ -695,9 +724,6 @@ class PilotLauncherWorker(threading.Thread):
                         jd.queue                 = queue
                         jd.environment           = dict()
 
-                        # inform the pilot about the location of the config file
-                        jd.environment['RADICAL_PILOT_CFG'] = cf_env
-
                         # Set the SPMD variation only if required
                         if spmd_variation:
                             jd.spmd_variation = spmd_variation
@@ -734,9 +760,10 @@ class PilotLauncherWorker(threading.Thread):
                         ts = timestamp()
                         ret = pilot_col.update(
                             {"_id"  : pilot_id,
-                             "state": 'Launching'},
+                             "state": LAUNCHING},
                             {"$set" : {"state": PENDING_ACTIVE,
-                                      "saga_job_id": saga_job_id},
+                                       "saga_job_id": saga_job_id,
+                                       "agent_config": agent_cfg_dict},
                              "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
                              "$pushAll": {"log": log_dicts}
                             }
