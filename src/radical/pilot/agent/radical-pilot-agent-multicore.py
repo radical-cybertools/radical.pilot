@@ -4781,21 +4781,21 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                         # above and the kill command below.  We probably should pull
                         # state after kill again?
                     
-                    # We got a request to cancel this cu
-                    action += 1
-                    cu['proc'].kill()
-                    cu['proc'].wait() # make sure proc is collected
+                        # We got a request to cancel this cu
+                        action += 1
+                        cu['proc'].kill()
+                        cu['proc'].wait() # make sure proc is collected
 
-                    with self._cancel_lock:
-                        self._cus_to_cancel.remove(cu['_id'])
+                        with self._cancel_lock:
+                            self._cus_to_cancel.remove(cu['_id'])
 
-                    self._prof.prof('final', msg="execution canceled", uid=cu['_id'])
+                        self._prof.prof('final', msg="execution canceled", uid=cu['_id'])
 
-                    self._cus_to_watch.remove(cu)
+                        self._cus_to_watch.remove(cu)
                     
-                    del(cu['proc'])  # proc is not json serializable
-                    self.publish('unschedule', cu)
-                    self.advance(cu, rp.CANCELED, publish=True, push=False)
+                        del(cu['proc'])  # proc is not json serializable
+                        self.publish('unschedule', cu)
+                        self.advance(cu, rp.CANCELED, publish=True, push=False)
 
                 else:
                     self._prof.prof('exec', msg='execution complete', uid=cu['_id'])
