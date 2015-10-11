@@ -1,5 +1,6 @@
 
-.. _chapter_example_getting_started:
+
+.. _chapter_user_guide_01:
 
 ***************
 Getting Started
@@ -17,12 +18,18 @@ ComputeUnits (tasks) on it.
           RADICAL-Pilot, and also configured access to the resources you intent
           to use for the examples (see chapter :ref:`chapter_installation`).
 
+You can download the basic :download:`getting_started_00.py
+<../../../examples/getting_started_00.py>`.  The text below will explain the
+most important code sections one by one, and at the end show the expected output
+from the example's execution.  Please look carefully at the code comments --
+they explain some aspects of the code which are not explicitly covered in the
+text below.  
 
-Loading the Module, Follow the application execution
-------------------
+Loading the RP Module, Follow the Application Execution
+-------------------------------------------------------
 
 In order to use RADICAL-Pilot in your Python application, you need to import the
-``radical.pilot`` module (we use the `rp` abbreviation for the module name).
+``radical.pilot`` module (we use the `rp` abbreviation for the module name):
 
 .. code-block:: python
 
@@ -186,19 +193,30 @@ for whose completion the application can then wait:
         umgr.wait_units()
 
 
+Running the Example
+-------------------
+
+.. note::  Remember to set `RADICAL_PILOT_DBURL` in you environment (see chapter
+           :ref:`chapter_installation`).
+
+Running the example will result in an output similar to the one shown below:
+
+.. image:: getting_started_00.png
+
+The runtime can vary significantly, and will be longest on the first run on any
+resource: the first time RP is being used on a new resource for a specific user,
+it will set up a Python virtualenv for the Pilot to use.  Consecutive runs may
+update that virtualenv, or may install additional components as needed, but that
+should take less time that its creation.  So please allow for a couple of
+minuted on the first execution (depending on your network connectivity, the
+connectivity of the target resource, and the location of the MongoDB service).
+
+
+
 What's Next?
 ------------
 
-Now that you understand the basic mechanics of RADICAL-Pilot, it's time to dive into some of the more advanced topics. We suggest that you check out the following chapters next: 
+The next user guide section (:ref:`chapter_user_guide_01`) will describe how an
+application can inspect completed compute units for more detailed information,
+such as exit codes and stdout/stderr.
 
-* :ref:`chapter_example_errorhandling`. Error handling is crucial for any RADICAL-Pilot application! This chapter captures everything from exception handling to state callbacks. 
-* :ref:`chapter_example_remote_and_hpc_pilots`. In this chapter we explain how to launch ComputePilots on remote HPC clusters, something you most definitely want to do.
-* :ref:`chapter_example_disconnect_reconnect`. This chapter is very useful for example if you work with long-running tasks that don't need continuous supervision. 
-
-The Complete Example
---------------------
-
-Below is a complete and working example that puts together everything we
-discussed in this section. You can download the sources from :download:`here <../../../examples/getting_started_local.py>`.
-
-.. literalinclude:: ../../../examples/getting_started_local.py

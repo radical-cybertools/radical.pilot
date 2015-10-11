@@ -1,4 +1,5 @@
-.. _chapter_intro:
+
+.. _chapter_overview:
 
 ************************
 RADICAL-Pilot - Overview
