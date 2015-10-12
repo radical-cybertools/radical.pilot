@@ -25,7 +25,7 @@ if __name__ == '__main__':
 
     # we use a reporter class for nicer output
     report = ru.LogReporter(name='radical.pilot')
-    report.title('Getting Started')
+    report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
     if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
@@ -34,7 +34,6 @@ if __name__ == '__main__':
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
-    report.info('<<using rp %s\n' % rp.version)
     session = rp.Session()
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
@@ -55,7 +54,6 @@ if __name__ == '__main__':
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
-        pdescs = list()
         report.info('create pilot description')
         pd_init = {
                 'resource'      : resource,
@@ -100,7 +98,6 @@ if __name__ == '__main__':
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(cuds)
 
-
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
@@ -110,6 +107,16 @@ if __name__ == '__main__':
             report.plain('  * %s: %s, exit: %3s, out: %s\n' \
                     % (unit.uid, unit.state[:4], 
                         unit.exit_code, unit.stdout.strip()[:35]))
+
+        # get some more details for one unit:
+        import time
+        unit_dict = units[0].as_dict()
+        report.plain("unit workdir : %s\n" % unit_dict['working_directory'])
+        report.plain("pilot id     : %s\n" % unit_dict['execution_details']['pilot'])
+        report.plain("state history: \n")
+        for state_info in unit_dict['execution_details']['statehistory']:
+            report.plain("\t\t%s : %s\n" % \
+                    (time.ctime(state_info['timestamp']), state_info['state']))
     
 
     except Exception as e:

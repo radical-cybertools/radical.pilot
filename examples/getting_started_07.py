@@ -25,7 +25,7 @@ if __name__ == '__main__':
 
     # we use a reporter class for nicer output
     report = ru.LogReporter(name='radical.pilot')
-    report.title('Getting Started')
+    report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
     if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
@@ -41,7 +41,6 @@ if __name__ == '__main__':
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
-    report.info('<<using rp %s\n' % rp.version)
     session = rp.Session()
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
@@ -62,7 +61,6 @@ if __name__ == '__main__':
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
-        pdescs = list()
         report.info('create pilot description')
         pd_init = {
                 'resource'      : resource,

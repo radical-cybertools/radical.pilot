@@ -1,11 +1,11 @@
 .. _chapter_example:
 
-************************
-Examples & Best Practice 
-************************
+**********
+User Guide
+**********
 
 This chapter will guide the reader through the most common usage patterns of
-RADICAL-Pilot (RP).  We will start in :ref:`01_user_guide`
+RADICAL-Pilot (RP).  We will start in :ref:`chapter_user_guide_00`
 with the most basic RP example, and then discuss individual RP features which
 augment that example toward a more complete set of applications.
 
