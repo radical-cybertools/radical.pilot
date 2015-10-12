@@ -4807,8 +4807,9 @@ class AgentUpdateWorker(rpu.Worker):
         try:
             # got a new request.  Add to bulk (create as needed),
             # and push bulk if time is up.
-            uid   = cu['_id']
-            state = cu.get('state')
+            uid       = cu['_id']
+            state     = cu.get('state')
+            timestamp = cu.get('state_timestamp', rpu.timestamp())
 
             self._prof.prof('get', msg="update unit state to %s" % state, uid=uid)
 
@@ -4821,8 +4822,8 @@ class AgentUpdateWorker(rpu.Worker):
             if not update_dict:
                 update_dict = {'$set' : {'state': state},
                                '$push': {'statehistory': {
-                                             'state': state,
-                                             'timestamp': rpu.timestamp()}}}
+                                             'state'    : state,
+                                             'timestamp': timestamp}}}
 
             # when the unit is about to leave the agent, we also update stdout,
             # stderr exit code etc
