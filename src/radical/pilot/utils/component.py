@@ -328,7 +328,13 @@ class Component(mp.Process):
                 self.finalize()
                 self._prof.prof("finalized")
                 self._prof.flush()
+            # Signal the child
+            self._log.debug('Signalling child')
             self.terminate()
+            # Wait for the child process
+            self._log.debug('Waiting for child')
+            self.join()
+            self._log.debug('Child done')
 
         else:
             if not self._finalized:
@@ -743,7 +749,8 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def advance(self, units, state=None, publish=True, push=False):
+    def advance(self, units, state=None, publish=True, push=False,
+                timestamp=None):
         """
         Units which have been operated upon are pushed down into the queues
         again, only to be picked up by the next component, according to their
@@ -756,6 +763,9 @@ class Component(mp.Process):
         push:    determine if units should be pushed to outputs
         """
 
+        if not timestamp:
+            timestamp = rpu.timestamp()
+
         if not isinstance(units, list):
             units = [units]
 
@@ -764,7 +774,8 @@ class Component(mp.Process):
             uid = unit['_id']
 
             if state:
-                unit['state'] = state
+                unit['state']          = state
+                unit['state_timstamp'] = timestamp
                 self._prof.prof('advance', uid=unit['_id'], state=state)
             else:
                 state = unit['state']
@@ -772,7 +783,8 @@ class Component(mp.Process):
             if publish:
                 # send state notifications
                 self.publish('state', unit)
-                self._prof.prof('publish', uid=unit['_id'], state=unit['state'])
+                self._prof.prof('publish', uid=unit['_id'], state=unit['state'],
+                                timestamp=timestamp)
 
             if push:
                 if state not in self._outputs:
