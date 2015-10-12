@@ -328,7 +328,13 @@ class Component(mp.Process):
                 self.finalize()
                 self._prof.prof("finalized")
                 self._prof.flush()
+            # Signal the child
+            self._log.debug('Signalling child')
             self.terminate()
+            # Wait for the child process
+            self._log.debug('Waiting for child')
+            self.join()
+            self._log.debug('Child done')
 
         else:
             if not self._finalized:
