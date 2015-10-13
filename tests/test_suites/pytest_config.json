@@ -4,7 +4,7 @@
         "user_id" : "tg803521",
         "project" : "TG-MCB090174",
         "cores"    : "16",
-        "pre_exec" : "module load python"
+        "pre_exec" : ["module load intel/14.0.1.106", "module load python/2.7.6"]
     },
     "epsrc.archer":
     {

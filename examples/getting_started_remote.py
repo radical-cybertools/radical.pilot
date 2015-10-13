@@ -65,6 +65,12 @@ resources = {
             'schema'   : None
             },
 
+        'xsede.supermic': {
+            'project'  : 'TG-MCB090174',
+            'queue'    : 'workq',
+            'schema'   : None
+            },
+
         'xsede.gordon' : {
             'project'  : None,
             'queue'    : 'debug',
