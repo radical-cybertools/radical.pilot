@@ -302,7 +302,7 @@ class Component(mp.Process):
         """
 
         self._prof.prof("closing")
-        self._log.info("closing (%d threads)" % (len(self._threads)))
+        self._log.info("closing (%d subscriber threads)" % (len(self._threads)))
 
         # tear down all subscriber threads
         self._terminate.set()
@@ -314,10 +314,7 @@ class Component(mp.Process):
             else:
                 self._log.debug('skipping subscriber thread %s' % t)
 
-        self._log.debug('all threads joined')
-
-        # only call finalizers once
-
+        self._log.debug('all subscriber threads joined')
 
         if self._is_parent:
             self._log.info("terminating")
