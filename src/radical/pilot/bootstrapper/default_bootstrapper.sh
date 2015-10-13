@@ -1419,9 +1419,8 @@ then
     echo
     echo "# -------------------------------------------------------------------"
     echo "#"
-    echo "# Flush profiles"
-    profile_event 'flush'
-    sync
+    echo "# Mark final profiling entry ..."
+    profile_event 'final'
     echo "#"
     echo "# -------------------------------------------------------------------"
     echo
