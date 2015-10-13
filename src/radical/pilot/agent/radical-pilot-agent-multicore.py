@@ -1293,6 +1293,7 @@ class SchedulerYarn(AgentSchedulingComponent):
         #-----------------------------------------------------------------------
         # One application has finished, increase the number of available slots.
         #with self._slot_lock:
+        self._log.info('Releasing : {0} Cores, {1} RAM'.format(opaque_slot['task_slots'][0],opaque_slot['task_slots'][1]))
         self.avail_cores +=opaque_slot['task_slots'][0]
         self.avail_mem +=opaque_slot['task_slots'][1]
         self.avail_app['apps']+=1
@@ -1327,11 +1328,10 @@ class SchedulerYarn(AgentSchedulingComponent):
             cu['opaque_slots']={'lm_info':{'service_url':self._service_url,
                                             'rm_url':self._rm_url,
                                             'nodename':self._client_node},
-                                'task_slots':[cu['description']['cores'],4096]
+                                'task_slots':[cu['description']['cores'],2048]
                                             }
 
-            alloc = self._allocate_slot(cu['description']['cores'],4096)
-            time.sleep(1)
+            alloc = self._allocate_slot(cu['description']['cores'],2048)
 
         if not alloc:
             return False
@@ -4749,23 +4749,23 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 report_contents = yarnreport.readlines()
                 yarnreport.close()
 
-                if len(report_contents) >= 4:
-                    self._log.debug(report_contents)
-                    line = report_contents[3].split(',')
-                    timestamp = datetime.utcfromtimestamp(int(line[3].split('=')[1])/1000)
+                for report_line in report_contents:
+                    if report_line.find('RUNNING') != -1:
+                        self._log.debug(report_contents)
+                        line = report_line.split(',')
+                        timestamp = (int(line[3].split('=')[1])/1000)
+                        action += 1
+                        proc = cu['proc']
+                        self._log.debug('Proc Print {0}'.format(proc))
+                        del(cu['proc'])  # proc is not json serializable
+                        self.advance(cu, rp.EXECUTING, publish=True, push=False,timestamp=timestamp)
+                        cu['proc']    = proc
 
-                    action += 1
-                    proc = cu['proc']
-                    self._log.debug('Proc Print {0}'.format(proc))
-                    del(cu['proc'])  # proc is not json serializable
-                    self.advance(cu, rp.EXECUTING, publish=True, push=False)
-                    cu['proc']    = proc
-
-                    # FIXME: Ioannis, what is this supposed to do?
-                    # I wanted to update the state of the cu but keep it in the watching
-                    # queue. I am not sure it is needed anymore.
-                    index = self._cus_to_watch.index(cu)
-                    self._cus_to_watch[index]=cu
+                        # FIXME: Ioannis, what is this supposed to do?
+                        # I wanted to update the state of the cu but keep it in the watching
+                        # queue. I am not sure it is needed anymore.
+                        index = self._cus_to_watch.index(cu)
+                        self._cus_to_watch[index]=cu
                 
             else :
                 # poll subprocess object
