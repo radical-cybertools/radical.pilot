@@ -75,6 +75,8 @@ class Profiler (object):
         if self._enabled:
             self.prof("flush")
             self._handle.flush()
+            # https://docs.python.org/2/library/stdtypes.html?highlight=file%20flush#file.flush
+            os.fsync(self._handle.fileno())
 
 
     # ------------------------------------------------------------------------------
