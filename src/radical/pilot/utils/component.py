@@ -283,7 +283,7 @@ class Component(mp.Process):
         before calling exit.
 
         stop() can be called multiple times, and can be called from the
-        MainThread, or from sub thread (such as callback invokations) -- but it
+        MainThread, or from sub thread (such as callback invocations) -- but it
         should notes that, if called from a callback, it may not always be able
         to tear down all threads, specifically not the callback thread itself
         and the MainThread.  Safest is calling it once from each the parent's
@@ -455,7 +455,7 @@ class Component(mp.Process):
         component will retain ownership of the unit, and should call advance()
         asynchronously at a later point in time.
 
-        Worker invokation is synchronous, ie. the main event loop will only
+        Worker invocation is synchronous, ie. the main event loop will only
         check for the next unit once the worker method returns.
         """
 
@@ -534,9 +534,9 @@ class Component(mp.Process):
           callback(topic, msg)
 
         The subscription will be handled in a separate thread, which implies
-        that the callback invokation will also happen in that thread.  It is the
+        that the callback invocation will also happen in that thread.  It is the
         caller's responsibility to ensure thread safety during callback
-        invokation.
+        invocation.
         """
 
         # ----------------------------------------------------------------------
@@ -629,7 +629,7 @@ class Component(mp.Process):
             # channels, probing 
             while not self._terminate.is_set():
 
-                # if no ation occurs in this iteration, invoke idle callbacks
+                # if no action occurs in this iteration, invoke idle callbacks
                 active = False 
 
                 # FIXME: for the default case where we have only one input
