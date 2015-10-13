@@ -11,6 +11,7 @@ import radical.utils   as ru
 from ..states    import *
 
 from .prof_utils import Profiler, clone_units, drop_units
++from .prof_utils import timestamp as util_timestamp
 
 from .queue      import Queue        as rpu_Queue
 from .queue      import QUEUE_ZMQ    as rpu_QUEUE_ZMQ
@@ -764,7 +765,7 @@ class Component(mp.Process):
         """
 
         if not timestamp:
-            timestamp = rpu.timestamp()
+            timestamp = util_timestamp()
 
         if not isinstance(units, list):
             units = [units]
