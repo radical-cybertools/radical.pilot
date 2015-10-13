@@ -154,7 +154,7 @@ class Component(mp.Process):
         self._finalized     = False       # finalization guard
         self._is_parent     = None        # guard initialize/initialize_child
         self._exit_on_error = True        # FIXME: make configurable
-        self._cb_lock       = mt.Lock()   # guard threaded callback invokations
+        self._cb_lock       = mt.Lock()   # guard threaded callback invocations
 
         # use agent_name for one log per agent, cname for one log per agent and component
         log_name = self._cname
