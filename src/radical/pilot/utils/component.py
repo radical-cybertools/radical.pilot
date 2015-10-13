@@ -328,7 +328,13 @@ class Component(mp.Process):
                 self.finalize()
                 self._prof.prof("finalized")
                 self._prof.flush()
+            # Signal the child
+            self._log.debug('Signalling child')
             self.terminate()
+            # Wait for the child process
+            self._log.debug('Waiting for child')
+            self.join()
+            self._log.debug('Child done')
 
         else:
             if not self._finalized:
@@ -732,6 +738,8 @@ class Component(mp.Process):
             self._log.exception('loop exception')
 
         except:
+            # This is most likely a sys.exit, but can be any other signal or
+            # interrupt.
             self._log.exception('loop error')
 
         finally:

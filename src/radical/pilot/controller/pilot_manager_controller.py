@@ -547,7 +547,7 @@ class PilotManagerController(threading.Thread):
         if  delayed_cancel :
 
             # grant some levay to the unruly children...
-            time.sleep (10)
+            time.sleep (30)
 
             for pilot_id in delayed_cancel :
 
