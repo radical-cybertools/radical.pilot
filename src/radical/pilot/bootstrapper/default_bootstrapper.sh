@@ -1436,6 +1436,8 @@ fi
 
 if ! test -z "`ls *{log,out,err,cfg} 2>/dev/null`"
 then
+    # TODO: This might not include all logs, as some systems only write
+    #       the output from the bootstrapper once the jobs completes.
     echo
     echo "# -------------------------------------------------------------------"
     echo "#"
