@@ -338,12 +338,13 @@ class Component(mp.Process):
                 self._prof.prof("finalize")
                 self.finalize_child()
                 self._prof.prof("finalized")
-                self._prof.flush()
+                self._prof.close()
             sys.exit()
 
-        # if we are called from within a callback, that we will have skipped one
-        # thread for joining above.  For a child that's ok, because there is
-        # that exit call above -- for a parent, we'll call that exit right here.
+        # If we are called from within a callback, that (means?) we will have
+        # skipped one thread for joining above.
+        # For a child that's ok, because there is that exit call above.
+        # For a parent, we'll call that exit right here.
         # Note that the thread is *not* joined at this point -- but the parent
         # should not block on shutdown anymore, as the thread is at least gone.
         if self_thread in self._threads and self._cb_lock.locked():
@@ -351,7 +352,7 @@ class Component(mp.Process):
             sys.exit()
 
         self._prof.prof("stopped")
-        self._prof.flush()
+        self._prof.close()
 
 
     # --------------------------------------------------------------------------
