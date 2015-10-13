@@ -1263,20 +1263,8 @@ class LaunchMethod(object):
             raise TypeError("LaunchMethod config hook only available to base class!")
 
         impl = {
-          # LAUNCH_METHOD_APRUN         : LaunchMethodAPRUN,
-          # LAUNCH_METHOD_CCMRUN        : LaunchMethodCCMRUN,
-          # LAUNCH_METHOD_DPLACE        : LaunchMethodDPLACE,
             LAUNCH_METHOD_FORK          : LaunchMethodFORK,
-          # LAUNCH_METHOD_IBRUN         : LaunchMethodIBRUN,
-          # LAUNCH_METHOD_MPIEXEC       : LaunchMethodMPIEXEC,
-          # LAUNCH_METHOD_MPIRUN_CCMRUN : LaunchMethodMPIRUNCCMRUN,
-          # LAUNCH_METHOD_MPIRUN_DPLACE : LaunchMethodMPIRUNDPLACE,
-          # LAUNCH_METHOD_MPIRUN        : LaunchMethodMPIRUN,
-          # LAUNCH_METHOD_MPIRUN_RSH    : LaunchMethodMPIRUNRSH,
-            LAUNCH_METHOD_ORTE          : LaunchMethodORTE,
-          # LAUNCH_METHOD_POE           : LaunchMethodPOE,
-          # LAUNCH_METHOD_RUNJOB        : LaunchMethodRUNJOB,
-          # LAUNCH_METHOD_SSH           : LaunchMethodSSH
+            LAUNCH_METHOD_ORTE          : LaunchMethodORTE
         }.get(name)
 
         if not impl:
@@ -1287,12 +1275,36 @@ class LaunchMethod(object):
         return impl.lrms_config_hook(name, cfg, lrms, logger)
 
 
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
+        """
+        This hook is symmetric to the config hook above, and is called during
+        shutdown sequence, for the sake of freeing allocated resources.
+        """
+
+        # Make sure that we are the base-class!
+        if cls != LaunchMethod:
+            raise TypeError("LaunchMethod shutdown hook only available to base class!")
+
+        impl = {
+            LAUNCH_METHOD_ORTE          : LaunchMethodORTE
+        }.get(name)
+
+        if not impl:
+            logger.info('no LRMS shutdown hook defined for LaunchMethod %s' % name)
+            return None
+
+        logger.info('call LRMS shutdown hook for LaunchMethod %s: %s' % (name, impl))
+        return impl.lrms_shutdown_hook(name, cfg, lrms, lm_info, logger)
 
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
         raise NotImplementedError("_configure() not implemented for LaunchMethod: %s." % self.name)
+
 
     # --------------------------------------------------------------------------
     #
@@ -2054,15 +2066,33 @@ class LaunchMethodORTE(LaunchMethod):
         dvm_watcher.daemon = True
         dvm_watcher.start()
 
-        lm_info = {'dvm_uri': dvm_uri, 'version_info': {name: orte_info}}
+        lm_info = {'dvm_uri'     : dvm_uri,
+                   'version_info': {name: orte_info}}
 
         # we need to inform the actual LM instance about the DVM URI.  So we
         # pass it back to the LRMS which will keep it in an 'lm_info', which
         # will then be passed as part of the opaque_slots via the scheduler
         return lm_info
 
-    # TODO: Create teardown() function for LaunchMethod's (in this case to terminate the dvm)
-    #subprocess.Popen([self.launch_command, "--hnp", orte_vm_uri_filename, "--terminate"])
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
+        """
+        This hook is symmetric to the config hook above, and is called during
+        shutdown sequence, for the sake of freeing allocated resources.
+        """
+
+        if 'dvm_uri' in lm_info:
+            try:
+                logger.info('terminating dvm')
+                orte_submit = cls._which('orte-submit')
+                if not orte_submit:
+                    raise Exception("Couldn't find orte-submit")
+                subprocess.Popen([orte_submit, "--hnp", lm_info['dvm_uri'], "--terminate"])
+            except Exception as e:
+                logger.exception('dmv termination failed')
 
 
     # --------------------------------------------------------------------------
@@ -2346,9 +2376,31 @@ class LRMS(object):
 
     # --------------------------------------------------------------------------
     #
+    def stop(self):
+
+        # During LRMS termination, we call any existing shutdown hooks on the
+        # launch methods.  We only call LM shutdown hooks *once*
+        launch_methods = set() # set keeps entries unique
+        launch_methods.add(self._cfg['mpi_launch_method'])
+        launch_methods.add(self._cfg['task_launch_method'])
+        launch_methods.add(self._cfg['agent_launch_method'])
+
+        for lm in launch_methods:
+            if lm:
+                try:
+                    LaunchMethod.lrms_shutdown_hook(lm, self._cfg, self,
+                                                    self.lm_info, self._log)
+                except Exception as e:
+                    self._log.exception("lrms shutdown hook failed")
+                    raise
+
+                self._log.info("lrms shutdown hook succeeded (%s)" % lm)
+
+
+    # --------------------------------------------------------------------------
+    #
     def _configure(self):
         raise NotImplementedError("_Configure not implemented for LRMS type: %s." % self.name)
-
 
 
     # --------------------------------------------------------------------------
@@ -6048,7 +6100,10 @@ def bootstrap_3():
     # in one of the above handlers or exit handlers being activated, thus
     # reporting the error dutifully.
 
-    bridges = dict()  # avoid undefined dict on finalization
+    # avoid undefined vars on finalization
+    bridges = dict()
+    agent   = None
+    lrms    = None
     try:
         # ----------------------------------------------------------------------
         # des Pudels Kern: merge LRMS info into cfg and get the agent started
@@ -6105,6 +6160,24 @@ def bootstrap_3():
         log.debug('waiting for agent %s to join' % agent_name)
         agent.join()
         log.debug('agent %s joined' % agent_name)
+
+        # ----------------------------------------------------------------------
+
+    except SystemExit:
+        log.exception("Exit running agent: %s" % agent_name)
+        if not agent.final_cause:
+            agent.final_cause = "sys.exit"
+
+    except Exception as e:
+        log.exception("Error running agent: %s" % agent_name)
+        if not agent.final_cause:
+            agent.final_cause = "error"
+
+    finally:
+
+        # in all cases, make sure we perform an orderly shutdown.  I hope python
+        # does not mind doing all those things in a finally clause of
+        # (essentially) main...
         agent.stop()
         log.debug('agent %s finalized' % agent_name)
 
@@ -6119,26 +6192,17 @@ def bootstrap_3():
             else:
                 pilot_FAILED(mongo_p, pilot_id, log, "TERMINATE received")
 
-        # ----------------------------------------------------------------------
-
-    except SystemExit:
-        log.exception("Exit running agent: %s" % agent_name)
-        if agent_name == 'agent_0':
-            pilot_FAILED(mongo_p, pilot_id, log, "Caught system exit. EXITING") 
-        sys.exit(1)
-
-    except Exception as e:
-        if agent_name == 'agent_0':
-            pilot_FAILED(mongo_p, pilot_id, log, "Error running agent: %s" % e)
-        sys.exit(2)
-
-    finally:
+        # agent.stop will not tear down bridges -- we do that here at last
         for name,b in bridges.items():
             try:
                 log.info("closing bridge %s", b)
                 b['handle'].stop()
             except Exception as e:
                 log.exception('ignore failing bridge terminate (%s)', e)
+
+        # make sure the lrms release whatever it acquired
+        if lrms:
+            lrms.stop()
 
         log.info('stop')
         prof.prof('stop', msg='finally clause agent', uid=pilot_id)
