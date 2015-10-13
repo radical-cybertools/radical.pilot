@@ -64,7 +64,7 @@ class Profiler (object):
     def close(self):
 
         if self._enabled:
-            self.prof("final")
+            self.prof("QED")
             self._handle.close()
 
 

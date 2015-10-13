@@ -1420,7 +1420,7 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Mark final profiling entry ..."
-    profile_event 'final'
+    profile_event 'QED'
     echo "#"
     echo "# -------------------------------------------------------------------"
     echo
