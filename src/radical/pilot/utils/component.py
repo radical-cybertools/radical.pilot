@@ -737,10 +737,12 @@ class Component(mp.Process):
             # don't bother...
             self._log.exception('loop exception')
 
+        except SystemExit:
+            self._log.debug("Caught exit")
+
         except:
-            # This is most likely a sys.exit, but can be any other signal or
-            # interrupt.
-            self._log.exception('loop error')
+            # Can be any other signal or interrupt.
+            self._log.exception('loop interruption')
 
         finally:
             # call stop (which calls the finalizers)
