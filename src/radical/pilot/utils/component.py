@@ -349,7 +349,7 @@ class Component(mp.Process):
         # should not block on shutdown anymore, as the thread is at least gone.
         if self_thread in self._threads and self._cb_lock.locked():
             self._log.debug('release subscriber thread %s' % self_thread)
-            self_thread.exit()
+            sys.exit()
 
         self._prof.prof("stopped")
         self._prof.close()
