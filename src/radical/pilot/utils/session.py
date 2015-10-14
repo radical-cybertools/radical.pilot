@@ -7,12 +7,15 @@ import tarfile
 import radical.utils as ru
 from   radical.pilot.states import *
 from . import version_detail as rp_version_detail
+from . import logger
 
 from db_utils import *
 
+
 # ------------------------------------------------------------------------------
 #
-def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, session=None, skip_existing=False):
+def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, 
+        session=None, skip_existing=False):
     '''
     sid: session for which all profiles are fetched
     client: dir to look for client session profiles
@@ -59,11 +62,11 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, session
     if skip_existing and os.path.isfile(ftgt.path) \
             and os.stat(ftgt.path).st_size > 0:
 
-        print "Skip fetching of '%s' to '%s'." % (client_profile, tgt_url)
+        logger.report.info("\t- %s\n" % client_profile.split('/')[-1])
 
     else:
 
-        print "Fetching '%s' to '%s'." % (client_profile, tgt_url)
+        logger.report.info("\t+ %s\n" % client_profile.split('/')[-1])
         prof_file = saga.filesystem.File(client_profile, session=session)
         prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
         prof_file.close()
@@ -74,12 +77,12 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, session
 
     pilots = json_docs['pilot']
     num_pilots = len(pilots)
-    print "Session: %s" % sid
-    print "Number of pilots in session: %d" % num_pilots
+ #  print "Session: %s" % sid
+ #  print "Number of pilots in session: %d" % num_pilots
 
     for pilot in pilots:
 
-        print "Processing pilot '%s'" % pilot['_id']
+      # print "Processing pilot '%s'" % pilot['_id']
 
         sandbox_url = saga.Url(pilot['sandbox'])
 
@@ -91,12 +94,12 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, session
             sandbox_url.schema = access_url.schema
             sandbox_url.host = access_url.host
 
-            print "Overriding remote sandbox: %s" % sandbox_url
+          # print "Overriding remote sandbox: %s" % sandbox_url
 
         sandbox  = saga.filesystem.Directory (sandbox_url, session=session)
 
         # Try to fetch a tarball of profiles, so that we can get them all in one (SAGA) go!
-        PROFILES_TARBALL = 'profiles.tgz'
+        PROFILES_TARBALL = '%s.prof.tgz' % pilot['_id']
         tarball_available = False
         try:
             if sandbox.is_file(PROFILES_TARBALL):
@@ -123,14 +126,19 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, session
         except saga.DoesNotExist:
             print "exception(TODO): profiles tarball doesnt exists!"
 
+        try:
+            os.mkdir("%s/%s" % (tgt_url.path, pilot['_id']))
+        except OSError:
+            pass
+
         # We now have a local tarball
         if tarball_available:
             print "Extracting tarball %s into '%s'." % (ftgt.path, tgt_url.path)
             tarball = tarfile.open(ftgt.path)
-            tarball.extractall(tgt_url.path)
+            tarball.extractall("%s/%s" % (tgt_url.path, pilot['_id']))
 
             profiles = glob.glob("%s/*.prof" % tgt_url.path)
-            print "Tarball %s extracted to '%s'." % (ftgt.path, profiles)
+            print "Tarball %s extracted to '%s/%s/'." % (ftgt.path, tgt_url.path, pilot['_id'])
             ret.extend(profiles)
 
             # If extract succeeded, no need to fetch individual profiles
@@ -141,16 +149,16 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, session
 
         for prof in profiles:
 
-            ftgt = saga.Url('%s/%s' % (tgt_url, prof))
+            ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['_id'], prof))
             ret.append("%s" % ftgt.path)
 
             if skip_existing and os.path.isfile(ftgt.path) \
                              and os.stat(ftgt.path).st_size > 0:
 
-                print "Skipping fetching of '%s' to '%s'." % (prof, tgt_url)
+                logger.report.info("\t- %s\n" % str(prof).split('/')[-1])
                 continue
 
-            print "Fetching '%s%s' to '%s'." % (sandbox_url, prof, tgt_url)
+            logger.report.info("\t+ %s\n" % str(prof).split('/')[-1])
             prof_file = saga.filesystem.File("%s%s" % (sandbox_url, prof), session=session)
             prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
             prof_file.close()

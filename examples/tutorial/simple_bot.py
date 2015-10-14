@@ -50,33 +50,15 @@ def unit_state_cb (unit, state):
 #
 if __name__ == "__main__":
 
-    # we can optionally pass session name to RP
-    if len(sys.argv) > 1:
-        session_name = sys.argv[1]
-    else:
-        session_name = None
-
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
-    session = rp.Session(name=session_name)
+    session = rp.Session()
     print "session id: %s" % session.uid
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
-    # the whole RP stack down via a 'session.close()' call in the 'finally'
-    # clause...
+    # the whole RP stack down via a 'session.close()' in the 'finally' clause.
     try:
-
-        # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
-        # 
-        # Change the user name below if you are using a remote resource 
-        # and your username on that resource is different from the username 
-        # on your local machine. 
-        #
-        c = rp.Context('userpass')
-        #c.user_id = "tutorial_X"
-        #c.user_pass = "PutYourPasswordHere"
-        session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         print "Initializing Pilot Manager ..."
@@ -89,9 +71,6 @@ if __name__ == "__main__":
 
         # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
         # 
-        # If you want to run this example on your local machine, you don't have 
-        # to change anything here. 
-        # 
         # Change the resource below if you want to run on a remote resource. 
         # You also might have to set the 'project' to your allocation ID if 
         # your remote resource does compute time accounting. 
@@ -100,17 +79,16 @@ if __name__ == "__main__":
         # http://radicalpilot.readthedocs.org/en/latest/machconf.html#preconfigured-resources
         # 
         pdesc = rp.ComputePilotDescription ()
-        pdesc.resource = "local.localhost"  # NOTE: This is a "label", not a hostname
-        pdesc.runtime  = 10 # minutes
-        pdesc.cores    = 1
-        pdesc.cleanup  = True
+        pdesc.resource = "local.localhost"  # this is a "label", not a hostname
+        pdesc.cores    =  1
+        pdesc.runtime  = 10    # minutes
+        pdesc.cleanup  = True  # clean pilot sandbox and database entries
 
         # submit the pilot.
         print "Submitting Compute Pilot to Pilot Manager ..."
         pilot = pmgr.submit_pilots(pdesc)
 
-        # Combine the ComputePilot, the ComputeUnits and a scheduler via
-        # a UnitManager object.
+        # create a UnitManager which schedules ComputeUnits over pilots.
         print "Initializing Unit Manager ..."
         umgr = rp.UnitManager (session=session,
                                scheduler=rp.SCHED_DIRECT_SUBMISSION)
@@ -126,15 +104,15 @@ if __name__ == "__main__":
 
         NUMBER_JOBS  = 10 # the total number of cus to run
 
-        # submit CUs to pilot job
+        # create CU descriptions
         cudesc_list = []
         for i in range(NUMBER_JOBS):
 
             # -------- BEGIN USER DEFINED CU DESCRIPTION --------- #
             cudesc = rp.ComputeUnitDescription()
-            cudesc.environment = {'CU_NO': i}
             cudesc.executable  = "/bin/echo"
             cudesc.arguments   = ['I am CU number $CU_NO']
+            cudesc.environment = {'CU_NO': i}
             cudesc.cores       = 1
             # -------- END USER DEFINED CU DESCRIPTION --------- #
 
@@ -148,8 +126,12 @@ if __name__ == "__main__":
 
         print "Waiting for CUs to complete ..."
         umgr.wait_units()
-        print "All CUs completed successfully!"
 
+        print "All CUs completed:"
+        for unit in cu_set:
+            print "* CU %s, state %s, exit code: %s, stdout: %s" \
+                % (unit.uid, unit.state, unit.exit_code, unit.stdout.strip())
+    
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
@@ -174,7 +156,7 @@ if __name__ == "__main__":
         #   session.close (cleanup=True, terminate=True)
         #
         # it will thus both clean out the session's database record, and kill
-        # all remaining pilots (none in our example).
+        # all remaining pilots.
 
 
 #-------------------------------------------------------------------------------

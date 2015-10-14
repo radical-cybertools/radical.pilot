@@ -80,7 +80,7 @@ int main ()
     return (0);
 }
 EOT
-    cc -o gtod gtod.c 1>/dev/null 2>/dev/null
+    cc -o gtod gtod.c
 
     if ! test -e "./gtod"
     then
@@ -117,7 +117,7 @@ profile_event()
     fi
 
     printf "%.4f,%s,%s,%s,%s,%s\n" \
-        "$NOW" "bootstrap_1" "$PILOT_ID" "ACTIVE" "$event" "$msg" \
+        "$NOW" "bootstrap_1" "$PILOTID" "ACTIVE" "$event" "$msg" \
         >> "$PROFILE"
 }
 
@@ -1414,15 +1414,33 @@ profile_event 'cleanup done'
 echo "#"
 echo "# -------------------------------------------------------------------"
 
-echo
-echo "# -------------------------------------------------------------------"
-echo "#"
-echo "# Tarring profiles ..."
-PROFILES_TARBALL="profiles.tgz"
-tar -czf $PROFILES_TARBALL *.prof
-ls -l $PROFILES_TARBALL
-echo "#"
-echo "# -------------------------------------------------------------------"
+if ! test -z "`ls *.prof 2>/dev/null`"
+then
+    echo
+    echo "# -------------------------------------------------------------------"
+    echo "#"
+    echo "# Tarring profiles ..."
+    PROFILES_TARBALL="$PILOTID.prof.tgz"
+    tar -czf $PROFILES_TARBALL *.prof
+    ls -l $PROFILES_TARBALL
+    echo "#"
+    echo "# -------------------------------------------------------------------"
+fi
+
+if ! test -z "`ls *{log,out,err,cfg} 2>/dev/null`"
+then
+    # TODO: This might not include all logs, as some systems only write
+    #       the output from the bootstrapper once the jobs completes.
+    echo
+    echo "# -------------------------------------------------------------------"
+    echo "#"
+    echo "# Tarring logfiles ..."
+    LOGFILES_TARBALL="$PILOTID.log.tgz"
+    tar -czf $LOGFILES_TARBALL *.{log,out,err,cfg}
+    ls -l $LOGFILES_TARBALL
+    echo "#"
+    echo "# -------------------------------------------------------------------"
+fi
 
 echo
 echo "# -------------------------------------------------------------------"

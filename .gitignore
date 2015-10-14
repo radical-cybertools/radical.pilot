@@ -40,3 +40,5 @@ nosetests.xml
 
 # IDEA / PyCharm
 .idea/
+
+makefile

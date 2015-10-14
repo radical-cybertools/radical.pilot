@@ -95,7 +95,7 @@ class UnitManager(object):
         **Raises:**
             * :class:`radical.pilot.PilotException`
         """
-        logger.demo('info', 'create unit manager')
+        logger.report.info('<<create unit manager')
 
         self._session = session
         self._worker  = None 
@@ -138,7 +138,7 @@ class UnitManager(object):
 
         self._valid = True
 
-        logger.demo('ok', '\\ok\n')
+        logger.report.ok('>>ok\n')
 
 
     #--------------------------------------------------------------------------
@@ -150,6 +150,8 @@ class UnitManager(object):
         if not self._valid:
             raise RuntimeError("instance is already closed")
 
+        logger.report.info('<<close unit manager')
+
         if self._worker:
             self._worker.stop()
 
@@ -157,6 +159,8 @@ class UnitManager(object):
         logger.info("Closed UnitManager %s." % str(self._uid))
 
         self._valid = False
+
+        logger.report.ok('>>ok\n')
 
 
     # -------------------------------------------------------------------------
@@ -249,15 +253,16 @@ class UnitManager(object):
         if not isinstance(pilots, list):
             pilots = [pilots]
 
-        logger.demo('info', 'add %d pilot(s)' % len(pilots))
+        if len(pilots) == 0:
+            raise ValueError('cannot add no pilots')
+
+        logger.report.info('<<add %d pilot(s)' % len(pilots))
 
         pilot_ids = self.list_pilots()
 
         for pilot in pilots :
-            if  pilot.uid in pilot_ids :
-                logger.warning ('adding the same pilot twice (%s)' % pilot.uid)
-                logger.demo('\n')
-
+            if pilot.uid in pilot_ids :
+                raise ValueError("can't adding pilot twice (%s)" % pilot.uid)
         self._worker.add_pilots(pilots)
 
         # let the scheduler know...
@@ -268,7 +273,7 @@ class UnitManager(object):
         for pilot in pilots :
             self._pilots.append (pilot)
 
-        logger.demo('ok', '\\ok\n')
+        logger.report.ok('>>ok\n')
 
     # -------------------------------------------------------------------------
     #
@@ -405,7 +410,11 @@ class UnitManager(object):
             return_list_type  = False
             unit_descriptions = [unit_descriptions]
 
-        logger.demo('info', 'submit %d unit(s)' % len(unit_descriptions))
+        if len(unit_descriptions) == 0:
+            raise ValueError('cannot submit no unit descriptions')
+
+
+        logger.report.info('<<submit %d unit(s)\n\t' % len(unit_descriptions))
 
         # we return a list of compute units
         ret = list()
@@ -432,8 +441,7 @@ class UnitManager(object):
                 import radical.utils as ru
                 ru.write_json(ud.as_dict(), "%s/%s.batch.%03d.json" \
                         % (self._session._rec, u.uid, self._rec_id))
-            logger.demo('progress')
-
+            logger.report.progress()
         if self._session._rec:
             self._rec_id += 1
 
@@ -449,7 +457,7 @@ class UnitManager(object):
 
         self.handle_schedule (schedule)
 
-        logger.demo('ok', '\\ok\n')
+        logger.report.ok('>>ok\n')
 
         if  return_list_type :
             return units
@@ -646,38 +654,55 @@ class UnitManager(object):
             unit_ids = [unit_ids]
 
 
-        units  = self.get_units (unit_ids)
+        units  = self.get_units(unit_ids)
         start  = time.time()
-        all_ok = False
-        states = list()
 
-        logger.demo('info', 'wait for %d unit(s)' % len(units))
+        logger.report.info('<<wait for %d unit(s)\n\t' % len(units))
 
-        while not all_ok and \
-              not self._session._terminate.is_set():
+        # We don't want to iterate over all units again and again, as that would
+        # duplicate checks on units which were found in matching states.  So we
+        # create a dict and record units we have checked already.
+        checked_units = {unit: False for unit in units}
 
-            all_ok = True
-            states = list()
+        # Initially we need to check all units
+        to_check = units
 
-            for unit in units :
-                if  unit.state not in state :
-                    all_ok = False
-                else:
-                    logger.demo('progress')
+        logger.report.idle(mode='start')
+        while to_check and not self._session._terminate.is_set():
 
-                states.append (unit.state)
+            logger.report.idle()
+
+            for unit in to_check:
+                if unit.state in state:
+                    # stop watching this unit
+                    checked_units[unit] = True
+                    if unit.state in [FAILED]:
+                        logger.report.idle(color='error', c='-')
+                    elif unit.state in [CANCELED]:
+                        logger.report.idle(color='warn', c='*')
+                    else:
+                        logger.report.idle(color='ok', c='+')
+
+            # check if units remain to be waited for.
+            to_check = [unit for unit in checked_units if not checked_units[unit]]
 
             # check timeout
             if  (None != timeout) and (timeout <= (time.time() - start)):
-                if  not all_ok :
-                    logger.debug ("wait timed out: %s" % states)
+                if  to_check :
+                    logger.debug ("wait timed out")
                 break
 
-            # sleep a little if this cycle was idle
-            if  not all_ok :
+            # if units remain to be watched and we have still time
+            if to_check:
                 time.sleep (0.5)
 
-        logger.demo('ok', '\\ok\n')
+        logger.report.idle(mode='stop')
+
+        if not to_check: logger.report.ok(  '>>ok\n')
+        else           : logger.report.warn('>>timeout\n')
+
+        # grab the current states to return
+        states = [unit.state for unit in checked_units]
 
         # done waiting
         if  return_list_type :

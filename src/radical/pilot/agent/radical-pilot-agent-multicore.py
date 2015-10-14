@@ -1186,6 +1186,7 @@ class LaunchMethod(object):
         'PATH',
         'PYTHONPATH',
         'PYTHON_DIR',
+        'RADICAL_PILOT_PROFILE'
     ]
 
     # --------------------------------------------------------------------------
@@ -1262,20 +1263,8 @@ class LaunchMethod(object):
             raise TypeError("LaunchMethod config hook only available to base class!")
 
         impl = {
-          # LAUNCH_METHOD_APRUN         : LaunchMethodAPRUN,
-          # LAUNCH_METHOD_CCMRUN        : LaunchMethodCCMRUN,
-          # LAUNCH_METHOD_DPLACE        : LaunchMethodDPLACE,
             LAUNCH_METHOD_FORK          : LaunchMethodFORK,
-          # LAUNCH_METHOD_IBRUN         : LaunchMethodIBRUN,
-          # LAUNCH_METHOD_MPIEXEC       : LaunchMethodMPIEXEC,
-          # LAUNCH_METHOD_MPIRUN_CCMRUN : LaunchMethodMPIRUNCCMRUN,
-          # LAUNCH_METHOD_MPIRUN_DPLACE : LaunchMethodMPIRUNDPLACE,
-          # LAUNCH_METHOD_MPIRUN        : LaunchMethodMPIRUN,
-          # LAUNCH_METHOD_MPIRUN_RSH    : LaunchMethodMPIRUNRSH,
-            LAUNCH_METHOD_ORTE          : LaunchMethodORTE,
-          # LAUNCH_METHOD_POE           : LaunchMethodPOE,
-          # LAUNCH_METHOD_RUNJOB        : LaunchMethodRUNJOB,
-          # LAUNCH_METHOD_SSH           : LaunchMethodSSH
+            LAUNCH_METHOD_ORTE          : LaunchMethodORTE
         }.get(name)
 
         if not impl:
@@ -1286,12 +1275,36 @@ class LaunchMethod(object):
         return impl.lrms_config_hook(name, cfg, lrms, logger)
 
 
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
+        """
+        This hook is symmetric to the config hook above, and is called during
+        shutdown sequence, for the sake of freeing allocated resources.
+        """
+
+        # Make sure that we are the base-class!
+        if cls != LaunchMethod:
+            raise TypeError("LaunchMethod shutdown hook only available to base class!")
+
+        impl = {
+            LAUNCH_METHOD_ORTE          : LaunchMethodORTE
+        }.get(name)
+
+        if not impl:
+            logger.info('no LRMS shutdown hook defined for LaunchMethod %s' % name)
+            return None
+
+        logger.info('call LRMS shutdown hook for LaunchMethod %s: %s' % (name, impl))
+        return impl.lrms_shutdown_hook(name, cfg, lrms, lm_info, logger)
 
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
         raise NotImplementedError("_configure() not implemented for LaunchMethod: %s." % self.name)
+
 
     # --------------------------------------------------------------------------
     #
@@ -1439,6 +1452,11 @@ class LaunchMethodSSH(LaunchMethod):
 
         LaunchMethod.__init__(self, cfg, logger)
 
+        # Instruct the ExecWorkers to unset this environment variable.
+        # Otherwise this will break nested SSH with SHELL spawner, i.e. when
+        # both the sub-agent and CUs are started using SSH.
+        self.env_removables.extend(["RP_SPAWNER_HOP"])
+
 
     # --------------------------------------------------------------------------
     #
@@ -1485,12 +1503,14 @@ class LaunchMethodSSH(LaunchMethod):
         else:
             task_command = task_exec
 
+        # Pass configured and available environment variables to the remote shell
+        export_vars = ' '.join(['%s=%s' % (var, os.environ[var]) for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
+
         # Command line to execute launch script via ssh on host
-        ssh_hop_cmd = "%s %s %s" % (self.launch_command, host, launch_script_hop)
+        ssh_hop_cmd = "%s %s %s %s" % (self.launch_command, host, export_vars, launch_script_hop)
 
         # Special case, return a tuple that overrides the default command line.
         return task_command, ssh_hop_cmd
-
 
 
 # ==============================================================================
@@ -2046,15 +2066,33 @@ class LaunchMethodORTE(LaunchMethod):
         dvm_watcher.daemon = True
         dvm_watcher.start()
 
-        lm_info = {'dvm_uri': dvm_uri, 'version_info': {name: orte_info}}
+        lm_info = {'dvm_uri'     : dvm_uri,
+                   'version_info': {name: orte_info}}
 
         # we need to inform the actual LM instance about the DVM URI.  So we
         # pass it back to the LRMS which will keep it in an 'lm_info', which
         # will then be passed as part of the opaque_slots via the scheduler
         return lm_info
 
-    # TODO: Create teardown() function for LaunchMethod's (in this case to terminate the dvm)
-    #subprocess.Popen([self.launch_command, "--hnp", orte_vm_uri_filename, "--terminate"])
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
+        """
+        This hook is symmetric to the config hook above, and is called during
+        shutdown sequence, for the sake of freeing allocated resources.
+        """
+
+        if 'dvm_uri' in lm_info:
+            try:
+                logger.info('terminating dvm')
+                orte_submit = cls._which('orte-submit')
+                if not orte_submit:
+                    raise Exception("Couldn't find orte-submit")
+                subprocess.Popen([orte_submit, "--hnp", lm_info['dvm_uri'], "--terminate"])
+            except Exception as e:
+                logger.exception('dmv termination failed')
 
 
     # --------------------------------------------------------------------------
@@ -2338,9 +2376,31 @@ class LRMS(object):
 
     # --------------------------------------------------------------------------
     #
+    def stop(self):
+
+        # During LRMS termination, we call any existing shutdown hooks on the
+        # launch methods.  We only call LM shutdown hooks *once*
+        launch_methods = set() # set keeps entries unique
+        launch_methods.add(self._cfg['mpi_launch_method'])
+        launch_methods.add(self._cfg['task_launch_method'])
+        launch_methods.add(self._cfg['agent_launch_method'])
+
+        for lm in launch_methods:
+            if lm:
+                try:
+                    LaunchMethod.lrms_shutdown_hook(lm, self._cfg, self,
+                                                    self.lm_info, self._log)
+                except Exception as e:
+                    self._log.exception("lrms shutdown hook failed")
+                    raise
+
+                self._log.info("lrms shutdown hook succeeded (%s)" % lm)
+
+
+    # --------------------------------------------------------------------------
+    #
     def _configure(self):
         raise NotImplementedError("_Configure not implemented for LRMS type: %s." % self.name)
-
 
 
     # --------------------------------------------------------------------------
@@ -2356,7 +2416,11 @@ class LRMS(object):
         black_list = ['lo', 'sit0']
 
         # Known intefaces in preferred order
-        sorted_preferred = ['ipogif0', 'eth0']
+        sorted_preferred = [
+            'ipogif0', # Cray's
+            'br0', # SuperMIC
+            'eth0'
+        ]
         
         # Get a list of all network interfaces
         all = netifaces.interfaces()
@@ -3769,9 +3833,11 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         with open(launch_script_name, "w") as launch_script:
             launch_script.write('#!/bin/bash -l\n\n')
 
-            launch_script.write("echo script start_script `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                launch_script.write("echo script start_script `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
             launch_script.write('\n# Change to working directory for unit\ncd %s\n' % cu_tmpdir)
-            launch_script.write("echo script after_cd `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                launch_script.write("echo script after_cd `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
             # Before the Big Bang there was nothing
             if cu['description']['pre_exec']:
@@ -3783,17 +3849,23 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                     pre_exec_string += "%s\n" % cu['description']['pre_exec']
                 # Note: extra spaces below are for visual alignment
                 launch_script.write("# Pre-exec commands\n")
-                launch_script.write("echo pre  start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+                if 'RADICAL_PILOT_PROFILE' in os.environ:
+                    launch_script.write("echo pre  start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
                 launch_script.write(pre_exec_string)
-                launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+                if 'RADICAL_PILOT_PROFILE' in os.environ:
+                    launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
             # Create string for environment variable setting
-            if cu['description']['environment'] and    \
-                cu['description']['environment'].keys():
-                env_string = 'export'
+            env_string = 'export'
+            if cu['description']['environment']:
                 for key,val in cu['description']['environment'].iteritems():
                     env_string += ' %s=%s' % (key, val)
-                launch_script.write('# Environment variables\n%s\n' % env_string)
+            env_string += " RP_SESSION_ID=%s" % self._cfg['session_id']
+            env_string += " RP_PILOT_ID=%s"   % self._cfg['pilot_id']
+            env_string += " RP_AGENT_ID=%s"   % self._cfg['agent_name']
+            env_string += " RP_SPAWNER_ID=%s" % self.cname
+            env_string += " RP_UNIT_ID=%s"    % cu['_id']
+            launch_script.write('# Environment variables\n%s\n' % env_string)
 
             # unit Arguments (if any)
             task_args_string = ''
@@ -3809,15 +3881,13 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                     else:
                         task_args_string += '"%s" ' % arg  # Otherwise return between double quotes.
 
-            launch_script_hop = "/usr/bin/env RP_SPAWNER_HOP=TRUE %s" % launch_script_name
-
             # The actual command line, constructed per launch-method
             try:
                 launch_command, hop_cmd = \
                     launcher.construct_command(cu['description']['executable'],
                                                task_args_string,
                                                cu['description']['cores'],
-                                               launch_script_hop,
+                                               launch_script_name,
                                                cu['opaque_slots'])
                 if hop_cmd : cmdline = hop_cmd
                 else       : cmdline = launch_script_name
@@ -3830,7 +3900,8 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             launch_script.write("# The command to run\n")
             launch_script.write("%s\n" % launch_command)
             launch_script.write("RETVAL=$?\n")
-            launch_script.write("echo script after_exec `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                launch_script.write("echo script after_exec `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
             # After the universe dies the infrared death, there will be nothing
             if cu['description']['post_exec']:
@@ -3841,9 +3912,11 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 else:
                     post_exec_string += "%s\n" % cu['description']['post_exec']
                 launch_script.write("# Post-exec commands\n")
-                launch_script.write("echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+                if 'RADICAL_PILOT_PROFILE' in os.environ:
+                    launch_script.write("echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
                 launch_script.write('%s\n' % post_exec_string)
-                launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+                if 'RADICAL_PILOT_PROFILE' in os.environ:
+                    launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
             launch_script.write("# Exit the script with the return code from the command\n")
             launch_script.write("exit $RETVAL\n")
@@ -4303,29 +4376,39 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
             cwd  += "mkdir -p %s\n" % cu['workdir']
             # TODO: how do we align this timing with the mkdir with POPEN? (do we at all?)
             cwd  += "cd       %s\n" % cu['workdir']
-            cwd  += "echo script after_cd `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                cwd  += "echo script after_cd `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             cwd  += "\n"
 
-        if  descr['environment'] :
-            env  += "# CU environment\n"
+        env  += "# CU environment\n"
+        if descr['environment']:
             for e in descr['environment'] :
                 env += "export %s=%s\n"  %  (e, descr['environment'][e])
-            env  += "\n"
+        env  += "export RP_SESSION_ID=%s\n" % self._cfg['session_id']
+        env  += "export RP_PILOT_ID=%s\n"   % self._cfg['pilot_id']
+        env  += "export RP_AGENT_ID=%s\n"   % self._cfg['agent_name']
+        env  += "export RP_SPAWNER_ID=%s\n" % self.cname
+        env  += "export RP_UNIT_ID=%s\n"    % cu['_id']
+        env  += "\n"
 
         if  descr['pre_exec'] :
             pre  += "# CU pre-exec\n"
-            pre  += "echo pre  start `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                pre  += "echo pre  start `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             pre  += '\n'.join(descr['pre_exec' ])
             pre  += "\n"
-            pre  += "echo pre  stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                pre  += "echo pre  stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             pre  += "\n"
 
         if  descr['post_exec'] :
             post += "# CU post-exec\n"
-            post += "echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                post += "echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             post += '\n'.join(descr['post_exec' ])
             post += "\n"
-            post += "echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                post += "echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             post += "\n"
 
         if  descr['arguments']  :
@@ -4343,7 +4426,9 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
                                                    '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
                                                    cu['opaque_slots'])
 
-        script = "echo script start_script `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+        script = ''
+        if 'RADICAL_PILOT_PROFILE' in os.environ:
+            script += "echo script start_script `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
 
         if hop_cmd :
             # the script will itself contain a remote callout which calls again
@@ -4366,7 +4451,8 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         script += "# CU execution\n"
         script += "%s %s\n\n" % (cmd, io)
         script += "RETVAL=$?\n"
-        script += "echo script after_exec `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+        if 'RADICAL_PILOT_PROFILE' in os.environ:
+            script += "echo script after_exec `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
         script += "%s"        %  post
         script += "exit $RETVAL\n"
         script += "# ------------------------------------------------------\n\n"
@@ -5048,16 +5134,17 @@ class AgentStagingOutputComponent(rpu.Component):
 
                 cu['stderr'] += rpu.tail(txt)
 
-        if os.path.isfile("%s/PROF" % cu['workdir']):
-            try:
-                with open("%s/PROF" % cu['workdir'], 'r') as prof_f:
-                    txt = prof_f.read()
-                    for line in txt.split("\n"):
-                        if line:
-                            x1, x2, x3 = line.split()
-                            self._prof.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
-            except Exception as e:
-                self._log.error("Pre/Post profiling file read failed: `%s`" % e)
+        if 'RADICAL_PILOT_PROFILE' in os.environ:
+            if os.path.isfile("%s/PROF" % cu['workdir']):
+                try:
+                    with open("%s/PROF" % cu['workdir'], 'r') as prof_f:
+                        txt = prof_f.read()
+                        for line in txt.split("\n"):
+                            if line:
+                                x1, x2, x3 = line.split()
+                                self._prof.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
+                except Exception as e:
+                    self._log.error("Pre/Post profiling file read failed: `%s`" % e)
 
         # NOTE: all units get here after execution, even those which did not
         #       finish successfully.  We do that so that we can make 
@@ -5380,7 +5467,6 @@ class AgentWorker(rpu.Worker):
         self._components = dict()
         self._workers    = dict()
 
-
         # sanity check on config settings
         if not 'cores'               in self._cfg: raise ValueError("Missing number of cores")
         if not 'debug'               in self._cfg: raise ValueError("Missing DEBUG level")
@@ -5503,7 +5589,7 @@ class AgentWorker(rpu.Worker):
                 len(self._workers   ) + \
                 len(self._sub_agents)
         start   = time.time()
-        timeout = 120
+        timeout = 300
 
         while True:
             # check the procs for all components which are not yet alive
@@ -5555,7 +5641,7 @@ class AgentWorker(rpu.Worker):
             if state == None:
                 self._log.debug('%30s: ok' % name)
             else:
-                raise RuntimeError ('%s died - shutting down')
+                raise RuntimeError ('%s died - shutting down' % name)
 
         return True # always idle
 
@@ -5683,7 +5769,7 @@ class AgentWorker(rpu.Worker):
             self._log.info ("create sub-agent %s: %s" % (sa, cmdline))
             sa_out = open("%s.out" % sa, "w")
             sa_err = open("%s.err" % sa, "w")
-            sa_proc = subprocess.Popen(args=cmdline, stdout=sa_out, stderr=sa_err)
+            sa_proc = subprocess.Popen(args=cmdline.split(), stdout=sa_out, stderr=sa_err)
 
             # make sure we can stop the sa_proc
             sa_proc.stop = sa_proc.terminate
@@ -5979,32 +6065,45 @@ def bootstrap_3():
         mongo_p = mongo_db["%s.p" % cfg['session_id']]
 
 
-        # set up signal and exit handlers
-        def exit_handler():
-          # rpu.flush_prof()
-            print 'atexit'
+    # set up signal and exit handlers
+    def exit_handler():
+        prof.flush()
+        print 'atexit'
+        sys.exit(1)
 
-        def sigint_handler(signum, frame):
+    def sigint_handler(signum, frame):
+        if agent_name == 'agent_0':
             pilot_FAILED(msg='Caught SIGINT. EXITING (%s)' % frame)
-            print 'sigint'
-            sys.exit(2)
+        print 'sigint'
+        sys.exit(2)
 
-        def sigalarm_handler(signum, frame):
+    def sigterm_handler(signum, frame):
+        if agent_name == 'agent_0':
+            pilot_FAILED(msg='Caught SIGTERM. EXITING (%s)' % frame)
+        print 'sigterm'
+        sys.exit(3)
+
+    def sigalarm_handler(signum, frame):
+        if agent_name == 'agent_0':
             pilot_FAILED(msg='Caught SIGALRM (Walltime limit?). EXITING (%s)' % frame)
-            print 'sigalrm'
-            sys.exit(3)
+        print 'sigalrm'
+        sys.exit(4)
 
-        import atexit
-        atexit.register(exit_handler)
-        signal.signal(signal.SIGINT,  sigint_handler)
-        signal.signal(signal.SIGALRM, sigalarm_handler)
+    import atexit
+    atexit.register(exit_handler)
+    signal.signal(signal.SIGINT,  sigint_handler)
+    signal.signal(signal.SIGTERM, sigterm_handler)
+    signal.signal(signal.SIGALRM, sigalarm_handler)
 
     # if anything went wrong up to this point, we would have been unable to
     # report errors into mongodb.  From here on, any fatal error should result
-    # in one of the above handlers or exit handlers being activated, thuse
+    # in one of the above handlers or exit handlers being activated, thus
     # reporting the error dutifully.
 
-    bridges = dict()  # avoid undefined dict on finalization
+    # avoid undefined vars on finalization
+    bridges = dict()
+    agent   = None
+    lrms    = None
     try:
         # ----------------------------------------------------------------------
         # des Pudels Kern: merge LRMS info into cfg and get the agent started
@@ -6061,6 +6160,24 @@ def bootstrap_3():
         log.debug('waiting for agent %s to join' % agent_name)
         agent.join()
         log.debug('agent %s joined' % agent_name)
+
+        # ----------------------------------------------------------------------
+
+    except SystemExit:
+        log.exception("Exit running agent: %s" % agent_name)
+        if not agent.final_cause:
+            agent.final_cause = "sys.exit"
+
+    except Exception as e:
+        log.exception("Error running agent: %s" % agent_name)
+        if not agent.final_cause:
+            agent.final_cause = "error"
+
+    finally:
+
+        # in all cases, make sure we perform an orderly shutdown.  I hope python
+        # does not mind doing all those things in a finally clause of
+        # (essentially) main...
         agent.stop()
         log.debug('agent %s finalized' % agent_name)
 
@@ -6075,26 +6192,17 @@ def bootstrap_3():
             else:
                 pilot_FAILED(mongo_p, pilot_id, log, "TERMINATE received")
 
-        # ----------------------------------------------------------------------
-
-    except SystemExit:
-        log.exception("Exit running agent: %s" % agent_name)
-        if agent_name == 'agent_0':
-            pilot_FAILED(mongo_p, pilot_id, log, "Caught system exit. EXITING") 
-        sys.exit(1)
-
-    except Exception as e:
-        if agent_name == 'agent_0':
-            pilot_FAILED(mongo_p, pilot_id, log, "Error running agent: %s" % e)
-        sys.exit(2)
-
-    finally:
+        # agent.stop will not tear down bridges -- we do that here at last
         for name,b in bridges.items():
             try:
                 log.info("closing bridge %s", b)
                 b['handle'].stop()
             except Exception as e:
                 log.exception('ignore failing bridge terminate (%s)', e)
+
+        # make sure the lrms release whatever it acquired
+        if lrms:
+            lrms.stop()
 
         log.info('stop')
         prof.prof('stop', msg='finally clause agent', uid=pilot_id)
