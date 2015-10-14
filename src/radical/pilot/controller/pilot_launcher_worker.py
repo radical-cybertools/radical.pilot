@@ -308,7 +308,6 @@ class PilotLauncherWorker(threading.Thread):
                     # don't process any new pilot start requests.  
                     # run state checks more frequently.
                     JOB_CHECK_INTERVAL = 3
-                    logger.debug('pilot launching is disabled')
                     time.sleep(1)
                     continue
 

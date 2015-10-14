@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
+__copyright__ = "Copyright 2014-2015, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import sys
@@ -8,6 +8,7 @@ import radical.pilot as rp
 
 
 """ DESCRIPTION: Tutorial 1: A Simple Workload consisting of a Bag-of-Tasks
+                             submitted to multiple machines
 """
 
 # READ: The RADICAL-Pilot documentation: 
@@ -50,15 +51,33 @@ def unit_state_cb (unit, state):
 #
 if __name__ == "__main__":
 
+    # we can optionally pass session name to RP
+    if len(sys.argv) > 1:
+        session_name = sys.argv[1]
+    else:
+        session_name = None
+
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
-    session = rp.Session()
+    session = rp.Session(name=session_name)
     print "session id: %s" % session.uid
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
-    # the whole RP stack down via a 'session.close()' in the 'finally' clause.
+    # the whole RP stack down via a 'session.close()' call in the 'finally'
+    # clause...
     try:
+
+        # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
+        # 
+        # Change the user name below if you are using a remote resource 
+        # and your username on that resource is different from the username 
+        # on your local machine. 
+        #
+        c = rp.Context('ssh')
+        c.user_id = "username"
+        #c.user_pass = "PutYourPasswordHere"
+        session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         print "Initializing Pilot Manager ..."
@@ -71,27 +90,51 @@ if __name__ == "__main__":
 
         # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
         # 
-        # Change the resource below if you want to run on a remote resource. 
-        # You also might have to set the 'project' to your allocation ID if 
-        # your remote resource does compute time accounting. 
-        #
+        # If you want to run this example on XSEDE Gordon and Comet, you have 
+        # to add your allocation ID by setting the project attribute for each pilot
+        # description ot it. 
+        # 
         # A list of preconfigured resources can be found at: 
         # http://radicalpilot.readthedocs.org/en/latest/machconf.html#preconfigured-resources
-        # 
+        #
+        
+        # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
+        # The pilot_list will contain the description of the pilot that will be
+        # submitted
+        pilot_list=list() 
+
+        # Create the description of the first pilot and add it to the list
         pdesc = rp.ComputePilotDescription ()
-        pdesc.resource = "local.localhost"  # this is a "label", not a hostname
-        pdesc.cores    =  1
-        pdesc.runtime  = 10    # minutes
-        pdesc.cleanup  = True  # clean pilot sandbox and database entries
+        pdesc.resource = "xsede.gordon"  # NOTE: This is a "label", not a hostname
+        pdesc.runtime  = 10 # minutes
+        pdesc.cores    = 1
+        pdesc.cleanup  = True
+        pdesc.project  = ''
+        pilot_list.append(pdesc)
 
-        # submit the pilot.
-        print "Submitting Compute Pilot to Pilot Manager ..."
-        pilot = pmgr.submit_pilots(pdesc)
+        # Create the description of the secind pilot and add it to the list
+        pdesc2 = rp.ComputePilotDescription ()
+        pdesc2.resource = "xsede.comet"  # NOTE: This is a "label", not a hostname
+        pdesc2.runtime  = 10 # minutes
+        pdesc2.cores    = 1
+        pdesc2.cleanup  = True
+        pdesc2.project  = ''
+        pilot_list.append(pdesc2)
 
-        # create a UnitManager which schedules ComputeUnits over pilots.
+        # Continue adding pilot by creating a new descrption and appending it to
+        # the list.
+
+        # Submit the pilot list to the Pilot Manager. Actually all the pilots are
+        # submitted to the Pilot Manager at once.
+        print "Submitting Compute Pilots to Pilot Manager ..."
+        pilots = pmgr.submit_pilots(pilot_list)
+
+        # Combine the ComputePilot, the ComputeUnits and a scheduler via
+        # a UnitManager object. The scheduler that supports multi-pilot sessions
+        # is Round Robin. Direct Submittion does not.
         print "Initializing Unit Manager ..."
         umgr = rp.UnitManager (session=session,
-                               scheduler=rp.SCHED_DIRECT_SUBMISSION)
+                               scheduler=rp.SCHED_ROUND_ROBIN)
 
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
@@ -99,20 +142,20 @@ if __name__ == "__main__":
         umgr.register_callback(unit_state_cb)
 
         # Add the created ComputePilot to the UnitManager.
-        print "Registering Compute Pilot with Unit Manager ..."
-        umgr.add_pilots(pilot)
+        print "Registering Compute Pilots with Unit Manager ..."
+        umgr.add_pilots(pilots)
 
-        NUMBER_JOBS  = 10 # the total number of cus to run
+        NUMBER_JOBS  = 64 # the total number of cus to run
 
-        # create CU descriptions
+        # submit CUs to pilot job
         cudesc_list = []
         for i in range(NUMBER_JOBS):
 
             # -------- BEGIN USER DEFINED CU DESCRIPTION --------- #
             cudesc = rp.ComputeUnitDescription()
-            cudesc.executable  = "/bin/echo"
-            cudesc.arguments   = ['I am CU number $CU_NO']
             cudesc.environment = {'CU_NO': i}
+            cudesc.executable  = "/bin/echo"
+            cudesc.arguments   = ['I am CU number $CU_NO from $HOSTNAME']
             cudesc.cores       = 1
             # -------- END USER DEFINED CU DESCRIPTION --------- #
 
@@ -126,12 +169,8 @@ if __name__ == "__main__":
 
         print "Waiting for CUs to complete ..."
         umgr.wait_units()
+        print "All CUs completed successfully!"
 
-        print "All CUs completed:"
-        for unit in cu_set:
-            print "* CU %s, state %s, exit code: %s, stdout: %s" \
-                % (unit.uid, unit.state, unit.exit_code, unit.stdout.strip())
-    
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
@@ -156,7 +195,7 @@ if __name__ == "__main__":
         #   session.close (cleanup=True, terminate=True)
         #
         # it will thus both clean out the session's database record, and kill
-        # all remaining pilots.
+        # all remaining pilots (none in our example).
 
 
 #-------------------------------------------------------------------------------

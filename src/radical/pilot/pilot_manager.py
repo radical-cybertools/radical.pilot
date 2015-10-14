@@ -98,7 +98,7 @@ class PilotManager(object):
         **Raises:**
             * :class:`radical.pilot.PilotException`
         """
-        logger.demo('info', 'create pilot manager')
+        logger.report.info('<<create pilot manager')
 
         self._session = session
         self._worker = None
@@ -125,7 +125,7 @@ class PilotManager(object):
 
         self._valid = True
 
-        logger.demo('ok', '\\ok\n')
+        logger.report.ok('>>ok\n')
 
 
     #---------------------------------------------------------------------------
@@ -149,6 +149,7 @@ class PilotManager(object):
         """
 
         logger.debug("pmgr    %s closing" % (str(self.uid)))
+        logger.report.info('<<close pilot manager')
 
         # Spit out a warning in case the object was already closed.
         if not self.uid:
@@ -188,6 +189,8 @@ class PilotManager(object):
         logger.debug("pmgr    %s closed" % (str(self.uid)))
 
         self._valid = False
+
+        logger.report.ok('>>ok\n')
 
 
     # -------------------------------------------------------------------------
@@ -234,7 +237,10 @@ class PilotManager(object):
             return_list_type   = False
             pilot_descriptions = [pilot_descriptions]
 
-        logger.demo('info', 'submit %d pilot(s)' % len(pilot_descriptions))
+        if len(pilot_descriptions) == 0:
+            raise ValueError('cannot submit no pilot descriptions')
+
+        logger.report.info('<<submit %d pilot(s) ' % len(pilot_descriptions))
 
         # Itereate over the pilot descriptions, try to create a pilot for
         # each one and append it to 'pilot_obj_list'.
@@ -322,9 +328,8 @@ class PilotManager(object):
                 import radical.utils as ru
                 ru.write_json(pd.as_dict(), "%s/%s.json" 
                         % (self._session._rec, pilot_uid))
-            logger.demo('progress')
-
-        logger.demo('ok', '\\ok\n')
+            logger.report.progress()
+        logger.report.ok('>>ok\n')
 
         # Implicit return value conversion
         if  return_list_type :
@@ -374,7 +379,7 @@ class PilotManager(object):
         """
         self._is_valid()
 
-        
+
         return_list_type = True
         if (not isinstance(pilot_ids, list)) and (pilot_ids is not None):
             return_list_type = False
@@ -435,34 +440,61 @@ class PilotManager(object):
             return_list_type = False
             pilot_ids = [pilot_ids]
 
-
+        pilots = self._worker.get_compute_pilot_data(pilot_ids=pilot_ids)
         start  = time.time()
-        all_ok = False
-        states = list()
 
-        while not all_ok :
+        logger.report.info('<<wait for %d pilot(s) ' % len(pilots))
 
-            pilots = self._worker.get_compute_pilot_data(pilot_ids=pilot_ids)
-            all_ok = True
-            states = list()
+        # filter for all pilots we still need to check
+        logger.report.idle(mode='start')
+        checked = list()
+        while True:
 
-            for pilot in pilots :
-                if  pilot['state'] not in state :
-                    all_ok = False
-                else:
-                    logger.demo('progress')
+            logger.report.idle()
 
-                states.append (pilot['state'])
+            for pilot in pilots:
+
+                pid = pilot['_id']
+
+                if pid in checked:
+                    # already handled
+                    continue
+
+                if pilot['state'] in state:
+                    # stop watching this pilot
+                    checked.append(pid)
+
+                    if pilot['state'] in [FAILED]:
+                        logger.report.idle(color='error', c='-')
+                    elif pilot['state'] in [CANCELED]:
+                        logger.report.idle(color='warn', c='*')
+                    else:
+                        logger.report.idle(color='ok', c='+')
 
             # check timeout
-            if  (None != timeout) and (timeout <= (time.time() - start)):
-                if  not all_ok :
-                    logger.debug ("wait timed out: %s" % states)
-                break
+            if (None != timeout) and (timeout <= (time.time() - start)):
+                if len(checked) < len(pilots):
+                    logger.debug("wait timed out")
+                    break
 
-            # sleep a little if this cycle was idle
-            if  not all_ok :
-                time.sleep (0.5)
+            # if we need to wait longer, sleep a little and get new state info
+            if len(checked) < len(pilots):
+                time.sleep(0.5)
+                pilots = self._worker.get_compute_pilot_data(pilot_ids=pilot_ids)
+                continue
+
+            # otherwise we are done
+            break
+
+        logger.report.idle(mode='stop')
+
+        if len(checked) == len(pilots):
+            logger.report.ok(  '>>ok\n')
+        else:
+            logger.report.warn('>>timeout\n')
+
+        # grab the current states to return
+        states = [p['state'] for p in pilots]
 
         # done waiting
         if  return_list_type :
