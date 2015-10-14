@@ -7,6 +7,7 @@ import errno
 import pprint
 import Queue           as pyq
 import multiprocessing as mp
+import radical.utils   as ru
 
 # --------------------------------------------------------------------------
 # defines for pubsub roles
