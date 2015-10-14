@@ -302,14 +302,12 @@ class PilotLauncherWorker(threading.Thread):
                 # the state of the ComputePilot accordingly.
                 if  last_job_check + JOB_CHECK_INTERVAL < time.time() :
                     last_job_check = time.time()
-                  # logger.debug('pilot launching is checked')
                     self.check_pilot_states (pilot_col)
 
                 if self._disabled.is_set():
                     # don't process any new pilot start requests.  
                     # run state checks more frequently.
                     JOB_CHECK_INTERVAL = 3
-                  # logger.debug('pilot launching is disabled')
                     time.sleep(1)
                     continue
 

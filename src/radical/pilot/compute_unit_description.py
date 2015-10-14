@@ -122,7 +122,7 @@ class ComputeUnitDescription(attributes.Attributes) :
        before cleanup.
 
     """
-    def __init__(self, init_dict=None):
+    def __init__(self, from_dict=None):
         """Le constructeur.
         """ 
 
@@ -188,8 +188,8 @@ class ComputeUnitDescription(attributes.Attributes) :
         self.set_attribute (CLEANUP,       False)
 
         # apply initialization dict
-        if init_dict:
-            self.from_dict(init_dict)
+        if from_dict:
+            self.from_dict(from_dict)
 
 
     #------------------------------------------------------------------------------

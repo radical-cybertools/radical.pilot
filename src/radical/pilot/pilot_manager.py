@@ -171,8 +171,7 @@ class PilotManager(object):
             for pilot in self.get_pilots () :
                 logger.debug("pmgr    %s cancels  pilot  %s" % (str(self.uid), pilot.uid))
             self.cancel_pilots()
-            states = self.wait_pilots()
-          # logger.report.plain("pilot states: %s\n" % states)
+            self.wait_pilots()
             # we leave it to the worker shutdown below to ensure that pilots are
             # final before joining
 
@@ -443,7 +442,6 @@ class PilotManager(object):
 
         pilots = self._worker.get_compute_pilot_data(pilot_ids=pilot_ids)
         start  = time.time()
-        states = list()
 
         logger.report.info('<<wait for %d pilot(s) ' % len(pilots))
 
@@ -477,7 +475,7 @@ class PilotManager(object):
             # check timeout
             if (None != timeout) and (timeout <= (time.time() - start)):
                 if len(checked) < len(pilots):
-                    logger.debug("wait timed out: %s" % states)
+                    logger.debug("wait timed out")
                     break
 
             # if we need to wait longer, sleep a little and get new state info

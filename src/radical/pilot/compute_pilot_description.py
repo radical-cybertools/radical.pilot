@@ -123,7 +123,7 @@ class ComputePilotDescription(attributes.Attributes):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self, init_dict=None):
+    def __init__(self, from_dict=None):
         """Le constructeur.
         """ 
         logger.report.info('<<create pilot description')
@@ -161,13 +161,13 @@ class ComputePilotDescription(attributes.Attributes):
         self.set_attribute (_CONFIG,          None)
 
         # apply initialization dict
-        if init_dict:
-            self.from_dict(init_dict)
+        if from_dict:
+            self.from_dict(from_dict)
 
-            if RESOURCE in init_dict and CORES in init_dict:
-                logger.report.plain(' [%s:%s]' % (init_dict[RESOURCE], init_dict[CORES]))
-            elif RESOURCE in init_dict:
-                logger.report.plain(' [%s]' % init_dict[RESOURCE])
+            if RESOURCE in from_dict and CORES in from_dict:
+                logger.report.plain(' [%s:%s]' % (from_dict[RESOURCE], from_dict[CORES]))
+            elif RESOURCE in from_dict:
+                logger.report.plain(' [%s]' % from_dict[RESOURCE])
 
         logger.report.ok('>>ok\n')
 
