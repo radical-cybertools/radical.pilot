@@ -447,7 +447,6 @@ class PilotManager(object):
 
         # filter for all pilots we still need to check
         logger.report.idle(mode='start')
-        pilots  = self._worker.get_compute_pilot_data(pilot_ids=pilot_ids)
         checked = list()
         while True:
 
