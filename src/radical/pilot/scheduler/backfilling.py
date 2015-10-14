@@ -152,6 +152,8 @@ class BackfillingScheduler(Scheduler):
                       #     logger.debug ('unit %s frees %s cores on (-> %s)' \
                       #                % (uid, unit.description.cores, pid, self.pilots[pid]['caps']))
 
+                  # FIXME: this warning should not come up as frequently as it
+                  #        does -- needs investigation!
                   # if not found_unit :
                   #     logger.warn ('unit %s freed %s cores on %s (== %s) -- not reused'
                   #               % (uid, unit.description.cores, pid, self.pilots[pid]['caps']))
