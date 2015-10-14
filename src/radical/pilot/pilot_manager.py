@@ -12,6 +12,7 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 import os
+import sys
 import time
 import glob
 import copy
@@ -54,7 +55,7 @@ class PilotManager(object):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self, session, pilot_launcher_workers=1):
+    def __init__(self, session, pilot_launcher_workers=1, report_state=True):
         """Creates a new PilotManager and attaches is to the session.
 
         .. note:: The `resource_configurations` (see :ref:`chapter_machconf`)
@@ -102,6 +103,7 @@ class PilotManager(object):
 
         self._session = session
         self._worker = None
+        self._report_state = report_state
 
         self.uid = ru.generate_id ('pmgr')
 
@@ -211,6 +213,31 @@ class PilotManager(object):
         """Returns a string representation of the object.
         """
         return str(self.as_dict())
+
+
+    #------------------------------------------------------------------------------
+    #
+    @staticmethod
+    def _default_pilot_state_cb(pilot, state):
+
+        if not pilot:
+            return
+
+        logger.info("[Callback]: ComputePilot '%s' state: %s.", pilot.uid, state)
+
+
+    #------------------------------------------------------------------------------
+    #
+    @staticmethod
+    def _default_pilot_error_cb(pilot, state):
+
+        if not pilot:
+            return
+
+        if state == FAILED:
+            logger.error("[Callback]: ComputePilot '%s' failed -- calling exit", pilot.uid)
+            sys.exit(1)
+
 
     # -------------------------------------------------------------------------
     #
@@ -323,6 +350,16 @@ class PilotManager(object):
             pilot._uid = pilot_uid
 
             pilot_obj_list.append(pilot)
+
+            # we always add the default state logging callback
+            if self._report_state:
+                pilot.register_callback(self._default_pilot_state_cb)
+
+            # if the pilot description asks for it, we add the default error
+            # handling callback
+            if pd.exit_on_error:
+                pilot.register_callback(self._default_pilot_error_cb)
+
 
             if self._session._rec:
                 import radical.utils as ru

@@ -256,9 +256,6 @@ class UnitManagerController(threading.Thread):
                     self._shared_data_lock.release()
 
                     if new_state != old_state:
-                        # On a state change, we fire zee callbacks.
-                        logger.info("RUN ComputeUnit '%s' state changed from '%s' to '%s'." % (unit_id, old_state, new_state))
-
                         # The state of the unit has changed, We call all
                         # unit-level callbacks to propagate this.
                         self.call_unit_state_callbacks(unit_id, new_state)
