@@ -51,7 +51,7 @@ likely to come up quickly), and 2 are running on `xsede.stampede` and
 We thus expect the backfilling scheduler to prefer the local pilot
 (`pilot.0000`).
 
-.. image:: getting_started_04.png
+.. image:: getting_started_04a.png
 
 
 What's Next?
