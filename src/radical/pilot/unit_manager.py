@@ -633,15 +633,13 @@ class UnitManager(object):
 
         logger.report.info('<<wait for %d unit(s)\n\t' % len(units))
 
-        # we don't want to iterate over all units again and again, as that would
+        # We don't want to iterate over all units again and again, as that would
         # duplicate checks on units which were found in matching states.  So we
-        # create a dict, record states there, and filter which ones we check.
-        check = dict()
-        for unit in units:
-            check[unit] = True
+        # create a dict and record units we have checked already.
+        checked_units = {unit: False for unit in units}
 
-        # filter for all units we still need to check
-        to_check = [x for x in check if check[x]]
+        # Initially we need to check all units
+        to_check = units
 
         logger.report.idle(mode='start')
         while to_check and not self._session._terminate.is_set():
@@ -651,7 +649,7 @@ class UnitManager(object):
             for unit in to_check:
                 if unit.state in state:
                     # stop watching this unit
-                    check[unit] = False
+                    checked_units[unit] = True
                     if unit.state in [FAILED]:
                         logger.report.idle(color='error', c='-')
                     elif unit.state in [CANCELED]:
@@ -660,7 +658,7 @@ class UnitManager(object):
                         logger.report.idle(color='ok', c='+')
 
             # check if units remain to be waited for.
-            to_check = [x for x in check if check[x]]
+            to_check = [unit for unit in checked_units if not checked_units[unit]]
 
             # check timeout
             if  (None != timeout) and (timeout <= (time.time() - start)):
@@ -678,7 +676,7 @@ class UnitManager(object):
         else           : logger.report.warn('>>timeout\n')
 
         # grab the current states to return
-        states = [x.state for x in check]
+        states = [unit.state for unit in checked_units]
 
         # done waiting
         if  return_list_type :
