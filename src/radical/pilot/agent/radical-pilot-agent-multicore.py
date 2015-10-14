@@ -148,9 +148,11 @@ import shutil
 import hostlist
 import tempfile
 import netifaces
+import fractions
 import threading
 import traceback
 import subprocess
+import collections
 import multiprocessing
 
 import saga                as rs
@@ -1354,6 +1356,42 @@ class LaunchMethod(object):
                 if is_exe(exe_file):
                     return exe_file
         return None
+
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def _create_hostfile(cls, all_hosts, impaired=False):
+
+        # Open appropriately named temporary file
+        handle, filename = tempfile.mkstemp(prefix='rp_hostfile', dir=os.getcwd())
+
+        if not impaired:
+            #
+            # Write "hostN x\nhostM y\n" entries
+            #
+
+            # Create a {'host1': x, 'host2': y} dict
+            counter = collections.Counter(all_hosts)
+            # Convert it into an ordered dict,
+            # which hopefully resembles the original ordering
+            count_dict = collections.OrderedDict(sorted(counter.items(), key=lambda t: t[0]))
+
+            for (host, count) in count_dict.iteritems():
+                os.write(handle, '%s %d\n' % (host, count))
+
+        else:
+            #
+            # Write "hostN\nhostM\n" entries
+            #
+            for host in all_hosts:
+                os.write(handle, '%s\n' % host)
+
+        # No longer need to write
+        os.close(handle)
+
+        # Return the filename, caller is responsible for cleaning up
+        return filename
 
 
 # ==============================================================================
