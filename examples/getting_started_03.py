@@ -28,9 +28,8 @@ if __name__ == '__main__':
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
-    if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
-    elif len(sys.argv) >= 2: resource = sys.argv[1:]
-    else                   : resource = ['local.localhost']
+    if len(sys.argv) >= 2  : resources = sys.argv[1:]
+    else                   : resources = ['local.localhost']
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -68,7 +67,7 @@ if __name__ == '__main__':
             pdescs.append(rp.ComputePilotDescription(pd_init))
         report.ok('>>ok\n')
 
-        # Launch the pilot.
+        # Launch the pilots.
         pilots = pmgr.submit_pilots(pdescs)
 
 
@@ -102,7 +101,6 @@ if __name__ == '__main__':
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(cuds)
-
 
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
