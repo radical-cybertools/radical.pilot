@@ -1877,12 +1877,25 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
         else:
             task_command = task_exec
 
-        # Construct the hosts_string ('h1 h2 .. hN')
-        hosts_string = " ".join([slot.split(':')[0] for slot in task_slots])
+        # Extract all the hosts from the slots
+        hosts = [slot.split(':')[0] for slot in task_slots]
+
+        # If we have a CU with many cores, we will create a hostfile and pass
+        # that as an argument instead of the individual hosts
+        if len(hosts) > 42:
+
+            # Create a hostfile from the list of hosts
+            hostfile = self._create_hostfile(hosts, impaired=True)
+            hosts_string = "-hostfile %s" % hostfile
+
+        else:
+
+            # Construct the hosts_string ('h1 h2 .. hN')
+            hosts_string = " ".join(hosts)
 
         export_vars = ' '.join([var+"=$"+var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
-        mpirun_rsh_command = "%s -np %s %s %s %s" % (
+        mpirun_rsh_command = "%s -np %d %s %s %s" % (
             self.launch_command, task_numcores, hosts_string, export_vars, task_command)
 
         return mpirun_rsh_command, None
