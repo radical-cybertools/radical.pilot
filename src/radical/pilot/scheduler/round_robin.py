@@ -21,15 +21,14 @@ from .interface import Scheduler
 # -----------------------------------------------------------------------------
 # 
 class RoundRobinScheduler(Scheduler):
-    """RoundRobinScheduler implements a multi-pilot, round-robin 
+    """
+    RoundRobinScheduler implements a multi-pilot, round-robin 
     scheduling algorithm.
     """
 
     # -------------------------------------------------------------------------
     #
     def __init__(self, manager, session):
-        """Le constructeur.
-        """
 
         self.manager = manager
         self.session = session
@@ -90,7 +89,7 @@ class RoundRobinScheduler(Scheduler):
                 self.idx = 0
             
             schedule['units'][unit] = pilot_ids[self.idx]
-            self.idx               += 1
+            self.idx += 1
 
 
         return schedule
