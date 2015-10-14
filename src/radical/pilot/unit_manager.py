@@ -630,7 +630,6 @@ class UnitManager(object):
 
         units  = self.get_units(unit_ids)
         start  = time.time()
-        states = list()
 
         logger.report.info('<<wait for %d unit(s)\n\t' % len(units))
 
@@ -666,7 +665,7 @@ class UnitManager(object):
             # check timeout
             if  (None != timeout) and (timeout <= (time.time() - start)):
                 if  to_check :
-                    logger.debug ("wait timed out: %s" % states)
+                    logger.debug ("wait timed out")
                 break
 
             # if units remain to be watched and we have still time
