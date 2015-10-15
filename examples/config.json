@@ -24,9 +24,21 @@
             "schema"   : null
         },
 
+        "epsrc.archer_orte" : {
+            "project"  : "e290",
+            "queue"    : "short",
+            "schema"   : null
+        },
+
         "lrz.supermuc" : {
             "project"  : "e290",
             "queue"    : "short",
+            "schema"   : null
+        },
+
+        "xsede.supermic" : {
+            "project"  : "TG-CCR140028",
+            "queue"    : "workq",
             "schema"   : null
         },
 

@@ -150,17 +150,14 @@ class Queue(object):
         self._role   = role
         self._addr   = address
         self._debug  = False
-        self._logfd  = None
+        self._log    = ru.get_logger('rp.bridges')
         self._name   = "queue.%s.%s" % (self._qname, self._role)
-
-        if 'msg' in os.environ.get('RADICAL_DEBUG', '').lower():
-            self._debug = True
 
         if not self._addr:
             self._addr = 'tcp://*:*'
 
         if role in [QUEUE_INPUT, QUEUE_OUTPUT]:
-            self._log ("create %s - %s - %s - %s" % (flavor, qname, role, address))
+            self._log.info("create %s - %s - %s - %s", flavor, qname, role, address)
 
     @property
     def name(self):
@@ -181,16 +178,6 @@ class Queue(object):
     @property
     def addr(self):
         return self._addr
-
-    # --------------------------------------------------------------------------
-    #
-    def _log(self, msg):
-
-        if self._debug:
-            if not self._logfd:
-                self._logfd = open("%s.log" % self._name, 'a')
-            self._logfd.write("%15.5f: %-30s: %s\n" % (time.time(), self._qname, msg))
-            self._logfd.flush()
 
 
     # --------------------------------------------------------------------------
@@ -363,7 +350,6 @@ class QueueZMQ(Queue):
         be wildcards for BRIDGE roles -- the bridge will report the in and out
         addresses as obj.bridge_in and obj.bridge_out.
         """
-        Queue.__init__(self, flavor, name, role, address)
 
         self._p          = None           # the bridge process
         self._q          = None           # the zmq queue
@@ -372,6 +358,7 @@ class QueueZMQ(Queue):
         self._bridge_in  = None           # bridge input  addr
         self._bridge_out = None           # bridge output addr
 
+        Queue.__init__(self, flavor, name, role, address)
 
         # ----------------------------------------------------------------------
         # behavior depends on the role...
@@ -401,7 +388,7 @@ class QueueZMQ(Queue):
                     pass
 
                 try:
-                    self._log('start bridge %s on %s' % (self._name, addr))
+                    self._log.info('start bridge %s on %s', self._name, addr)
 
                     # FIXME: should we cache messages coming in at the pull/push 
                     #        side, so as not to block the push end?
@@ -416,10 +403,10 @@ class QueueZMQ(Queue):
                     # communicate the bridge ports to the parent process
                     _in_port  =  _in.getsockopt(zmq.LAST_ENDPOINT)
                     _out_port = _out.getsockopt(zmq.LAST_ENDPOINT)
-                    self._log('bound bridge %s to %s : %s' % (self._name, _in_port, _out_port))
 
                     pqueue.put([_in_port, _out_port])
-                    self._log('BOUND bridge %s to %s : %s' % (self._name, _in_port, _out_port))
+
+                    self._log.info('bound bridge %s to %s : %s', self._name, _in_port, _out_port)
 
                     # start polling for messages
                     _poll = zmq.Poller()
@@ -434,7 +421,7 @@ class QueueZMQ(Queue):
                             _uninterruptible(_out.send_json, _uninterruptible(_in.recv_json))
 
                 except Exception as e:
-                    self._log('bridge error: %s' % e)
+                    self._log.exception('bridge error: %s', e)
             # ------------------------------------------------------------------
 
             pqueue   = mp.Queue()
@@ -507,7 +494,7 @@ class QueueZMQ(Queue):
         if not self._role == QUEUE_INPUT:
             raise RuntimeError("queue %s (%s) can't put()" % (self._qname, self._role))
 
-      # self._log("-> %s" % pprint.pformat(msg))
+      # self._log.debug("-> %s", pprint.pformat(msg))
         _uninterruptible(self._q.send_json, msg)
 
 
@@ -521,7 +508,7 @@ class QueueZMQ(Queue):
         _uninterruptible(self._q.send, 'request')
 
         msg = _uninterruptible(self._q.recv_json)
-      # self._log("<- %s" % pprint.pformat(msg))
+      # self._log.debug("<- %s", pprint.pformat(msg))
         return msg
 
 
@@ -542,7 +529,7 @@ class QueueZMQ(Queue):
           # try:
           #     msg = self._q.recv_json(flags=zmq.NOBLOCK)
           #     self._requested = False
-          #     self._log("<< %s" % pprint.pformat(msg))
+          #     self._log.debug("<< %s", pprint.pformat(msg))
           #     return msg
           #
           # except zmq.Again:
@@ -551,7 +538,7 @@ class QueueZMQ(Queue):
             if _uninterruptible(self._q.poll, flags=zmq.POLLIN, timeout=timeout):
                 msg = _uninterruptible(self._q.recv_json)
                 self._requested = False
-              # self._log("<< %s" % pprint.pformat(msg))
+              # self._log.debug("<< %s", pprint.pformat(msg))
                 return msg
 
             else:

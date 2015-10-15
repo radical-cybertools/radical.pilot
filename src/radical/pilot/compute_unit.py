@@ -413,18 +413,18 @@ class ComputeUnit(object):
 
     # -------------------------------------------------------------------------
     #
-    def register_callback(self, callback_func, callback_data=None):
+    def register_callback(self, cb_func, cb_data=None):
         """Registers a callback function that is triggered every time the
         ComputeUnit's state changes.
 
         All callback functions need to have the same signature::
 
-            def callback_func(obj, state)
+            def cb_func(obj, state)
 
         where ``object`` is a handle to the object that triggered the callback
         and ``state`` is the new state of that object.
         """
-        self._worker.register_unit_callback(self, callback_func, callback_data)
+        self._worker.register_unit_callback(self, cb_func, cb_data)
 
     # -------------------------------------------------------------------------
     #
