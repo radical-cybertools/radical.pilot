@@ -1611,8 +1611,25 @@ class LaunchMethodMPIEXEC(LaunchMethod):
 
         task_slots = opaque_slots['task_slots']
 
-        # Construct the hosts_string
-        hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
+        # Extract all the hosts from the slots
+        all_hosts = [slot.split(':')[0] for slot in task_slots]
+
+        # Shorten the host list as much as possible
+        hosts = self._compress_hostlist(all_hosts)
+
+        # If we have a CU with many cores, and the compression didn't work
+        # out, we will create a hostfile and pass  that as an argument
+        # instead of the individual hosts
+        if len(hosts) > 42:
+
+            # Create a hostfile from the list of hosts
+            hostfile = self._create_hostfile(all_hosts, separator=':')
+            hosts_string = "-hostfile %s" % hostfile
+
+        else:
+
+            # Construct the hosts_string ('h1 h2 .. hN')
+            hosts_string = "-host "+ ",".join(hosts)
 
         # Construct the executable and arguments
         if task_args:
@@ -1620,7 +1637,7 @@ class LaunchMethodMPIEXEC(LaunchMethod):
         else:
             task_command = task_exec
 
-        mpiexec_command = "%s -n %s -host %s %s" % (
+        mpiexec_command = "%s -n %s %s %s" % (
             self.launch_command, task_numcores, hosts_string, task_command)
 
         return mpiexec_command, None
