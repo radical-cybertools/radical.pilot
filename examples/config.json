@@ -36,6 +36,12 @@
             "schema"   : null
         },
 
+        "xsede.supermic" : {
+            "project"  : "TG-CCR140028",
+            "queue"    : "workq",
+            "schema"   : null
+        },
+
         "xsede.stampede" : {
             "project"  : "TG-MCB090174",
             "queue"    : "development",
