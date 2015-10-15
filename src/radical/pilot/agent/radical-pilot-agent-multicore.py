@@ -6168,12 +6168,12 @@ def bootstrap_3():
 
     except SystemExit:
         log.exception("Exit running agent: %s" % agent_name)
-        if not agent.final_cause:
+        if agent and not agent.final_cause:
             agent.final_cause = "sys.exit"
 
     except Exception as e:
         log.exception("Error running agent: %s" % agent_name)
-        if not agent.final_cause:
+        if agent and not agent.final_cause:
             agent.final_cause = "error"
 
     finally:
