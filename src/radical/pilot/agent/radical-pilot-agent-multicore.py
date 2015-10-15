@@ -3559,32 +3559,22 @@ class ForkLRMS(LRMS):
 
         self._log.info("Using fork on localhost.")
 
-        selected_cpus = self.requested_cores
+        # For the fork LRMS (ie. on localhost), we fake an infinite number of
+        # cores, so don't perform any sanity checks.
+        detected_cpus = multiprocessing.cpu_count()
 
-        # when we profile the agent, we fake any number of cores, so don't
-        # perform any sanity checks.  Otherwise we use at most all available
-        # cores (and informa about unused ones)
-        if 'RADICAL_PILOT_PROFILE' not in os.environ:
-
-            detected_cpus = multiprocessing.cpu_count()
-
-            if detected_cpus < selected_cpus:
-                self._log.warn("insufficient cores: using available %d instead of requested %d.",
-                        detected_cpus, selected_cpus)
-                selected_cpus = detected_cpus
-
-            elif detected_cpus > selected_cpus:
-                self._log.warn("more cores available: using requested %d instead of available %d.",
-                        selected_cpus, detected_cpus)
+        if detected_cpus != self.requested_cores:
+            self._log.info("using %d instead of physically available %d cores.",
+                    self.requested_cores, detected_cpus)
 
         # if cores_per_node is set in the agent config, we slice the number of
-        # cores into that many virtual nodes.  cpn defaults to selected_cpus,
-        # to preserve the previous behavior.
+        # cores into that many virtual nodes.  cpn defaults to requested_cores,
+        # to preserve the previous behavior (1 node).
         self.cores_per_node = self._cfg.get('cores_per_node')
         if not self.cores_per_node:
-            self.cores_per_node = selected_cpus
+            self.cores_per_node = self.requested_cores
 
-        requested_nodes = int(math.ceil(float(selected_cpus) / float(self.cores_per_node)))
+        requested_nodes = int(math.ceil(float(self.requested_cores) / float(self.cores_per_node)))
         self.node_list  = list()
         for i in range(requested_nodes):
             self.node_list.append("localhost")
