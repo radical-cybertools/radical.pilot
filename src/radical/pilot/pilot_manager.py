@@ -177,7 +177,7 @@ class PilotManager(object):
             # we leave it to the worker shutdown below to ensure that pilots are
             # final before joining
 
-        # not that all pilots are dead, we can terminate the launcher altogether
+        # now that all pilots are dead, we can terminate the launcher altogether
         # (incl. state checker)
         if self._worker is not None:
             logger.debug("pmgr    %s cancel   worker %s" % (str(self.uid), self._worker.name))
@@ -568,14 +568,14 @@ class PilotManager(object):
 
     # -------------------------------------------------------------------------
     #
-    def register_callback(self, callback_function, callback_data=None):
+    def register_callback(self, cb_func, cb_data=None):
         """Registers a new callback function with the PilotManager.
         Manager-level callbacks get called if any of the ComputePilots managed
         by the PilotManager change their state.
 
         All callback functions need to have the same signature::
 
-            def callback_func(obj, state, data)
+            def cb_func(obj, state, data)
 
         where ``object`` is a handle to the object that triggered the callback,
         ``state`` is the new state of that object, and ``data`` are the data
@@ -583,5 +583,5 @@ class PilotManager(object):
         """
         self._is_valid()
 
-        self._worker.register_manager_callback(callback_function, callback_data)
+        self._worker.register_manager_callback(cb_func, cb_data)
 

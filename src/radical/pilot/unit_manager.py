@@ -738,7 +738,7 @@ class UnitManager(object):
 
     # -------------------------------------------------------------------------
     #
-    def register_callback(self, callback_function, metric=UNIT_STATE, callback_data=None):
+    def register_callback(self, cb_func, metric=UNIT_STATE, cb_data=None):
 
         """
         Registers a new callback function with the UnitManager.  Manager-level
@@ -748,7 +748,7 @@ class UnitManager(object):
 
         All callback functions need to have the same signature::
 
-            def callback_func(obj, value, data)
+            def cb_func(obj, value, data)
 
         where ``object`` is a handle to the object that triggered the callback,
         ``value`` is the metric, and ``data`` is the data provided on
@@ -770,5 +770,5 @@ class UnitManager(object):
         if  metric not in UNIT_MANAGER_METRICS :
             raise ValueError ("Metric '%s' is not available on the unit manager" % metric)
 
-        self._worker.register_manager_callback(callback_function, metric, callback_data)
+        self._worker.register_manager_callback(cb_func, metric, cb_data)
 
