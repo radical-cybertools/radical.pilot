@@ -6054,6 +6054,9 @@ def bootstrap_3():
         _, mongo_db, _, _, _  = ru.mongodb_connect(cfg['mongodb_url'])
         mongo_p = mongo_db["%s.p" % cfg['session_id']]
 
+        if not mongo_p:
+            raise RuntimeError('could not get a mongodb handle')
+
 
     # set up signal and exit handlers
     def exit_handler():
@@ -6155,12 +6158,12 @@ def bootstrap_3():
 
     except SystemExit:
         log.exception("Exit running agent: %s" % agent_name)
-        if not agent.final_cause:
+        if agent and not agent.final_cause:
             agent.final_cause = "sys.exit"
 
     except Exception as e:
         log.exception("Error running agent: %s" % agent_name)
-        if not agent.final_cause:
+        if agent and not agent.final_cause:
             agent.final_cause = "error"
 
     finally:
@@ -6168,19 +6171,22 @@ def bootstrap_3():
         # in all cases, make sure we perform an orderly shutdown.  I hope python
         # does not mind doing all those things in a finally clause of
         # (essentially) main...
-        agent.stop()
+        if agent:
+            agent.stop()
         log.debug('agent %s finalized' % agent_name)
 
         if agent_name == 'agent_0':
-            if agent.final_cause == 'timeout':
+            if agent and agent.final_cause == 'timeout':
                 pilot_DONE(mongo_p, pilot_id, log, "TIMEOUT received. Terminating.")
-            elif agent.final_cause == 'cancel':
+            elif agent and agent.final_cause == 'cancel':
                 pilot_CANCELED(mongo_p, pilot_id, log, "CANCEL received. Terminating.")
-            elif agent.final_cause == 'finalize':
+            elif agent and agent.final_cause == 'finalize':
                 log.info('shutdown due to component finalization -- assuming error')
                 pilot_FAILED(mongo_p, pilot_id, log, "FINALIZE received")
-            else:
+            elif agent:
                 pilot_FAILED(mongo_p, pilot_id, log, "TERMINATE received")
+            else:
+                pilot_FAILED(mongo_p, pilot_id, log, "FAILED startup")
 
         # agent.stop will not tear down bridges -- we do that here at last
         for name,b in bridges.items():
