@@ -1,5 +1,5 @@
 {
-    "archer_aprun": {
+    "archer": {
         "description"                 : "The EPSRC Archer Cray XC30 system (https://www.archer.ac.uk/)",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh"],
@@ -29,7 +29,7 @@
         "virtenv_mode"                : "use",
         "rp_version"                  : "debug"
     },
-    "archer": {
+    "archer_orte": {
         "description"                 : "The EPSRC Archer Cray XC30 system (https://www.archer.ac.uk/)",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh"],
@@ -51,7 +51,7 @@
         "forward_tunnel_endpoint"     : "10.60.0.52",
         "pre_bootstrap_1"             : [
             "module use --append /work/e290/e290/marksant/privatemodules",
-            "module load openmpi/HEAD",
+            "module load openmpi/STATIC",
             "module switch PrgEnv-cray PrgEnv-gnu",
             "module load python-compute/2.7.6"
         ],

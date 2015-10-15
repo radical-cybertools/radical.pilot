@@ -4192,32 +4192,22 @@ class ForkLRMS(LRMS):
 
         self._log.info("Using fork on localhost.")
 
-        selected_cpus = self.requested_cores
+        # For the fork LRMS (ie. on localhost), we fake an infinite number of
+        # cores, so don't perform any sanity checks.
+        detected_cpus = multiprocessing.cpu_count()
 
-        # when we profile the agent, we fake any number of cores, so don't
-        # perform any sanity checks.  Otherwise we use at most all available
-        # cores (and informa about unused ones)
-        if 'RADICAL_PILOT_PROFILE' not in os.environ:
-
-            detected_cpus = multiprocessing.cpu_count()
-
-            if detected_cpus < selected_cpus:
-                self._log.warn("insufficient cores: using available %d instead of requested %d.",
-                        detected_cpus, selected_cpus)
-                selected_cpus = detected_cpus
-
-            elif detected_cpus > selected_cpus:
-                self._log.warn("more cores available: using requested %d instead of available %d.",
-                        selected_cpus, detected_cpus)
+        if detected_cpus != self.requested_cores:
+            self._log.info("using %d instead of physically available %d cores.",
+                    self.requested_cores, detected_cpus)
 
         # if cores_per_node is set in the agent config, we slice the number of
-        # cores into that many virtual nodes.  cpn defaults to selected_cpus,
-        # to preserve the previous behavior.
+        # cores into that many virtual nodes.  cpn defaults to requested_cores,
+        # to preserve the previous behavior (1 node).
         self.cores_per_node = self._cfg.get('cores_per_node')
         if not self.cores_per_node:
-            self.cores_per_node = selected_cpus
+            self.cores_per_node = self.requested_cores
 
-        requested_nodes = int(math.ceil(float(selected_cpus) / float(self.cores_per_node)))
+        requested_nodes = int(math.ceil(float(self.requested_cores) / float(self.cores_per_node)))
         self.node_list  = list()
         for i in range(requested_nodes):
             self.node_list.append("localhost")
@@ -4528,7 +4518,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         self._log.debug("Created launch_script: %s", launch_script_name)
 
         with open(launch_script_name, "w") as launch_script:
-            launch_script.write('#!/bin/bash -l\n\n')
+            launch_script.write('#!/bin/sh\n\n')
 
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 launch_script.write("echo script start_script `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
@@ -4561,12 +4551,16 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 launch_script.write('chmod 777 .\n')
 
             # Create string for environment variable setting
-            if cu['description']['environment'] and    \
-                cu['description']['environment'].keys():
-                env_string = 'export'
+            env_string = 'export'
+            if cu['description']['environment']:
                 for key,val in cu['description']['environment'].iteritems():
                     env_string += ' %s=%s' % (key, val)
-                launch_script.write('# Environment variables\n%s\n' % env_string)
+            env_string += " RP_SESSION_ID=%s" % self._cfg['session_id']
+            env_string += " RP_PILOT_ID=%s"   % self._cfg['pilot_id']
+            env_string += " RP_AGENT_ID=%s"   % self._cfg['agent_name']
+            env_string += " RP_SPAWNER_ID=%s" % self.cname
+            env_string += " RP_UNIT_ID=%s"    % cu['_id']
+            launch_script.write('# Environment variables\n%s\n' % env_string)
 
             # unit Arguments (if any)
             task_args_string = ''
@@ -5145,11 +5139,16 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
                 cwd  += "echo script after_cd `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             cwd  += "\n"
 
-        if  descr['environment'] :
-            env  += "# CU environment\n"
+        env  += "# CU environment\n"
+        if descr['environment']:
             for e in descr['environment'] :
                 env += "export %s=%s\n"  %  (e, descr['environment'][e])
-            env  += "\n"
+        env  += "export RP_SESSION_ID=%s\n" % self._cfg['session_id']
+        env  += "export RP_PILOT_ID=%s\n"   % self._cfg['pilot_id']
+        env  += "export RP_AGENT_ID=%s\n"   % self._cfg['agent_name']
+        env  += "export RP_SPAWNER_ID=%s\n" % self.cname
+        env  += "export RP_UNIT_ID=%s\n"    % cu['_id']
+        env  += "\n"
 
         if  descr['pre_exec'] :
             pre  += "# CU pre-exec\n"
@@ -6385,7 +6384,7 @@ class AgentWorker(rpu.Worker):
                 len(self._workers   ) + \
                 len(self._sub_agents)
         start   = time.time()
-        timeout = 120
+        timeout = 300
 
         while True:
             # check the procs for all components which are not yet alive
@@ -6437,7 +6436,7 @@ class AgentWorker(rpu.Worker):
             if state == None:
                 self._log.debug('%30s: ok' % name)
             else:
-                raise RuntimeError ('%s died - shutting down')
+                raise RuntimeError ('%s died - shutting down' % name)
 
         return True # always idle
 
@@ -6860,6 +6859,9 @@ def bootstrap_3():
         _, mongo_db, _, _, _  = ru.mongodb_connect(cfg['mongodb_url'])
         mongo_p = mongo_db["%s.p" % cfg['session_id']]
 
+        if not mongo_p:
+            raise RuntimeError('could not get a mongodb handle')
+
 
     # set up signal and exit handlers
     def exit_handler():
@@ -6957,12 +6959,12 @@ def bootstrap_3():
 
     except SystemExit:
         log.exception("Exit running agent: %s" % agent_name)
-        if not agent.final_cause:
+        if agent and not agent.final_cause:
             agent.final_cause = "sys.exit"
 
     except Exception as e:
         log.exception("Error running agent: %s" % agent_name)
-        if not agent.final_cause:
+        if agent and not agent.final_cause:
             agent.final_cause = "error"
 
     finally:
@@ -6970,19 +6972,22 @@ def bootstrap_3():
         # in all cases, make sure we perform an orderly shutdown.  I hope python
         # does not mind doing all those things in a finally clause of
         # (essentially) main...
-        agent.stop()
+        if agent:
+            agent.stop()
         log.debug('agent %s finalized' % agent_name)
 
         if agent_name == 'agent_0':
-            if agent.final_cause == 'timeout':
+            if agent and agent.final_cause == 'timeout':
                 pilot_DONE(mongo_p, pilot_id, log, "TIMEOUT received. Terminating.")
-            elif agent.final_cause == 'cancel':
+            elif agent and agent.final_cause == 'cancel':
                 pilot_CANCELED(mongo_p, pilot_id, log, "CANCEL received. Terminating.")
-            elif agent.final_cause == 'finalize':
+            elif agent and agent.final_cause == 'finalize':
                 log.info('shutdown due to component finalization -- assuming error')
                 pilot_FAILED(mongo_p, pilot_id, log, "FINALIZE received")
-            else:
+            elif agent:
                 pilot_FAILED(mongo_p, pilot_id, log, "TERMINATE received")
+            else:
+                pilot_FAILED(mongo_p, pilot_id, log, "FAILED startup")
 
         # agent.stop will not tear down bridges -- we do that here at last
         for name,b in bridges.items():

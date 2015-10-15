@@ -1370,7 +1370,6 @@ export PYTHONPATH=$PYTHONPATH
 
 # run agent in debug mode
 # FIXME: make option again?
-export RADICAL_DEBUG=TRUE
 export SAGA_VERBOSE=DEBUG
 export RADICAL_VERBOSE=DEBUG
 export RADICAL_UTIL_VERBOSE=DEBUG
@@ -1435,6 +1434,8 @@ fi
 
 if ! test -z "`ls *{log,out,err,cfg} 2>/dev/null`"
 then
+    # TODO: This might not include all logs, as some systems only write
+    #       the output from the bootstrapper once the jobs completes.
     echo
     echo "# -------------------------------------------------------------------"
     echo "#"
