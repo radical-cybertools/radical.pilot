@@ -24,7 +24,7 @@
             "schema"   : null
         },
 
-        "epsrc.archer_aprun" : {
+        "epsrc.archer_orte" : {
             "project"  : "e290",
             "queue"    : "short",
             "schema"   : null
