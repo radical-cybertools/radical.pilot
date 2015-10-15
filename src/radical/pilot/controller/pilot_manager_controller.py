@@ -225,18 +225,27 @@ class PilotManagerController(threading.Thread):
                 {'timestamp' : timestamp(), 
                  'state'     : new_state})
 
-        for [cb, cb_data] in self._shared_data[pilot_id]['callbacks']:
-            try:
-                if  self._shared_data[pilot_id]['facade_object'] :
-                    if  cb_data :
-                        cb (self._shared_data[pilot_id]['facade_object'](), new_state, cb_data)
+        try:
+            for cb in self._shared_data[pilot_id]['callbacks']:
+                cb_func = cb['cb_func']
+                cb_data = cb['cb_data']
+                try:
+                    if self._shared_data[pilot_id]['facade_object'] :
+                        if cb_data:
+                            cb_func(self._shared_data[pilot_id]['facade_object'](), new_state, cb_data)
+                        else:
+                            cb_func(self._shared_data[pilot_id]['facade_object'](), new_state)
                     else :
-                        cb (self._shared_data[pilot_id]['facade_object'](), new_state)
-                else :
-                    logger.error("Couldn't call callback (no pilot instance)")
-            except Exception as e:
-                logger.exception("Couldn't call callback function %s" % e)
-                raise
+                        logger.error("Couldn't call callback (no pilot instance)")
+                except Exception as e:
+                    logger.exception("Couldn't call callback function %s" % e)
+                    raise
+        except SystemExit:
+            # one of the callbacks requested a sys exit.  We don't want the
+            # callbacks to get into te way of the shutdown, so we unregister
+            # them all right here
+            self.unregister_pilot_callback(pilot_id)
+            raise
 
         # If we have any manager-level callbacks registered, we
         # call those as well!
@@ -455,11 +464,12 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def register_pilot_callback(self, pilot, callback_func, callback_data=None):
+    def register_pilot_callback(self, pilot, cb_func, cb_data=None):
         """Registers a callback function.
         """
         pilot_uid = pilot.uid
-        self._shared_data[pilot_uid]['callbacks'].append([callback_func, callback_data])
+        self._shared_data[pilot_uid]['callbacks'].append({'cb_func' : cb_func, 
+                                                          'cb_data' : cb_data})
 
         # Add the facade object if missing, e.g., after a re-connect.
         if  self._shared_data[pilot_uid]['facade_object'] is None:
@@ -475,10 +485,29 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def register_manager_callback(self, callback_func, callback_data=None):
+    def unregister_pilot_callback(self, pid, cb_func=None):
+        """
+        Un-registers a callback function -- or all if cb_func is None
+        """
+        if not pid in self._shared_data:
+            raise ValueError('unknown pilot %s' % pid)
+
+        if cb_func:
+            # iterate over copy
+            for cb in self._shared_data[pid]['callbacks'][:]: 
+                if cb_func == cb['cb_func']:
+                    self._shared_data[pid]['callbacks'].remove(db)
+        else:
+            # remove all callbacks
+            self._shared_data[pid]['callbacks'] = []
+
+
+    # ------------------------------------------------------------------------
+    #
+    def register_manager_callback(self, cb_func, cb_data=None):
         """Registers a manager-level callback.
         """
-        self._manager_callbacks.append([callback_func, callback_data])
+        self._manager_callbacks.append([cb_func, cb_data])
 
     # ------------------------------------------------------------------------
     #
@@ -506,6 +535,12 @@ class PilotManagerController(threading.Thread):
 
         for pilot_id in pilot_ids :
             if  pilot_id in self._shared_data :
+
+                # we don't want to see any callbacks during shutdown
+                # FXIME: this is semantically incorrect, as a CANCELED state cb
+                #        should still be issued.  But, shutdown races screw us
+                #        once more...
+                self.unregister_pilot_callback(pilot_id)
 
                 # read state fomr _shared_data only once, so that it does not
                 # change under us...

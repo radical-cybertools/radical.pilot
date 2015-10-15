@@ -18,7 +18,7 @@
         "lrms"                        : "FORK",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "SHELL",
+        "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "FORK",
         "task_launch_method"          : "FORK",
         "mpi_launch_method"           : "MPIEXEC",
