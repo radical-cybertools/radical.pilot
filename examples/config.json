@@ -24,6 +24,12 @@
             "schema"   : null
         },
 
+        "epsrc.archer_aprun" : {
+            "project"  : "e290",
+            "queue"    : "short",
+            "schema"   : null
+        },
+
         "lrz.supermuc" : {
             "project"  : "e290",
             "queue"    : "short",
