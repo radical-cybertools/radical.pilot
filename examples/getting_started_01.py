@@ -59,6 +59,7 @@ if __name__ == '__main__':
                 'resource'      : resource,
                 'cores'         : 64,  # pilot size
                 'runtime'       : 10,  # pilot runtime (min)
+                'exit_on_error' : True,
                 'project'       : config[resource]['project'],
                 'queue'         : config[resource]['queue'],
                 'access_schema' : config[resource]['schema']
