@@ -7,6 +7,7 @@ import errno
 import pprint
 import Queue           as pyq
 import multiprocessing as mp
+import radical.utils   as ru
 
 # --------------------------------------------------------------------------
 # defines for pubsub roles
@@ -73,18 +74,15 @@ class Pubsub(object):
         self._role       = role
         self._addr       = address
         self._debug      = False
-        self._logfd      = None
+        self._log        = ru.get_logger('rp.bridges')
         self._name       = "pubsub.%s.%s" % (self._channel, self._role)
         self._bridge_in  = None           # bridge input  addr
         self._bridge_out = None           # bridge output addr
 
-        if 'msg' in os.environ.get('RADICAL_DEBUG', '').lower():
-            self._debug = True
-
         if not self._addr:
             self._addr = 'tcp://*:*'
 
-        self._log ("create %s - %s - %s" % (self._channel, self._role, self._addr))
+        self._log.info("create %s - %s - %s", self._channel, self._role, self._addr)
 
     @property
     def name(self):
@@ -101,17 +99,6 @@ class Pubsub(object):
     @property
     def addr(self):
         return self._addr
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _log(self, msg):
-
-        if self._debug:
-            if not self._logfd:
-                self._logfd = open("%s.log" % self.name, 'a')
-            self._logfd.write("%15.5f: %-30s: %s\n" % (time.time(), self._channel, msg))
-            self._logfd.flush()
 
 
     # --------------------------------------------------------------------------
@@ -211,9 +198,9 @@ class PubsubZMQ(Pubsub):
         already, the ZMQ pubsub communication pattern.
         """
 
-        Pubsub.__init__(self, flavor, channel, role, address)
-
         self._p = None  # the bridge process
+
+        Pubsub.__init__(self, flavor, channel, role, address)
 
 
         # ----------------------------------------------------------------------
@@ -246,7 +233,7 @@ class PubsubZMQ(Pubsub):
 
                 try:
 
-                    self._log('start bridge %s on %s' % (self._name, addr))
+                    self._log.info('start bridge %s on %s', self._name, addr)
 
                     ctx = zmq.Context()
                     _in = ctx.socket(zmq.XSUB)
@@ -258,10 +245,10 @@ class PubsubZMQ(Pubsub):
                     # communicate the bridge ports to the parent process
                     _in_port  =  _in.getsockopt(zmq.LAST_ENDPOINT)
                     _out_port = _out.getsockopt(zmq.LAST_ENDPOINT)
-                    self._log('bound bridge %s to %s : %s' % (self._name, _in_port, _out_port))
 
                     pqueue.put([_in_port, _out_port])
-                    self._log('BOUND bridge %s to %s : %s' % (self._name, _in_port, _out_port))
+
+                    self._log.info('bound bridge %s to %s : %s', self._name, _in_port, _out_port)
 
                     # start polling for messages
                     _poll = zmq.Poller()
@@ -279,7 +266,7 @@ class PubsubZMQ(Pubsub):
                             else:
                                 msg = _uninterruptible(_in.recv, flags=zmq.NOBLOCK)
                                 _uninterruptible(_out.send, msg)
-                          # self._log("-> %s" % msg)
+                          # self._log.debug("-> %s", msg)
 
 
                         if _out in _socks:
@@ -289,10 +276,10 @@ class PubsubZMQ(Pubsub):
                             else:
                                 msg = _uninterruptible(_out.recv)
                                 _uninterruptible(_in.send, msg)
-                          # self._log("<- %s" % msg)
+                          # self._log.debug("<- %s", msg)
 
                 except Exception as e:
-                    self._log('bridge error: %s' % e)
+                    self._log.exception('bridge error: %s', e)
             # ------------------------------------------------------------------
 
             pqueue   = mp.Queue()
@@ -350,7 +337,7 @@ class PubsubZMQ(Pubsub):
 
         topic = topic.replace(' ', '_')
 
-      # self._log("~~ %s" % topic)
+      # self._log.debug("~~ %s", topic)
         _uninterruptible(self._q.setsockopt, zmq.SUBSCRIBE, topic)
 
 
@@ -365,11 +352,11 @@ class PubsubZMQ(Pubsub):
         data = json.dumps(msg)
 
         if _USE_MULTIPART:
-          # self._log("-> %s" % str([topic, data]))
+          # self._log.debug("-> %s", str([topic, data]))
             _uninterruptible(self._q.send_multipart, [topic, data])
 
         else:
-          # self._log("-> %s %s" % (topic, data))
+          # self._log.debug("-> %s %s", topic, data)
             _uninterruptible(self._q.send, "%s %s" % (topic, data))
 
 
@@ -388,7 +375,7 @@ class PubsubZMQ(Pubsub):
             topic, data = raw.split(' ', 1)
 
         msg = json.loads(data)
-      # self._log("<- %s" % str([topic, pprint.pformat(msg)]))
+      # self._log.debug("<- %s", str([topic, pprint.pformat(msg)]))
         return [topic, msg]
 
 
@@ -409,7 +396,7 @@ class PubsubZMQ(Pubsub):
                 topic, data = raw.split(' ', 1)
 
             msg = json.loads(data)
-            self._log(">> %s" % str([topic, pprint.pformat(msg)]))
+            self._log.debug(">> %s", str([topic, pprint.pformat(msg)]))
             return [topic, msg]
 
         else:
