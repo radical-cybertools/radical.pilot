@@ -1361,7 +1361,7 @@ class LaunchMethod(object):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def _create_hostfile(cls, all_hosts, impaired=False):
+    def _create_hostfile(cls, all_hosts, separator=' ', impaired=False):
 
         # Open appropriately named temporary file
         handle, filename = tempfile.mkstemp(prefix='rp_hostfile', dir=os.getcwd())
@@ -1378,7 +1378,7 @@ class LaunchMethod(object):
             count_dict = collections.OrderedDict(sorted(counter.items(), key=lambda t: t[0]))
 
             for (host, count) in count_dict.iteritems():
-                os.write(handle, '%s %d\n' % (host, count))
+                os.write(handle, '%s%s%d\n' % (host, separator, count))
 
         else:
             #
