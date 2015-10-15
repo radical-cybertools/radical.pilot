@@ -4185,16 +4185,18 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         # Moving back to shared file system again, until it reaches maturity,
         # as this breaks launch methods with a hop, e.g. ssh.
         tmp = os.getcwd() # FIXME: see #658
-        self._pilot_id = self._cfg['pilot_id']
+        self._pilot_id    = self._cfg['pilot_id']
+        self._spawner_tmp = "/%s/%s-%s" % (tmp, self._pilot_id, self._cname)
+
         ret, out, _  = self.launcher_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
-                           % (os.path.dirname (rp.__file__), tmp, self._pilot_id, self._cname))
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
+                           % (os.path.dirname (rp.__file__), self._spawner_tmp))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
 
         ret, out, _  = self.monitor_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
-                           % (os.path.dirname (rp.__file__), tmp, self._pilot_id, self._cname))
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
+                           % (os.path.dirname (rp.__file__), self._spawner_tmp))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
 
@@ -4501,6 +4503,13 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
                              % (run_cmd, ret, out))
 
         self._prof.prof('spawn', msg='spawning passed to pty', uid=uid)
+
+        # for convenience, we link the ExecWorker job-cwd to the unit workdir
+        try:
+            os.symlink("%s/%s" % (self._spawner_tmp, cu['pid']), 
+                       "%s/%s" % (cu['workdir'], 'SHELL_SPAWNER_TMP'))
+        except Exception as e:
+            self._log.exception('shell cwd symlink failed: %s' % e)
 
         # FIXME: this is too late, there is already a race with the monitoring
         # thread for this CU execution.  We need to communicate the PIDs/CUs via
