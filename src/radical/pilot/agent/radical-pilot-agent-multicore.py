@@ -1394,6 +1394,34 @@ class LaunchMethod(object):
         return filename
 
 
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def _compress_hostlist(cls, all_hosts):
+
+        # Return gcd of a list of numbers
+        def gcd_list(l):
+            return reduce(fractions.gcd, l)
+
+        # Create a {'host1': x, 'host2': y} dict
+        count_dict = dict(collections.Counter(all_hosts))
+        # Find the gcd of the host counts
+        host_gcd = gcd_list(set(count_dict.values()))
+
+        # Divide the host counts by the gcd
+        for host in count_dict:
+            count_dict[host] /= host_gcd
+
+        # Recreate a list of hosts based on the normalized dict
+        hosts = []
+        [hosts.extend([host] * count)
+                for (host, count) in count_dict.iteritems()]
+        # Esthetically sort the list, as we lost ordering by moving to a dict/set
+        hosts.sort()
+
+        return hosts
+
+
 # ==============================================================================
 #
 class LaunchMethodFORK(LaunchMethod):
