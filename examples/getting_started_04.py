@@ -89,7 +89,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits. Each compute unit
         # reports the id of the pilot it runs on
 
-        n = 1024 # number of units to run
+        n = 128 # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -117,10 +117,20 @@ if __name__ == '__main__':
         umgr.wait_units()
     
         report.info('\n')
+        counts = dict()
         for unit in units:
+            out_str = unit.stdout.strip()[:35]
             report.plain('  * %s: %s, exit: %3s, out: %s\n' \
                     % (unit.uid, unit.state[:4], 
-                        unit.exit_code, unit.stdout.strip()[:35]))
+                        unit.exit_code, out_str))
+            if out_str not in counts:
+                counts[out_str] = 0
+            counts[out_str] += 1
+
+        report.info("\n")
+        for out_str in counts:
+            report.info("  * %-20s: %3d\n" % (out_str, counts[out_str]))
+        report.info("  * %-20s: %3d\n" % ('total', sum(counts.values())))
     
 
     except Exception as e:
