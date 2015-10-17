@@ -306,6 +306,14 @@ class PilotLauncherWorker(threading.Thread):
 
                 if self._disabled.is_set():
                     # don't process any new pilot start requests.  
+                    ts = timestamp()
+                    compute_pilot = pilot_col.find_and_modify(
+                        query={"pilotmanager": self.pilot_manager_id,
+                               "state" : PENDING_LAUNCH},
+                        update={"$set" : {"state": CANCELED},
+                                "$push": {"statehistory": {"state": CANCELED, "timestamp": ts}}}
+                    )
+
                     # run state checks more frequently.
                     JOB_CHECK_INTERVAL = 3
                     time.sleep(1)
