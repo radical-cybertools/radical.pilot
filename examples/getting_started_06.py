@@ -100,7 +100,7 @@ if __name__ == '__main__':
             cud = rp.ComputeUnitDescription()
 
             cud.executable     = '/bin/cp'
-            cud.arguments      = ['input.dat', 'output.dat']
+            cud.arguments      = ['-v', 'input.dat', 'output.dat']
             cud.input_staging  = ['input.dat']
             cud.output_staging = {'source': 'output.dat', 
                                   'target': 'output_%03d.dat' % i,
@@ -127,6 +127,9 @@ if __name__ == '__main__':
                         unit.exit_code, unit.stdout.strip()[:35]))
     
         # delete the sample input files
+        report.info('\nresulting data files:\n\n')
+        os.system('COLUMNS=80 ls -w 80 output_*.dat 2>/dev/null')
+        os.system('rm output_*.dat')
         os.system('rm input.dat')
 
 

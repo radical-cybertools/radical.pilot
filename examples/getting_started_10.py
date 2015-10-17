@@ -98,10 +98,9 @@ if __name__ == '__main__':
             cud = rp.ComputeUnitDescription()
 
             # pre- and post- exec commands run on cluster headnodes!
-            cud.pre_exec    = ['/bin/date > input.dat']
-            cud.executable  =  '/bin/cat'
-            cud.arguments   = ['input.dat']
-            cud.post_exec   = ['/bin/rm input.dat']
+            cud.pre_exec    = ['export TEST=jabberwocky']
+            cud.executable  = '/bin/echo'
+            cud.arguments   = ['$RP_UNIT_ID greets $TEST']
 
             cuds.append(cud)
             report.progress()
