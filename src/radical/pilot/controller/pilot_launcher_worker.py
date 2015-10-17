@@ -306,6 +306,11 @@ class PilotLauncherWorker(threading.Thread):
 
                 if self._disabled.is_set():
                     # don't process any new pilot start requests.  
+                    # NOTE: this is not clean, in principle there could be other
+                    #       launchers alive which want to still start those 
+                    #       pending pilots.  In parctive we only ever use one
+                    #       pmgr though, and its during its shutdown that we get
+                    #       here...
                     ts = timestamp()
                     compute_pilot = pilot_col.find_and_modify(
                         query={"pilotmanager": self.pilot_manager_id,
