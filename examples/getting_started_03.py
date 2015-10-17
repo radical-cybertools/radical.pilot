@@ -11,8 +11,6 @@ os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
 import radical.pilot as rp
 import radical.utils as ru
 
-dh = ru.DebugHelper()
-
 # ------------------------------------------------------------------------------
 #
 # READ the RADICAL-Pilot documentation: http://radicalpilot.readthedocs.org/
