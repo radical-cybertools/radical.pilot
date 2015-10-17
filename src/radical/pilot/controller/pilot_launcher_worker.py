@@ -308,7 +308,7 @@ class PilotLauncherWorker(threading.Thread):
                     # don't process any new pilot start requests.  
                     # NOTE: this is not clean, in principle there could be other
                     #       launchers alive which want to still start those 
-                    #       pending pilots.  In parctive we only ever use one
+                    #       pending pilots.  In practice we only ever use one
                     #       pmgr though, and its during its shutdown that we get
                     #       here...
                     ts = timestamp()
