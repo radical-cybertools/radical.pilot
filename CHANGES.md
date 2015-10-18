@@ -5,6 +5,13 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.37.1 Release                                                        2015-10-18
+--------------------------------------------------------------------------------
+
+  - update of documentation and examples
+  - some small fixes on shutdown installation
+
+
 0.37 Release                                                          2015-10-15
 --------------------------------------------------------------------------------
 
