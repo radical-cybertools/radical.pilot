@@ -86,10 +86,10 @@ if __name__ == '__main__':
         umgr = rp.UnitManager(session=session, scheduler=SCHED)
         umgr.add_pilots(pilots)
 
-        # Create a workload of ComputeUnits. Each compute unit
-        # reports the id of the pilot it runs on
+        # Create a workload of ComputeUnits.
+        # Each compute unit reports the id of the pilot it runs on.
 
-        n = 128 # number of units to run
+        n = 1024   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -98,7 +98,6 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-
             cud.executable = '/bin/echo'
             cud.arguments  = ['$RP_PILOT_ID']
 
@@ -110,7 +109,6 @@ if __name__ == '__main__':
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(cuds)
-
 
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
