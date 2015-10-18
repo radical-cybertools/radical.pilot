@@ -293,14 +293,17 @@ setup_args = {
 #   'upload_sphinx'      : {
 #       'upload-dir'     : 'docs/build/html',
 #   }
-    # This copies the contents of the examples/ dir under
-    # sys.prefix/share/radical.pilot.
-    'data_files': makeDataFiles('share/radical.pilot/examples/', 'examples')
+    # This copies the contents of the examples/ dir under 
+    # sys.prefix/share/radical.pilot.  
+    # It needs the MANIFEST.in entries to work.
+    'data_files'         : makeDataFiles('share/radical.pilot/examples/', 'examples'),
 }
 
 # ------------------------------------------------------------------------------
 
 setup (**setup_args)
+
+os.system('rm -rf src/radical.pilot.egg-info')
 
 # ------------------------------------------------------------------------------
 
