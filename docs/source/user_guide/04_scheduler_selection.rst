@@ -58,6 +58,6 @@ What's Next?
 ------------
 
 Using multiple pilots is very powerful -- it becomes more powerful if you allow
-RP to load-balance units between them.  :ref:`chapter_user_guid_04` will show
+RP to load-balance units between them.  :ref:`chapter_user_guide_04` will show
 how to do just that.
 

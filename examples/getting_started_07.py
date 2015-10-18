@@ -31,13 +31,6 @@ if __name__ == '__main__':
     if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
     elif len(sys.argv) == 2: resource = sys.argv[1]
     else                   : resource = 'local.localhost'
-    if len(sys.argv) > 2:
-        report.error('Usage:\t%s [resource]\n\n' % sys.argv[0])
-        sys.exit(0)
-    elif len(sys.argv) == 2:
-        resource = sys.argv[1]
-    else:
-        resource = 'local.localhost'
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -105,7 +98,6 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-
             cud.executable     = '/usr/bin/wc'
             cud.arguments      = ['-c', 'input.dat']
             cud.input_staging  = {'source': 'staging:///input.dat', 
@@ -120,7 +112,6 @@ if __name__ == '__main__':
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(cuds)
-
 
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')

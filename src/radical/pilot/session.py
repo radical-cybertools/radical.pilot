@@ -88,6 +88,7 @@ class Session (saga.Session):
 
         # init the base class inits
         saga.Session.__init__ (self)
+        self._dh        = ru.DebugHelper()
         self._valid     = True
         self._terminate = threading.Event()
         self._terminate.clear()
@@ -124,8 +125,6 @@ class Session (saga.Session):
         # ----------------------------------------------------------------------
         # create new session
         try:
-            self._connected  = None
-
             if name :
                 self._name = name
                 self._uid  = name
@@ -289,14 +288,17 @@ class Session (saga.Session):
 
         if  cleanup :
             self.prof.prof("cleaning", uid=self._uid)
-            self._destroy_db_entry()
+            self._dbs.delete()
             self.prof.prof("cleaned", uid=self._uid)
+        else:
+            self._dbs.close()
 
         logger.debug("session %s closed" % (str(self._uid)))
         self.prof.prof("closed", uid=self._uid)
 
         self._valid = False
 
+        logger.report.info('<<session lifetime: %.1fs' % (self.closed - self.created))
         logger.report.ok('>>ok\n')
 
 
@@ -309,6 +311,7 @@ class Session (saga.Session):
             "uid"           : self._uid,
             "created"       : self._dbs.created,
             "connected"     : self._dbs.connected,
+            "closed"        : self._dbs.closed,
             "database_url"  : str(self._dbs.dburl)
         }
         return object_dict
@@ -354,37 +357,27 @@ class Session (saga.Session):
     def created(self):
         """Returns the UTC date and time the session was created.
         """
-        self._is_valid()
         return self._dbs.created
 
 
     #---------------------------------------------------------------------------
     #
     @property
-    def connected (self):
+    def connected(self):
         """Returns the most recent UTC date and time the session was
         reconnected to.
         """
-        self._is_valid()
         return self._dbs.connected 
 
 
     #---------------------------------------------------------------------------
     #
-    def _destroy_db_entry(self):
-        """Terminates the session and removes it from the database.
-
-        All subsequent attempts access objects attached to the session and 
-        attempts to re-connect to the session via its uid will result in
-        an error.
-
-        **Raises:**
-            * :class:`radical.pilot.IncorrectState` if the session is closed
-              or doesn't exist. 
+    @property
+    def closed(self):
         """
-        self._is_valid()
-        self._dbs.delete()
-        logger.info("Deleted session %s from database." % self._uid)
+        Returns the time of closing
+        """
+        return self._dbs.closed 
 
 
     #---------------------------------------------------------------------------

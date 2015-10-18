@@ -31,13 +31,6 @@ if __name__ == '__main__':
     if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
     elif len(sys.argv) == 2: resource = sys.argv[1]
     else                   : resource = 'local.localhost'
-    if len(sys.argv) > 2:
-        report.error('Usage:\t%s [resource]\n\n' % sys.argv[0])
-        sys.exit(0)
-    elif len(sys.argv) == 2:
-        resource = sys.argv[1]
-    else:
-        resource = 'local.localhost'
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -98,9 +91,8 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-
             cud.executable     = '/bin/cp'
-            cud.arguments      = ['input.dat', 'output.dat']
+            cud.arguments      = ['-v', 'input.dat', 'output.dat']
             cud.input_staging  = ['input.dat']
             cud.output_staging = {'source': 'output.dat', 
                                   'target': 'output_%03d.dat' % i,
@@ -115,7 +107,6 @@ if __name__ == '__main__':
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(cuds)
 
-
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
@@ -127,6 +118,9 @@ if __name__ == '__main__':
                         unit.exit_code, unit.stdout.strip()[:35]))
     
         # delete the sample input files
+        report.info('\nresulting data files:\n\n')
+        os.system('COLUMNS=80 ls -w 80 output_*.dat 2>/dev/null')
+        os.system('rm output_*.dat')
         os.system('rm input.dat')
 
 
