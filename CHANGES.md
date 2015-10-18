@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.37.2 Release                                                        2015-10-18
+--------------------------------------------------------------------------------
+
+  - fix example installation
+
+
 0.37.1 Release                                                        2015-10-18
 --------------------------------------------------------------------------------
 
