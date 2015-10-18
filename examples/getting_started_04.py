@@ -78,7 +78,7 @@ if __name__ == '__main__':
         report.info('select scheduler')
         if len(pilots) == 1: SCHED = rp.SCHED_DIRECT
         if len(pilots) == 2: SCHED = rp.SCHED_ROUND_ROBIN
-        else               : SCHED = rp.SCHED_BACKFILLING
+        else               : SCHED = rp.SCHED_ROUND_ROBIN
         report.ok('>>%s\n' % SCHED)
     
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
