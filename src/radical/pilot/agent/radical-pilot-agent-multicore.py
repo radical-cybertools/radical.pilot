@@ -5827,7 +5827,7 @@ class AgentWorker(rpu.Worker):
     def idle_cb(self):
         """
         This method will be driving all other agent components, in the sense
-        that it will manage the conncection to MongoDB to retrieve units, and
+        that it will manage the connection to MongoDB to retrieve units, and
         then feed them to the respective component queues.
         """
 
