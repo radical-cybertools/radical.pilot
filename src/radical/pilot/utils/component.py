@@ -323,7 +323,6 @@ class Component(mp.Process):
                 self._finalized = True
                 self.finalize()
                 self._prof.prof("finalized")
-                self._prof.close()
             # Signal the child
             self._log.debug('Signalling child')
             self.terminate()
