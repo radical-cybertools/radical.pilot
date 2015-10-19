@@ -6206,8 +6206,7 @@ def bootstrap_3():
 
         log.info('stop')
         prof.prof('stop', msg='finally clause agent', uid=pilot_id)
-        prof.flush()
-
+        prof.close()
 
 
 # ==============================================================================
