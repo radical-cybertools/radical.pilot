@@ -5,7 +5,7 @@
 Staging Unit Input Data
 ***********************
 
-The waste majority of applications operate on data, and many of those read input
+The vast majority of applications operate on data, and many of those read input
 data from files.  Since RP provides an abstraction above the resource layer, it
 can run a ComputeUnit on any pilot the application created (see
 :ref:`chapter_user_guide_04`).  To ensure that the CU finds the data it needs on

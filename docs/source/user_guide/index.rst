@@ -5,10 +5,9 @@
 User Guide
 **********
 
-This chapter will guide the reader through the most common usage patterns of
-RADICAL-Pilot (RP).  We will start in :ref:`chapter_user_guide_00`
-with the most basic RP example, and then discuss individual RP features which
-augment that example toward a more complete set of applications.
+This chapter will guide the reader through the most commonly used features of
+RADICAL-Pilot (RP).  We will start with a basic RP example, and then discuss individual RP features which
+augment the basic example towards a more complete set of applications.
 
 .. toctree::
    :maxdepth: 1

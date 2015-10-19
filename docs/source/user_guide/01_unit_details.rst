@@ -7,9 +7,9 @@ Obtaining Unit Details
 **********************
 
 The :ref:`previous chapter <chapter_user_guide_00>` discussed the basic RP
-principles, how to submit a pilot, and how to submit ComputeUnits to that pilot
+features, how to submit a pilot, and how to submit ComputeUnits to that pilot
 for execution.  We will here show how an application can, after the units
-completed, inspect the details of that execution.
+complete, inspect the details of that execution.
 
 You can download the script :download:`getting_started_01.py
 <../../../examples/getting_started_01.py>`, which has the following diff to the

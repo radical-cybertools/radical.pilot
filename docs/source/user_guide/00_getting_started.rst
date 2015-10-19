@@ -19,7 +19,7 @@ ComputeUnits (tasks) on it.
 
 You can download the basic :download:`getting_started_00.py
 <../../../examples/getting_started_00.py>`.  The text below will explain the
-most important code sections one by one, and at the end show the expected output
+most important code sections, and at the end show the expected output
 from the example's execution.  Please look carefully at the code comments --
 they explain some aspects of the code which are not explicitly covered in the
 text below.  
@@ -36,7 +36,7 @@ In order to use RADICAL-Pilot in your Python application, you need to import the
 
 
 All example application scripts used in this user guide use the `LogReporter`
-facility of RADICAL-Utils to print runtime and progress information.  You can
+facility (of RADICAL-Utils) to print runtime and progress information.  You can
 control that output with the `RADICAL_PILOT_VERBOSE` variable, which can be set
 to the normal Python logging levels, and to the value `REPORT` to obtain well
 formatted output.  We assume the `REPORT` setting to be used when referencing
@@ -172,11 +172,11 @@ Our basic example creates 128 ComputeUnits which each run `/bin/date`:
             cuds.append(cud)
 
 
-Compute units are executed by pilots -- but how does a pilot know which units to
+Compute units are executed by pilots, but how does a pilot know which units to
 execute?  That relation is established by the `:class:radical.pilot.UnitManager`
 class which accepts ComputeUnitDescriptions as we created above, and assigns
 them, according to some scheduling algorithm, to the set of available pilots.
-It returns the respectively create `:class:radical.pilot.ComputeUnit` handles,
+It returns the `:class:radical.pilot.ComputeUnit` handles,
 for whose completion the application can then wait:
 
 .. code-block:: python
@@ -198,12 +198,12 @@ Running the example will result in an output similar to the one shown below:
 
 .. image:: getting_started_00.png
 
-The runtime can vary significantly, and will be longest on the first run on any
-resource: the first time RP is being used on a new resource for a specific user,
-it will set up a Python virtualenv for the Pilot to use.  Consecutive runs may
+The runtime can vary significantly, and typically the first run on any resource will be longest.
+This is because the first time RP is  used on a new resource for a specific user,
+it will set up a Python virtualenv for the Pilot to use.  Subsequent runs may
 update that virtualenv, or may install additional components as needed, but that
-should take less time that its creation.  So please allow for a couple of
-minuted on the first execution (depending on your network connectivity, the
+should take less time than its creation.  So please allow for a couple of
+minutes on the first execution (depending on your network connectivity, the
 connectivity of the target resource, and the location of the MongoDB service).
 
 
