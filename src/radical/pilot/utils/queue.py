@@ -4,6 +4,7 @@ import zmq
 import time
 import errno
 import pprint
+import signal
 import Queue           as pyq
 import threading       as mt
 import multiprocessing as mp
@@ -388,6 +389,11 @@ class QueueZMQ(Queue):
                     pass
 
                 try:
+                    # reset signal handlers to their default
+                    signal.signal(signal.SIGINT,  signal.SIG_DFL)
+                    signal.signal(signal.SIGTERM, signal.SIG_DFL)
+                    signal.signal(signal.SIGALRM, signal.SIG_DFL)
+
                     self._log.info('start bridge %s on %s', self._name, addr)
 
                     # FIXME: should we cache messages coming in at the pull/push 

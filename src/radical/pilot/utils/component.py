@@ -588,6 +588,9 @@ class Component(mp.Process):
             sys.exit()
         signal.signal(signal.SIGTERM, sigterm_handler)
 
+        # reset other signal handlers to their default
+        signal.signal(signal.SIGINT,  signal.SIG_DFL)
+        signal.signal(signal.SIGALRM, signal.SIG_DFL)
 
         # set process name
         try:
