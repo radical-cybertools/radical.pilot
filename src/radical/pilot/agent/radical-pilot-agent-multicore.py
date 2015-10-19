@@ -6059,25 +6059,30 @@ def bootstrap_3():
 
     # set up signal and exit handlers
     def exit_handler():
-        prof.flush()
         print 'atexit'
         sys.exit(1)
 
     def sigint_handler(signum, frame):
         if agent_name == 'agent_0':
             pilot_FAILED(msg='Caught SIGINT. EXITING (%s)' % frame)
+            prof.prof('stop', msg='sigint_handler', uid=pilot_id)
+            prof.close()
         print 'sigint'
         sys.exit(2)
 
     def sigterm_handler(signum, frame):
         if agent_name == 'agent_0':
             pilot_FAILED(msg='Caught SIGTERM. EXITING (%s)' % frame)
+            prof.prof('stop', msg='sigterm_handler', uid=pilot_id)
+            prof.close()
         print 'sigterm'
         sys.exit(3)
 
     def sigalarm_handler(signum, frame):
         if agent_name == 'agent_0':
             pilot_FAILED(msg='Caught SIGALRM (Walltime limit?). EXITING (%s)' % frame)
+            prof.prof('stop', msg='sigalarm_handler', uid=pilot_id)
+            prof.close()
         print 'sigalrm'
         sys.exit(4)
 
