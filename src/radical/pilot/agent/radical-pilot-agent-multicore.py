@@ -3995,7 +3995,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             # FIXME: this should signal the ExecWorker for shutdown...
 
         self._wprof.prof('stop', uid=self._pilot_id)
-        self._wprof.flush()
+        self._wprof.close()
 
 
     # --------------------------------------------------------------------------
@@ -4619,7 +4619,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
             self._terminate.set()
 
         self._wprof.prof('stop', uid=self._pilot_id)
-        self._wprof.flush()
+        self._wprof.close()
 
 
     # --------------------------------------------------------------------------
