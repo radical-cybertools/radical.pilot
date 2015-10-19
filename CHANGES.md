@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.37.4 Release                                                        2015-10-19
+--------------------------------------------------------------------------------
+
+  - timing fix to ensure unit state ordering
+
+
 0.37.3 Release                                                        2015-10-19
 --------------------------------------------------------------------------------
 
