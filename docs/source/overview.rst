@@ -46,10 +46,29 @@ application can send them `ComputeUnits` (see below) for execution.
 What is a Compute Unit (CU)?
 ============================
 
+An RP ComputeUnit (CU, or 'unit') represents a self-contained, executable part
+of the application's workload.  A CU is described by the following attributes
+(for details, check out the :class:`API documentation <radical.pilot.ComputeUnitDescription>`):
+
+  * `executable`    : the name of the executable to be run on the target machines
+  * `arguments`     : a list of argument strings to be passed to the executable
+  * `environment`   : a dictionary of environment variable/value pairs to be set
+                      before unit execution
+  * `input_staging` : a set of staging directives for input data
+  * `output_staging`: a set of staging directives for output data
 
 
 How about data?
 ===============
+
+Data management is important for executing CUs, both in providing input data,
+and staging/sharing output data.  RP has different means to handle data, and
+they are specifically covered in sections
+:ref:`in <chapter_user_guide_06>`
+:ref:`the <chapter_user_guide_07>`
+:ref:`UserGuide <chapter_user_guide_08>`.
+
+
 
 What is a scheduler?  Why are there multiple schedulers?
 ========================================================
