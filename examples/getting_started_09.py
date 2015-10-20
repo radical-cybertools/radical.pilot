@@ -70,6 +70,12 @@ if __name__ == '__main__':
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
+        # Synchronously stage the example application to  the pilot
+        report.info('stage application example')
+        pilot.stage_in({'source': 'file://%s/helloworld_mpi.py' % os.getcwd(),
+                        'target': 'staging:///helloworld_mpi.py',
+                        'action': rp.TRANSFER})
+        report.ok('>>ok\n')
 
         report.header('submit units')
 
@@ -77,10 +83,7 @@ if __name__ == '__main__':
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
-        # Create a workload of ComputeUnits. 
-        # Each compute unit runs a specific, replicated `echo` command
-
-        n = 128   # number of units to run
+        n = 16 # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -89,11 +92,15 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable  = '/bin/echo'
-            cud.arguments   = ['-n', '$RP_UNIT_ID ']
-            cud.cores       = 2
-            cud.mpi         = True
-
+            cud.pre_exec       = ['source /opt/tutorials/radical-tutorial/rp-tut.sh']
+            cud.executable     = 'python'
+            cud.arguments      = ['helloworld_mpi.py']
+            cud.input_staging  = {'source': 'staging:///helloworld_mpi.py', 
+                                  'target': 'helloworld_mpi.py',
+                                  'action': rp.LINK
+                                 }
+            cud.cores          = 4
+            cud.mpi            = True
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -109,10 +116,10 @@ if __name__ == '__main__':
     
         report.info('\n')
         for unit in units:
-            report.plain('  * %s: %s, exit: %3s, out: %s\n' \
-                    % (unit.uid, unit.state[:4], 
-                        unit.exit_code, unit.stdout.strip()[:35]))
-    
+            report.plain('  * %s: %s, exit: %3s, MPI ranks: %s\n' \
+                    % (unit.uid, unit.state[:4], unit.exit_code,
+                       ', '.join([line.split()[2] for line in
+                       unit.stdout.split('\n') if 'rank' in line])))
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
