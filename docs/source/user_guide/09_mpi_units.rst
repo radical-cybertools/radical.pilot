@@ -25,10 +25,10 @@ This example should result in the unit ID echo'ed *twice*, once per MPI rank.
 Running the Example
 -------------------
 
-:download:`getting_started_09.py <../../../examples/getting_started_09.py>`.
+:download:`09_mpi_units.py <../../../examples/09_mpi_units.py>`.
 uses the above blob to run a bag of duplicated `echo` commands:
 
-.. image:: getting_started_09.png
+.. image:: 09_mpi_units.png
 
 
 What's Next?

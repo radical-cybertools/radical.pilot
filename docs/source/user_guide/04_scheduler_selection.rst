@@ -32,11 +32,11 @@ scheduler, that scheduler will incur a runtime overhead for each unit -- so that
 is only advisable for heterogeneous workloads and/or pilot setups, and for long
 running units.
 
-:download:`getting_started_04.py <../../../examples/getting_started_04.py>`
+:download:`04_scheduler_selection.py <../../../examples/04_scheduler_selection.py>`
 shows an exemplary scheduling selector, with the following diff to the previous
 multi-pilot example:
 
-.. image:: getting_started_03_04.png
+.. image:: 04_scheduler_selection_a.png
 
 It will select `Round Robin` scheduling for two pilots, and `Backfilling` for
 three or more. 
@@ -51,7 +51,7 @@ likely to come up quickly), and 2 are running on `xsede.stampede` and
 We thus expect the backfilling scheduler to prefer the local pilot
 (`pilot.0000`).
 
-.. image:: getting_started_04a.png
+.. image:: 04_scheduler_selection_b.png
 
 
 What's Next?

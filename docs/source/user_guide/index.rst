@@ -21,8 +21,8 @@ augment the basic example towards a more complete set of applications.
    06_unit_output_data.rst
    07_shared_unit_data.rst
    08_unit_environment.rst
-   09_MPI_units.rst
-   10_pre_and_post_execution.rst
+   09_mpi_units.rst
+   10_pre_and_post_exec.rst
    mandelbrot.rst
    kmeans.rst
    simple_bot_multi.rst

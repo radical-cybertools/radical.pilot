@@ -21,8 +21,8 @@ messages, similar to the `state_history` array discussed :ref:`before
 <chapter_user_guide_01>`.
 
 
-You can download the script :download:`getting_started_02.py
-<../../../examples/getting_started_02.py>`, which demonstrates inspection for
+You can download the script :download:`02_failing_units.py
+<../../../examples/02_failing_units.py>`, which demonstrates inspection for
 failed units.  It has the following diff to the previous example:
 
 
@@ -39,7 +39,7 @@ Running the Example
 
 Running the example will result in an output similar to the one shown below:
 
-.. image:: getting_started_02.png
+.. image:: 02_failing_units.png
 
 .. note:: You will see red glyphs during the result gathering phase, indicating
     that a failed unit has been collected.  The example output above also
