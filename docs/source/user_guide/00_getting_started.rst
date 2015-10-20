@@ -17,8 +17,8 @@ ComputeUnits (tasks) on it.
           RADICAL-Pilot, and also configured access to the resources you intent
           to use for the examples (see chapter :ref:`chapter_installation`).
 
-You can download the basic :download:`getting_started_00.py
-<../../../examples/getting_started_00.py>`.  The text below will explain the
+You can download the basic :download:`00_getting_started.py
+<../../../examples/00_getting_started.py>`.  The text below will explain the
 most important code sections, and at the end show the expected output
 from the example's execution.  Please look carefully at the code comments --
 they explain some aspects of the code which are not explicitly covered in the
@@ -196,7 +196,7 @@ Running the Example
 
 Running the example will result in an output similar to the one shown below:
 
-.. image:: getting_started_00.png
+.. image:: 00_getting_started.png
 
 The runtime can vary significantly, and typically the first run on any resource will be longest.
 This is because the first time RP is  used on a new resource for a specific user,

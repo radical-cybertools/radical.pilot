@@ -33,7 +33,7 @@ to be changed to a unique name during staging:
 
 TODO MS: GO example?
 
-:download:`getting_started_06.py <../../../examples/getting_started_06.py>`
+:download:`06_unit_output_data.py <../../../examples/06_unit_output_data.py>`
 contains an example application which uses the above code block.  It otherwise
 does not significantly differ from our previous example.
 
@@ -44,7 +44,7 @@ Running the Example
 The result of this example's execution shows that the output files have been
 renamed during the output-staging phase:
 
-.. image:: getting_started_06.png
+.. image:: 06_unit_output_data.png
 
 
 What's Next?
