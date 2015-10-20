@@ -154,7 +154,7 @@ have a prompt set as `$PS1`).  The snippet below shows how to di that:
 
 This is coming from the firewall on your Mac. You can either:
 
-    - clock "Allow" (many times) 
+    - click "Allow" (many times) 
     - disable your firewall (temporarily)
     - Sign the application per instructions here: http://apple.stackexchange.com/a/121010
 
