@@ -31,13 +31,6 @@ if __name__ == '__main__':
     if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
     elif len(sys.argv) == 2: resource = sys.argv[1]
     else                   : resource = 'local.localhost'
-    if len(sys.argv) > 2:
-        report.error('Usage:\t%s [resource]\n\n' % sys.argv[0])
-        sys.exit(0)
-    elif len(sys.argv) == 2:
-        resource = sys.argv[1]
-    else:
-        resource = 'local.localhost'
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -65,7 +58,7 @@ if __name__ == '__main__':
         pd_init = {
                 'resource'      : resource,
                 'cores'         : 64,  # pilot size
-                'runtime'       : 10,  # pilot runtime (min)
+                'runtime'       : 15,  # pilot runtime (min)
                 'exit_on_error' : True,
                 'project'       : config[resource]['project'],
                 'queue'         : config[resource]['queue'],
@@ -98,13 +91,9 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-
-            cud.executable     = '/bin/cp'
-            cud.arguments      = ['input.dat', 'output.dat']
+            cud.executable     = '/usr/bin/wc'
+            cud.arguments      = ['-c', 'input.dat']
             cud.input_staging  = ['input.dat']
-            cud.output_staging = {'source': 'output.dat', 
-                                  'target': 'output_%03d.dat' % i,
-                                  'action': rp.TRANSFER}
 
             cuds.append(cud)
             report.progress()
@@ -114,7 +103,6 @@ if __name__ == '__main__':
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(cuds)
-
 
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
@@ -144,10 +132,9 @@ if __name__ == '__main__':
 
     finally:
         # always clean up the session, no matter if we caught an exception or
-        # not.  This will kill all remaining pilots, but leave the database
-        # entries alone.
+        # not.  This will kill all remaining pilots.
         report.header('finalize')
-        session.close(terminate=True, cleanup=False)
+        session.close()
 
     report.header()
 

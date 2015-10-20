@@ -5,6 +5,31 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.37.5 Release                                                        2015-10-19
+--------------------------------------------------------------------------------
+
+  - timing fix to ensure unit state ordering
+
+
+0.37.3 Release                                                        2015-10-19
+--------------------------------------------------------------------------------
+
+  - small fixes, doc changes
+
+
+0.37.2 Release                                                        2015-10-18
+--------------------------------------------------------------------------------
+
+  - fix example installation
+
+
+0.37.1 Release                                                        2015-10-18
+--------------------------------------------------------------------------------
+
+  - update of documentation and examples
+  - some small fixes on shutdown installation
+
+
 0.37 Release                                                          2015-10-15
 --------------------------------------------------------------------------------
 

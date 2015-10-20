@@ -7,7 +7,6 @@ import os
 import sys
 
 os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
-os.environ['RADICAL_PILOT_PROFILE'] = 'TRUE'
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -19,52 +18,6 @@ import radical.utils as ru
 #
 # ------------------------------------------------------------------------------
 
-def myplot():
-
-    import radical.pilot.utils as rpu
-    import pprint
-
-    sid = "rp.session.cameo.merzky.016716.0004"
-
-    report = ru.LogReporter(name='radical.pilot')
-    report.header('profile analysis')
-    report.info('fetch profiles, create data frames, plot\n')
-
-    profiles   = rpu.fetch_profiles(sid=sid, skip_existing=True);    report.progress() 
-    profile    = rpu.combine_profiles(profiles); report.progress() 
-    frame      = rpu.prof2frame(profile);        report.progress() 
-    sf, pf, uf = rpu.split_frame(frame);         report.progress()
-    uf         = rpu.add_states(uf);             report.progress()
-    uf         = rpu.add_info(uf);               report.progress()
-    idf        = rpu.get_info_df(uf);            report.progress()
-    sdf        = rpu.get_state_df(idf);          report.progress()
-
-    cols = sorted(list(idf.columns.values))
-    pprint.pprint(cols)
-
-  # for col in cols:
-  #     print col
-  #     print sdf[col][0:3]
-
-    exe_filter = {'in'  : [{'state' : 'Executing'}],
-                  'out' : [{'state' : 'AgentStagingOutputPending'}]}
-    rpu.add_concurrency(sdf, tgt='cc_exe', spec=exe_filter)
-    fin_sdf = sdf[np.isfinite(sdf['cc_exe'])]
-
-    ax_ops = create_figure('Number of concurrently executing CUs over time')
-    fin_sdf.plot(x='time', y='cc_exe', ax=ax_ops)
-
-    plot       = rpu.create_plot();              report.progress()
-  # rpu.frame_plot ([[sdf, 'frame']], 
-  #                 [['time', 'Time (s)'], 
-  #                  ['Executing', 'Executing']], 
-  #                 title='title', logx=False, logy=False, 
-  #                 legend=True, figdir=None)
-
-    report.ok('>>ok\n')
-
-    report.header()
-
 
 #------------------------------------------------------------------------------
 #
@@ -74,20 +27,10 @@ if __name__ == '__main__':
     report = ru.LogReporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
 
-    myplot()
-    sys.exit()
-
     # use the resource specified as argument, fall back to localhost
     if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
     elif len(sys.argv) == 2: resource = sys.argv[1]
     else                   : resource = 'local.localhost'
-    if len(sys.argv) > 2:
-        report.error('Usage:\t%s [resource]\n\n' % sys.argv[0])
-        sys.exit(0)
-    elif len(sys.argv) == 2:
-        resource = sys.argv[1]
-    else:
-        resource = 'local.localhost'
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -115,7 +58,7 @@ if __name__ == '__main__':
         pd_init = {
                 'resource'      : resource,
                 'cores'         : 64,  # pilot size
-                'runtime'       : 10,  # pilot runtime (min)
+                'runtime'       : 15,  # pilot runtime (min)
                 'exit_on_error' : True,
                 'project'       : config[resource]['project'],
                 'queue'         : config[resource]['queue'],
@@ -127,6 +70,12 @@ if __name__ == '__main__':
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
+        # Synchronously stage the example application to  the pilot
+        report.info('stage application example')
+        pilot.stage_in({'source': 'file://%s/helloworld_mpi.py' % os.getcwd(),
+                        'target': 'staging:///helloworld_mpi.py',
+                        'action': rp.TRANSFER})
+        report.ok('>>ok\n')
 
         report.header('submit units')
 
@@ -134,10 +83,7 @@ if __name__ == '__main__':
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
-        # Create a workload of ComputeUnits. Each compute unit
-        # runs '/bin/date'.
-
-        n = 128   # number of units to run
+        n = 16 # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -146,7 +92,15 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable = '/bin/date'
+            cud.pre_exec       = ['source /opt/tutorials/radical-tutorial/rp-tut.sh']
+            cud.executable     = 'python'
+            cud.arguments      = ['helloworld_mpi.py']
+            cud.input_staging  = {'source': 'staging:///helloworld_mpi.py', 
+                                  'target': 'helloworld_mpi.py',
+                                  'action': rp.LINK
+                                 }
+            cud.cores          = 4
+            cud.mpi            = True
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -156,17 +110,16 @@ if __name__ == '__main__':
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(cuds)
 
-
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
     
         report.info('\n')
         for unit in units:
-            report.plain('  * %s: %s, exit: %3s, out: %s\n' \
-                    % (unit.uid, unit.state[:4], 
-                        unit.exit_code, unit.stdout.strip()[:35]))
-
+            report.plain('  * %s: %s, exit: %3s, MPI ranks: %s\n' \
+                    % (unit.uid, unit.state[:4], unit.exit_code,
+                       ', '.join([line.split()[2] for line in
+                       unit.stdout.split('\n') if 'rank' in line])))
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
@@ -182,11 +135,11 @@ if __name__ == '__main__':
 
     finally:
         # always clean up the session, no matter if we caught an exception or
-        # not.  This will kill all remaining pilots, but leave the database
-        # entries alone.
+        # not.  This will kill all remaining pilots.
         report.header('finalize')
-        session.close(terminate=True, cleanup=False)
+        session.close()
 
+    report.header()
 
 
 #-------------------------------------------------------------------------------

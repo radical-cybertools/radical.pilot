@@ -20,13 +20,17 @@
 
         "epsrc.archer" : {
             "project"  : "e290",
-            "queue"    : "short",
+            "queue"    : "R3211460",
+          # "queue"    : "R3211496",
+          # "queue"    : "R3211473",
             "schema"   : null
         },
 
         "epsrc.archer_orte" : {
             "project"  : "e290",
-            "queue"    : "short",
+            "queue"    : "R3211460",
+          # "queue"    : "R3211496",
+          # "queue"    : "R3211473",
             "schema"   : null
         },
 
@@ -45,7 +49,7 @@
         "xsede.stampede" : {
             "project"  : "TG-MCB090174",
             "queue"    : "development",
-            "schema"   : null
+            "schema"   : "gsissh"
         },
 
         "xsede.comet"  : {

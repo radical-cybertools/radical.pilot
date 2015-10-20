@@ -10,7 +10,7 @@ multiple compute unit executions.  There is in principle no limit on how many of
 those pilots are used to execute a specific workload, and specifically, pilot
 don't need to run on the same resource!
 
-:download:`getting_started_03.py <../../../examples/getting_started_03.py>`
+:download:`03_multiple_pilots.py <../../../examples/03_multiple_pilots.py>`
 demonstrates that, and features the following diff to the previous examples:
 
 .. image:: getting_started_02_03.png
@@ -31,7 +31,7 @@ The workload of our example has now changed to report the respectively used
 pilot on stdout, and the output shows that.  We here start a pilot on `local.localhost`,
 and one on `xsede.stampede`:
 
-.. image:: getting_started_03.png
+.. image:: 03_multiple_pilots.png
 
 
 What's Next?

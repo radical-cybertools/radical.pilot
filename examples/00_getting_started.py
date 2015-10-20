@@ -31,13 +31,6 @@ if __name__ == '__main__':
     if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
     elif len(sys.argv) == 2: resource = sys.argv[1]
     else                   : resource = 'local.localhost'
-    if len(sys.argv) > 2:
-        report.error('Usage:\t%s [resource]\n\n' % sys.argv[0])
-        sys.exit(0)
-    elif len(sys.argv) == 2:
-        resource = sys.argv[1]
-    else:
-        resource = 'local.localhost'
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -65,7 +58,7 @@ if __name__ == '__main__':
         pd_init = {
                 'resource'      : resource,
                 'cores'         : 64,  # pilot size
-                'runtime'       : 10,  # pilot runtime (min)
+                'runtime'       : 15,  # pilot runtime (min)
                 'exit_on_error' : True,
                 'project'       : config[resource]['project'],
                 'queue'         : config[resource]['queue'],
@@ -77,24 +70,15 @@ if __name__ == '__main__':
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        # Create a workload of char-counting a simple file.  We first create the
-        # file right here, and stage it to the pilot 'shared_data' space
-        os.system('hostname >  input.dat')
-        os.system('date     >> input.dat')
-
-        # Synchronously stage the data to the pilot
-        report.info('stage shared data')
-        pilot.stage_in({'source': 'file://%s/input.dat' % os.getcwd(),
-                        'target': 'staging:///input.dat',
-                        'action': rp.TRANSFER})
-        report.ok('>>ok\n')
-
 
         report.header('submit units')
 
         # Register the ComputePilot in a UnitManager object.
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
+
+        # Create a workload of ComputeUnits.
+        # Each compute unit runs '/bin/date'.
 
         n = 128   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
@@ -105,13 +89,7 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-
-            cud.executable     = '/usr/bin/wc'
-            cud.arguments      = ['-c', 'input.dat']
-            cud.input_staging  = {'source': 'staging:///input.dat', 
-                                  'target': 'input.dat',
-                                  'action': rp.LINK
-                                 }
+            cud.executable = '/bin/date'
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -119,22 +97,12 @@ if __name__ == '__main__':
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(cuds)
-
+        umgr.submit_units(cuds)
 
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
     
-        report.info('\n')
-        for unit in units:
-            report.plain('  * %s: %s, exit: %3s, out: %s\n' \
-                    % (unit.uid, unit.state[:4], 
-                        unit.exit_code, unit.stdout.strip()[:35]))
-    
-        # delete the sample input files
-        os.system('rm input.dat')
-
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
@@ -150,10 +118,9 @@ if __name__ == '__main__':
 
     finally:
         # always clean up the session, no matter if we caught an exception or
-        # not.  This will kill all remaining pilots, but leave the database
-        # entries alone.
+        # not.  This will kill all remaining pilots.
         report.header('finalize')
-        session.close(terminate=True, cleanup=False)
+        session.close()
 
     report.header()
 
