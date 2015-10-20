@@ -10,23 +10,14 @@ import traceback
 from mpi4py import MPI
 
 try :
-    print "start"
-    SLEEP = 10
-    name  = MPI.Get_processor_name()
+    name  = MPI.Get_processor_name().split(".")[0]
     comm  = MPI.COMM_WORLD
 
-    print "mpi rank %d/%d/%s"  % (comm.rank+1, comm.size, name)
-
-    time.sleep(SLEEP)
+    print "%d/%d/%s"  % (comm.rank+1, comm.size, name)
 
     comm.Barrier()   # wait for everybody to synchronize here
 
 except Exception as e :
     traceback.print_exc ()
-    print "error : %s" % e
     sys.exit (1)
-
-finally :
-    print "done"
-    sys.exit (0)
 
