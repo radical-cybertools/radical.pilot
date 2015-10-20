@@ -16,9 +16,9 @@ cases, this can drastically shorten overall exeuction time as the individual
 ``ComputeUnits`` don't have to wait in the system's scheduler queue but can
 execute directly on the ``ComputePilots``.
 
-``ComputeUnits`` are often single-core / multi-threaded executables, but SAGA-
-Pilot also supports execution of parallel executables, for example based on MPI
-or OpenMP.
+``ComputeUnits`` are often single-core / multi-threaded executables, but
+RADICAL-Pilot also supports execution of parallel executables, for example based
+on MPI or OpenMP.
 
 RADICAL-Pilot is not a static system, but it rather provides the user with
 a programming library ("Pilot-API") that provides abstractions for resource
@@ -26,10 +26,11 @@ access and task management. With this library, the user can develop everything
 from simple "submission scripts" to arbitrarily complex applications, higher-
 level services and tools.
 
-**Mailing Lists**
+**Links**
 
-* For users: https://groups.google.com/d/forum/radical-pilot-users
-* For developers: https://groups.google.com/d/forum/radical-pilot-devel
+* repository:     https://github.com/radical-cybertools/radical.pilot
+* user list:      https://groups.google.com/d/forum/radical-pilot-users
+* developer list: https://groups.google.com/d/forum/radical-pilot-devel
 
 
 #########

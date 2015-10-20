@@ -156,7 +156,7 @@ Troubleshooting
 
 **Missing virtualenv**
 
-This should return the version of the RADICAL-Pilot installation, e.g., `0.X.Y`.
+This should return the version of the RADICAL-Pilot installation, e.g., ``0.X.Y``.
 
 If virtualenv **is not** installed on your system, you can try the following.
 
