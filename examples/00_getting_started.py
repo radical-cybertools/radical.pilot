@@ -6,7 +6,7 @@ __license__   = 'MIT'
 import os
 import sys
 
-# os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
+os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -58,8 +58,8 @@ if __name__ == '__main__':
         pd_init = {
                 'resource'      : resource,
                 'cores'         : 64,  # pilot size
-                'runtime'       : 2,  # pilot runtime (min)
-                'exit_on_error' : False,
+                'runtime'       : 15,  # pilot runtime (min)
+                'exit_on_error' : True,
                 'project'       : config[resource]['project'],
                 'queue'         : config[resource]['queue'],
                 'access_schema' : config[resource]['schema']
@@ -89,8 +89,7 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable = '/bin/sleep'
-            cud.arguments = ['600']
+            cud.executable = '/bin/date'
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
