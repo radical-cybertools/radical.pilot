@@ -1590,7 +1590,11 @@ class LaunchMethodAPRUN(LaunchMethod):
         else:
             task_command = task_exec
 
-        aprun_command = "%s -n %d %s" % (self.launch_command, task_numcores, task_command)
+        if mpi:
+            pes = task_numcores
+        else:
+            pes = 1
+        aprun_command = "%s -n %d %s" % (self.launch_command, pes, task_command)
 
         return aprun_command, None
 
