@@ -47,7 +47,7 @@
         },
 
         "xsede.stampede" : {
-            "project"  : "TG-MCB090174",
+            "project"  : "TG-MCB150124",
             "queue"    : "development",
             "schema"   : "gsissh"
         },
