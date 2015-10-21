@@ -55,7 +55,7 @@
         "xsede.comet"  : {
             "project"  : "unc100",
             "queue"    : "",
-            "schema"   : null
+            "schema"   : "gsissh"
         },
 
         "xsede.gordon" : {
