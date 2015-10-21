@@ -19,7 +19,7 @@
         },
 
         "epsrc.archer" : {
-            "project"  : "e290",
+            "project"  : "y14-CECAM",
             "queue"    : "R3211460",
           # "queue"    : "R3211496",
           # "queue"    : "R3211473",
@@ -27,7 +27,7 @@
         },
 
         "epsrc.archer_orte" : {
-            "project"  : "e290",
+            "project"  : "y14-CECAM",
             "queue"    : "R3211460",
           # "queue"    : "R3211496",
           # "queue"    : "R3211473",
