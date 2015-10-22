@@ -6592,7 +6592,7 @@ class AgentWorker(rpu.Worker):
                         'task_slots'   : ['%s:0' % node], 
                         'task_offsets' : [], 
                         'lm_info'      : self._cfg['lrms_info']['lm_info']}
-                agent_cu = {
+                agent_cmd = {
                         'opaque_slots' : opaque_slots,
                         'description'  : {
                             'cores'      : 1,
@@ -6600,7 +6600,7 @@ class AgentWorker(rpu.Worker):
                             'arguments'  : ["%s/bootstrap_2.sh" % os.getcwd(), sa]
                             }
                         }
-                cmd, hop = agent_lm.construct_command(agent_cu,
+                cmd, hop = agent_lm.construct_command(agent_cmd,
                         launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "%s"' % ls_name)
 
                 with open (ls_name, 'w') as ls:
