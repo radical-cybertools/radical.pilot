@@ -98,5 +98,5 @@
             "project"  : null,
             "queue"    : "shared",
             "schema"   : "ssh"
-
+        }
 }
