@@ -5,10 +5,9 @@
 User Guide
 **********
 
-This chapter will guide the reader through the most common usage patterns of
-RADICAL-Pilot (RP).  We will start in :ref:`chapter_user_guide_00`
-with the most basic RP example, and then discuss individual RP features which
-augment that example toward a more complete set of applications.
+This chapter will guide the reader through the most commonly used features of
+RADICAL-Pilot (RP).  We will start with a basic RP example, and then discuss individual RP features which
+augment the basic example towards a more complete set of applications.
 
 .. toctree::
    :maxdepth: 1
@@ -22,8 +21,6 @@ augment that example toward a more complete set of applications.
    06_unit_output_data.rst
    07_shared_unit_data.rst
    08_unit_environment.rst
-   09_MPI_units.rst
-   10_pre_and_post_execution.rst
-   mandelbrot.rst
-   kmeans.rst
-   simple_bot_multi.rst
+   09_mpi_units.rst
+   10_pre_and_post_exec.rst
+

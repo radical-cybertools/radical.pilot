@@ -5,7 +5,7 @@
 Staging Unit Input Data
 ***********************
 
-The waste majority of applications operate on data, and many of those read input
+The vast majority of applications operate on data, and many of those read input
 data from files.  Since RP provides an abstraction above the resource layer, it
 can run a ComputeUnit on any pilot the application created (see
 :ref:`chapter_user_guide_04`).  To ensure that the CU finds the data it needs on
@@ -30,7 +30,7 @@ file names (we'll discuss more complex staging directives in a :ref:`later
     cud.arguments      = ['-c', 'input.dat']
     cud.input_staging  = ['input.dat']
 
-:download:`getting_started_05.py <../../../examples/getting_started_05.py>`
+:download:`05_unit_input_data.py <../../../examples/05_unit_input_data.py>`
 contains an example application which uses the above code block.  It otherwise
 does not differ from our earlier examples (but only adds on-th-fly creation of
 `input.dat`).
@@ -45,7 +45,7 @@ that the code runs significantly longer than earlier ones, because of the file
 staging overhead -- we will discuss in :ref:`chapter_user_guide_07` how file
 staging can be optimized for units which share the same input data.
 
-.. image:: getting_started_05.png
+.. image:: 05_unit_input_data.png
 
 
 What's Next?

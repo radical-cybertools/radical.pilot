@@ -28,8 +28,9 @@ if __name__ == '__main__':
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
-    if len(sys.argv) >= 2  : resources = sys.argv[1:]
-    else                   : resources = ['local.localhost']
+    if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
+    elif len(sys.argv) == 2: resource = sys.argv[1]
+    else                   : resource = 'local.localhost'
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -53,33 +54,31 @@ if __name__ == '__main__':
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
-        pdescs = list()
-        report.info('create pilot descriptions')
-        for resource in resources:
-            pd_init = {
-                    'resource'      : resource,
-                    'cores'         : 64,  # pilot size
-                    'runtime'       : 10,  # pilot runtime (min)
-                    'exit_on_error' : True,
-                    'project'       : config[resource]['project'],
-                    'queue'         : config[resource]['queue'],
-                    'access_schema' : config[resource]['schema']
-                    }
-            pdescs.append(rp.ComputePilotDescription(pd_init))
+        report.info('create pilot description')
+        pd_init = {
+                'resource'      : resource,
+                'cores'         : 64,  # pilot size
+                'runtime'       : 15,  # pilot runtime (min)
+                'exit_on_error' : True,
+                'project'       : config[resource]['project'],
+                'queue'         : config[resource]['queue'],
+                'access_schema' : config[resource]['schema']
+                }
+        pdesc = rp.ComputePilotDescription(pd_init)
         report.ok('>>ok\n')
 
-        # Launch the pilots.
-        pilots = pmgr.submit_pilots(pdescs)
+        # Launch the pilot.
+        pilot = pmgr.submit_pilots(pdesc)
 
 
         report.header('submit units')
 
         # Register the ComputePilot in a UnitManager object.
         umgr = rp.UnitManager(session=session)
-        umgr.add_pilots(pilots)
+        umgr.add_pilots(pilot)
 
         # Create a workload of ComputeUnits.
-        # Each compute unit reports the id of the pilot it runs on.
+        # Each compute unit runs '/bin/date'.
 
         n = 128   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
@@ -90,9 +89,7 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable = '/bin/echo'
-            cud.arguments  = ['$RP_PILOT_ID']
-
+            cud.executable = '/bin/date'
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -100,27 +97,11 @@ if __name__ == '__main__':
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(cuds)
+        umgr.submit_units(cuds)
 
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
-    
-        report.info('\n')
-        counts = dict()
-        for unit in units:
-            out_str = unit.stdout.strip()[:35]
-            report.plain('  * %s: %s, exit: %3s, out: %s\n' \
-                    % (unit.uid, unit.state[:4], 
-                        unit.exit_code, out_str))
-            if out_str not in counts:
-                counts[out_str] = 0
-            counts[out_str] += 1
-
-        report.info("\n")
-        for out_str in counts:
-            report.info("  * %-20s: %3d\n" % (out_str, counts[out_str]))
-        report.info("  * %-20s: %3d\n" % ('total', sum(counts.values())))
     
 
     except Exception as e:
@@ -137,10 +118,9 @@ if __name__ == '__main__':
 
     finally:
         # always clean up the session, no matter if we caught an exception or
-        # not.  This will kill all remaining pilots, but leave the database
-        # entries alone.
+        # not.  This will kill all remaining pilots.
         report.header('finalize')
-        session.close(terminate=True, cleanup=False)
+        session.close()
 
     report.header()
 

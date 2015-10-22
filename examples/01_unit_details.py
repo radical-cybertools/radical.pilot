@@ -58,7 +58,7 @@ if __name__ == '__main__':
         pd_init = {
                 'resource'      : resource,
                 'cores'         : 64,  # pilot size
-                'runtime'       : 10,  # pilot runtime (min)
+                'runtime'       : 15,  # pilot runtime (min)
                 'exit_on_error' : True,
                 'project'       : config[resource]['project'],
                 'queue'         : config[resource]['queue'],
@@ -77,10 +77,8 @@ if __name__ == '__main__':
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
-        # Create a workload of char-counting a simple file.  We first create the
-        # file right here, and then use it as unit input data for each unit.
-        os.system('hostname >  input.dat')
-        os.system('date     >> input.dat')
+        # Create a workload of ComputeUnits.
+        # Each compute unit runs '/bin/date'.
 
         n = 128   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
@@ -91,13 +89,7 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable     = '/bin/cp'
-            cud.arguments      = ['-v', 'input.dat', 'output.dat']
-            cud.input_staging  = ['input.dat']
-            cud.output_staging = {'source': 'output.dat', 
-                                  'target': 'output_%03d.dat' % i,
-                                  'action': rp.TRANSFER}
-
+            cud.executable = '/bin/date'
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -116,13 +108,17 @@ if __name__ == '__main__':
             report.plain('  * %s: %s, exit: %3s, out: %s\n' \
                     % (unit.uid, unit.state[:4], 
                         unit.exit_code, unit.stdout.strip()[:35]))
-    
-        # delete the sample input files
-        report.info('\nresulting data files:\n\n')
-        os.system('COLUMNS=80 ls -w 80 output_*.dat 2>/dev/null')
-        os.system('rm output_*.dat')
-        os.system('rm input.dat')
 
+        # get some more details for one unit:
+        import time
+        unit_dict = units[0].as_dict()
+        report.plain("unit workdir : %s\n" % unit_dict['working_directory'])
+        report.plain("pilot id     : %s\n" % unit_dict['execution_details']['pilot'])
+        report.plain("state history: \n")
+        for state_info in unit_dict['execution_details']['statehistory']:
+            report.plain("\t\t%s : %s\n" % \
+                    (time.ctime(state_info['timestamp']), state_info['state']))
+    
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
@@ -138,10 +134,9 @@ if __name__ == '__main__':
 
     finally:
         # always clean up the session, no matter if we caught an exception or
-        # not.  This will kill all remaining pilots, but leave the database
-        # entries alone.
+        # not.  This will kill all remaining pilots.
         report.header('finalize')
-        session.close(terminate=True, cleanup=False)
+        session.close()
 
     report.header()
 
