@@ -5,7 +5,7 @@
         "schemas"                     : ["ssh"],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "lsf+ssh://grace.hpc.yale.edu/",
+            "job_manager_endpoint"    : "lsf+ssh://grace.hpc.yale.edu/?span=ptile=4",
             "filesystem_endpoint"     : "sftp://grace.hpc.yale.edu/"
         },
         "default_queue"               : "shared",
