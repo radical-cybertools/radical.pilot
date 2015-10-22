@@ -1,0 +1,90 @@
+
+# This config is an examplary for a large pilot, as it uses two dedicated nodes
+# for all agent components.
+{
+    # directory for staging files inside the agent sandbox
+    "staging_area"         : "staging_area",
+
+    # url scheme to indicate the use of staging_area
+    "staging_scheme"       : "staging",
+
+    # max number of cu out/err chars to push to db
+    "max_io_loglength"     : 1024,
+
+    # max time period to collect db notifications into bulks (seconds)
+    "bulk_collection_time" : 1.0,
+
+    # time to sleep between database polls (seconds)
+    "db_poll_sleeptime"    : 0.1,
+
+    # time between checks of internal state and commands from mothership (seconds)
+    "heartbeat_interval"   : 10,
+
+    "agent_layout" : {
+        "agent_0"   : {
+            "target"     : "local",
+            "sub_agents" : ["agent_1", "agent_2"],
+            "pull_units" : true,
+            "bridges" : [
+                # which bridges are to be started by this agent
+                "agent_staging_input_queue",
+                "agent_scheduling_queue",
+                "agent_executing_queue",
+                "agent_staging_output_queue",
+
+                "agent_unschedule_pubsub",
+                "agent_reschedule_pubsub",
+                "agent_command_pubsub",
+                "agent_state_pubsub"
+            ],
+            "components" : {
+                # how many instances of the respective components should be started
+                "AgentSchedulingComponent" : 1
+            }
+        },
+        "agent_1"   : {
+            "target"     : "node",
+            "sub_agents" : [],
+            "components" : {
+                "AgentStagingInputComponent"  : 4,
+                "AgentExecutingComponent"     : 8,
+                "AgentStagingOutputComponent" : 4
+            }
+        },
+        "agent_2"   : {
+            "target"     : "node",
+            "sub_agents" : [],
+            "components" : {
+                "AgentStagingInputComponent"  : 4,
+                "AgentExecutingComponent"     : 8,
+                "AgentStagingOutputComponent" : 4
+            }
+        }
+    },
+
+    # factor by which the number of units are increased at a certain step.  Value of
+    # "1" will leave the units unchanged.  Any blowup will leave on unit as the
+    # original, and will then create clones with an changed unit ID (see blowup()).
+    "clone" : {
+        "AgentWorker"                 : {"input" :    1, "output" :    1},
+        "AgentStagingInputComponent"  : {"input" :    1, "output" :    1},
+        "AgentSchedulingComponent"    : {"input" :    1, "output" :    1},
+        "AgentExecutingComponent"     : {"input" :    1, "output" :    1},
+        "AgentStagingOutputComponent" : {"input" :    1, "output" :    1}
+    },
+
+    # flag to drop all blown-up units at some point in the pipeline.  The units
+    # with the original IDs will again be left untouched, but all other units are
+    # silently discarded.
+    # 0: drop nothing
+    # 1: drop clones
+    # 2: drop everything
+    "drop" : {
+        "AgentWorker"                 : {"input" :    1, "output" :    1},
+        "AgentStagingInputComponent"  : {"input" :    1, "output" :    1},
+        "AgentSchedulingComponent"    : {"input" :    1, "output" :    1},
+        "AgentExecutingComponent"     : {"input" :    1, "output" :    1},
+        "AgentStagingOutputComponent" : {"input" :    1, "output" :    1}
+    }
+}
+

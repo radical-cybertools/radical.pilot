@@ -1,0 +1,240 @@
+{
+    "stampede": {
+        "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["ssh", "gsissh", "go"],
+        "mandatory_args"              : ["project"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://stampede.tacc.utexas.edu/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://stampede.tacc.utexas.edu:2222/",
+            "filesystem_endpoint"     : "gsisftp://stampede.tacc.utexas.edu:2222/"
+        },
+        "go":
+        {
+            "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "go://xsede#stampede/"
+        },
+        "default_queue"               : "normal",
+        "lrms"                        : "SLURM",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN_RSH",
+        "pre_bootstrap_1"             : ["module purge",
+                                         "module load TACC",
+                                         "module load intel/15.0.2",
+                                         "module load python/2.7.9",
+                                         "module unload xalt",
+                                         # Load ICC license so we can build during bootstrap
+                                         "source ~train00/ssi_sourceme",
+                                         "export TACC_DELETE_FILES=TRUE"
+                                        ],
+        "pre_bootstrap_2"             : ["export PATH=$PATH",
+                                         "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+                                        ],
+        "default_remote_workdir"      : "$WORK",
+        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_stampede",
+        "virtenv_mode"                : "create"
+    },
+
+    "lonestar": {
+        "description"                 : "The XSEDE 'Lonestar' cluster at TACC (https://www.tacc.utexas.edu/resources/hpc/lonestar).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["ssh", "gsissh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "sge+ssh://lonestar.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://lonestar.tacc.utexas.edu/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "sge+gsissh://lonestar.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "gsisftp://lonestar.tacc.utexas.edu/"
+        },
+        "default_queue"               : "normal",
+        "lrms"                        : "SGE",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "IBRUN",
+        "spmd_variation"              : "24way",
+        "pre_bootstrap_1"             : ["module purge",
+                                         "module load TACC",
+                                         "module load cluster",
+                                         "module load mvapich2",
+                                         "module load python",
+                                         "export TACC_DELETE_FILES=TRUE"
+                                        ],
+        "valid_roots"                 : ["/home1", "/scratch", "/work"],
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_lonestar",
+        "virtenv_mode"                : "create"
+    },
+
+    "trestles": {
+        "description"                 : "The XSEDE 'Trestles' cluster at SDSC (http://www.sdsc.edu/us/resources/trestles/).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["ssh", "gsissh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "torque+ssh://trestles.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://trestles.sdsc.xsede.org/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "torque+gsissh://trestles.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "gsisftp://trestles.sdsc.xsede.org/"
+        },
+        "default_queue"               : "normal",
+        "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN_RSH",
+        "pre_bootstrap_1"             : ["module purge", "module load python pgi mvapich2_ib gnubase"],
+        "valid_roots"                 : ["/home"],
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_trestles",
+        "virtenv_mode"                : "create"
+    },
+
+    "gordon": {
+        "description"                 : "The XSEDE 'Gordon' cluster at SDSC (http://www.sdsc.edu/us/resources/gordon/).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["ssh", "gsissh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "torque+ssh://gordon.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://gordon.sdsc.xsede.org/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "torque+gsissh://gordon.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "gsisftp://gordon.sdsc.xsede.org/"
+        },
+        "default_queue"               : "normal",
+        "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN_RSH",
+        "pre_bootstrap_1"             : ["module purge", "module load python intel mvapich2_ib gnubase"],
+        "valid_roots"                 : ["/home"],
+        "rp_version"                  : "debug",
+        "virtenv"                     : "%(global_sandbox)s/ve_gordon",
+        "virtenv_mode"                : "create"
+    },
+
+    "blacklight": {
+        "description"                 : "The XSEDE 'Blacklight' cluster at PSC (https://www.psc.edu/index.php/computing-resources/blacklight).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["ssh", "gsissh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "torque+ssh://blacklight.psc.xsede.org",
+            "filesystem_endpoint"     : "sftp://blacklight.psc.xsede.org/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "torque+gsissh://blacklight.psc.xsede.org",
+            "filesystem_endpoint"     : "gsisftp://blacklight.psc.xsede.org/"
+        },
+        "default_queue"               : "batch",
+        "cores_per_node"              : "16",
+        "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "DPLACE",
+        "task_launch_method"          : "DPLACE",
+        "mpi_launch_method"           : "MPIRUN_DPLACE",
+        "pre_bootstrap_1"             : ["source /usr/share/modules/init/bash",
+                                         "module load python",
+                                         "unset PYTHONPATH"
+                                        ],
+        "valid_roots"                 : ["/usr/users", "/brashear"],
+        "stage_cacerts"               : "True",
+        "rp_version"                  : "debug",
+        "virtenv"                     : "%(global_sandbox)s/ve_blacklight",
+        "virtenv_mode"                : "create"
+    },
+
+    "comet": {
+        "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["ssh", "gsissh"],
+        "mandatory_args"              : ["project"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://comet.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://comet.sdsc.xsede.org/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://comet.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "gsisftp://comet.sdsc.xsede.org/"
+        },
+        "default_queue"               : "compute",
+        "cores_per_node"              : "24",
+        "lrms"                        : "SLURM",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN_RSH",
+        "pre_bootstrap_1"             : ["module load python"],
+        "pre_bootstrap_2"             : [
+            "export PATH=$PATH",
+            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+        ],
+        "valid_roots"                 : ["/home"],
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_comet",
+        "virtenv_mode"                : "create"
+    },
+
+    "supermic": {
+        "description"                 : "SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)",
+        "notes"                       : "Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.",
+        "schemas"                     : ["ssh", "gsissh"],
+        "ssh"                         : {
+            "job_manager_endpoint"    : "torque+ssh://supermic.cct-lsu.xsede.org",
+            "filesystem_endpoint"     : "sftp://supermic.cct-lsu.xsede.org/"
+        },
+        "gsissh"                      : {
+            "job_manager_endpoint"    : "torque+gsissh://supermic.cct-lsu.xsede.org",
+            "filesystem_endpoint"     : "gsisftp://supermic.cct-lsu.xsede.org/"
+        },
+        "default_queue"               : "workq",
+        "cores_per_node"              : "20",
+        "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIEXEC",
+        "pre_bootstrap_1"             : ["module load python"],
+        "default_remote_workdir"      : "/work/$USER",
+        "valid_roots"                 : ["/work"],
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_supermic",
+        "virtenv_mode"                : "create"
+    }
+}

@@ -13,6 +13,8 @@ __license__   = "MIT"
 
 import saga.attributes  as attributes
 
+from .utils import logger
+
 
 # -----------------------------------------------------------------------------
 # Attribute description keys
@@ -27,6 +29,7 @@ ERROR             = 'error'
 RUNTIME           = 'runtime'
 CLEANUP           = 'cleanup'
 PROJECT           = 'project'
+EXIT_ON_ERROR     = 'exit_on_error'
 _CONFIG           = '_config'
 
 
@@ -121,9 +124,11 @@ class ComputePilotDescription(attributes.Attributes):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self):
+    def __init__(self, from_dict=None):
         """Le constructeur.
         """ 
+        logger.report.info('<<create pilot description')
+
         # initialize attributes
         attributes.Attributes.__init__(self)
 
@@ -140,6 +145,7 @@ class ComputePilotDescription(attributes.Attributes):
         self._attributes_register    (QUEUE,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (PROJECT,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (CLEANUP,          None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (EXIT_ON_ERROR,    None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
 
         # Attributes not part of the published API
         self._attributes_register    (_CONFIG,          None, attributes.ANY,    attributes.SCALAR, attributes.WRITEABLE)
@@ -154,7 +160,19 @@ class ComputePilotDescription(attributes.Attributes):
         self.set_attribute (QUEUE,            None)
         self.set_attribute (PROJECT,          None)
         self.set_attribute (CLEANUP,          None)
+        self.set_attribute (EXIT_ON_ERROR,    False)
         self.set_attribute (_CONFIG,          None)
+
+        # apply initialization dict
+        if from_dict:
+            self.from_dict(from_dict)
+
+            if RESOURCE in from_dict and CORES in from_dict:
+                logger.report.plain(' [%s:%s]' % (from_dict[RESOURCE], from_dict[CORES]))
+            elif RESOURCE in from_dict:
+                logger.report.plain(' [%s]' % from_dict[RESOURCE])
+
+        logger.report.ok('>>ok\n')
 
 
     # -------------------------------------------------------------------------

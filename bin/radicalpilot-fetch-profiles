@@ -1,0 +1,93 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import pprint
+import pymongo
+import radical.utils       as ru
+import radical.pilot       as rp
+import radical.pilot.utils as rpu
+
+
+# ------------------------------------------------------------------------------
+#
+def usage(msg=None, noexit=False):
+
+    if msg:
+        print "\n      Error: %s" % msg
+
+    print """
+      usage   : %s <sid> [-t target] [-d dburl] [-c client] [-a scheme://host] [-s] [-h]
+      example : %s $SID -d mongodb://localhost/rp -t /tmp/
+
+      options :
+
+          sid : session ID for which to fetch profiles
+          -c  : location from where to fetch the client profiles
+                This defaults to $PWD
+          -a  : alternative agent sandbox access method (scheme://host)
+          -t  : target dir to fetch profiles to
+                A sub-dir <sid>/ will be created there.
+                This defaults to $PWD/profiles/
+          -d  : mongodb URL to fetch session info
+                Those infos are used to get the pilot locations from where the
+                profiles are to be fetched.
+                This defaults to $RADICAL_PILOT_DBURL, which is currently set to
+                %s.
+          -s  : skip existing files
+          -h  : print this help message
+
+""" % (sys.argv[0], sys.argv[0], os.environ.get('RADICAL_PILOT_DBURL'))
+
+    if msg:
+        sys.exit(1)
+
+    if not noexit:
+        sys.exit(0)
+
+# ------------------------------------------------------------------------------
+# 
+if __name__ == '__main__':
+
+    import optparse
+    parser = optparse.OptionParser(add_help_option=False)
+
+    parser.add_option('-a', '--access',  dest='access')
+    parser.add_option('-d', '--dburl',   dest='dburl')
+    parser.add_option('-c', '--client',  dest='client')
+    parser.add_option('-t', '--target',  dest='target')
+    parser.add_option('-s', '--skip',    dest='skip', action="store_true")
+    parser.add_option('-h', '--help',    dest='help', action="store_true")
+
+    options, args = parser.parse_args()
+
+    if len(args) > 1:
+        usage("Too many arguments (%s)" % args)
+
+    if len(args) < 1:
+        usage("session ID missing")
+
+    if options.help:
+        usage()
+
+    if not options.client:
+        options.client = os.getcwd()
+    if not options.target:
+        options.target = os.getcwd()
+    if not options.dburl:
+        options.dburl = None
+    if not options.access:
+        options.access = None
+    if not options.skip:
+        options.skip = False
+
+    sid = args[0]
+    client = options.client
+    target = options.target
+    dburl = options.dburl
+    access = options.access
+    skip = options.skip
+
+    rpu.fetch_profiles(sid=sid, dburl=dburl, client=client, tgt=target, access=access, skip_existing=skip)
+
+# ------------------------------------------------------------------------------

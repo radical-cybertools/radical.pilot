@@ -17,15 +17,12 @@ import time
 
 import radical.utils as ru
 
-from radical.pilot.utils.logger import logger
-
-from radical.pilot.states import *
-from radical.pilot.logentry import *
-from radical.pilot.exceptions import *
-
-from radical.pilot.db.database import COMMAND_CANCEL_COMPUTE_UNIT
-
-from radical.pilot.staging_directives import expand_staging_directive
+from .states             import *
+from .logentry           import *
+from .exceptions         import *
+from .utils              import logger
+from .db.database        import COMMAND_CANCEL_COMPUTE_UNIT
+from .staging_directives import expand_staging_directive
 
 # -----------------------------------------------------------------------------
 #
@@ -108,17 +105,20 @@ class ComputeUnit(object):
 
         # If staging directives exist, try to expand them
         if  ud_copy.input_staging:
-            ud_copy.input_staging = expand_staging_directive(ud_copy.input_staging, logger)
+            ud_copy.input_staging = expand_staging_directive(ud_copy.input_staging)
 
         if  ud_copy.output_staging:
-            ud_copy.output_staging = expand_staging_directive(ud_copy.output_staging, logger)
+            ud_copy.output_staging = expand_staging_directive(ud_copy.output_staging)
 
         computeunit._description = ud_copy
         computeunit._manager     = unit_manager_obj
+        computeunit._session     = unit_manager_obj._session
         computeunit._worker      = unit_manager_obj._worker
         computeunit._uid         = ru.generate_id('unit.%(counter)06d', ru.ID_CUSTOM)
         computeunit._name        = unit_description['name']
         computeunit._local_state = local_state
+
+        computeunit._session.prof.prof('advance', msg=NEW, uid=computeunit._uid, state=NEW)
 
         return computeunit
 
@@ -413,18 +413,18 @@ class ComputeUnit(object):
 
     # -------------------------------------------------------------------------
     #
-    def register_callback(self, callback_func, callback_data=None):
+    def register_callback(self, cb_func, cb_data=None):
         """Registers a callback function that is triggered every time the
         ComputeUnit's state changes.
 
         All callback functions need to have the same signature::
 
-            def callback_func(obj, state)
+            def cb_func(obj, state)
 
         where ``object`` is a handle to the object that triggered the callback
         and ``state`` is the new state of that object.
         """
-        self._worker.register_unit_callback(self, callback_func, callback_data)
+        self._worker.register_unit_callback(self, cb_func, cb_data)
 
     # -------------------------------------------------------------------------
     #
@@ -484,6 +484,7 @@ class ComputeUnit(object):
 
             * :class:`radical.pilot.radical.pilotException`
         """
+        
         # Check if this instance is valid
         if not self._uid:
             raise BadParameter("Invalid Compute Unit instance.")
@@ -521,6 +522,8 @@ class ComputeUnit(object):
 
         else:
             raise IncorrectState("Unknown Compute Unit state: %s, cannot cancel" % self.state)
+
+        self._session.prof.prof('advance', msg=CANCELED, uid=unit.uid, state=CANCELED)
 
         # done canceling
         return

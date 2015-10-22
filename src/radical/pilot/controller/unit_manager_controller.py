@@ -10,21 +10,21 @@ import os
 import time
 import Queue
 import weakref
-import datetime
 import threading
 
 from multiprocessing import Pool
 
-from radical.utils        import which
-from radical.utils        import Url
-from radical.pilot.types  import *
-from radical.pilot.states import *
-from radical.pilot.utils.logger import logger
+import radical.utils as ru
 
-from radical.pilot.controller.input_file_transfer_worker import InputFileTransferWorker
-from radical.pilot.controller.output_file_transfer_worker import OutputFileTransferWorker
+from ..types              import *
+from ..states             import *
+from ..utils              import logger
+from ..utils              import timestamp
+from ..staging_directives import TRANSFER, LINK, COPY, MOVE
 
-from radical.pilot.staging_directives import TRANSFER, LINK, COPY, MOVE
+from .input_file_transfer_worker  import InputFileTransferWorker
+from .output_file_transfer_worker import OutputFileTransferWorker
+
 
 IDLE_TIME = 1.0  # seconds to sleep between activities
 
@@ -37,11 +37,11 @@ class UnitManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, unit_manager_uid, session, db_connection, db_connection_info,
-        scheduler=None, input_transfer_workers=None,
-        output_transfer_workers=None):
+    def __init__(self, umgr_uid, session, scheduler=None, 
+            input_transfer_workers=None, output_transfer_workers=None):
 
         self._session = session
+        self.uid      = umgr_uid
 
         # Multithreading stuff
         threading.Thread.__init__(self)
@@ -71,23 +71,15 @@ class UnitManagerController(threading.Thread):
         # The manager-level list.
         #
         self._manager_callbacks = dict()
+        self._dbs = self._session.get_dbs()
 
-        # The MongoDB database handle.
-        self._db = db_connection
-
-        if unit_manager_uid is None:
-            # Try to register the UnitManager with the database.
-            self._um_id = self._db.insert_unit_manager(
-                scheduler=scheduler,
-                input_transfer_workers=input_transfer_workers,
-                output_transfer_workers=output_transfer_workers)
-            self._num_input_transfer_workers = input_transfer_workers
-            self._num_output_transfer_workers = output_transfer_workers
-        else:
-            um_json = self._db.get_unit_manager(unit_manager_id=unit_manager_uid)
-            self._um_id = unit_manager_uid
-            self._num_input_transfer_workers = um_json["input_transfer_workers"]
-            self._num_output_transfer_workers = um_json["output_transfer_workers"]
+        # Try to register the UnitManager with the database.
+        self._dbs.insert_unit_manager(umgr_uid=self.uid, 
+            scheduler=scheduler,
+            input_transfer_workers=input_transfer_workers,
+            output_transfer_workers=output_transfer_workers)
+        self._num_input_transfer_workers  = input_transfer_workers
+        self._num_output_transfer_workers = output_transfer_workers
 
         # The INPUT transfer worker(s) are autonomous processes that
         # execute input file transfer requests concurrently.
@@ -95,8 +87,7 @@ class UnitManagerController(threading.Thread):
         for worker_number in range(1, self._num_input_transfer_workers+1):
             worker = InputFileTransferWorker(
                 session=self._session,
-                db_connection_info=db_connection_info, 
-                unit_manager_id=self._um_id,
+                unit_manager_id=self.uid,
                 number=worker_number
             )
             self._input_file_transfer_worker_pool.append(worker)
@@ -108,8 +99,7 @@ class UnitManagerController(threading.Thread):
         for worker_number in range(1, self._num_output_transfer_workers+1):
             worker = OutputFileTransferWorker(
                 session=self._session,
-                db_connection_info=db_connection_info, 
-                unit_manager_id=self._um_id,
+                unit_manager_id=self.uid,
                 number=worker_number
             )
             self._output_file_transfer_worker_pool.append(worker)
@@ -120,12 +110,12 @@ class UnitManagerController(threading.Thread):
     # ------------------------------------------------------------------------
     #
     @classmethod
-    def uid_exists(cls, db_connection, unit_manager_uid):
+    def uid_exists(cls, dbs, unit_manager_uid):
         """Checks wether a particular unit manager UID exists.
         """
         exists = False
 
-        if unit_manager_uid in db_connection.list_unit_manager_uids():
+        if unit_manager_uid in dbs.list_unit_manager_uids():
             exists = True
 
         return exists
@@ -136,7 +126,7 @@ class UnitManagerController(threading.Thread):
     def unit_manager_uid(self):
         """Returns the uid of the associated UnitManager
         """
-        return self._um_id
+        return self.uid
 
     # ------------------------------------------------------------------------
     #
@@ -148,7 +138,7 @@ class UnitManagerController(threading.Thread):
         self.join()
         logger.debug("uworker  %s stopped" % (self.name))
       # logger.debug("Worker thread (ID: %s[%s]) for UnitManager %s stopped." %
-      #             (self.name, self.ident, self._um_id))
+      #             (self.name, self.ident, self.uid))
 
     # ------------------------------------------------------------------------
     #
@@ -173,7 +163,7 @@ class UnitManagerController(threading.Thread):
         if  not unit_id in self._callback_histories :
             self._callback_histories[unit_id] = list()
         self._callback_histories[unit_id].append (
-                {'timestamp' : datetime.datetime.utcnow(), 
+                {'timestamp' : timestamp(), 
                  'state'     : new_state})
 
         for [cb, cb_data] in self._shared_data[unit_id]['callbacks']:
@@ -214,43 +204,8 @@ class UnitManagerController(threading.Thread):
         # If we meet a final state, we record the object's callback history for
         # later evaluation.
         if  new_state in (DONE, FAILED, CANCELED) :
-            self._db.publish_compute_unit_callback_history (unit_id, self._callback_histories[unit_id])
+            self._dbs.publish_compute_unit_callback_history (unit_id, self._callback_histories[unit_id])
 
-
-    # ------------------------------------------------------------------------
-    #
-    # def _set_state(self, unit_uid, state, log):
-
-    #     if not isinstance(log, list):
-    #         log = [log]
-
-    #     # Acquire the shared data lock.
-    #     self._shared_data_lock.acquire()
-
-    #     old_state = self._shared_data[unit_uid]["data"]["state"]
-
-    #     # Update the database.
-    #     self._db.set_compute_unit_state(unit_uid, state, log)
-
-    #     # Update shared data.
-    #     self._shared_data[unit_uid]["data"]["state"] = state
-    #     self._shared_data[unit_uid]["data"]["statehistory"].append(state)
-    #     self._shared_data[unit_uid]["data"]["log"].extend(log)
-
-    #     # Call the callbacks
-    #     if state != old_state:
-    #         # On a state change, we fire zee callbacks.
-    #         logger.info(
-    #             "XX ComputeUnit '%s' state changed from '%s' to '%s'." %
-    #             (unit_uid, old_state, state)
-    #         )
-
-    #         # The state of the unit has changed, We call all
-    #         # unit-level callbacks to propagate this.
-    #         self.call_unit_state_callbacks(unit_uid, state)
-
-    #     # Release the shared data lock.
-    #     self._shared_data_lock.release()
 
     # ------------------------------------------------------------------------
     #
@@ -263,20 +218,21 @@ class UnitManagerController(threading.Thread):
         try :
 
             logger.debug("Worker thread (ID: %s[%s]) for UnitManager %s started." %
-                        (self.name, self.ident, self._um_id))
+                        (self.name, self.ident, self.uid))
 
             # transfer results contains the futures to the results of the
             # asynchronous transfer operations.
             transfer_results = list()
 
-            while not self._stop.is_set():
+            while not self._stop.is_set() and \
+                  not self._session._terminate.is_set():
 
                 # =================================================================
                 #
                 # Check and update units. This needs to be optimized at
                 # some point, i.e., state pulling should be conditional
                 # or triggered by a tailable MongoDB cursor, etc.
-                unit_list = self._db.get_compute_units(unit_manager_id=self._um_id)
+                unit_list = self._dbs.get_compute_units(unit_manager_id=self.uid)
                 action    = False
 
                 for unit in unit_list:
@@ -300,9 +256,6 @@ class UnitManagerController(threading.Thread):
                     self._shared_data_lock.release()
 
                     if new_state != old_state:
-                        # On a state change, we fire zee callbacks.
-                        logger.info("RUN ComputeUnit '%s' state changed from '%s' to '%s'." % (unit_id, old_state, new_state))
-
                         # The state of the unit has changed, We call all
                         # unit-level callbacks to propagate this.
                         self.call_unit_state_callbacks(unit_id, new_state)
@@ -339,13 +292,13 @@ class UnitManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def register_unit_callback(self, unit, callback_func, callback_data=None):
+    def register_unit_callback(self, unit, cb_func, cb_data=None):
         """Registers a callback function for a ComputeUnit.
         """
         unit_uid = unit.uid
 
         self._shared_data_lock.acquire()
-        self._shared_data[unit_uid]['callbacks'].append([callback_func, callback_data])
+        self._shared_data[unit_uid]['callbacks'].append([cb_func, cb_data])
         self._shared_data_lock.release()
 
         # Add the facade object if missing, e.g., after a re-connect.
@@ -364,13 +317,13 @@ class UnitManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def register_manager_callback(self, callback_func, metric, callback_data=None):
+    def register_manager_callback(self, cb_func, metric, cb_data=None):
         """Registers a manager-level callback.
         """
         if not metric in self._manager_callbacks :
             self._manager_callbacks[metric] = list()
 
-        self._manager_callbacks[metric].append([callback_func, callback_data])
+        self._manager_callbacks[metric].append([cb_func, cb_data])
 
 
     # ------------------------------------------------------------------------
@@ -397,14 +350,14 @@ class UnitManagerController(threading.Thread):
     def get_unit_manager_data(self):
         """Returns the raw data (JSON dict) for a UnitManger.
         """
-        return self._db.get_unit_manager(self._um_id)
+        return self._dbs.get_unit_manager(self.uid)
 
     # ------------------------------------------------------------------------
     #
     def get_pilot_uids(self):
         """Returns the UIDs of the pilots registered with the UnitManager.
         """
-        return self._db.unit_manager_list_pilots(self._um_id)
+        return self._dbs.unit_manager_list_pilots(self.uid)
 
     # ------------------------------------------------------------------------
     #
@@ -412,7 +365,7 @@ class UnitManagerController(threading.Thread):
         """Returns the UIDs of all ComputeUnits registered with the
         UnitManager.
         """
-        return self._db.unit_manager_list_compute_units(self._um_id)
+        return self._dbs.unit_manager_list_compute_units(self.uid)
 
     # ------------------------------------------------------------------------
     #
@@ -420,22 +373,21 @@ class UnitManagerController(threading.Thread):
         """Returns the states of all ComputeUnits registered with the
         Unitmanager.
         """
-        return self._db.get_compute_unit_states(
-            self._um_id, unit_uids)
+        return self._dbs.get_compute_unit_states(self.uid, unit_uids)
 
     # ------------------------------------------------------------------------
     #
     def get_compute_unit_stdout(self, compute_unit_uid):
         """Returns the stdout for a compute unit.
         """
-        return self._db.get_compute_unit_stdout(compute_unit_uid)
+        return self._dbs.get_compute_unit_stdout(compute_unit_uid)
 
     # ------------------------------------------------------------------------
     #
     def get_compute_unit_stderr(self, compute_unit_uid):
         """Returns the stderr for a compute unit.
         """
-        return self._db.get_compute_unit_stderr(compute_unit_uid)
+        return self._dbs.get_compute_unit_stderr(compute_unit_uid)
 
     # ------------------------------------------------------------------------
     #
@@ -447,28 +399,31 @@ class UnitManagerController(threading.Thread):
         for pilot in pilots:
             pids.append(pilot.uid)
 
-        self._db.unit_manager_add_pilots(unit_manager_id=self._um_id,
-                                         pilot_ids=pids)
+        self._dbs.unit_manager_add_pilots(unit_manager_id=self.uid, pilot_ids=pids)
 
     # ------------------------------------------------------------------------
     #
     def remove_pilots(self, pilot_uids):
         """Unlinks one or more ComputePilots from the UnitManager.
         """
-        self._db.unit_manager_remove_pilots(unit_manager_id=self._um_id,
-                                            pilot_ids=pilot_uids)
+        self._dbs.unit_manager_remove_pilots(unit_manager_id=self.uid, pilot_ids=pilot_uids)
 
     # ------------------------------------------------------------------------
     #
     def publish_compute_units(self, units):
         """register the unscheduled units in the database"""
 
+      # # units are UNSCHEDULED on publishing
+      # # FIXME: wtf, units are not even statefulll Bah!
+      # for unit in units:
+      #     unit['state'] = UNSCHEDULED
+      #     self._session.prof.prof('advance', uid=unit.uid, 
+      #                 msg=UNSCHEDULED, state=UNSCHEDULED)
+
         # Add all units to the database.
-        results = self._db.insert_compute_units(
-            unit_manager_uid=self._um_id,
-            units=units,
-            unit_log=[]
-        )
+        results = self._dbs.insert_compute_units(umgr_uid=self.uid,
+                units=units,
+                unit_log=[])
 
         assert len(units) == len(results)
 
@@ -494,7 +449,7 @@ class UnitManagerController(threading.Thread):
             cu_notransfer = list()
 
             # Get some information about the pilot sandbox from the database.
-            pilot_info = self._db.get_pilots(pilot_ids=pilot_uid)
+            pilot_info = self._dbs.get_pilots(pilot_ids=pilot_uid)
             # TODO: this hack below relies on what?! That there is just one pilot?
             pilot_sandbox = pilot_info[0]['sandbox']
 
@@ -526,8 +481,8 @@ class UnitManagerController(threading.Thread):
 
                 for input_sd_entry in input_sds:
                     action = input_sd_entry['action']
-                    source = Url(input_sd_entry['source'])
-                    target = Url(input_sd_entry['target'])
+                    source = ru.Url(input_sd_entry['source'])
+                    target = ru.Url(input_sd_entry['target'])
 
                     new_sd = {'action':   action,
                               'source':   str(source),
@@ -565,8 +520,8 @@ class UnitManagerController(threading.Thread):
 
                 for output_sds_entry in output_sds:
                     action = output_sds_entry['action']
-                    source = Url(output_sds_entry['source'])
-                    target = Url(output_sds_entry['target'])
+                    source = ru.Url(output_sds_entry['source'])
+                    target = ru.Url(output_sds_entry['target'])
 
                     new_sd = {'action':   action,
                               'source':   str(source),
@@ -592,35 +547,27 @@ class UnitManagerController(threading.Thread):
                     else:
                         logger.warn('Not sure if action %s makes sense for output staging' % action)
 
-                if unit.FTW_Input_Directives or unit.Agent_Input_Directives:
-                    log = "Scheduled for data transfer to ComputePilot %s." % pilot_uid
-                    self._db.set_compute_unit_state(unit.uid, PENDING_INPUT_STAGING, log)
-                    cu_transfer.append(unit)
-                else:
-                    cu_notransfer.append(unit)
-
-            # Bulk-add all non-transfer units-
-            self._db.assign_compute_units_to_pilot(
-                units=cu_notransfer,
+            # Bulk-add all units
+            self._dbs.assign_compute_units_to_pilot(
+                units=units,
                 pilot_uid=pilot_uid,
                 pilot_sandbox=pilot_sandbox
             )
 
-            self._db.assign_compute_units_to_pilot(
-                units=cu_transfer,
-                pilot_uid=pilot_uid,
-                pilot_sandbox=pilot_sandbox
-            )
+            for unit in units:
+                # DON'T set state before pilot is assigned -- otherwise units
+                # are picked up by the FTW
+                log = "Scheduled for data transfer to ComputePilot %s." % pilot_uid
+                self._dbs.set_compute_unit_state(unit.uid, PENDING_INPUT_STAGING, log)
+                self._session.prof.prof('advance', uid=unit.uid, 
+                        msg=PENDING_INPUT_STAGING, state=PENDING_INPUT_STAGING)
 
-            for unit in cu_notransfer:
-                log = "Scheduled for execution on ComputePilot %s." % pilot_uid
-                self._db.set_compute_unit_state(unit.uid, PENDING_EXECUTION, log)
-                #self._set_state(uid, PENDING_EXECUTION, log)
 
             logger.info(
-                "Scheduled ComputeUnits %s for execution on ComputePilot '%s'." %
-                (cu_notransfer, pilot_uid)
+                "Scheduled ComputeUnits %s on ComputePilot '%s'." %
+                (units, pilot_uid)
             )
+
         except Exception, e:
             logger.exception ('error in unit manager controller (schedule())')
             raise
@@ -634,7 +581,10 @@ class UnitManagerController(threading.Thread):
 
         try:
             unit_ids = [unit.uid for unit in units]
-            self._db.set_compute_unit_state(unit_ids, UNSCHEDULED, "unit remains unscheduled")
+            self._dbs.set_compute_unit_state(unit_ids, UNSCHEDULED, "unit remains unscheduled")
+            for unit in units:
+                self._session.prof.prof('advance', uid=unit.uid, 
+                        msg=UNSCHEDULED, state=UNSCHEDULED)
 
         except Exception, e:
             logger.exception ('error in unit manager controller (unschedule())')

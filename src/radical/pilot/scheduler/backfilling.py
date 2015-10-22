@@ -15,9 +15,11 @@ import os
 import pprint
 import threading
 
-from radical.pilot.utils.logger        import logger
-from radical.pilot.scheduler.interface import Scheduler
-from radical.pilot.states              import *
+from ..states   import *
+from ..utils    import logger
+from ..utils    import timestamp
+
+from .interface import Scheduler
 
 # to reduce roundtrips, we can oversubscribe a pilot, and schedule more units
 # than it can immediately execute.  Value is in %.
@@ -51,7 +53,7 @@ class BackfillingScheduler(Scheduler):
         self.pmgrs   = list()
         self.pilots  = dict()
         self.lock    = threading.RLock ()
-        self._db     = self.manager._worker._db
+        self._dbs    = self.session.get_dbs()
 
         # make sure the UM notifies us on all unit state changes
         manager.register_callback (self._unit_state_callback)
@@ -150,13 +152,15 @@ class BackfillingScheduler(Scheduler):
                       #     logger.debug ('unit %s frees %s cores on (-> %s)' \
                       #                % (uid, unit.description.cores, pid, self.pilots[pid]['caps']))
 
-                    if not found_unit :
-                        logger.warn ('unit %s freed %s cores on %s (== %s) -- not reused'
-                                  % (uid, unit.description.cores, pid, self.pilots[pid]['caps']))
+                  # FIXME: this warning should not come up as frequently as it
+                  #        does -- needs investigation!
+                  # if not found_unit :
+                  #     logger.warn ('unit %s freed %s cores on %s (== %s) -- not reused'
+                  #               % (uid, unit.description.cores, pid, self.pilots[pid]['caps']))
 
 
         except Exception as e :
-            logger.error ("error in unit callback for backfiller (%s) - ignored" % e)
+            logger.exception ("error in unit callback for backfiller (%s) - ignored" % e)
 
 
     # -------------------------------------------------------------------------
@@ -191,8 +195,8 @@ class BackfillingScheduler(Scheduler):
                     # need to reschedule the units which are reschedulable --
                     # all others are marked 'FAILED' if they are already
                     # 'EXECUTING' and not restartable
-                    timestamp = datetime.datetime.utcnow()
-                    self._db.change_compute_units (
+                    ts = timestamp()
+                    self._dbs.change_compute_units (
                         filter_dict = {"pilot"       : pid, 
                                        "state"       : {"$in": [UNSCHEDULED,
                                                                 PENDING_INPUT_STAGING, 
@@ -202,12 +206,12 @@ class BackfillingScheduler(Scheduler):
                         set_dict    = {"state"       : UNSCHEDULED, 
                                        "pilot"       : None},
                         push_dict   = {"statehistory": {"state"     : UNSCHEDULED, 
-                                                        "timestamp" : timestamp}, 
+                                                        "timestamp" : ts}, 
                                        "log"         : {"message"   :  "reschedule unit", 
-                                                        "timestamp" : timestamp}
+                                                        "timestamp" : ts}
                                       })
 
-                    self._db.change_compute_units (
+                    self._dbs.change_compute_units (
                         filter_dict = {"pilot"       : pid, 
                                        "restartable" : True, 
                                        "state"       : {"$in": [EXECUTING, 
@@ -216,12 +220,12 @@ class BackfillingScheduler(Scheduler):
                         set_dict    = {"state"       : UNSCHEDULED,
                                        "pilot"       : None},
                         push_dict   = {"statehistory": {"state"     : UNSCHEDULED,
-                                                        "timestamp" : timestamp}, 
+                                                        "timestamp" : ts}, 
                                        "log"         : {"message"   :  "reschedule unit", 
-                                                        "timestamp" : timestamp}
+                                                        "timestamp" : ts}
                                       })
 
-                    self._db.change_compute_units (
+                    self._dbs.change_compute_units (
                         filter_dict = {"pilot"       : pid, 
                                        "restartable" : False, 
                                        "state"       : {"$in": [EXECUTING, 
@@ -229,9 +233,9 @@ class BackfillingScheduler(Scheduler):
                                                                 STAGING_OUTPUT]}},
                         set_dict    = {"state"       : FAILED},
                         push_dict   = {"statehistory": {"state"     : FAILED, 
-                                                        "timestamp" : timestamp}, 
+                                                        "timestamp" : ts}, 
                                        "log"         : {"message"   :  "reschedule unit", 
-                                                        "timestamp" : timestamp}
+                                                        "timestamp" : ts}
                                       })
 
                         # make sure that restartable units got back into the
@@ -432,7 +436,8 @@ class BackfillingScheduler(Scheduler):
 
                 # sanity check on unit state
                 if  unit.state not in [NEW, SCHEDULING, UNSCHEDULED] :
-                    raise RuntimeError ("scheduler queue should only contain NEW or UNSCHEDULED units (%s)" % uid)
+                    raise RuntimeError ("scheduler requires NEW or UNSCHEDULED units (%s:%s)"\
+                                    % (uid, unit.state))
 
               # logger.debug ("examine unit  %s (%s cores)" % (uid, ud.cores))
 
