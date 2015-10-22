@@ -779,6 +779,7 @@ class Component(mp.Process):
                 # send state notifications
                 self.publish('state', unit)
                 self._prof.prof('publish', uid=unit['_id'], state=unit['state'])
+                time.sleep(0.1)
 
             if push:
                 if state not in self._outputs:
