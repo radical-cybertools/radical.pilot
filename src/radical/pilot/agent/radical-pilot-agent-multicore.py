@@ -1545,7 +1545,7 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop):
         raise NotImplementedError("construct_command() not implemented for LaunchMethod: %s." % self.name)
 
 
@@ -1660,7 +1660,7 @@ class LaunchMethodMPIRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop):
 
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
@@ -1731,7 +1731,7 @@ class LaunchMethodSSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop):
 
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
@@ -1789,7 +1789,7 @@ class LaunchMethodMPIEXEC(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop):
 
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
@@ -1840,7 +1840,7 @@ class LaunchMethodAPRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop):
 
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
@@ -1879,7 +1879,7 @@ class LaunchMethodCCMRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop):
 
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
@@ -1923,7 +1923,7 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop):
 
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
@@ -1978,7 +1978,7 @@ class LaunchMethodRUNJOB(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop):
 
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
@@ -2056,7 +2056,7 @@ class LaunchMethodDPLACE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop):
 
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
@@ -2109,7 +2109,7 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop):
 
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
@@ -2161,7 +2161,7 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop):
 
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
@@ -2212,7 +2212,7 @@ class LaunchMethodIBRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop):
 
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
@@ -2403,7 +2403,7 @@ class LaunchMethodORTE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop):
 
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
@@ -2472,7 +2472,7 @@ class LaunchMethodPOE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop):
 
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
@@ -2763,7 +2763,7 @@ class LaunchMethodYARN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop):
 
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
