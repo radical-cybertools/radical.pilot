@@ -37,7 +37,8 @@ workdir, for consumption:
 
 The `rp.LINK` staging action requests a symlink to be created by RP, instead of
 the copy operation used on the default `rp.TRANSFER` action.  The full example
-can be found here: :download:`getting_started_06.py <../../../examples/getting_started_06.py>`.
+can be found here: 
+:download:`07_shared_unit_data.py <../../../examples/07_shared_unit_data.py>`.
 
 .. note:: Unlike many other methods in RP, the `pilot.stage_in` option is
           *synchronous*, ie. it will only return once the transfer has been
@@ -51,7 +52,7 @@ The result of this example's execution is the very same as we saw in the
 :ref:`previous <chapter_user_guide_05>`, but it will now run significantly
 faster due to the removed staging redundancy (at least for non-local pilots):
 
-.. image:: getting_started_07.png
+.. image:: 07_shared_unit_data.png
 
 
 What's Next?

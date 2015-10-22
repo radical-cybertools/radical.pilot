@@ -37,10 +37,10 @@ which again will make the environment variable `TEST` available during CU execut
 Running the Example
 -------------------
 
-:download:`getting_started_08.py <../../../examples/getting_started_08.py>`.
+:download:`10_pre_and_post_exec.py <../../../examples/10_pre_and_post_exec.py>`.
 uses the above blob to run a bag of `echo` commands:
 
-.. image:: getting_started_10.png
+.. image:: 10_pre_and_post_exec.png
 
 
 What's Next?
@@ -49,6 +49,6 @@ What's Next?
 The RP User-Guide concludes with this section.  We recommend to check out the RP
 API documentation next, and use it to write an RP application to run your own
 workload.  Ii is easiest to do so by starting off with the 
-:download:`canonical example <../../../examples/getting_started_02.py>`, and
+:download:`canonical example <../../../examples/10_pre_and_post_exec.py>`, and
 then add bits and pieces from the various user :ref:<chapter_user_guide>` sections as needed.
 

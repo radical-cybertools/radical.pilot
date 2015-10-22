@@ -58,7 +58,7 @@ if __name__ == '__main__':
         pd_init = {
                 'resource'      : resource,
                 'cores'         : 64,  # pilot size
-                'runtime'       : 10,  # pilot runtime (min)
+                'runtime'       : 15,  # pilot runtime (min)
                 'exit_on_error' : True,
                 'project'       : config[resource]['project'],
                 'queue'         : config[resource]['queue'],
@@ -89,10 +89,7 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            # trigger an error now and then
-            if not i % 10: cud.executable = '/bin/data' # does not exist
-            else         : cud.executable = '/bin/date'
-
+            cud.executable = '/bin/date'
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -108,16 +105,19 @@ if __name__ == '__main__':
     
         report.info('\n')
         for unit in units:
-            if unit.state == rp.FAILED:
-                report.plain('  * %s: %s, exit: %3s, err: %s' \
-                        % (unit.uid, unit.state[:4], 
-                           unit.exit_code, unit.stderr.strip()[-35:]))
-                report.error('>>err\n')
-            else:
-                report.plain('  * %s: %s, exit: %3s, out: %s' \
-                        % (unit.uid, unit.state[:4], 
-                            unit.exit_code, unit.stdout.strip()[:35]))
-                report.ok('>>ok\n')
+            report.plain('  * %s: %s, exit: %3s, out: %s\n' \
+                    % (unit.uid, unit.state[:4], 
+                        unit.exit_code, unit.stdout.strip()[:35]))
+
+        # get some more details for one unit:
+        import time
+        unit_dict = units[0].as_dict()
+        report.plain("unit workdir : %s\n" % unit_dict['working_directory'])
+        report.plain("pilot id     : %s\n" % unit_dict['execution_details']['pilot'])
+        report.plain("state history: \n")
+        for state_info in unit_dict['execution_details']['statehistory']:
+            report.plain("\t\t%s : %s\n" % \
+                    (time.ctime(state_info['timestamp']), state_info['state']))
     
 
     except Exception as e:

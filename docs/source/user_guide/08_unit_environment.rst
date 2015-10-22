@@ -30,10 +30,10 @@ and are here used for demonstration -- but those should not be relied upon.
 Running the Example
 -------------------
 
-:download:`getting_started_08.py <../../../examples/getting_started_08.py>`.
+:download:`08_unit_environment.py <../../../examples/08_unit_environment.py>`.
 uses the above blob to run a bag of `echo` commands:
 
-.. image:: getting_started_08.png
+.. image:: 08_unit_environment.png
 
 
 What's Next?

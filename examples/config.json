@@ -19,14 +19,18 @@
         },
 
         "epsrc.archer" : {
-            "project"  : "e290",
-            "queue"    : "short",
+            "project"  : "y14-CECAM",
+            "queue"    : "R3211460",
+          # "queue"    : "R3211496",
+          # "queue"    : "R3211473",
             "schema"   : null
         },
 
         "epsrc.archer_orte" : {
-            "project"  : "e290",
-            "queue"    : "short",
+            "project"  : "y14-CECAM",
+            "queue"    : "R3211460",
+          # "queue"    : "R3211496",
+          # "queue"    : "R3211473",
             "schema"   : null
         },
 
@@ -43,15 +47,15 @@
         },
 
         "xsede.stampede" : {
-            "project"  : "TG-MCB090174",
+            "project"  : "TG-MCB150124",
             "queue"    : "development",
-            "schema"   : null
+            "schema"   : "gsissh"
         },
 
         "xsede.comet"  : {
             "project"  : "unc100",
             "queue"    : "",
-            "schema"   : null
+            "schema"   : "gsissh"
         },
 
         "xsede.gordon" : {

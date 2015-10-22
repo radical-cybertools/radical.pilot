@@ -58,7 +58,7 @@ if __name__ == '__main__':
         pd_init = {
                 'resource'      : resource,
                 'cores'         : 64,  # pilot size
-                'runtime'       : 10,  # pilot runtime (min)
+                'runtime'       : 15,  # pilot runtime (min)
                 'exit_on_error' : True,
                 'project'       : config[resource]['project'],
                 'queue'         : config[resource]['queue'],
@@ -78,7 +78,7 @@ if __name__ == '__main__':
         umgr.add_pilots(pilot)
 
         # Create a workload of ComputeUnits. 
-        # Each compute unit runs a specific, replicated `echo` command
+        # Each compute unit runs a specific `echo` command
 
         n = 128   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
@@ -89,10 +89,9 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
+            cud.pre_exec    = ['export TEST=jabberwocky']
             cud.executable  = '/bin/echo'
-            cud.arguments   = ['-n', '$RP_UNIT_ID ']
-            cud.cores       = 2
-            cud.mpi         = True
+            cud.arguments   = ['$RP_UNIT_ID greets $TEST']
 
             cuds.append(cud)
             report.progress()

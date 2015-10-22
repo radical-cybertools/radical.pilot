@@ -11,8 +11,8 @@ features, how to submit a pilot, and how to submit ComputeUnits to that pilot
 for execution.  We will here show how an application can, after the units
 complete, inspect the details of that execution.
 
-You can download the script :download:`getting_started_01.py
-<../../../examples/getting_started_01.py>`, which has the following diff to the
+You can download the script :download:`01_unit_details.py
+<../../../examples/01_unit_details.py>`, which has the following diff to the
 basic example:
 
 
@@ -49,7 +49,7 @@ Running the Example
 
 Running the example will result in an output similar to the one shown below:
 
-.. image:: getting_started_01.png
+.. image:: 01_unit_details.png
 
 
 What's Next?

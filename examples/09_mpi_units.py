@@ -58,7 +58,7 @@ if __name__ == '__main__':
         pd_init = {
                 'resource'      : resource,
                 'cores'         : 64,  # pilot size
-                'runtime'       : 10,  # pilot runtime (min)
+                'runtime'       : 15,  # pilot runtime (min)
                 'exit_on_error' : True,
                 'project'       : config[resource]['project'],
                 'queue'         : config[resource]['queue'],
@@ -77,8 +77,8 @@ if __name__ == '__main__':
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
-        # Create a workload of ComputeUnits.
-        # Each compute unit runs '/bin/date'.
+        # Create a workload of ComputeUnits. 
+        # Each compute unit runs a MPI test application.
 
         n = 128   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
@@ -89,7 +89,11 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable = '/bin/date'
+            cud.executable     = 'python'
+            cud.arguments      = ['helloworld_mpi.py']
+            cud.input_staging  = ['helloworld_mpi.py']
+            cud.cores          = 4
+            cud.mpi            = True
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -97,12 +101,18 @@ if __name__ == '__main__':
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        umgr.submit_units(cuds)
+        units = umgr.submit_units(cuds)
 
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
     
+        report.info('\n')
+        for unit in units:
+            report.plain('  * %s: %s, exit: %3s, MPI ranks: %s\n' \
+                    % (unit.uid, unit.state[:4], unit.exit_code,
+                       ','.join(unit.stdout.split('\n'))))
+
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
