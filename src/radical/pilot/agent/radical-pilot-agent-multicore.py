@@ -1545,8 +1545,7 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop, opaque_slots):
         raise NotImplementedError("construct_command() not implemented for LaunchMethod: %s." % self.name)
 
 
@@ -1620,15 +1619,20 @@ class LaunchMethodFORK(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop):
+
+        opaque_slots = cu['opaque_slots']
+        cud          = cu['description']
+        task_exec    = cud['executable']
+        task_args    = cud.get('arguments')
+        task_cores   = cud.get('cores', 1)
 
         if task_args:
             command = " ".join([task_exec, task_args])
         else:
             command = task_exec
 
-        self._log.info('LaunchMethodFORK returns command : %s'%command)
+        self._log.info('LaunchMethodFORK returns command : %s', command)
         return command, None
 
 
@@ -1656,8 +1660,13 @@ class LaunchMethodMPIRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop, opaque_slots):
+
+        opaque_slots = cu['opaque_slots']
+        cud          = cu['description']
+        task_exec    = cud['executable']
+        task_args    = cud.get('arguments')
+        task_cores   = cud.get('cores', 1)
 
         if not 'task_slots' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -1676,7 +1685,7 @@ class LaunchMethodMPIRUN(LaunchMethod):
         export_vars = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
         mpirun_command = "%s %s -np %s -host %s %s" % (
-            self.launch_command, export_vars, task_numcores, hosts_string, task_command)
+            self.launch_command, export_vars, task_cores, hosts_string, task_command)
 
         return mpirun_command, None
 
@@ -1722,8 +1731,13 @@ class LaunchMethodSSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop, opaque_slots):
+
+        opaque_slots = cu['opaque_slots']
+        cud          = cu['description']
+        task_exec    = cud['executable']
+        task_args    = cud.get('arguments')
+        task_cores   = cud.get('cores', 1)
 
         if not 'task_slots' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -1775,8 +1789,13 @@ class LaunchMethodMPIEXEC(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop, opaque_slots):
+
+        opaque_slots = cu['opaque_slots']
+        cud          = cu['description']
+        task_exec    = cud['executable']
+        task_args    = cud.get('arguments')
+        task_cores   = cud.get('cores', 1)
 
         if not 'task_slots' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -1794,7 +1813,7 @@ class LaunchMethodMPIEXEC(LaunchMethod):
             task_command = task_exec
 
         mpiexec_command = "%s -n %s -host %s %s" % (
-            self.launch_command, task_numcores, hosts_string, task_command)
+            self.launch_command, task_cores, hosts_string, task_command)
 
         return mpiexec_command, None
 
@@ -1821,15 +1840,20 @@ class LaunchMethodAPRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop, opaque_slots):
+
+        opaque_slots = cu['opaque_slots']
+        cud          = cu['description']
+        task_exec    = cud['executable']
+        task_args    = cud.get('arguments')
+        task_cores   = cud.get('cores', 1)
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
         else:
             task_command = task_exec
 
-        aprun_command = "%s -n %d %s" % (self.launch_command, task_numcores, task_command)
+        aprun_command = "%s -n %d %s" % (self.launch_command, task_cores, task_command)
 
         return aprun_command, None
 
@@ -1855,15 +1879,20 @@ class LaunchMethodCCMRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop, opaque_slots):
+
+        opaque_slots = cu['opaque_slots']
+        cud          = cu['description']
+        task_exec    = cud['executable']
+        task_args    = cud.get('arguments')
+        task_cores   = cud.get('cores', 1)
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
         else:
             task_command = task_exec
 
-        ccmrun_command = "%s -n %d %s" % (self.launch_command, task_numcores, task_command)
+        ccmrun_command = "%s -n %d %s" % (self.launch_command, task_cores, task_command)
 
         return ccmrun_command, None
 
@@ -1894,8 +1923,13 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop, opaque_slots):
+
+        opaque_slots = cu['opaque_slots']
+        cud          = cu['description']
+        task_exec    = cud['executable']
+        task_args    = cud.get('arguments')
+        task_cores   = cud.get('cores', 1)
 
         if not 'task_slots' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -1916,7 +1950,7 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
 
         mpirun_ccmrun_command = "%s %s %s -np %d -host %s %s" % (
             self.launch_command, self.mpirun_command, export_vars,
-            task_numcores, hosts_string, task_command)
+            task_cores, hosts_string, task_command)
 
         return mpirun_ccmrun_command, None
 
@@ -1944,8 +1978,13 @@ class LaunchMethodRUNJOB(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop, opaque_slots):
+
+        opaque_slots = cu['opaque_slots']
+        cud          = cu['description']
+        task_exec    = cud['executable']
+        task_args    = cud.get('arguments')
+        task_cores   = cud.get('cores', 1)
 
         if  'cores_per_node'      not in opaque_slots or\
             'loadl_bg_block'      not in opaque_slots or\
@@ -1959,8 +1998,8 @@ class LaunchMethodRUNJOB(LaunchMethod):
         sub_block_shape_str = opaque_slots['sub_block_shape_str']
         corner_node         = opaque_slots['corner_node']
 
-        if task_numcores % cores_per_node:
-            msg = "Num cores (%d) is not a multiple of %d!" % (task_numcores, cores_per_node)
+        if task_cores % cores_per_node:
+            msg = "Num cores (%d) is not a multiple of %d!" % (task_cores, cores_per_node)
             self._log.exception(msg)
             raise ValueError(msg)
 
@@ -1970,7 +2009,8 @@ class LaunchMethodRUNJOB(LaunchMethod):
         # Set the number of tasks/ranks per node
         # TODO: Currently hardcoded, this should be configurable,
         #       but I don't see how, this would be a leaky abstraction.
-        runjob_command += ' --ranks-per-node %d' % min(cores_per_node, task_numcores)
+        runjob_command += ' --ranks-per-node %d' % min(cores_per_node,
+                task_cores)
 
         # Run this subjob in the block communicated by LoadLeveler
         runjob_command += ' --block %s'  % loadl_bg_block
@@ -2016,8 +2056,13 @@ class LaunchMethodDPLACE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop, opaque_slots):
+
+        opaque_slots = cu['opaque_slots']
+        cud          = cu['description']
+        task_exec    = cud['executable']
+        task_args    = cud.get('arguments')
+        task_cores   = cud.get('cores', 1)
 
         if 'task_offsets' not in opaque_slots :
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -2034,7 +2079,7 @@ class LaunchMethodDPLACE(LaunchMethod):
 
         dplace_command = "%s -c %d-%d %s" % (
             self.launch_command, dplace_offset,
-            dplace_offset+task_numcores-1, task_command)
+            dplace_offset+task_cores-1, task_command)
 
         return dplace_command, None
 
@@ -2064,8 +2109,13 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop, opaque_slots):
+
+        opaque_slots = cu['opaque_slots']
+        cud          = cu['description']
+        task_exec    = cud['executable']
+        task_args    = cud.get('arguments')
+        task_cores   = cud.get('cores', 1)
 
         if not 'task_slots' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -2084,7 +2134,7 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
         export_vars = ' '.join([var+"=$"+var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
         mpirun_rsh_command = "%s -np %s %s %s %s" % (
-            self.launch_command, task_numcores, hosts_string, export_vars, task_command)
+            self.launch_command, task_cores, hosts_string, export_vars, task_command)
 
         return mpirun_rsh_command, None
 
@@ -2111,8 +2161,13 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop, opaque_slots):
+
+        opaque_slots = cu['opaque_slots']
+        cud          = cu['description']
+        task_exec    = cud['executable']
+        task_args    = cud.get('arguments')
+        task_cores   = cud.get('cores', 1)
 
         if not 'task_offsets' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -2128,8 +2183,8 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
         dplace_offset = task_offsets
 
         mpirun_dplace_command = "%s -np %d %s -c %d-%d %s" % \
-            (self.mpirun_command, task_numcores, self.launch_command,
-             dplace_offset, dplace_offset+task_numcores-1, task_command)
+            (self.mpirun_command, task_cores, self.launch_command,
+             dplace_offset, dplace_offset+task_cores-1, task_command)
 
         return mpirun_dplace_command, None
 
@@ -2157,8 +2212,13 @@ class LaunchMethodIBRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop, opaque_slots):
+
+        opaque_slots = cu['opaque_slots']
+        cud          = cu['description']
+        task_exec    = cud['executable']
+        task_args    = cud.get('arguments')
+        task_cores   = cud.get('cores', 1)
 
         if not 'task_offsets' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -2174,7 +2234,7 @@ class LaunchMethodIBRUN(LaunchMethod):
         ibrun_offset = task_offsets
 
         ibrun_command = "%s -n %s -o %d %s" % \
-                        (self.launch_command, task_numcores,
+                        (self.launch_command, task_cores,
                          ibrun_offset, task_command)
 
         return ibrun_command, None
@@ -2343,8 +2403,13 @@ class LaunchMethodORTE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop, opaque_slots):
+
+        opaque_slots = cu['opaque_slots']
+        cud          = cu['description']
+        task_exec    = cud['executable']
+        task_args    = cud.get('arguments')
+        task_cores   = cud.get('cores', 1)
 
         if 'task_slots' not in opaque_slots:
             raise RuntimeError('No task_slots to launch via %s: %s' \
@@ -2382,7 +2447,7 @@ class LaunchMethodORTE(LaunchMethod):
         export_vars  = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
         orte_command = '%s --debug-devel --hnp "%s" %s -np %s -host %s %s' % (
-            self.launch_command, dvm_uri, export_vars, task_numcores, hosts_string, task_command)
+            self.launch_command, dvm_uri, export_vars, task_cores, hosts_string, task_command)
 
         return orte_command, None
 
@@ -2407,8 +2472,13 @@ class LaunchMethodPOE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, opaque_slots):
+    def construct_command(self, cu, launch_script_hop, opaque_slots):
+
+        opaque_slots = cu['opaque_slots']
+        cud          = cu['description']
+        task_exec    = cud['executable']
+        task_args    = cud.get('arguments')
+        task_cores   = cud.get('cores', 1)
 
         if not 'task_slots' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -2693,8 +2763,14 @@ class LaunchMethodYARN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, task_exec, task_args, task_numcores,
-                          launch_script_hop, opaque_slots, (cu_descr,work_dir)):
+    def construct_command(self, cu, launch_script_hop, opaque_slots):
+
+        opaque_slots = cu['opaque_slots']
+        cud          = cu['description']
+        task_exec    = cud['executable']
+        task_args    = cud.get('arguments')
+        task_cores   = cud.get('cores', 1)
+        work_dir     = cud.get('workdir')
 
         # Construct the args_string which is the arguments given as input to the
         # shell script. Needs to be a string
@@ -2744,9 +2820,9 @@ class LaunchMethodYARN(LaunchMethod):
         print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
         print_str+="echo '# Staging Input Files'>>ExecScript.sh\n"
         
-        if cu_descr['input_staging']:
+        if cud['input_staging']:
             scp_input_files='"'
-            for InputFile in cu_descr['input_staging']:
+            for InputFile in cud['input_staging']:
                 scp_input_files+='%s/%s '%(work_dir,InputFile['target'])
             scp_input_files+='"'
             print_str+="echo 'scp $YarnUser@%s:%s .'>>ExecScript.sh\n"%(client_node,scp_input_files)
@@ -2757,11 +2833,11 @@ class LaunchMethodYARN(LaunchMethod):
         print_str+="echo '# Creating Executing Command'>>ExecScript.sh\n"
 
         arg_str=str()
-        if cu_descr['arguments']:
-            for arg in cu_descr['arguments']:
+        if cud['arguments']:
+            for arg in cud['arguments']:
                 arg_str+='%s '%str(arg)
 
-        print_str+="echo '%s %s 1>Ystdout 2>Ystderr'>>ExecScript.sh\n"%(cu_descr['executable'],arg_str)
+        print_str+="echo '%s %s 1>Ystdout 2>Ystderr'>>ExecScript.sh\n"%(cud['executable'],arg_str)
 
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo ''>>ExecScript.sh\n"
@@ -2769,8 +2845,8 @@ class LaunchMethodYARN(LaunchMethod):
         print_str+="echo '# Staging Output Files'>>ExecScript.sh\n"
         print_str+="echo 'YarnUser=$(/bin/whoami)'>>ExecScript.sh\n"
         scp_output_files='Ystderr Ystdout'
-        if cu_descr['output_staging']:
-            for OutputFile in cu_descr['output_staging']:
+        if cud['output_staging']:
+            for OutputFile in cud['output_staging']:
                 scp_output_files+=' %s'%(OutputFile['source'])
         print_str+="echo 'scp %s $YarnUser@%s:%s'>>ExecScript.sh\n"%(scp_output_files,client_node,work_dir)
 
@@ -2788,15 +2864,15 @@ class LaunchMethodYARN(LaunchMethod):
         else:
             args_string = ''
 
-        #app_name = '-appname '+ cu_descr['_id']
+        #app_name = '-appname '+ cud['_id']
         # Construct the ncores_string which is the number of cores used by the
         # container to run the script
-        if task_numcores:
-            ncores_string = '-container_vcores '+str(task_numcores)
+        if task_cores:
+            ncores_string = '-container_vcores '+str(task_cores)
         else:
             ncores_string = ''
 
-        self._log.debug("CU Descr: %s"%cu_descr)
+        self._log.debug("CU Descr: %s", cud)
 
         # Construct the nmem_string which is the size of memory used by the
         # container to run the script
@@ -4580,23 +4656,8 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
             # The actual command line, constructed per launch-method
             try:
-                if launcher.name == 'LaunchMethodYARN':
-                    #---------------------------------------------------------------------
-                    # 
-                    self._log.debug("There was a YARN Launcher")
+                launch_command, hop_cmd = launcher.construct_command(cu, launch_script_name)
 
-                    launch_command, hop_cmd  = \
-                        launcher.construct_command(cu['description']['executable'], 
-                                                  cu['description']['environment'],
-                                                   cu['description']['cores'],
-                                                   ' ',cu['opaque_slots'],(cu['description'],cu['workdir']))
-                else:
-                    launch_command, hop_cmd = \
-                        launcher.construct_command(cu['description']['executable'],
-                                               task_args_string,
-                                               cu['description']['cores'],
-                                               launch_script_name,
-                                               cu['opaque_slots'])
                 if hop_cmd : cmdline = hop_cmd
                 else       : cmdline = launch_script_name
 
@@ -5197,20 +5258,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         if  descr['stderr'] : io  += "2>%s " % descr['stderr']
         else                : io  += "2>%s " %       'STDERR'
 
-        if launcher.name == 'YARN':
-            #---------------------------------------------------------------------
-            # TODO: Change the construct command to use only the CU description
-            self._log.debug("There was a YARN Launcher")
-
-            cmd, hop_cmd  = launcher.construct_command(
-                    descr['executable'], descr['environment'], descr['cores'],
-                    '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',(descr,cu['workdir']))
-        else:
-
-            cmd, hop_cmd  = launcher.construct_command(
-                    descr['executable'], args, descr['cores'],
-                    '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"',
-                    cu['opaque_slots'])
+        cmd, hop_cmd  = launcher.construct_command(cu, '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"')
 
         script = ''
         if 'RADICAL_PILOT_PROFILE' in os.environ:
@@ -6544,11 +6592,16 @@ class AgentWorker(rpu.Worker):
                         'task_slots'   : ['%s:0' % node], 
                         'task_offsets' : [], 
                         'lm_info'      : self._cfg['lrms_info']['lm_info']}
-                cmd, hop = agent_lm.construct_command(task_exec="/bin/sh",
-                        task_args="%s/bootstrap_2.sh %s" % (os.getcwd(), sa),
-                        task_numcores=1, 
-                        launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "%s"' % ls_name,
-                        opaque_slots=opaque_slots)
+                agent_cu = {
+                        'opaque_slots' : opaque_slots,
+                        'description'  : {
+                            'cores'      : 1,
+                            'executable' : "/bin/sh",
+                            'arguments'  : ["%s/bootstrap_2.sh" % os.getcwd(), sa]
+                            }
+                        }
+                cmd, hop = agent_lm.construct_command(agent_cu,
+                        launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "%s"' % ls_name)
 
                 with open (ls_name, 'w') as ls:
                     # note that 'exec' only makes sense if we don't add any
