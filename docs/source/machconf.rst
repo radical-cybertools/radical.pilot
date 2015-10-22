@@ -84,10 +84,10 @@ pre-configured resource in her code like this:
 
 The RADICAL-Pilot developer team maintains a growing set of resource
 configuration files. Several of the settings included there can be overridden in
-the `ComputePilotDescription` object. For example, the snipped above replaces
-the default queue `standard` with the queue `large`. For a list of supported
+the ``ComputePilotDescription`` object. For example, the snipped above replaces
+the default queue ``standard`` with the queue ``large``. For a list of supported
 configurations, see :ref:`chapter_resources` - those resource files live under
-`radical/pilot/configs/`.
+``radical/pilot/configs/``.
 
 
 Writing a Custom Resource Configuration File
@@ -95,7 +95,7 @@ Writing a Custom Resource Configuration File
 
 If you want to use RADICAL-Pilot with a resource that is not in any of the
 provided resource configuration files, you can write your own, and drop it in
-`$HOME/.radical/pilot/configs/<your_resource_configuration_file_name>.json`.
+``$HOME/.radical/pilot/configs/<your_resource_configuration_file_name>.json``.
 
 .. note::
     Be advised that you may need specific knowledge about the target resource to
@@ -152,38 +152,38 @@ A configuration file has to be valid JSON. The structure is as follows:
     }
 
 
-The name of your file (here `lrz.json`) together with the name of the resource
-(`supermuc`) form the resource key which is used in the
-`class:ComputePilotDescription` resource attribute (`lrz.supermuc`).
+The name of your file (here ``lrz.json``) together with the name of the resource
+(``supermuc``) form the resource key which is used in the
+`class:ComputePilotDescription` resource attribute (``lrz.supermuc``).
 
 All fields are mandatory, unless indicated otherwise below.
 
-* `description`: a human readable description of the resource.
-* `notes`: information needed to form valid pilot descriptions, such as what parameter are required, etc.
-* `schemas`: allowed values for the `access_schema` parameter of the pilot description.  The first schema in the list is used by default.  For each schema, a subsection is needed which specifies `job_manager_endpoint` and `filesystem_endpoint`.
-* `job_manager_endpoint`: access url for pilot submission (interpreted by SAGA).
-* `filesystem_endpoint`: access url for file staging (interpreted by SAGA).
-* `default_queue`: queue to use for pilot submission (optional).
-* `lrms`: type of job management system. Valid values are: `LOADL`, `LSF`, `PBSPRO`, `SGE`, `SLURM`, `TORQUE`, `FORK`.
-* `task_launch_method`: type of compute node access, required for non-MPI units. Valid values are: `SSH`,`APRUN` or `LOCAL`.
-* `mpi_launch_method`: type of MPI support, required for MPI units. Valid values are: `MPIRUN`, `MPIEXEC`, `APRUN`, `IBRUN` or `POE`.
-* `python_interpreter`: path to python (optional).
-* `pre_bootstrap_1`: list of commands to execute for initialization of main agent (optional).
-* `pre_bootstrap_2`: list of commands to execute for initialization of sub-agent (optional).
-* `valid_roots`: list of shared file system roots (optional). Note: pilot sandboxes must lie under these roots.
-* `pilot_agent`: type of pilot agent to use. Currently: `radical-pilot-agent-multicore.py`.
-* `forward_tunnel_endpoint`: name of the host which can be used to create ssh tunnels from the compute nodes to the outside world (optional).
+* ``description``: a human readable description of the resource.
+* ``notes``: information needed to form valid pilot descriptions, such as what parameter are required, etc.
+* ``schemas``: allowed values for the ``access_schema`` parameter of the pilot description.  The first schema in the list is used by default.  For each schema, a subsection is needed which specifies ``job_manager_endpoint`` and ``filesystem_endpoint``.
+* ``job_manager_endpoint``: access url for pilot submission (interpreted by SAGA).
+* ``filesystem_endpoint``: access url for file staging (interpreted by SAGA).
+* ``default_queue``: queue to use for pilot submission (optional).
+* ``lrms``: type of job management system. Valid values are: ``LOADL``, ``LSF``, ``PBSPRO``, ``SGE``, ``SLURM``, ``TORQUE``, ``FORK``.
+* ``task_launch_method``: type of compute node access, required for non-MPI units. Valid values are: ``SSH``,``APRUN`` or ``LOCAL``.
+* ``mpi_launch_method``: type of MPI support, required for MPI units. Valid values are: ``MPIRUN``, ``MPIEXEC``, ``APRUN``, ``IBRUN`` or ``POE``.
+* ``python_interpreter``: path to python (optional).
+* ``pre_bootstrap_1``: list of commands to execute for initialization of main agent (optional).
+* ``pre_bootstrap_2``: list of commands to execute for initialization of sub-agent (optional).
+* ``valid_roots``: list of shared file system roots (optional). Note: pilot sandboxes must lie under these roots.
+* ``pilot_agent``: type of pilot agent to use. Currently: ``radical-pilot-agent-multicore.py``.
+* ``forward_tunnel_endpoint``: name of the host which can be used to create ssh tunnels from the compute nodes to the outside world (optional).
 
 Several configuration files are part of the RADICAL-Pilot installation, and live
-under `radical/pilot/configs/`.
+under ``radical/pilot/configs/``.
 
 
 Customizing Resource Configurations Programatically
 ===================================================
 
 The set of resource configurations available to the RADICAL-Pilot session is
-accessible programmatically. The example below changes the `default_queue` for
-the `epsrc.archer` resource.
+accessible programmatically. The example below changes the ``default_queue`` for
+the ``epsrc.archer`` resource.
 
 .. code-block:: python
 
