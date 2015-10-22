@@ -1624,8 +1624,8 @@ class LaunchMethodFORK(LaunchMethod):
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
         task_exec    = cud['executable']
+        task_cores   = cud['cores']
         task_args    = cud.get('arguments')
-        task_cores   = cud.get('cores', 1)
 
         if task_args:
             command = " ".join([task_exec, task_args])
@@ -1665,8 +1665,8 @@ class LaunchMethodMPIRUN(LaunchMethod):
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
         task_exec    = cud['executable']
+        task_cores   = cud['cores']
         task_args    = cud.get('arguments')
-        task_cores   = cud.get('cores', 1)
 
         if not 'task_slots' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -1736,8 +1736,8 @@ class LaunchMethodSSH(LaunchMethod):
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
         task_exec    = cud['executable']
+        task_cores   = cud['cores']
         task_args    = cud.get('arguments')
-        task_cores   = cud.get('cores', 1)
 
         if not 'task_slots' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -1794,8 +1794,8 @@ class LaunchMethodMPIEXEC(LaunchMethod):
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
         task_exec    = cud['executable']
+        task_cores   = cud['cores']
         task_args    = cud.get('arguments')
-        task_cores   = cud.get('cores', 1)
 
         if not 'task_slots' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -1845,8 +1845,8 @@ class LaunchMethodAPRUN(LaunchMethod):
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
         task_exec    = cud['executable']
+        task_cores   = cud['cores']
         task_args    = cud.get('arguments')
-        task_cores   = cud.get('cores', 1)
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1884,8 +1884,8 @@ class LaunchMethodCCMRUN(LaunchMethod):
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
         task_exec    = cud['executable']
+        task_cores   = cud['cores']
         task_args    = cud.get('arguments')
-        task_cores   = cud.get('cores', 1)
 
         if task_args:
             task_command = " ".join([task_exec, task_args])
@@ -1928,8 +1928,8 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
         task_exec    = cud['executable']
+        task_cores   = cud['cores']
         task_args    = cud.get('arguments')
-        task_cores   = cud.get('cores', 1)
 
         if not 'task_slots' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -1983,8 +1983,8 @@ class LaunchMethodRUNJOB(LaunchMethod):
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
         task_exec    = cud['executable']
+        task_cores   = cud['cores']
         task_args    = cud.get('arguments')
-        task_cores   = cud.get('cores', 1)
 
         if  'cores_per_node'      not in opaque_slots or\
             'loadl_bg_block'      not in opaque_slots or\
@@ -2061,8 +2061,8 @@ class LaunchMethodDPLACE(LaunchMethod):
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
         task_exec    = cud['executable']
+        task_cores   = cud['cores']
         task_args    = cud.get('arguments')
-        task_cores   = cud.get('cores', 1)
 
         if 'task_offsets' not in opaque_slots :
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -2114,8 +2114,8 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
         task_exec    = cud['executable']
+        task_cores   = cud['cores']
         task_args    = cud.get('arguments')
-        task_cores   = cud.get('cores', 1)
 
         if not 'task_slots' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -2166,8 +2166,8 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
         task_exec    = cud['executable']
+        task_cores   = cud['cores']
         task_args    = cud.get('arguments')
-        task_cores   = cud.get('cores', 1)
 
         if not 'task_offsets' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -2217,8 +2217,8 @@ class LaunchMethodIBRUN(LaunchMethod):
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
         task_exec    = cud['executable']
+        task_cores   = cud['cores']
         task_args    = cud.get('arguments')
-        task_cores   = cud.get('cores', 1)
 
         if not 'task_offsets' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -2408,8 +2408,8 @@ class LaunchMethodORTE(LaunchMethod):
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
         task_exec    = cud['executable']
+        task_cores   = cud['cores']
         task_args    = cud.get('arguments')
-        task_cores   = cud.get('cores', 1)
 
         if 'task_slots' not in opaque_slots:
             raise RuntimeError('No task_slots to launch via %s: %s' \
@@ -2477,8 +2477,8 @@ class LaunchMethodPOE(LaunchMethod):
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
         task_exec    = cud['executable']
+        task_cores   = cud['cores']
         task_args    = cud.get('arguments')
-        task_cores   = cud.get('cores', 1)
 
         if not 'task_slots' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -2768,8 +2768,8 @@ class LaunchMethodYARN(LaunchMethod):
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
         task_exec    = cud['executable']
+        task_cores   = cud['cores']
         task_args    = cud.get('arguments')
-        task_cores   = cud.get('cores', 1)
         work_dir     = cud.get('workdir')
 
         # Construct the args_string which is the arguments given as input to the
