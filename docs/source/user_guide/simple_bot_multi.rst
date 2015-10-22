@@ -1,3 +1,4 @@
+
 .. _chapter_example_simple_bag_multi_pilots:
 
 *****************************************
@@ -61,7 +62,7 @@ scheduler.
 
 .. code-block:: python
     umgr = rp.UnitManager (session=session,
-                               scheduler=rp.SCHED_ROUND_ROBIN)
+                           scheduler=rp.SCHED_ROUND_ROBIN)
 
 
 ------------
@@ -83,13 +84,13 @@ Download the file ``simple_bot_mult_mach.py`` with the following command:
 
     .. code-block:: bash
 
-        curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs.tutorial/examples/simple_bot_mult_res.py
+        curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs.tutorial/examples/docs/simple_bot_mult_res.py
 
 .. only:: release
 
     .. code-block:: bash
 
-        curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/simple_bot_mult_res.py
+        curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/docs/simple_bot_mult_res.py
 
 
 Open the file ``simple_bot_multi_mach.py`` with your favorite editor. The example should 
@@ -103,7 +104,7 @@ marked:
 
 and change the code below accordging to the instructions in the comments.
 
-----------
+---------
 Execution
 ---------
 
@@ -173,4 +174,5 @@ The Complete Example
 
 .. warning:: Make sure to adjust ... before you attempt to run it.
 
-.. literalinclude:: ../../../examples/simple_bot_mult_res.py
+.. literalinclude:: ../../../examples/docs/simple_bot_mult_res.py
+
