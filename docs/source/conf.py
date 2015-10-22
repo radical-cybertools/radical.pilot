@@ -57,22 +57,25 @@ List of Pre-Configured Resources
 
 """)
 
-    configs = os.listdir("{0}/../../src/radical/pilot/configs/".format(script_dir))
+    import glob
+    configs = glob.glob("%s/../../src/radical/pilot/configs/resource_*.json" % script_dir)
     for config in configs:
 
-        if config.endswith(".json") is False:
+        if not config.endswith(".json"):
             continue # skip all non-python files
 
-        if config.startswith("aliases") is True:
+        if "/resource_aliases" in config:
             continue # skip alias files
 
         print " * %s" % config
 
         try: 
-             json_data = ru.read_json_str("../../src/radical/pilot/configs/%s" % config)
+             json_data = ru.read_json_str(config)
         except Exception, ex:
              print "    * JSON PARSING ERROR: %s" % str(ex)
              continue
+
+        config = config.split('/')[-1]
 
         resources_rst.write("{0}\n".format(config[:-5].upper()))
         resources_rst.write("{0}\n\n".format("="*len(config[:-5])))
@@ -103,7 +106,7 @@ List of Pre-Configured Resources
             resources_rst.write("{0}\n".format(host_key.upper()))
             resources_rst.write("{0}\n\n".format("*"*len(host_key)))
             resources_rst.write("{0}\n\n".format(resource_config["description"]))
-            resources_rst.write("* **Resource label**      : ``{0}``\n".format(resource_key))
+            resources_rst.write("* **Resource label**      : ``{0}``\n".format(resource_key[9:]))
             resources_rst.write("* **Raw config**          : :download:`{0} <../../src/radical/pilot/configs/{0}>`\n".format(config))
             if resource_config["notes"] != "None":
                 resources_rst.write("* **Note**            : {0}\n".format(resource_config["notes"]))

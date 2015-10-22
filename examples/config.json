@@ -1,0 +1,97 @@
+
+{
+        "local.localhost" : {
+            "project"  : null,
+            "queue"    : null,
+            "schema"   : null
+        },
+
+        "ncsa.bw" : {
+            "project"  : "gkd",
+            "queue"    : "debug",
+            "schema"   : "gsissh"
+        },
+
+        "nersc.edison" : {
+            "project"  : null,
+            "queue"    : "debug",
+            "schema"   : "ssh"
+        },
+
+        "epsrc.archer" : {
+            "project"  : "y14-CECAM",
+            "queue"    : "R3211460",
+          # "queue"    : "R3211496",
+          # "queue"    : "R3211473",
+            "schema"   : null
+        },
+
+        "epsrc.archer_orte" : {
+            "project"  : "y14-CECAM",
+            "queue"    : "R3211460",
+          # "queue"    : "R3211496",
+          # "queue"    : "R3211473",
+            "schema"   : null
+        },
+
+        "lrz.supermuc" : {
+            "project"  : "e290",
+            "queue"    : "short",
+            "schema"   : null
+        },
+
+        "xsede.supermic" : {
+            "project"  : "TG-CCR140028",
+            "queue"    : "workq",
+            "schema"   : null
+        },
+
+        "xsede.stampede" : {
+            "project"  : "TG-MCB150124",
+            "queue"    : "development",
+            "schema"   : "gsissh"
+        },
+
+        "xsede.comet"  : {
+            "project"  : "unc100",
+            "queue"    : "",
+            "schema"   : "gsissh"
+        },
+
+        "xsede.gordon" : {
+            "project"  : null,
+            "queue"    : "debug",
+            "schema"   : null
+        },
+
+        "xsede.blacklight" : {
+            "project"  : null,
+            "queue"    : "debug",
+            "schema"   : "gsissh"
+        },
+
+        "xsede.trestles" : {
+            "project"  : "TG-MCB090174" ,
+            "queue"    : "shared",
+            "schema"   : null
+        },
+
+        "futuregrid.india" : {
+            "project"  : null,
+            "queue"    : null,
+            "schema"   : null
+        },
+
+        "ornl.titan"   : {
+            "project"  : "csc168",
+            "queue"    : "batch",
+            "schema"   : "local"
+        },
+
+        "nersc.hopper" : {
+            "project"  : null,
+            "queue"    : "debug",
+            "schema"   : "ssh"
+        }
+}
+

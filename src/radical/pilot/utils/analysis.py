@@ -122,9 +122,9 @@ def add_concurrency (frame, tgt, spec):
         spec = {'in'  : [{'state' :'Executing'}],
                 'out' : [{'state' :'Done'},
                          {'state' :'Failed'},
-                         {'state' :'Cancelled'}]
+                         {'state' :'Canceled'}]
                }
-        get_concurrency (df, 'concurrently_running', spec)
+        add_concurrency (df, 'concurrently_running', spec)
     """
     
     import numpy as np
@@ -195,6 +195,8 @@ def add_concurrency (frame, tgt, spec):
     frame[tgt] = frame.apply(lambda row: _time(row[tgt]),  axis=1)
   # print frame[[tgt, 'time']]
 
+    return frame
+
 
 
 # ------------------------------------------------------------------------------
@@ -202,7 +204,7 @@ def add_concurrency (frame, tgt, spec):
 def add_frequency(frame, tgt, window, spec):
     """
     This method will add a row 'tgt' to the given data frame, which will contain
-    a contain the frequency (1/s) of the events spcified in 'spec'.
+    a contain the frequency (1/s) of the events specified in 'spec'.
 
     We first will filter the given frame by spec, and then apply a rolling
     window over the time column, counting the rows which fall into the window.
@@ -210,7 +212,7 @@ def add_frequency(frame, tgt, window, spec):
     caller.
     
     The method looks backwards, so the resulting frequency column contains the
-    frequency which applid *up to* that point in time.  
+    frequency which applied *up to* that point in time.
     """
     
     # --------------------------------------------------------------------------
@@ -225,6 +227,37 @@ def add_frequency(frame, tgt, window, spec):
     for key,val in spec.iteritems():
         tmp = tmp[tmp[key].isin([val])]
     frame[tgt] = tmp.time.apply(_freq, args=[tmp, window])
+
+    return frame
+
+
+# ------------------------------------------------------------------------------
+#
+def add_event_count(frame, tgt, spec):
+    """
+    This method will add a row 'tgt' to the given data frame, which will contain
+    a counter of the events specified in 'spec'.
+
+    This works similar to add_frequency: we first filter, and then add the
+    cumsum.
+    """
+
+    raise NotImplementedError('not yet implemented')
+
+    # --------------------------------------------------------------------------
+    def _ecnt(t, _tmp):
+        # get sequence of frame which falls within the time window, and return
+        # length of that sequence
+        return len(_tmp.uid[(_tmp.time > t-_window) & (_tmp.time <= t)])
+    # --------------------------------------------------------------------------
+
+    # filter the frame by the given spec
+    tmp = frame
+    for key,val in spec.iteritems():
+        tmp = tmp[tmp[key].isin([val])]
+    frame[tgt] = 1 if tmp else 0
+
+    return frame
 
 
 # ------------------------------------------------------------------------------
@@ -280,6 +313,8 @@ def calibrate_frame(frame, spec):
         print "Can't recalibrate, no matching timestamp found"
         return
     frame['time'] = frame.apply(lambda row: _calibrate(row, t0  ), axis=1)
+
+    return frame
 
 
 # ------------------------------------------------------------------------------
@@ -435,6 +470,8 @@ def add_derived(df):
     # --------------------------------------------------------------------------
     df['cloned'] = df.apply(lambda row: _cloned (row), axis=1)
 
+    return df
+
 
 # ------------------------------------------------------------------------------
 #
@@ -478,6 +515,8 @@ def add_info(df):
             return np.NaN
     # --------------------------------------------------------------------------
     df['info'] = df.apply(lambda row: _info (row), axis=1)
+
+    return df
     
 
 # ------------------------------------------------------------------------------
@@ -519,7 +558,7 @@ def get_info_df(df):
         for i in set(l):
             cols.add(i)
             if l.count(i)>1:
-                raise ValueError('doubled info entry %s' % i)
+                raise ValueError('doubled info entry %s (uid:%s)' % (i, uid))
 
         dicts[uid] = tmp1_d
 
@@ -580,6 +619,8 @@ def add_states(df):
         return _old_states.get(row['uid'], '')
     # --------------------------------------------------------------------------
     df['state'] = df.apply(lambda row: _state(row), axis=1)
+
+    return df
 
 
 # ------------------------------------------------------------------------------

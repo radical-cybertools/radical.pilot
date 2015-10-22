@@ -5,7 +5,86 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
-0.36 Release                                                          2015-09-25
+0.37.10 Release                                                       2015-10-20
+--------------------------------------------------------------------------------
+
+  - config fix
+
+
+0.37.9 Release                                                        2015-10-20
+--------------------------------------------------------------------------------
+
+  - Example fix
+
+
+0.37.8 Release                                                        2015-10-20
+--------------------------------------------------------------------------------
+
+  - Allocation fix
+
+
+0.37.7 Release                                                        2015-10-20
+--------------------------------------------------------------------------------
+
+  - Allocation fix
+
+
+0.37.6 Release                                                        2015-10-20
+--------------------------------------------------------------------------------
+
+  - Documentation
+
+
+0.37.5 Release                                                        2015-10-19
+--------------------------------------------------------------------------------
+
+  - timing fix to ensure unit state ordering
+
+
+0.37.3 Release                                                        2015-10-19
+--------------------------------------------------------------------------------
+
+  - small fixes, doc changes
+
+
+0.37.2 Release                                                        2015-10-18
+--------------------------------------------------------------------------------
+
+  - fix example installation
+
+
+0.37.1 Release                                                        2015-10-18
+--------------------------------------------------------------------------------
+
+  - update of documentation and examples
+  - some small fixes on shutdown installation
+
+
+0.37 Release                                                          2015-10-15
+--------------------------------------------------------------------------------
+
+  - change default spawner to POPEN
+  - use hostlist to avoid mpirun* limitations
+  - support default callbacks on units and pilots
+  - use a config for examples
+  - add lrms shutdown hook for ORTE LM 
+  - various updates to examples and documentation
+  - create logfile and profile tarballs on the fly 
+  - export some RP env vars to units
+  - Fix a mongodb race
+  - internally unregister pilot cbs on shutdown 
+  - move agent.stop to finally clause, to correctly react on signals 
+  - remove RADICAL_DEBUG, use proper logger in queue, pubsub 
+  - small changes to getting_started 
+  - add APRUN entry for ARCHER. 
+  - Updated APRUN config for ARCHER. Thanks Vivek! 
+  - Use designated termination procedure for ORTE. 
+  - Use statically compiled and linked OMPI/ORTE. 
+  - Wait for its component children on termination
+  - make localhost (ForkLRMS) behave like a resource with an inifnite number of cores 
+
+
+0.36 Release                                                          2015-10-08
 --------------------------------------------------------------------------------
 
   (the release notes also cover some changes from 0.34 to 0.35)
@@ -57,6 +136,12 @@
   - Use netifaces for ip address mangling. 
   - Use ORTE from the 2.x branch. 
   - remove Url class
+
+
+0.35.1 Release                                                        2015-09-29
+--------------------------------------------------------------------------------
+
+  - hotfix to use popen on localhost
 
 
 0.35 Release                                                          2015-07-14

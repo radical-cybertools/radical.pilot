@@ -6,7 +6,7 @@ import pytest
 import radical.pilot as rp
 
 cb_counter = 0
-db_url     = "mongodb://ec2-54-221-194-147.compute-1.amazonaws.com:24242/"
+db_url     = "mongodb://ec2-54-221-194-147.compute-1.amazonaws.com:24242/jenkins-tests"
 
 #-------------------------------------------------------------------------------
 #
@@ -49,8 +49,7 @@ def unit_state_cb (unit, state):
 @pytest.fixture(scope="class")
 def rp_setup(request):
 
-    session = rp.Session(database_url=db_url, 
-    	                 database_name='rp-testing')
+    session = rp.Session(database_url=db_url)
 
     try:
         pmgr = rp.PilotManager(session=session)
@@ -87,8 +86,7 @@ def rp_setup(request):
 @pytest.fixture(scope="class")
 def rp_setup_short(request):
 
-    session = rp.Session(database_url=db_url, 
-                         database_name='rp-testing')
+    session = rp.Session(database_url=db_url)
 
     try:
         pmgr = rp.PilotManager(session=session)
@@ -126,8 +124,7 @@ def rp_setup_short(request):
 @pytest.fixture(scope="class")
 def rp_setup_state(request):
 
-    session = rp.Session(database_url=db_url, 
-                         database_name='rp-testing')
+    session = rp.Session(database_url=db_url)
 
     try:
         pmgr = rp.PilotManager(session=session)
@@ -448,8 +445,7 @@ def test_fail_session_ctx():
 #
 def test_pass_issue258():
 
-    session = rp.Session(database_url=db_url, 
-                         database_name='rp-testing')
+    session = rp.Session(database_url=db_url)
 
     with pytest.raises(KeyError):
         pmgr = rp.PilotManager(session=session)

@@ -306,9 +306,21 @@ class PilotLauncherWorker(threading.Thread):
 
                 if self._disabled.is_set():
                     # don't process any new pilot start requests.  
+                    # NOTE: this is not clean, in principle there could be other
+                    #       launchers alive which want to still start those 
+                    #       pending pilots.  In practice we only ever use one
+                    #       pmgr though, and its during its shutdown that we get
+                    #       here...
+                    ts = timestamp()
+                    compute_pilot = pilot_col.find_and_modify(
+                        query={"pilotmanager": self.pilot_manager_id,
+                               "state" : PENDING_LAUNCH},
+                        update={"$set" : {"state": CANCELED},
+                                "$push": {"statehistory": {"state": CANCELED, "timestamp": ts}}}
+                    )
+
                     # run state checks more frequently.
                     JOB_CHECK_INTERVAL = 3
-                    logger.debug('pilot launching is disabled')
                     time.sleep(1)
                     continue
 
@@ -641,7 +653,7 @@ class PilotLauncherWorker(threading.Thread):
 
                         # set some agent configuration
                         agent_cfg_dict['cores']              = number_cores
-                        agent_cfg_dict['debug']              = logger.getEffectiveLevel()
+                        agent_cfg_dict['debug']              = os.environ.get('RADICAL_PILOT_AGENT_VERBOSE', logger.getEffectiveLevel())
                         agent_cfg_dict['mongodb_url']        = str(agent_dburl)
                         agent_cfg_dict['lrms']               = lrms
                         agent_cfg_dict['spawner']            = agent_spawner
