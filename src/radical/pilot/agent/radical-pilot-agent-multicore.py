@@ -161,7 +161,6 @@ import radical.utils       as ru
 import radical.pilot       as rp
 import radical.pilot.utils as rpu
 
-from datetime import datetime
 
 
 
@@ -1235,8 +1234,6 @@ class SchedulerYarn(AgentSchedulingComponent):
 
 
             return True
-        except:
-            return False
 
 
     # --------------------------------------------------------------------------
@@ -1261,7 +1258,8 @@ class SchedulerYarn(AgentSchedulingComponent):
             self.avail_app['apps'] = max_num_app - num_app 
             self.avail_app['timestamp']=sample
 
-        return 'Can accept up to {0} applications per user. Free cores {1} Free Mem {2}'.format(self.avail_app['apps'],self.avail_cores,self.avail_mem)
+        return '{0} applications per user remaining. Free cores {1} Free Mem {2}'\
+        .format(self.avail_app['apps'],self.avail_cores,self.avail_mem)
 
 
     # --------------------------------------------------------------------------
@@ -1324,6 +1322,11 @@ class SchedulerYarn(AgentSchedulingComponent):
 
             self._log.info(self.slot_status())
             self._log.debug('YARN Service and RM URLs: {0} - {1}'.format(self._service_url,self._rm_url))
+
+            # We also need the minimum memory of the YARN cluster. This is because
+            # Java issues a JVM out of memory error when the YARN scheduler cannot
+            # accept. It needs to go either from the configuration file or find a
+            # way to take this value for the YARN scheduler config.
                     
             cu['opaque_slots']={'lm_info':{'service_url':self._service_url,
                                             'rm_url':self._rm_url,
@@ -1348,7 +1351,7 @@ class SchedulerYarn(AgentSchedulingComponent):
 
       # self.advance(cu, rp.AGENT_SCHEDULING, publish=True, push=False)
         self._log.info("Overiding Parent's class method")
-        self.advance(cu, rp.ALLOCATING      , publish=True, push=False)
+        self.advance(cu, rp.ALLOCATING , publish=True, push=False)
 
         # we got a new unit to schedule.  Either we can place it
         # straight away and move it to execution, or we have to
@@ -1563,7 +1566,7 @@ class LaunchMethod(object):
         for name in names:
             ret = cls._which(name)
             if ret is not None:
-                self._log.info("Found %s"%ret)
+                self._log.info("Found %s",ret)
                 return ret
 
         return None
@@ -2727,7 +2730,6 @@ class LaunchMethodYARN(LaunchMethod):
         rm_url      = opaque_slots['lm_info']['rm_url']
         client_node = opaque_slots['lm_info']['nodename']
 
-
         #-----------------------------------------------------------------------
         # Create YARN script
         # This funcion creates the necessary script for the execution of the
@@ -2772,7 +2774,7 @@ class LaunchMethodYARN(LaunchMethod):
         if cu_descr['output_staging']:
             for OutputFile in cu_descr['output_staging']:
                 scp_output_files+=' %s'%(OutputFile['source'])
-        print_str+="echo 'scp %s $YarnUser@%s:%s'>>ExecScript.sh\n"%(scp_output_files,client_node,work_dir)
+        print_str+="echo 'scp -v %s $YarnUser@%s:%s'>>ExecScript.sh\n"%(scp_output_files,client_node,work_dir)
 
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo ''>>ExecScript.sh\n"
@@ -4550,7 +4552,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             if launcher.name == 'LaunchMethodYARN':
                 launch_script.write('\n## Changing Working Directory permissions for YARN\n')
                 launch_script.write('old_perm="`stat -c %a .`"\n')
-                launch_script.write('chmod 777 .\n')
+                launch_script.write('chmod -R 777 .\n')
 
             # Create string for environment variable setting
             env_string = 'export'
@@ -4635,8 +4637,6 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
             launch_script.write("# Exit the script with the return code from the command\n")
             launch_script.write("exit $RETVAL\n")
-
-            
 
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
