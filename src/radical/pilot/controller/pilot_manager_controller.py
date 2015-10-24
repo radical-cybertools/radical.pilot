@@ -361,7 +361,7 @@ class PilotManagerController(threading.Thread):
                     time.sleep(IDLE_TIME)
 
         except SystemExit as e :
-            logger.exception ("pilot manager controller thread caught system exit -- forcing application shutdown")
+            logger.debug("pilot manager controller thread caught system exit -- forcing application shutdown")
             thread.interrupt_main ()
 
         finally :
