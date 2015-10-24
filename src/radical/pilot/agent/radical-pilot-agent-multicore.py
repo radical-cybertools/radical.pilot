@@ -1194,46 +1194,45 @@ class SchedulerYarn(AgentSchedulingComponent):
     #
     def _configure(self):
 
-        try:
-            #-----------------------------------------------------------------------
-            # Find out how many applications you can submit to YARN. And also keep
-            # this check happened to update it accordingly
+        #-----------------------------------------------------------------------
+        # Find out how many applications you can submit to YARN. And also keep
+        # this check happened to update it accordingly
 
 
-            #if 'rm_ip' not in self._cfg['lrms_info']:
-            #    raise RuntimeError('rm_ip not in lm_info for %s' \
-            #            % (self.name))
+        #if 'rm_ip' not in self._cfg['lrms_info']:
+        #    raise RuntimeError('rm_ip not in lm_info for %s' \
+        #            % (self.name))
 
-            self._log.info('Checking rm_ip %s' % self._cfg['lrms_info']['lm_info']['rm_ip'])
-            self._rm_ip = self._cfg['lrms_info']['lm_info']['rm_ip']
-            self._service_url = self._cfg['lrms_info']['lm_info']['service_url']
-            self._rm_url = self._cfg['lrms_info']['lm_info']['rm_url']
-            self._client_node = self._cfg['lrms_info']['lm_info']['nodename']
+        self._log.info('Checking rm_ip %s' % self._cfg['lrms_info']['lm_info']['rm_ip'])
+        self._rm_ip = self._cfg['lrms_info']['lm_info']['rm_ip']
+        self._service_url = self._cfg['lrms_info']['lm_info']['service_url']
+        self._rm_url = self._cfg['lrms_info']['lm_info']['rm_url']
+        self._client_node = self._cfg['lrms_info']['lm_info']['nodename']
 
-            sample_time = rpu.timestamp()
-            yarn_status = ul.urlopen('http://{0}:8088/ws/v1/cluster/scheduler'.format(self._rm_ip))
+        sample_time = rpu.timestamp()
+        yarn_status = ul.urlopen('http://{0}:8088/ws/v1/cluster/scheduler'.format(self._rm_ip))
 
-            yarn_schedul_json = json.loads(yarn_status.read())
+        yarn_schedul_json = json.loads(yarn_status.read())
 
-            max_num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['maxApplications']
-            num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['numApplications']
+        max_num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['maxApplications']
+        num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['numApplications']
 
-            #-----------------------------------------------------------------------
-            # Find out the cluster's resources
-            cluster_metrics = ul.urlopen('http://{0}:8088/ws/v1/cluster/metrics'.format(self._rm_ip))
+        #-----------------------------------------------------------------------
+        # Find out the cluster's resources
+        cluster_metrics = ul.urlopen('http://{0}:8088/ws/v1/cluster/metrics'.format(self._rm_ip))
 
-            metrics = json.loads(cluster_metrics.read())
-            self._mnum_of_cores = metrics['clusterMetrics']['totalVirtualCores']
-            self._mmem_size = metrics['clusterMetrics']['totalMB']
-            self._num_of_cores = metrics['clusterMetrics']['allocatedVirtualCores']
-            self._mem_size = metrics['clusterMetrics']['allocatedMB']
+        metrics = json.loads(cluster_metrics.read())
+        self._mnum_of_cores = metrics['clusterMetrics']['totalVirtualCores']
+        self._mmem_size = metrics['clusterMetrics']['totalMB']
+        self._num_of_cores = metrics['clusterMetrics']['allocatedVirtualCores']
+        self._mem_size = metrics['clusterMetrics']['allocatedMB']
 
-            self.avail_app = {'apps':max_num_app - num_app,'timestamp':sample_time}
-            self.avail_cores = self._mnum_of_cores - self._num_of_cores
-            self.avail_mem = self._mmem_size - self._mem_size
+        self.avail_app = {'apps':max_num_app - num_app,'timestamp':sample_time}
+        self.avail_cores = self._mnum_of_cores - self._num_of_cores
+        self.avail_mem = self._mmem_size - self._mem_size
 
 
-            return True
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -2773,12 +2772,12 @@ class LaunchMethodYARN(LaunchMethod):
         task_exec    = cud['executable']
         task_cores   = cud['cores']
         task_args    = cud.get('arguments')
-        work_dir     = cud.get('workdir')
+        task_env     = cud.get('environment')
+        work_dir     = cu['workdir']
 
         # Construct the args_string which is the arguments given as input to the
         # shell script. Needs to be a string
         self._log.debug("Constructing YARN command")
-
         self._log.debug('Opaque Slots {0}'.format(opaque_slots))
 
         if 'lm_info' not in opaque_slots:
@@ -2822,6 +2821,7 @@ class LaunchMethodYARN(LaunchMethod):
         print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
         print_str+="echo '# Staging Input Files'>>ExecScript.sh\n"
         
+        self._log.debug('Creating input staging')
         if cud['input_staging']:
             scp_input_files='"'
             for InputFile in cud['input_staging']:
@@ -2834,9 +2834,11 @@ class LaunchMethodYARN(LaunchMethod):
         print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
         print_str+="echo '# Creating Executing Command'>>ExecScript.sh\n"
 
+        
+        self._log.debug('Creating Arguments:{0}'.format(type(task_args)))
         arg_str=str()
-        if cud['arguments']:
-            for arg in cud['arguments']:
+        if task_args:
+            for arg in task_args:
                 arg_str+='%s '%str(arg)
 
         print_str+="echo '%s %s 1>Ystdout 2>Ystderr'>>ExecScript.sh\n"%(cud['executable'],arg_str)
@@ -2845,8 +2847,9 @@ class LaunchMethodYARN(LaunchMethod):
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
         print_str+="echo '# Staging Output Files'>>ExecScript.sh\n"
-        print_str+="echo 'YarnUser=$(/bin/whoami)'>>ExecScript.sh\n"
+        print_str+="echo 'YarnUser=$(whoami)'>>ExecScript.sh\n"
         scp_output_files='Ystderr Ystdout'
+
         if cud['output_staging']:
             for OutputFile in cud['output_staging']:
                 scp_output_files+=' %s'%(OutputFile['source'])
@@ -2856,15 +2859,12 @@ class LaunchMethodYARN(LaunchMethod):
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo '#End of File'>>ExecScript.sh\n\n\n"
 
-        #-----------------------------------------------------------------------
-        # TODO: Update YARN application to accept multiple enviroment variables
-        #       as a sequence of values. Print all arguments also.
-        if task_args:
-            args_string = ''
-            for key,val in task_args.iteritems():
-                args_string+= '-shell_env '+key+'='+str(val)+' '
+        if task_env:
+            env_string = ''
+            for key,val in task_env.iteritems():
+                env_string+= '-shell_env '+key+'='+str(val)+' '
         else:
-            args_string = ''
+            env_string = ''
 
         #app_name = '-appname '+ cud['_id']
         # Construct the ncores_string which is the number of cores used by the
@@ -2873,8 +2873,6 @@ class LaunchMethodYARN(LaunchMethod):
             ncores_string = '-container_vcores '+str(task_cores)
         else:
             ncores_string = ''
-
-        self._log.debug("CU Descr: %s", cud)
 
         # Construct the nmem_string which is the size of memory used by the
         # container to run the script
@@ -2889,7 +2887,7 @@ class LaunchMethodYARN(LaunchMethod):
         yarn_command = '%s -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
                        ' com.radical.pilot.Client -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
                        ' -shell_script ExecScript.sh %s %s -service_url %s\ncat Ystdout' % (self.launch_command, 
-                        args_string, ncores_string,service_url)
+                        env_string, ncores_string,service_url)
 
         self._log.debug("Yarn Command %s"%yarn_command)
 
@@ -4544,7 +4542,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
         if self._task_launcher.name !='LaunchMethodYARN':
           # self.advance(cu, rp.AGENT_EXECUTING, publish=True, push=False)
-            self.advance(cu, rp.EXECUTING,       publish=True, push=False)
+            self.advance(cu, rp.EXECUTING, publish=True, push=False)
         else:
             self.advance(cu, rp.ALLOCATING, publish=True, push=False)
 
@@ -4658,7 +4656,9 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
             # The actual command line, constructed per launch-method
             try:
+                self._log.debug("Launch Script Name %s",launch_script_name)
                 launch_command, hop_cmd = launcher.construct_command(cu, launch_script_name)
+                self._log.debug("Launch Command %s from %s",(launch_command,launcher.name))
 
                 if hop_cmd : cmdline = hop_cmd
                 else       : cmdline = launch_script_name
