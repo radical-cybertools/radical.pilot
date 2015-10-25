@@ -82,7 +82,7 @@ class Session (saga.Session):
         logger = ru.get_logger('radical.pilot')
 
         if database_name:
-            logger.error("The 'database_name' parameter is deprecated - please specify an URL path") 
+            logger.warning("The 'database_name' parameter is deprecated - please specify an URL path")
         else:
             database_name = 'radicalpilot'
 
@@ -117,7 +117,7 @@ class Session (saga.Session):
         if  not self._dburl.path         or \
             self._dburl.path[0]   != '/' or \
             len(self._dburl.path) <=  1  :
-            logger.error("incomplete URLs are deprecated -- missing database name!")
+            logger.warning("incomplete URLs are deprecated -- missing database name!")
             self._dburl.path = database_name # defaults to 'radicalpilot'
 
         logger.info("using database %s" % self._dburl)
@@ -266,7 +266,7 @@ class Session (saga.Session):
             if  cleanup == True and terminate == True :
                 cleanup   = delete
                 terminate = delete
-                logger.error("'delete' flag on session is deprecated. " \
+                logger.warning("'delete' flag on session is deprecated. " \
                              "Please use 'cleanup' and 'terminate' instead!")
 
         if  cleanup :
