@@ -103,7 +103,7 @@ of that description are
       the runtime of the pilot.
 
 Depending on the specific target resource and use case, other properties need to
-be specified -- for more details see TODO.  In our user guide examples, we use
+be specified.  In our user guide examples, we use
 a separate `config.json` file to store a number of properties per resource
 label, to simplify the example code.  The examples themselves then accept one or
 more resource labels, and create the pilots on those resources:
@@ -131,9 +131,12 @@ more resource labels, and create the pilots on those resources:
     # submit the pilot for launching
     pilot = pmgr.submit_pilots(pdesc)
 
-TODO: ref resource list
-TODO: ref pilot description details
-TODO: ref multi pilot example
+
+For a list of available resource labels, see :ref:`chapter_resources` (not all
+of those resources are configured for the userguide examples).  For further
+details on the pilot description, please check the :class:`API Documentation
+<radical.pilot.ComputePilotDescription>`.
+
 
 .. warning:: Note that the submitted ComputePilot agent **will not terminate** 
     when your Python scripts finishes. ComputePilot agents terminate only after
@@ -172,12 +175,11 @@ Our basic example creates 128 ComputeUnits which each run `/bin/date`:
             cuds.append(cud)
 
 
-Compute units are executed by pilots, but how does a pilot know which units to
-execute?  That relation is established by the `:class:radical.pilot.UnitManager`
-class which accepts ComputeUnitDescriptions as we created above, and assigns
-them, according to some scheduling algorithm, to the set of available pilots.
-It returns the `:class:radical.pilot.ComputeUnit` handles,
-for whose completion the application can then wait:
+Compute units are executed by pilots.  The `:class:radical.pilot.UnitManager`
+class is responsible for routing Compute Units from the application to the
+available pilots.  That Unit manager accepts ComputeUnitDescriptions as we
+created above and assigns them, according to some scheduling algorithm, to the
+set of available pilots for execution:
 
 .. code-block:: python
 

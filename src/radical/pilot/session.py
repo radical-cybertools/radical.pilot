@@ -213,6 +213,18 @@ class Session (saga.Session):
 
 
     #---------------------------------------------------------------------------
+    # Allow Session to function as a context manager in a `with` clause
+    def __enter__ (self):
+        return self
+
+
+    #---------------------------------------------------------------------------
+    # Allow Session to function as a context manager in a `with` clause
+    def __exit__ (self, type, value, traceback) :
+        self.close()
+
+
+    #---------------------------------------------------------------------------
     #
     def __del__ (self) :
         pass

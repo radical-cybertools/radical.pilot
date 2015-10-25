@@ -46,7 +46,7 @@ Running the Example
 -------------------
 
 We show here the output for 3 pilots, where one is running locally (and thus is
-likely to come up quickly), and 2 are running on `xsede.stampede` and
+likely to come up quickly), and 2 are running exemplarily on `xsede.stampede` and
 `epsrc.archer`, respectively, where they likely will sit in the queue for a bit.
 We thus expect the backfilling scheduler to prefer the local pilot
 (`pilot.0000`).

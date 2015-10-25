@@ -28,8 +28,8 @@ Running the Example
 -------------------
 
 The workload of our example has now changed to report the respectively used
-pilot on stdout, and the output shows that.  We here start a pilot on `local.localhost`,
-and one on `xsede.stampede`:
+pilot on stdout, and the output shows that.  We here exemplarily start a pilot
+on `local.localhost`, and one on `xsede.stampede`:
 
 .. image:: 03_multiple_pilots.png
 

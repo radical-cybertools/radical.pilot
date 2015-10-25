@@ -610,7 +610,8 @@ class UnitManager(object):
         specific state.
 
         If `unit_uids` is `None`, `wait_units` returns when **all**
-        ComputeUnits reach the state defined in `state`.
+        ComputeUnits reach the state defined in `state`.  This may include units
+        which have previously terminated or waited upon.
 
         **Example**::
 
