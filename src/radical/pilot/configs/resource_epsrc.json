@@ -27,7 +27,8 @@
         "valid_roots"                 : ["/work"],
         "virtenv"                     : "/work/e290/shared/shared_pilot_ve_20150924/",
         "virtenv_mode"                : "use",
-        "rp_version"                  : "debug"
+        "rp_version"                  : "debug",
+        "python_dist"                 : "default"
     },
     "archer_orte": {
         "description"                 : "The EPSRC Archer Cray XC30 system (https://www.archer.ac.uk/)",
@@ -64,6 +65,7 @@
         "valid_roots"                 : ["/work"],
         "virtenv"                     : "/work/e290/shared/shared_pilot_ve_20150924/",
         "virtenv_mode"                : "use",
-        "rp_version"                  : "debug"
+        "rp_version"                  : "debug",
+        "python_dist"                 : "default"
     }
 }

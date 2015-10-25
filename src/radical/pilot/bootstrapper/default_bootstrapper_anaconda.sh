@@ -422,7 +422,7 @@ virtenv_setup()
 
     if test "$virtenv_mode" = "private"
     then
-        if test -f "source activate $virtenv" #Virtual env activation
+        if test -d "$virtenv/" #Virtual env activation
         then
             printf "\nERROR: private virtenv already exists at $virtenv\n\n"
             exit 1
@@ -434,7 +434,7 @@ virtenv_setup()
     then
         virtenv_create=FALSE
         virtenv_update=TRUE
-        test -f "source activate $virtenv" || virtenv_create=TRUE
+        test -d "$virtenv/" || virtenv_create=TRUE
 
     elif test "$virtenv_mode" = "create"
     then
@@ -443,7 +443,7 @@ virtenv_setup()
 
     elif test "$virtenv_mode" = "use"
     then
-        if ! test -f "source activate $virtenv"
+        if ! test -d "$virtenv/"
         then
             printf "\nERROR: given virtenv does not exists at $virtenv\n\n"
             exit 1
@@ -453,7 +453,7 @@ virtenv_setup()
 
     elif test "$virtenv_mode" = "recreate"
     then
-        test -f "source activate $virtenv" && rm -r "$virtenv"
+        test -d "$virtenv/" && rm -r "$virtenv"
         virtenv_create=TRUE
         virtenv_update=FALSE
     else
@@ -583,7 +583,6 @@ virtenv_setup()
     then
         if ! test -d "$virtenv/"
         then
-            echo "VE does not exist?!"
             echo 'rp lock for ve create'
             lock "$pid" "$virtenv" # use default timeout
             virtenv_create "$virtenv"

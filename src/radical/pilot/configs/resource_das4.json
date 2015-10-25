@@ -23,7 +23,8 @@
         "valid_roots"                 : ["/home", "/var/scratch"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_fs2",
-        "virtenv_mode"                : "update"
+        "virtenv_mode"                : "update",
+        "python_dist"                 : "default"
     }
 }
 
