@@ -450,7 +450,6 @@ class AgentSchedulingComponent(rpu.Component):
 
         # all components use the command channel for control messages
         self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
-        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
 
         self._pilot_id = self._cfg['pilot_id']
 
@@ -507,14 +506,6 @@ class AgentSchedulingComponent(rpu.Component):
 
         except KeyError:
             raise ValueError("Scheduler '%s' unknown or defunct" % name)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def command_cb(self, topic, msg):
-
-        cmd = msg['cmd']
-        arg = msg['arg']
 
 
     # --------------------------------------------------------------------------
@@ -4711,7 +4702,6 @@ class AgentUpdateWorker(rpu.Worker):
 
         # all components use the command channel for control messages
         self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
-        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
 
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',
@@ -4725,14 +4715,6 @@ class AgentUpdateWorker(rpu.Worker):
         # communicate finalization
         self.publish('command', {'cmd' : 'final',
                                  'arg' : self.cname})
-
-
-    # --------------------------------------------------------------------------
-    #
-    def command_cb(self, topic, msg):
-
-        cmd = msg['cmd']
-        arg = msg['arg']
 
 
     # ------------------------------------------------------------------
@@ -4900,7 +4882,6 @@ class AgentStagingInputComponent(rpu.Component):
 
         # all components use the command channel for control messages
         self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
-        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
 
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',
@@ -4915,13 +4896,6 @@ class AgentStagingInputComponent(rpu.Component):
         self.publish('command', {'cmd' : 'final',
                                  'arg' : self.cname})
 
-
-    # --------------------------------------------------------------------------
-    #
-    def command_cb(self, topic, msg):
-
-        cmd = msg['cmd']
-        arg = msg['arg']
 
 
     # --------------------------------------------------------------------------
@@ -5055,7 +5029,6 @@ class AgentStagingOutputComponent(rpu.Component):
 
         # all components use the command channel for control messages
         self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
-        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
 
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',
@@ -5069,14 +5042,6 @@ class AgentStagingOutputComponent(rpu.Component):
         # communicate finalization
         self.publish('command', {'cmd' : 'final',
                                  'arg' : self.cname})
-
-
-    # --------------------------------------------------------------------------
-    #
-    def command_cb(self, topic, msg):
-
-        cmd = msg['cmd']
-        arg = msg['arg']
 
 
     # --------------------------------------------------------------------------
@@ -5230,7 +5195,6 @@ class AgentHeartbeatWorker(rpu.Worker):
 
         # all components use the command channel for control messages
         self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
-        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
 
         self._pilot_id      = self._cfg['pilot_id']
         self._session_id    = self._cfg['session_id']
@@ -5255,14 +5219,6 @@ class AgentHeartbeatWorker(rpu.Worker):
         # communicate finalization
         self.publish('command', {'cmd' : 'final',
                                  'arg' : self.cname})
-
-
-    # --------------------------------------------------------------------------
-    #
-    def command_cb(self, topic, msg):
-
-        cmd = msg['cmd']
-        arg = msg['arg']
 
 
     # --------------------------------------------------------------------------
