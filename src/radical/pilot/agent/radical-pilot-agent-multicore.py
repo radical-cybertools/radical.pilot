@@ -5381,11 +5381,11 @@ class AgentWorker(rpu.Worker):
     #
     def command_cb(self, topic, msg):
 
-        # This callback is invoked in the process context of the main agent
-        # class.
+        # This callback is invoked as a thread in the process context of the
+        # main agent (parent process) class.
         #
-        # NOTE: That means it is *not* joined in the finalization of the main
-        # loop, and the subscriber thread needs to be joined specifically in the
+        # NOTE: That means it is *not* joined in the finalization of the run
+        # loop (child), and the subscriber thread needs to be joined specifically in the
         # current process context.  At the moment that requires a call to
         # self._finalize() in the main process.
 
