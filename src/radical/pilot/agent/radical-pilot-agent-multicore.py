@@ -516,10 +516,6 @@ class AgentSchedulingComponent(rpu.Component):
         cmd = msg['cmd']
         arg = msg['arg']
 
-      # if cmd == 'shutdown':
-      #     self._log.info('received shutdown command')
-      #     self.stop()
-
 
     # --------------------------------------------------------------------------
     #
@@ -3722,10 +3718,6 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             with self._cancel_lock:
                 self._cus_to_cancel.append(arg)
 
-      # elif cmd == 'shutdown':
-      #     self._log.info('received shutdown command')
-      #     self.stop()
-
 
     # --------------------------------------------------------------------------
     #
@@ -4235,10 +4227,6 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
             with self._cancel_lock:
                 self._cus_to_cancel.append(arg)
 
-      # elif cmd == 'shutdown':
-      #     self._log.info('received shutdown command')
-      #     self.stop()
-
 
     # --------------------------------------------------------------------------
     #
@@ -4746,10 +4734,6 @@ class AgentUpdateWorker(rpu.Worker):
         cmd = msg['cmd']
         arg = msg['arg']
 
-      # if cmd == 'shutdown':
-      #     self._log.info('received shutdown command')
-      #     self.stop()
-
 
     # ------------------------------------------------------------------
     #
@@ -4939,10 +4923,6 @@ class AgentStagingInputComponent(rpu.Component):
         cmd = msg['cmd']
         arg = msg['arg']
 
-      # if cmd == 'shutdown':
-      #     self._log.info('received shutdown command')
-      #     self.stop()
-
 
     # --------------------------------------------------------------------------
     #
@@ -5097,10 +5077,6 @@ class AgentStagingOutputComponent(rpu.Component):
 
         cmd = msg['cmd']
         arg = msg['arg']
-
-      # if cmd == 'shutdown':
-      #     self._log.info('received shutdown command')
-      #     self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -5287,10 +5263,6 @@ class AgentHeartbeatWorker(rpu.Worker):
 
         cmd = msg['cmd']
         arg = msg['arg']
-
-      # if cmd == 'shutdown':
-      #     self._log.info('received shutdown command')
-      #     self.stop()
 
 
     # --------------------------------------------------------------------------
