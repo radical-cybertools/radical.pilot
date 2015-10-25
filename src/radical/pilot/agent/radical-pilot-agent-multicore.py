@@ -3821,7 +3821,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         self._log.debug("Created launch_script: %s", launch_script_name)
 
         with open(launch_script_name, "w") as launch_script:
-            launch_script.write('#!/bin/bash -l\n\n')
+            launch_script.write('#!/bin/sh\n\n')
 
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 launch_script.write("echo script start_script `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
