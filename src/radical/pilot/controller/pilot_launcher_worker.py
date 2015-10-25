@@ -482,7 +482,11 @@ class PilotLauncherWorker(threading.Thread):
                         # Copy the bootstrap shell script.  This also creates
                         # the sandbox. We use always "default_bootstrapper.sh"
                         # TODO: Is this still configurable and/or in the resource configs?
-                        bootstrapper = "default_bootstrapper.sh"
+                        if resource_cfg.get('python_dist') == 'anaconda':
+                            bootstrapper = "default_bootstrapper_anaconda.sh"
+                        else:
+                            bootstrapper = "default_bootstrapper.sh"
+
                         bootstrapper_path = os.path.abspath("%s/../bootstrapper/%s" \
                                 % (mod_dir, bootstrapper))
 
