@@ -301,79 +301,73 @@ class Component(mp.Process):
                 sys.exit()
         """
 
-        try:
-            self._prof.prof("closing")
-            self._log.info("closing (%d subscriber threads)" % (len(self._threads)))
 
-            # tear down all subscriber threads
-            self._terminate.set()
-            self_thread = mt.current_thread()
-            for t in self._threads:
-                if t != self_thread:
-                    self._log.debug('joining  subscriber thread %s' % t)
-                    t.join()
-                else:
-                    self._log.debug('skipping subscriber thread %s' % t)
+        self._prof.prof("closing")
+        self._log.info("closing (%d subscriber threads)" % (len(self._threads)))
 
-            self._log.debug('all subscriber threads joined')
-
-            if self._is_parent:
-                self._log.info("terminating")
-                self._prof.prof("finalize")
-                if not self._finalized:
-                    self._finalized = True
-                    self.finalize()
-                    self._prof.prof("finalized")
-                # Signal the child
-                self._log.debug('Signalling child')
-                self.terminate()
-                # Wait for the child process
-                self._log.debug('Waiting for child')
-                self.join()
-                self._log.debug('Child done')
-
+        # tear down all subscriber threads
+        self._terminate.set()
+        self_thread = mt.current_thread()
+        for t in self._threads:
+            if t != self_thread:
+                self._log.debug('joining  subscriber thread %s' % t)
+                t.join()
             else:
-                if not self._finalized:
-                    self._finalized = True
-                    self._prof.prof("finalize")
-                    self.finalize_child()
-                    self._prof.prof("finalized")
-                sys.exit()
+                self._log.debug('skipping subscriber thread %s' % t)
 
-            # If we are called from within a callback, that (means?) we will have
-            # skipped one thread for joining above.
-            # For a child that's ok, because there is that exit call above.
-            # For a parent, we'll call that exit right here.
-            # Note that the thread is *not* joined at this point -- but the parent
-            # should not block on shutdown anymore, as the thread is at least gone.
+        self._log.debug('subscriber threads joined')
+
+        if self._is_parent:
+            self._log.info("terminating")
+            self._prof.prof("finalize")
+            if not self._finalized:
+                self._finalized = True
+                self.finalize()
+                self._prof.prof("finalized")
+            else:
+                self._prof.prof("not_yet_finalized")
+
+            # Signal the child
+            self._log.debug('signalling child')
+            self.terminate()
+
+            # Wait for the child process
+            self._log.debug('waiting for child')
+            self.join()
+            self._log.debug('child done')
+
+            self._prof.prof("stopped")
+            self._prof.close()
+
+            # If we are called from within a callback, that (means?) we will
+            # have skipped one thread for joining above.
+            #
+            # Note that the thread is *not* joined at this point -- but the
+            # parent should not block on shutdown anymore, as the thread is
+            # at least gone.
             if self_thread in self._threads and self._cb_lock.locked():
                 self._log.debug('release subscriber thread %s' % self_thread)
                 sys.exit()
 
-            self._prof.prof("stopped")
+        else:
+            # we only finalize in the child's main thread.
+            # NOTE: this relies on us not to change the name of MainThread
+            if self_thread.name == 'MainThread':
+                if not self._finalized:
+                    self._prof.prof("not_yet_finalized")
+                    self._finalized = True
+                    self._prof.prof("finalize")
+                    self.finalize_child()
+                    self._prof.prof("finalized")
+                    self._prof.prof("stopped")
+                    self._prof.close()
+                else:
+                    self._prof.prof("already_finalized - ERROR")
 
-        except Exception as e:
-            import traceback
-            with open('%s.debug.log' % self.cname, 'a') as out:
-                out.write("excepted in close(): %s\n" % e)
-                out.write("stack: \n%s\n" % traceback.format_stack())
-                out.write("exc  : \n%s\n" % traceback.format_exc  ())
-                out.flush()
-
-        except SystemExit:
-            import traceback
-            with open('%s.debug.log' % self.cname, 'a') as out:
-                out.write("sys.exit in close()\n")
-                out.write("stack: \n%s\n" % traceback.format_stack())
-                out.write("exc  : \n%s\n" % traceback.format_exc  ())
-                out.flush()
-
-        finally:
-            with open('%s.debug.log' % self.cname, 'a') as out:
-                out.write("finally  in close()\n")
-                out.flush()
-            self._prof.prof("finally_stopped")
-            self._prof.close()
+            # The child exits here.  If this call happens in a subscriber
+            # thread, then it will be caught in the run loop of the main thread,
+            # leading to the main thread's demize, which ends up here again...
+            sys.exit()
 
 
     # --------------------------------------------------------------------------
