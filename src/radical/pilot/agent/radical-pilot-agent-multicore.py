@@ -1624,7 +1624,7 @@ class LaunchMethodFORK(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_args    = cud.get('arguments', [])
+        task_args    = cud.get('arguments') or []
         task_argstr  = ' '.join(task_args)
 
         if task_argstr:
@@ -1666,7 +1666,7 @@ class LaunchMethodMPIRUN(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_args    = cud.get('arguments', [])
+        task_args    = cud.get('arguments') or []
         task_argstr  = ' '.join(task_args)
 
         if not 'task_slots' in opaque_slots:
@@ -1738,7 +1738,7 @@ class LaunchMethodSSH(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_args    = cud.get('arguments', [])
+        task_args    = cud.get('arguments') or []
         task_argstr  = ' '.join(task_args)
 
         if not 'task_slots' in opaque_slots:
@@ -1797,7 +1797,7 @@ class LaunchMethodMPIEXEC(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_args    = cud.get('arguments', [])
+        task_args    = cud.get('arguments') or []
         task_argstr  = ' '.join(task_args)
 
         if not 'task_slots' in opaque_slots:
@@ -1849,7 +1849,7 @@ class LaunchMethodAPRUN(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_args    = cud.get('arguments', [])
+        task_args    = cud.get('arguments') or []
         task_argstr  = ' '.join(task_args)
 
         if task_argstr:
@@ -1889,7 +1889,7 @@ class LaunchMethodCCMRUN(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_args    = cud.get('arguments', [])
+        task_args    = cud.get('arguments') or []
         task_argstr  = ' '.join(task_args)
 
         if task_argstr:
@@ -1934,7 +1934,7 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_args    = cud.get('arguments', [])
+        task_args    = cud.get('arguments') or []
         task_argstr  = ' '.join(task_args)
 
         if not 'task_slots' in opaque_slots:
@@ -1990,7 +1990,7 @@ class LaunchMethodRUNJOB(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_args    = cud.get('arguments', [])
+        task_args    = cud.get('arguments') or []
         task_argstr  = ' '.join(task_args)
 
         if  'cores_per_node'      not in opaque_slots or\
@@ -2069,7 +2069,7 @@ class LaunchMethodDPLACE(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_args    = cud.get('arguments', [])
+        task_args    = cud.get('arguments') or []
         task_argstr  = ' '.join(task_args)
 
         if 'task_offsets' not in opaque_slots :
@@ -2123,7 +2123,7 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_args    = cud.get('arguments', [])
+        task_args    = cud.get('arguments') or []
         task_argstr  = ' '.join(task_args)
 
         if not 'task_slots' in opaque_slots:
@@ -2176,7 +2176,7 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_args    = cud.get('arguments', [])
+        task_args    = cud.get('arguments') or []
         task_argstr  = ' '.join(task_args)
 
         if not 'task_offsets' in opaque_slots:
@@ -2228,7 +2228,7 @@ class LaunchMethodIBRUN(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_args    = cud.get('arguments', [])
+        task_args    = cud.get('arguments') or []
         task_argstr  = ' '.join(task_args)
 
         if not 'task_offsets' in opaque_slots:
@@ -2420,7 +2420,7 @@ class LaunchMethodORTE(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_args    = cud.get('arguments', [])
+        task_args    = cud.get('arguments') or []
         task_argstr  = ' '.join(task_args)
 
         if 'task_slots' not in opaque_slots:
@@ -2490,7 +2490,7 @@ class LaunchMethodPOE(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_args    = cud.get('arguments', [])
+        task_args    = cud.get('arguments') or []
         task_argstr  = ' '.join(task_args)
 
         if not 'task_slots' in opaque_slots:
@@ -2783,8 +2783,8 @@ class LaunchMethodYARN(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_env     = cud.get('environment', {})
-        task_args    = cud.get('arguments',   [])
+        task_env     = cud.get('environment') or {}
+        task_args    = cud.get('arguments')   or []
         task_argstr  = ' '.join(task_args)
 
         # Construct the args_string which is the arguments given as input to the
