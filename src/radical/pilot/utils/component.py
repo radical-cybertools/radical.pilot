@@ -301,57 +301,79 @@ class Component(mp.Process):
                 sys.exit()
         """
 
-        self._prof.prof("closing")
-        self._log.info("closing (%d subscriber threads)" % (len(self._threads)))
+        try:
+            self._prof.prof("closing")
+            self._log.info("closing (%d subscriber threads)" % (len(self._threads)))
 
-        # tear down all subscriber threads
-        self._terminate.set()
-        self_thread = mt.current_thread()
-        for t in self._threads:
-            if t != self_thread:
-                self._log.debug('joining  subscriber thread %s' % t)
-                t.join()
-            else:
-                self._log.debug('skipping subscriber thread %s' % t)
+            # tear down all subscriber threads
+            self._terminate.set()
+            self_thread = mt.current_thread()
+            for t in self._threads:
+                if t != self_thread:
+                    self._log.debug('joining  subscriber thread %s' % t)
+                    t.join()
+                else:
+                    self._log.debug('skipping subscriber thread %s' % t)
 
-        self._log.debug('all subscriber threads joined')
+            self._log.debug('all subscriber threads joined')
 
-        if self._is_parent:
-            self._log.info("terminating")
-            self._prof.prof("finalize")
-            if not self._finalized:
-                self._finalized = True
-                self.finalize()
-                self._prof.prof("finalized")
-            # Signal the child
-            self._log.debug('Signalling child')
-            self.terminate()
-            # Wait for the child process
-            self._log.debug('Waiting for child')
-            self.join()
-            self._log.debug('Child done')
-
-        else:
-            if not self._finalized:
-                self._finalized = True
+            if self._is_parent:
+                self._log.info("terminating")
                 self._prof.prof("finalize")
-                self.finalize_child()
-                self._prof.prof("finalized")
-                self._prof.close()
-            sys.exit()
+                if not self._finalized:
+                    self._finalized = True
+                    self.finalize()
+                    self._prof.prof("finalized")
+                # Signal the child
+                self._log.debug('Signalling child')
+                self.terminate()
+                # Wait for the child process
+                self._log.debug('Waiting for child')
+                self.join()
+                self._log.debug('Child done')
 
-        # If we are called from within a callback, that (means?) we will have
-        # skipped one thread for joining above.
-        # For a child that's ok, because there is that exit call above.
-        # For a parent, we'll call that exit right here.
-        # Note that the thread is *not* joined at this point -- but the parent
-        # should not block on shutdown anymore, as the thread is at least gone.
-        if self_thread in self._threads and self._cb_lock.locked():
-            self._log.debug('release subscriber thread %s' % self_thread)
-            sys.exit()
+            else:
+                if not self._finalized:
+                    self._finalized = True
+                    self._prof.prof("finalize")
+                    self.finalize_child()
+                    self._prof.prof("finalized")
+                sys.exit()
 
-        self._prof.prof("stopped")
-        self._prof.close()
+            # If we are called from within a callback, that (means?) we will have
+            # skipped one thread for joining above.
+            # For a child that's ok, because there is that exit call above.
+            # For a parent, we'll call that exit right here.
+            # Note that the thread is *not* joined at this point -- but the parent
+            # should not block on shutdown anymore, as the thread is at least gone.
+            if self_thread in self._threads and self._cb_lock.locked():
+                self._log.debug('release subscriber thread %s' % self_thread)
+                sys.exit()
+
+            self._prof.prof("stopped")
+
+        except Exception as e:
+            import traceback
+            with open('%s.debug.log' % self.cname, 'a') as out:
+                out.write("excepted in close(): %s\n" % e)
+                out.write("stack: \n%s\n" % traceback.format_stack())
+                out.write("exc  : \n%s\n" % traceback.format_exc  ())
+                out.flush()
+
+        except SystemExit:
+            import traceback
+            with open('%s.debug.log' % self.cname, 'a') as out:
+                out.write("sys.exit in close()\n")
+                out.write("stack: \n%s\n" % traceback.format_stack())
+                out.write("exc  : \n%s\n" % traceback.format_exc  ())
+                out.flush()
+
+        finally:
+            with open('%s.debug.log' % self.cname, 'a') as out:
+                out.write("finally  in close()\n")
+                out.flush()
+            self._prof.prof("finally_stopped")
+            self._prof.close()
 
 
     # --------------------------------------------------------------------------
