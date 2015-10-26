@@ -45,13 +45,13 @@
         "xsede.stampede" : {
             "project"  : "TG-MCB150124",
             "queue"    : "development",
-            "schema"   : "gsissh"
+            "schema"   : null
         },
 
         "xsede.comet"  : {
             "project"  : "unc100",
             "queue"    : "",
-            "schema"   : "gsissh"
+            "schema"   : null
         },
 
         "xsede.gordon" : {
