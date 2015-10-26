@@ -5584,7 +5584,6 @@ class AgentWorker(rpu.Worker):
         self.publish('command', {'cmd' : 'shutdown',
                                  'arg' : '%s finalization' % self.agent_name})
 
-
         # burn the bridges, burn EVERYTHING
         for name,sa in self._sub_agents.items():
             try:
@@ -6116,6 +6115,19 @@ def bootstrap_3():
             agent.stop()
         log.debug('agent %s finalized' % agent_name)
 
+        # agent.stop will not tear down bridges -- we do that here at last
+        for name,b in bridges.items():
+            try:
+                log.info("closing bridge %s", b)
+                b['handle'].stop()
+            except Exception as e:
+                log.exception('ignore failing bridge terminate (%s)', e)
+
+        # make sure the lrms release whatever it acquired
+        if lrms:
+            lrms.stop()
+
+        # agent_0 will also report final pilot state to the DB
         if agent_name == 'agent_0':
             if agent and agent.final_cause == 'timeout':
                 pilot_DONE(mongo_p, pilot_id, log, "TIMEOUT received. Terminating.")
@@ -6128,18 +6140,6 @@ def bootstrap_3():
                 pilot_FAILED(mongo_p, pilot_id, log, "TERMINATE received")
             else:
                 pilot_FAILED(mongo_p, pilot_id, log, "FAILED startup")
-
-        # agent.stop will not tear down bridges -- we do that here at last
-        for name,b in bridges.items():
-            try:
-                log.info("closing bridge %s", b)
-                b['handle'].stop()
-            except Exception as e:
-                log.exception('ignore failing bridge terminate (%s)', e)
-
-        # make sure the lrms release whatever it acquired
-        if lrms:
-            lrms.stop()
 
         log.info('stop')
         prof.prof('stop', msg='finally clause agent', uid=pilot_id)
