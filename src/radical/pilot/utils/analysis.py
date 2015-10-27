@@ -55,7 +55,6 @@ _info_states = [
         ]
 
 _info_entries = [
-    # FIXME: the names below will break for other schedulers
     ('umgr_get_u',      'MainThread',             'advance',   'New'),
     ('umgr_adv_u_pend', 'MainThread',             'advance',   'PendingInputStaging'),
     ('usic_get_u',      'InputFileTransfer',      'advance',   'StagingInput'),
@@ -64,6 +63,7 @@ _info_entries = [
     ('usoc_get_u',      'OutputFileTransfer',     'advance',   'StagingOutput'),
     ('usoc_adv_u',      'OutputFileTransfer',     'advance',   'Done'),
 
+    # FIXME: the names below will break for other schedulers
     ('asc_allocated',   'SchedulerContinuous',    'schedule',  'allocated'),
     ('asc_alloc_nok',   'SchedulerContinuous',    'schedule',  'allocation failed'),
     ('asc_alloc_ok',    'SchedulerContinuous',    'schedule',  'allocation succeeded'),
