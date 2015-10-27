@@ -463,14 +463,14 @@ def add_derived(df):
     Add additional (derived) colums to dataframes
     create columns based on two other columns using an operator
     """
-    
+
     import operator
-    
-    df['executor_queue'] = operator.sub(df['ewo_get'],      df['as_to_ewo'])
-    df['raw_runtime']    = operator.sub(df['ewa_complete'], df['ewo_launch'])
-    df['full_runtime']   = operator.sub(df['uw_push_done'], df['as_to_ewo'])
-    df['watch_delay']    = operator.sub(df['ewa_get'],      df['ewo_to_ewa'])
-    df['allocation']     = operator.sub(df['as_allocated'], df['a_to_as'])
+
+  # df['executor_queue'] = operator.sub(df['ewo_get'],      df['as_to_ewo'])
+  # df['raw_runtime']    = operator.sub(df['ewa_complete'], df['ewo_launch'])
+  # df['full_runtime']   = operator.sub(df['uw_push_done'], df['as_to_ewo'])
+  # df['watch_delay']    = operator.sub(df['ewa_get'],      df['ewo_to_ewa'])
+  # df['allocation']     = operator.sub(df['as_allocated'], df['a_to_as'])
 
     # add a flag to indicate if a unit / pilot / ... is cloned
     # --------------------------------------------------------------------------
