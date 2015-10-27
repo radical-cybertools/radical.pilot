@@ -455,7 +455,8 @@ def add_derived(df):
     """
     
     import operator
-    
+
+    # TODO: The fields these are derived from are outdated by now!
     df['executor_queue'] = operator.sub(df['ewo_get'],      df['as_to_ewo'])
     df['raw_runtime']    = operator.sub(df['ewa_complete'], df['ewo_launch'])
     df['full_runtime']   = operator.sub(df['uw_push_done'], df['as_to_ewo'])
