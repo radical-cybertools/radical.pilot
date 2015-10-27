@@ -91,33 +91,33 @@ tmp = None
 def add_concurrency (frame, tgt, spec):
     """
     add a column 'tgt' which is a cumulative sum of conditionals of another row.
-    
-    The purpose is the following: if a unit enters a component, the tgt row counter is 
+
+    The purpose is the following: if a unit enters a component, the tgt row counter is
     increased by 1, if the unit leaves the component, the counter is decreased by 1.
-    For any time, the resulting row contains the number of units which is in the 
+    For any time, the resulting row contains the number of units which is in the
     component.  Or state.  Or whatever.
-    
+
     The arguments are:
         'tgt'  : name of the new column
         'spec' : a set of filters to determine if a unit enters or leaves
-    
+
     'spec' is expected to be a dict of the following format:
-    
-        spec = { 'in'  : [{'col1' : 'pat1', 
+
+        spec = { 'in'  : [{'col1' : 'pat1',
                            'col2' : 'pat2'},
                           ...],
-                 'out' : [{'col3' : 'pat3', 
+                 'out' : [{'col3' : 'pat3',
                            'col4' : 'pat4'},
                           ...]
                }
-    
+
     where:
         'in'    : filter set to determine the unit entering
         'out'   : filter set to determine the unit leaving
         'col'   : name of column for which filter is defined
         'event' : event which correlates to entering/leaving
         'msg'   : qualifier on the event, if event is not unique
-    
+
     Example:
         spec = {'in'  : [{'state' :'Executing'}],
                 'out' : [{'state' :'Done'},
@@ -126,19 +126,19 @@ def add_concurrency (frame, tgt, spec):
                }
         add_concurrency (df, 'concurrently_running', spec)
     """
-    
+
     import numpy as np
 
     # create a temporary row over which we can do the commulative sum
     # --------------------------------------------------------------------------
     def _conc (row, spec):
 
-        # row must match any filter dict in 'spec[in/out]' 
+        # row must match any filter dict in 'spec[in/out]'
         # for any filter dict it must match all col/pat pairs
 
         # for each in filter
         for f in spec['in']:
-            match = 1 
+            match = 1
             # for each col/val in that filter
             for col, pat in f.iteritems():
                 if row[col] != pat:
@@ -151,7 +151,7 @@ def add_concurrency (frame, tgt, spec):
 
         # for each out filter
         for f in spec['out']:
-            match = 1 
+            match = 1
             # for each col/val in that filter
             for col, pat in f.iteritems():
                 if row[col] != pat:
@@ -167,10 +167,10 @@ def add_concurrency (frame, tgt, spec):
         return  np.NaN
     # --------------------------------------------------------------------------
 
-    # we only want to later look at changes of the concurrency -- leading or trailing 
-    # idle times are to be ignored.  We thus set repeating values of the cumsum to NaN, 
-    # so that they can be filtered out when ploting: df.dropna().plot(...).  
-    # That specifically will limit the plotted time range to the area of activity. 
+    # we only want to later look at changes of the concurrency -- leading or trailing
+    # idle times are to be ignored.  We thus set repeating values of the cumsum to NaN,
+    # so that they can be filtered out when ploting: df.dropna().plot(...).
+    # That specifically will limit the plotted time range to the area of activity.
     # The full time range can still be plotted when ommitting the dropna() call.
     # --------------------------------------------------------------------------
     def _time (x):
@@ -189,7 +189,7 @@ def add_concurrency (frame, tgt, spec):
             return np.NaN
         return x
     # --------------------------------------------------------------------------
-    
+
     frame[tgt] = frame.apply(lambda row: _conc(row, spec), axis=1).cumsum()
     frame[tgt] = frame.apply(lambda row: _abs (row[tgt]),  axis=1)
     frame[tgt] = frame.apply(lambda row: _time(row[tgt]),  axis=1)
@@ -273,7 +273,7 @@ def calibrate_frame(frame, spec):
     # --------------------------------------------------------------------------
     def _find_t0 (row, spec):
 
-        # row must match any filter dict in 'spec[in/out]' 
+        # row must match any filter dict in 'spec[in/out]'
         # for any filter dict it must match all col/pat pairs
         global t0
         if t0 is not None:
@@ -282,7 +282,7 @@ def calibrate_frame(frame, spec):
 
         # for each col/val in that filter
         for f in spec:
-            match = 1 
+            match = 1
             for col, pat in f.iteritems():
                 if row[col] != pat:
                     match = 0
@@ -323,11 +323,11 @@ def create_plot():
     """
     create a plot object and tune its layout to our liking.
     """
-    
+
     import matplotlib.pyplot as plt
 
     fig, plot = plt.subplots(figsize=(12,6))
-    
+
     plot.xaxis.set_tick_params(width=1, length=7)
     plot.yaxis.set_tick_params(width=1, length=7)
 
@@ -338,7 +338,7 @@ def create_plot():
 
     plt.xticks(fontsize=14)
     plt.yticks(fontsize=14)
-    
+
     fig.tight_layout()
 
     return fig, plot
@@ -346,22 +346,22 @@ def create_plot():
 
 # ------------------------------------------------------------------------------
 #
-def frame_plot (frames, axis, title=None, logx=False, logy=False, 
+def frame_plot (frames, axis, title=None, logx=False, logy=False,
                 legend=True, figdir=None):
     """
     plot the given axis from the give data frame.  We create a plot, and plot
     all frames given in the list.  The list is expected to contain [frame,label]
     pairs
-    
+
     frames: list of tuples of dataframes and labels
-    frames  = [[stampede_df_1, 'stampede - popen'], 
+    frames  = [[stampede_df_1, 'stampede - popen'],
                [stampede_df_2, 'stampede - shell'],
                [stampede_df_3, 'stampede - ORTE' ]]
-     
+
     axis:   tuple of data frame column index and axis label
     axis    = ['time', 'time (s)']
     """
-    
+
     # create figure and layout
     fig, plot = create_plot()
 
@@ -389,24 +389,24 @@ def frame_plot (frames, axis, title=None, logx=False, logy=False,
     plot.set_xlabel(axis[0][1], fontsize=14)
     plot.set_ylabel(axis[1][1], fontsize=14)
     plot.set_frame_on(True)
-   
+
     # save as png and pdf.  Use the title as base for names
     if title: base = title
     else    : base = "%s_%s" % (axis[0][1], axis[1][1])
-        
+
     # clean up base name -- only keep alphanum and such
     import re
     base = re.sub('[^a-zA-Z0-9\.\-]', '_', base)
     base = re.sub('_+',               '_', base)
-    
+
     if not figdir:
         figdir = os.getcwd()
 
     print 'saving %s/%s.png' % (figdir, base)
-    fig.savefig('%s/%s.png' % (figdir, base), bbox_inches='tight')
+    fig.savefig('%s/%s.png'  % (figdir, base), bbox_inches='tight')
 
     print 'saving %s/%s.pdf' % (figdir, base)
-    fig.savefig('%s/%s.pdf' % (figdir, base), bbox_inches='tight')
+    fig.savefig('%s/%s.pdf'  % (figdir, base), bbox_inches='tight')
 
     return fig, plot
 
@@ -434,7 +434,7 @@ def create_analytical_frame (idx, kind, args, limits, step):
             yield start
             start += step
     # --------------------------------------------------------------------------
-            
+
     if kind == 'rate' :
         t_0  = args.get ('t_0',  0.0)
         rate = args.get ('rate', 1.0)
@@ -442,10 +442,10 @@ def create_analytical_frame (idx, kind, args, limits, step):
         for t in _frange(limits[0], limits[1], step):
             data.append ({'time': t+t_0, idx: t*rate})
         return pd.DataFrame (data)
-        
+
     else:
         raise ValueError ("No such frame kind '%s'" % kind)
-        
+
 
 # ------------------------------------------------------------------------------
 #
@@ -493,7 +493,7 @@ def add_info(df):
                 return info
 
         ret = ""
-        n   = 0  # 
+        n   = 0  #
         for pat, pre in info_names.iteritems():
             if pat in row['name']:
                 ret += pre
@@ -517,7 +517,7 @@ def add_info(df):
     df['info'] = df.apply(lambda row: _info (row), axis=1)
 
     return df
-    
+
 
 # ------------------------------------------------------------------------------
 #
@@ -592,7 +592,7 @@ def add_states(df):
     We also fill out the state column, to continue to have the value of any
     previous state setting.
     """
-    
+
     import numpy as np
 
     # --------------------------------------------------------------------------
@@ -601,7 +601,7 @@ def add_states(df):
         old = np.NaN
         if  row['uid']   and \
             row['state'] and \
-            row['event'] == 'advance': 
+            row['event'] == 'advance':
             old = _old_states.get(row['uid'], np.NaN)
             _old_states[row['uid']] = row['state']
         return old
@@ -630,8 +630,6 @@ def get_span(df, spec):
     get the timespan from the first of any of the listed events to the last of
     any of the listed events.  Events are 'info' entries.
     """
-    
-    import numpy as np
 
     if not isinstance(spec, list):
         spec = [spec]
