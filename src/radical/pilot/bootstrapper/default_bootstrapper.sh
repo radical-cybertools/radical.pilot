@@ -1418,6 +1418,13 @@ then
     echo
     echo "# -------------------------------------------------------------------"
     echo "#"
+    echo "# Mark final profiling entry ..."
+    profile_event 'QED'
+    echo "#"
+    echo "# -------------------------------------------------------------------"
+    echo
+    echo "# -------------------------------------------------------------------"
+    echo "#"
     echo "# Tarring profiles ..."
     PROFILES_TARBALL="$PILOTID.prof.tgz"
     tar -czf $PROFILES_TARBALL *.prof
