@@ -8,7 +8,6 @@ info_names = {
         'AgentStagingInputComponent'  : 'asic',
         'SchedulerContinuous'         : 'asc',  # agent scheduler component
         'AgentExecutingComponent'     : 'aec',
-        'AgentExecutingWatcher'       : 'aew',
         'AgentStagingOutputComponent' : 'asoc',
         'session'                     : 'mod'
         }
@@ -78,11 +77,11 @@ _info_entries = [
     ('aec_handover',    'AgentExecuting',         'spawn',     'spawning passed to popen'),
     ('aec_end',         'AgentExecuting',         'final',     ''),
 
-    ('aew_pickup',      'AgentExecuting',         'passed',    'ExecWatcher picked up unit'),
-    ('aew_start_script','AgentStagingOutputComponent','script','start_script'),
-    ('aew_after_cd',    'AgentStagingOutputComponent','script','after_cd'),
-    ('aew_after_exec',  'AgentStagingOutputComponent','script','after_exec'),
-    ('aew_complete',    'AgentExecuting',         'exec',      'execution complete'),
+    ('aec_pickup',      'AgentExecuting',         'passed',    'ExecWatcher picked up unit'),
+    ('aec_start_script','AgentStagingOutputComponent','script','start_script'),
+    ('aec_after_cd',    'AgentStagingOutputComponent','script','after_cd'),
+    ('aec_after_exec',  'AgentStagingOutputComponent','script','after_exec'),
+    ('aec_complete',    'AgentExecuting',         'exec',      'execution complete'),
 ]
 
 # ------------------------------------------------------------------------------
