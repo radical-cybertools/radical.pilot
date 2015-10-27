@@ -2715,10 +2715,10 @@ class LaunchMethodYARN(LaunchMethod):
             logger.debug('Running: %s/bin/hdfs dfs -mkdir /user'%hadoop_home)
             os.system('%s/bin/hdfs dfs -mkdir /user'%hadoop_home)
             uname = subprocess.check_output('whoami').split('\n')[0]
-            logger.debug('Running: %s/bin/hdfs dfs -mkdir /user/%s'%(hadoop_home,uname[1]))
-            os.system('%s/bin/hdfs dfs -mkdir /user/%s'%(hadoop_home,uname[1]))
+            logger.debug('Running: %s/bin/hdfs dfs -mkdir /user/%s'%(hadoop_home,uname))
+            os.system('%s/bin/hdfs dfs -mkdir /user/%s'%(hadoop_home,uname))
             check = subprocess.check_output('%s/bin/hdfs dfs -ls /user'%hadoop_home)
-            logger.info(check[1])
+            logger.info(check)
             # FIXME YARN: why was the scheduler configure called here?  Configure
             #             is already called during scheduler instantiation
             # self._scheduler._configure()
