@@ -3932,11 +3932,10 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
     #
     def _watch(self):
 
-        cname = self.name.replace('Component', 'Watcher')
-        self._wprof = rpu.Profiler(cname)
+        self._wprof = rpu.Profiler(self.name)
         self._wprof.prof('run', uid=self._pilot_id)
         try:
-            self._log = ru.get_logger(cname, target="%s.log" % cname,
+            self._log = ru.get_logger(self.name, target="%s.log" % self.name,
                                       level='DEBUG') # FIXME?
 
             while not self._terminate.is_set():
@@ -4502,15 +4501,14 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
     #
     def _watch (self) :
 
-        cname = self.name.replace('Component', 'Watcher')
-        self._wprof = rpu.Profiler(cname)
+        self._wprof = rpu.Profiler(self.name)
 
         MONITOR_READ_TIMEOUT = 1.0   # check for stop signal now and then
         static_cnt           = 0
 
         self._wprof.prof('run', uid=self._pilot_id)
         try:
-            self._log = ru.get_logger(cname, target="%s.log" % cname,
+            self._log = ru.get_logger(self.name, target="%s.log" % self.name,
                                       level='DEBUG') # FIXME?
             self.monitor_shell.run_async ("MONITOR")
 
