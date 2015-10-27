@@ -381,10 +381,13 @@ def frame_plot (frames, axis, title=None, logx=False, logy=False,
     labels = list()
     for frame, label in frames:
         try:
-            frame.dropna().plot(ax=plot, logx=logx, logy=logy,
+            import pandas as pd
+            subframe = frame[pd.notnull(frame[axis[1][0]])]
+            subframe.plot(ax=plot, logx=logx, logy=logy,
                     x=axis[0][0], y=axis[1][0],
                     drawstyle='steps',
                     label=label, legend=False)
+            labels.append(label)
         except Exception as e:
             print "skipping frame '%s': '%s'" % (label, e)
 
