@@ -234,12 +234,22 @@ def get_experiment_frames(experiments, datadir=None):
 
         for sid, label in experiments[exp]:
             print "   - %s" % sid
-            
+
+            profdir = datadir
+            if os.path.isdir('%s/%s' % (datadir, sid)):
+                profdir = '%s/%s' % (datadir, sid)
+
             import glob
-            for prof in glob.glob ("%s/%s-pilot.*.prof" % (datadir, sid)):
-                print "     - %s" % prof
-                frame = pd.read_csv(prof)
-                exp_frames[exp].append ([frame, label])
+            from . import add_derived, add_info, add_states
+
+            profs = glob.glob ("%s/*.prof" % profdir)
+            prof  = combine_profiles(profs)
+            frame = prof2frame  (prof)
+            frame = add_derived (frame)
+            frame = add_info    (frame)
+            frame = add_states  (frame)
+
+            exp_frames[exp].append ([frame, label])
                 
     return exp_frames
 
