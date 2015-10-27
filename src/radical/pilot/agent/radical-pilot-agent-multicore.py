@@ -5991,9 +5991,24 @@ def bootstrap_3():
             raise RuntimeError('could not get a mongodb handle')
 
 
+    # avoid undefined vars on finalization / signal handling
+    bridges = dict()
+    agent   = None
+    lrms    = None
+
     # set up signal and exit handlers
     def exit_handler():
         print 'atexit'
+        if lrms:
+            lrms.stop()
+            lrms = None
+        if bridges:
+            for b in bridges:
+                b.stop()
+            bridges = dict()
+        if agent:
+            agent.stop()
+            agent = None
         sys.exit(1)
 
     def sigint_handler(signum, frame):
@@ -6031,10 +6046,6 @@ def bootstrap_3():
     # in one of the above handlers or exit handlers being activated, thus
     # reporting the error dutifully.
 
-    # avoid undefined vars on finalization
-    bridges = dict()
-    agent   = None
-    lrms    = None
     try:
         # ----------------------------------------------------------------------
         # des Pudels Kern: merge LRMS info into cfg and get the agent started
@@ -6111,6 +6122,7 @@ def bootstrap_3():
         # (essentially) main...
         if agent:
             agent.stop()
+            agent = None
         log.debug('agent %s finalized' % agent_name)
 
         # agent.stop will not tear down bridges -- we do that here at last
@@ -6120,10 +6132,12 @@ def bootstrap_3():
                 b['handle'].stop()
             except Exception as e:
                 log.exception('ignore failing bridge terminate (%s)', e)
+        bridges = dict()
 
         # make sure the lrms release whatever it acquired
         if lrms:
             lrms.stop()
+            lrms = None
 
         # agent_0 will also report final pilot state to the DB
         if agent_name == 'agent_0':
