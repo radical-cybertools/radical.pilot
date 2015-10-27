@@ -306,6 +306,19 @@ class PilotLauncherWorker(threading.Thread):
 
                 if self._disabled.is_set():
                     # don't process any new pilot start requests.  
+                    # NOTE: this is not clean, in principle there could be other
+                    #       launchers alive which want to still start those 
+                    #       pending pilots.  In practice we only ever use one
+                    #       pmgr though, and its during its shutdown that we get
+                    #       here...
+                    ts = timestamp()
+                    compute_pilot = pilot_col.find_and_modify(
+                        query={"pilotmanager": self.pilot_manager_id,
+                               "state" : PENDING_LAUNCH},
+                        update={"$set" : {"state": CANCELED},
+                                "$push": {"statehistory": {"state": CANCELED, "timestamp": ts}}}
+                    )
+
                     # run state checks more frequently.
                     JOB_CHECK_INTERVAL = 3
                     time.sleep(1)

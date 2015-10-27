@@ -32,11 +32,11 @@ scheduler, that scheduler will incur a runtime overhead for each unit -- so that
 is only advisable for heterogeneous workloads and/or pilot setups, and for long
 running units.
 
-:download:`getting_started_04.py <../../../examples/getting_started_04.py>`
+:download:`04_scheduler_selection.py <../../../examples/04_scheduler_selection.py>`
 shows an exemplary scheduling selector, with the following diff to the previous
 multi-pilot example:
 
-.. image:: getting_started_03_04.png
+.. image:: 04_scheduler_selection_a.png
 
 It will select `Round Robin` scheduling for two pilots, and `Backfilling` for
 three or more. 
@@ -46,18 +46,18 @@ Running the Example
 -------------------
 
 We show here the output for 3 pilots, where one is running locally (and thus is
-likely to come up quickly), and 2 are running on `xsede.stampede` and
+likely to come up quickly), and 2 are running exemplarily on `xsede.stampede` and
 `epsrc.archer`, respectively, where they likely will sit in the queue for a bit.
 We thus expect the backfilling scheduler to prefer the local pilot
 (`pilot.0000`).
 
-.. image:: getting_started_04a.png
+.. image:: 04_scheduler_selection_b.png
 
 
 What's Next?
 ------------
 
 Using multiple pilots is very powerful -- it becomes more powerful if you allow
-RP to load-balance units between them.  :ref:`chapter_user_guid_04` will show
+RP to load-balance units between them.  :ref:`chapter_user_guide_04` will show
 how to do just that.
 

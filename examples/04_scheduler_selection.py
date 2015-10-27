@@ -59,7 +59,7 @@ if __name__ == '__main__':
             pd_init = {
                     'resource'      : resource,
                     'cores'         : 64,  # pilot size
-                    'runtime'       : 10,  # pilot runtime (min)
+                    'runtime'       : 15,  # pilot runtime (min)
                     'exit_on_error' : True,
                     'project'       : config[resource]['project'],
                     'queue'         : config[resource]['queue'],
@@ -74,14 +74,22 @@ if __name__ == '__main__':
 
         report.header('submit units')
 
-        # Register the ComputePilot in a UnitManager object.
-        umgr = rp.UnitManager(session=session)
+        # use different schedulers, depending on number of pilots
+        report.info('select scheduler')
+        if   len(pilots) == 1: SCHED = rp.SCHED_DIRECT
+        elif len(pilots) == 2: SCHED = rp.SCHED_ROUND_ROBIN
+        else                 : SCHED = rp.SCHED_BACKFILLING
+        report.ok('>>%s\n'   % SCHED)
+    
+        # Combine the ComputePilot, the ComputeUnits and a scheduler via
+        # a UnitManager object.
+        umgr = rp.UnitManager(session=session, scheduler=SCHED)
         umgr.add_pilots(pilots)
 
-        # Create a workload of ComputeUnits. Each compute unit
-        # reports the id of the pilot it runs on
+        # Create a workload of ComputeUnits.
+        # Each compute unit reports the id of the pilot it runs on.
 
-        n = 128   # number of units to run
+        n = 256 # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -90,7 +98,6 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-
             cud.executable = '/bin/echo'
             cud.arguments  = ['$RP_PILOT_ID']
 
@@ -108,10 +115,20 @@ if __name__ == '__main__':
         umgr.wait_units()
     
         report.info('\n')
+        counts = dict()
         for unit in units:
+            out_str = unit.stdout.strip()[:35]
             report.plain('  * %s: %s, exit: %3s, out: %s\n' \
                     % (unit.uid, unit.state[:4], 
-                        unit.exit_code, unit.stdout.strip()[:35]))
+                        unit.exit_code, out_str))
+            if out_str not in counts:
+                counts[out_str] = 0
+            counts[out_str] += 1
+
+        report.info("\n")
+        for out_str in counts:
+            report.info("  * %-20s: %3d\n" % (out_str, counts[out_str]))
+        report.info("  * %-20s: %3d\n" % ('total', sum(counts.values())))
     
 
     except Exception as e:
@@ -128,10 +145,9 @@ if __name__ == '__main__':
 
     finally:
         # always clean up the session, no matter if we caught an exception or
-        # not.  This will kill all remaining pilots, but leave the database
-        # entries alone.
+        # not.  This will kill all remaining pilots.
         report.header('finalize')
-        session.close(terminate=True, cleanup=False)
+        session.close()
 
     report.header()
 

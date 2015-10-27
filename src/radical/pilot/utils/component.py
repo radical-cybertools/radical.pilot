@@ -786,6 +786,7 @@ class Component(mp.Process):
                 self.publish('state', unit)
                 self._prof.prof('publish', uid=unit['_id'], state=unit['state'],
                                 timestamp=timestamp)
+                time.sleep(0.1)
 
             if push:
                 if state not in self._outputs:
