@@ -201,7 +201,7 @@ def add_concurrency (frame, tgt, spec):
 
 # ------------------------------------------------------------------------------
 #
-def add_frequency(frame, tgt, window, spec):
+def add_frequency(frame, tgt, spec, window=1.0):
     """
     This method will add a row 'tgt' to the given data frame, which will contain
     a contain the frequency (1/s) of the events specified in 'spec'.

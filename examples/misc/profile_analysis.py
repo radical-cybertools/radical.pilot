@@ -100,7 +100,7 @@ if __name__ == "__main__":
   # print uf[uf['uid'] == 'unit.000001']
   # print list(pf['event'])
 
-    rpu.add_frequency(adv, 'f_exe', 0.5, {'state' : 'Executing', 'event' : 'advance'})
+    rpu.add_frequency(adv, 'f_exe', {'state' : 'Executing', 'event' : 'advance'}, 0.5)
     print adv[['time', 'f_exe']].dropna(subset=['f_exe'])
 
     s_frame, p_frame, u_frame = rpu.get_session_frames(session_id)
