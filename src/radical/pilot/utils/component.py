@@ -301,6 +301,9 @@ class Component(mp.Process):
                 sys.exit()
         """
 
+        if self._finalized:
+            # only die once
+            return
 
         self._prof.prof("closing")
         self._log.info("closing (%d subscriber threads)" % (len(self._threads)))
