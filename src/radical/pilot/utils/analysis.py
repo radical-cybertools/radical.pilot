@@ -210,22 +210,26 @@ def add_frequency(frame, tgt, spec, window=1.0):
     window over the time column, counting the rows which fall into the window.
     The result is *not* divided by window size, so normalization is up to the
     caller.
-    
+
     The method looks backwards, so the resulting frequency column contains the
     frequency which applied *up to* that point in time.
     """
-    
+
     # --------------------------------------------------------------------------
     def _freq(t, _tmp, _window):
         # get sequence of frame which falls within the time window, and return
         # length of that sequence
         return len(_tmp.uid[(_tmp.time > t-_window) & (_tmp.time <= t)])
     # --------------------------------------------------------------------------
-    
+
+    if not isinstance(spec, list):
+        spec = [spec]
+
     # filter the frame by the given spec
     tmp = frame
-    for key,val in spec.iteritems():
-        tmp = tmp[tmp[key].isin([val])]
+    for s in spec:
+        for key,val in s.iteritems():
+            tmp = tmp[tmp[key].isin([val])]
     frame[tgt] = tmp.time.apply(_freq, args=[tmp, window])
 
     return frame
@@ -242,20 +246,22 @@ def add_event_count(frame, tgt, spec):
     cumsum.
     """
 
-    raise NotImplementedError('not yet implemented')
-
     # --------------------------------------------------------------------------
     def _ecnt(t, _tmp):
-        # get sequence of frame which falls within the time window, and return
-        # length of that sequence
-        return len(_tmp.uid[(_tmp.time > t-_window) & (_tmp.time <= t)])
+        # get sequence of frame which falls within the time window from 0 to t
+        # and return length of that sequence
+        return len(_tmp.uid[(_tmp.time <= t)])
     # --------------------------------------------------------------------------
+
+    if not isinstance(spec, list):
+        spec = [spec]
 
     # filter the frame by the given spec
     tmp = frame
-    for key,val in spec.iteritems():
-        tmp = tmp[tmp[key].isin([val])]
-    frame[tgt] = 1 if tmp else 0
+    for s in spec:
+        for key,val in s.iteritems():
+            tmp = tmp[tmp[key].isin([val])]
+    frame[tgt] = tmp.time.apply(_ecnt, args=[tmp])
 
     return frame
 
