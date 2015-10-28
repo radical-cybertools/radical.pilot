@@ -162,6 +162,9 @@ class Component(mp.Process):
         self._log = ru.get_logger(log_name, log_tgt, self._debug)
         self._log.info('creating %s' % self._cname)
 
+        self._prof = Profiler(self._cname)
+        self._prof.flush()
+
         # start the main event loop in a separate process.  At that point, the
         # component will basically detach itself from the parent process, and
         # will only maintain a handle to be used for shutdown
@@ -262,7 +265,6 @@ class Component(mp.Process):
         mp.Process.start(self) # fork child process
 
         try:
-            self._prof = Profiler(self._cname)
             self.initialize()  # this is now the parent process context
         except Exception as e:
             self._log.exception ('initialize failed')
