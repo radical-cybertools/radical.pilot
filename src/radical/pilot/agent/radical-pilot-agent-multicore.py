@@ -3934,8 +3934,6 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
         self._prof.prof('run', uid=self._pilot_id)
         try:
-            self._log = ru.get_logger(self.name, target="%s.log" % self.name,
-                                      level='DEBUG') # FIXME?
 
             while not self._terminate.is_set():
 
@@ -4502,8 +4500,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         self._prof.prof('run', uid=self._pilot_id)
         try:
-            self._log = ru.get_logger(self.name, target="%s.log" % self.name,
-                                      level='DEBUG') # FIXME?
+
             self.monitor_shell.run_async ("MONITOR")
 
             while not self._terminate.is_set () :

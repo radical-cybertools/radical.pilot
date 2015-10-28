@@ -606,6 +606,8 @@ class Component(mp.Process):
 
         self._is_parent = False
         self._cname     = self.childname
+        self._log       = ru.get_logger(self._cname, "%s.log" % self._cname, self._debug)
+        self._prof      = Profiler(self._cname)
 
         # parent can call terminate, which we translate here into sys.exit(),
         # which is then excepted in the run loop below for an orderly shutdown.
@@ -631,9 +633,6 @@ class Component(mp.Process):
             log_tgt   = self._cname + ".log"
             self._log = ru.get_logger(log_name, log_tgt, self._debug)
             self._log.info('running %s' % self._cname)
-
-            # initialize profiler
-            self._prof = Profiler(self._cname)
 
             # initialize_child() should declare all input and output channels, and all
             # workers and notification callbacks
