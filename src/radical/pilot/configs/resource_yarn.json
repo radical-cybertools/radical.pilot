@@ -71,7 +71,7 @@
         "lrms"                        : "SLURM",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "YARN",
-        "agent_spawner"               : "ADBS",
+        "agent_spawner"               : "ABDS",
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "YARN",
         "mpi_launch_method"           : "MPIRUN_RSH",
