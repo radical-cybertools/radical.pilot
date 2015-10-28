@@ -263,13 +263,24 @@ class Component(mp.Process):
         self._is_parent = True # run will reset this for the child
 
         # make sure we don't keep any profile entries buffered across fork
-        self._prof.flush()
+        self._prof.close()
+        self._prof = None
+        self._log  = None
 
         # fork child process
         mp.Process.start(self)
 
         try:
             # this is now the parent process context
+            assert('child' not in self._cname)
+            assert(self._log  == None)
+            assert(self._prof == None)
+
+            log_name   = self._cname
+            log_tgt    = self._cname + ".log"
+            self._log  = ru.get_logger(log_name, log_tgt, self._debug)
+            self._prof = Profiler(self._cname)
+
             self.initialize()
         except Exception as e:
             self._log.exception ('initialize failed')
@@ -606,6 +617,15 @@ class Component(mp.Process):
 
         self._is_parent = False
         self._cname     = self.childname
+
+        assert('child' in self._cname)
+        assert(self._log  == None)
+        assert(self._prof == None)
+
+        log_name   = self._cname
+        log_tgt    = self._cname + ".log"
+        self._log  = ru.get_logger(log_name, log_tgt, self._debug)
+        self._prof = Profiler(self._cname)
 
         # parent can call terminate, which we translate here into sys.exit(),
         # which is then excepted in the run loop below for an orderly shutdown.
