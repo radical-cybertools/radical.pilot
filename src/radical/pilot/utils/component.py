@@ -163,7 +163,6 @@ class Component(mp.Process):
         self._log.info('creating %s' % self._cname)
 
         self._prof = Profiler(self._cname)
-        self._prof.flush()
 
         # start the main event loop in a separate process.  At that point, the
         # component will basically detach itself from the parent process, and
@@ -262,10 +261,16 @@ class Component(mp.Process):
             raise RuntimeError('start() can be called only once')
 
         self._is_parent = True # run will reset this for the child
-        mp.Process.start(self) # fork child process
+
+        # make sure we don't keep any profile entries buffered across fork
+        self._prof.flush()
+
+        # fork child process
+        mp.Process.start(self)
 
         try:
-            self.initialize()  # this is now the parent process context
+            # this is now the parent process context
+            self.initialize()
         except Exception as e:
             self._log.exception ('initialize failed')
             self.stop()
