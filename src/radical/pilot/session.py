@@ -307,6 +307,7 @@ class Session (saga.Session):
 
         logger.debug("session %s closed" % (str(self._uid)))
         self.prof.prof("closed", uid=self._uid)
+        self.prof.close()
 
         self._valid = False
 
