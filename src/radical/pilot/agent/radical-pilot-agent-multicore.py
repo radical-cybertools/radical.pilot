@@ -3932,8 +3932,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
     #
     def _watch(self):
 
-        self._wprof = rpu.Profiler(self.name)
-        self._wprof.prof('run', uid=self._pilot_id)
+        self._prof.prof('run', uid=self._pilot_id)
         try:
             self._log = ru.get_logger(self.name, target="%s.log" % self.name,
                                       level='DEBUG') # FIXME?
@@ -3949,7 +3948,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                     # learn about CUs until all slots are filled, because then
                     # we may not be able to catch finishing CUs in time -- so
                     # there is a fine balance here.  Balance means 100 (FIXME).
-                  # self._wprof.prof('ExecWorker popen watcher pull cu from queue')
+                  # self._prof.prof('ExecWorker popen watcher pull cu from queue')
                     MAX_QUEUE_BULKSIZE = 100
                     while len(cus) < MAX_QUEUE_BULKSIZE :
                         cus.append (self._watch_queue.get_nowait())
@@ -3962,7 +3961,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 # add all cus we found to the watchlist
                 for cu in cus :
 
-                    self._wprof.prof('passed', msg="ExecWatcher picked up unit", uid=cu['_id'])
+                    self._prof.prof('passed', msg="ExecWatcher picked up unit", uid=cu['_id'])
                     self._cus_to_watch.append (cu)
 
                 # check on the known cus.
@@ -3975,9 +3974,6 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         except Exception as e:
             self._log.exception("Error in ExecWorker watch loop (%s)" % e)
             # FIXME: this should signal the ExecWorker for shutdown...
-
-        self._wprof.prof('stop', uid=self._pilot_id)
-        self._wprof.close()
 
 
     # --------------------------------------------------------------------------
@@ -4010,14 +4006,14 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                     with self._cancel_lock:
                         self._cus_to_cancel.remove(cu['_id'])
 
-                    self._wprof.prof('final', msg="execution canceled", uid=cu['_id'])
+                    self._prof.prof('final', msg="execution canceled", uid=cu['_id'])
 
                     del(cu['proc'])  # proc is not json serializable
                     self.publish('unschedule', cu)
                     self.advance(cu, rp.CANCELED, publish=True, push=False)
 
             else:
-                self._wprof.prof('exec', msg='execution complete', uid=cu['_id'])
+                self._prof.prof('exec', msg='execution complete', uid=cu['_id'])
 
                 # make sure proc is collected
                 cu['proc'].wait()
@@ -4036,14 +4032,14 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
                 if exit_code != 0:
                     # The unit failed - fail after staging output
-                    self._wprof.prof('final', msg="execution failed", uid=cu['_id'])
+                    self._prof.prof('final', msg="execution failed", uid=cu['_id'])
                     cu['target_state'] = rp.FAILED
 
                 else:
                     # The unit finished cleanly, see if we need to deal with
                     # output data.  We always move to stageout, even if there are no
                     # directives -- at the very least, we'll upload stdout/stderr
-                    self._wprof.prof('final', msg="execution succeeded", uid=cu['_id'])
+                    self._prof.prof('final', msg="execution succeeded", uid=cu['_id'])
                     cu['target_state'] = rp.DONE
 
                 self.advance(cu, rp.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
@@ -4501,12 +4497,10 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
     #
     def _watch (self) :
 
-        self._wprof = rpu.Profiler(self.name)
-
         MONITOR_READ_TIMEOUT = 1.0   # check for stop signal now and then
         static_cnt           = 0
 
-        self._wprof.prof('run', uid=self._pilot_id)
+        self._prof.prof('run', uid=self._pilot_id)
         try:
             self._log = ru.get_logger(self.name, target="%s.log" % self.name,
                                       level='DEBUG') # FIXME?
@@ -4593,7 +4587,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
                         cu = self._registry.get (pid, None)
 
                     if cu:
-                        self._wprof.prof('passed', msg="ExecWatcher picked up unit",
+                        self._prof.prof('passed', msg="ExecWatcher picked up unit",
                                 state=cu['state'], uid=cu['_id'])
                         self._handle_event (cu, pid, state, data)
                     else:
@@ -4603,9 +4597,6 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
             self._log.exception("Exception in job monitoring thread: %s", e)
             self._terminate.set()
-
-        self._wprof.prof('stop', uid=self._pilot_id)
-        self._wprof.close()
 
 
     # --------------------------------------------------------------------------
@@ -4625,7 +4616,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
                              pid, state, data)
             return
 
-        self._wprof.prof('exec', msg='execution complete', uid=cu['_id'])
+        self._prof.prof('exec', msg='execution complete', uid=cu['_id'])
 
         # for final states, we can free the slots.
         self.publish('unschedule', cu)
@@ -4638,14 +4629,14 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         if rp_state in [rp.FAILED, rp.CANCELED] :
             # The unit failed - fail after staging output
-            self._wprof.prof('final', msg="execution failed", uid=cu['_id'])
+            self._prof.prof('final', msg="execution failed", uid=cu['_id'])
             cu['target_state'] = rp.FAILED
 
         else:
             # The unit finished cleanly, see if we need to deal with
             # output data.  We always move to stageout, even if there are no
             # directives -- at the very least, we'll upload stdout/stderr
-            self._wprof.prof('final', msg="execution succeeded", uid=cu['_id'])
+            self._prof.prof('final', msg="execution succeeded", uid=cu['_id'])
             cu['target_state'] = rp.DONE
 
         self.advance(cu, rp.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)

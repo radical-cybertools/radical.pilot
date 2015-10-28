@@ -8,6 +8,8 @@ import threading
 # ------------------------------------------------------------------------------
 #
 _prof_fields  = ['time', 'name', 'uid', 'state', 'event', 'msg']
+
+
 # ------------------------------------------------------------------------------
 #
 # profile class
@@ -44,7 +46,7 @@ class Profiler (object):
         # write header and time normalization info
         # NOTE: Don't forget to sync any format changes in the bootstrapper
         #       and downstream analysis tools too!
-        self._handle.write("#time,name,uid,state,event,msg\n")
+        self._handle.write("#%s (%s)\n" % (','.join(_prof_fields)))
         self._handle.write("%.4f,%s:%s,%s,%s,%s,%s\n" % \
                            (0.0, self._name, "", "", "", 'sync abs',
                             "%s:%s:%s:%s" % (time.time(), self._ts_zero, 
