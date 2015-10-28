@@ -286,6 +286,7 @@ def combine_profiles(profiles):
     for prof in profiles:
         p     = list()
         tref  = None
+        qed = 0
         with open(prof, 'r') as csvfile:
             reader = csv.DictReader(csvfile, fieldnames=_prof_fields)
             empty  = True
@@ -294,7 +295,7 @@ def combine_profiles(profiles):
                 # skip header
                 if row['time'].startswith('#'):
                     continue
-    
+
                 empty = False
                 row['time'] = float(row['time'])
     
@@ -307,18 +308,28 @@ def combine_profiles(profiles):
                         tref = 'abs'
                         rd_abs[prof] = [row['time']] + row['msg'].split(':')
 
+                # Record closing entries
+                if row['event'] == 'QED':
+                    qed += 1
+
                 # store row in profile
                 p.append(row)
     
         if   tref == 'abs': pd_abs[prof] = p
         elif tref == 'rel': pd_rel[prof] = p
         elif not empty    : print 'WARNING: skipping profile %s (no sync)' % prof
-    
+
+        # Check for proper closure of profiling files
+        if qed == 0:
+            print 'WARNING: profile "%s" not correctly closed.' % prof
+        if qed > 1:
+            print 'WARNING: profile "%s" closed %d times.' % (prof, qed)
+
     # make all timestamps absolute for pd_abs profiles
     for prof, p in pd_abs.iteritems():
     
-        # the profile created an entry t_rel at t_abs.  
-        # The offset is thus t_abs - t_rel, and all timestamps 
+        # the profile created an entry t_rel at t_abs.
+        # The offset is thus t_abs - t_rel, and all timestamps
         # in the profile need to be corrected by that to get absolute time
         t_rel   = float(rd_abs[prof][0])
         t_stamp = float(rd_abs[prof][1])
