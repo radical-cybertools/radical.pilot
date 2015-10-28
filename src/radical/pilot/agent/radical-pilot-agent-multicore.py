@@ -1483,7 +1483,8 @@ class LaunchMethod(object):
             raise TypeError("LaunchMethod shutdown hook only available to base class!")
 
         impl = {
-            LAUNCH_METHOD_ORTE          : LaunchMethodORTE
+            LAUNCH_METHOD_ORTE          : LaunchMethodORTE,
+            LAUNCH_METHOD_YARN          : LaunchMethodYARN            
         }.get(name)
 
         if not impl:
@@ -2717,7 +2718,7 @@ class LaunchMethodYARN(LaunchMethod):
             uname = subprocess.check_output('whoami').split('\n')[0]
             logger.debug('Running: %s/bin/hdfs dfs -mkdir /user/%s'%(hadoop_home,uname))
             os.system('%s/bin/hdfs dfs -mkdir /user/%s'%(hadoop_home,uname))
-            check = subprocess.check_output('%s/bin/hdfs dfs -ls /user'%hadoop_home)
+            check = subprocess.check_output(['%s/bin/hdfs'%hadoop_home,'dfs', '-ls', '/user'])
             logger.info(check)
             # FIXME YARN: why was the scheduler configure called here?  Configure
             #             is already called during scheduler instantiation
@@ -2748,7 +2749,7 @@ class LaunchMethodYARN(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_shutdown_hook(cls, lm_info, logger):
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
         if 'name' not in lm_info:
             raise RuntimeError('rm_ip not in lm_info for %s' \
                     % (self.name))
