@@ -1592,6 +1592,29 @@ class LaunchMethod(object):
         return None
 
 
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def _create_arg_string(args):
+
+        # unit Arguments (if any)
+        arg_string = ''
+        if args:
+            for arg in args:
+                if not arg:
+                    # ignore empty args
+                    continue
+
+                arg = arg.replace('"', '\\"')    # Escape all double quotes
+                if arg[0] == arg[-1] == "'" :    # If a string is between outer single quotes,
+                    arg_string += '%s ' % arg    # ... pass it as is.
+                else:
+                    arg_string += '"%s" ' % arg  # Otherwise return between double quotes.
+
+        return arg_string
+
+
+
 # ==============================================================================
 #
 class LaunchMethodFORK(LaunchMethod):
@@ -1625,7 +1648,7 @@ class LaunchMethodFORK(LaunchMethod):
         task_exec    = cud['executable']
         task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
-        task_argstr  = ' '.join(task_args)
+        task_argstr  = self._create_arg_string(task_args)
 
         if task_argstr:
             command = " ".join([task_exec, task_argstr])
@@ -1667,7 +1690,7 @@ class LaunchMethodMPIRUN(LaunchMethod):
         task_exec    = cud['executable']
         task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
-        task_argstr  = ' '.join(task_args)
+        task_argstr  = self._create_arg_string(task_args)
 
         if not 'task_slots' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -1739,7 +1762,7 @@ class LaunchMethodSSH(LaunchMethod):
         task_exec    = cud['executable']
         task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
-        task_argstr  = ' '.join(task_args)
+        task_argstr  = self._create_arg_string(task_args)
 
         if not 'task_slots' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -1798,7 +1821,7 @@ class LaunchMethodMPIEXEC(LaunchMethod):
         task_exec    = cud['executable']
         task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
-        task_argstr  = ' '.join(task_args)
+        task_argstr  = self._create_arg_string(task_args)
 
         if not 'task_slots' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -1850,7 +1873,7 @@ class LaunchMethodAPRUN(LaunchMethod):
         task_exec    = cud['executable']
         task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
-        task_argstr  = ' '.join(task_args)
+        task_argstr  = self._create_arg_string(task_args)
 
         if task_argstr:
             task_command = " ".join([task_exec, task_argstr])
@@ -1890,7 +1913,7 @@ class LaunchMethodCCMRUN(LaunchMethod):
         task_exec    = cud['executable']
         task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
-        task_argstr  = ' '.join(task_args)
+        task_argstr  = self._create_arg_string(task_args)
 
         if task_argstr:
             task_command = " ".join([task_exec, task_argstr])
@@ -1935,7 +1958,7 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
         task_exec    = cud['executable']
         task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
-        task_argstr  = ' '.join(task_args)
+        task_argstr  = self._create_arg_string(task_args)
 
         if not 'task_slots' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -1991,7 +2014,7 @@ class LaunchMethodRUNJOB(LaunchMethod):
         task_exec    = cud['executable']
         task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
-        task_argstr  = ' '.join(task_args)
+        task_argstr  = self._create_arg_string(task_args)
 
         if  'cores_per_node'      not in opaque_slots or\
             'loadl_bg_block'      not in opaque_slots or\
@@ -2070,7 +2093,7 @@ class LaunchMethodDPLACE(LaunchMethod):
         task_exec    = cud['executable']
         task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
-        task_argstr  = ' '.join(task_args)
+        task_argstr  = self._create_arg_string(task_args)
 
         if 'task_offsets' not in opaque_slots :
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -2124,7 +2147,7 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
         task_exec    = cud['executable']
         task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
-        task_argstr  = ' '.join(task_args)
+        task_argstr  = self._create_arg_string(task_args)
 
         if not 'task_slots' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -2177,7 +2200,7 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
         task_exec    = cud['executable']
         task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
-        task_argstr  = ' '.join(task_args)
+        task_argstr  = self._create_arg_string(task_args)
 
         if not 'task_offsets' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -2229,7 +2252,7 @@ class LaunchMethodIBRUN(LaunchMethod):
         task_exec    = cud['executable']
         task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
-        task_argstr  = ' '.join(task_args)
+        task_argstr  = self._create_arg_string(task_args)
 
         if not 'task_offsets' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -2421,7 +2444,7 @@ class LaunchMethodORTE(LaunchMethod):
         task_exec    = cud['executable']
         task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
-        task_argstr  = ' '.join(task_args)
+        task_argstr  = self._create_arg_string(task_args)
 
         if 'task_slots' not in opaque_slots:
             raise RuntimeError('No task_slots to launch via %s: %s' \
@@ -2491,7 +2514,7 @@ class LaunchMethodPOE(LaunchMethod):
         task_exec    = cud['executable']
         task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
-        task_argstr  = ' '.join(task_args)
+        task_argstr  = self._create_arg_string(task_args)
 
         if not 'task_slots' in opaque_slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
@@ -2785,7 +2808,7 @@ class LaunchMethodYARN(LaunchMethod):
         task_cores   = cud['cores']
         task_env     = cud.get('environment') or {}
         task_args    = cud.get('arguments')   or []
-        task_argstr  = ' '.join(task_args)
+        task_argstr  = self._create_arg_string(task_args)
 
         # Construct the args_string which is the arguments given as input to the
         # shell script. Needs to be a string
@@ -4631,20 +4654,6 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             env_string += " RP_UNIT_ID=%s"    % cu['_id']
             launch_script.write('# Environment variables\n%s\n' % env_string)
 
-            # unit Arguments (if any)
-            task_args_string = ''
-            if cu['description']['arguments']:
-                for arg in cu['description']['arguments']:
-                    if not arg:
-                        # ignore empty args
-                        continue
-
-                    arg = arg.replace('"', '\\"')          # Escape all double quotes
-                    if arg[0] == arg[-1] == "'" :          # If a string is between outer single quotes,
-                        task_args_string += '%s ' % arg    # ... pass it as is.
-                    else:
-                        task_args_string += '"%s" ' % arg  # Otherwise return between double quotes.
-
             # The actual command line, constructed per launch-method
             try:
                 self._log.debug("Launch Script Name %s",launch_script_name)
@@ -5711,20 +5720,6 @@ class AgentExecutingComponent_ABDS (AgentExecutingComponent) :
             env_string += " RP_SPAWNER_ID=%s" % self.cname
             env_string += " RP_UNIT_ID=%s"    % cu['_id']
             launch_script.write('# Environment variables\n%s\n' % env_string)
-
-            # unit Arguments (if any)
-            task_args_string = ''
-            if cu['description']['arguments']:
-                for arg in cu['description']['arguments']:
-                    if not arg:
-                        # ignore empty args
-                        continue
-
-                    arg = arg.replace('"', '\\"')          # Escape all double quotes
-                    if arg[0] == arg[-1] == "'" :          # If a string is between outer single quotes,
-                        task_args_string += '%s ' % arg    # ... pass it as is.
-                    else:
-                        task_args_string += '"%s" ' % arg  # Otherwise return between double quotes.
 
             # The actual command line, constructed per launch-method
             try:
