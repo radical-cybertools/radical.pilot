@@ -412,16 +412,15 @@ def drop_units(cfg, units, name, mode, prof=None, logger=None):
         return units
 
     if not units:
-        # nothing to drop
-        if logger:
-            logger.debug('no units - no dropping')
+      # if logger:
+      #     logger.debug('no units - no dropping')
         return units
 
     drop = cfg.get('drop', {}).get(name, {}).get(mode, 1)
 
     if drop == 0:
-        if logger:
-            logger.debug('dropped nothing')
+      # if logger:
+      #     logger.debug('dropped nothing')
         return units
 
     return_list = True
@@ -432,6 +431,8 @@ def drop_units(cfg, units, name, mode, prof=None, logger=None):
     if drop == 2:
         if logger:
             logger.debug('dropped everything')
+            for unit in units:
+                logger.debug('dropped %s', unit['_id'])
         if return_list: return []
         else          : return None
 
@@ -443,19 +444,17 @@ def drop_units(cfg, units, name, mode, prof=None, logger=None):
     for unit in units :
         if '.clone_' not in unit['_id']:
             ret.append(unit)
-            if logger:
-                logger.debug('dropped not %s', unit['_id'])
+          # if logger:
+          #     logger.debug('dropped not %s', unit['_id'])
         else:
             if logger:
-                logger.debug('dropped     %s', unit['_id'])
+                logger.debug('dropped %s', unit['_id'])
 
     if return_list: 
         return ret
     else: 
-        if ret:
-            return ret[0]
-        else:
-            return None
+        if ret: return ret[0]
+        else  : return None
 
 
 # ------------------------------------------------------------------------------

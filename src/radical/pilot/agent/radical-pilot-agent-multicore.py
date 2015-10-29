@@ -4682,6 +4682,7 @@ class AgentUpdateWorker(rpu.Worker):
         self._mongo_db      = db
         self._cinfo         = dict()            # collection cache
         self._lock          = threading.RLock() # protect _cinfo
+        self._state_cache   = dict()            # used to preserve state ordering
 
         self.declare_subscriber('state', 'agent_state_pubsub', self.state_cb)
         self.declare_idle_cb(self.idle_cb, self._cfg.get('bulk_collection_time'))
@@ -4703,7 +4704,115 @@ class AgentUpdateWorker(rpu.Worker):
                                  'arg' : self.cname})
 
 
-    # ------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    #
+    def _ordered_update(self, cu, state):
+        """
+        The update worker can receive states for a specific unit in any order.
+        If states are pushed straight to theh DB, the state attribute of a unit 
+        may not reflect the actual state.  This should be avoided by re-ordering
+        on the client side DB consumption -- but until that is implemented we
+        enforce ordered state pushes to MongoDB.  We do it like this:
+
+          - for each unit arriving in the update worker
+            - check if new state is final
+              - yes: push update, but never push any update again (only update
+                hist)
+              - no:
+                check if all expected earlier states are pushed already
+                - yes: push this state also
+                - no:  only update state history
+        """
+
+        s2i = {rp.NEW                          :  0,
+
+               rp.PENDING                      :  1,
+               rp.PENDING_LAUNCH               :  2,
+               rp.LAUNCHING                    :  3,
+               rp.PENDING_ACTIVE               :  4,
+               rp.ACTIVE                       :  5,
+
+               rp.UNSCHEDULED                  :  6,
+               rp.SCHEDULING                   :  7,
+               rp.PENDING_INPUT_STAGING        :  8,
+               rp.STAGING_INPUT                :  9,
+               rp.AGENT_STAGING_INPUT_PENDING  : 10,
+               rp.AGENT_STAGING_INPUT          : 11,
+               rp.ALLOCATING_PENDING           : 12,
+               rp.ALLOCATING                   : 13,
+               rp.EXECUTING_PENDING            : 14,
+               rp.EXECUTING                    : 15,
+               rp.AGENT_STAGING_OUTPUT_PENDING : 16,
+               rp.AGENT_STAGING_OUTPUT         : 17,
+               rp.PENDING_OUTPUT_STAGING       : 18,
+               rp.STAGING_OUTPUT               : 19,
+
+               rp.DONE                         : 20,
+               rp.CANCELING                    : 21,
+               rp.CANCELED                     : 22,
+               rp.FAILED                       : 23
+               }
+        i2s = {v:k for k,v in s2i.items()}
+        s_max = rp.FAILED
+
+
+        # we always push state history
+        update_dict = {'$push': {
+                           'statehistory': {
+                               'state'    : state,
+                               'timestamp': rpu.timestamp()}}}
+        uid = cu['_id']
+
+      # self._log.debug(" === inp %s: %s" % (uid, state))
+
+        if uid not in self._state_cache:
+            self._state_cache[uid] = {'unsent' : list(),
+                                      'final'  : False,
+                                      'last'   : rp.STAGING_INPUT} # we get the cu in this state
+        cache = self._state_cache[uid]
+
+        # if unit is already final, we don't push state
+        if cache['final']:
+          # self._log.debug(" === fin %s: %s" % (uid, state))
+            return update_dict
+
+        # if unit becomes final, push state and remember it
+        if state in [rp.DONE, rp.FAILED, rp.CANCELED]:
+            cache['final'] = True
+            cache['last']  = state
+            update_dict['$set'] = {'state': state}
+          # self._log.debug(" === Fin %s: %s" % (uid, state))
+            return update_dict
+
+        # check if we have any consecutive list beyond 'last' in unsent
+        cache['unsent'].append(state)
+      # self._log.debug(" === lst %s: %s %s" % (uid, cache['last'], cache['unsent']))
+        state = None
+        for i in range(s2i[cache['last']]+1, s2i[s_max]):
+          # self._log.debug(" === chk %s: %s in %s" % (uid, i2s[i], cache['unsent']))
+            if i2s[i] in cache['unsent']:
+                state = i2s[i]
+                cache['unsent'].remove(i2s[i])
+              # self._log.debug(" === uns %s: %s" % (uid, state))
+            else:
+              # self._log.debug(" === brk %s: %s" % (uid, state))
+                break
+
+        # the max of the consecutive list is set in te update dict...
+        if state:
+          # self._log.debug(" === set %s: %s" % (uid, state))
+            cache['last'] = state
+            update_dict['$set'] = {'state': state}
+
+        # record if final state is sent
+        if state in [rp.DONE, rp.FAILED, rp.CANCELED]:
+          # self._log.debug(" === FIN %s: %s" % (uid, state))
+            cache['final'] = True
+
+        return update_dict
+
+
+    # --------------------------------------------------------------------------
     #
     def _timed_bulk_execute(self, cinfo):
 
@@ -4755,77 +4864,68 @@ class AgentUpdateWorker(rpu.Worker):
 
         cu = msg
 
-        # we don't have a good fallback on error, as the 'advance to fail' would
-        # create an infinite loop.  We can thus *never* fail!  So we try/catch
-        # and just log any errors.
-        #
-        # FIXME: should we send shutdown signals on errors?
+        # FIXME: we don't have any error recovery -- any failure to update unit
+        #        state in the DB will thus result in an exception here and tear 
+        #        down the pilot.
         #
         # FIXME: at the moment, the update worker only operates on units.
         #        Should it accept other updates, eg. for pilot states?
         #
-        try:
-            # got a new request.  Add to bulk (create as needed),
-            # and push bulk if time is up.
-            uid   = cu['_id']
-            state = cu.get('state')
+        # got a new request.  Add to bulk (create as needed),
+        # and push bulk if time is up.
+        uid   = cu['_id']
+        state = cu.get('state')
 
-            self._prof.prof('get', msg="update unit state to %s" % state, uid=uid)
+        self._prof.prof('get', msg="update unit state to %s" % state, uid=uid)
 
-            cbase       = cu.get('cbase',  '.cu')
-            query_dict  = cu.get('query')
-            update_dict = cu.get('update')
+        cbase       = cu.get('cbase',  '.cu')
+        query_dict  = cu.get('query')
+        update_dict = cu.get('update')
 
-            if not query_dict:
-                query_dict  = {'_id'  : uid} # make sure unit is not final?
-            if not update_dict:
-                update_dict = {'$set' : {'state': state},
-                               '$push': {'statehistory': {
-                                             'state': state,
-                                             'timestamp': rpu.timestamp()}}}
+        if not query_dict:
+            query_dict  = {'_id' : uid} # make sure unit is not final?
+        if not update_dict:
+            update_dict = self._ordered_update (cu, state)
 
-            # when the unit is about to leave the agent, we also update stdout,
-            # stderr exit code etc
-            # FIXME: this probably should be a parameter ('FULL') on 'msg'
-            if state in [rp.DONE, rp.FAILED, rp.CANCELED, rp.PENDING_OUTPUT_STAGING]:
-                update_dict['$set']['stdout'   ] = cu.get('stdout')
-                update_dict['$set']['stderr'   ] = cu.get('stderr')
-                update_dict['$set']['exit_code'] = cu.get('exit_code')
+        # when the unit is about to leave the agent, we also update stdout,
+        # stderr exit code etc
+        # FIXME: this probably should be a parameter ('FULL') on 'msg'
+        if state in [rp.DONE, rp.FAILED, rp.CANCELED, rp.PENDING_OUTPUT_STAGING]:
+            if not '$set' in update_dict:
+                update_dict['$set'] = dict()
+            update_dict['$set']['stdout'   ] = cu.get('stdout')
+            update_dict['$set']['stderr'   ] = cu.get('stderr')
+            update_dict['$set']['exit_code'] = cu.get('exit_code')
 
-            # check if we handled the collection before.  If not, initialize
-            cname = self._session_id + cbase
+        # check if we handled the collection before.  If not, initialize
+        cname = self._session_id + cbase
 
-            with self._lock:
-                if not cname in self._cinfo:
-                    self._cinfo[cname] = {
-                            'coll' : self._mongo_db[cname],
-                            'bulk' : None,
-                            'last' : time.time(),  # time of last push
-                            'uids' : list()
-                            }
+        with self._lock:
+            if not cname in self._cinfo:
+                self._cinfo[cname] = {
+                        'coll' : self._mongo_db[cname],
+                        'bulk' : None,
+                        'last' : time.time(),  # time of last push
+                        'uids' : list()
+                        }
 
 
-                # check if we have an active bulk for the collection.  If not,
-                # create one.
-                cinfo = self._cinfo[cname]
+            # check if we have an active bulk for the collection.  If not,
+            # create one.
+            cinfo = self._cinfo[cname]
 
-                if not cinfo['bulk']:
-                    cinfo['bulk'] = cinfo['coll'].initialize_ordered_bulk_op()
+            if not cinfo['bulk']:
+                cinfo['bulk'] = cinfo['coll'].initialize_ordered_bulk_op()
 
 
-                # push the update request onto the bulk
-                cinfo['uids'].append([uid, state])
-                cinfo['bulk'].find  (query_dict) \
-                             .update(update_dict)
-                self._prof.prof('bulk', msg='bulked (%s)' % state, uid=uid)
+            # push the update request onto the bulk
+            cinfo['uids'].append([uid, state])
+            cinfo['bulk'].find  (query_dict) \
+                         .update(update_dict)
+            self._prof.prof('bulk', msg='bulked (%s)' % state, uid=uid)
 
-                # attempt a timed update
-                self._timed_bulk_execute(cinfo)
-
-        except Exception as e:
-            self._log.exception("unit update failed (%s)", e)
-            # FIXME: should we fail the pilot at this point?
-            # FIXME: Are the strategies to recover?
+            # attempt a timed update
+            self._timed_bulk_execute(cinfo)
 
 
 
