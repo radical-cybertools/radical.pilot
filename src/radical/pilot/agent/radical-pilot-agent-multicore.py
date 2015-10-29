@@ -450,7 +450,6 @@ class AgentSchedulingComponent(rpu.Component):
 
         # all components use the command channel for control messages
         self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
-        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
 
         # we declare a drop callback, so that cored allocated to clones can be
         # freed again
@@ -510,18 +509,6 @@ class AgentSchedulingComponent(rpu.Component):
 
         except KeyError:
             raise ValueError("Scheduler '%s' unknown or defunct" % name)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def command_cb(self, topic, msg):
-
-        cmd = msg['cmd']
-        arg = msg['arg']
-
-        if cmd == 'shutdown':
-            self._log.info('received shutdown command')
-            self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -3741,10 +3728,6 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             with self._cancel_lock:
                 self._cus_to_cancel.append(arg)
 
-        elif cmd == 'shutdown':
-            self._log.info('received shutdown command')
-            self.stop()
-
 
     # --------------------------------------------------------------------------
     #
@@ -3840,7 +3823,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         self._log.debug("Created launch_script: %s", launch_script_name)
 
         with open(launch_script_name, "w") as launch_script:
-            launch_script.write('#!/bin/bash -l\n\n')
+            launch_script.write('#!/bin/sh\n\n')
 
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 launch_script.write("echo script start_script `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
@@ -3968,12 +3951,8 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
     #
     def _watch(self):
 
-        cname = self.name.replace('Component', 'Watcher')
-        self._prof = rpu.Profiler(cname)
         self._prof.prof('run', uid=self._pilot_id)
         try:
-            self._log = ru.get_logger(cname, target="%s.log" % cname,
-                                      level='DEBUG') # FIXME?
 
             while not self._terminate.is_set():
 
@@ -4012,9 +3991,6 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         except Exception as e:
             self._log.exception("Error in ExecWorker watch loop (%s)" % e)
             # FIXME: this should signal the ExecWorker for shutdown...
-
-        self._prof.prof('stop', uid=self._pilot_id)
-        self._prof.flush()
 
 
     # --------------------------------------------------------------------------
@@ -4204,16 +4180,18 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         # Moving back to shared file system again, until it reaches maturity,
         # as this breaks launch methods with a hop, e.g. ssh.
         tmp = os.getcwd() # FIXME: see #658
-        self._pilot_id = self._cfg['pilot_id']
+        self._pilot_id    = self._cfg['pilot_id']
+        self._spawner_tmp = "/%s/%s-%s" % (tmp, self._pilot_id, self._cname)
+
         ret, out, _  = self.launcher_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
-                           % (os.path.dirname (rp.__file__), tmp, self._pilot_id, self._cname))
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
+                           % (os.path.dirname (rp.__file__), self._spawner_tmp))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
 
         ret, out, _  = self.monitor_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
-                           % (os.path.dirname (rp.__file__), tmp, self._pilot_id, self._cname))
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
+                           % (os.path.dirname (rp.__file__), self._spawner_tmp))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
 
@@ -4251,10 +4229,6 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
             self._log.info("cancel unit command (%s)" % arg)
             with self._cancel_lock:
                 self._cus_to_cancel.append(arg)
-
-        elif cmd == 'shutdown':
-            self._log.info('received shutdown command')
-            self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -4521,6 +4495,13 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         self._prof.prof('spawn', msg='spawning passed to pty', uid=uid)
 
+        # for convenience, we link the ExecWorker job-cwd to the unit workdir
+        try:
+            os.symlink("%s/%s" % (self._spawner_tmp, cu['pid']), 
+                       "%s/%s" % (cu['workdir'], 'SHELL_SPAWNER_TMP'))
+        except Exception as e:
+            self._log.exception('shell cwd symlink failed: %s' % e)
+
         # FIXME: this is too late, there is already a race with the monitoring
         # thread for this CU execution.  We need to communicate the PIDs/CUs via
         # a queue again!
@@ -4533,16 +4514,12 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
     #
     def _watch (self) :
 
-        cname = self.name.replace('Component', 'Watcher')
-        self._prof = rpu.Profiler(cname)
-
         MONITOR_READ_TIMEOUT = 1.0   # check for stop signal now and then
         static_cnt           = 0
 
         self._prof.prof('run', uid=self._pilot_id)
         try:
-            self._log = ru.get_logger(cname, target="%s.log" % cname,
-                                      level='DEBUG') # FIXME?
+
             self.monitor_shell.run_async ("MONITOR")
 
             while not self._terminate.is_set () :
@@ -4637,9 +4614,6 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
             self._log.exception("Exception in job monitoring thread: %s", e)
             self._terminate.set()
 
-        self._prof.prof('stop', uid=self._pilot_id)
-        self._prof.flush()
-
 
     # --------------------------------------------------------------------------
     #
@@ -4733,7 +4707,6 @@ class AgentUpdateWorker(rpu.Worker):
 
         # all components use the command channel for control messages
         self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
-        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
 
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',
@@ -4747,18 +4720,6 @@ class AgentUpdateWorker(rpu.Worker):
         # communicate finalization
         self.publish('command', {'cmd' : 'final',
                                  'arg' : self.cname})
-
-
-    # --------------------------------------------------------------------------
-    #
-    def command_cb(self, topic, msg):
-
-        cmd = msg['cmd']
-        arg = msg['arg']
-
-        if cmd == 'shutdown':
-            self._log.info('received shutdown command')
-            self.stop()
 
 
     # ------------------------------------------------------------------
@@ -4926,7 +4887,6 @@ class AgentStagingInputComponent(rpu.Component):
 
         # all components use the command channel for control messages
         self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
-        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
 
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',
@@ -4941,17 +4901,6 @@ class AgentStagingInputComponent(rpu.Component):
         self.publish('command', {'cmd' : 'final',
                                  'arg' : self.cname})
 
-
-    # --------------------------------------------------------------------------
-    #
-    def command_cb(self, topic, msg):
-
-        cmd = msg['cmd']
-        arg = msg['arg']
-
-        if cmd == 'shutdown':
-            self._log.info('received shutdown command')
-            self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -5085,7 +5034,6 @@ class AgentStagingOutputComponent(rpu.Component):
 
         # all components use the command channel for control messages
         self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
-        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
 
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',
@@ -5099,18 +5047,6 @@ class AgentStagingOutputComponent(rpu.Component):
         # communicate finalization
         self.publish('command', {'cmd' : 'final',
                                  'arg' : self.cname})
-
-
-    # --------------------------------------------------------------------------
-    #
-    def command_cb(self, topic, msg):
-
-        cmd = msg['cmd']
-        arg = msg['arg']
-
-        if cmd == 'shutdown':
-            self._log.info('received shutdown command')
-            self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -5264,7 +5200,6 @@ class AgentHeartbeatWorker(rpu.Worker):
 
         # all components use the command channel for control messages
         self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
-        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
 
         self._pilot_id      = self._cfg['pilot_id']
         self._session_id    = self._cfg['session_id']
@@ -5289,18 +5224,6 @@ class AgentHeartbeatWorker(rpu.Worker):
         # communicate finalization
         self.publish('command', {'cmd' : 'final',
                                  'arg' : self.cname})
-
-
-    # --------------------------------------------------------------------------
-    #
-    def command_cb(self, topic, msg):
-
-        cmd = msg['cmd']
-        arg = msg['arg']
-
-        if cmd == 'shutdown':
-            self._log.info('received shutdown command')
-            self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -5400,11 +5323,11 @@ class AgentWorker(rpu.Worker):
     #
     def command_cb(self, topic, msg):
 
-        # This callback is invoked in the process context of the main agent
-        # class.
+        # This callback is invoked as a thread in the process context of the
+        # main agent (parent process) class.
         #
-        # NOTE: That means it is *not* joined in the finalization of the main
-        # loop, and the subscriber thread needs to be joined specifically in the
+        # NOTE: That means it is *not* joined in the finalization of the run
+        # loop (child), and the subscriber thread needs to be joined specifically in the
         # current process context.  At the moment that requires a call to
         # self._finalize() in the main process.
 
@@ -5666,7 +5589,6 @@ class AgentWorker(rpu.Worker):
         self.publish('command', {'cmd' : 'shutdown',
                                  'arg' : '%s finalization' % self.agent_name})
 
-
         # burn the bridges, burn EVERYTHING
         for name,sa in self._sub_agents.items():
             try:
@@ -5846,7 +5768,7 @@ class AgentWorker(rpu.Worker):
     def idle_cb(self):
         """
         This method will be driving all other agent components, in the sense
-        that it will manage the conncection to MongoDB to retrieve units, and
+        that it will manage the connection to MongoDB to retrieve units, and
         then feed them to the respective component queues.
         """
 
@@ -5863,7 +5785,6 @@ class AgentWorker(rpu.Worker):
             # exception in the main loop is fatal
             pilot_FAILED(self._p, self._pilot_id, self._log,
                 "ERROR in agent main loop: %s. %s" % (e, traceback.format_exc()))
-            self._prof.flush()
             sys.exit(1)
 
 
@@ -6077,28 +5998,48 @@ def bootstrap_3():
             raise RuntimeError('could not get a mongodb handle')
 
 
+    # avoid undefined vars on finalization / signal handling
+    bridges = dict()
+    agent   = None
+    lrms    = None
+
     # set up signal and exit handlers
     def exit_handler():
-        prof.flush()
         print 'atexit'
+        if lrms:
+            lrms.stop()
+            lrms = None
+        if bridges:
+            for b in bridges:
+                b.stop()
+            bridges = dict()
+        if agent:
+            agent.stop()
+            agent = None
         sys.exit(1)
 
     def sigint_handler(signum, frame):
         if agent_name == 'agent_0':
             pilot_FAILED(msg='Caught SIGINT. EXITING (%s)' % frame)
         print 'sigint'
+        prof.prof('stop', msg='sigint_handler', uid=pilot_id)
+        prof.close()
         sys.exit(2)
 
     def sigterm_handler(signum, frame):
         if agent_name == 'agent_0':
             pilot_FAILED(msg='Caught SIGTERM. EXITING (%s)' % frame)
         print 'sigterm'
+        prof.prof('stop', msg='sigterm_handler %s' % os.getpid(), uid=pilot_id)
+        prof.close()
         sys.exit(3)
 
     def sigalarm_handler(signum, frame):
         if agent_name == 'agent_0':
             pilot_FAILED(msg='Caught SIGALRM (Walltime limit?). EXITING (%s)' % frame)
         print 'sigalrm'
+        prof.prof('stop', msg='sigalarm_handler', uid=pilot_id)
+        prof.close()
         sys.exit(4)
 
     import atexit
@@ -6112,10 +6053,6 @@ def bootstrap_3():
     # in one of the above handlers or exit handlers being activated, thus
     # reporting the error dutifully.
 
-    # avoid undefined vars on finalization
-    bridges = dict()
-    agent   = None
-    lrms    = None
     try:
         # ----------------------------------------------------------------------
         # des Pudels Kern: merge LRMS info into cfg and get the agent started
@@ -6192,8 +6129,24 @@ def bootstrap_3():
         # (essentially) main...
         if agent:
             agent.stop()
+            agent = None
         log.debug('agent %s finalized' % agent_name)
 
+        # agent.stop will not tear down bridges -- we do that here at last
+        for name,b in bridges.items():
+            try:
+                log.info("closing bridge %s", b)
+                b['handle'].stop()
+            except Exception as e:
+                log.exception('ignore failing bridge terminate (%s)', e)
+        bridges = dict()
+
+        # make sure the lrms release whatever it acquired
+        if lrms:
+            lrms.stop()
+            lrms = None
+
+        # agent_0 will also report final pilot state to the DB
         if agent_name == 'agent_0':
             if agent and agent.final_cause == 'timeout':
                 pilot_DONE(mongo_p, pilot_id, log, "TIMEOUT received. Terminating.")
@@ -6207,22 +6160,9 @@ def bootstrap_3():
             else:
                 pilot_FAILED(mongo_p, pilot_id, log, "FAILED startup")
 
-        # agent.stop will not tear down bridges -- we do that here at last
-        for name,b in bridges.items():
-            try:
-                log.info("closing bridge %s", b)
-                b['handle'].stop()
-            except Exception as e:
-                log.exception('ignore failing bridge terminate (%s)', e)
-
-        # make sure the lrms release whatever it acquired
-        if lrms:
-            lrms.stop()
-
         log.info('stop')
         prof.prof('stop', msg='finally clause agent', uid=pilot_id)
-        prof.flush()
-
+        prof.close()
 
 
 # ==============================================================================

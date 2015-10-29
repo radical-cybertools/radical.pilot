@@ -223,7 +223,6 @@ class Component(mp.Process):
         tear down component state after units have been processed.
         """
         self._log.debug('base finalize (NOOP)')
-        self._prof.flush()
 
 
     # --------------------------------------------------------------------------
@@ -263,10 +262,16 @@ class Component(mp.Process):
             raise RuntimeError('start() can be called only once')
 
         self._is_parent = True # run will reset this for the child
-        mp.Process.start(self) # fork child process
+
+        # make sure we don't keep any profile entries buffered across fork
+        self._prof.flush()
+
+        # fork child process
+        mp.Process.start(self)
 
         try:
-            self.initialize()  # this is now the parent process context
+            # this is now the parent process context
+            self.initialize()
         except Exception as e:
             self._log.exception ('initialize failed')
             self.stop()
@@ -285,7 +290,7 @@ class Component(mp.Process):
         before calling exit.
 
         stop() can be called multiple times, and can be called from the
-        MainThread, or from sub thread (such as callback invokations) -- but it
+        MainThread, or from sub thread (such as callback invocations) -- but it
         should notes that, if called from a callback, it may not always be able
         to tear down all threads, specifically not the callback thread itself
         and the MainThread.  Safest is calling it once from each the parent's
@@ -303,8 +308,12 @@ class Component(mp.Process):
                 sys.exit()
         """
 
+        if self._finalized:
+            # only die once
+            return
+
         self._prof.prof("closing")
-        self._log.info("closing (%d threads)" % (len(self._threads)))
+        self._log.info("closing (%d subscriber threads)" % (len(self._threads)))
 
         # tear down all subscriber threads
         self._terminate.set()
@@ -316,10 +325,7 @@ class Component(mp.Process):
             else:
                 self._log.debug('skipping subscriber thread %s' % t)
 
-        self._log.debug('all threads joined')
-
-        # only call finalizers once
-
+        self._log.debug('subscriber threads joined')
 
         if self._is_parent:
             self._log.info("terminating")
@@ -328,36 +334,50 @@ class Component(mp.Process):
                 self._finalized = True
                 self.finalize()
                 self._prof.prof("finalized")
-                self._prof.flush()
+            else:
+                self._prof.prof("not_yet_finalized")
+
             # Signal the child
-            self._log.debug('Signalling child')
+            self._log.debug('signalling child')
             self.terminate()
+
             # Wait for the child process
-            self._log.debug('Waiting for child')
+            self._log.debug('waiting for child')
             self.join()
-            self._log.debug('Child done')
+            self._log.debug('child done')
+
+            self._prof.prof("stopped")
+            self._prof.close()
+
+            # If we are called from within a callback, that (means?) we will
+            # have skipped one thread for joining above.
+            #
+            # Note that the thread is *not* joined at this point -- but the
+            # parent should not block on shutdown anymore, as the thread is
+            # at least gone.
+            if self_thread in self._threads and self._cb_lock.locked():
+                self._log.debug('release subscriber thread %s' % self_thread)
+                sys.exit()
 
         else:
-            if not self._finalized:
-                self._finalized = True
-                self._prof.prof("finalize")
-                self.finalize_child()
-                self._prof.prof("finalized")
-                self._prof.flush()
+            # we only finalize in the child's main thread.
+            # NOTE: this relies on us not to change the name of MainThread
+            if self_thread.name == 'MainThread':
+                if not self._finalized:
+                    self._prof.prof("not_yet_finalized")
+                    self._finalized = True
+                    self._prof.prof("finalize")
+                    self.finalize_child()
+                    self._prof.prof("finalized")
+                    self._prof.prof("stopped")
+                    self._prof.close()
+                else:
+                    self._prof.prof("already_finalized - ERROR")
+
+            # The child exits here.  If this call happens in a subscriber
+            # thread, then it will be caught in the run loop of the main thread,
+            # leading to the main thread's demize, which ends up here again...
             sys.exit()
-
-
-        # if we are called from within a callback, that we will have skipped one
-        # thread for joining above.  For a child that's ok, because there is
-        # that exit call above -- for a parent, we'll call that exit right here.
-        # Note that the thread is *not* joined at this point -- but the parent
-        # should not block on shutdown anymore, as the thread is at least gone.
-        if self_thread in self._threads and self._cb_lock.locked():
-            self._log.debug('release subscriber thread %s' % self_thread)
-            sys.exit()
-
-        self._prof.prof("stopped")
-        self._prof.flush()
 
 
     # --------------------------------------------------------------------------
@@ -458,7 +478,7 @@ class Component(mp.Process):
         component will retain ownership of the unit, and should call advance()
         asynchronously at a later point in time.
 
-        Worker invokation is synchronous, ie. the main event loop will only
+        Worker invocation is synchronous, ie. the main event loop will only
         check for the next unit once the worker method returns.
         """
 
@@ -537,9 +557,9 @@ class Component(mp.Process):
           callback(topic, msg)
 
         The subscription will be handled in a separate thread, which implies
-        that the callback invokation will also happen in that thread.  It is the
+        that the callback invocation will also happen in that thread.  It is the
         caller's responsibility to ensure thread safety during callback
-        invokation.
+        invocation.
         """
 
         # ----------------------------------------------------------------------
@@ -600,6 +620,8 @@ class Component(mp.Process):
 
         self._is_parent = False
         self._cname     = self.childname
+        self._log       = ru.get_logger(self._cname, "%s.log" % self._cname, self._debug)
+        self._prof      = Profiler(self._cname)
 
         # parent can call terminate, which we translate here into sys.exit(),
         # which is then excepted in the run loop below for an orderly shutdown.
@@ -607,6 +629,9 @@ class Component(mp.Process):
             sys.exit()
         signal.signal(signal.SIGTERM, sigterm_handler)
 
+        # reset other signal handlers to their default
+        signal.signal(signal.SIGINT,  signal.SIG_DFL)
+        signal.signal(signal.SIGALRM, signal.SIG_DFL)
 
         # set process name
         try:
@@ -622,9 +647,6 @@ class Component(mp.Process):
             log_tgt   = self._cname + ".log"
             self._log = ru.get_logger(log_name, log_tgt, self._debug)
             self._log.info('running %s' % self._cname)
-
-            # initialize profiler
-            self._prof = Profiler(self._cname)
 
             # initialize_child() should declare all input and output channels, and all
             # workers and notification callbacks
@@ -645,7 +667,7 @@ class Component(mp.Process):
             # channels, probing 
             while not self._terminate.is_set():
 
-                # if no ation occurs in this iteration, invoke idle callbacks
+                # if no action occurs in this iteration, invoke idle callbacks
                 active = False 
 
                 # FIXME: for the default case where we have only one input
@@ -752,10 +774,12 @@ class Component(mp.Process):
             # don't bother...
             self._log.exception('loop exception')
 
+        except SystemExit:
+            self._log.debug("Caught exit")
+
         except:
-            # This is most likely a sys.exit, but can be any other signal or
-            # interrupt.
-            self._log.exception('loop error')
+            # Can be any other signal or interrupt.
+            self._log.exception('loop interruption')
 
         finally:
             # call stop (which calls the finalizers)
