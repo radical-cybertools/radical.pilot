@@ -1386,6 +1386,33 @@ EOT
 chmod 0755 bootstrap_2.sh
 # ------------------------------------------------------------------------------
 
+#
+# Create a barrier to start the agent.
+# This can be used by experimental scripts to push all units to the DB before
+# the agent starts.
+#
+if ! test -z "$RADICAL_PILOT_BARRIER"
+then
+    echo
+    echo "# -------------------------------------------------------------------"
+    echo "# Entering barrier for $RADICAL_PILOT_BARRIER ..."
+    echo "# -------------------------------------------------------------------"
+
+    profile_event 'bootstrap enter barrier'
+
+    while ! test -f $RADICAL_PILOT_BARRIER
+    do
+        sleep 1
+    done
+
+    profile_event 'bootstrap leave barrier'
+
+    echo
+    echo "# -------------------------------------------------------------------"
+    echo "# Leaving barrier"
+    echo "# -------------------------------------------------------------------"
+fi
+
 profile_event 'agent start'
 
 # start the master agent instance (zero)
