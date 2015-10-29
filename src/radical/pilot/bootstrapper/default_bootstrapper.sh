@@ -1426,10 +1426,27 @@ then
     FINAL_SLEEP=30
     echo "# -------------------------------------------------------------------"
     echo "#"
-    echo "# Sleeping for $FINAL_SLEEP seconds to let dust settle ..."
+    echo "# We wait for at most 30 seconds for the FS to flush profiles."
+    echo "# Success is assumed when all profiles and with a 'QED' event."
     echo "#"
     echo "# -------------------------------------------------------------------"
-    sleep $FINAL_SLEEP
+    nprofs=`echo *.prof | wc -w`
+    nqed=`tail -n 1 *.prof | grep QED | wc -l`
+    nsleep=0
+    while ! test "$nprofs" = "$nqed"
+    do
+        nsleep=$((nsleep+1))
+        if test "$nsleep" = "30"
+        then
+            echo "abort profile sync @ $nsleep: $nprofs != $nqed"
+            break
+        fi
+        echo "delay profile sync @ $nsleep: $nprofs != $nqed"
+        sleep 1
+        # recheck nprofs too, just in case...
+        nprofs=`echo *.prof | wc -w`
+        nqed=`tail -n 1 *.prof | grep QED | wc -l`
+    done
     echo
     echo "# -------------------------------------------------------------------"
     echo "#"
