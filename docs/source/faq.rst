@@ -149,6 +149,14 @@ have a prompt set as `$PS1`).  The snippet below shows how to di that:
     fi
     
 
+...avoid the pop-up "Do you want the application python to accept incoming network connections?" on Mac OSX.
+---------------------------------------------------------
+
+This is coming from the firewall on your Mac. You can either:
+
+    - click "Allow" (many times) 
+    - disable your firewall (temporarily)
+    - Sign the application per instructions here: http://apple.stackexchange.com/a/121010
 
 
 Other Questions

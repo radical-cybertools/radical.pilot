@@ -24,12 +24,12 @@ The EPSRC Archer Cray XC30 system (https://www.archer.ac.uk/)
 
 * **Available schemas**   : ``ssh``
 
-ARCHER_APRUN
-************
+ARCHER_ORTE
+***********
 
 The EPSRC Archer Cray XC30 system (https://www.archer.ac.uk/)
 
-* **Resource label**      : ``epsrc.archer_aprun``
+* **Resource label**      : ``epsrc.archer_orte``
 * **Raw config**          : :download:`resource_epsrc.json <../../src/radical/pilot/configs/resource_epsrc.json>`
 * **Note**            : Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
 * **Default values** for ComputePilotDescription attributes:

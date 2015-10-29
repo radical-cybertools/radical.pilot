@@ -181,7 +181,7 @@ class PilotManagerController(threading.Thread):
         """
         for worker in self._pilot_launcher_worker_pool:
             logger.debug("pworker %s disables launcher %s" % (self.name, worker.name))
-            worker.disable ()
+            worker.disable()
             logger.debug("pworker %s disabled launcher %s" % (self.name, worker.name))
 
 
@@ -259,15 +259,13 @@ class PilotManagerController(threading.Thread):
                 else :
                     logger.error("Couldn't call manager callback (no pilot instance)")
             except Exception as e:
-                logger.exception(
-                    "Couldn't call callback function %s" % e)
+                logger.exception("Couldn't call callback function %s" % e)
                 raise
 
         # if we meet a final state, we record the object's callback history for
         # later evalutation
-        if  new_state in (DONE, FAILED, CANCELED) :
+        if new_state in (DONE, FAILED, CANCELED):
             self._dbs.publish_compute_pilot_callback_history (pilot_id, self._callback_histories[pilot_id])
-      # print 'publishing Callback history for %s' % pilot_id
 
 
     # ------------------------------------------------------------------------
@@ -319,7 +317,7 @@ class PilotManagerController(threading.Thread):
                             # different than the DB recorded state
                             self._shared_data[pilot_id]["data"]["state"] = old_state 
 
-                            # do not tr igger a state cb!
+                            # do not trigger a state cb!
                             no_cb = True
 
                     if new_state != old_state :
@@ -363,7 +361,7 @@ class PilotManagerController(threading.Thread):
                     time.sleep(IDLE_TIME)
 
         except SystemExit as e :
-            logger.exception ("pilot manager controller thread caught system exit -- forcing application shutdown")
+            logger.debug("pilot manager controller thread caught system exit -- forcing application shutdown")
             thread.interrupt_main ()
 
         finally :
@@ -476,7 +474,7 @@ class PilotManagerController(threading.Thread):
             self._shared_data[pilot_uid]['facade_object'] = weakref.ref(pilot)
 
         # Callbacks can only be registered when the ComputeAlready has a
-        # state. To partially address this shortcomming we call the callback
+        # state. To partially address this shortcoming we call the callback
         # with the current ComputePilot state as soon as it is registered.
         self.call_callbacks(
             pilot.uid,
@@ -533,8 +531,8 @@ class PilotManagerController(threading.Thread):
         # not do that, it will get killed the hard way...
         delayed_cancel = list()
 
-        for pilot_id in pilot_ids :
-            if  pilot_id in self._shared_data :
+        for pilot_id in pilot_ids:
+            if  pilot_id in self._shared_data:
 
                 # we don't want to see any callbacks during shutdown
                 # FXIME: this is semantically incorrect, as a CANCELED state cb
@@ -542,53 +540,79 @@ class PilotManagerController(threading.Thread):
                 #        once more...
                 self.unregister_pilot_callback(pilot_id)
 
-                # read state fomr _shared_data only once, so that it does not
+                # read state from _shared_data only once, so that it does not
                 # change under us...
                 old_state = str(self._shared_data[pilot_id]["data"]["state"])
 
-                logger.warn ("actively cancel pilot %s state: %s" % (pilot_id, old_state))
-                if  old_state in [DONE, FAILED, CANCELED] :
-                    logger.warn ("can't actively cancel pilot %s: already in final state" % pilot_id)
+                if old_state in [DONE, FAILED, CANCELED]:
+                    logger.debug("can't actively cancel pilot %s: already in final state" % pilot_id)
 
-                elif old_state in [PENDING_LAUNCH, LAUNCHING, PENDING_ACTIVE] :
-                    if pilot_id in self._shared_worker_data['job_ids'] :
+                elif old_state in [PENDING_LAUNCH, LAUNCHING, PENDING_ACTIVE]:
 
-                        try :
+                    if pilot_id in self._shared_worker_data['job_ids']:
+
+                        try:
                             job_id, js_url = self._shared_worker_data['job_ids'][pilot_id]
                             self._shared_data[pilot_id]["data"]["state"] = CANCELING
-                            logger.info ("actively cancel pilot %s (%s, %s)" % (pilot_id, job_id, js_url))
+                            logger.info("actively cancel pilot %s (%s, %s)" % (pilot_id, job_id, js_url))
 
                             js = self._shared_worker_data['job_services'][js_url]
-                            job = js.get_job (job_id)
-                            job.cancel ()
-                        except Exception as e :
-                            logger.exception ('pilot cancelation failed')
+                            job = js.get_job(job_id)
+                            job.cancel()
+                        except Exception as e:
+                            logger.exception('pilot cancelation failed')
 
 
-                    else :
-                        logger.warn ("can't actively cancel pilot %s: no job id known" % pilot_id)
-                        logger.debug (pprint.pformat (self._shared_worker_data))
+                    else:
+                        logger.debug("can't (yet) cancel starting pilot %s" % pilot_id)
+                        delayed_cancel.append(pilot_id)
 
-                else :
-                    logger.debug ("delay to actively cancel pilot %s: state %s" % (pilot_id, old_state))
-                    delayed_cancel.append (pilot_id)
+                else:
+                    logger.debug("delay to actively cancel pilot %s: state %s" % (pilot_id, old_state))
+                    delayed_cancel.append(pilot_id)
 
-            else :
-                logger.warn  ("can't actively cancel pilot %s: unknown pilot" % pilot_id)
-                logger.debug (pprint.pformat (self._shared_data))
+            else:
+                raise RuntimeError("unknown pilot" % pilot_id)
 
         # now tend to all delayed cancellation requests (ie. active pilots) --
         # if there are any
         if  delayed_cancel :
 
-            # grant some levay to the unruly children...
-            time.sleep (30)
+            # grant some levay (30 sec) to the unruly children...
+            delay = 30
+            start = time.time()
+            logger.report.idle(mode='start')
+            logger.report.idle(c=' ')
 
+            # we idle as long as any pilot is left to watch and we did not yet
+            # hit the delay timeout
+            while delayed_cancel and time.time() - start < delay:
+
+                logger.report.idle()
+                for pilot_id in delayed_cancel[:]:
+
+                    if pilot_id not in self._shared_data:
+                        continue
+
+                    state = self._shared_data[pilot_id]["data"]["state"]
+                    if state in [DONE, FAILED, CANCELED]:
+                        delayed_cancel.remove(pilot_id)
+
+                time.sleep(0.3)
+            logger.report.idle(mode='stop')
+
+            # force-kill any remaining pilots
             for pilot_id in delayed_cancel :
 
                 if pilot_id in self._shared_worker_data['job_ids'] :
 
                     try :
+                        # FIXME: the SAGA layer may raise an exception, because
+                        # there is a race between the delay state check above
+                        # and the cancel below, and the pilot may be gone.  That
+                        # is not a problem, we can ignore it -- what is
+                        # a problem is that the SAGA logger will complain rather
+                        # loundly...
                         job_id, js_url = self._shared_worker_data['job_ids'][pilot_id]
                         logger.info ("actively cancel pilot %s (delayed) (%s, %s)" % (pilot_id, job_id, js_url))
 
@@ -596,11 +620,11 @@ class PilotManagerController(threading.Thread):
                         job = js.get_job (job_id)
                         job.cancel ()
                     except Exception as e :
-                        logger.info ('delayed pilot cancelation failed. '
-                                     'This is not necessarily a problem.')
+                        logger.info('delayed pilot cancelation failed. '
+                                    'This is not necessarily a problem.')
 
                 else :
-                    logger.warn ("can't actively cancel pilot %s: no job id known (delayed)" % pilot_id)
+                    logger.error("can't actively cancel pilot %s: no job id known (delayed)" % pilot_id)
                     logger.debug (pprint.pformat (self._shared_worker_data))
 
 

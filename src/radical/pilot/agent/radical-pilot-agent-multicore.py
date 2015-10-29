@@ -1483,7 +1483,8 @@ class LaunchMethod(object):
             raise TypeError("LaunchMethod shutdown hook only available to base class!")
 
         impl = {
-            LAUNCH_METHOD_ORTE          : LaunchMethodORTE
+            LAUNCH_METHOD_ORTE          : LaunchMethodORTE,
+            LAUNCH_METHOD_YARN          : LaunchMethodYARN            
         }.get(name)
 
         if not impl:
@@ -1561,7 +1562,6 @@ class LaunchMethod(object):
         for name in names:
             ret = cls._which(name)
             if ret is not None:
-                self._log.info("Found %s",ret)
                 return ret
 
         return None
@@ -1594,8 +1594,7 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    @classmethod
-    def _create_arg_string(args):
+    def _create_arg_string(self, args):
 
         # unit Arguments (if any)
         arg_string = ''
@@ -1643,15 +1642,20 @@ class LaunchMethodFORK(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
+        self._log.debug('FORK construct Command')
+        self._log.debug('CU: {0}'.format(cu))
+
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
+        self._log.debug('CU descr dir: {0}'.format(dir(cud)))
+        self._log.debug('CU descr: {0}'.format(cud))
         task_exec    = cud['executable']
         task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
         task_argstr  = self._create_arg_string(task_args)
 
         if task_argstr:
-            command = " ".join([task_exec, task_argstr])
+            command = "%s %s" % (task_exec, task_argstr)
         else:
             command = task_exec
 
@@ -1699,7 +1703,7 @@ class LaunchMethodMPIRUN(LaunchMethod):
         task_slots = opaque_slots['task_slots']
 
         if task_arstr:
-            task_command = " ".join([task_exec, task_arstr])
+            task_command = "%s %s" % (task_exec, task_argstr)
         else:
             task_command = task_exec
 
@@ -1777,7 +1781,7 @@ class LaunchMethodSSH(LaunchMethod):
         host = task_slots[0].split(':')[0]
 
         if task_argstr:
-            task_command = " ".join([task_exec, task_argstr])
+            task_command = "%s %s" % (task_exec, task_argstr)
         else:
             task_command = task_exec
 
@@ -1834,7 +1838,7 @@ class LaunchMethodMPIEXEC(LaunchMethod):
 
         # Construct the executable and arguments
         if task_argstr:
-            task_command = " ".join([task_exec, task_argstr])
+            task_command = "%s %s" % (task_exec, task_argstr)
         else:
             task_command = task_exec
 
@@ -1876,7 +1880,7 @@ class LaunchMethodAPRUN(LaunchMethod):
         task_argstr  = self._create_arg_string(task_args)
 
         if task_argstr:
-            task_command = " ".join([task_exec, task_argstr])
+            task_command = "%s %s" % (task_exec, task_argstr)
         else:
             task_command = task_exec
 
@@ -1916,7 +1920,7 @@ class LaunchMethodCCMRUN(LaunchMethod):
         task_argstr  = self._create_arg_string(task_args)
 
         if task_argstr:
-            task_command = " ".join([task_exec, task_argstr])
+            task_command = "%s %s" % (task_exec, task_argstr)
         else:
             task_command = task_exec
 
@@ -1967,7 +1971,7 @@ class LaunchMethodMPIRUNCCMRUN(LaunchMethod):
         task_slots = opaque_slots['task_slots']
 
         if task_argstr:
-            task_command = " ".join([task_exec, task_argstr])
+            task_command = "%s %s" % (task_exec, task_argstr)
         else:
             task_command = task_exec
 
@@ -2102,7 +2106,7 @@ class LaunchMethodDPLACE(LaunchMethod):
         task_offsets = opaque_slots['task_offsets']
 
         if task_argstr:
-            task_command = " ".join([task_exec, task_argstr])
+            task_command = "%s %s" % (task_exec, task_argstr)
         else:
             task_command = task_exec
 
@@ -2156,7 +2160,7 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
         task_slots = opaque_slots['task_slots']
 
         if task_argstr:
-            task_command = " ".join([task_exec, task_argstr])
+            task_command = "%s %s" % (task_exec, task_argstr)
         else:
             task_command = task_exec
 
@@ -2209,7 +2213,7 @@ class LaunchMethodMPIRUNDPLACE(LaunchMethod):
         task_offsets = opaque_slots['task_offsets']
 
         if task_argstr:
-            task_command = " ".join([task_exec, task_argstr])
+            task_command = "%s %s" % (task_exec, task_argstr)
         else:
             task_command = task_exec
 
@@ -2261,7 +2265,7 @@ class LaunchMethodIBRUN(LaunchMethod):
         task_offsets = opaque_slots['task_offsets']
 
         if task_argstr:
-            task_command = " ".join([task_exec, task_argstr])
+            task_command = "%s %s" % (task_exec, task_argstr)
         else:
             task_command = task_exec
 
@@ -2466,7 +2470,7 @@ class LaunchMethodORTE(LaunchMethod):
         dvm_uri    = opaque_slots['lm_info']['dvm_uri']
 
         if task_argstr:
-            task_command = " ".join([task_exec, task_argstr])
+            task_command = "%s %s" % (task_exec, task_argstr)
         else:
             task_command = task_exec
 
@@ -2537,7 +2541,7 @@ class LaunchMethodPOE(LaunchMethod):
             hosts_string += '%s %d ' % (host, hosts[host])
 
         if task_argstr:
-            task_command = " ".join([task_exec, task_argstr])
+            task_command = "%s %s" % (task_exec, task_argstr)
         else:
             task_command = task_exec
 
@@ -2661,6 +2665,7 @@ class LaunchMethodYARN(LaunchMethod):
         hadoop_home = None
         if lrms.name == 'YARNLRMS':
             logger.info('Hook called by YARN LRMS')
+            logger.info('NameNode: {0}'.format(lrms.namenode_url))
             service_url    = lrms.namenode_url
             rm_url         = "%s:%s" % (lrms.rm_ip, lrms.rm_port)
             rm_ip          = lrms.rm_ip
@@ -2674,9 +2679,9 @@ class LaunchMethodYARN(LaunchMethod):
                 stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.0/hadoop-2.6.0.tar.gz")
                 stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
             else:
-                node = commands.getstatusoutput('/bin/hostname')
+                node = subprocess.check_output('/bin/hostname')
                 logger.info('Entered Else creation')
-                node_name = node[1]
+                node_name = node.split('\n')[0]
                 stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.0/hadoop-2.6.0.tar.gz")
                 stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
                 # TODO: Decide how the agent will get Hadoop tar ball.
@@ -2699,11 +2704,11 @@ class LaunchMethodYARN(LaunchMethod):
             # Solution to find Java's home folder: 
             # http://stackoverflow.com/questions/1117398/java-home-directory
 
-            jpos = commands.getstatusoutput('readlink -f /usr/bin/java | sed "s:bin/java::"')
-            if jpos[1].find('jre') != -1:
-                java_home = jpos[1][:jpos[1].find('jre')]
+            jpos = subprocess.check_output(['readlink','-f', '/usr/bin/java']).split('bin')
+            if jpos[0].find('jre') != -1:
+                java_home = jpos[0][:jpos[0].find('jre')]
             else:
-                java_home = jpos[1]
+                java_home = jpos[0]
 
             hadoop_env_file = open(hadoop_home+'/etc/hadoop/hadoop-env.sh','r')
             hadoop_env_file_lines = hadoop_env_file.readlines()
@@ -2732,11 +2737,11 @@ class LaunchMethodYARN(LaunchMethod):
             # Creating user's HDFS home folder
             logger.debug('Running: %s/bin/hdfs dfs -mkdir /user'%hadoop_home)
             os.system('%s/bin/hdfs dfs -mkdir /user'%hadoop_home)
-            uname = commands.getstatusoutput('whoami')
-            logger.debug('Running: %s/bin/hdfs dfs -mkdir /user/%s'%(hadoop_home,uname[1]))
-            os.system('%s/bin/hdfs dfs -mkdir /user/%s'%(hadoop_home,uname[1]))
-            check = commands.getstatusoutput('%s/bin/hdfs dfs -ls /user'%hadoop_home)
-            logger.info(check[1])
+            uname = subprocess.check_output('whoami').split('\n')[0]
+            logger.debug('Running: %s/bin/hdfs dfs -mkdir /user/%s'%(hadoop_home,uname))
+            os.system('%s/bin/hdfs dfs -mkdir /user/%s'%(hadoop_home,uname))
+            check = subprocess.check_output(['%s/bin/hdfs'%hadoop_home,'dfs', '-ls', '/user'])
+            logger.info(check)
             # FIXME YARN: why was the scheduler configure called here?  Configure
             #             is already called during scheduler instantiation
             # self._scheduler._configure()
@@ -2766,7 +2771,7 @@ class LaunchMethodYARN(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_shutdown_hook(cls, lm_info, logger):
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
         if 'name' not in lm_info:
             raise RuntimeError('rm_ip not in lm_info for %s' \
                     % (self.name))
@@ -4353,12 +4358,15 @@ class YARNLRMS(LRMS):
                 self._log.warn("more cores available: using requested %d instead of available %d.",
                         selected_cpus, detected_cpus)
 
-        hdfs_conf_ouput = commands.getstatusoutput('hdfs getconf -nnRpcAddresses')[1].split('\n')
-        for output in hdfs_conf_ouput:
-            if ':' in output:
-                self.namenode_url = output
+        hdfs_conf_output =subprocess.check_output(['hdfs', 'getconf', '-nnRpcAddresses']).split('\n')[0]
+        self._log.debug('Namenode URL = {0}'.format(hdfs_conf_output))
+        self.namenode_url = hdfs_conf_output
 
 
+        self._log.debug('Namenode URL = {0}'.format(self.namenode_url))
+
+        # I will leave it for the moment because I have not found another way 
+        # to take the necessary value yet.
         yarn_conf_output = commands.getstatusoutput('yarn node -list')[1].split('\n')
         for line in yarn_conf_output:
             if 'ResourceManager' in line:
@@ -4618,7 +4626,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         self._log.debug("Created launch_script: %s", launch_script_name)
 
         with open(launch_script_name, "w") as launch_script:
-            launch_script.write('#!/bin/sh\n\n')
+            launch_script.write('#!/bin/bash -l\n\n')
 
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 launch_script.write("echo script start_script `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
@@ -4980,16 +4988,18 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         # Moving back to shared file system again, until it reaches maturity,
         # as this breaks launch methods with a hop, e.g. ssh.
         tmp = os.getcwd() # FIXME: see #658
-        self._pilot_id = self._cfg['pilot_id']
+        self._pilot_id    = self._cfg['pilot_id']
+        self._spawner_tmp = "/%s/%s-%s" % (tmp, self._pilot_id, self._cname)
+
         ret, out, _  = self.launcher_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
-                           % (os.path.dirname (rp.__file__), tmp, self._pilot_id, self._cname))
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
+                           % (os.path.dirname (rp.__file__), self._spawner_tmp))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
 
         ret, out, _  = self.monitor_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh /%s/%s-%s" \
-                           % (os.path.dirname (rp.__file__), tmp, self._pilot_id, self._cname))
+                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
+                           % (os.path.dirname (rp.__file__), self._spawner_tmp))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
 
@@ -5315,6 +5325,13 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
                              % (run_cmd, ret, out))
 
         self._prof.prof('spawn', msg='spawning passed to pty', uid=uid)
+
+        # for convenience, we link the ExecWorker job-cwd to the unit workdir
+        try:
+            os.symlink("%s/%s" % (self._spawner_tmp, cu['pid']), 
+                       "%s/%s" % (cu['workdir'], 'SHELL_SPAWNER_TMP'))
+        except Exception as e:
+            self._log.exception('shell cwd symlink failed: %s' % e)
 
         # FIXME: this is too late, there is already a race with the monitoring
         # thread for this CU execution.  We need to communicate the PIDs/CUs via
