@@ -146,10 +146,9 @@ class Component(mp.Process):
         self._inputs        = list()      # queues to get units from
         self._outputs       = dict()      # queues to send units to
         self._publishers    = dict()      # channels to send notifications to
-        self._subscribers   = dict()      # callbacks for received notifications
+        self._subscribers   = list()      # callbacks for received notifications
         self._workers       = dict()      # where units get worked upon
         self._idlers        = list()      # idle_callback registry
-        self._threads       = list()      # subscriber threads
         self._terminate     = mt.Event()  # signal for thread termination
         self._finalized     = False       # finalization guard
         self._is_parent     = None        # guard initialize/initialize_child
@@ -312,12 +311,12 @@ class Component(mp.Process):
             return
 
         self._prof.prof("closing")
-        self._log.info("closing (%d subscriber threads)" % (len(self._threads)))
+        self._log.info("closing (%d subscriber threads)" % (len(self._subscribers)))
 
         # tear down all subscriber threads
         self._terminate.set()
         self_thread = mt.current_thread()
-        for t in self._threads:
+        for t in self._subscribers:
             if t != self_thread:
                 self._log.debug('joining  subscriber thread %s' % t)
                 t.join()
@@ -354,7 +353,7 @@ class Component(mp.Process):
             # Note that the thread is *not* joined at this point -- but the
             # parent should not block on shutdown anymore, as the thread is
             # at least gone.
-            if self_thread in self._threads and self._cb_lock.locked():
+            if self_thread in self._subscribers and self._cb_lock.locked():
                 self._log.debug('release subscriber thread %s' % self_thread)
                 sys.exit()
 
@@ -586,10 +585,19 @@ class Component(mp.Process):
         t = mt.Thread(target=_subscriber, args=[q,cb],
                       name="%s.subscriber" % self.cname)
         t.start()
-        self._threads.append(t)
+        self._subscribers.append(t)
 
         self._log.debug('%s declared subscriber: %s : %s : %s : %s' \
                 % (self._cname, topic, pubsub, cb, t.name))
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _subscriber_check_cb(self):
+
+        for t in self._subscribers:
+            if not t.isAlive():
+                raise RuntimeError('subscriber %s died' % t.name)
 
 
     # --------------------------------------------------------------------------
@@ -639,6 +647,9 @@ class Component(mp.Process):
             self._prof.prof('initialize')
             self.initialize_child()
             self._prof.prof('initialized')
+
+            # register own idle callback to watch the subscriber threads (1/sec)
+            self.declare_idle_cb(self._subscriber_check_cb, 1.0)
 
             # perform a sanity check: for each declared input state, we expect
             # a corresponding work method to be declared, too.
@@ -803,7 +814,6 @@ class Component(mp.Process):
                 # send state notifications
                 self.publish('state', unit)
                 self._prof.prof('publish', uid=unit['_id'], state=unit['state'])
-                time.sleep(0.1)
 
             if push:
                 if state not in self._outputs:
