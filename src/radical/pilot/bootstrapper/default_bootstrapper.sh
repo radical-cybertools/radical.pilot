@@ -1427,7 +1427,7 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# We wait for at most 30 seconds for the FS to flush profiles."
-    echo "# Success is assumed when all profiles and with a 'QED' event."
+    echo "# Success is assumed when all profiles end with a 'QED' event."
     echo "#"
     echo "# -------------------------------------------------------------------"
     nprofs=`echo *.prof | wc -w`
