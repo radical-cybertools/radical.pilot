@@ -1313,6 +1313,7 @@ fi
 
 verify_rp_install
 
+# TODO: (re)move this output?
 echo
 echo "# -------------------------------------------------------------------"
 echo "# Launching radical-pilot-agent "
