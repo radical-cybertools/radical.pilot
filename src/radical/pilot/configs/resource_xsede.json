@@ -43,7 +43,8 @@
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_stampede",
-        "virtenv_mode"                : "create"
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
     },
 
     "lonestar": {
@@ -79,7 +80,8 @@
         "valid_roots"                 : ["/home1", "/scratch", "/work"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_lonestar",
-        "virtenv_mode"                : "create"
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
     },
 
     "trestles": {
@@ -108,7 +110,8 @@
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_trestles",
-        "virtenv_mode"                : "create"
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
     },
 
     "gordon": {
@@ -137,7 +140,8 @@
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "debug",
         "virtenv"                     : "%(global_sandbox)s/ve_gordon",
-        "virtenv_mode"                : "create"
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
     },
 
     "blacklight": {
@@ -171,7 +175,8 @@
         "stage_cacerts"               : "True",
         "rp_version"                  : "debug",
         "virtenv"                     : "%(global_sandbox)s/ve_blacklight",
-        "virtenv_mode"                : "create"
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
     },
 
     "comet": {
@@ -206,7 +211,8 @@
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_comet",
-        "virtenv_mode"                : "create"
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
     },
 
     "supermic": {
@@ -235,6 +241,7 @@
         "valid_roots"                 : ["/work"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_supermic",
-        "virtenv_mode"                : "create"
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
     }
 }

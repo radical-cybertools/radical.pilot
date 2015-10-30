@@ -405,6 +405,7 @@ class PilotLauncherWorker(threading.Thread):
                         virtenv                 = resource_cfg.get ('virtenv',             DEFAULT_VIRTENV)
                         stage_cacerts           = resource_cfg.get ('stage_cacerts',       'False')
                         cores_per_node          = resource_cfg.get ('cores_per_node')
+                        python_dist             = resource_cfg.get ('python_dist')
 
 
                         # Agent configuration that is not part of the public API.
@@ -483,6 +484,7 @@ class PilotLauncherWorker(threading.Thread):
                         # the sandbox. We use always "default_bootstrapper.sh"
                         # TODO: Is this still configurable and/or in the resource configs?
                         bootstrapper = "default_bootstrapper.sh"
+
                         bootstrapper_path = os.path.abspath("%s/../bootstrapper/%s" \
                                 % (mod_dir, bootstrapper))
 
@@ -640,6 +642,7 @@ class PilotLauncherWorker(threading.Thread):
                         bootstrap_args += " -r '%s'" % rp_version
                         bootstrap_args += " -s '%s'" % session_id
                         bootstrap_args += " -v '%s'" % virtenv
+                        bootstrap_args += " -b '%s'" % python_dist
 
                         # set optional args
                         if agent_type:              bootstrap_args += " -a '%s'" % agent_type
