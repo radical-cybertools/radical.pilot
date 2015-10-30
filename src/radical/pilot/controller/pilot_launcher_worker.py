@@ -405,7 +405,7 @@ class PilotLauncherWorker(threading.Thread):
                         virtenv                 = resource_cfg.get ('virtenv',             DEFAULT_VIRTENV)
                         stage_cacerts           = resource_cfg.get ('stage_cacerts',       'False')
                         cores_per_node          = resource_cfg.get ('cores_per_node')
-                        python_distr            = resource_cfg.get ('python_dist')
+                        python_dist             = resource_cfg.get ('python_dist')
 
 
                         # Agent configuration that is not part of the public API.
@@ -641,7 +641,7 @@ class PilotLauncherWorker(threading.Thread):
                         bootstrap_args += " -r '%s'" % rp_version
                         bootstrap_args += " -s '%s'" % session_id
                         bootstrap_args += " -v '%s'" % virtenv
-                        bootstrap_args += " -b '%s'" % python_distr
+                        bootstrap_args += " -b '%s'" % python_dist
 
                         # set optional args
                         if agent_type:              bootstrap_args += " -a '%s'" % agent_type

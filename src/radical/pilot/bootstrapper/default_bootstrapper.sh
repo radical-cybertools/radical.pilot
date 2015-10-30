@@ -422,20 +422,20 @@ virtenv_setup()
 
     if test "$virtenv_mode" = "private"
     then
-        if test "$python_dist" = "anaconda"
+        #if test "$python_dist" = "anaconda"
+        #then
+        if test -d "$virtenv/" #Virtual env activation
         then
-            if test -d "$virtenv/" #Virtual env activation
-            then
-                printf "\nERROR: private virtenv already exists at $virtenv\n\n"
-                exit 1
-            fi
-        else
-            if test -f "$virtenv/bin/activate"
-            then
-                printf "\nERROR: private virtenv already exists at $virtenv\n\n"
-                exit 1
-            fi
+            printf "\nERROR: private virtenv already exists at $virtenv\n\n"
+            exit 1
         fi
+        #else
+        #    if test -f "$virtenv/bin/activate"
+        #    then
+        #        printf "\nERROR: private virtenv already exists at $virtenv\n\n"
+        #        exit 1
+        #    fi
+        #fi
         virtenv_create=TRUE
         virtenv_update=FALSE
 
@@ -443,12 +443,12 @@ virtenv_setup()
     then
         virtenv_create=FALSE
         virtenv_update=TRUE
-        if test "$python_dist" = "anaconda"
-        then
-            test -d "$virtenv/" || virtenv_create=TRUE
-        else
-            test -f "$virtenv/bin/activate" || virtenv_create=TRUE
-        fi
+        #if test "$python_dist" = "anaconda"
+        #then
+        test -d "$virtenv/" || virtenv_create=TRUE
+        #else
+        #    test -f "$virtenv/bin/activate" || virtenv_create=TRUE
+        #fi
     elif test "$virtenv_mode" = "create"
     then
         virtenv_create=TRUE
@@ -456,31 +456,31 @@ virtenv_setup()
 
     elif test "$virtenv_mode" = "use"
     then
-        if test "$python_dist" = "anaconda"
+        #if test "$python_dist" = "anaconda"
+        #then
+        if test -d "$virtenv/" #Virtual env activation
         then
-            if test -d "$virtenv/" #Virtual env activation
-            then
-                printf "\nERROR: private virtenv already exists at $virtenv\n\n"
-                exit 1
-            fi
-        else
-            if test -f "$virtenv/bin/activate"
-            then
-                printf "\nERROR: private virtenv already exists at $virtenv\n\n"
-                exit 1
-            fi
+            printf "\nERROR: private virtenv already exists at $virtenv\n\n"
+            exit 1
         fi
+        #else
+        #    if test -f "$virtenv/bin/activate"
+        #    then
+        #        printf "\nERROR: private virtenv already exists at $virtenv\n\n"
+        #        exit 1
+        #    fi
+        #fi
         virtenv_create=FALSE
         virtenv_update=FALSE
 
     elif test "$virtenv_mode" = "recreate"
     then
-        if test "$python_dist" = "anaconda"
-        then
-            test -d "$virtenv/" && rm -r "$virtenv"
-        else
-            test -f "$virtenv/bin/activate" && rm -r "$virtenv"
-        fi
+        #if test "$python_dist" = "anaconda"
+        #then
+        test -d "$virtenv/" && rm -r "$virtenv"
+        #else
+        #    test -f "$virtenv/bin/activate" && rm -r "$virtenv"
+        #fi
         virtenv_create=TRUE
         virtenv_update=FALSE
     else
@@ -608,40 +608,40 @@ virtenv_setup()
     # create virtenv if needed.  This also activates the virtenv.
     if test "$virtenv_create" = "TRUE"
     then
-        if test "$python_dist" = "anaconda"
+        #if test "$python_dist" = "anaconda"
+        #then
+        if ! test -d "$virtenv/"
         then
-            if ! test -d "$virtenv/"
+            echo 'rp lock for ve create'
+            lock "$pid" "$virtenv" # use default timeout
+            virtenv_create "$virtenv" "$python_dist"
+            if ! test "$?" = 0
             then
-                echo 'rp lock for ve create'
-                lock "$pid" "$virtenv" # use default timeout
-                virtenv_create "$virtenv" "$python_dist"
-                if ! test "$?" = 0
-                then
-                   echo "Error on virtenv creation -- abort"
-                   unlock "$pid" "$virtenv"
-                   exit 1
-                fi
-                unlock "$pid" "$virtenv"
-            else
-                echo "virtenv $virtenv exists"
+               echo "Error on virtenv creation -- abort"
+               unlock "$pid" "$virtenv"
+               exit 1
             fi
+            unlock "$pid" "$virtenv"
         else
-            if ! test -f "$virtenv/bin/activate"
-            then
-                echo 'rp lock for ve create'
-                lock "$pid" "$virtenv" # use default timeout
-                virtenv_create "$virtenv" "$python_dist"
-                if ! test "$?" = 0
-                then
-                   echo "Error on virtenv creation -- abort"
-                   unlock "$pid" "$virtenv"
-                   exit 1
-                fi
-                unlock "$pid" "$virtenv"
-            else
-                echo "virtenv $virtenv exists"
-            fi
+            echo "virtenv $virtenv exists"
         fi
+        #else
+        #    if ! test -f "$virtenv/bin/activate"
+        #    then
+        #        echo 'rp lock for ve create'
+        #        lock "$pid" "$virtenv" # use default timeout
+        #        virtenv_create "$virtenv" "$python_dist"
+        #        if ! test "$?" = 0
+        #        then
+        #           echo "Error on virtenv creation -- abort"
+        #           unlock "$pid" "$virtenv"
+        #           exit 1
+        #        fi
+        #        unlock "$pid" "$virtenv"
+        #    else
+        #        echo "virtenv $virtenv exists"
+        #    fi
+        #fi
     else
         echo "do not create virtenv $virtenv"
     fi
@@ -894,7 +894,7 @@ virtenv_update()
 
     virtenv="$1"
     pytohn_dist="$2"
-    virtenv_activate "$virtenv" "$pytohn_dist"
+    virtenv_activate "$virtenv" "$python_dist"
 
     # we upgrade all dependencies of the RADICAL stack, one by one.
     # NOTE: we only do pip upgrades -- that will ignore the easy_installed 
@@ -1272,13 +1272,12 @@ fi
 #       report the absolute representation of it, and thus report a different
 #       module path than one would expect from the virtenv path.  We thus
 #       normalize the virtenv path before we use it.
-if test "$PYTHON_DIST" = "default"
-then
-    mkdir -p "$VIRTENV"
-    echo "VIRTENV : $VIRTENV"
-    VIRTENV=`(cd $VIRTENV; pwd -P)`
-    echo "VIRTENV : $VIRTENV (normalized)"    
-fi
+
+mkdir -p "$VIRTENV"
+echo "VIRTENV : $VIRTENV"
+VIRTENV=`(cd $VIRTENV; pwd -P)`
+echo "VIRTENV : $VIRTENV (normalized)" 
+rmdir "$VIRTENV" 2>/dev/null  
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
@@ -1416,6 +1415,25 @@ RADICAL_PILOT_NTPHOST=`dig +short 0.pool.ntp.org | grep -v -e ";;" -e "\.$" | he
 # Famous last words, I know...
 # Arguments to that script are passed on to the agent, which is specifically
 # done to distinguish agent instances.
+if test "$PYTHON_DIST" = "anaconda"
+then
+(cat <<EOT
+#!/bin/bash -l
+
+# some inspection for logging
+hostname
+
+# make sure we use the correct sandbox
+cd $SANDBOX
+
+# activate virtenv
+source activate $VIRTENV/
+
+EOT
+
+)>>bootstrap_2.sh
+else
+
 (cat <<EOT
 #!/bin/sh
 
@@ -1425,26 +1443,13 @@ hostname
 # make sure we use the correct sandbox
 cd $SANDBOX
 
-EOT
-
-)>> bootstrap_2.sh
-if test "$python_dist" = "anaconda"
-then
-(cat <<EOT
-    # activate virtenv
-    source activate $VIRTENV
+# activate virtenv
+. $VIRTENV/bin/activate
 
 EOT
 
-)>> bootstrap_2.sh
-else
-(cat <<EOT
-    # activate virtenv
-    . $VIRTENV/bin/activate
+)>>bootstrap_2.sh
 
-EOT
-
-)>> bootstrap_2.sh
 fi
 
 (cat <<EOT
@@ -1471,7 +1476,7 @@ exec $AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
 
 EOT
 
-)> bootstrap_2.sh
+)>> bootstrap_2.sh
 chmod 0755 bootstrap_2.sh
 # ------------------------------------------------------------------------------
 
@@ -1479,7 +1484,13 @@ profile_event 'agent start'
 
 # start the master agent instance (zero)
 profile_event 'sync rel' 'agent start'
-sh bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
+if test "$PYTHON_DIST" = "anaconda"
+then
+    bash bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
+else
+    sh bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
+fi
+
 AGENT_EXITCODE=$?
 
 profile_event 'cleanup start'
