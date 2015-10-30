@@ -245,7 +245,7 @@ def get_experiment_frames(experiments, datadir=None):
         exp_frames[exp] = list()
 
         for sid, label in experiments[exp]:
-            print "   - %s" % sid
+            print "   - %s [%s]" % (sid, label)
 
             profdir = datadir
             if os.path.isdir('%s/%s' % (datadir, sid)):
@@ -254,7 +254,10 @@ def get_experiment_frames(experiments, datadir=None):
             import glob
             from . import add_derived, add_info, add_states
 
-            profs = glob.glob ("%s/*.prof" % profdir)
+            profs  = glob.glob ("%s/*.prof" % profdir)
+            profs += glob.glob ("%s/pilot*/*.prof" % profdir)
+          # print profdir
+          # print profs
             prof  = combine_profiles(profs)
             frame = prof2frame  (prof)
             frame = add_derived (frame)

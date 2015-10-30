@@ -190,7 +190,7 @@ def add_concurrency (frame, tgt, spec):
     # --------------------------------------------------------------------------
 
     frame[tgt] = frame.apply(lambda row: _conc(row, spec), axis=1).cumsum()
-    frame[tgt] = frame.apply(lambda row: _abs (row[tgt]),  axis=1)
+  # frame[tgt] = frame.apply(lambda row: _abs (row[tgt]),  axis=1)
     frame[tgt] = frame.apply(lambda row: _time(row[tgt]),  axis=1)
   # print frame[[tgt, 'time']]
 
@@ -464,17 +464,20 @@ def add_derived(df):
     """
 
     import operator
+    import numpy as np
 
-    # TODO: The fields these are derived from are outdated by now!
-    df['executor_queue'] = operator.sub(df['ewo_get'],      df['as_to_ewo'])
-    df['raw_runtime']    = operator.sub(df['ewa_complete'], df['ewo_launch'])
-    df['full_runtime']   = operator.sub(df['uw_push_done'], df['as_to_ewo'])
-    df['watch_delay']    = operator.sub(df['ewa_get'],      df['ewo_to_ewa'])
-    df['allocation']     = operator.sub(df['as_allocated'], df['a_to_as'])
+  # # TODO: The fields these are derived from are outdated by now!
+  # df['executor_queue'] = operator.sub(df['ewo_get'],      df['as_to_ewo'])
+  # df['raw_runtime']    = operator.sub(df['ewa_complete'], df['ewo_launch'])
+  # df['full_runtime']   = operator.sub(df['uw_push_done'], df['as_to_ewo'])
+  # df['watch_delay']    = operator.sub(df['ewa_get'],      df['ewo_to_ewa'])
+  # df['allocation']     = operator.sub(df['as_allocated'], df['a_to_as'])
 
     # add a flag to indicate if a unit / pilot / ... is cloned
     # --------------------------------------------------------------------------
     def _cloned (row):
+        if not row['uid']:
+            return np.NaN
         return 'clone' in row['uid'].lower()
     # --------------------------------------------------------------------------
     df['cloned'] = df.apply(lambda row: _cloned (row), axis=1)
@@ -503,20 +506,23 @@ def add_info(df):
 
         ret = ""
         n   = 0  #
-        for pat, pre in info_names.iteritems():
-            if pat in row['name']:
-                ret += pre
-                n   += 1
-                break
-        for pat, ev in _info_events.iteritems():
-            if ret and pat == row['event']:
-                ret += ev
-                n   += 1
-                break
-        for pat, s in _info_pending.iteritems():
-            if ret and pat in row['state']:
-                ret += s
-                break
+        if row['name']:
+            for pat, pre in info_names.iteritems():
+                if pat in row['name']:
+                    ret += pre
+                    n   += 1
+                    break
+        if row['event']:
+            for pat, ev in _info_events.iteritems():
+                if ret and pat == row['event']:
+                    ret += ev
+                    n   += 1
+                    break
+        if row['state']:
+            for pat, s in _info_pending.iteritems():
+                if ret and pat in row['state']:
+                    ret += s
+                    break
 
         if ret and n >= 2:
             return ret
