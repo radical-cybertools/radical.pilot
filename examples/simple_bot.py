@@ -67,7 +67,7 @@ if __name__ == "__main__":
         # on your local machine. 
         #
         c = rp.Context('ssh')
-        c.user_id = "tg824689"
+        c.user_id = ""
         #c.user_pass = "PutYourPasswordHere"
         session.add_context(c)
 
@@ -94,8 +94,6 @@ if __name__ == "__main__":
         pdesc.runtime  = 60 # minutes
         pdesc.cores    = 16
         pdesc.cleanup  = False
-        pdesc.project  = 'TG-MCB090174'
-        pdesc.queue    = 'development'
 
         # submit the pilot.
         print "Submitting Compute Pilot to Pilot Manager ..."
