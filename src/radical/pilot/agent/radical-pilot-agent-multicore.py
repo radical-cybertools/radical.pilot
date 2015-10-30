@@ -451,10 +451,13 @@ class AgentSchedulingComponent(rpu.Component):
         # all components use the command channel for control messages
         self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
 
-        self._pilot_id = self._cfg['pilot_id']
+        # we declare a drop callback, so that cored allocated to clones can be
+        # freed again
+        self.declare_drop_cb(self.drop_cb)
 
         # The scheduler needs the LRMS information which have been collected
         # during agent startup.  We dig them out of the config at this point.
+        self._pilot_id = self._cfg['pilot_id']
         self._lrms_lm_info        = self._cfg['lrms_info']['lm_info']
         self._lrms_node_list      = self._cfg['lrms_info']['node_list']
         self._lrms_cores_per_node = self._cfg['lrms_info']['cores_per_node']
@@ -629,6 +632,22 @@ class AgentSchedulingComponent(rpu.Component):
 
         # Note: The extra space below is for visual alignment
         self._log.info("slot status after  unschedule: %s" % self.slot_status ())
+
+
+    # --------------------------------------------------------------------------
+    #
+    def drop_cb(self, unit, name=None, mode=None, prof=None, logger=None):
+
+        if mode == 'output':
+            # we only unscheduler *after* scheduling.  Duh!
+
+            if prof:
+                prof.prof('drop_cb', uid=unit['_id'])
+            else:
+                self._prof.prof('drop_cb', uid=unit['_id'])
+
+            self.unschedule_cb(topic=None, msg=unit)
+
 
 
     # --------------------------------------------------------------------------
@@ -3932,11 +3951,8 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
     #
     def _watch(self):
 
-        self._wprof = rpu.Profiler(self.name)
-        self._wprof.prof('run', uid=self._pilot_id)
+        self._prof.prof('run', uid=self._pilot_id)
         try:
-            self._log = ru.get_logger(self.name, target="%s.log" % self.name,
-                                      level='DEBUG') # FIXME?
 
             while not self._terminate.is_set():
 
@@ -3949,7 +3965,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                     # learn about CUs until all slots are filled, because then
                     # we may not be able to catch finishing CUs in time -- so
                     # there is a fine balance here.  Balance means 100 (FIXME).
-                  # self._wprof.prof('ExecWorker popen watcher pull cu from queue')
+                  # self._prof.prof('ExecWorker popen watcher pull cu from queue')
                     MAX_QUEUE_BULKSIZE = 100
                     while len(cus) < MAX_QUEUE_BULKSIZE :
                         cus.append (self._watch_queue.get_nowait())
@@ -3962,7 +3978,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 # add all cus we found to the watchlist
                 for cu in cus :
 
-                    self._wprof.prof('passed', msg="ExecWatcher picked up unit", uid=cu['_id'])
+                    self._prof.prof('passed', msg="ExecWatcher picked up unit", uid=cu['_id'])
                     self._cus_to_watch.append (cu)
 
                 # check on the known cus.
@@ -3975,9 +3991,6 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         except Exception as e:
             self._log.exception("Error in ExecWorker watch loop (%s)" % e)
             # FIXME: this should signal the ExecWorker for shutdown...
-
-        self._wprof.prof('stop', uid=self._pilot_id)
-        self._wprof.close()
 
 
     # --------------------------------------------------------------------------
@@ -4010,14 +4023,14 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                     with self._cancel_lock:
                         self._cus_to_cancel.remove(cu['_id'])
 
-                    self._wprof.prof('final', msg="execution canceled", uid=cu['_id'])
+                    self._prof.prof('final', msg="execution canceled", uid=cu['_id'])
 
                     del(cu['proc'])  # proc is not json serializable
                     self.publish('unschedule', cu)
                     self.advance(cu, rp.CANCELED, publish=True, push=False)
 
             else:
-                self._wprof.prof('exec', msg='execution complete', uid=cu['_id'])
+                self._prof.prof('exec', msg='execution complete', uid=cu['_id'])
 
                 # make sure proc is collected
                 cu['proc'].wait()
@@ -4036,14 +4049,14 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
                 if exit_code != 0:
                     # The unit failed - fail after staging output
-                    self._wprof.prof('final', msg="execution failed", uid=cu['_id'])
+                    self._prof.prof('final', msg="execution failed", uid=cu['_id'])
                     cu['target_state'] = rp.FAILED
 
                 else:
                     # The unit finished cleanly, see if we need to deal with
                     # output data.  We always move to stageout, even if there are no
                     # directives -- at the very least, we'll upload stdout/stderr
-                    self._wprof.prof('final', msg="execution succeeded", uid=cu['_id'])
+                    self._prof.prof('final', msg="execution succeeded", uid=cu['_id'])
                     cu['target_state'] = rp.DONE
 
                 self.advance(cu, rp.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
@@ -4501,15 +4514,12 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
     #
     def _watch (self) :
 
-        self._wprof = rpu.Profiler(self.name)
-
         MONITOR_READ_TIMEOUT = 1.0   # check for stop signal now and then
         static_cnt           = 0
 
-        self._wprof.prof('run', uid=self._pilot_id)
+        self._prof.prof('run', uid=self._pilot_id)
         try:
-            self._log = ru.get_logger(self.name, target="%s.log" % self.name,
-                                      level='DEBUG') # FIXME?
+
             self.monitor_shell.run_async ("MONITOR")
 
             while not self._terminate.is_set () :
@@ -4593,7 +4603,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
                         cu = self._registry.get (pid, None)
 
                     if cu:
-                        self._wprof.prof('passed', msg="ExecWatcher picked up unit",
+                        self._prof.prof('passed', msg="ExecWatcher picked up unit",
                                 state=cu['state'], uid=cu['_id'])
                         self._handle_event (cu, pid, state, data)
                     else:
@@ -4603,9 +4613,6 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
             self._log.exception("Exception in job monitoring thread: %s", e)
             self._terminate.set()
-
-        self._wprof.prof('stop', uid=self._pilot_id)
-        self._wprof.close()
 
 
     # --------------------------------------------------------------------------
@@ -4625,7 +4632,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
                              pid, state, data)
             return
 
-        self._wprof.prof('exec', msg='execution complete', uid=cu['_id'])
+        self._prof.prof('exec', msg='execution complete', uid=cu['_id'])
 
         # for final states, we can free the slots.
         self.publish('unschedule', cu)
@@ -4638,14 +4645,14 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         if rp_state in [rp.FAILED, rp.CANCELED] :
             # The unit failed - fail after staging output
-            self._wprof.prof('final', msg="execution failed", uid=cu['_id'])
+            self._prof.prof('final', msg="execution failed", uid=cu['_id'])
             cu['target_state'] = rp.FAILED
 
         else:
             # The unit finished cleanly, see if we need to deal with
             # output data.  We always move to stageout, even if there are no
             # directives -- at the very least, we'll upload stdout/stderr
-            self._wprof.prof('final', msg="execution succeeded", uid=cu['_id'])
+            self._prof.prof('final', msg="execution succeeded", uid=cu['_id'])
             cu['target_state'] = rp.DONE
 
         self.advance(cu, rp.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
@@ -4694,6 +4701,7 @@ class AgentUpdateWorker(rpu.Worker):
         self._mongo_db      = db
         self._cinfo         = dict()            # collection cache
         self._lock          = threading.RLock() # protect _cinfo
+        self._state_cache   = dict()            # used to preserve state ordering
 
         self.declare_subscriber('state', 'agent_state_pubsub', self.state_cb)
         self.declare_idle_cb(self.idle_cb, self._cfg.get('bulk_collection_time'))
@@ -4715,7 +4723,115 @@ class AgentUpdateWorker(rpu.Worker):
                                  'arg' : self.cname})
 
 
-    # ------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    #
+    def _ordered_update(self, cu, state):
+        """
+        The update worker can receive states for a specific unit in any order.
+        If states are pushed straight to theh DB, the state attribute of a unit 
+        may not reflect the actual state.  This should be avoided by re-ordering
+        on the client side DB consumption -- but until that is implemented we
+        enforce ordered state pushes to MongoDB.  We do it like this:
+
+          - for each unit arriving in the update worker
+            - check if new state is final
+              - yes: push update, but never push any update again (only update
+                hist)
+              - no:
+                check if all expected earlier states are pushed already
+                - yes: push this state also
+                - no:  only update state history
+        """
+
+        s2i = {rp.NEW                          :  0,
+
+               rp.PENDING                      :  1,
+               rp.PENDING_LAUNCH               :  2,
+               rp.LAUNCHING                    :  3,
+               rp.PENDING_ACTIVE               :  4,
+               rp.ACTIVE                       :  5,
+
+               rp.UNSCHEDULED                  :  6,
+               rp.SCHEDULING                   :  7,
+               rp.PENDING_INPUT_STAGING        :  8,
+               rp.STAGING_INPUT                :  9,
+               rp.AGENT_STAGING_INPUT_PENDING  : 10,
+               rp.AGENT_STAGING_INPUT          : 11,
+               rp.ALLOCATING_PENDING           : 12,
+               rp.ALLOCATING                   : 13,
+               rp.EXECUTING_PENDING            : 14,
+               rp.EXECUTING                    : 15,
+               rp.AGENT_STAGING_OUTPUT_PENDING : 16,
+               rp.AGENT_STAGING_OUTPUT         : 17,
+               rp.PENDING_OUTPUT_STAGING       : 18,
+               rp.STAGING_OUTPUT               : 19,
+
+               rp.DONE                         : 20,
+               rp.CANCELING                    : 21,
+               rp.CANCELED                     : 22,
+               rp.FAILED                       : 23
+               }
+        i2s = {v:k for k,v in s2i.items()}
+        s_max = rp.FAILED
+
+
+        # we always push state history
+        update_dict = {'$push': {
+                           'statehistory': {
+                               'state'    : state,
+                               'timestamp': rpu.timestamp()}}}
+        uid = cu['_id']
+
+      # self._log.debug(" === inp %s: %s" % (uid, state))
+
+        if uid not in self._state_cache:
+            self._state_cache[uid] = {'unsent' : list(),
+                                      'final'  : False,
+                                      'last'   : rp.STAGING_INPUT} # we get the cu in this state
+        cache = self._state_cache[uid]
+
+        # if unit is already final, we don't push state
+        if cache['final']:
+          # self._log.debug(" === fin %s: %s" % (uid, state))
+            return update_dict
+
+        # if unit becomes final, push state and remember it
+        if state in [rp.DONE, rp.FAILED, rp.CANCELED]:
+            cache['final'] = True
+            cache['last']  = state
+            update_dict['$set'] = {'state': state}
+          # self._log.debug(" === Fin %s: %s" % (uid, state))
+            return update_dict
+
+        # check if we have any consecutive list beyond 'last' in unsent
+        cache['unsent'].append(state)
+      # self._log.debug(" === lst %s: %s %s" % (uid, cache['last'], cache['unsent']))
+        state = None
+        for i in range(s2i[cache['last']]+1, s2i[s_max]):
+          # self._log.debug(" === chk %s: %s in %s" % (uid, i2s[i], cache['unsent']))
+            if i2s[i] in cache['unsent']:
+                state = i2s[i]
+                cache['unsent'].remove(i2s[i])
+              # self._log.debug(" === uns %s: %s" % (uid, state))
+            else:
+              # self._log.debug(" === brk %s: %s" % (uid, state))
+                break
+
+        # the max of the consecutive list is set in te update dict...
+        if state:
+          # self._log.debug(" === set %s: %s" % (uid, state))
+            cache['last'] = state
+            update_dict['$set'] = {'state': state}
+
+        # record if final state is sent
+        if state in [rp.DONE, rp.FAILED, rp.CANCELED]:
+          # self._log.debug(" === FIN %s: %s" % (uid, state))
+            cache['final'] = True
+
+        return update_dict
+
+
+    # --------------------------------------------------------------------------
     #
     def _timed_bulk_execute(self, cinfo):
 
@@ -4767,77 +4883,68 @@ class AgentUpdateWorker(rpu.Worker):
 
         cu = msg
 
-        # we don't have a good fallback on error, as the 'advance to fail' would
-        # create an infinite loop.  We can thus *never* fail!  So we try/catch
-        # and just log any errors.
-        #
-        # FIXME: should we send shutdown signals on errors?
+        # FIXME: we don't have any error recovery -- any failure to update unit
+        #        state in the DB will thus result in an exception here and tear 
+        #        down the pilot.
         #
         # FIXME: at the moment, the update worker only operates on units.
         #        Should it accept other updates, eg. for pilot states?
         #
-        try:
-            # got a new request.  Add to bulk (create as needed),
-            # and push bulk if time is up.
-            uid   = cu['_id']
-            state = cu.get('state')
+        # got a new request.  Add to bulk (create as needed),
+        # and push bulk if time is up.
+        uid   = cu['_id']
+        state = cu.get('state')
 
-            self._prof.prof('get', msg="update unit state to %s" % state, uid=uid)
+        self._prof.prof('get', msg="update unit state to %s" % state, uid=uid)
 
-            cbase       = cu.get('cbase',  '.cu')
-            query_dict  = cu.get('query')
-            update_dict = cu.get('update')
+        cbase       = cu.get('cbase',  '.cu')
+        query_dict  = cu.get('query')
+        update_dict = cu.get('update')
 
-            if not query_dict:
-                query_dict  = {'_id'  : uid} # make sure unit is not final?
-            if not update_dict:
-                update_dict = {'$set' : {'state': state},
-                               '$push': {'statehistory': {
-                                             'state': state,
-                                             'timestamp': rpu.timestamp()}}}
+        if not query_dict:
+            query_dict  = {'_id' : uid} # make sure unit is not final?
+        if not update_dict:
+            update_dict = self._ordered_update (cu, state)
 
-            # when the unit is about to leave the agent, we also update stdout,
-            # stderr exit code etc
-            # FIXME: this probably should be a parameter ('FULL') on 'msg'
-            if state in [rp.DONE, rp.FAILED, rp.CANCELED, rp.PENDING_OUTPUT_STAGING]:
-                update_dict['$set']['stdout'   ] = cu.get('stdout')
-                update_dict['$set']['stderr'   ] = cu.get('stderr')
-                update_dict['$set']['exit_code'] = cu.get('exit_code')
+        # when the unit is about to leave the agent, we also update stdout,
+        # stderr exit code etc
+        # FIXME: this probably should be a parameter ('FULL') on 'msg'
+        if state in [rp.DONE, rp.FAILED, rp.CANCELED, rp.PENDING_OUTPUT_STAGING]:
+            if not '$set' in update_dict:
+                update_dict['$set'] = dict()
+            update_dict['$set']['stdout'   ] = cu.get('stdout')
+            update_dict['$set']['stderr'   ] = cu.get('stderr')
+            update_dict['$set']['exit_code'] = cu.get('exit_code')
 
-            # check if we handled the collection before.  If not, initialize
-            cname = self._session_id + cbase
+        # check if we handled the collection before.  If not, initialize
+        cname = self._session_id + cbase
 
-            with self._lock:
-                if not cname in self._cinfo:
-                    self._cinfo[cname] = {
-                            'coll' : self._mongo_db[cname],
-                            'bulk' : None,
-                            'last' : time.time(),  # time of last push
-                            'uids' : list()
-                            }
+        with self._lock:
+            if not cname in self._cinfo:
+                self._cinfo[cname] = {
+                        'coll' : self._mongo_db[cname],
+                        'bulk' : None,
+                        'last' : time.time(),  # time of last push
+                        'uids' : list()
+                        }
 
 
-                # check if we have an active bulk for the collection.  If not,
-                # create one.
-                cinfo = self._cinfo[cname]
+            # check if we have an active bulk for the collection.  If not,
+            # create one.
+            cinfo = self._cinfo[cname]
 
-                if not cinfo['bulk']:
-                    cinfo['bulk'] = cinfo['coll'].initialize_ordered_bulk_op()
+            if not cinfo['bulk']:
+                cinfo['bulk'] = cinfo['coll'].initialize_ordered_bulk_op()
 
 
-                # push the update request onto the bulk
-                cinfo['uids'].append([uid, state])
-                cinfo['bulk'].find  (query_dict) \
-                             .update(update_dict)
-                self._prof.prof('bulk', msg='bulked (%s)' % state, uid=uid)
+            # push the update request onto the bulk
+            cinfo['uids'].append([uid, state])
+            cinfo['bulk'].find  (query_dict) \
+                         .update(update_dict)
+            self._prof.prof('bulk', msg='bulked (%s)' % state, uid=uid)
 
-                # attempt a timed update
-                self._timed_bulk_execute(cinfo)
-
-        except Exception as e:
-            self._log.exception("unit update failed (%s)", e)
-            # FIXME: should we fail the pilot at this point?
-            # FIXME: Are the strategies to recover?
+            # attempt a timed update
+            self._timed_bulk_execute(cinfo)
 
 
 
@@ -5564,7 +5671,7 @@ class AgentWorker(rpu.Worker):
         for name, thing in to_watch:
             state = thing['handle'].poll()
             if state == None:
-                self._log.debug('%-30s: ok' % name)
+                self._log.debug('%-40s: ok' % name)
             else:
                 raise RuntimeError ('%s died - shutting down' % name)
 
@@ -5991,9 +6098,24 @@ def bootstrap_3():
             raise RuntimeError('could not get a mongodb handle')
 
 
+    # avoid undefined vars on finalization / signal handling
+    bridges = dict()
+    agent   = None
+    lrms    = None
+
     # set up signal and exit handlers
     def exit_handler():
         print 'atexit'
+        if lrms:
+            lrms.stop()
+            lrms = None
+        if bridges:
+            for b in bridges:
+                b.stop()
+            bridges = dict()
+        if agent:
+            agent.stop()
+            agent = None
         sys.exit(1)
 
     def sigint_handler(signum, frame):
@@ -6031,10 +6153,6 @@ def bootstrap_3():
     # in one of the above handlers or exit handlers being activated, thus
     # reporting the error dutifully.
 
-    # avoid undefined vars on finalization
-    bridges = dict()
-    agent   = None
-    lrms    = None
     try:
         # ----------------------------------------------------------------------
         # des Pudels Kern: merge LRMS info into cfg and get the agent started
@@ -6111,6 +6229,7 @@ def bootstrap_3():
         # (essentially) main...
         if agent:
             agent.stop()
+            agent = None
         log.debug('agent %s finalized' % agent_name)
 
         # agent.stop will not tear down bridges -- we do that here at last
@@ -6120,10 +6239,12 @@ def bootstrap_3():
                 b['handle'].stop()
             except Exception as e:
                 log.exception('ignore failing bridge terminate (%s)', e)
+        bridges = dict()
 
         # make sure the lrms release whatever it acquired
         if lrms:
             lrms.stop()
+            lrms = None
 
         # agent_0 will also report final pilot state to the DB
         if agent_name == 'agent_0':
