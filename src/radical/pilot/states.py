@@ -65,6 +65,7 @@ class State(object):
 
 # -----------------------------------------------------------------------------
 # Common States
+UNKNOWN                      = 'Unknown'
 NEW                          = 'New'
 DONE                         = 'Done'
 CANCELING                    = 'Canceling'
@@ -139,7 +140,7 @@ _unit_state_value = {UNKNOWN                      :  0,
                      FAILED                       : 18,
                      CANCELED                     : 19}
 
-_inv_unit_state_value = {v: k for k, v in _unit_state_order.items()}
+_inv_unit_state_value = {v: k for k, v in _unit_state_value.items()}
 
 def derive_unit_state(hist):
 
@@ -147,7 +148,7 @@ def derive_unit_state(hist):
     state = _unit_state_value(UNKNOWN)
 
     for s,t in hist:
-        state = max(state, _unit_state_value{s})
+        state = max(state, _unit_state_value[s])
 
     return _inv_unit_state_value(state)
 
@@ -163,7 +164,7 @@ _pilot_state_value = {UNKNOWN                      :  0,
                       FAILED                       :  6,
                       CANCELED                     :  7}
 
-_inv_pilot_state_value = {v: k for k, v in _pilot_state_order.items()}
+_inv_pilot_state_value = {v: k for k, v in _pilot_state_value.items()}
 
 
 def derive_pilot_state(hist):
@@ -171,7 +172,7 @@ def derive_pilot_state(hist):
     state = _pilot_state_value(UNKNOWN)
 
     for s,t in hist:
-        state = max(state, _pilot_state_value{s})
+        state = max(state, _pilot_state_value[s])
 
     return _inv_pilot_state_value(state)
 
