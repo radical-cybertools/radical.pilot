@@ -422,20 +422,11 @@ virtenv_setup()
 
     if test "$virtenv_mode" = "private"
     then
-        #if test "$python_dist" = "anaconda"
-        #then
         if test -d "$virtenv/" #Virtual env activation
         then
             printf "\nERROR: private virtenv already exists at $virtenv\n\n"
             exit 1
         fi
-        #else
-        #    if test -f "$virtenv/bin/activate"
-        #    then
-        #        printf "\nERROR: private virtenv already exists at $virtenv\n\n"
-        #        exit 1
-        #    fi
-        #fi
         virtenv_create=TRUE
         virtenv_update=FALSE
 
@@ -443,44 +434,25 @@ virtenv_setup()
     then
         virtenv_create=FALSE
         virtenv_update=TRUE
-        #if test "$python_dist" = "anaconda"
-        #then
         test -d "$virtenv/" || virtenv_create=TRUE
-        #else
-        #    test -f "$virtenv/bin/activate" || virtenv_create=TRUE
-        #fi
-    elif test "$virtenv_mode" = "create"
+        elif test "$virtenv_mode" = "create"
     then
         virtenv_create=TRUE
         virtenv_update=FALSE
 
     elif test "$virtenv_mode" = "use"
     then
-        #if test "$python_dist" = "anaconda"
-        #then
         if test -d "$virtenv/" #Virtual env activation
         then
             printf "\nERROR: private virtenv already exists at $virtenv\n\n"
             exit 1
         fi
-        #else
-        #    if test -f "$virtenv/bin/activate"
-        #    then
-        #        printf "\nERROR: private virtenv already exists at $virtenv\n\n"
-        #        exit 1
-        #    fi
-        #fi
         virtenv_create=FALSE
         virtenv_update=FALSE
 
     elif test "$virtenv_mode" = "recreate"
     then
-        #if test "$python_dist" = "anaconda"
-        #then
         test -d "$virtenv/" && rm -r "$virtenv"
-        #else
-        #    test -f "$virtenv/bin/activate" && rm -r "$virtenv"
-        #fi
         virtenv_create=TRUE
         virtenv_update=FALSE
     else
@@ -608,8 +580,6 @@ virtenv_setup()
     # create virtenv if needed.  This also activates the virtenv.
     if test "$virtenv_create" = "TRUE"
     then
-        #if test "$python_dist" = "anaconda"
-        #then
         if ! test -d "$virtenv/"
         then
             echo 'rp lock for ve create'
@@ -625,23 +595,6 @@ virtenv_setup()
         else
             echo "virtenv $virtenv exists"
         fi
-        #else
-        #    if ! test -f "$virtenv/bin/activate"
-        #    then
-        #        echo 'rp lock for ve create'
-        #        lock "$pid" "$virtenv" # use default timeout
-        #        virtenv_create "$virtenv" "$python_dist"
-        #        if ! test "$?" = 0
-        #        then
-        #           echo "Error on virtenv creation -- abort"
-        #           unlock "$pid" "$virtenv"
-        #           exit 1
-        #        fi
-        #        unlock "$pid" "$virtenv"
-        #    else
-        #        echo "virtenv $virtenv exists"
-        #    fi
-        #fi
     else
         echo "do not create virtenv $virtenv"
     fi
@@ -1272,11 +1225,12 @@ fi
 #       report the absolute representation of it, and thus report a different
 #       module path than one would expect from the virtenv path.  We thus
 #       normalize the virtenv path before we use it.
-
+OLD_PWD=`pwd`
 mkdir -p "$VIRTENV"
 echo "VIRTENV : $VIRTENV"
 VIRTENV=`(cd $VIRTENV; pwd -P)`
-echo "VIRTENV : $VIRTENV (normalized)" 
+echo "VIRTENV : $VIRTENV (normalized)"
+cd $OLD_PWD
 rmdir "$VIRTENV" 2>/dev/null  
 
 # Check that mandatory arguments are set
