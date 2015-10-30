@@ -119,30 +119,30 @@ PMGR_ACTIVE                  = ACTIVE
 
 # ------------------------------------------------------------------------------
 #
-_unit_state_value = {UNKNOWN                      :  0,
-                     NEW                          :  1,
-                     UNSCHEDULED                  :  2,
-                     PENDING_INPUT_STAGING        :  3,
-                     STAGING_INPUT                :  4,
-                     AGENT_STAGING_INPUT_PENDING  :  5,
-                     AGENT_STAGING_INPUT          :  6,
-                     PENDING_EXECUTION            :  7,
-                     SCHEDULING                   :  8,
-                     ALLOCATING_PENDING           :  9,
-                     ALLOCATING                   : 10,
-                     EXECUTING_PENDING            : 11,
-                     EXECUTING                    : 12,
-                     AGENT_STAGING_OUTPUT_PENDING : 13,
-                     AGENT_STAGING_OUTPUT         : 14,
-                     PENDING_OUTPUT_STAGING       : 15,
-                     STAGING_OUTPUT               : 16,
-                     DONE                         : 17,
-                     FAILED                       : 18,
-                     CANCELED                     : 19}
-
-_inv_unit_state_value = {v: k for k, v in _unit_state_value.items()}
-
 def derive_unit_state(hist):
+
+    _unit_state_value = {UNKNOWN                      :  0,
+                         NEW                          :  1,
+                         UNSCHEDULED                  :  2,
+                         PENDING_INPUT_STAGING        :  3,
+                         STAGING_INPUT                :  4,
+                         AGENT_STAGING_INPUT_PENDING  :  5,
+                         AGENT_STAGING_INPUT          :  6,
+                         PENDING_EXECUTION            :  7,
+                         SCHEDULING                   :  8,
+                         ALLOCATING_PENDING           :  9,
+                         ALLOCATING                   : 10,
+                         EXECUTING_PENDING            : 11,
+                         EXECUTING                    : 12,
+                         AGENT_STAGING_OUTPUT_PENDING : 13,
+                         AGENT_STAGING_OUTPUT         : 14,
+                         PENDING_OUTPUT_STAGING       : 15,
+                         STAGING_OUTPUT               : 16,
+                         DONE                         : 17,
+                         FAILED                       : 18,
+                         CANCELED                     : 19}
+
+    _inv_unit_state_value = {v: k for k, v in _unit_state_value.items()}
 
   # state = _inv_unit_state_value(max([_unit_state_value(x['state']) for x in hist]))
     state = _unit_state_value(UNKNOWN)
@@ -155,19 +155,18 @@ def derive_unit_state(hist):
 
 # ------------------------------------------------------------------------------
 #
-_pilot_state_value = {UNKNOWN                      :  0,
-                      PENDING_LAUNCH               :  1,
-                      LAUNCHING                    :  2,
-                      PENDING_ACTIVE               :  3,
-                      ACTIVE                       :  4,
-                      DONE                         :  5,
-                      FAILED                       :  6,
-                      CANCELED                     :  7}
-
-_inv_pilot_state_value = {v: k for k, v in _pilot_state_value.items()}
-
-
 def derive_pilot_state(hist):
+
+    _pilot_state_value = {UNKNOWN        :  0,
+                          PENDING_LAUNCH :  1,
+                          LAUNCHING      :  2,
+                          PENDING_ACTIVE :  3,
+                          ACTIVE         :  4,
+                          DONE           :  5,
+                          FAILED         :  6,
+                          CANCELED       :  7}
+
+    _inv_pilot_state_value = {v: k for k, v in _pilot_state_value.items()}
 
     state = _pilot_state_value(UNKNOWN)
 
@@ -175,4 +174,7 @@ def derive_pilot_state(hist):
         state = max(state, _pilot_state_value[s])
 
     return _inv_pilot_state_value(state)
+
+
+# ------------------------------------------------------------------------------
 
