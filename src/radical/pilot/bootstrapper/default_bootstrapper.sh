@@ -435,7 +435,7 @@ virtenv_setup()
         virtenv_create=FALSE
         virtenv_update=TRUE
         test -d "$virtenv/" || virtenv_create=TRUE
-        elif test "$virtenv_mode" = "create"
+    elif test "$virtenv_mode" = "create"
     then
         virtenv_create=TRUE
         virtenv_update=FALSE
@@ -1225,12 +1225,10 @@ fi
 #       report the absolute representation of it, and thus report a different
 #       module path than one would expect from the virtenv path.  We thus
 #       normalize the virtenv path before we use it.
-OLD_PWD=`pwd`
 mkdir -p "$VIRTENV"
 echo "VIRTENV : $VIRTENV"
 VIRTENV=`(cd $VIRTENV; pwd -P)`
 echo "VIRTENV : $VIRTENV (normalized)"
-cd $OLD_PWD
 rmdir "$VIRTENV" 2>/dev/null  
 
 # Check that mandatory arguments are set
