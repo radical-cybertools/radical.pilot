@@ -279,6 +279,34 @@ def get_session_events (db, sid, cache=None, cachedir=None) :
 
     return ret
 
+# ------------------------------------------------------------------------------
+#
+# We don't store state directly in the DB, but only push new states onto the
+# state history.  That way, we need to derive the actual state by sifting
+# through the state history, and picking the state which comes 'last'.  'Last'
+# is not, however, defined by order in time, but rather by the order in the
+# (presumably) linear state model.  That way, state updates may get pushed onto
+# the state history out of (timed) order, but we'll always know the actual state
+# of the entity.
+#
+# The above holds for both pilots and units, that is why the method below has to
+# handle both state models.
+#
+def derive_state(etype=None, hist=None):
+
+    if not hist:
+        raise ValueError("Cannot derive state from an empty state history")
+
+    if not isinstance(hist, list):
+        raise TypeError("State is derived from a history *list* (not %s)" % type(hist))
+
+    if etype == 'unit':
+        return derive_unit_state(hist)
+    elif etype == 'pilot':
+        return derive_pilot_state(hist)
+    else:
+        raise ValueError("Cannot derive state for '%s'" % etype)
+
 
 # ------------------------------------------------------------------------------
 
