@@ -1,28 +1,25 @@
 #!/usr/bin/env python
 
-__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2013-2014, http://radical.rutgers.edu'
+__license__   = 'MIT'
 
 import os
 import sys
 import pprint
 import collections   as coll
 
+os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
+os.environ['RADICAL_PILOT_PROFILE'] = 'TRUE'
+
 import radical.pilot as rp
 import radical.utils as ru
 
-# READ: The RADICAL-Pilot documentation: 
-#   http://radicalpilot.readthedocs.org/
+
+# ------------------------------------------------------------------------------
 #
-# Try running this example with RADICAL_PILOT_VERBOSE=debug 
-# set if you want to see what happens behind the scences!
-
-
-RUNTIME  =    20  # how long to run the pilot
-CORES    =    64  # how many cores to use for one pilot
-UNITS    =   128  # how many units to create
-SLEEP    =     0  # how long each unit sleeps
-SCHED    = rp.SCHED_DIRECT_SUBMISSION
+# READ the RADICAL-Pilot documentation: http://radicalpilot.readthedocs.org/
+#
+# ------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
 #
@@ -71,10 +68,16 @@ def create_event_filter():
 
 #------------------------------------------------------------------------------
 #
-if __name__ == "__main__":
+if __name__ == '__main__':
 
     # we use a reporter class for nicer output
-    report = ru.Reporter("Getting Started")
+    report = ru.LogReporter(name='radical.pilot')
+    report.title('Getting Started (RP version %s)' % rp.version)
+
+    # use the resource specified as argument, fall back to localhost
+    if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
+    elif len(sys.argv) == 2: resource = sys.argv[1]
+    else                   : resource = 'local.localhost'
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -85,51 +88,116 @@ if __name__ == "__main__":
     # the whole RP stack down via a 'session.close()' call in the 'finally'
     # clause...
     try:
-        report.info('read configs')
-        resources = ru.read_json('%s/config.json', os.path.dirname(__file__))
-        report.ok('\\ok\n')
+
+        # read the config used for resource details
+        report.info('read config')
+        config = ru.read_json('%s/../config.json' % os.path.dirname(os.path.abspath(__file__)))
+        report.ok('>>ok\n')
 
         report.header('submit pilots')
-
-        # prepare some input files for the compute units
-        os.system ('hostname > file1.dat')
-        os.system ('date     > file2.dat')
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = rp.PilotManager(session=session)
 
         # Define an [n]-core local pilot that runs for [x] minutes
-        pdescs = list()
-        for resource in sys.argv[1:]:
-            pdesc = rp.ComputePilotDescription()
-            pdesc.resource      = resource
-            pdesc.cores         = CORES
-            pdesc.project       = resources[resource]['project']
-            pdesc.queue         = resources[resource]['queue']
-            pdesc.runtime       = RUNTIME
-            pdesc.cleanup       = False
-            pdesc.access_schema = resources[resource]['schema']
-            pdescs.append(pdesc)
+        # Here we use a dict to initialize the description object
+        report.info('create pilot description')
+        pd_init = {
+                'resource'      : resource,
+                'cores'         : 64,  # pilot size
+                'runtime'       : 15,  # pilot runtime (min)
+                'exit_on_error' : True,
+                'project'       : config[resource]['project'],
+                'queue'         : config[resource]['queue'],
+                'access_schema' : config[resource]['schema']
+                }
+        pdesc = rp.ComputePilotDescription(pd_init)
+        report.ok('>>ok\n')
 
         # Launch the pilot.
-        pilots = pmgr.submit_pilots(pdescs)
-    
+        pilot = pmgr.submit_pilots(pdesc)
+
+
         report.header('submit units')
 
-        session.close (cleanup=False)
+        # Register the ComputePilot in a UnitManager object.
+        umgr = rp.UnitManager(session=session)
+        umgr.add_pilots(pilot)
+
+        # Create a workload of ComputeUnits.
+        # Each compute unit runs '/bin/date'.
+
+        n = 128   # number of units to run
+        report.info('create %d unit description(s)\n\t' % n)
+
+        cuds = list()
+        for i in range(0, n):
+
+            # create a new CU description, and fill it.
+            # Here we don't use dict initialization.
+            cud = rp.ComputeUnitDescription()
+            # trigger an error now and then
+            if not i % 10: cud.executable = '/bin/data' # does not exist
+            else         : cud.executable = '/bin/date'
+
+            cuds.append(cud)
+            report.progress()
+        report.ok('>>ok\n')
+
+        # Submit the previously created ComputeUnit descriptions to the
+        # PilotManager. This will trigger the selected scheduler to start
+        # assigning ComputeUnits to the ComputePilots.
+        units = umgr.submit_units(cuds)
+
+        # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
+        report.header('gather results')
+        umgr.wait_units()
+    
+        report.info('\n')
+        for unit in units:
+            if unit.state == rp.FAILED:
+                report.plain('  * %s: %s, exit: %3s, err: %s' \
+                        % (unit.uid, unit.state[:4], 
+                           unit.exit_code, unit.stderr.strip()[-35:]))
+                report.error('>>err\n')
+            else:
+                report.plain('  * %s: %s, exit: %3s, out: %s' \
+                        % (unit.uid, unit.state[:4], 
+                            unit.exit_code, unit.stdout.strip()[:35]))
+                report.ok('>>ok\n')
+    
+
+    except Exception as e:
+        # Something unexpected happened in the pilot code above
+        report.error('caught Exception: %s\n' % e)
+        raise
+
+    except (KeyboardInterrupt, SystemExit) as e:
+        # the callback called sys.exit(), and we can here catch the
+        # corresponding KeyboardInterrupt exception for shutdown.  We also catch
+        # SystemExit (which gets raised if the main threads exits for some other
+        # reason).
+        report.warn('exit requested\n')
+
+    finally:
+        # always clean up the session, no matter if we caught an exception or
+        # not.  This will kill all remaining pilots.
+        report.header('finalize')
+        session.close(cleanup=False)
+
+    report.header()
+
 
     # fetch profiles and convert into inspectable data frames
-    if session:
-        session_id = session.uid
-
+    if not session:
+        sys.exit(-1)
 
     event_filter = create_event_filter()
 
-    # we have a session
-    profiles   = rp.utils.fetch_profiles(sid=session_id, tgt='/tmp/')
+    # we have a session - fetch profiles
+    profiles = rp.utils.fetch_profiles(sid=session_id, tgt='/tmp/')
     
     # read all profiles, recombine, and create dataframe
-    profs = sys.argv[1:]
     prof  = rp.utils.combine_profiles(profs)
     frame = rp.utils.prof2frame(prof)
     
