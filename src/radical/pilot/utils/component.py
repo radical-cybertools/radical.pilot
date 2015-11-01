@@ -795,6 +795,8 @@ class Component(mp.Process):
         state:   new state to set for the units
         publish: determine if state update notifications should be issued
         push:    determine if units should be pushed to outputs
+        prof:    determine if state advance creates a profile event
+                 (publish, push, and drop are always profiled)
         """
 
         if not isinstance(units, list):
@@ -806,7 +808,8 @@ class Component(mp.Process):
 
             if state:
                 unit['state'] = state
-                self._prof.prof('advance', uid=unit['_id'], state=state)
+                if prof:
+                    self._prof.prof('advance', uid=unit['_id'], state=state)
             else:
                 state = unit['state']
 
