@@ -784,7 +784,7 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def advance(self, units, state=None, publish=True, push=False):
+    def advance(self, units, state=None, publish=True, push=False, prof=True):
         """
         Units which have been operated upon are pushed down into the queues
         again, only to be picked up by the next component, according to their
