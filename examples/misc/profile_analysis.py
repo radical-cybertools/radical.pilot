@@ -5,6 +5,8 @@ __license__   = "MIT"
 
 import os
 import sys
+import pprint
+import collections   as coll
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -22,6 +24,50 @@ UNITS    =   128  # how many units to create
 SLEEP    =     0  # how long each unit sleeps
 SCHED    = rp.SCHED_DIRECT_SUBMISSION
 
+#------------------------------------------------------------------------------
+#
+def create_event_filter():
+
+    # create a dict which orders states
+    unit_state_value = coll.OrderedDict()
+    # unit_state_value[rp.SCHEDULING                   ] =   5
+    # unit_state_value[rp.STAGING_INPUT                ] =   6
+    unit_state_value[rp.AGENT_STAGING_INPUT_PENDING  ] =   7
+    unit_state_value[rp.AGENT_STAGING_INPUT          ] =   8
+    unit_state_value[rp.ALLOCATING_PENDING           ] =   9
+    unit_state_value[rp.ALLOCATING                   ] =  10
+    unit_state_value[rp.EXECUTING_PENDING            ] =  11
+    unit_state_value[rp.EXECUTING                    ] =  12
+    unit_state_value[rp.AGENT_STAGING_OUTPUT_PENDING ] =  13
+    unit_state_value[rp.AGENT_STAGING_OUTPUT         ] =  14
+    unit_state_value[rp.PENDING_OUTPUT_STAGING       ] =  15
+    # unit_state_value[rp.STAGING_OUTPUT               ] =  16
+    unit_state_value[rp.DONE                         ] =  17
+    
+    # also create inverse dict
+    inv_unit_state_value = coll.OrderedDict()
+    for k, v in unit_state_value.items():
+        inv_unit_state_value[v] = k
+    
+    # create a filter which catches transitions between states
+    event_filter = coll.OrderedDict()
+    for val in inv_unit_state_value:
+        s_in  = inv_unit_state_value[val]
+        s_out = inv_unit_state_value.get(val+1)
+    
+        # nothing transitions out of last state
+        if not s_out:
+            continue
+    
+      # not interested in pending states...
+      # if 'pending' in s_in.lower():
+      #     continue
+    
+        event_filter[s_in] = {'in' : [{'state' : s_in, 
+                                       'event' : 'advance',
+                                       'msg'   : ''}],
+                              'out': [{'state' : s_out, 
+                                       'event' : 'advance'}]}
 
 #------------------------------------------------------------------------------
 #
@@ -77,38 +123,44 @@ if __name__ == "__main__":
         session_id = session.uid
 
 
-    : 
+    event_filter = create_event_filter()
 
-    import radical.pilot.utils as rpu
     # we have a session
-    profiles   = rpu.fetch_profiles(sid=session_id, tgt='/tmp/')
-    profile    = rpu.combine_profiles (profiles)
-    frame      = rpu.prof2frame(profile)
-    sf, pf, uf = rpu.split_frame(frame)
-
-  # print len(sf)
-  # print len(pf)
-  # print len(uf)
-  # 
-  # print sf[0:10]
-  # print pf[0:10]
-  # print uf[0:10]
-    rpu.add_info(uf)
-    rpu.add_states(uf)
-    adv = uf[uf['event'].isin(['advance'])]
-    print len(adv)
-  # print uf[uf['uid'] == 'unit.000001']
-  # print list(pf['event'])
-
-    rpu.add_frequency(adv, 'f_exe', {'state' : 'Executing', 'event' : 'advance'}, 0.5)
-    print adv[['time', 'f_exe']].dropna(subset=['f_exe'])
-
-    s_frame, p_frame, u_frame = rpu.get_session_frames(session_id)
-    print str(u_frame)
-
-    for f in profiles:
-        os.unlink(f)
-
+    profiles   = rp.utils.fetch_profiles(sid=session_id, tgt='/tmp/')
+    
+    # read all profiles, recombine, and create dataframe
+    profs = sys.argv[1:]
+    prof  = rp.utils.combine_profiles(profs)
+    frame = rp.utils.prof2frame(prof)
+    
+    # for all filters defined, create the respective rate, event and conc columns,
+    # and store them in a separate frame for plotting
+    plot_frames = list()
+    for state in event_filter.keys():
+        rp.utils.add_frequency   (frame, tgt='rate'  , spec=event_filter[state]['in'])
+        rp.utils.add_event_count (frame, tgt='events', spec=event_filter[state]['in'])
+        rp.utils.add_concurrency (frame, tgt='conc'  , spec=event_filter[state])
+      # rp.utils.calibrate_frame (frame,               spec=event_filter[state]['in'])
+    
+        tmp_df = frame[['time', 'rate', 'events', 'conc']]
+        plot_frames.append([tmp_df, state])
+        
+    # create plots for each type (rate, events, concurrency)
+    rp.utils.frame_plot(plot_frames, logx=False, logy=True,
+                   title="Throughput", legend=True,
+                   axis=[['time', 'time (s)'],
+                         ['rate', "rate units/s"]])
+    
+    rp.utils.frame_plot(plot_frames, logx=False, logy=False,
+                   title="State Transitions", legend=True,
+                   axis=[['time',  'time (s)'],
+                         ['events', "#events"]])
+    
+    rp.utils.frame_plot(plot_frames, logx=False, logy=False,
+                   title="Unit Concurrency", legend=True,
+                   axis=[['time', 'time (s)'],
+                         ['conc', '#concurrent units']])
+    
 
 #-------------------------------------------------------------------------------
 

@@ -364,7 +364,8 @@ def frame_plot (frames, axis, title=None, logx=False, logy=False,
                [stampede_df_3, 'stampede - ORTE' ]]
 
     axis:   tuple of data frame column index and axis label
-    axis    = ['time', 'time (s)']
+    axis    = [['time', 'time (s)'],
+               ['time', 'time (s)']
     """
 
     # create figure and layout
