@@ -4768,7 +4768,7 @@ class AgentUpdateWorker(rpu.Worker):
         if uid not in self._state_cache:
             self._state_cache[uid] = {'unsent' : list(),
                                       'final'  : False,
-                                      'last'   : rp.STAGING_INPUT} # we get the cu in this state
+                                      'last'   : rp.AGENT_STAGING_INPUT_PENDING} # we get the cu in this state
         cache = self._state_cache[uid]
 
         # if unit is already final, we don't push state
@@ -5904,8 +5904,9 @@ class AgentWorker(rpu.Worker):
             self._prof.prof('get', msg="bulk size: %d" % len(cu_list), uid=cu['_id'])
 
         # now we really own the CUs, and can start working on them (ie. push
-        # them into the pipeline)
-        self.advance(cu_list, publish=True, push=True)
+        # them into the pipeline).  We don't publish nor profile as advance,
+        # since that happened already on the module side when the state was set.
+        self.advance(cu_list, publish=False, push=True, prof=False)
 
         # indicate that we did some work (if we did...)
         return True

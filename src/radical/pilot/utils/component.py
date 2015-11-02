@@ -784,7 +784,7 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def advance(self, units, state=None, publish=True, push=False):
+    def advance(self, units, state=None, publish=True, push=False, prof=True):
         """
         Units which have been operated upon are pushed down into the queues
         again, only to be picked up by the next component, according to their
@@ -795,6 +795,8 @@ class Component(mp.Process):
         state:   new state to set for the units
         publish: determine if state update notifications should be issued
         push:    determine if units should be pushed to outputs
+        prof:    determine if state advance creates a profile event
+                 (publish, push, and drop are always profiled)
         """
 
         if not isinstance(units, list):
@@ -806,7 +808,8 @@ class Component(mp.Process):
 
             if state:
                 unit['state'] = state
-                self._prof.prof('advance', uid=unit['_id'], state=state)
+                if prof:
+                    self._prof.prof('advance', uid=unit['_id'], state=state)
             else:
                 state = unit['state']
 
@@ -896,13 +899,13 @@ class Worker(Component):
     # we overload state changing methods from component and assert neutrality
     # FIXME: we should insert hooks around callback invocations, too
     #
-    def advance(self, units, state=None, publish=True, push=False):
+    def advance(self, units, state=None, publish=True, push=False, prof=True):
 
         if state:
             raise RuntimeError("worker %s cannot advance state (%s)"
                     % (self.cname, state))
 
-        Component.advance(self, units, state, publish, push)
+        Component.advance(self, units, state, publish, push, prof)
 
 
 
