@@ -27,9 +27,9 @@ def create_event_filter():
 
     # create a dict which orders states
     unit_state_value = coll.OrderedDict()
-    # unit_state_value[rp.SCHEDULING                   ] =   5
-    # unit_state_value[rp.STAGING_INPUT                ] =   6
-    unit_state_value[rp.AGENT_STAGING_INPUT_PENDING  ] =   7
+  # unit_state_value[rp.SCHEDULING                   ] =   5
+  # unit_state_value[rp.STAGING_INPUT                ] =   6
+  # unit_state_value[rp.AGENT_STAGING_INPUT_PENDING  ] =   7
     unit_state_value[rp.AGENT_STAGING_INPUT          ] =   8
     unit_state_value[rp.ALLOCATING_PENDING           ] =   9
     unit_state_value[rp.ALLOCATING                   ] =  10
@@ -38,7 +38,7 @@ def create_event_filter():
     unit_state_value[rp.AGENT_STAGING_OUTPUT_PENDING ] =  13
     unit_state_value[rp.AGENT_STAGING_OUTPUT         ] =  14
     unit_state_value[rp.PENDING_OUTPUT_STAGING       ] =  15
-    # unit_state_value[rp.STAGING_OUTPUT               ] =  16
+  # unit_state_value[rp.STAGING_OUTPUT               ] =  16
     unit_state_value[rp.DONE                         ] =  17
     
     # also create inverse dict
@@ -65,6 +65,8 @@ def create_event_filter():
                                        'msg'   : ''}],
                               'out': [{'state' : s_out, 
                                        'event' : 'advance'}]}
+    return event_filter
+
 
 #------------------------------------------------------------------------------
 #
@@ -195,7 +197,12 @@ if __name__ == '__main__':
     event_filter = create_event_filter()
 
     # we have a session - fetch profiles
-    profiles = rp.utils.fetch_profiles(sid=session_id, tgt='/tmp/')
+    sid   = session.uid
+    profs = rp.utils.fetch_profiles(sid=sid, tgt='/tmp/')
+    print "---"
+    for p in profs:
+        print p
+    print "---"
     
     # read all profiles, recombine, and create dataframe
     prof  = rp.utils.combine_profiles(profs)
