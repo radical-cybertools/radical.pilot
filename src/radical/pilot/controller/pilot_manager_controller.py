@@ -349,14 +349,14 @@ class PilotManagerController(threading.Thread):
                         self._dbs.set_compute_unit_state (
                             unit_ids=unit_ids, 
                             state=CANCELED,
-                            src_states=[ PENDING_INPUT_STAGING,
-                                         STAGING_INPUT,
-                                         PENDING_EXECUTION,
-                                         SCHEDULING,
-                                         EXECUTING,
-                                         PENDING_OUTPUT_STAGING,
-                                         STAGING_OUTPUT
-                                       ],
+                            src_states=[AGENT_STAGING_INPUT_PENDING,
+                                        AGENT_STAGING_INPUT,
+                                        ALLOCATING_PENDING,
+                                        ALLOCATING,
+                                        EXECUTING_PENDING,
+                                        EXECUTING,
+                                        AGENT_STAGING_OUTPUT_PENDING,
+                                        AGENT_STAGING_OUTPUT],
                             log="Pilot '%s' has terminated with state '%s'. CU canceled." % (pilot_id, new_state))
 
                 # After the first iteration, we are officially initialized!
