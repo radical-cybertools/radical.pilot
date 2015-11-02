@@ -4768,7 +4768,7 @@ class AgentUpdateWorker(rpu.Worker):
         if uid not in self._state_cache:
             self._state_cache[uid] = {'unsent' : list(),
                                       'final'  : False,
-                                      'last'   : rp.STAGING_INPUT} # we get the cu in this state
+                                      'last'   : rp.AGENT_STAGING_INPUT_PENDING} # we get the cu in this state
         cache = self._state_cache[uid]
 
         # if unit is already final, we don't push state
