@@ -2774,7 +2774,7 @@ class LaunchMethodYARN(LaunchMethod):
         # Single Node configuration
         # TODO : Multinode config
         self._log.info('Getting YARN app')
-        os.system('wget http://eceweb1.rutgers.edu/~ip176/yarn/Pilot-YARN-0.1-jar-with-dependencies.jar')
+        os.system('wget https://drive.google.com/file/d/0B-PidluyKhdqLUQ0RWVPdEhIZEU/view?usp=sharing')
         self._log.info(self._cfg['lrms_info']['lm_info'])
         self.launch_command = self._cfg['lrms_info']['lm_info']['launch_command']
         self._log.info('YARN was called')
