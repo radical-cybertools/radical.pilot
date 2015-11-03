@@ -75,7 +75,7 @@ if __name__ == '__main__':
     if not options.target:
         options.target = os.getcwd()
     if not options.dburl:
-        options.dburl = os.environ.get('RADICAL_PILOT_DBURL')
+        options.dburl = None
     if not options.access:
         options.access = None
     if not options.skip:
@@ -87,9 +87,6 @@ if __name__ == '__main__':
     dburl  = options.dburl
     access = options.access
     skip   = options.skip
-
-    if not dburl:
-        usage("no dburl set")
 
     rpu.fetch_profiles(sid=sid, dburl=dburl, client=client, tgt=target, access=access, skip_existing=skip)
 
