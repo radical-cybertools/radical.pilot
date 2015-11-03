@@ -27,7 +27,7 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
     ret = list()
 
     if not dburl:
-        dburl = os.environ['RADICAL_PILOT_DBURL']
+        dburl = os.environ.get('RADICAL_PILOT_DBURL')
 
     if not dburl:
         raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
