@@ -398,7 +398,7 @@ class TestLocalThree(object):
         assert (rp.LAUNCHING      in states)
         assert (rp.PENDING_ACTIVE in states)
         assert (rp.ACTIVE         in states)
-        #assert (rp.CANCELED       in states)
+        assert (rp.CANCELED       in states)
 
 #-------------------------------------------------------------------------------
 #
