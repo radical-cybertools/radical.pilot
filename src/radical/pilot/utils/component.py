@@ -764,7 +764,7 @@ class Component(mp.Process):
                             try:
                                 with self._cb_lock:
                                     if idler['cb']():
-                                        # something happend!
+                                        # something happened!
                                         idler['last'] = now
                                         active = True
                             except Exception as e:

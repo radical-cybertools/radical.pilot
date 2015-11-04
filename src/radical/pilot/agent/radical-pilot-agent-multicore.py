@@ -6106,6 +6106,8 @@ def bootstrap_3():
 
     # set up signal and exit handlers
     def exit_handler():
+        global lrms, agent, bridges
+
         print 'atexit'
         if lrms:
             lrms.stop()
