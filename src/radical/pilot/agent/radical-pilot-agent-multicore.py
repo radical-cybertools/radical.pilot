@@ -6007,6 +6007,11 @@ def write_sub_configs(cfg, bridges, nodeip, log):
 
 # --------------------------------------------------------------------------
 #
+# avoid undefined vars on finalization / signal handling
+bridges = dict()
+agent   = None
+lrms    = None
+
 def bootstrap_3():
     """
     This method continues where the bootstrapper left off, but will quickly pass
@@ -6028,6 +6033,8 @@ def bootstrap_3():
     the LRMS initialisation which is expected to block those nodes from the
     scheduler.
     """
+
+    global lrms, agent, bridges
 
     # find out what agent instance name we have
     if len(sys.argv) != 2:
@@ -6080,13 +6087,10 @@ def bootstrap_3():
             raise RuntimeError('could not get a mongodb handle')
 
 
-    # avoid undefined vars on finalization / signal handling
-    bridges = dict()
-    agent   = None
-    lrms    = None
-
     # set up signal and exit handlers
     def exit_handler():
+        global lrms, agent, bridges
+
         print 'atexit'
         if lrms:
             lrms.stop()
