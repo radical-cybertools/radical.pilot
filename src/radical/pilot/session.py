@@ -129,9 +129,11 @@ class Session (saga.Session):
                 self._name = name
                 self._uid  = name
               # self._uid  = ru.generate_id ('rp.session.'+name+'.%(item_counter)06d', mode=ru.ID_CUSTOM)
+                ru.reset_id_counters(prefix=['pmgr', 'umgr', 'pilot', 'unit', 'unit.%(counter)06d'])
             else :
                 self._uid  = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
                 self._name = self._uid
+                ru.reset_id_counters(prefix=['pmgr', 'umgr', 'pilot', 'unit', 'unit.%(counter)06d'])
 
             logger.report.info ('<<new session: ')
             logger.report.plain('[%s]' % self._uid)
