@@ -1209,6 +1209,9 @@ class SchedulerYarn(AgentSchedulingComponent):
         self._service_url = self._cfg['lrms_info']['lm_info']['service_url']
         self._rm_url = self._cfg['lrms_info']['lm_info']['rm_url']
         self._client_node = self._cfg['lrms_info']['lm_info']['nodename']
+        self._selected_cores = self._cfg['lrms_info']['cores_per_node']
+
+        self._log.debug('Selected Cores are {0}'.format(self._selected_cores))
 
         sample_time = rpu.timestamp()
         yarn_status = ul.urlopen('http://{0}:8088/ws/v1/cluster/scheduler'.format(self._rm_ip))
@@ -1229,7 +1232,11 @@ class SchedulerYarn(AgentSchedulingComponent):
         self._mem_size = metrics['clusterMetrics']['allocatedMB']
 
         self.avail_app = {'apps':max_num_app - num_app,'timestamp':sample_time}
-        self.avail_cores = self._mnum_of_cores - self._num_of_cores
+        if (self._mnum_of_cores - self._num_of_cores) > self._selected_cores:
+            self.avail_cores = self._selected_cores
+        else:
+            self.avail_cores = self._mnum_of_cores - self._num_of_cores
+
         self.avail_mem = self._mmem_size - self._mem_size
 
     # --------------------------------------------------------------------------
@@ -1270,7 +1277,7 @@ class SchedulerYarn(AgentSchedulingComponent):
         # If the application requests resources that exist in the cluster, not
         # necessarily free, then it returns true else it returns false
         #TODO: Add provision for memory request
-        if (cores_requested+1) <= self.avail_cores and \
+        if (cores_requested) <= self.avail_cores and \
               mem_requested<=self.avail_mem and \
               self.avail_app['apps'] != 0:
             self.avail_cores -=cores_requested
