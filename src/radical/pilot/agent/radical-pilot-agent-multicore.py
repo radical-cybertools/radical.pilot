@@ -592,6 +592,8 @@ class AgentSchedulingComponent(rpu.Component):
                 with self._wait_lock :
                     self._wait_pool.remove(cu)
                     self._prof.prof('unqueue', msg="re-allocation done", uid=cu['_id'])
+            else:
+                # Break out of this loop if we didn't manage to schedule a task
                 break
 
         # Note: The extra space below is for visual alignment
