@@ -4667,7 +4667,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
             try:
                 self._log.debug("Launch Script Name %s",launch_script_name)
                 launch_command, hop_cmd = launcher.construct_command(cu, launch_script_name)
-                self._log.debug("Launch Command %s from %s",(launch_command,launcher.name))
+                self._log.debug("Launch Command %s from %s",launch_command,launcher.name)
 
                 if hop_cmd : cmdline = hop_cmd
                 else       : cmdline = launch_script_name
@@ -5757,7 +5757,7 @@ class AgentExecutingComponent_ABDS (AgentExecutingComponent) :
             try:
                 self._log.debug("Launch Script Name %s",launch_script_name)
                 launch_command, hop_cmd = launcher.construct_command(cu, launch_script_name)
-                self._log.debug("Launch Command %s from %s",(launch_command,launcher.name))
+                self._log.debug("Launch Command %s from %s",launch_command,launcher.name)
 
                 if hop_cmd : cmdline = hop_cmd
                 else       : cmdline = launch_script_name
