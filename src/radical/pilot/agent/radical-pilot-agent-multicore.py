@@ -6186,7 +6186,7 @@ def bootstrap_3():
             bridges = start_bridges(cfg, log)
             # FIXME: make sure all communication channels are in place.  This could
             # be replaced with a proper barrier, but not sure if that is worth it...
-            time.sleep (1)
+            time.sleep(1)
 
             # after we started bridges, we'll add their in and out addresses
             # to the config, so that the communication channels can connect to

@@ -150,7 +150,6 @@ class Queue(object):
         self._qname  = qname
         self._role   = role
         self._addr   = address
-        self._debug  = False
         self._name   = "queue.%s.%s" % (self._qname, self._role)
         self._log    = ru.get_logger('rp.bridges', target="%s.log" % self._name)
 

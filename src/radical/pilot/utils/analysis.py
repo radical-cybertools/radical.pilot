@@ -334,6 +334,9 @@ def create_plot():
     create a plot object and tune its layout to our liking.
     """
 
+    import matplotlib
+    matplotlib.use('cairo')
+
     import matplotlib.pyplot as plt
 
     fig, plot = plt.subplots(figsize=(12,6))
@@ -357,7 +360,7 @@ def create_plot():
 # ------------------------------------------------------------------------------
 #
 def frame_plot (frames, axis, title=None, logx=False, logy=False,
-                legend=True, figdir=None):
+                legend=True, figdir=None, cmap=None):
     """
     plot the given axis from the give data frame.  We create a plot, and plot
     all frames given in the list.  The list is expected to contain [frame,label]
@@ -386,18 +389,22 @@ def frame_plot (frames, axis, title=None, logx=False, logy=False,
     labels = list()
     for frame, label in frames:
         try:
+            color = None
+            for k,v in cmap.iteritems():
+                if k in label:
+                    color = v
             import pandas as pd
             subframe = frame[pd.notnull(frame[axis[1][0]])]
             subframe.plot(ax=plot, logx=logx, logy=logy,
                     x=axis[0][0], y=axis[1][0],
-                    drawstyle='steps',
-                    label=label, legend=False)
+                    drawstyle='steps', # linestyle=':',
+                    label=label, legend=False, color=color)
             labels.append(label)
         except Exception as e:
             print "skipping frame '%s': '%s'" % (label, e)
 
     if legend:
-        plot.legend(labels=labels, loc='upper right', fontsize=14, frameon=True)
+        plot.legend(labels=labels, loc='upper right', fontsize=10, frameon=True)
 
     # set axis labels
     plot.set_xlabel(axis[0][1], fontsize=14)
