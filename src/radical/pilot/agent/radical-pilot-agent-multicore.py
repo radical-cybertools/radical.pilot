@@ -1989,14 +1989,21 @@ class LaunchMethodORTE(LaunchMethod):
             raise Exception("Couldn't find (g)stdbuf")
         stdbuf_arg = "-oL"
 
+        # Base command = (g)stdbuf <args> + orte-dvm + debug_args
+        dvm_args = [stdbuf_cmd, stdbuf_arg, dvm_command]
+
+        # Additional (debug) arguments to orte-dvm
+        debug_strings = [
+            #'--debug-devel',
+            #'--mca odls_base_verbose 100',
+            #'--mca rml_base_verbose 100',
+        ]
+        # Split up the debug strings into args and add them to the dvm_args
+        [dvm_args.extend(ds.split()) for ds in debug_strings]
+
         vm_size = len(lrms.node_list)
-
-        logger.info("Starting ORTE DVM on %d nodes ..." % vm_size)
-
-        dvm_process = subprocess.Popen(
-            [stdbuf_cmd, stdbuf_arg, dvm_command, '--debug-devel'],
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-        )
+        logger.info("Starting ORTE DVM on %d nodes with '%s' ...", vm_size, ' '.join(dvm_args))
+        dvm_process = subprocess.Popen(dvm_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
         dvm_uri = None
         while True:
@@ -2130,8 +2137,14 @@ class LaunchMethodORTE(LaunchMethod):
         hosts_string = ",".join([slot.split(':')[0].rsplit('_', 1)[-1] for slot in task_slots])
         export_vars  = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
-        orte_command = '%s --debug-devel --hnp "%s" %s -np %s -host %s %s' % (
-            self.launch_command, dvm_uri, export_vars, task_numcores, hosts_string, task_command)
+        # Additional (debug) arguments to orte-submit
+        debug_strings = [
+            #'--debug-devel',
+            #'--mca oob_base_verbose 100',
+            #'--mca rml_base_verbose 100'
+        ]
+        orte_command = '%s %s --hnp "%s" %s -np %s -host %s %s' % (
+            self.launch_command, ' '.join(debug_strings), dvm_uri, export_vars, task_numcores, hosts_string, task_command)
 
         return orte_command, None
 
