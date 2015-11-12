@@ -154,6 +154,7 @@ class Component(mp.Process):
         self._is_parent     = None        # guard initialize/initialize_child
         self._exit_on_error = True        # FIXME: make configurable
         self._cb_lock       = mt.Lock()   # guard threaded callback invokations
+        self._clone_cb      = None        # allocate resources on cloning units
         self._drop_cb       = None        # free resources on dropping clones
 
         # use agent_name for one log per agent, cname for one log per agent and component
@@ -593,6 +594,19 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
+    def declare_clone_cb(self, clone_cb):
+        """
+        The clone callback will be invoked whenever a unit is cloned after
+        passing this component.  So, whenever the component allocates some
+        resources for a unit which would conflict when being cloned, this
+        callback allows to perform the required correction (hi scheduler!).
+        """
+        self._log.debug('declare clone_cb %s (%s)', clone_cb, os.getpid())
+        self._clone_cb = clone_cb
+
+
+    # --------------------------------------------------------------------------
+    #
     def declare_drop_cb(self, drop_cb):
         """
         The drop callback will be invoked whenever a unit is dropped after
@@ -715,7 +729,8 @@ class Component(mp.Process):
                                 uid=uid, msg=input.name)
                         continue
 
-                    units = clone_units(self._cfg, unit, self.ctype, 'input', logger=self._log)
+                    units = clone_units(self._cfg, unit, self.ctype, 'input', 
+                                        clone_cb=self._clone_cb, logger=self._log)
 
                     for _unit in units:
 
@@ -855,7 +870,8 @@ class Component(mp.Process):
                     self._prof.prof(event='drop', state=state, uid=uid, msg=output.name)
                     continue
                
-                units = clone_units(self._cfg, unit, self.ctype, 'output', logger=self._log)
+                units = clone_units(self._cfg, unit, self.ctype, 'output', 
+                                    clone_cb=self._clone_cb, logger=self._log)
 
                 for _unit in units:
                     # FIXME: we should assert that the unit is in a PENDING state.
