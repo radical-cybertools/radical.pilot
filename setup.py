@@ -20,7 +20,7 @@ except ImportError as e:
     print("radical.pilot needs setuptools to install")
     sys.exit(1)
 
-name     = 'radical.pilot.sc15'
+name     = 'radical.pilot'
 mod_root = 'src/radical/pilot/'
 
 # ------------------------------------------------------------------------------
