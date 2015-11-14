@@ -5203,6 +5203,11 @@ class AgentStagingOutputComponent(rpu.Component):
 
         self.advance(cu, rp.AGENT_STAGING_OUTPUT, publish=True, push=False)
 
+        if False:
+            # test output staging as empty component, ignore target_state
+            self.advance(cu, rp.PENDING_OUTPUT_STAGING, publish=True, push=False)
+            return
+
         staging_area = os.path.join(self._cfg['workdir'], self._cfg['staging_area'])
         staging_ok   = True
 
