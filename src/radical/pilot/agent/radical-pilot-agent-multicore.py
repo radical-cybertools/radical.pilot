@@ -1530,7 +1530,9 @@ class LaunchMethodSSH(LaunchMethod):
                     self._log.info('Detected that "ssh" is a link to "rsh".')
                     return target
 
-            command = '%s -o StrictHostKeyChecking=no' % command
+            command = '%s -o StrictHostKeyChecking=no' % command  # don't barf on new hosts
+          # command = '%s -o ControlMaster=auto'       % command  # reuse channel if possible
+          # command = '%s -o ControlPersist=1'         % command  # don't leave channels lingering
 
         self.launch_command = command
 
