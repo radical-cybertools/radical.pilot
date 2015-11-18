@@ -224,6 +224,8 @@ def get_session_frames (sids, dburl=None, cachedir=None) :
 
             if pilot['nodes'] and pilot['cores_per_node']:
                 cores = len(pilot['nodes']) * pilot['cores_per_node']
+            else:
+                cores = description.get('cores')
 
             if started  : started  -= session_start
             if finished : finished -= session_start
