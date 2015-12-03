@@ -190,6 +190,8 @@ def get_session_frames (sids, dburl=None, cachedir=None) :
     if not dburl:
         raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
 
+    mongo, db, _, _, _ = ru.mongodb_connect(dburl)
+
 
     if not isinstance (sids, list) :
         sids = [sids]
@@ -200,7 +202,7 @@ def get_session_frames (sids, dburl=None, cachedir=None) :
 
     for sid in sids :
 
-        docs = get_session_docs (dburl, sid, cachedir=cachedir)
+        docs = get_session_docs (db, sid, cachedir=cachedir)
 
         session       = docs['session']
         session_start = session['created']
