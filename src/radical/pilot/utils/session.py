@@ -423,6 +423,7 @@ def get_session_frames (sids, dburl=None, cachedir=None) :
     pilot_frame   = pandas.DataFrame (pilot_dicts)
     unit_frame    = pandas.DataFrame (unit_dicts)
 
+    mongo.close()
 
     return session_frame, pilot_frame, unit_frame
 
