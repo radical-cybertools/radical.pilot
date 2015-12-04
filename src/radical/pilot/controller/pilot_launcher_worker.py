@@ -795,7 +795,7 @@ class PilotLauncherWorker(threading.Thread):
                         log_messages = list()
                         for le in logentries :
                             log_dicts.append (le.as_dict())
-                            log_messages.append (le.message)
+                            log_messages.append (str(le.message))
 
                         pilot_col.update(
                             {"_id"  : pilot_id,

@@ -54,7 +54,6 @@ if __name__ == '__main__':
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
-        report.info('create pilot description')
         pd_init = {
                 'resource'      : resource,
                 'cores'         : 64,  # pilot size
@@ -65,7 +64,6 @@ if __name__ == '__main__':
                 'access_schema' : config[resource]['schema']
                 }
         pdesc = rp.ComputePilotDescription(pd_init)
-        report.ok('>>ok\n')
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -80,7 +78,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 128   # number of units to run
+        n = 2   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
