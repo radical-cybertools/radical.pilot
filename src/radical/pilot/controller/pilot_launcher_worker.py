@@ -497,7 +497,6 @@ class PilotLauncherWorker(threading.Thread):
 
                         sandbox_tgt.copy(bs_script_url, BOOTSTRAPPER_SCRIPT)
 
-
                         # ------------------------------------------------------
                         # the version of the agent is derived from
                         # rp_version, which has the following format

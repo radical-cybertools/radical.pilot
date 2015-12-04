@@ -5277,11 +5277,8 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
       # if  self.lrms.target_is_macos :
       #     run_cmd = run_cmd.replace ("\\", "\\\\\\\\") # hello MacOS
 
-        self._log.debug("===================================================")
         self._log.debug(run_cmd)
-        self._log.debug("===================================================")
         ret, out, _ = self.launcher_shell.run_sync (run_cmd)
-        self._log.debug("===================================================")
 
         if  ret != 0 :
             self._log.error ("failed to run unit '%s': (%s)(%s)" \
