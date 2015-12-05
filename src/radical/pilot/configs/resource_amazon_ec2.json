@@ -1,0 +1,28 @@
+# filename: amazon_ec2.json
+
+{
+    "amazon_ec2":
+    {
+        "description"                     : "Amazon Elastic Compute Cloud",
+        "notes"                           :  "None, ...yet",
+        "schemas"                         : ["ssh"],
+        "ssh"                             :
+        {
+            "job_manager_endpoint"        : "",
+            "filesystem_endpoint"         : ""
+        },
+        
+        "default_remote_work"             : "$HOME",
+        "lrms"                            : "FORK",
+        "agent_type"                      : "multicore",
+        "agent_scheduler"                 : "CONTINUOUS",
+        "agent_spawner"                   : "POPEN",
+        "agent_launch_method"             : "FORK",
+        "task_launch_method"              : "FORK",
+        "mpi_launch_method"               : "MPIEXEC",
+        "rp_version"                      : "debug",
+        "virtenv"                         : "%(global_sandbox)s/ve_amazon_ec2",
+        "vritenv_mode"                    : "create"
+
+    }
+}
