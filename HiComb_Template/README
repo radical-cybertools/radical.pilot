@@ -1,8 +1,8 @@
-#HiComb Template
+# HiComb Template
 
-##The following is not finished, but contains the key points for using RP
+## The following is not finished, but contains the key points for using RP
 
-Current Limitation:
+Required Input:
     The user must specify the IP of the Amazon Instance
 
 
