@@ -5182,14 +5182,6 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
                 pre  += "echo pre  stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             pre  += "\n"
 
-        # YARN pre execution folder permission change
-        # TODO: This needs to move inside the construct command when the launcher
-        #       takes only the CU description
-        if launcher.name == 'LaunchMethodYARN':
-            pre += '## Changing Working Directory permissions for YARN\n'
-            pre += 'old_perm=`stat -c %a .`\n'
-            pre += 'chmod 777 .\n\n'
-
         if  descr['post_exec'] :
             post += "# CU post-exec\n"
             if 'RADICAL_PILOT_PROFILE' in os.environ:
@@ -5199,13 +5191,6 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 post += "echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
             post += "\n"
-        
-        # YARN pre execution folder permission change
-        # TODO: This needs to move inside the construct command when the launcher
-        #       takes only the CU description
-        if launcher.name == 'LaunchMethodYARN':
-            post += '## Changing Working Directory permissions for YARN\n'
-            post += 'chmod $old_perm .\n\n'
 
         if  descr['arguments']  :
             args  = ' ' .join (quote_args (descr['arguments']))
@@ -5696,8 +5681,6 @@ class AgentExecutingComponent_ABDS (AgentExecutingComponent) :
                     launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
             # YARN pre execution folder permission change
-            # TODO: This needs to move inside the construct command when the launcher
-            #       takes only the CU description
             launch_script.write('\n## Changing Working Directory permissions for YARN\n')
             launch_script.write('old_perm="`stat -c %a .`"\n')
             launch_script.write('chmod -R 777 .\n')
@@ -5764,8 +5747,6 @@ class AgentExecutingComponent_ABDS (AgentExecutingComponent) :
                     launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
             # YARN pre execution folder permission change
-            # TODO: This needs to move inside the construct command when the launcher
-            #       takes only the CU description
             launch_script.write('\n## Changing Working Directory permissions for YARN\n')
             launch_script.write('chmod $old_perm .\n')
 
