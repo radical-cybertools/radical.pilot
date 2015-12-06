@@ -2,21 +2,24 @@
 
 ## The following is not finished, but contains the key points for using RP
 
-Required Input:
-    The user must specify the IP of the Amazon Instance. Given that the the IP address of an instance changes when it is shut down and then restarted, the responsbility of knowing which machine to attach to is up to the user. Once the user gives the correct IP address, the script should dynamically take care of the rest.
+### Required Input:
+The user must specify the IP of the Amazon Instance. Given that the the IP address of an instance changes when it is shut down and then restarted, the responsbility of knowing which machine to attach to is up to the user. Once the user gives the correct IP address, the script should dynamically take care of the rest.
 
-To run RADICAL Pilot on an instance, the user must install the following on the remote machine (using sudo su; apt-get update):
+### Local Requirements
+##### To run RADICAL Pilot also requires the following on the local machine (e.g. your laptop)
+* Passwordless ssh: This can be setup using RSA keys
+* virtualenv: This is so that there is an evironment dedicated to running Pilot. While this is not required, it is STRONGLY advised to use a virtualenv. RADICAL Pilot relies on certain versions of certain libraries. With a virutal environment, you can guarantee that there is an environment in which RADICAL Pilot can run successfully (given the proper packages are installed of course.)
+
+### Remote Requirements
+##### To run RADICAL Pilot on an instance, the user must install the following on the remote machine (using sudo su; apt-get update):
 * gcc
 * g++
 * python-dev
 
 The following package is not required, but is useful for know the number of cores a machine has. NOTE: You will receive an error if you request more cores than which exists on the machine itself.
-
 * htop [a convenient version of top], to get the number of corse on the machine
 
-To run RADICAL Pilot also requires the following on the local machine (e.g. your laptop)
-* Passwordless ssh: This can be setup using RSA keys
-* virtualenv: This is so that there is an evironment dedicated to running Pilot. While this is not required, it is STRONGLY advised to use a virtualenv. RADICAL Pilot relies on certain versions of certain libraries. With a virutal environment, you can guarantee that there is an environment in which RADICAL Pilot can run successfully (given the proper packages are installed of course.)
+
 
 
 Made resource_amazon_ec2.json (config)
