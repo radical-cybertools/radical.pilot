@@ -10,14 +10,14 @@ The user must specify the IP of the Amazon Instance. Given that the the IP addre
 ### Local Requirements
 ##### To run RADICAL Pilot also requires the following on the local machine (e.g. your laptop)
 ##### [See Installation Details Page for more details] (http://radicalpilot.readthedocs.org/en/latest/installation.html)
-* Passwordless ssh: This can be setup using RSA keys
-* virtualenv: This is so that there is an evironment dedicated to running Pilot. While this is not required, it is STRONGLY advised to use a virtualenv. RADICAL Pilot relies on certain versions of certain libraries. With a virutal environment, you can guarantee that there is an environment in which RADICAL Pilot can run successfully (given the proper packages are installed of course.)
+* **Passwordless ssh**: This can be setup using RSA keys
+* **virtualenv**: This is so that there is an evironment dedicated to running Pilot. While this is not required, it is STRONGLY advised to use a virtualenv. RADICAL Pilot relies on certain versions of certain libraries. With a virutal environment, you can guarantee that there is an environment in which RADICAL Pilot can run successfully (given the proper packages are installed of course.)
 
 ### Remote Requirements
 ##### To run RADICAL Pilot on an instance, the user must install the following on the remote machine (using sudo su; apt-get update):
-* gcc
-* g++
-* python-dev
+* **gcc**
+* **g++**
+* **python-dev**
 
 The following package is not required, but is useful for know the number of cores a machine has. NOTE: You will receive an error if you request more cores than which exists on the machine itself.
 * htop [a convenient version of top], to get the number of corse on the machine
