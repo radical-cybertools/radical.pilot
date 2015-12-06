@@ -40,7 +40,7 @@ Connect to Mongo (IP):      mongo 54.80.131.72:53838/hicomb -u <dbuser> -p <dbpa
 
 **These lines contain URI necessary for you to export before using RADICAL Pilot**
 Connecting Mongo using driver via standard MongoDB URI:
-    mongodb://<dbuser>:<dbpassword>@ds053838.mongolab.com:53838/hicomb
+`mongodb://<dbuser>:<dbpassword>@ds053838.mongolab.com:53838/hicomb`
 
 
 #### Changes to code
