@@ -22,29 +22,26 @@
 The following package is not required, but is useful for know the number of cores a machine has. **NOTE: You will receive an error if you request more cores than which exists on the machine itself.**
 * **htop** [a convenient version of top], to get the number of corse on the machine
 
+### MongoDB
 
+RADICAL Pilot requires a persistent MongoDB server so that the pilot and the server can communicate and coordinate what tasks need to be completed. One can easily set one up using [MongoLab] (https://mongolab.com/). One has already been made for you. Below are the relevant details. The aim is transfer control of this account to the LSU_CCT_GeneLab group.
 
-
-Made resource_amazon_ec2.json (config)
-    This requires pip install --upgrade <directory> to update RP
-        Virtuale ENV must be activated
-
-
-
-
-The following is information for the temporary MongoDB instance required to use RADICAL Pilot. RADICAL Pilot requires a persistent MongoDB server so that the pilot and the server can communicate and coordinate what tasks need to be completed. Below are the relevant details. The aim is transfer control of this account to the LSU_CCT_GeneLab group.
-
-Account Name    :   LSU_CCT_GeneLab
-Username        :   lsu_cct_genelab
-Email           :   ming.tai.ha@gmail.com
-Password        :   computing1
+**Account Name**    :   LSU_CCT_GeneLab
+**Username**        :   lsu_cct_genelab
+**Email**           :   ming.tai.ha@gmail.com
+**Password**        :   computing1
 
 Database is Standard Line Sandbox
-    Database Name is hicomb
+Database Name is hicomb
 
+**These lines contains information to ssh into the MongoDB server**
 Connect to Mongo (DNS):     mongo ds053838.mongolab.com:53838/hicomb -u <dbuser> -p <dbpassword>
-Connect to Mongo (IP):      mongo 54.80.131.72:53838/hicomb
+Connect to Mongo (IP):      mongo 54.80.131.72:53838/hicomb -u <dbuser> -p <dbpassword>
 
-
+**These lines contain URI necessary for you to export before using RADICAL Pilot**
 Connecting Mongo using driver via standard MongoDB URI:
     mongodb://<dbuser>:<dbpassword>@ds053838.mongolab.com:53838/hicomb
+
+
+#### Changes to code
+* Made resource_amazon_ec2.json (config)
