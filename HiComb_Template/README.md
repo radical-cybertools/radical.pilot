@@ -5,7 +5,7 @@
 ### Currently tested to handle 2048 CUs
 
 ### Required Input:
-The user must specify the IP of the Amazon Instance. Given that the the IP address of an instance changes when it is shut down and then restarted, the responsbility of knowing which machine to attach to is up to the user. Once the user gives the correct IP address, the script should dynamically take care of the rest.
+**The user must specify the Public IP of the Amazon Instance**. Given that the the IP address of an instance changes when it is shut down and then restarted, the responsbility of knowing which machine to attach to is up to the user. Once the user gives the correct IP address, the script should dynamically take care of the rest.
 
 ### Local Requirements
 ##### To run RADICAL Pilot also requires the following on the local machine (e.g. your laptop)
@@ -19,8 +19,8 @@ The user must specify the IP of the Amazon Instance. Given that the the IP addre
 * **g++**
 * **python-dev**
 
-The following package is not required, but is useful for know the number of cores a machine has. NOTE: You will receive an error if you request more cores than which exists on the machine itself.
-* htop [a convenient version of top], to get the number of corse on the machine
+The following package is not required, but is useful for know the number of cores a machine has. **NOTE: You will receive an error if you request more cores than which exists on the machine itself.**
+* **htop** [a convenient version of top], to get the number of corse on the machine
 
 
 
