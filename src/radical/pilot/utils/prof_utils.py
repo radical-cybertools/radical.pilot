@@ -169,6 +169,7 @@ def prof2frame(prof):
 
     # create data frame from profile dicts
     frame = pd.DataFrame(prof)
+    frame.set_index('time')
 
     # --------------------------------------------------------------------------
     # add a flag to indicate entity type
@@ -423,18 +424,20 @@ def drop_clones(cfg, units, name, mode, drop_cb=None, prof=None, logger=None):
       drop_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
     """
 
-    # blowup is only enabled on profiling
-    if 'RADICAL_PILOT_PROFILE' not in os.environ:
-        if logger:
-            logger.debug('no profiling - no dropping')
-        return units
+  # # blowup is only enabled on profiling
+  # if 'RADICAL_PILOT_PROFILE' not in os.environ:
+  #     if logger:
+  #         logger.debug('no profiling - no dropping')
+  #     return units
 
     if not units:
-      # if logger:
-      #     logger.debug('no units - no dropping')
+        if logger:
+            logger.debug('no units - no dropping')
         return units
 
     drop = cfg.get('drop', {}).get(name, {}).get(mode, 1)
+  # if logger:
+  #     logger.debug('drop policy: %2s (%-30ss - %s)', drop, name, mode)
 
     if drop == 0:
       # if logger:
@@ -503,11 +506,11 @@ def clone_units(cfg, units, name, mode, prof=None, clone_cb=None, logger=None):
     if not isinstance(units, list):
         units = [units]
 
-    # blowup is only enabled on profiling
-    if 'RADICAL_PILOT_PROFILE' not in os.environ:
-        if logger:
-            logger.debug('no profiling - no cloning')
-        return units
+  # # blowup is only enabled on profiling
+  # if 'RADICAL_PILOT_PROFILE' not in os.environ:
+  #     if logger:
+  #         logger.debug('no profiling - no cloning')
+  #     return units
 
     if not units:
         # nothing to clone...

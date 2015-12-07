@@ -6289,7 +6289,6 @@ def bootstrap_3():
         # (essentially) main...
         if agent:
             agent.stop()
-            agent = None
         log.debug('agent %s finalized' % agent_name)
 
         # agent.stop will not tear down bridges -- we do that here at last

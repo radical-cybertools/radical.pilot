@@ -27,6 +27,7 @@ from .pubsub     import PUBSUB_SUB   as rpu_PUBSUB_SUB
 #   - for notifications, change msg from [topic, unit] to [topic, msg]
 #   - components should not need to declare the state publisher?
 
+# t_zero = time.time()
 
 # ==============================================================================
 #
@@ -828,6 +829,7 @@ class Component(mp.Process):
         prof:    determine if state advance creates a profile event
                  (publish, push, and drop are always profiled)
         """
+      # global t_zero
 
         if not isinstance(units, list):
             units = [units]
@@ -842,6 +844,10 @@ class Component(mp.Process):
                     self._prof.prof('advance', uid=unit['_id'], state=state)
             else:
                 state = unit['state']
+
+          # NOTE: used for time measurements when profile is off, ie. for
+          #       profile overhead measures.  The irony is obvious I hope...
+          # print "%.3f,=== advance %s : %s" % (time.time()-t_zero, unit['_id'], state)
 
             if publish:
                 # send state notifications
