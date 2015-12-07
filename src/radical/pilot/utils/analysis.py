@@ -360,7 +360,7 @@ def create_plot():
 # ------------------------------------------------------------------------------
 #
 def frame_plot (frames, axis, title=None, logx=False, logy=False,
-                legend=True, figdir=None, cmap=None):
+                legend=True, legend_pos='upper right', figdir=None, cmap=None):
     """
     plot the given axis from the give data frame.  We create a plot, and plot
     all frames given in the list.  The list is expected to contain [frame,label]
@@ -390,9 +390,10 @@ def frame_plot (frames, axis, title=None, logx=False, logy=False,
     for frame, label in frames:
         try:
             color = None
-            for k,v in cmap.iteritems():
-                if k in label:
-                    color = v
+            if cmap:
+                for k,v in cmap.iteritems():
+                    if k in label:
+                        color = v
             import pandas as pd
             subframe = frame[pd.notnull(frame[axis[1][0]])]
             subframe.plot(ax=plot, logx=logx, logy=logy,
@@ -404,7 +405,7 @@ def frame_plot (frames, axis, title=None, logx=False, logy=False,
             print "skipping frame '%s': '%s'" % (label, e)
 
     if legend:
-        plot.legend(labels=labels, loc='upper right', fontsize=10, frameon=True)
+        plot.legend(labels=labels, loc=legend_pos, fontsize=14, frameon=True)
 
     # set axis labels
     plot.set_xlabel(axis[0][1], fontsize=14)

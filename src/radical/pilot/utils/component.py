@@ -856,7 +856,7 @@ class Component(mp.Process):
 
                 if not self._outputs[state]:
                     # empty output -- drop unit
-                    self._log.debug('%s %s ===| %s' % ('state', unit['id'], unit['state']))
+                  # self._log.debug('%s %s ===| %s' % ('state', unit['_id'], unit['state']))
                     continue
 
 
