@@ -50,16 +50,18 @@ _EVENT_ENCODING = {
             rp.STAGING_INPUT                :  4,
             rp.AGENT_STAGING_INPUT_PENDING  :  5,
             rp.AGENT_STAGING_INPUT          :  6,
-            rp.PENDING_EXECUTION            :  7,
+            rp.ALLOCATING_PENDING           :  7,
             rp.ALLOCATING                   :  8,
-            rp.EXECUTING                    :  9,
-            rp.PENDING_OUTPUT_STAGING       : 10,
-            rp.STAGING_OUTPUT               : 11,
-            rp.AGENT_STAGING_OUTPUT_PENDING : 12,
-            rp.AGENT_STAGING_OUTPUT         : 13,
-            rp.DONE                         : 14,
-            rp.CANCELED                     : 15,
-            rp.FAILED                       : 16
+            rp.PENDING_EXECUTION            :  9,
+            rp.EXECUTING_PENDING            :  9,
+            rp.EXECUTING                    : 10,
+            rp.AGENT_STAGING_OUTPUT_PENDING : 11,
+            rp.AGENT_STAGING_OUTPUT         : 12,
+            rp.PENDING_OUTPUT_STAGING       : 13,
+            rp.STAGING_OUTPUT               : 14,
+            rp.DONE                         : 15,
+            rp.CANCELED                     : 16,
+            rp.FAILED                       : 17
         }
     }
 
