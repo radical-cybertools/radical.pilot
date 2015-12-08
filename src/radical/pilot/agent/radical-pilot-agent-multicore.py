@@ -2223,8 +2223,8 @@ class LaunchMethodORTE(LaunchMethod):
                the DVM.
         """
 
-        dvm_cmd = cls._which('orte-dvm')
-        if not dvm_cmd:
+        dvm_command = cls._which('orte-dvm')
+        if not dvm_command:
             raise Exception("Couldn't find orte-dvm")
 
         # Now that we found the orte-dvm, get ORTE version
