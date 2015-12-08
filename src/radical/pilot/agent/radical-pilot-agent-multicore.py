@@ -1549,7 +1549,6 @@ class LaunchMethod(object):
         for name in names:
             ret = cls._which(name)
             if ret is not None:
-              # self._log.info("Found %s",ret)
                 return ret
 
         return None
@@ -1620,7 +1619,6 @@ class LaunchMethodFORK(LaunchMethod):
         else:
             command = task_exec
 
-      # self._log.info('LaunchMethodFORK returns command : %s', command)
         return command, None
 
 
