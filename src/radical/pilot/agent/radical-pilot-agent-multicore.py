@@ -238,7 +238,7 @@ SCHEDULER_NAME_YARN         = "YARN"
 # 'enum' for pilot's unit spawner types
 SPAWNER_NAME_POPEN          = "POPEN"
 SPAWNER_NAME_SHELL          = "SHELL"
-SPAWNER_NAME_ABDS          = "ABDS"
+SPAWNER_NAME_ABDS           = "ABDS"
 
 # defines for pilot commands
 COMMAND_CANCEL_PILOT        = "Cancel_Pilot"
@@ -1609,8 +1609,8 @@ class LaunchMethodFORK(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        self._log.debug('FORK construct Command')
-        self._log.debug('CU: {0}'.format(cu))
+      # self._log.debug('FORK construct Command')
+      # self._log.debug('CU: {0}'.format(cu))
 
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
@@ -1626,7 +1626,7 @@ class LaunchMethodFORK(LaunchMethod):
         else:
             command = task_exec
 
-        self._log.info('LaunchMethodFORK returns command : %s', command)
+      # self._log.info('LaunchMethodFORK returns command : %s', command)
         return command, None
 
 
@@ -2009,8 +2009,7 @@ class LaunchMethodRUNJOB(LaunchMethod):
         # Set the number of tasks/ranks per node
         # TODO: Currently hardcoded, this should be configurable,
         #       but I don't see how, this would be a leaky abstraction.
-        runjob_command += ' --ranks-per-node %d' % min(cores_per_node,
-                task_cores)
+        runjob_command += ' --ranks-per-node %d' % min(cores_per_node, task_cores)
 
         # Run this subjob in the block communicated by LoadLeveler
         runjob_command += ' --block %s'  % loadl_bg_block
@@ -4311,6 +4310,8 @@ class ForkLRMS(LRMS):
         self._log.debug('configure localhost to behave as %s nodes with %s cores each.',
                 len(self.node_list), self.cores_per_node)
 
+
+
 # ==============================================================================
 #
 class YARNLRMS(LRMS):
@@ -4375,6 +4376,8 @@ class YARNLRMS(LRMS):
         else:
             self.node_list = [hostname]
         self.cores_per_node = selected_cpus
+
+
 
 # ==============================================================================
 #
@@ -4558,6 +4561,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
     #
     def work(self, cu):
 
+      # self.advance(cu, rp.AGENT_EXECUTING, publish=True, push=False)
         self.advance(cu, rp.EXECUTING, publish=True, push=False)
 
         try: 
@@ -4661,9 +4665,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
             # The actual command line, constructed per launch-method
             try:
-                self._log.debug("Launch Script Name %s", launch_script_name)
                 launch_command, hop_cmd = launcher.construct_command(cu, launch_script_name)
-                self._log.debug("Launch Command %s from %s", launch_command, launcher.name)
 
                 if hop_cmd : cmdline = hop_cmd
                 else       : cmdline = launch_script_name
@@ -4798,7 +4800,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                     # FIXME: there is a race condition between the state poll
                     # above and the kill command below.  We probably should pull
                     # state after kill again?
-                    
+
                     # We got a request to cancel this cu
                     action += 1
                     cu['proc'].kill()
@@ -4809,15 +4811,15 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
 
                     self._prof.prof('final', msg="execution canceled", uid=cu['_id'])
 
-                    self._cus_to_watch.remove(cu)
-                    
                     del(cu['proc'])  # proc is not json serializable
                     self.publish('unschedule', cu)
                     self.advance(cu, rp.CANCELED, publish=True, push=False)
 
+                    # we don't need to watch canceled CUs
+                    self._cus_to_watch.remove(cu)
+
             else:
                 self._prof.prof('exec', msg='execution complete', uid=cu['_id'])
-
 
                 # make sure proc is collected
                 cu['proc'].wait()
@@ -4833,17 +4835,6 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
                 self._cus_to_watch.remove(cu)
                 del(cu['proc'])  # proc is not json serializable
                 self.publish('unschedule', cu)
-
-                if os.path.isfile("%s/PROF" % cu['workdir']):
-                    with open("%s/PROF" % cu['workdir'], 'r') as prof_f:
-                        try:
-                            txt = prof_f.read()
-                            for line in txt.split("\n"):
-                                if line:
-                                    x1, x2, x3 = line.split()
-                                    self._prof.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
-                        except Exception as e:
-                            self._log.error("Pre/Post profiling file read failed: `%s`" % e)
 
                 if exit_code != 0:
                     # The unit failed - fail after staging output
@@ -5222,13 +5213,10 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
             script += '    exit\n'
             script += 'fi\n\n'
 
-
         script += "# ------------------------------------------------------\n"
         script += "%s"        %  cwd
         script += "%s"        %  env
         script += "%s"        %  pre
-
-
         script += "# CU execution\n"
         script += "%s %s\n\n" % (cmd, io)
         script += "RETVAL=$?\n"
@@ -5262,7 +5250,6 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
       # if  self.lrms.target_is_macos :
       #     run_cmd = run_cmd.replace ("\\", "\\\\\\\\") # hello MacOS
 
-        self._log.debug(run_cmd)
         ret, out, _ = self.launcher_shell.run_sync (run_cmd)
 
         if  ret != 0 :
@@ -5346,7 +5333,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
                         static_cnt += 1
 
                     else :
-                      # self._log.info ("monitoring channel checks cache (%d)", len(self._cached_events))
+                        self._log.info ("monitoring channel checks cache (%d)", len(self._cached_events))
                         static_cnt += 1
 
                         if static_cnt == 10 :
@@ -5400,7 +5387,6 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
                     with self._registry_lock :
                         cu = self._registry.get (pid, None)
-                        self._log.info ("registry: %s", self._registry.keys())
 
                     if cu:
                         self._prof.prof('passed', msg="ExecWatcher picked up unit",
@@ -5421,8 +5407,6 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         # got an explicit event to handle
         self._log.info ("monitoring handles event for %s: %s:%s:%s", cu['_id'], pid, state, data)
-
-        self._log.info ("Showing handles event for %s: {0}".format(cu), cu['_id'])
 
         rp_state = {'DONE'     : rp.DONE,
                     'FAILED'   : rp.FAILED,
@@ -5463,6 +5447,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
         with self._registry_lock :
             if pid in self._registry :  # why wouldn't it be in there though?
                 del(self._registry[pid])
+
 
 # ==============================================================================
 #
@@ -6183,7 +6168,6 @@ class AgentUpdateWorker(rpu.Worker):
         # FIXME: at the moment, the update worker only operates on units.
         #        Should it accept other updates, eg. for pilot states?
         #
-        
         # got a new request.  Add to bulk (create as needed),
         # and push bulk if time is up.
         uid       = cu['_id']
@@ -6222,6 +6206,7 @@ class AgentUpdateWorker(rpu.Worker):
                         'last' : time.time(),  # time of last push
                         'uids' : list()
                         }
+
 
             # check if we have an active bulk for the collection.  If not,
             # create one.
