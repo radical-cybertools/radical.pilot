@@ -78,7 +78,6 @@ class OutputFileTransferWorker(threading.Thread):
                 # FIXME: this method is not bulkable.  See agent pulling for
                 #        units for an approach to split the call into two bulkable 
                 #        ones.
-              # logger.debug('pulling for %s / %s / %s', PENDING_OUTPUT_STAGING, self.unit_manager_id, 'agent')
                 ts = timestamp()
                 compute_unit = um_col.find_and_modify(
                     query={"unitmanager": self.unit_manager_id,
@@ -94,7 +93,6 @@ class OutputFileTransferWorker(threading.Thread):
 
                 if compute_unit is None:
                     # Sleep a bit if no new units are available.
-                  # logger.debug('none')
                     time.sleep(IDLE_TIME)
                 else:
                     logger.info("OFTW CU found, progressing ...")
@@ -106,8 +104,6 @@ class OutputFileTransferWorker(threading.Thread):
                         # We have found a new CU. Now we can process the transfer
                         # directive(s) with SAGA.
                         compute_unit_id = str(compute_unit["_id"])
-
-                      # logger.debug('got %s', compute_unit_id)
 
                         self._session.prof.prof('advance', uid=compute_unit_id,
                                 msg=STAGING_OUTPUT, state=STAGING_OUTPUT)
