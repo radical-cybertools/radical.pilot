@@ -4350,6 +4350,7 @@ class YARNLRMS(LRMS):
 
         # I will leave it for the moment because I have not found another way
         # to take the necessary value yet.
+        # FIXME: use subprocessing module
         yarn_conf_output = commands.getstatusoutput('yarn node -list')[1].split('\n')
         for line in yarn_conf_output:
             if 'ResourceManager' in line:
