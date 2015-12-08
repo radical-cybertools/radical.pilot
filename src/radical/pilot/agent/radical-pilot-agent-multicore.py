@@ -1608,13 +1608,8 @@ class LaunchMethodFORK(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-      # self._log.debug('FORK construct Command')
-      # self._log.debug('CU: {0}'.format(cu))
-
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
-        self._log.debug('CU descr dir: {0}'.format(dir(cud)))
-        self._log.debug('CU descr: {0}'.format(cud))
         task_exec    = cud['executable']
         task_cores   = cud['cores']
         task_args    = cud.get('arguments')
