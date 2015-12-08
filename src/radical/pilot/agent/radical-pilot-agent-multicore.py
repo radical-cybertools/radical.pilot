@@ -163,7 +163,6 @@ import radical.pilot.utils as rpu
 
 
 
-
 # ------------------------------------------------------------------------------
 #
 # http://stackoverflow.com/questions/9539052/python-dynamically-changing-base-classes-at-runtime-how-to
