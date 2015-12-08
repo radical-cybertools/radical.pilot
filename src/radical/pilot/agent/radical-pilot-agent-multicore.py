@@ -1480,48 +1480,6 @@ class LaunchMethod(object):
         logger.info('call LRMS shutdown hook for LaunchMethod %s: %s' % (name, impl))
         return impl.lrms_shutdown_hook(name, cfg, lrms, lm_info, logger)
 
-    # --------------------------------------------------------------------------
-    #
-    @classmethod
-    def lrms_final_hook(cls, name, lm_info, logger):
-        """
-        This hook can be used to tear down whatever has been brought up in the
-        config hook.  The LRMS layer MUST ensure that this hook is called
-        exactly once (globally).  This will be a NOOP for LMs which do not
-        overload this method.  Exceptions fall through to the LRMS.
-        """
-
-        # Make sure that we are the base-class!
-        if cls != LaunchMethod:
-            raise TypeError("LaunchMethod config hook only available to base class!")
-
-        impl = {
-          # LAUNCH_METHOD_APRUN         : LaunchMethodAPRUN,
-          # LAUNCH_METHOD_CCMRUN        : LaunchMethodCCMRUN,
-          # LAUNCH_METHOD_DPLACE        : LaunchMethodDPLACE,
-          # LAUNCH_METHOD_FORK          : LaunchMethodFORK,
-          # LAUNCH_METHOD_IBRUN         : LaunchMethodIBRUN,
-          # LAUNCH_METHOD_MPIEXEC       : LaunchMethodMPIEXEC,
-          # LAUNCH_METHOD_MPIRUN_CCMRUN : LaunchMethodMPIRUNCCMRUN,
-          # LAUNCH_METHOD_MPIRUN_DPLACE : LaunchMethodMPIRUNDPLACE,
-          # LAUNCH_METHOD_MPIRUN        : LaunchMethodMPIRUN,
-          # LAUNCH_METHOD_MPIRUN_RSH    : LaunchMethodMPIRUNRSH,
-            LAUNCH_METHOD_ORTE          : LaunchMethodORTE,
-            LAUNCH_METHOD_YARN          : LaunchMethodYARN,
-          # LAUNCH_METHOD_POE           : LaunchMethodPOE,
-          # LAUNCH_METHOD_RUNJOB        : LaunchMethodRUNJOB,
-          # LAUNCH_METHOD_SSH           : LaunchMethodSSH
-        }.get(name)
-
-        if not impl:
-            logger.info('no LRMS config hook defined for LaunchMethod %s' % name)
-            return None
-
-        logger.info('call LRMS config hook for LaunchMethod %s: %s' % (name, impl))
-        return impl.lrms_final_hook(lm_info, logger)
-
-
-
 
     # --------------------------------------------------------------------------
     #
