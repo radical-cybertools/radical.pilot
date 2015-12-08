@@ -46,7 +46,7 @@
         "virtenv"                     : "%(global_sandbox)s/ve_stampede",
         "virtenv_mode"                : "create"
     },
-    
+
     "stampede_yarn": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
