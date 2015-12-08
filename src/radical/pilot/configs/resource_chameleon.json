@@ -4,7 +4,7 @@
         "description"                 : "Your Chameleon Cloud VM.",
         "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
         "schemas"                     : ["ssh"],
-        "ssh"                         : 
+        "ssh"                         :
         {
             "job_manager_endpoint"    : "ssh://129.114.108.123/",
             "filesystem_endpoint"     : "sftp://129.114.108.123/"

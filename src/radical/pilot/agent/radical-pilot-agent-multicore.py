@@ -125,8 +125,8 @@
       mostly because the pilots (as targets of the umgr scheduler) have a wait
       queue, but the cores (targets of the agent scheduler) have not.  Is it
       worthwhile to re-use the structure anyway?
-    - all stop() method calls need to be replaced with commands which travel 
-      through the queues.  To deliver commands timely though we either need 
+    - all stop() method calls need to be replaced with commands which travel
+      through the queues.  To deliver commands timely though we either need
       command prioritization (difficult), or need separate command queues...
 
 """
@@ -757,8 +757,8 @@ class SchedulerContinuous(AgentSchedulingComponent):
         self._change_slot_states(task_slots, BUSY)
         task_offsets = self.slots2offset(task_slots)
 
-        return {'task_slots'   : task_slots, 
-                'task_offsets' : task_offsets, 
+        return {'task_slots'   : task_slots,
+                'task_offsets' : task_offsets,
                 'lm_info'      : self._lrms_lm_info}
 
 
@@ -1032,7 +1032,7 @@ class SchedulerTorus(AgentSchedulingComponent):
                         num_nodes, sub_block_shape_str, offset,
                         self._lrms.loc2str(corner), self._lrms.loc2str(end))
 
-        return {'cores_per_node'      : self._lrms_cores_per_node, 
+        return {'cores_per_node'      : self._lrms_cores_per_node,
                 'loadl_bg_block'      : self._lrms.loadl_bg_block,
                 'sub_block_shape_str' : sub_block_shape_str,
                 'corner_node'         : corner_node,
@@ -1238,7 +1238,7 @@ class SchedulerYarn(AgentSchedulingComponent):
         num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['numApplications']
         if (self.avail_app['timestamp'] - sample)>60 and \
            (self.avail_app['apps'] != max_num_app - num_app):
-            self.avail_app['apps'] = max_num_app - num_app 
+            self.avail_app['apps'] = max_num_app - num_app
             self.avail_app['timestamp']=sample
 
         return '{0} applications per user remaining. Free cores {1} Free Mem {2}'\
@@ -1284,7 +1284,7 @@ class SchedulerYarn(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _try_allocation(self, cu):  
+    def _try_allocation(self, cu):
         """
         Attempt to allocate cores for a specific CU.  If it succeeds, send the
         CU off to the ExecutionWorker.
@@ -1296,12 +1296,12 @@ class SchedulerYarn(AgentSchedulingComponent):
         # refreshed, to send another one that does not fit.
 
         # TODO: Allocation should be based on the minimum memor allocation per
-        # container. Each YARN application needs two containers, one for the 
+        # container. Each YARN application needs two containers, one for the
         # Application Master and one for the Container that will run.
-        
+
         # needs to be locked as we try to acquire slots, but slots are freed
         # in a different thread.  But we keep the lock duration short...
-        with self._slot_lock :        
+        with self._slot_lock :
 
             self._log.info(self.slot_status())
             self._log.debug('YARN Service and RM URLs: {0} - {1}'.format(self._service_url,self._rm_url))
@@ -1310,7 +1310,7 @@ class SchedulerYarn(AgentSchedulingComponent):
             # Java issues a JVM out of memory error when the YARN scheduler cannot
             # accept. It needs to go either from the configuration file or find a
             # way to take this value for the YARN scheduler config.
-                    
+
             cu['opaque_slots']={'lm_info':{'service_url':self._service_url,
                                             'rm_url':self._rm_url,
                                             'nodename':self._client_node},
@@ -1471,7 +1471,7 @@ class LaunchMethod(object):
 
         impl = {
             LAUNCH_METHOD_ORTE          : LaunchMethodORTE,
-            LAUNCH_METHOD_YARN          : LaunchMethodYARN            
+            LAUNCH_METHOD_YARN          : LaunchMethodYARN
         }.get(name)
 
         if not impl:
@@ -2637,7 +2637,7 @@ class LaunchMethodYARN(LaunchMethod):
             yarn_site_file.close()
 
         # If the LRMS used is not YARN the namenode url is going to be
-        # the first node in the list and the port is the default one, else 
+        # the first node in the list and the port is the default one, else
         # it is the one that the YARN LRMS returns
         hadoop_home = None
         if lrms.name == 'YARNLRMS':
@@ -2667,7 +2667,7 @@ class LaunchMethodYARN(LaunchMethod):
                 #   def set_env_vars():
                 # but we are in a class method, and don't have self -- and we don't need
                 # it anyway...
-    
+
             hadoop_home        = os.getcwd() + '/hadoop'
             hadoop_install     = hadoop_home
             hadoop_mapred_home = hadoop_home
@@ -2678,7 +2678,7 @@ class LaunchMethodYARN(LaunchMethod):
             hadoop_common_lib_native_dir = hadoop_home + '/lib/native'
 
             #-------------------------------------------------------------------
-            # Solution to find Java's home folder: 
+            # Solution to find Java's home folder:
             # http://stackoverflow.com/questions/1117398/java-home-directory
 
             jpos = subprocess.check_output(['readlink','-f', '/usr/bin/java']).split('bin')
@@ -2728,7 +2728,7 @@ class LaunchMethodYARN(LaunchMethod):
             launch_command = yarn_home + '/bin/yarn'
             rm_ip = node_name
 
-          
+
         # The LRMS instance is only available here -- everything which is later
         # needed by the scheduler or launch method is stored in an 'lm_info'
         # dict.  That lm_info dict will be attached to the scheduler's lrms_info
@@ -2777,7 +2777,7 @@ class LaunchMethodYARN(LaunchMethod):
         self._log.info(self._cfg['lrms_info']['lm_info'])
         self.launch_command = self._cfg['lrms_info']['lm_info']['launch_command']
         self._log.info('YARN was called')
-        
+
 
     # --------------------------------------------------------------------------
     #
@@ -2836,7 +2836,7 @@ class LaunchMethodYARN(LaunchMethod):
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
         print_str+="echo '# Staging Input Files'>>ExecScript.sh\n"
-        
+
         self._log.debug('Creating input staging')
         if cud['input_staging']:
             scp_input_files='"'
@@ -2850,7 +2850,7 @@ class LaunchMethodYARN(LaunchMethod):
         print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
         print_str+="echo '# Creating Executing Command'>>ExecScript.sh\n"
 
-        
+
         self._log.debug('Creating Arguments:{0}'.format(type(task_args)))
         arg_str=str()
         if task_args:
@@ -2902,7 +2902,7 @@ class LaunchMethodYARN(LaunchMethod):
 
         yarn_command = '%s -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
                        ' com.radical.pilot.Client -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
-                       ' -shell_script ExecScript.sh %s %s -service_url %s\ncat Ystdout' % (self.launch_command, 
+                       ' -shell_script ExecScript.sh %s %s -service_url %s\ncat Ystdout' % (self.launch_command,
                         env_string, ncores_string,service_url)
 
         self._log.debug("Yarn Command %s"%yarn_command)
@@ -3148,7 +3148,7 @@ class LRMS(object):
             'br0', # SuperMIC
             'eth0'
         ]
-        
+
         # Get a list of all network interfaces
         all = netifaces.interfaces()
 
@@ -3169,7 +3169,7 @@ class LRMS(object):
                     # Found something, get out of here
                     pref = iface
                     break
-       
+
         # If we still didn't find something, grab the first one from the
         # potentials if it has entries
         if not pref and potentials:
@@ -3182,7 +3182,7 @@ class LRMS(object):
                     pref = iface
 
         # Use IPv4, because, we can ...
-        af = netifaces.AF_INET    
+        af = netifaces.AF_INET
         ip = netifaces.ifaddresses(pref)[af][0]['addr']
 
         return ip
@@ -4353,7 +4353,7 @@ class YARNLRMS(LRMS):
 
         self._log.debug('Namenode URL = {0}'.format(self.namenode_url))
 
-        # I will leave it for the moment because I have not found another way 
+        # I will leave it for the moment because I have not found another way
         # to take the necessary value yet.
         yarn_conf_output = commands.getstatusoutput('yarn node -list')[1].split('\n')
         for line in yarn_conf_output:
@@ -4563,7 +4563,7 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
       # self.advance(cu, rp.AGENT_EXECUTING, publish=True, push=False)
         self.advance(cu, rp.EXECUTING, publish=True, push=False)
 
-        try: 
+        try:
             if cu['description']['mpi']:
                 launcher = self._mpi_launcher
             else :
@@ -5060,7 +5060,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
                             self._cus_to_cancel.remove(cu_uid)
 
             # The state advance will be managed by the watcher, which will pick
-            # up the cancel notification.  
+            # up the cancel notification.
             # FIXME: We could optimize a little by publishing the unschedule
             #        right here...
 
@@ -5282,7 +5282,7 @@ class AgentExecutingComponent_SHELL(AgentExecutingComponent):
 
         # for convenience, we link the ExecWorker job-cwd to the unit workdir
         try:
-            os.symlink("%s/%s" % (self._spawner_tmp, cu['pid']), 
+            os.symlink("%s/%s" % (self._spawner_tmp, cu['pid']),
                        "%s/%s" % (cu['workdir'], 'SHELL_SPAWNER_TMP'))
         except Exception as e:
             self._log.exception('shell cwd symlink failed: %s' % e)
@@ -5591,7 +5591,7 @@ class AgentExecutingComponent_ABDS (AgentExecutingComponent) :
         self.advance(cu, rp.ALLOCATING, publish=True, push=False)
 
 
-        try: 
+        try:
             if cu['description']['mpi']:
                 launcher = self._mpi_launcher
             else :
@@ -5838,7 +5838,7 @@ class AgentExecutingComponent_ABDS (AgentExecutingComponent) :
             # right time stamp. In any other case it works as it was.
             if cu['state']==rp.ALLOCATING \
                and os.path.isfile(cu['workdir']+'/YarnApplicationReport.log'):
-                
+
                 yarnreport=open(cu['workdir']+'/YarnApplicationReport.log','r')
                 report_contents = yarnreport.readlines()
                 yarnreport.close()
@@ -5860,7 +5860,7 @@ class AgentExecutingComponent_ABDS (AgentExecutingComponent) :
                         # queue. I am not sure it is needed anymore.
                         index = self._cus_to_watch.index(cu)
                         self._cus_to_watch[index]=cu
-                
+
             else :
                 # poll subprocess object
                 exit_code = cu['proc'].poll()
@@ -5874,7 +5874,7 @@ class AgentExecutingComponent_ABDS (AgentExecutingComponent) :
                         # FIXME: there is a race condition between the state poll
                         # above and the kill command below.  We probably should pull
                         # state after kill again?
-                    
+
                         # We got a request to cancel this cu
                         action += 1
                         cu['proc'].kill()
@@ -5886,7 +5886,7 @@ class AgentExecutingComponent_ABDS (AgentExecutingComponent) :
                         self._prof.prof('final', msg="execution canceled", uid=cu['_id'])
 
                         self._cus_to_watch.remove(cu)
-                    
+
                         del(cu['proc'])  # proc is not json serializable
                         self.publish('unschedule', cu)
                         self.advance(cu, rp.CANCELED, publish=True, push=False)
@@ -6003,7 +6003,7 @@ class AgentUpdateWorker(rpu.Worker):
     def _ordered_update(self, cu, state, timestamp=None):
         """
         The update worker can receive states for a specific unit in any order.
-        If states are pushed straight to theh DB, the state attribute of a unit 
+        If states are pushed straight to theh DB, the state attribute of a unit
         may not reflect the actual state.  This should be avoided by re-ordering
         on the client side DB consumption -- but until that is implemented we
         enforce ordered state pushes to MongoDB.  We do it like this:
@@ -6161,7 +6161,7 @@ class AgentUpdateWorker(rpu.Worker):
         cu = msg
 
         # FIXME: we don't have any error recovery -- any failure to update unit
-        #        state in the DB will thus result in an exception here and tear 
+        #        state in the DB will thus result in an exception here and tear
         #        down the pilot.
         #
         # FIXME: at the moment, the update worker only operates on units.
@@ -6470,10 +6470,10 @@ class AgentStagingOutputComponent(rpu.Component):
                     self._log.error("Pre/Post profiling file read failed: `%s`" % e)
 
         # NOTE: all units get here after execution, even those which did not
-        #       finish successfully.  We do that so that we can make 
+        #       finish successfully.  We do that so that we can make
         #       stdout/stderr available for failed units.  But at this point we
         #       don't need to advance those units anymore, but can make them
-        #       final.  
+        #       final.
         if cu['target_state'] != rp.DONE:
             self.advance(cu, cu['target_state'], publish=True, push=False)
             return
@@ -6616,7 +6616,7 @@ class AgentHeartbeatWorker(rpu.Worker):
 
         except Exception as e:
             self._log.exception('heartbeat died - cancel')
-            self.publish('command', {'cmd' : 'shutdown', 
+            self.publish('command', {'cmd' : 'shutdown',
                                      'arg' : 'exception'})
 
     # --------------------------------------------------------------------------
@@ -6642,17 +6642,17 @@ class AgentHeartbeatWorker(rpu.Worker):
 
             if cmd == COMMAND_CANCEL_PILOT:
                 self._log.info('cancel pilot cmd')
-                self.publish('command', {'cmd' : 'shutdown', 
+                self.publish('command', {'cmd' : 'shutdown',
                                          'arg' : 'cancel'})
 
             elif cmd == COMMAND_CANCEL_COMPUTE_UNIT:
                 self._log.info('cancel unit cmd')
-                self.publish('command', {'cmd' : 'cancel_unit', 
+                self.publish('command', {'cmd' : 'cancel_unit',
                                          'arg' : command})
 
             elif cmd == COMMAND_KEEP_ALIVE:
                 self._log.info('keepalive pilot cmd')
-                self.publish('command', {'cmd' : 'heartbeat', 
+                self.publish('command', {'cmd' : 'heartbeat',
                                          'arg' : 'keepalive'})
 
 
@@ -6664,7 +6664,7 @@ class AgentHeartbeatWorker(rpu.Worker):
         # we have, terminate.
         if time.time() >= self._starttime + (int(self._runtime) * 60):
             self._log.info("Agent has reached runtime limit of %s seconds.", self._runtime*60)
-            self.publish('command', {'cmd' : 'shutdown', 
+            self.publish('command', {'cmd' : 'shutdown',
                                      'arg' : 'timeout'})
 
 
@@ -6870,7 +6870,7 @@ class AgentWorker(rpu.Worker):
         # also watch all components (once per second)
         self.declare_idle_cb(self.watcher_cb, 10.0)
 
-        # once bootstrap_4 is done, we signal success to the parent agent 
+        # once bootstrap_4 is done, we signal success to the parent agent
         # -- if we have any parent...
         if self.agent_name != 'agent_0':
             self.publish('command', {'cmd' : 'alive',
@@ -6905,7 +6905,7 @@ class AgentWorker(rpu.Worker):
             # check the procs for all components which are not yet alive
             to_check  = self._components.items() \
                       + self._workers.items() \
-                      + self._sub_agents.items() 
+                      + self._sub_agents.items()
 
             alive_cnt = 0
             total_cnt = len(to_check)
@@ -6926,7 +6926,7 @@ class AgentWorker(rpu.Worker):
 
             if time.time() - timeout > start:
                 raise RuntimeError('component barrier failed (timeout)')
-            
+
             time.sleep(1)
 
 
@@ -6962,7 +6962,7 @@ class AgentWorker(rpu.Worker):
 
         self._log.info("Agent finalizes")
         self._prof.prof('stop', uid=self._pilot_id)
-      
+
         # tell other sub-agents get lost
         self.publish('command', {'cmd' : 'shutdown',
                                  'arg' : '%s finalization' % self.agent_name})
@@ -6989,7 +6989,7 @@ class AgentWorker(rpu.Worker):
             except Exception as e:
                 self._log.exception('ignore failing worker terminate')
 
-        # communicate finalization to parent agent 
+        # communicate finalization to parent agent
         # -- if we have any parent...
         if self.agent_name != 'agent_0':
             self.publish('command', {'cmd' : 'final',
@@ -7018,7 +7018,7 @@ class AgentWorker(rpu.Worker):
         # the configs are written, and the sub-agents can be started.  To know
         # how to do that we create the agent launch method, have it creating
         # the respective command lines per agent instance, and run via
-        # popen. 
+        # popen.
         #
         # actually, we only create the agent_lm once we really need it for
         # non-local sub_agents.
@@ -7052,9 +7052,9 @@ class AgentWorker(rpu.Worker):
                 #        offset computation be moved to the LRMS?
                 # FIXME: are we using the 'hop' correctly?
                 ls_name = "%s/%s.sh" % (os.getcwd(), sa)
-                opaque_slots = { 
-                        'task_slots'   : ['%s:0' % node], 
-                        'task_offsets' : [], 
+                opaque_slots = {
+                        'task_slots'   : ['%s:0' % node],
+                        'task_offsets' : [],
                         'lm_info'      : self._cfg['lrms_info']['lm_info']}
                 agent_cmd = {
                         'opaque_slots' : opaque_slots,
@@ -7185,7 +7185,7 @@ class AgentWorker(rpu.Worker):
         # This also blocks us from using multiple ingest threads, or from doing
         # late binding by unit pull :/
         cu_cursor = self._cu.find(spec  = {"pilot"   : self._pilot_id,
-                                           'state'   : rp.AGENT_STAGING_INPUT_PENDING, 
+                                           'state'   : rp.AGENT_STAGING_INPUT_PENDING,
                                            'control' : 'umgr'})
         if not cu_cursor.count():
             # no units whatsoever...
@@ -7259,7 +7259,7 @@ def start_bridges(cfg, log):
         bridge_in  = bridge.bridge_in
         bridge_out = bridge.bridge_out
         bridges[b] = {'handle' : bridge,
-                      'in'     : bridge_in, 
+                      'in'     : bridge_in,
                       'out'    : bridge_out,
                       'alive'  : True}  # no alive check done, yet
         log.info('created bridge %s: %s', b, bridge.name)
