@@ -8,6 +8,8 @@ import threading
 # ------------------------------------------------------------------------------
 #
 _prof_fields  = ['time', 'name', 'uid', 'state', 'event', 'msg']
+
+
 # ------------------------------------------------------------------------------
 #
 # profile class
@@ -44,7 +46,7 @@ class Profiler (object):
         # write header and time normalization info
         # NOTE: Don't forget to sync any format changes in the bootstrapper
         #       and downstream analysis tools too!
-        self._handle.write("#time,name,uid,state,event,msg\n")
+        self._handle.write("#%s\n" % (','.join(_prof_fields)))
         self._handle.write("%.4f,%s:%s,%s,%s,%s,%s\n" % \
                            (0.0, self._name, "", "", "", 'sync abs',
                             "%s:%s:%s:%s" % (time.time(), self._ts_zero, 
@@ -61,10 +63,22 @@ class Profiler (object):
 
     # ------------------------------------------------------------------------------
     #
+    def close(self):
+
+        if self._enabled:
+            self.prof("QED")
+            self._handle.close()
+
+
+    # ------------------------------------------------------------------------------
+    #
     def flush(self):
 
         if self._enabled:
+            self.prof("flush")
             self._handle.flush()
+            # https://docs.python.org/2/library/stdtypes.html?highlight=file%20flush#file.flush
+            os.fsync(self._handle.fileno())
 
 
     # ------------------------------------------------------------------------------
@@ -272,6 +286,7 @@ def combine_profiles(profiles):
     for prof in profiles:
         p     = list()
         tref  = None
+        qed = 0
         with open(prof, 'r') as csvfile:
             reader = csv.DictReader(csvfile, fieldnames=_prof_fields)
             empty  = True
@@ -280,7 +295,7 @@ def combine_profiles(profiles):
                 # skip header
                 if row['time'].startswith('#'):
                     continue
-    
+
                 empty = False
                 row['time'] = float(row['time'])
     
@@ -293,18 +308,28 @@ def combine_profiles(profiles):
                         tref = 'abs'
                         rd_abs[prof] = [row['time']] + row['msg'].split(':')
 
+                # Record closing entries
+                if row['event'] == 'QED':
+                    qed += 1
+
                 # store row in profile
                 p.append(row)
     
         if   tref == 'abs': pd_abs[prof] = p
         elif tref == 'rel': pd_rel[prof] = p
         elif not empty    : print 'WARNING: skipping profile %s (no sync)' % prof
-    
+
+        # Check for proper closure of profiling files
+        if qed == 0:
+            print 'WARNING: profile "%s" not correctly closed.' % prof
+        if qed > 1:
+            print 'WARNING: profile "%s" closed %d times.' % (prof, qed)
+
     # make all timestamps absolute for pd_abs profiles
     for prof, p in pd_abs.iteritems():
     
-        # the profile created an entry t_rel at t_abs.  
-        # The offset is thus t_abs - t_rel, and all timestamps 
+        # the profile created an entry t_rel at t_abs.
+        # The offset is thus t_abs - t_rel, and all timestamps
         # in the profile need to be corrected by that to get absolute time
         t_rel   = float(rd_abs[prof][0])
         t_stamp = float(rd_abs[prof][1])
@@ -387,16 +412,15 @@ def drop_units(cfg, units, name, mode, prof=None, logger=None):
         return units
 
     if not units:
-        # nothing to drop
-        if logger:
-            logger.debug('no units - no dropping')
+      # if logger:
+      #     logger.debug('no units - no dropping')
         return units
 
     drop = cfg.get('drop', {}).get(name, {}).get(mode, 1)
 
     if drop == 0:
-        if logger:
-            logger.debug('dropped nothing')
+      # if logger:
+      #     logger.debug('dropped nothing')
         return units
 
     return_list = True
@@ -407,6 +431,8 @@ def drop_units(cfg, units, name, mode, prof=None, logger=None):
     if drop == 2:
         if logger:
             logger.debug('dropped everything')
+            for unit in units:
+                logger.debug('dropped %s', unit['_id'])
         if return_list: return []
         else          : return None
 
@@ -418,19 +444,17 @@ def drop_units(cfg, units, name, mode, prof=None, logger=None):
     for unit in units :
         if '.clone_' not in unit['_id']:
             ret.append(unit)
-            if logger:
-                logger.debug('dropped not %s', unit['_id'])
+          # if logger:
+          #     logger.debug('dropped not %s', unit['_id'])
         else:
             if logger:
-                logger.debug('dropped     %s', unit['_id'])
+                logger.debug('dropped %s', unit['_id'])
 
     if return_list: 
         return ret
     else: 
-        if ret:
-            return ret[0]
-        else:
-            return None
+        if ret: return ret[0]
+        else  : return None
 
 
 # ------------------------------------------------------------------------------

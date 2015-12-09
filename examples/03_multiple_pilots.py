@@ -54,7 +54,6 @@ if __name__ == '__main__':
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pdescs = list()
-        report.info('create pilot descriptions')
         for resource in resources:
             pd_init = {
                     'resource'      : resource,
@@ -66,7 +65,6 @@ if __name__ == '__main__':
                     'access_schema' : config[resource]['schema']
                     }
             pdescs.append(rp.ComputePilotDescription(pd_init))
-        report.ok('>>ok\n')
 
         # Launch the pilots.
         pilots = pmgr.submit_pilots(pdescs)

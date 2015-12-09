@@ -82,7 +82,7 @@ class Session (saga.Session):
         logger = ru.get_logger('radical.pilot')
 
         if database_name:
-            logger.error("The 'database_name' parameter is deprecated - please specify an URL path") 
+            logger.warning("The 'database_name' parameter is deprecated - please specify an URL path")
         else:
             database_name = 'radicalpilot'
 
@@ -117,7 +117,7 @@ class Session (saga.Session):
         if  not self._dburl.path         or \
             self._dburl.path[0]   != '/' or \
             len(self._dburl.path) <=  1  :
-            logger.error("incomplete URLs are deprecated -- missing database name!")
+            logger.warning("incomplete URLs are deprecated -- missing database name!")
             self._dburl.path = database_name # defaults to 'radicalpilot'
 
         logger.info("using database %s" % self._dburl)
@@ -133,18 +133,22 @@ class Session (saga.Session):
                 self._uid  = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
                 self._name = self._uid
 
-            logger.report.info('<<create session %s' % self._uid)
-
+            logger.report.info ('<<new session: ')
+            logger.report.plain('[%s]' % self._uid)
+            logger.report.info ('<<database   : ')
+            logger.report.plain('[%s]' % self._dburl)
 
             self._dbs = dbSession(sid   = self._uid,
                                   name  = self._name,
                                   dburl = self._dburl)
+
         
             self._dburl  = self._dbs._dburl
 
             logger.info("New Session created: %s." % str(self))
 
         except Exception, ex:
+            logger.report.error(">>err\n")
             logger.exception ('session create failed')
             raise PilotException("Couldn't create new session (database URL '%s' incorrect?): %s" \
                             % (self._dburl, ex))  
@@ -278,7 +282,7 @@ class Session (saga.Session):
             if  cleanup == True and terminate == True :
                 cleanup   = delete
                 terminate = delete
-                logger.error("'delete' flag on session is deprecated. " \
+                logger.warning("'delete' flag on session is deprecated. " \
                              "Please use 'cleanup' and 'terminate' instead!")
 
         if  cleanup :
@@ -307,6 +311,7 @@ class Session (saga.Session):
 
         logger.debug("session %s closed" % (str(self._uid)))
         self.prof.prof("closed", uid=self._uid)
+        self.prof.close()
 
         self._valid = False
 
