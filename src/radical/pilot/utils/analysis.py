@@ -26,6 +26,11 @@ _info_pending = {
         'Pending'    : '_pend'
         }
 
+_info_premature_final = {
+        'Failed'   : '_fail',
+        'Canceled'   : '_canc'
+}
+
 _info_states = [
         ACTIVE,
         AGENT_STAGING_INPUT,
@@ -507,6 +512,11 @@ def add_info(df):
         for pat, s in _info_pending.iteritems():
             if ret and pat in row['state']:
                 ret += s
+                break
+        # Also create separate info entries for Canceled and Failed units
+        for pat, f in _info_premature_final.iteritems():
+            if ret and pat in row['state']:
+                ret += f
                 break
 
         if ret and n >= 2:

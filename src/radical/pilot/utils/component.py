@@ -10,7 +10,8 @@ import radical.utils   as ru
 
 from ..states    import *
 
-from .prof_utils import Profiler, clone_units, drop_clones
+from .prof_utils import Profiler, clone_units, drop_units
+from .prof_utils import timestamp as util_timestamp
 
 from .queue      import Queue        as rpu_Queue
 from .queue      import QUEUE_ZMQ    as rpu_QUEUE_ZMQ
@@ -90,7 +91,7 @@ class Component(mp.Process):
         work(self, unit)
 
     The method is expected to change the unit state.  Units will not be pushed
-    to outgoing channels automatically -- to do so, the work method has to call 
+    to outgoing channels automatically -- to do so, the work method has to call
 
         self.advance(unit)
 
@@ -114,7 +115,7 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    # FIXME: 
+    # FIXME:
     #  - *_PENDING -> * ?
     #  - make state transitions more formal
     # --------------------------------------------------------------------------
@@ -123,8 +124,8 @@ class Component(mp.Process):
     #
     def __init__(self, ctype, cfg):
         """
-        This constructor MUST be called by inheriting classes.  
-        
+        This constructor MUST be called by inheriting classes.
+
         Note that __init__ is not executed in the process scope of the main
         event loop -- initialization for the main event loop should be moved to
         the initialize_child() method.  Initialization for component input,
@@ -146,10 +147,9 @@ class Component(mp.Process):
         self._inputs        = list()      # queues to get units from
         self._outputs       = dict()      # queues to send units to
         self._publishers    = dict()      # channels to send notifications to
-        self._subscribers   = dict()      # callbacks for received notifications
+        self._subscribers   = list()      # callbacks for received notifications
         self._workers       = dict()      # where units get worked upon
         self._idlers        = list()      # idle_callback registry
-        self._threads       = list()      # subscriber threads
         self._terminate     = mt.Event()  # signal for thread termination
         self._finalized     = False       # finalization guard
         self._is_parent     = None        # guard initialize/initialize_child
@@ -219,7 +219,7 @@ class Component(mp.Process):
     def finalize(self):
         """
         This method may be overloaded by the components.  It is called *once* in
-        the context of the parent process, upon stop(), and should be used to 
+        the context of the parent process, upon stop(), and should be used to
         tear down component state after units have been processed.
         """
         self._log.debug('base finalize (NOOP)')
@@ -230,7 +230,7 @@ class Component(mp.Process):
     def finalize_child(self):
         """
         This method may be overloaded by the components.  It is called *once* in
-        the context of the child process, upon stop(), and should be used to 
+        the context of the child process, upon stop(), and should be used to
         tear down component state after units have been processed.
         """
         self._log.debug('base finalize_child (NOOP)')
@@ -313,12 +313,12 @@ class Component(mp.Process):
             return
 
         self._prof.prof("closing")
-        self._log.info("closing (%d subscriber threads)" % (len(self._threads)))
+        self._log.info("closing (%d subscriber threads)" % (len(self._subscribers)))
 
         # tear down all subscriber threads
         self._terminate.set()
         self_thread = mt.current_thread()
-        for t in self._threads:
+        for t in self._subscribers:
             if t != self_thread:
                 self._log.debug('joining  subscriber thread %s' % t)
                 t.join()
@@ -355,7 +355,7 @@ class Component(mp.Process):
             # Note that the thread is *not* joined at this point -- but the
             # parent should not block on shutdown anymore, as the thread is
             # at least gone.
-            if self_thread in self._threads and self._cb_lock.locked():
+            if self_thread in self._subscribers and self._cb_lock.locked():
                 self._log.debug('release subscriber thread %s' % self_thread)
                 sys.exit()
 
@@ -520,8 +520,8 @@ class Component(mp.Process):
         """
         Using this method, the compinent can declare certain notification topics
         (where topic is a string).  For each topic, a pub/sub network will be
-        used to distribute the notifications to subscribers of that topic.  
-        
+        used to distribute the notifications to subscribers of that topic.
+
         The same topic can be sent to multiple channels -- but that is
         considered bad practice, and may trigger an error in later versions.
         """
@@ -587,7 +587,7 @@ class Component(mp.Process):
         t = mt.Thread(target=_subscriber, args=[q,cb],
                       name="%s.subscriber" % self.cname)
         t.start()
-        self._threads.append(t)
+        self._subscribers.append(t)
 
         self._log.debug('%s declared subscriber: %s : %s : %s : %s' \
                 % (self._cname, topic, pubsub, cb, t.name))
@@ -604,6 +604,15 @@ class Component(mp.Process):
         """
         self._log.debug('declare drop_cb %s (%s)', drop_cb, os.getpid())
         self._drop_cb = drop_cb
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _subscriber_check_cb(self):
+
+        for t in self._subscribers:
+            if not t.isAlive():
+                raise RuntimeError('subscriber %s died' % t.name)
 
 
     # --------------------------------------------------------------------------
@@ -654,6 +663,9 @@ class Component(mp.Process):
             self.initialize_child()
             self._prof.prof('initialized')
 
+            # register own idle callback to watch the subscriber threads (1/sec)
+            self.declare_idle_cb(self._subscriber_check_cb, 1.0)
+
             # perform a sanity check: for each declared input state, we expect
             # a corresponding work method to be declared, too.
             for input, states in self._inputs:
@@ -664,11 +676,11 @@ class Component(mp.Process):
 
 
             # The main event loop will repeatedly iterate over all input
-            # channels, probing 
+            # channels, probing
             while not self._terminate.is_set():
 
                 # if no action occurs in this iteration, invoke idle callbacks
-                active = False 
+                active = False
 
                 # FIXME: for the default case where we have only one input
                 #        channel, we can probably use a more efficient method to
@@ -697,8 +709,8 @@ class Component(mp.Process):
 
                     # depending on the queue we got the unit from, we can either
                     # drop units or clone them to inject new ones
-                    unit = drop_clones(self._cfg, unit, self.ctype, 'input',
-                                       drop_cb=self._drop_cb, logger=self._log)
+                    unit = drop_units(self._cfg, unit, self.ctype, 'input',
+                                      drop_cb=self._drop_cb, logger=self._log)
                     if not unit:
                         self._prof.prof(event='drop', state=state,
                                 uid=uid, msg=input.name)
@@ -749,11 +761,11 @@ class Component(mp.Process):
                     for idler in self._idlers:
 
                         if (now - idler['last']) > idler['timeout']:
-                        
+
                             try:
                                 with self._cb_lock:
                                     if idler['cb']():
-                                        # something happend!
+                                        # something happened!
                                         idler['last'] = now
                                         active = True
                             except Exception as e:
@@ -788,7 +800,8 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def advance(self, units, state=None, publish=True, push=False):
+    def advance(self, units, state=None, publish=True, push=False, prof=True,
+                timestamp=None):
         """
         Units which have been operated upon are pushed down into the queues
         again, only to be picked up by the next component, according to their
@@ -799,7 +812,12 @@ class Component(mp.Process):
         state:   new state to set for the units
         publish: determine if state update notifications should be issued
         push:    determine if units should be pushed to outputs
+        prof:    determine if state advance creates a profile event
+                 (publish, push, and drop are always profiled)
         """
+
+        if not timestamp:
+            timestamp = util_timestamp()
 
         if not isinstance(units, list):
             units = [units]
@@ -809,8 +827,11 @@ class Component(mp.Process):
             uid = unit['_id']
 
             if state:
-                unit['state'] = state
-                self._prof.prof('advance', uid=unit['_id'], state=state)
+                unit['state']          = state
+                unit['state_timstamp'] = timestamp
+                if prof:
+                    self._prof.prof('advance', uid=unit['_id'], state=state,
+                            timestamp=timestamp)
             else:
                 state = unit['state']
 
@@ -818,7 +839,6 @@ class Component(mp.Process):
                 # send state notifications
                 self.publish('state', unit)
                 self._prof.prof('publish', uid=unit['_id'], state=unit['state'])
-                time.sleep(0.1)
 
             if push:
                 if state not in self._outputs:
@@ -837,12 +857,12 @@ class Component(mp.Process):
 
                 # depending on the queue we got the unit from, we can now either
                 # drop units or clone them to inject new ones
-                unit = drop_clones(self._cfg, unit, self.ctype, 'output',
-                                   drop_cb=self._drop_cb, logger=self._log)
+                unit = drop_units(self._cfg, unit, self.ctype, 'output',
+                                  drop_cb=self._drop_cb, logger=self._log)
                 if not unit:
                     self._prof.prof(event='drop', state=state, uid=uid, msg=output.name)
                     continue
-               
+
                 units = clone_units(self._cfg, unit, self.ctype, 'output', logger=self._log)
 
                 for _unit in units:
@@ -902,13 +922,13 @@ class Worker(Component):
     # we overload state changing methods from component and assert neutrality
     # FIXME: we should insert hooks around callback invocations, too
     #
-    def advance(self, units, state=None, publish=True, push=False):
+    def advance(self, units, state=None, publish=True, push=False, prof=True):
 
         if state:
             raise RuntimeError("worker %s cannot advance state (%s)"
                     % (self.cname, state))
 
-        Component.advance(self, units, state, publish, push)
+        Component.advance(self, units, state, publish, push, prof)
 
 
 

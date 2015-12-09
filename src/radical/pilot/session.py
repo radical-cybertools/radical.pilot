@@ -133,18 +133,22 @@ class Session (saga.Session):
                 self._uid  = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
                 self._name = self._uid
 
-            logger.report.info('<<create session %s' % self._uid)
-
+            logger.report.info ('<<new session: ')
+            logger.report.plain('[%s]' % self._uid)
+            logger.report.info ('<<database   : ')
+            logger.report.plain('[%s]' % self._dburl)
 
             self._dbs = dbSession(sid   = self._uid,
                                   name  = self._name,
                                   dburl = self._dburl)
+
         
             self._dburl  = self._dbs._dburl
 
             logger.info("New Session created: %s." % str(self))
 
         except Exception, ex:
+            logger.report.error(">>err\n")
             logger.exception ('session create failed')
             raise PilotException("Couldn't create new session (database URL '%s' incorrect?): %s" \
                             % (self._dburl, ex))  

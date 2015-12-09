@@ -16,7 +16,7 @@ def pilot_state_cb (pilot, state):
     print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
     if state == rp.FAILED:
-        sys.exit (1)
+        pass
 
     if state in [rp.DONE, rp.FAILED, rp.CANCELED]:
         for cb in pilot.callback_history:
@@ -38,7 +38,7 @@ def unit_state_cb (unit, state):
 
     if state == rp.FAILED:
         print "stderr: %s" % unit.stderr
-        sys.exit (1)
+
 
     if state in [rp.DONE, rp.FAILED, rp.CANCELED]:
         for cb in unit.callback_history:
@@ -357,7 +357,7 @@ class TestLocalThree(object):
 
     #---------------------------------------------------------------------------
     #
-    def test_pass_state_history(self, rp_setup_state):
+    def test_fail_state_history(self, rp_setup_state):
 
         pilot, pmgr, umgr = rp_setup_state
 

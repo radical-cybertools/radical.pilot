@@ -417,16 +417,15 @@ def drop_clones(cfg, units, name, mode, drop_cb=None, prof=None, logger=None):
         return units
 
     if not units:
-        # nothing to drop
-        if logger:
-            logger.debug('no units - no dropping')
+      # if logger:
+      #     logger.debug('no units - no dropping')
         return units
 
     drop = cfg.get('drop', {}).get(name, {}).get(mode, 1)
 
     if drop == 0:
-        if logger:
-            logger.debug('dropped none')
+      # if logger:
+      #     logger.debug('dropped nothing')
         return units
 
     return_list = True
@@ -435,11 +434,13 @@ def drop_clones(cfg, units, name, mode, drop_cb=None, prof=None, logger=None):
         units = [units]
 
     if drop == 2:
-        if logger:
-            logger.debug('dropped all')
         if drop_cb:
             for unit in units:
                 drop_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
+        if logger:
+            logger.debug('dropped everything')
+            for unit in units:
+                logger.debug('dropped %s', unit['_id'])
         if return_list: return []
         else          : return None
 
@@ -451,21 +452,19 @@ def drop_clones(cfg, units, name, mode, drop_cb=None, prof=None, logger=None):
     for unit in units :
         if '.clone_' not in unit['_id']:
             ret.append(unit)
-            if logger:
-                logger.debug('dropped not %s', unit['_id'])
+          # if logger:
+          #     logger.debug('dropped not %s', unit['_id'])
         else:
             if drop_cb:
                 drop_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
             if logger:
-                logger.debug('dropped one %s', unit['_id'])
+                logger.debug('dropped %s', unit['_id'])
 
     if return_list: 
         return ret
     else: 
-        if ret:
-            return ret[0]
-        else:
-            return None
+        if ret: return ret[0]
+        else  : return None
 
 
 # ------------------------------------------------------------------------------

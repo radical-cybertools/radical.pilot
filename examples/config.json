@@ -54,6 +54,12 @@
             "schema"   : null
         },
 
+        "xsede.comet_orte": {
+            "project"  : "unc100",
+            "queue"    : "",
+            "schema"   : null
+        },
+
         "xsede.gordon" : {
             "project"  : null,
             "queue"    : "debug",
