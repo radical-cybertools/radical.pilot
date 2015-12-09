@@ -497,7 +497,6 @@ class PilotLauncherWorker(threading.Thread):
 
                         sandbox_tgt.copy(bs_script_url, BOOTSTRAPPER_SCRIPT)
 
-
                         # ------------------------------------------------------
                         # the version of the agent is derived from
                         # rp_version, which has the following format
@@ -598,6 +597,7 @@ class PilotLauncherWorker(threading.Thread):
                             msg = "Copying CA certificate bundle '%s' to sandbox (%s)." % (cc_url, pilot_sandbox)
                             logentries.append(Logentry (msg, logger=logger.debug))
                             sandbox_tgt.copy(cc_url, os.path.basename(str(cc_url)))
+
 
                         # ------------------------------------------------------
                         # sanity checks
