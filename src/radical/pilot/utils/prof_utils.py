@@ -397,7 +397,7 @@ def combine_profiles(profiles):
 
 # ------------------------------------------------------------------------------
 #
-def drop_clones(cfg, units, name, mode, drop_cb=None, prof=None, logger=None):
+def drop_units(cfg, units, name, mode, drop_cb=None, prof=None, logger=None):
     """
     For each unit in units, check if the queue is configured to drop
     units in the given mode ('in' or 'out').  If drop is set to 0, the units
