@@ -677,7 +677,8 @@ class AgentSchedulingComponent(rpu.Component):
 
             slot = self.slots[self._clone_slot_idx]
 
-            unit['opaque_slots']['task_slots'][0] = '%s:%d' % (slot['node'], self._clone_core_idx)
+            unit['opaque_slots']['task_slots'][0] = '%s:%d' \
+                    % (slot['node'], self._clone_core_idx)
           # self._log.debug(' === clone cb out : %s', unit['opaque_slots'])
 
             if (self._clone_core_idx +  1) < self._lrms_cores_per_node:
