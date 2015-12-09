@@ -165,7 +165,7 @@ class UnitManagerController(threading.Thread):
         self._callback_histories[unit_id].append (
                 {'timestamp' : timestamp(), 
                  'state'     : new_state})
-        self._session.prof.prof('notification', uid=unit.uid, state=new_state)
+        self._session.prof.prof('notification', uid=unit_id, state=new_state)
 
         for [cb, cb_data] in self._shared_data[unit_id]['callbacks']:
             try:
