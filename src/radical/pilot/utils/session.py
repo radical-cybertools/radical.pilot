@@ -168,7 +168,7 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
 
 # ------------------------------------------------------------------------------
 #
-def get_session_frames (sids, dburl=None, cachedir=None) :
+def get_session_frames (sids, db=None, cachedir=None) :
 
     # use like this: 
     #
@@ -184,13 +184,14 @@ def get_session_frames (sids, dburl=None, cachedir=None) :
     # print u_max
     # print u_max - u_min
 
-    if not dburl:
-        dburl = os.environ['RADICAL_PILOT_DBURL']
+    mongo = None
 
-    if not dburl:
-        raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
+    if not db:
+        dburl = os.environ.get('RADICAL_PILOT_DBURL')
+        if not dburl:
+            raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
 
-    mongo, db, _, _, _ = ru.mongodb_connect(dburl)
+        mongo, db, _, _, _ = ru.mongodb_connect(dburl)
 
 
     if not isinstance (sids, list) :
@@ -423,7 +424,8 @@ def get_session_frames (sids, dburl=None, cachedir=None) :
     pilot_frame   = pandas.DataFrame (pilot_dicts)
     unit_frame    = pandas.DataFrame (unit_dicts)
 
-    mongo.close()
+    if mongo:
+        mongo.close()
 
     return session_frame, pilot_frame, unit_frame
 

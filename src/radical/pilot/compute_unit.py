@@ -504,7 +504,7 @@ class ComputeUnit(object):
             logger.debug("Compute unit %s has state %s, will cancel the transfer." % (self._uid, self.state))
             self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
 
-        elif self.state in [PENDING_EXECUTION, SCHEDULING]:
+        elif self.state in [EXECUTING_PENDING, SCHEDULING]:
             logger.debug("Compute unit %s has state %s, will abort start-up." % (self._uid, self.state))
             self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
 
