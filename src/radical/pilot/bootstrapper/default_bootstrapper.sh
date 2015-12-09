@@ -665,8 +665,8 @@ virtenv_activate()
     prefix="$virtenv/rp_install"
 
     # make sure the lib path into the prefix conforms to the python conventions
-    PYTHON_VERSION=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
-    VE_MOD_PREFIX=` python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
+    PYTHON_VERSION=`$PYTHON -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
+    VE_MOD_PREFIX=` $PYTHON -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
     echo "PYTHON INTERPRETER: $PYTHON"
     echo "PYTHON_VERSION    : $PYTHON_VERSION"
     echo "VE_MOD_PREFIX     : $VE_MOD_PREFIX"
@@ -1065,9 +1065,9 @@ verify_rp_install()
     echo
     echo "`$PYTHON --version` ($PYTHON)"
     echo "PYTHONPATH: $PYTHONPATH"
- (  python -c 'print "utils : ",; import radical.utils as ru; print ru.version_detail,; print ru.__file__' \
- && python -c 'print "saga  : ",; import saga          as rs; print rs.version_detail,; print rs.__file__' \
- && python -c 'print "pilot : ",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__' \
+ (  $PYTHON -c 'print "utils : ",; import radical.utils as ru; print ru.version_detail,; print ru.__file__' \
+ && $PYTHON -c 'print "saga  : ",; import saga          as rs; print rs.version_detail,; print rs.__file__' \
+ && $PYTHON -c 'print "pilot : ",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__' \
  && (echo 'install ok!'; true) \
  ) \
  || (echo 'install failed!'; false) \
@@ -1313,6 +1313,7 @@ fi
 
 verify_rp_install
 
+# TODO: (re)move this output?
 echo
 echo "# -------------------------------------------------------------------"
 echo "# Launching radical-pilot-agent "
@@ -1386,6 +1387,33 @@ EOT
 chmod 0755 bootstrap_2.sh
 # ------------------------------------------------------------------------------
 
+#
+# Create a barrier to start the agent.
+# This can be used by experimental scripts to push all units to the DB before
+# the agent starts.
+#
+if ! test -z "$RADICAL_PILOT_BARRIER"
+then
+    echo
+    echo "# -------------------------------------------------------------------"
+    echo "# Entering barrier for $RADICAL_PILOT_BARRIER ..."
+    echo "# -------------------------------------------------------------------"
+
+    profile_event 'bootstrap enter barrier'
+
+    while ! test -f $RADICAL_PILOT_BARRIER
+    do
+        sleep 1
+    done
+
+    profile_event 'bootstrap leave barrier'
+
+    echo
+    echo "# -------------------------------------------------------------------"
+    echo "# Leaving barrier"
+    echo "# -------------------------------------------------------------------"
+fi
+
 profile_event 'agent start'
 
 # start the master agent instance (zero)
@@ -1415,6 +1443,38 @@ echo "# -------------------------------------------------------------------"
 
 if ! test -z "`ls *.prof 2>/dev/null`"
 then
+    echo
+    echo "# -------------------------------------------------------------------"
+    echo "#"
+    echo "# Mark final profiling entry ..."
+    profile_event 'QED'
+    echo "#"
+    echo "# -------------------------------------------------------------------"
+    echo
+    FINAL_SLEEP=30
+    echo "# -------------------------------------------------------------------"
+    echo "#"
+    echo "# We wait for at most 30 seconds for the FS to flush profiles."
+    echo "# Success is assumed when all profiles end with a 'QED' event."
+    echo "#"
+    echo "# -------------------------------------------------------------------"
+    nprofs=`echo *.prof | wc -w`
+    nqed=`tail -n 1 *.prof | grep QED | wc -l`
+    nsleep=0
+    while ! test "$nprofs" = "$nqed"
+    do
+        nsleep=$((nsleep+1))
+        if test "$nsleep" = "30"
+        then
+            echo "abort profile sync @ $nsleep: $nprofs != $nqed"
+            break
+        fi
+        echo "delay profile sync @ $nsleep: $nprofs != $nqed"
+        sleep 1
+        # recheck nprofs too, just in case...
+        nprofs=`echo *.prof | wc -w`
+        nqed=`tail -n 1 *.prof | grep QED | wc -l`
+    done
     echo
     echo "# -------------------------------------------------------------------"
     echo "#"
