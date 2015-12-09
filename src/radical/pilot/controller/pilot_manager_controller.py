@@ -225,27 +225,27 @@ class PilotManagerController(threading.Thread):
                 {'timestamp' : timestamp(), 
                  'state'     : new_state})
 
-        try:
-            for cb in self._shared_data[pilot_id]['callbacks']:
-                cb_func = cb['cb_func']
-                cb_data = cb['cb_data']
-                try:
-                    if self._shared_data[pilot_id]['facade_object'] :
-                        if cb_data:
-                            cb_func(self._shared_data[pilot_id]['facade_object'](), new_state, cb_data)
-                        else:
-                            cb_func(self._shared_data[pilot_id]['facade_object'](), new_state)
-                    else :
-                        logger.error("Couldn't call callback (no pilot instance)")
-                except Exception as e:
-                    logger.exception("Couldn't call callback function %s" % e)
-                    raise
-        except SystemExit:
-            # one of the callbacks requested a sys exit.  We don't want the
-            # callbacks to get into te way of the shutdown, so we unregister
-            # them all right here
-            self.unregister_pilot_callback(pilot_id)
-            raise
+        for cb in self._shared_data[pilot_id]['callbacks']:
+            cb_func = cb['cb_func']
+            cb_data = cb['cb_data']
+            try:
+                if self._shared_data[pilot_id]['facade_object'] :
+                    if cb_data:
+                        cb_func(self._shared_data[pilot_id]['facade_object'](), new_state, cb_data)
+                    else:
+                        cb_func(self._shared_data[pilot_id]['facade_object'](), new_state)
+                else :
+                    logger.error("Couldn't call callback (no pilot instance)")
+            except Exception as e:
+                logger.exception("Couldn't call callback function %s" % e)
+                raise
+            except SystemExit:
+                # the callback requested a sys exit.  We don't want the
+                # callbacks to get into the way of the shutdown, so we 
+                # unregister them all right here
+                logger.exception('sys.exit from callback')
+                self.unregister_pilot_callback(pilot_id)
+                thread.interrupt_main()
 
         # If we have any manager-level callbacks registered, we
         # call those as well!
@@ -261,6 +261,13 @@ class PilotManagerController(threading.Thread):
             except Exception as e:
                 logger.exception("Couldn't call callback function %s" % e)
                 raise
+            except SystemExit:
+                # the callback requested a sys exit.  We don't want the
+                # callbacks to get into the way of the shutdown, so we 
+                # unregister them all right here
+                logger.exception('sys.exit from callback')
+                self.unregister_pilot_callback(pilot_id)
+                thread.interrupt_main()
 
         # if we meet a final state, we record the object's callback history for
         # later evalutation
