@@ -1333,6 +1333,7 @@ fi
 
 verify_rp_install
 
+# TODO: (re)move this output?
 echo
 echo "# -------------------------------------------------------------------"
 echo "# Launching radical-pilot-agent "
@@ -1432,6 +1433,33 @@ EOT
 chmod 0755 bootstrap_2.sh
 # ------------------------------------------------------------------------------
 
+#
+# Create a barrier to start the agent.
+# This can be used by experimental scripts to push all units to the DB before
+# the agent starts.
+#
+if ! test -z "$RADICAL_PILOT_BARRIER"
+then
+    echo
+    echo "# -------------------------------------------------------------------"
+    echo "# Entering barrier for $RADICAL_PILOT_BARRIER ..."
+    echo "# -------------------------------------------------------------------"
+
+    profile_event 'bootstrap enter barrier'
+
+    while ! test -f $RADICAL_PILOT_BARRIER
+    do
+        sleep 1
+    done
+
+    profile_event 'bootstrap leave barrier'
+
+    echo
+    echo "# -------------------------------------------------------------------"
+    echo "# Leaving barrier"
+    echo "# -------------------------------------------------------------------"
+fi
+
 profile_event 'agent start'
 
 # start the master agent instance (zero)
@@ -1467,6 +1495,38 @@ echo "# -------------------------------------------------------------------"
 
 if ! test -z "`ls *.prof 2>/dev/null`"
 then
+    echo
+    echo "# -------------------------------------------------------------------"
+    echo "#"
+    echo "# Mark final profiling entry ..."
+    profile_event 'QED'
+    echo "#"
+    echo "# -------------------------------------------------------------------"
+    echo
+    FINAL_SLEEP=30
+    echo "# -------------------------------------------------------------------"
+    echo "#"
+    echo "# We wait for at most 30 seconds for the FS to flush profiles."
+    echo "# Success is assumed when all profiles end with a 'QED' event."
+    echo "#"
+    echo "# -------------------------------------------------------------------"
+    nprofs=`echo *.prof | wc -w`
+    nqed=`tail -n 1 *.prof | grep QED | wc -l`
+    nsleep=0
+    while ! test "$nprofs" = "$nqed"
+    do
+        nsleep=$((nsleep+1))
+        if test "$nsleep" = "30"
+        then
+            echo "abort profile sync @ $nsleep: $nprofs != $nqed"
+            break
+        fi
+        echo "delay profile sync @ $nsleep: $nprofs != $nqed"
+        sleep 1
+        # recheck nprofs too, just in case...
+        nprofs=`echo *.prof | wc -w`
+        nqed=`tail -n 1 *.prof | grep QED | wc -l`
+    done
     echo
     echo "# -------------------------------------------------------------------"
     echo "#"
