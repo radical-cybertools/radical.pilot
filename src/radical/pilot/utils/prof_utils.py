@@ -397,12 +397,17 @@ def combine_profiles(profiles):
 
 # ------------------------------------------------------------------------------
 #
-def drop_units(cfg, units, name, mode, prof=None, logger=None):
+def drop_units(cfg, units, name, mode, drop_cb=None, prof=None, logger=None):
     """
     For each unit in units, check if the queue is configured to drop
     units in the given mode ('in' or 'out').  If drop is set to 0, the units
     list is returned as is.  If drop is set to one, all cloned units are
     removed from the list.  If drop is set to two, an empty list is returned.
+
+    For each dropped unit, we check if 'drop_cb' is defined, and call
+    that callback if that is the case, with the signature:
+
+      drop_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
     """
 
     # blowup is only enabled on profiling
@@ -429,6 +434,9 @@ def drop_units(cfg, units, name, mode, prof=None, logger=None):
         units = [units]
 
     if drop == 2:
+        if drop_cb:
+            for unit in units:
+                drop_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
         if logger:
             logger.debug('dropped everything')
             for unit in units:
@@ -447,6 +455,8 @@ def drop_units(cfg, units, name, mode, prof=None, logger=None):
           # if logger:
           #     logger.debug('dropped not %s', unit['_id'])
         else:
+            if drop_cb:
+                drop_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
             if logger:
                 logger.debug('dropped %s', unit['_id'])
 
@@ -463,8 +473,8 @@ def clone_units(cfg, units, name, mode, prof=None, logger=None):
     """
     For each unit in units, add 'factor' clones just like it, just with
     a different ID (<id>.clone_001).  The factor depends on the context of
-    this clone call (ie. the queue name), and on mode (which is 'in' or
-    'out').  This methid will always return a list.
+    this clone call (ie. the queue name), and on mode (which is 'input' or
+    'output').  This methid will always return a list.
     """
 
     if units == None:
@@ -521,7 +531,8 @@ def clone_units(cfg, units, name, mode, prof=None, logger=None):
         ret.append(unit)
 
     if logger:
-        logger.debug('cloning with factor [%s][%s]: %s gives %s units' % (name, mode, factor, len(ret)))
+        logger.debug('cloning with factor [%s][%s]: %s gives %s units',
+                     name, mode, factor, len(ret))
 
     return ret
 
