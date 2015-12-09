@@ -168,7 +168,7 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
 
 # ------------------------------------------------------------------------------
 #
-def get_session_frames (sids, dburl=None, cachedir=None) :
+def get_session_frames (sids, db, cachedir=None) :
 
     # use like this: 
     #
@@ -184,13 +184,6 @@ def get_session_frames (sids, dburl=None, cachedir=None) :
     # print u_max
     # print u_max - u_min
 
-    if not dburl:
-        dburl = os.environ['RADICAL_PILOT_DBURL']
-
-    if not dburl:
-        raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
-
-
     if not isinstance (sids, list) :
         sids = [sids]
 
@@ -200,7 +193,7 @@ def get_session_frames (sids, dburl=None, cachedir=None) :
 
     for sid in sids :
 
-        docs = get_session_docs (dburl, sid, cachedir=cachedir)
+        docs = get_session_docs (db, sid, cachedir=cachedir)
 
         session       = docs['session']
         session_start = session['created']
