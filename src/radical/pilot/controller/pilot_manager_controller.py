@@ -324,7 +324,7 @@ class PilotManagerController(threading.Thread):
                             # different than the DB recorded state
                             self._shared_data[pilot_id]["data"]["state"] = old_state 
 
-                            # do not tr igger a state cb!
+                            # do not trigger a state cb!
                             no_cb = True
 
                     if new_state != old_state :
@@ -349,14 +349,14 @@ class PilotManagerController(threading.Thread):
                         self._dbs.set_compute_unit_state (
                             unit_ids=unit_ids, 
                             state=CANCELED,
-                            src_states=[ PENDING_INPUT_STAGING,
-                                         STAGING_INPUT,
-                                         PENDING_EXECUTION,
-                                         SCHEDULING,
-                                         EXECUTING,
-                                         PENDING_OUTPUT_STAGING,
-                                         STAGING_OUTPUT
-                                       ],
+                            src_states=[AGENT_STAGING_INPUT_PENDING,
+                                        AGENT_STAGING_INPUT,
+                                        ALLOCATING_PENDING,
+                                        ALLOCATING,
+                                        EXECUTING_PENDING,
+                                        EXECUTING,
+                                        AGENT_STAGING_OUTPUT_PENDING,
+                                        AGENT_STAGING_OUTPUT],
                             log="Pilot '%s' has terminated with state '%s'. CU canceled." % (pilot_id, new_state))
 
                 # After the first iteration, we are officially initialized!
@@ -368,7 +368,7 @@ class PilotManagerController(threading.Thread):
                     time.sleep(IDLE_TIME)
 
         except SystemExit as e :
-            logger.exception ("pilot manager controller thread caught system exit -- forcing application shutdown")
+            logger.debug("pilot manager controller thread caught system exit -- forcing application shutdown")
             thread.interrupt_main ()
 
         finally :
@@ -481,7 +481,7 @@ class PilotManagerController(threading.Thread):
             self._shared_data[pilot_uid]['facade_object'] = weakref.ref(pilot)
 
         # Callbacks can only be registered when the ComputeAlready has a
-        # state. To partially address this shortcomming we call the callback
+        # state. To partially address this shortcoming we call the callback
         # with the current ComputePilot state as soon as it is registered.
         self.call_callbacks(
             pilot.uid,

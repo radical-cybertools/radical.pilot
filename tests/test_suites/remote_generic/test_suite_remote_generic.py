@@ -28,7 +28,6 @@ def pilot_state_cb (pilot, state):
         print '\nSTDOUT: %s' % pilot.stdout
         print '\nSTDERR: %s' % pilot.stderr
         print '\nLOG   : %s' % pilot.log
-        sys.exit (1)
 
     if state in [rp.DONE, rp.FAILED, rp.CANCELED]:
         for cb in pilot.callback_history:
@@ -51,7 +50,6 @@ def unit_state_cb (unit, state):
     if state == rp.FAILED:
         print "\nSTDOUT: %s" % unit.stdout
         print "\nSTDERR: %s" % unit.stderr
-        sys.exit (1)
 
     if state in [rp.DONE, rp.FAILED, rp.CANCELED]:
         for cb in unit.callback_history:
@@ -356,7 +354,7 @@ def setup_stampede_two(request):
 # add tests below...
 #-------------------------------------------------------------------------------
 # 
-class TestLocalOne(object):
+class TestRemoteOne(object):
 
     def test_pass_one(self, setup_stampede):
 
@@ -376,14 +374,11 @@ class TestLocalOne(object):
 
         units = umgr.submit_units(compute_units)
 
-        try:
-            umgr.wait_units()
+        umgr.wait_units()
 
-            # Wait for all compute units to finish.
-            for unit in units:
-                unit.wait()
-        except:
-            pass
+        # Wait for all compute units to finish.
+        for unit in units:
+            unit.wait()
 
         for unit in units:
             assert (unit.state == rp.DONE)
@@ -411,10 +406,7 @@ class TestLocalOne(object):
 
         units = umgr.submit_units(compute_units)
 
-        try:
-            umgr.wait_units()
-        except:
-            pass
+        umgr.wait_units()
 
         for unit in units:
             #print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
@@ -457,20 +449,17 @@ class TestLocalOne(object):
 
         units = umgr.submit_units(cuds)
 
-        try:
-            umgr.wait_units()
+        umgr.wait_units()
 
-            for cu in units:
-                cu.wait()
-        except:
-            pass
+        for cu in units:
+            cu.wait()
 
         for cu in units:
             assert (cu.state == rp.DONE)
 
 #-------------------------------------------------------------------------------
 #
-class TestLocalTwo(object):
+class TestRemoteTwo(object):
     #---------------------------------------------------------------------------
     # multi-node mpi executable
     #
@@ -497,10 +486,7 @@ class TestLocalTwo(object):
 
         units = umgr.submit_units(compute_units)
 
-        try:
-            umgr.wait_units()
-        except:
-            pass
+        umgr.wait_units()
 
         for unit in units:
             assert (unit.state == rp.DONE)
@@ -592,7 +578,7 @@ def test_fail_issue_172(setup_stampede):
 #-------------------------------------------------------------------------------
 # issue 359; check! does not work now...
 #
-def test_fail_issue_359():
+def test_pass_issue_359():
 
     session = rp.Session(database_url=db_url)
 
@@ -604,7 +590,7 @@ def test_fail_issue_359():
         pmgr = rp.PilotManager(session=session)
         pmgr.register_callback(pilot_state_cb)
 
-        core_configs = [1, 16, 17, 32, 33]
+        core_configs = [8, 16, 17, 32, 33]
 
         umgr_list = []
         for cores in core_configs:
@@ -732,14 +718,11 @@ def test_pass_issue_57():
                 unit_descrs.append(cu)
         
             units = umgr.submit_units(unit_descrs)
-        
-            try:
-                umgr.wait_units()
 
-                for unit in units:
-                    unit.wait()
-            except:
-                pass
+            umgr.wait_units()
+
+            for unit in units:
+                unit.wait()
 
             pmgr.cancel_pilots()       
             pmgr.wait_pilots()
