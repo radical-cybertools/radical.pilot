@@ -1833,6 +1833,7 @@ class LaunchMethodAPRUN(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
+        task_mpi     = cud['mpi']
         task_args    = cud.get('arguments') or []
         task_argstr  = self._create_arg_string(task_args)
 
@@ -1841,7 +1842,7 @@ class LaunchMethodAPRUN(LaunchMethod):
         else:
             task_command = task_exec
 
-        if mpi:
+        if task_mpi:
             pes = task_cores
         else:
             pes = 1
