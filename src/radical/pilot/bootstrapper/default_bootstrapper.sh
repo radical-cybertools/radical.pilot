@@ -1368,44 +1368,32 @@ RADICAL_PILOT_NTPHOST=`dig +short 0.pool.ntp.org | grep -v -e ";;" -e "\.$" | he
 # Famous last words, I know...
 # Arguments to that script are passed on to the agent, which is specifically
 # done to distinguish agent instances.
+
+# NOTE: anaconda only supports bash.  Really.  I am not kidding...
 if test "$PYTHON_DIST" = "anaconda"
 then
-(cat <<EOT
-#!/bin/bash -l
-
-# some inspection for logging
-hostname
-
-# make sure we use the correct sandbox
-cd $SANDBOX
-
-# activate virtenv
-source activate $VIRTENV/
-
-EOT
-
-)>>bootstrap_2.sh
+    BS_SHELL='/bin/bash'
 else
-
-(cat <<EOT
-#!/bin/sh
-
-# some inspection for logging
-hostname
-
-# make sure we use the correct sandbox
-cd $SANDBOX
-
-# activate virtenv
-. $VIRTENV/bin/activate
-
-EOT
-
-)>>bootstrap_2.sh
-
+    BS_SHELL='/bin/sh'
 fi
 
 (cat <<EOT
+#!$BS_SHELL
+
+# some inspection for logging
+hostname
+
+# make sure we use the correct sandbox
+cd $SANDBOX
+
+# activate virtenv
+if test "$PYTHON_DIST" = "anaconda"
+then
+    source activate $VIRTENV/
+else
+    . $VIRTENV/bin/activate
+fi
+
 # make sure rp_install is used
 export PYTHONPATH=$PYTHONPATH
 
@@ -1429,7 +1417,7 @@ exec $AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
 
 EOT
 
-)>> bootstrap_2.sh
+)> bootstrap_2.sh
 chmod 0755 bootstrap_2.sh
 # ------------------------------------------------------------------------------
 
@@ -1464,12 +1452,7 @@ profile_event 'agent start'
 
 # start the master agent instance (zero)
 profile_event 'sync rel' 'agent start'
-if test "$PYTHON_DIST" = "anaconda"
-then
-    bash bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
-else
-    sh bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
-fi
+./bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
 
 AGENT_EXITCODE=$?
 
