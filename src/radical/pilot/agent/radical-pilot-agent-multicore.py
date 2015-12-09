@@ -457,9 +457,15 @@ class AgentSchedulingComponent(rpu.Component):
         # all components use the command channel for control messages
         self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
 
-        # we declare a drop callback, so that cored allocated to clones can be
-        # freed again
-        self.declare_drop_cb(self.drop_cb)
+        # we declare a clone and a drop callback, so that cores can be assigned
+        # to clones, and can also be freed again.
+        self.declare_clone_cb(self.clone_cb)
+        self.declare_drop_cb (self.drop_cb)
+
+        # when cloning, we fake scheduling via round robin over all cores.
+        # These indexes keeps track of the last used core.
+        self._clone_slot_idx = 0
+        self._clone_core_idx = 0
 
         # The scheduler needs the LRMS information which have been collected
         # during agent startup.  We dig them out of the config at this point.
@@ -642,6 +648,49 @@ class AgentSchedulingComponent(rpu.Component):
 
         # Note: The extra space below is for visual alignment
         self._log.info("slot status after  unschedule: %s" % self.slot_status ())
+
+
+    # --------------------------------------------------------------------------
+    #
+    def clone_cb(self, unit, name=None, mode=None, prof=None, logger=None):
+
+        if mode == 'output':
+
+            # so, this is tricky: we want to clone the unit after scheduling,
+            # but at the same time don't want to have all clones end up on the
+            # same core -- so the clones should be scheduled to a different (set
+            # of) core(s).  But also, we don't really want to schedule, that is
+            # why we blow up on output, right?
+            #
+            # So we fake scheduling.  This assumes the 'self.slots' structure as
+            # used by the continuous scheduler, wo will likely only work for
+            # this one (FIXME): we walk our own index into the slot structure,
+            # and simply assign that core, be it busy or not.
+            #
+            # FIXME: This method makes no attempt to set 'task_slots', so will
+            # not work properly for some launch methods.
+            #
+            # This is awful.  I mean, really awful.  Like, nothing good can come
+            # out of this.  Ticket #902 should be implemented, it will solve
+            # this problem much cleaner...
+
+            if prof: prof.prof      ('clone_cb', uid=unit['_id'])
+            else   : self._prof.prof('clone_cb', uid=unit['_id'])
+
+            slot = self.slots[self._clone_slot_idx]
+
+            unit['opaque_slots']['task_slots'][0] = '%s:%d' \
+                    % (slot['node'], self._clone_core_idx)
+          # self._log.debug(' === clone cb out : %s', unit['opaque_slots'])
+
+            if (self._clone_core_idx +  1) < self._lrms_cores_per_node:
+                self._clone_core_idx += 1
+            else:
+                self._clone_core_idx  = 0
+                self._clone_slot_idx += 1
+
+                if self._clone_slot_idx >= len(self.slots):
+                    self._clone_slot_idx = 0
 
 
     # --------------------------------------------------------------------------

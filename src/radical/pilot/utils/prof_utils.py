@@ -438,7 +438,7 @@ def drop_units(cfg, units, name, mode, drop_cb=None, prof=None, logger=None):
             for unit in units:
                 drop_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
         if logger:
-            logger.debug('dropped everything')
+            logger.debug('dropped all')
             for unit in units:
                 logger.debug('dropped %s', unit['_id'])
         if return_list: return []
@@ -469,12 +469,17 @@ def drop_units(cfg, units, name, mode, drop_cb=None, prof=None, logger=None):
 
 # ------------------------------------------------------------------------------
 #
-def clone_units(cfg, units, name, mode, prof=None, logger=None):
+def clone_units(cfg, units, name, mode, prof=None, clone_cb=None, logger=None):
     """
     For each unit in units, add 'factor' clones just like it, just with
     a different ID (<id>.clone_001).  The factor depends on the context of
     this clone call (ie. the queue name), and on mode (which is 'input' or
     'output').  This methid will always return a list.
+
+    For each cloned unit, we check if 'clone_cb' is defined, and call
+    that callback if that is the case, with the signature:
+
+      clone_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
     """
 
     if units == None:
@@ -523,6 +528,9 @@ def clone_units(cfg, units, name, mode, prof=None, logger=None):
 
             idx += 1
             ret.append(clone)
+
+            if clone_cb:
+                clone_cb(unit=clone, name=name, mode=mode, prof=prof, logger=logger)
 
         # Append the original cu last, to increase the likelyhood that
         # application state only advances once all clone states have also
