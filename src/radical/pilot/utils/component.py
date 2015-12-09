@@ -10,7 +10,8 @@ import radical.utils   as ru
 
 from ..states    import *
 
-from .prof_utils import Profiler, clone_units, drop_clones
+from .prof_utils import Profiler, clone_units, drop_units
+from .prof_utils import timestamp as util_timestamp
 
 from .queue      import Queue        as rpu_Queue
 from .queue      import QUEUE_ZMQ    as rpu_QUEUE_ZMQ
@@ -91,7 +92,7 @@ class Component(mp.Process):
         work(self, unit)
 
     The method is expected to change the unit state.  Units will not be pushed
-    to outgoing channels automatically -- to do so, the work method has to call 
+    to outgoing channels automatically -- to do so, the work method has to call
 
         self.advance(unit)
 
@@ -115,7 +116,7 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    # FIXME: 
+    # FIXME:
     #  - *_PENDING -> * ?
     #  - make state transitions more formal
     # --------------------------------------------------------------------------
@@ -124,8 +125,8 @@ class Component(mp.Process):
     #
     def __init__(self, ctype, cfg):
         """
-        This constructor MUST be called by inheriting classes.  
-        
+        This constructor MUST be called by inheriting classes.
+
         Note that __init__ is not executed in the process scope of the main
         event loop -- initialization for the main event loop should be moved to
         the initialize_child() method.  Initialization for component input,
@@ -220,7 +221,7 @@ class Component(mp.Process):
     def finalize(self):
         """
         This method may be overloaded by the components.  It is called *once* in
-        the context of the parent process, upon stop(), and should be used to 
+        the context of the parent process, upon stop(), and should be used to
         tear down component state after units have been processed.
         """
         self._log.debug('base finalize (NOOP)')
@@ -231,7 +232,7 @@ class Component(mp.Process):
     def finalize_child(self):
         """
         This method may be overloaded by the components.  It is called *once* in
-        the context of the child process, upon stop(), and should be used to 
+        the context of the child process, upon stop(), and should be used to
         tear down component state after units have been processed.
         """
         self._log.debug('base finalize_child (NOOP)')
@@ -521,8 +522,8 @@ class Component(mp.Process):
         """
         Using this method, the compinent can declare certain notification topics
         (where topic is a string).  For each topic, a pub/sub network will be
-        used to distribute the notifications to subscribers of that topic.  
-        
+        used to distribute the notifications to subscribers of that topic.
+
         The same topic can be sent to multiple channels -- but that is
         considered bad practice, and may trigger an error in later versions.
         """
@@ -690,11 +691,11 @@ class Component(mp.Process):
 
 
             # The main event loop will repeatedly iterate over all input
-            # channels, probing 
+            # channels, probing
             while not self._terminate.is_set():
 
                 # if no action occurs in this iteration, invoke idle callbacks
-                active = False 
+                active = False
 
                 # FIXME: for the default case where we have only one input
                 #        channel, we can probably use a more efficient method to
@@ -723,8 +724,8 @@ class Component(mp.Process):
 
                     # depending on the queue we got the unit from, we can either
                     # drop units or clone them to inject new ones
-                    unit = drop_clones(self._cfg, unit, self.ctype, 'input',
-                                       drop_cb=self._drop_cb, logger=self._log)
+                    unit = drop_units(self._cfg, unit, self.ctype, 'input',
+                                      drop_cb=self._drop_cb, logger=self._log)
                     if not unit:
                         self._prof.prof(event='drop', state=state,
                                 uid=uid, msg=input.name)
@@ -776,7 +777,7 @@ class Component(mp.Process):
                     for idler in self._idlers:
 
                         if (now - idler['last']) > idler['timeout']:
-                        
+
                             try:
                                 with self._cb_lock:
                                     if idler['cb']():
@@ -815,7 +816,8 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def advance(self, units, state=None, publish=True, push=False, prof=True):
+    def advance(self, units, state=None, publish=True, push=False, prof=True,
+                timestamp=None):
         """
         Units which have been operated upon are pushed down into the queues
         again, only to be picked up by the next component, according to their
@@ -831,6 +833,9 @@ class Component(mp.Process):
         """
       # global t_zero
 
+        if not timestamp:
+            timestamp = util_timestamp()
+
         if not isinstance(units, list):
             units = [units]
 
@@ -839,9 +844,11 @@ class Component(mp.Process):
             uid = unit['_id']
 
             if state:
-                unit['state'] = state
+                unit['state']          = state
+                unit['state_timstamp'] = timestamp
                 if prof:
-                    self._prof.prof('advance', uid=unit['_id'], state=state)
+                    self._prof.prof('advance', uid=unit['_id'], state=state,
+                            timestamp=timestamp)
             else:
                 state = unit['state']
 
@@ -870,8 +877,8 @@ class Component(mp.Process):
 
                 # depending on the queue we got the unit from, we can now either
                 # drop units or clone them to inject new ones
-                unit = drop_clones(self._cfg, unit, self.ctype, 'output',
-                                   drop_cb=self._drop_cb, logger=self._log)
+                unit = drop_units(self._cfg, unit, self.ctype, 'output',
+                                  drop_cb=self._drop_cb, logger=self._log)
                 if not unit:
                     self._prof.prof(event='drop', state=state, uid=uid, msg=output.name)
                     continue

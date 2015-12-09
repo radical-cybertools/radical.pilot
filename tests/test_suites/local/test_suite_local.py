@@ -357,7 +357,7 @@ class TestLocalThree(object):
 
     #---------------------------------------------------------------------------
     #
-    def test_pass_state_history(self, rp_setup_state):
+    def test_fail_state_history(self, rp_setup_state):
 
         pilot, pmgr, umgr = rp_setup_state
 
