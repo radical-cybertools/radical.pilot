@@ -457,10 +457,13 @@ class AgentSchedulingComponent(rpu.Component):
         # all components use the command channel for control messages
         self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
 
-        self._pilot_id = self._cfg['pilot_id']
+        # we declare a drop callback, so that cored allocated to clones can be
+        # freed again
+        self.declare_drop_cb(self.drop_cb)
 
         # The scheduler needs the LRMS information which have been collected
         # during agent startup.  We dig them out of the config at this point.
+        self._pilot_id = self._cfg['pilot_id']
         self._lrms_lm_info        = self._cfg['lrms_info']['lm_info']
         self._lrms_node_list      = self._cfg['lrms_info']['node_list']
         self._lrms_cores_per_node = self._cfg['lrms_info']['cores_per_node']
@@ -637,6 +640,22 @@ class AgentSchedulingComponent(rpu.Component):
 
         # Note: The extra space below is for visual alignment
         self._log.info("slot status after  unschedule: %s" % self.slot_status ())
+
+
+    # --------------------------------------------------------------------------
+    #
+    def drop_cb(self, unit, name=None, mode=None, prof=None, logger=None):
+
+        if mode == 'output':
+            # we only unscheduler *after* scheduling.  Duh!
+
+            if prof:
+                prof.prof('drop_cb', uid=unit['_id'])
+            else:
+                self._prof.prof('drop_cb', uid=unit['_id'])
+
+            self.unschedule_cb(topic=None, msg=unit)
+
 
 
     # --------------------------------------------------------------------------
@@ -6885,7 +6904,7 @@ class AgentWorker(rpu.Worker):
         for name, thing in to_watch:
             state = thing['handle'].poll()
             if state == None:
-                self._log.debug('%-30s: ok' % name)
+                self._log.debug('%-40s: ok' % name)
             else:
                 raise RuntimeError ('%s died - shutting down' % name)
 
