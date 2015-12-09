@@ -422,7 +422,7 @@ virtenv_setup()
 
     if test "$virtenv_mode" = "private"
     then
-        if test -d "$virtenv/" #Virtual env activation
+        if test -d "$virtenv/"
         then
             printf "\nERROR: private virtenv already exists at $virtenv\n\n"
             exit 1
@@ -442,9 +442,9 @@ virtenv_setup()
 
     elif test "$virtenv_mode" = "use"
     then
-        if test -d "$virtenv/" #Virtual env activation
+        if ! test -d "$virtenv/"
         then
-            printf "\nERROR: private virtenv already exists at $virtenv\n\n"
+            printf "\nERROR: given virtenv does not exist at $virtenv\n\n"
             exit 1
         fi
         virtenv_create=FALSE
