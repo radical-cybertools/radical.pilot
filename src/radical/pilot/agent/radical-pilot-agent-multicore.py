@@ -4490,7 +4490,7 @@ class YARNLRMS(LRMS):
 
         # I will leave it for the moment because I have not found another way
         # to take the necessary value yet.
-        yarn_conf_output = subprocess.check_output(['yarn', 'node', '-list']).split('\n')
+        yarn_conf_output = subprocess.check_output(['yarn', 'node', '-list'], stderr=subprocess.STDOUT).split('\n')
         for line in yarn_conf_output:
             if 'ResourceManager' in line:
                 settings = line.split('at ')[1]
