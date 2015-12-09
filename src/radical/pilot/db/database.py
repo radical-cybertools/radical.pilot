@@ -16,8 +16,6 @@ import saga
 import gridfs
 import radical.utils as ru
 
-from pymongo import *
-
 from radical.pilot.utils  import timestamp
 from radical.pilot.states import *
 
