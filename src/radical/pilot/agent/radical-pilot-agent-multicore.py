@@ -1559,7 +1559,6 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-<<<<<<< HEAD
     @classmethod
     def _create_hostfile(cls, all_hosts, separator=' ', impaired=False):
 
