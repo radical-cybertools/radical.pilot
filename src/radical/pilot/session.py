@@ -110,17 +110,17 @@ class Session (saga.Session):
         if  not database_url:
             raise PilotException ("no database URL (set RADICAL_PILOT_DBURL)")  
 
-        self._dburl = ru.Url(database_url)
+        dburl = ru.Url(database_url)
 
         # if the database url contains a path element, we interpret that as
         # database name (without the leading slash)
-        if  not self._dburl.path         or \
-            self._dburl.path[0]   != '/' or \
-            len(self._dburl.path) <=  1  :
+        if  not dburl.path         or \
+            dburl.path[0]   != '/' or \
+            len(dburl.path) <=  1  :
             logger.warning("incomplete URLs are deprecated -- missing database name!")
-            self._dburl.path = database_name # defaults to 'radicalpilot'
+            dburl.path = database_name # defaults to 'radicalpilot'
 
-        logger.info("using database %s" % self._dburl)
+        logger.info("using database %s" % dburl)
 
         # ----------------------------------------------------------------------
         # create new session
@@ -130,29 +130,29 @@ class Session (saga.Session):
 
         try:
             if name :
-                self._name = name
-                self._uid  = name
-              # self._uid  = ru.generate_id ('rp.session.'+name+'.%(item_counter)06d', mode=ru.ID_CUSTOM)
+                uid = name
                 ru.reset_id_counters(prefix=['pmgr', 'umgr', 'pilot', 'unit', 'unit.%(counter)06d'])
             else :
-                self._uid  = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
-                self._name = self._uid
+                uid = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
                 ru.reset_id_counters(prefix=['pmgr', 'umgr', 'pilot', 'unit', 'unit.%(counter)06d'])
 
             # initialize profiling
-            self.prof = Profiler('%s' % self._uid)
-            self.prof.prof('start session', uid=self._uid)
+            self.prof = Profiler('%s' % uid)
+            self.prof.prof('start session', uid=uid)
 
             logger.report.info ('<<new session: ')
-            logger.report.plain('[%s]' % self._uid)
+            logger.report.plain('[%s]' % uid)
             logger.report.info ('<<database   : ')
-            logger.report.plain('[%s]' % self._dburl)
+            logger.report.plain('[%s]' % dburl)
 
-            self._dbs = dbSession(sid   = self._uid,
-                                  name  = self._name,
-                                  dburl = self._dburl)
+            self._dbs = dbSession(sid   = uid,
+                                  name  = name,
+                                  dburl = dburl)
 
-            self._dburl  = self._dbs._dburl
+            # only now the session should have an uid
+            self._dburl = self._dbs._dburl
+            self._name  = name
+            self._uid   = uid
 
             # from here on we should be able to close the session again
             self._valid = True
