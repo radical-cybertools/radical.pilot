@@ -730,7 +730,7 @@ class Component(mp.Process):
                                 uid=uid, msg=input.name)
                         continue
 
-                    units = clone_units(self._cfg, unit, self.ctype, 'input', 
+                    units = clone_units(self._cfg, unit, self.ctype, 'input',
                                         clone_cb=self._clone_cb, logger=self._log)
 
                     for _unit in units:
@@ -877,8 +877,8 @@ class Component(mp.Process):
                 if not unit:
                     self._prof.prof(event='drop', state=state, uid=uid, msg=output.name)
                     continue
-               
-                units = clone_units(self._cfg, unit, self.ctype, 'output', 
+
+                units = clone_units(self._cfg, unit, self.ctype, 'output',
                                     clone_cb=self._clone_cb, logger=self._log)
 
                 for _unit in units:
