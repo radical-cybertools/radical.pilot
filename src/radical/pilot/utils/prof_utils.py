@@ -7,9 +7,9 @@ import threading
 
 # ------------------------------------------------------------------------------
 #
-# "label", "component", "event", "message"
-#
 _prof_fields  = ['time', 'name', 'uid', 'state', 'event', 'msg']
+
+
 # ------------------------------------------------------------------------------
 #
 # profile class
@@ -38,7 +38,7 @@ class Profiler (object):
             self._enabled = False
             return
 
-        self._ts_zero, self._ts_abs = self._timestamp_init()
+        self._ts_zero, self._ts_abs, self._ts_mode = self._timestamp_init()
 
         self._name  = name
         self._handle = open("%s.prof"  % self._name, 'a')
@@ -46,10 +46,11 @@ class Profiler (object):
         # write header and time normalization info
         # NOTE: Don't forget to sync any format changes in the bootstrapper
         #       and downstream analysis tools too!
-        self._handle.write("#time,name,uid,state,event,msg\n")
+        self._handle.write("#%s\n" % (','.join(_prof_fields)))
         self._handle.write("%.4f,%s:%s,%s,%s,%s,%s\n" % \
-                (0.0, self._name, "", "", "", 'sync abs',
-                "%s:%s:%s" % (time.time(), self._ts_zero, self._ts_abs)))
+                           (0.0, self._name, "", "", "", 'sync abs',
+                            "%s:%s:%s:%s" % (time.time(), self._ts_zero, 
+                                             self._ts_abs, self._ts_mode)))
 
 
     # ------------------------------------------------------------------------------
@@ -62,10 +63,22 @@ class Profiler (object):
 
     # ------------------------------------------------------------------------------
     #
+    def close(self):
+
+        if self._enabled:
+            self.prof("QED")
+            self._handle.close()
+
+
+    # ------------------------------------------------------------------------------
+    #
     def flush(self):
 
         if self._enabled:
+            self.prof("flush")
             self._handle.flush()
+            # https://docs.python.org/2/library/stdtypes.html?highlight=file%20flush#file.flush
+            os.fsync(self._handle.fileno())
 
 
     # ------------------------------------------------------------------------------
@@ -101,7 +114,6 @@ class Profiler (object):
         #       and downstream analysis tools too!
         self._handle.write("%.4f,%s:%s,%s,%s,%s,%s\n" \
                 % (timestamp, self._name, tid, uid, state, event, msg))
-        self.flush()
 
 
     # --------------------------------------------------------------------------
@@ -116,14 +128,19 @@ class Profiler (object):
         # We first try to contact a network time service for a timestamp, if that
         # fails we use the current system time.
         try:
-            import ntplib
-            response = ntplib.NTPClient().request('0.pool.ntp.org')
-            timestamp_sys  = response.orig_time
-            timestamp_abs  = response.tx_time
-            return [timestamp_sys, timestamp_abs]
+            ntphost = os.environ.get('RADICAL_PILOT_NTPHOST', '').strip()
+
+            if ntphost:
+                import ntplib
+                response = ntplib.NTPClient().request(ntphost, timeout=1)
+                timestamp_sys = response.orig_time
+                timestamp_abs = response.tx_time
+                return [timestamp_sys, timestamp_abs, 'ntp']
         except:
-            t = time.time()
-            return [t,t]
+            pass
+
+        t = time.time()
+        return [t,t, 'sys']
 
 
     # --------------------------------------------------------------------------
@@ -269,6 +286,7 @@ def combine_profiles(profiles):
     for prof in profiles:
         p     = list()
         tref  = None
+        qed = 0
         with open(prof, 'r') as csvfile:
             reader = csv.DictReader(csvfile, fieldnames=_prof_fields)
             empty  = True
@@ -277,7 +295,7 @@ def combine_profiles(profiles):
                 # skip header
                 if row['time'].startswith('#'):
                     continue
-    
+
                 empty = False
                 row['time'] = float(row['time'])
     
@@ -290,18 +308,28 @@ def combine_profiles(profiles):
                         tref = 'abs'
                         rd_abs[prof] = [row['time']] + row['msg'].split(':')
 
+                # Record closing entries
+                if row['event'] == 'QED':
+                    qed += 1
+
                 # store row in profile
                 p.append(row)
     
         if   tref == 'abs': pd_abs[prof] = p
         elif tref == 'rel': pd_rel[prof] = p
         elif not empty    : print 'WARNING: skipping profile %s (no sync)' % prof
-    
+
+        # Check for proper closure of profiling files
+        if qed == 0:
+            print 'WARNING: profile "%s" not correctly closed.' % prof
+        if qed > 1:
+            print 'WARNING: profile "%s" closed %d times.' % (prof, qed)
+
     # make all timestamps absolute for pd_abs profiles
     for prof, p in pd_abs.iteritems():
     
-        # the profile created an entry t_rel at t_abs.  
-        # The offset is thus t_abs - t_rel, and all timestamps 
+        # the profile created an entry t_rel at t_abs.
+        # The offset is thus t_abs - t_rel, and all timestamps
         # in the profile need to be corrected by that to get absolute time
         t_rel   = float(rd_abs[prof][0])
         t_stamp = float(rd_abs[prof][1])
@@ -369,80 +397,144 @@ def combine_profiles(profiles):
 
 # ------------------------------------------------------------------------------
 #
-def blowup(config, cus, component, logger=None):
-    # for each cu in cu_list, add 'factor' clones just like it, just with
-    # a different ID (<id>.clone_001)
-    #
-    # This method also *drops* clones as needed!
-    #
-    # return value: [list of original and expanded CUs, list of dropped CUs]
+def drop_units(cfg, units, name, mode, drop_cb=None, prof=None, logger=None):
+    """
+    For each unit in units, check if the queue is configured to drop
+    units in the given mode ('in' or 'out').  If drop is set to 0, the units
+    list is returned as is.  If drop is set to one, all cloned units are
+    removed from the list.  If drop is set to two, an empty list is returned.
 
-    # TODO: I dont like it that there is non blow-up semantics in the blow-up function.
-    # Probably want to put the conditional somewhere else.
-    if not isinstance (cus, list) :
-        cus = [cus]
+    For each dropped unit, we check if 'drop_cb' is defined, and call
+    that callback if that is the case, with the signature:
+
+      drop_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
+    """
 
     # blowup is only enabled on profiling
     if 'RADICAL_PILOT_PROFILE' not in os.environ:
-        return
+        if logger:
+            logger.debug('no profiling - no dropping')
+        return units
 
-    factor = config['blowup_factor'].get (component, 1)
-    drop   = config['drop_clones']  .get (component, 1)
+    if not units:
+      # if logger:
+      #     logger.debug('no units - no dropping')
+        return units
 
-    # FIXME
-  # prof ("debug", msg="%s drops with %s" % (component, drop))
+    drop = cfg.get('drop', {}).get(name, {}).get(mode, 1)
 
-    cloned  = list()
-    dropped = list()
+    if drop == 0:
+      # if logger:
+      #     logger.debug('dropped nothing')
+        return units
 
-    for cu in cus :
+    return_list = True
+    if not isinstance(units, list):
+        return_list = False
+        units = [units]
 
-        uid = cu['_id']
+    if drop == 2:
+        if drop_cb:
+            for unit in units:
+                drop_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
+        if logger:
+            logger.debug('dropped everything')
+            for unit in units:
+                logger.debug('dropped %s', unit['_id'])
+        if return_list: return []
+        else          : return None
 
-        if drop >= 1:
-            # drop clones --> drop matching uid's
-            if '.clone_' in uid :
-                # FIXME
-              # prof ('drop clone', msg=component, uid=uid)
-                dropped.append(cu)
-                continue
+    if drop != 1:
+        raise ValueError('drop[%s][%s] not in [0, 1, 2], but is %s' \
+                      % (name, mode, drop))
 
-        if drop >= 2:
-            # drop everything, even original units
-            # FIXME
-          # prof ('drop', msg=component, uid=uid)
-            dropped.append(cu)
-            continue
+    ret = list()
+    for unit in units :
+        if '.clone_' not in unit['_id']:
+            ret.append(unit)
+          # if logger:
+          #     logger.debug('dropped not %s', unit['_id'])
+        else:
+            if drop_cb:
+                drop_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
+            if logger:
+                logger.debug('dropped %s', unit['_id'])
 
-        if factor < 0:
-            # FIXME: we should print a warning or something?
-            # Anyway, we assume the default here, ie. no blowup, no drop.
-            factor = 1
+    if return_list: 
+        return ret
+    else: 
+        if ret: return ret[0]
+        else  : return None
+
+
+# ------------------------------------------------------------------------------
+#
+def clone_units(cfg, units, name, mode, prof=None, logger=None):
+    """
+    For each unit in units, add 'factor' clones just like it, just with
+    a different ID (<id>.clone_001).  The factor depends on the context of
+    this clone call (ie. the queue name), and on mode (which is 'input' or
+    'output').  This methid will always return a list.
+    """
+
+    if units == None:
+        if logger:
+            logger.debug('no units - no cloning')
+        return list()
+
+    if not isinstance(units, list):
+        units = [units]
+
+    # blowup is only enabled on profiling
+    if 'RADICAL_PILOT_PROFILE' not in os.environ:
+        if logger:
+            logger.debug('no profiling - no cloning')
+        return units
+
+    if not units:
+        # nothing to clone...
+        if logger:
+            logger.debug('No units - no cloning')
+        return units
+
+    factor = cfg.get('clone', {}).get(name, {}).get(mode, 1)
+
+    if factor == 1:
+        if logger:
+            logger.debug('cloning with factor [%s][%s]: 1' % (name, mode))
+        return units
+
+    if factor < 1:
+        raise ValueError('clone factor must be >= 1 (not %s)' % factor)
+
+    ret = list()
+    for unit in units :
+
+        uid = unit['_id']
 
         for idx in range(factor-1) :
 
-            cu_clone = copy.deepcopy (dict(cu))
-            clone_id = '%s.clone_%05d' % (str(cu['_id']), idx+1)
+            clone    = copy.deepcopy(dict(unit))
+            clone_id = '%s.clone_%05d' % (uid, idx+1)
 
-            for key in cu_clone :
-                if isinstance (cu_clone[key], basestring) :
-                    cu_clone[key] = cu_clone[key].replace (uid, clone_id)
+            for key in clone :
+                if isinstance (clone[key], basestring) :
+                    clone[key] = clone[key].replace (uid, clone_id)
 
             idx += 1
-            cloned.append(cu_clone)
-            # FIXME
-          # prof('add clone', msg=component, uid=clone_id)
+            ret.append(clone)
 
-        # For any non-zero factor, append the original unit -- factor==0 lets us
-        # drop the cu.
-        #
         # Append the original cu last, to increase the likelyhood that
         # application state only advances once all clone states have also
         # advanced (they'll get pushed onto queues earlier).  This cannot be
         # relied upon, obviously.
-        if factor > 0: cloned.append(cu)
+        ret.append(unit)
 
-    return cloned, dropped
+    if logger:
+        logger.debug('cloning with factor [%s][%s]: %s gives %s units',
+                     name, mode, factor, len(ret))
+
+    return ret
 
 
 # ------------------------------------------------------------------------------

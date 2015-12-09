@@ -29,8 +29,10 @@
         "python_interpreter"          : "/lustre/atlas/sw/xk7/python/2.7.9/sles11.3_gnu4.3.4/bin/python",
         "pre_bootstrap_1"             : [
             "module use --append /ccs/home/marksant1/privatemodules",
-            "module load openmpi/HEAD",
-            "module load python"
+            "module load openmpi/STATIC",
+            "module load python",
+            # Workaround for ZMQ runtime failure
+            "export LD_PRELOAD=/lib64/librt.so.1"
         ],
         "pre_bootstrap_2"             : [
             "export HOME=$HOME",

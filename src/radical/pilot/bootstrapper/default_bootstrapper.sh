@@ -58,14 +58,15 @@ LOCK_TIMEOUT=180 # 3 min
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
 VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
-VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq"
+VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces setproctitle"
 
 
+# ------------------------------------------------------------------------------
 #
 # If profiling is enabled, compile our little gtod app and take the first time
 #
-if ! test -z "$RADICAL_PILOT_PROFILE"
-then
+create_gtod()
+{
 
     cat > gtod.c <<EOT
 #include <stdio.h>
@@ -79,7 +80,7 @@ int main ()
     return (0);
 }
 EOT
-    cc -o gtod gtod.c 1>/dev/null 2>/dev/null
+    cc -o gtod gtod.c
 
     if ! test -e "./gtod"
     then
@@ -91,8 +92,7 @@ EOT
     TIME_ZERO=`./gtod`
     export TIME_ZERO
 
-fi
-
+}
 
 # ------------------------------------------------------------------------------
 #
@@ -117,7 +117,7 @@ profile_event()
     fi
 
     printf "%.4f,%s,%s,%s,%s,%s\n" \
-        "$NOW" "bootstrap_1" "$PILOT_ID" "ACTIVE" "$event" "$msg" \
+        "$NOW" "bootstrap_1" "$PILOTID" "ACTIVE" "$event" "$msg" \
         >> "$PROFILE"
 }
 
@@ -402,7 +402,7 @@ EOF
 # (private + location in pilot sandbox == old behavior)
 #
 # That locking will likely not scale nicely for larger numbers of concurrent
-# pilot, at least not for slow running updates (time for update of n pilots
+# pilots, at least not for slow running updates (time for update of n pilots
 # needs to be smaller than lock timeout).  OTOH, concurrent pip updates should
 # not have a negative impact on the virtenv in the first place, AFAIU -- lock on
 # create is more important, and should be less critical
@@ -415,17 +415,14 @@ virtenv_setup()
     virtenv="$2"
     virtenv_mode="$3"
 
-    virtenv_create=TRUE
-    virtenv_update=TRUE
-
-    lock "$pid" "$virtenv" # use default timeout
+    virtenv_create=UNDEFINED
+    virtenv_update=UNDEFINED
 
     if test "$virtenv_mode" = "private"
     then
         if test -f "$virtenv/bin/activate"
         then
             printf "\nERROR: private virtenv already exists at $virtenv\n\n"
-            unlock "$pid" "$virtenv"
             exit 1
         fi
         virtenv_create=TRUE
@@ -433,8 +430,9 @@ virtenv_setup()
 
     elif test "$virtenv_mode" = "update"
     then
-        test -f "$virtenv/bin/activate" || virtenv_create=TRUE
+        virtenv_create=FALSE
         virtenv_update=TRUE
+        test -f "$virtenv/bin/activate" || virtenv_create=TRUE
 
     elif test "$virtenv_mode" = "create"
     then
@@ -446,7 +444,6 @@ virtenv_setup()
         if ! test -f "$virtenv/bin/activate"
         then
             printf "\nERROR: given virtenv does not exists at $virtenv\n\n"
-            unlock "$pid" "$virtenv"
             exit 1
         fi
         virtenv_create=FALSE
@@ -458,9 +455,16 @@ virtenv_setup()
         virtenv_create=TRUE
         virtenv_update=FALSE
     else
+        virtenv_create=FALSE
+        virtenv_update=FALSE
         printf "\nERROR: virtenv mode invalid: $virtenv_mode\n\n"
-        unlock "$pid" "$virtenv"
         exit 1
+    fi
+
+    if test "$virtenv_create" = 'TRUE'
+    then
+        # no need to update a fresh ve
+        virtenv_update=FALSE
     fi
 
     echo "virtenv_create   : $virtenv_create"
@@ -560,8 +564,16 @@ virtenv_setup()
         fi
     fi
 
+    # A ve lock is not needed (nor desired) on sandbox installs.
+    RP_INSTALL_LOCK='FALSE'
+    if test "$RP_INSTALL_TARGET" = "VIRTENV"
+    then
+        RP_INSTALL_LOCK='TRUE'
+    fi
+
     echo "rp install sources: $RP_INSTALL_SOURCES"
     echo "rp install target : $RP_INSTALL_TARGET"
+    echo "rp install lock   : $RP_INSTALL_LOCK"
 
 
     # create virtenv if needed.  This also activates the virtenv.
@@ -569,6 +581,8 @@ virtenv_setup()
     then
         if ! test -f "$virtenv/bin/activate"
         then
+            echo 'rp lock for ve create'
+            lock "$pid" "$virtenv" # use default timeout
             virtenv_create "$virtenv"
             if ! test "$?" = 0
             then
@@ -576,6 +590,7 @@ virtenv_setup()
                unlock "$pid" "$virtenv"
                exit 1
             fi
+            unlock "$pid" "$virtenv"
         else
             echo "virtenv $virtenv exists"
         fi
@@ -590,6 +605,8 @@ virtenv_setup()
     # update virtenv if needed.  This also activates the virtenv.
     if test "$virtenv_update" = "TRUE"
     then
+        echo 'rp lock for ve update'
+        lock "$pid" "$virtenv" # use default timeout
         virtenv_update "$virtenv"
         if ! test "$?" = 0
         then
@@ -597,14 +614,22 @@ virtenv_setup()
            unlock "$pid" "$virtenv"
            exit 1
        fi
+       unlock "$pid" "$virtenv"
     else
         echo "do not update virtenv $virtenv"
     fi
 
     # install RP
+    if test "$RP_INSTALL_LOCK" = 'TRUE'
+    then
+        echo "rp lock for rp install (target: $RP_INSTALL_TARGET)"
+        lock "$pid" "$virtenv" # use default timeout
+    fi
     rp_install "$RP_INSTALL_SOURCES" "$RP_INSTALL_TARGET" "$RP_INSTALL_SDIST"
-
-    unlock "$pid" "$virtenv"
+    if test "$RP_INSTALL_LOCK" = 'TRUE'
+    then
+       unlock "$pid" "$virtenv"
+    fi
 
     profile_event 'virtenv_setup end'
 }
@@ -640,8 +665,8 @@ virtenv_activate()
     prefix="$virtenv/rp_install"
 
     # make sure the lib path into the prefix conforms to the python conventions
-    PYTHON_VERSION=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
-    VE_MOD_PREFIX=` python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
+    PYTHON_VERSION=`$PYTHON -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
+    VE_MOD_PREFIX=` $PYTHON -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
     echo "PYTHON INTERPRETER: $PYTHON"
     echo "PYTHON_VERSION    : $PYTHON_VERSION"
     echo "VE_MOD_PREFIX     : $VE_MOD_PREFIX"
@@ -1040,9 +1065,9 @@ verify_rp_install()
     echo
     echo "`$PYTHON --version` ($PYTHON)"
     echo "PYTHONPATH: $PYTHONPATH"
- (  python -c 'print "utils : ",; import radical.utils as ru; print ru.version_detail,; print ru.__file__' \
- && python -c 'print "saga  : ",; import saga          as rs; print rs.version_detail,; print rs.__file__' \
- && python -c 'print "pilot : ",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__' \
+ (  $PYTHON -c 'print "utils : ",; import radical.utils as ru; print ru.version_detail,; print ru.__file__' \
+ && $PYTHON -c 'print "saga  : ",; import saga          as rs; print rs.version_detail,; print rs.__file__' \
+ && $PYTHON -c 'print "pilot : ",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__' \
  && (echo 'install ok!'; true) \
  ) \
  || (echo 'install failed!'; false) \
@@ -1173,6 +1198,7 @@ done
 # Create header for profile log
 if ! test -z "$RADICAL_PILOT_PROFILE"
 then
+    create_gtod
     profile_event 'bootstrap start'
 fi
 
@@ -1287,6 +1313,7 @@ fi
 
 verify_rp_install
 
+# TODO: (re)move this output?
 echo
 echo "# -------------------------------------------------------------------"
 echo "# Launching radical-pilot-agent "
@@ -1303,6 +1330,12 @@ do
 $converted_entry"
 done
 IFS=$OLD_IFS
+
+
+# we can't always lookup the ntp pool on compute nodes -- so do it once here,
+# and communicate the IP to the agent.  The agent may still not be able to
+# connect, but then a sensible timeout will kick in on ntplib.
+RADICAL_PILOT_NTPHOST=`dig +short 0.pool.ntp.org | grep -v -e ";;" -e "\.$" | head -n 1`
 
 # Before we start the (sub-)agent proper, we'll create a bootstrap_2.sh script
 # to do so.  For a single agent this is not needed -- but in the case where
@@ -1332,18 +1365,21 @@ export PYTHONPATH=$PYTHONPATH
 
 # run agent in debug mode
 # FIXME: make option again?
-export RADICAL_DEBUG=TRUE
 export SAGA_VERBOSE=DEBUG
 export RADICAL_VERBOSE=DEBUG
 export RADICAL_UTIL_VERBOSE=DEBUG
 export RADICAL_PILOT_VERBOSE=DEBUG
+
+# avoid ntphost lookups on compute nodes
+export RADICAL_PILOT_NTPHOST=$RADICAL_PILOT_NTPHOST
 
 # pass environment variables down so that module load becomes effective at
 # the other side too (e.g. sub-agents).
 $PREBOOTSTRAP2_EXPANDED
 
 # start agent, forward arguments
-$AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
+# NOTE: exec only makes sense in the last line of the script
+exec $AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
 
 EOT
 
@@ -1351,11 +1387,38 @@ EOT
 chmod 0755 bootstrap_2.sh
 # ------------------------------------------------------------------------------
 
+#
+# Create a barrier to start the agent.
+# This can be used by experimental scripts to push all units to the DB before
+# the agent starts.
+#
+if ! test -z "$RADICAL_PILOT_BARRIER"
+then
+    echo
+    echo "# -------------------------------------------------------------------"
+    echo "# Entering barrier for $RADICAL_PILOT_BARRIER ..."
+    echo "# -------------------------------------------------------------------"
+
+    profile_event 'bootstrap enter barrier'
+
+    while ! test -f $RADICAL_PILOT_BARRIER
+    do
+        sleep 1
+    done
+
+    profile_event 'bootstrap leave barrier'
+
+    echo
+    echo "# -------------------------------------------------------------------"
+    echo "# Leaving barrier"
+    echo "# -------------------------------------------------------------------"
+fi
+
 profile_event 'agent start'
 
 # start the master agent instance (zero)
 profile_event 'sync rel' 'agent start'
-sh bootstrap_2.sh 'agent.0' 1>agent.0.bootstrap_2.out 2>agent.0.bootstrap_2.err
+sh bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
 AGENT_EXITCODE=$?
 
 profile_event 'cleanup start'
@@ -1378,6 +1441,72 @@ profile_event 'cleanup done'
 echo "#"
 echo "# -------------------------------------------------------------------"
 
+if ! test -z "`ls *.prof 2>/dev/null`"
+then
+    echo
+    echo "# -------------------------------------------------------------------"
+    echo "#"
+    echo "# Mark final profiling entry ..."
+    profile_event 'QED'
+    echo "#"
+    echo "# -------------------------------------------------------------------"
+    echo
+    FINAL_SLEEP=30
+    echo "# -------------------------------------------------------------------"
+    echo "#"
+    echo "# We wait for at most 30 seconds for the FS to flush profiles."
+    echo "# Success is assumed when all profiles end with a 'QED' event."
+    echo "#"
+    echo "# -------------------------------------------------------------------"
+    nprofs=`echo *.prof | wc -w`
+    nqed=`tail -n 1 *.prof | grep QED | wc -l`
+    nsleep=0
+    while ! test "$nprofs" = "$nqed"
+    do
+        nsleep=$((nsleep+1))
+        if test "$nsleep" = "30"
+        then
+            echo "abort profile sync @ $nsleep: $nprofs != $nqed"
+            break
+        fi
+        echo "delay profile sync @ $nsleep: $nprofs != $nqed"
+        sleep 1
+        # recheck nprofs too, just in case...
+        nprofs=`echo *.prof | wc -w`
+        nqed=`tail -n 1 *.prof | grep QED | wc -l`
+    done
+    echo
+    echo "# -------------------------------------------------------------------"
+    echo "#"
+    echo "# Tarring profiles ..."
+    PROFILES_TARBALL="$PILOTID.prof.tgz"
+    tar -czf $PROFILES_TARBALL *.prof
+    ls -l $PROFILES_TARBALL
+    echo "#"
+    echo "# -------------------------------------------------------------------"
+fi
+
+if ! test -z "`ls *{log,out,err,cfg} 2>/dev/null`"
+then
+    # TODO: This might not include all logs, as some systems only write
+    #       the output from the bootstrapper once the jobs completes.
+    echo
+    echo "# -------------------------------------------------------------------"
+    echo "#"
+    echo "# Tarring logfiles ..."
+    LOGFILES_TARBALL="$PILOTID.log.tgz"
+    tar -czf $LOGFILES_TARBALL *.{log,out,err,cfg}
+    ls -l $LOGFILES_TARBALL
+    echo "#"
+    echo "# -------------------------------------------------------------------"
+fi
+
+echo
+echo "# -------------------------------------------------------------------"
+echo "#"
+echo "# Done, exiting!"
+echo "#"
+echo "# -------------------------------------------------------------------"
+
 # ... and exit
 exit $AGENT_EXITCODE
-

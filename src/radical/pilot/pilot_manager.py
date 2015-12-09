@@ -12,6 +12,7 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 import os
+import sys
 import time
 import glob
 import copy
@@ -54,7 +55,7 @@ class PilotManager(object):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self, session, pilot_launcher_workers=1):
+    def __init__(self, session, pilot_launcher_workers=1, report_state=True):
         """Creates a new PilotManager and attaches is to the session.
 
         .. note:: The `resource_configurations` (see :ref:`chapter_machconf`)
@@ -98,8 +99,11 @@ class PilotManager(object):
         **Raises:**
             * :class:`radical.pilot.PilotException`
         """
+        logger.report.info('<<create pilot manager')
+
         self._session = session
         self._worker = None
+        self._report_state = report_state
 
         self.uid = ru.generate_id ('pmgr')
 
@@ -123,6 +127,8 @@ class PilotManager(object):
 
         self._valid = True
 
+        logger.report.ok('>>ok\n')
+
 
     #---------------------------------------------------------------------------
     #
@@ -145,20 +151,20 @@ class PilotManager(object):
         """
 
         logger.debug("pmgr    %s closing" % (str(self.uid)))
+        logger.report.info('<<close pilot manager')
 
         # Spit out a warning in case the object was already closed.
         if not self.uid:
             logger.error("PilotManager object already closed.")
             return
 
-        # before we terminate pilots, we have to kill the pilot launcher threads
-        # -- otherwise we'll run into continous race conditions due to the
-        # ongoing state checks...
+        # before we terminate pilots, we have to disable the pilot launcher, so
+        # that no new pilots are getting started.  threads.  This will not stop
+        # the state monitor, as we'll need that to have a functional pilot.wait.
         if self._worker is not None:
-            # Stop the worker process
-            logger.debug("pmgr    %s cancel   worker %s" % (str(self.uid), self._worker.name))
-            self._worker.cancel_launcher()
-            logger.debug("pmgr    %s canceled worker %s" % (str(self.uid), self._worker.name))
+            logger.debug("pmgr    %s cancel   launcher %s" % (str(self.uid), self._worker.name))
+            self._worker.disable_launcher()
+            logger.debug("pmgr    %s canceled launcher %s" % (str(self.uid), self._worker.name))
 
         # If terminate is set, we cancel all pilots. 
         if  terminate :
@@ -166,43 +172,17 @@ class PilotManager(object):
             # managers.
             for pilot in self.get_pilots () :
                 logger.debug("pmgr    %s cancels  pilot  %s" % (str(self.uid), pilot.uid))
-            self.cancel_pilots ()
+            self.cancel_pilots()
+            self.wait_pilots()
+            # we leave it to the worker shutdown below to ensure that pilots are
+            # final before joining
 
-          # FIXME:
-          #
-          # wait_pilots() will wait until all pilots picked up the sent cancel
-          # signal and died.  However, that can take a loooong time.  For
-          # example, if a pilot is in 'PENDING_ACTIVE' state, this will have to
-          # wait until the pilot is bootstrapped, started, connected to the DB,
-          # and shut down again.  Or, for a pilot which just got a shitload of
-          # units, it will have to wait until the pilot started all those units
-          # and then checks its command queue again.  Or, if the pilot job
-          # already died, wait will block until the state checker kicks in and
-          # declares the pilot as dead, which takes a couple of minutes.
-          #
-          # Solution would be to add a CANCELING state and to wait for that one,
-          # too, which basically means to wait until the cancel signal has been
-          # sent.  There is not much more to do at this point anyway.  This is at
-          # the moment faked in the manager controler, which sets that state
-          # after sending the cancel command.  This should be converted into
-          # a proper state -- that would, btw, remove the need for a cancel
-          # command in the first place, as the pilot can just pull its own state
-          # instead, and cancel on CANCELING...
-          #
-          # self.wait_pilots ()
-            wait_for_cancel = True
-            all_pilots = self.get_pilots ()
-            while wait_for_cancel :
-                wait_for_cancel = False
-                for pilot in all_pilots :
-                    logger.debug("pmgr    %s wait for pilot  %s (%s)" % (str(self.uid), pilot.uid, pilot.state))
-                    if  pilot.state not in [DONE, FAILED, CANCELED, CANCELING] :
-                        time.sleep (1)
-                        wait_for_cancel = True
-                        break
-            for pilot in self.get_pilots () :
-                logger.debug("pmgr    %s canceled pilot  %s" % (str(self.uid), pilot.uid))
-
+        # now that all pilots are dead, we can terminate the launcher altogether
+        # (incl. state checker)
+        if self._worker is not None:
+            logger.debug("pmgr    %s cancel   worker %s" % (str(self.uid), self._worker.name))
+            self._worker.cancel_launcher()
+            logger.debug("pmgr    %s canceled worker %s" % (str(self.uid), self._worker.name))
 
         logger.debug("pmgr    %s stops    worker %s" % (str(self.uid), self._worker.name))
         self._worker.stop()
@@ -211,6 +191,8 @@ class PilotManager(object):
         logger.debug("pmgr    %s closed" % (str(self.uid)))
 
         self._valid = False
+
+        logger.report.ok('>>ok\n')
 
 
     # -------------------------------------------------------------------------
@@ -232,6 +214,31 @@ class PilotManager(object):
         """
         return str(self.as_dict())
 
+
+    #------------------------------------------------------------------------------
+    #
+    @staticmethod
+    def _default_pilot_state_cb(pilot, state):
+
+        if not pilot:
+            return
+
+        logger.info("[Callback]: ComputePilot '%s' state: %s.", pilot.uid, state)
+
+
+    #------------------------------------------------------------------------------
+    #
+    @staticmethod
+    def _default_pilot_error_cb(pilot, state):
+
+        if not pilot:
+            return
+
+        if state == FAILED:
+            logger.error("[Callback]: ComputePilot '%s' failed -- calling exit", pilot.uid)
+            sys.exit(1)
+
+
     # -------------------------------------------------------------------------
     #
     def submit_pilots(self, pilot_descriptions):
@@ -246,6 +253,8 @@ class PilotManager(object):
 
             * :class:`radical.pilot.PilotException`
         """
+
+
         # Check if the object instance is still valid.
         self._is_valid()
 
@@ -254,6 +263,11 @@ class PilotManager(object):
         if  not isinstance(pilot_descriptions, list):
             return_list_type   = False
             pilot_descriptions = [pilot_descriptions]
+
+        if len(pilot_descriptions) == 0:
+            raise ValueError('cannot submit no pilot descriptions')
+
+        logger.report.info('<<submit %d pilot(s) ' % len(pilot_descriptions))
 
         # Itereate over the pilot descriptions, try to create a pilot for
         # each one and append it to 'pilot_obj_list'.
@@ -337,11 +351,22 @@ class PilotManager(object):
 
             pilot_obj_list.append(pilot)
 
+            # we always add the default state logging callback
+            if self._report_state:
+                pilot.register_callback(self._default_pilot_state_cb)
+
+            # if the pilot description asks for it, we add the default error
+            # handling callback
+            if pd.exit_on_error:
+                pilot.register_callback(self._default_pilot_error_cb)
+
+
             if self._session._rec:
                 import radical.utils as ru
                 ru.write_json(pd.as_dict(), "%s/%s.json" 
                         % (self._session._rec, pilot_uid))
-
+            logger.report.progress()
+        logger.report.ok('>>ok\n')
 
         # Implicit return value conversion
         if  return_list_type :
@@ -391,7 +416,7 @@ class PilotManager(object):
         """
         self._is_valid()
 
-        
+
         return_list_type = True
         if (not isinstance(pilot_ids, list)) and (pilot_ids is not None):
             return_list_type = False
@@ -452,32 +477,61 @@ class PilotManager(object):
             return_list_type = False
             pilot_ids = [pilot_ids]
 
-
+        pilots = self._worker.get_compute_pilot_data(pilot_ids=pilot_ids)
         start  = time.time()
-        all_ok = False
-        states = list()
 
-        while not all_ok :
+        logger.report.info('<<wait for %d pilot(s) ' % len(pilots))
 
-            pilots = self._worker.get_compute_pilot_data(pilot_ids=pilot_ids)
-            all_ok = True
-            states = list()
+        # filter for all pilots we still need to check
+        logger.report.idle(mode='start')
+        checked = list()
+        while True:
 
-            for pilot in pilots :
-                if  pilot['state'] not in state :
-                    all_ok = False
+            logger.report.idle()
 
-                states.append (pilot['state'])
+            for pilot in pilots:
+
+                pid = pilot['_id']
+
+                if pid in checked:
+                    # already handled
+                    continue
+
+                if pilot['state'] in state:
+                    # stop watching this pilot
+                    checked.append(pid)
+
+                    if pilot['state'] in [FAILED]:
+                        logger.report.idle(color='error', c='-')
+                    elif pilot['state'] in [CANCELED]:
+                        logger.report.idle(color='warn', c='*')
+                    else:
+                        logger.report.idle(color='ok', c='+')
 
             # check timeout
-            if  (None != timeout) and (timeout <= (time.time() - start)):
-                if  not all_ok :
-                    logger.debug ("wait timed out: %s" % states)
-                break
+            if (None != timeout) and (timeout <= (time.time() - start)):
+                if len(checked) < len(pilots):
+                    logger.debug("wait timed out")
+                    break
 
-            # sleep a little if this cycle was idle
-            if  not all_ok :
-                time.sleep (0.1)
+            # if we need to wait longer, sleep a little and get new state info
+            if len(checked) < len(pilots):
+                time.sleep(0.5)
+                pilots = self._worker.get_compute_pilot_data(pilot_ids=pilot_ids)
+                continue
+
+            # otherwise we are done
+            break
+
+        logger.report.idle(mode='stop')
+
+        if len(checked) == len(pilots):
+            logger.report.ok(  '>>ok\n')
+        else:
+            logger.report.warn('>>timeout\n')
+
+        # grab the current states to return
+        states = [p['state'] for p in pilots]
 
         # done waiting
         if  return_list_type :
@@ -514,14 +568,14 @@ class PilotManager(object):
 
     # -------------------------------------------------------------------------
     #
-    def register_callback(self, callback_function, callback_data=None):
+    def register_callback(self, cb_func, cb_data=None):
         """Registers a new callback function with the PilotManager.
         Manager-level callbacks get called if any of the ComputePilots managed
         by the PilotManager change their state.
 
         All callback functions need to have the same signature::
 
-            def callback_func(obj, state, data)
+            def cb_func(obj, state, data)
 
         where ``object`` is a handle to the object that triggered the callback,
         ``state`` is the new state of that object, and ``data`` are the data
@@ -529,5 +583,5 @@ class PilotManager(object):
         """
         self._is_valid()
 
-        self._worker.register_manager_callback(callback_function, callback_data)
+        self._worker.register_manager_callback(cb_func, cb_data)
 

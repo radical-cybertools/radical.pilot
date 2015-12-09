@@ -16,8 +16,6 @@ import saga
 import gridfs
 import radical.utils as ru
 
-from pymongo import *
-
 from radical.pilot.utils  import timestamp
 from radical.pilot.states import *
 
@@ -64,6 +62,7 @@ class Session():
         self._session_id = sid
         self._created    = timestamp()
         self._connected  = self._created
+        self._closed     = None
 
         # make sure session doesn't exist already
         if self._db[sid].count() != 0:
@@ -130,11 +129,30 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def delete(self):
-        """ Removes a session and all associated collections from the DB.
+    @property
+    def closed(self):
+        """ Returns the connection time
+        """
+        return self._closed
+
+
+    #--------------------------------------------------------------------------
+    #
+    def close(self):
+        """ 
+        close the session
         """
         if self._s is None:
             raise RuntimeError("No active session.")
+
+        self._closed = timestamp()
+
+    #--------------------------------------------------------------------------
+    #
+    def delete(self):
+        """ Removes a session and all associated collections from the DB.
+        """
+        self.close()
 
         for collection in [self._s, self._w, self._um, self._p, self._pm]:
             collection.drop()
@@ -405,11 +423,12 @@ class Session():
                  "unitmanager": unit_manager_id}
             )
 
-        units_json = []
+        # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
+        units_json = dict()
         for obj in cursor:
-            units_json.append(obj)
+            units_json[obj['_id']] = obj
 
-        return units_json
+        return units_json.values()
 
     #--------------------------------------------------------------------------
     #

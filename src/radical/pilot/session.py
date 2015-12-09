@@ -16,6 +16,7 @@ import bson
 import glob
 import copy
 import saga
+import threading
 import radical.utils as ru
 
 from .utils           import *
@@ -81,13 +82,16 @@ class Session (saga.Session):
         logger = ru.get_logger('radical.pilot')
 
         if database_name:
-            logger.error("The 'database_name' parameter is deprecated - please specify an URL path") 
+            logger.warning("The 'database_name' parameter is deprecated - please specify an URL path")
         else:
             database_name = 'radicalpilot'
 
         # init the base class inits
         saga.Session.__init__ (self)
-        self._valid = False
+        self._dh        = ru.DebugHelper()
+        self._valid     = False
+        self._terminate = threading.Event()
+        self._terminate.clear()
 
         # before doing anything else, set up the debug helper for the lifetime
         # of the session.
@@ -113,7 +117,7 @@ class Session (saga.Session):
         if  not self._dburl.path         or \
             self._dburl.path[0]   != '/' or \
             len(self._dburl.path) <=  1  :
-            logger.error("incomplete URLs are deprecated -- missing database name!")
+            logger.warning("incomplete URLs are deprecated -- missing database name!")
             self._dburl.path = database_name # defaults to 'radicalpilot'
 
         logger.info("using database %s" % self._dburl)
@@ -124,23 +128,30 @@ class Session (saga.Session):
         self._uid       = None
         self._connected = None
 
-        if name :
-            self._name = name
-            self._uid  = name
-          # self._uid  = ru.generate_id ('rp.session.'+name+'.%(item_counter)06d', mode=ru.ID_CUSTOM)
-        else :
-            self._uid  = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
-            self._name = self._uid
-
-        # initialize profiling
-        self.prof = Profiler('%s' % self._uid)
-        self.prof.prof('start session', uid=self._uid)
-
         try:
+            if name :
+                self._name = name
+                self._uid  = name
+              # self._uid  = ru.generate_id ('rp.session.'+name+'.%(item_counter)06d', mode=ru.ID_CUSTOM)
+                ru.reset_id_counters(prefix=['pmgr', 'umgr', 'pilot', 'unit', 'unit.%(counter)06d'])
+            else :
+                self._uid  = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
+                self._name = self._uid
+                ru.reset_id_counters(prefix=['pmgr', 'umgr', 'pilot', 'unit', 'unit.%(counter)06d'])
+
+            # initialize profiling
+            self.prof = Profiler('%s' % self._uid)
+            self.prof.prof('start session', uid=self._uid)
+
+            logger.report.info ('<<new session: ')
+            logger.report.plain('[%s]' % self._uid)
+            logger.report.info ('<<database   : ')
+            logger.report.plain('[%s]' % self._dburl)
+
             self._dbs = dbSession(sid   = self._uid,
                                   name  = self._name,
                                   dburl = self._dburl)
-        
+
             self._dburl  = self._dbs._dburl
 
             # from here on we should be able to close the session again
@@ -148,6 +159,7 @@ class Session (saga.Session):
             logger.info("New Session created: %s." % str(self))
 
         except Exception, ex:
+            logger.report.error(">>err\n")
             logger.exception ('session create failed')
             raise PilotException("Couldn't create new session (database URL '%s' incorrect?): %s" \
                             % (self._dburl, ex))  
@@ -207,6 +219,20 @@ class Session (saga.Session):
         else:
             self._rec = None
 
+        logger.report.ok('>>ok\n')
+
+
+
+    #---------------------------------------------------------------------------
+    # Allow Session to function as a context manager in a `with` clause
+    def __enter__ (self):
+        return self
+
+
+    #---------------------------------------------------------------------------
+    # Allow Session to function as a context manager in a `with` clause
+    def __exit__ (self, type, value, traceback) :
+        self.close()
 
 
     #---------------------------------------------------------------------------
@@ -243,6 +269,7 @@ class Session (saga.Session):
 
         self._is_valid()
 
+        logger.report.info('closing session %s' % self._uid)
         logger.debug("session %s closing" % (str(self._uid)))
         self.prof.prof("close", uid=self._uid)
 
@@ -262,11 +289,14 @@ class Session (saga.Session):
                 cleanup   = delete
                 terminate = delete
                 logger.warning("'delete' flag on session is deprecated. " \
-                               "Please use 'cleanup' and 'terminate' instead!")
+                             "Please use 'cleanup' and 'terminate' instead!")
 
         if  cleanup :
             # cleanup implies terminate
             terminate = True
+
+        if terminate:
+            self._terminate.set()
 
         for pmgr_uid, pmgr in self._pilot_manager_objects.iteritems():
             logger.debug("session %s closes   pmgr   %s" % (str(self._uid), pmgr_uid))
@@ -280,13 +310,19 @@ class Session (saga.Session):
 
         if  cleanup :
             self.prof.prof("cleaning", uid=self._uid)
-            self._destroy_db_entry()
+            self._dbs.delete()
             self.prof.prof("cleaned", uid=self._uid)
+        else:
+            self._dbs.close()
 
         logger.debug("session %s closed" % (str(self._uid)))
         self.prof.prof("closed", uid=self._uid)
+        self.prof.close()
 
         self._valid = False
+
+        logger.report.info('<<session lifetime: %.1fs' % (self.closed - self.created))
+        logger.report.ok('>>ok\n')
 
 
     #---------------------------------------------------------------------------
@@ -301,7 +337,8 @@ class Session (saga.Session):
             "uid"           : self._uid,
             "created"       : self._dbs.created,
             "connected"     : self._dbs.connected,
-            "database_url"  : self._dbs.dburl
+            "closed"        : self._dbs.closed,
+            "database_url"  : str(self._dbs.dburl)
         }
         return object_dict
 
@@ -349,37 +386,27 @@ class Session (saga.Session):
     def created(self):
         """Returns the UTC date and time the session was created.
         """
-        self._is_valid()
         return self._dbs.created
 
 
     #---------------------------------------------------------------------------
     #
     @property
-    def connected (self):
+    def connected(self):
         """Returns the most recent UTC date and time the session was
         reconnected to.
         """
-        self._is_valid()
         return self._dbs.connected 
 
 
     #---------------------------------------------------------------------------
     #
-    def _destroy_db_entry(self):
-        """Terminates the session and removes it from the database.
-
-        All subsequent attempts access objects attached to the session and 
-        attempts to re-connect to the session via its uid will result in
-        an error.
-
-        **Raises:**
-            * :class:`radical.pilot.IncorrectState` if the session is closed
-              or doesn't exist. 
+    @property
+    def closed(self):
         """
-        self._is_valid()
-        self._dbs.delete()
-        logger.info("Deleted session %s from database." % self._uid)
+        Returns the time of closing
+        """
+        return self._dbs.closed 
 
 
     #---------------------------------------------------------------------------

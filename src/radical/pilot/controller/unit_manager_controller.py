@@ -165,6 +165,7 @@ class UnitManagerController(threading.Thread):
         self._callback_histories[unit_id].append (
                 {'timestamp' : timestamp(), 
                  'state'     : new_state})
+        self._session.prof.prof('notification', uid=unit_id, state=new_state)
 
         for [cb, cb_data] in self._shared_data[unit_id]['callbacks']:
             try:
@@ -224,7 +225,8 @@ class UnitManagerController(threading.Thread):
             # asynchronous transfer operations.
             transfer_results = list()
 
-            while not self._stop.is_set():
+            while not self._stop.is_set() and \
+                  not self._session._terminate.is_set():
 
                 # =================================================================
                 #
@@ -255,9 +257,6 @@ class UnitManagerController(threading.Thread):
                     self._shared_data_lock.release()
 
                     if new_state != old_state:
-                        # On a state change, we fire zee callbacks.
-                        logger.info("RUN ComputeUnit '%s' state changed from '%s' to '%s'." % (unit_id, old_state, new_state))
-
                         # The state of the unit has changed, We call all
                         # unit-level callbacks to propagate this.
                         self.call_unit_state_callbacks(unit_id, new_state)
@@ -294,13 +293,13 @@ class UnitManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def register_unit_callback(self, unit, callback_func, callback_data=None):
+    def register_unit_callback(self, unit, cb_func, cb_data=None):
         """Registers a callback function for a ComputeUnit.
         """
         unit_uid = unit.uid
 
         self._shared_data_lock.acquire()
-        self._shared_data[unit_uid]['callbacks'].append([callback_func, callback_data])
+        self._shared_data[unit_uid]['callbacks'].append([cb_func, cb_data])
         self._shared_data_lock.release()
 
         # Add the facade object if missing, e.g., after a re-connect.
@@ -319,13 +318,13 @@ class UnitManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def register_manager_callback(self, callback_func, metric, callback_data=None):
+    def register_manager_callback(self, cb_func, metric, cb_data=None):
         """Registers a manager-level callback.
         """
         if not metric in self._manager_callbacks :
             self._manager_callbacks[metric] = list()
 
-        self._manager_callbacks[metric].append([callback_func, callback_data])
+        self._manager_callbacks[metric].append([cb_func, cb_data])
 
 
     # ------------------------------------------------------------------------
