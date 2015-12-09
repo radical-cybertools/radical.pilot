@@ -665,8 +665,8 @@ virtenv_activate()
     prefix="$virtenv/rp_install"
 
     # make sure the lib path into the prefix conforms to the python conventions
-    PYTHON_VERSION=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
-    VE_MOD_PREFIX=` python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
+    PYTHON_VERSION=`$PYTHON -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
+    VE_MOD_PREFIX=` $PYTHON -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
     echo "PYTHON INTERPRETER: $PYTHON"
     echo "PYTHON_VERSION    : $PYTHON_VERSION"
     echo "VE_MOD_PREFIX     : $VE_MOD_PREFIX"
