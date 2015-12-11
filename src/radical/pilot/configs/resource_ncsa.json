@@ -44,11 +44,9 @@
         "forward_tunnel_endpoint"     : "BIND_ADDRESS",
         "pre_bootstrap_1"             : [
             "module switch PrgEnv-cray PrgEnv-gnu",
-            "module load bw-python",
-            "module use --append /u/sciteam/marksant/privatemodules",
-            "module load openmpi/STATIC",
-            # Workaround to be able to build netifaces python module
-            "export LIBRARY_PATH=$LIBRARY_PATH:$BWP_INTERP_LIBRARY_PATH"
+            "module load bwpy",
+            "module use --append /projects/sciteam/gkd/modules",
+            "module load openmpi"
         ],
         "pre_bootstrap_2"             : [
             "export HOME=$HOME",
