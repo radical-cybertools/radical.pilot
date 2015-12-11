@@ -1776,7 +1776,7 @@ class LaunchMethodMPIRUN(LaunchMethod):
 
         task_slots = opaque_slots['task_slots']
 
-        if task_arstr:
+        if task_argstr:
             task_command = "%s %s" % (task_exec, task_argstr)
         else:
             task_command = task_exec
