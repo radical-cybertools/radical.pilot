@@ -691,10 +691,8 @@ class PilotLauncherWorker(threading.Thread):
                         if shared_filesystem:
                             sandbox_tgt.copy(cf_url, agent_cfg_name)
 
-                        # close and remove temp file
+                        # Close agent config file
                         os.close(cfg_tmp_handle)
-                        if shared_filesystem:
-                            os.unlink(cfg_tmp_file)
 
                         # ------------------------------------------------------
                         # Done with all transfers to pilot sandbox, close handle
