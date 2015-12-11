@@ -1,68 +1,103 @@
 
 import os
 
-# ------------------------------------------------------------------------------
-#
-def get_experiment_frames(experiments, datadir=None):
-    """
-    read profiles for all sessions in the given 'experiments' dict.  That dict
-    is expected to be like this:
+from ..states import *
 
-    { 'test 1' : [ [ 'rp.session.thinkie.merzky.016609.0007',         'stampede popen sleep 1/1/1/1 (?)'] ],
-      'test 2' : [ [ 'rp.session.ip-10-184-31-85.merzky.016610.0112', 'stampede shell sleep 16/8/8/4'   ] ],
-      'test 3' : [ [ 'rp.session.ip-10-184-31-85.merzky.016611.0013', 'stampede shell mdrun 16/8/8/4'   ] ],
-      'test 4' : [ [ 'rp.session.titan-ext4.marksant1.016607.0005',   'titan    shell sleep 1/1/1/1 a'  ] ],
-      'test 5' : [ [ 'rp.session.titan-ext4.marksant1.016607.0006',   'titan    shell sleep 1/1/1/1 b'  ] ],
-      'test 6' : [ [ 'rp.session.ip-10-184-31-85.merzky.016611.0013', 'stampede - isolated',            ],
-                   [ 'rp.session.ip-10-184-31-85.merzky.016612.0012', 'stampede - integrated',          ],
-                   [ 'rp.session.titan-ext4.marksant1.016607.0006',   'blue waters - integrated'        ] ]
-    }  name in 
+info_names = {
+        'AgentWorker'                 : 'awo',
+        'AgentStagingInputComponent'  : 'asic',
+        'SchedulerContinuous'         : 'asc',  # agent scheduler component
+        'AgentExecutingComponent'     : 'aec',
+        'AgentStagingOutputComponent' : 'asoc',
+        'session'                     : 'mod'
+        }
 
-    ie. iname in t is a list of experiment names, and each label has a list of
-    session/label pairs, where the label will be later used to label (duh) plots.
+_info_events = {
+        'get'        : '_get_u',     # get a unit from a queue
+        'work start' : '_work_u',    # unit is handed over to component
+        'work done'  : '_worked_u',  # component finished to operate on unit
+        'put'        : '_put_u',     # unit is put onto the next queue
+        'publish'    : '_pub_u',     # unit state is published via some pubsub
+        'advance'    : '_adv_u',     # the unit state is advanced
+        'update'     : '_upd_u'      # a unit state update is pushed to the DB
+        }
 
-    we return a similar dict where the session IDs are data frames
-    """
-    import pandas as pd
+_info_pending = {
+        'Pending'    : '_pend'
+        }
 
-    exp_frames  = dict()
+_info_premature_final = {
+        'Failed'   : '_fail',
+        'Canceled'   : '_canc'
+}
 
-    if not datadir:
-        datadir = os.getcwd()
+_info_states = [
+        ACTIVE,
+        AGENT_STAGING_INPUT,
+        AGENT_STAGING_INPUT_PENDING,
+        AGENT_STAGING_OUTPUT,
+        AGENT_STAGING_OUTPUT_PENDING,
+        ALLOCATING,
+        ALLOCATING_PENDING,
+        CANCELED,
+        DONE,
+        EXECUTING,
+        EXECUTING_PENDING,
+        FAILED,
+        LAUNCHING,
+        NEW,
+        PENDING,
+        PENDING_ACTIVE,
+        PENDING_EXECUTION,
+        PENDING_INPUT_STAGING,
+        PENDING_LAUNCH,
+        PENDING_OUTPUT_STAGING,
+        SCHEDULING,
+        STAGING_INPUT,
+        STAGING_OUTPUT,
+        UNSCHEDULED
+        ]
 
-    print 'reading profiles in %s' % datadir
+_info_entries = [
+    ('umgr_get_u',      'MainThread',             'advance',   'New'),
+    ('umgr_adv_u_pend', 'MainThread',             'advance',   'PendingInputStaging'),
+    ('usic_get_u',      'InputFileTransfer',      'advance',   'StagingInput'),
+    ('usic_adv_u_pend', 'InputFileTransfer',      'advance',   'AgentStagingInputPending'),
 
-    for exp in experiments:
-        print " - %s" % exp
-        exp_frames[exp] = list()
+    ('usoc_get_u',      'OutputFileTransfer',     'advance',   'StagingOutput'),
+    ('usoc_adv_u',      'OutputFileTransfer',     'advance',   'Done'),
 
-        for sid, label in experiments[exp]:
-            print "   - %s" % sid
-            
-            import glob
-            for prof in glob.glob ("%s/%s-pilot.*.prof" % (datadir, sid)):
-                print "     - %s" % prof
-                frame = get_profile_frame (prof)
-                exp_frames[exp].append ([frame, label])
-                
-    return exp_frames
+    # FIXME: the names below will break for other schedulers
+    ('asc_allocated',   'SchedulerContinuous',    'schedule',  'allocated'),
+    ('asc_alloc_nok',   'SchedulerContinuous',    'schedule',  'allocation failed'),
+    ('asc_alloc_ok',    'SchedulerContinuous',    'schedule',  'allocation succeeded'),
+    ('asc_unqueue',     'SchedulerContinuous',    'unqueue',   're-allocation done'),
+    ('asc_released',    'SchedulerContinuous',    'unschedule','released'),
 
+    ('aec_launch',      'AgentExecuting',         'exec',      'unit launch'),
+    ('aec_spawn',       'AgentExecuting',         'spawn',     'unit spawn'),
+    ('aec_script',      'AgentExecuting',         'command',   'launch script constructed'),
+    ('ace_outerr',      'AgentExecuting',         'command',   'stdout and stderr files created'),
+    ('aec_handover',    'AgentExecuting',         'spawn',     'spawning passed to pty'),
+    ('aec_handover',    'AgentExecuting',         'spawn',     'spawning passed to popen'),
+    ('aec_end',         'AgentExecuting',         'final',     ''),
 
-# ------------------------------------------------------------------------------
-#
-def get_profile_frame (prof):
-    import pandas as pd
-    return pd.read_csv(prof)
+    ('aec_pickup',      'AgentExecuting',         'passed',    'ExecWatcher picked up unit'),
+    ('aec_start_script','AgentStagingOutputComponent','script','start_script'),
+    ('aec_after_cd',    'AgentStagingOutputComponent','script','after_cd'),
+    ('aec_after_exec',  'AgentStagingOutputComponent','script','after_exec'),
+    ('aec_complete',    'AgentExecuting',         'exec',      'execution complete'),
+]
 
 # ------------------------------------------------------------------------------
 #
 tmp = None
 def add_concurrency (frame, tgt, spec):
     """
-    add a column 'tgt' which is a cumulative sum of conditionals of enother row.  
+    add a column 'tgt' which is a cumulative sum of conditionals of another row.
     
     The purpose is the following: if a unit enters a component, the tgt row counter is 
-    increased by 1, if the unit leaves the component, the counter is decreases by 1.
+    increased by 1, if the unit leaves the component, the counter is decreased by 1.
     For any time, the resulting row contains the number of units which is in the 
     component.  Or state.  Or whatever.
     
@@ -91,12 +126,12 @@ def add_concurrency (frame, tgt, spec):
         spec = {'in'  : [{'state' :'Executing'}],
                 'out' : [{'state' :'Done'},
                          {'state' :'Failed'},
-                         {'state' :'Cancelled'}]
+                         {'state' :'Canceled'}]
                }
-        get_concurrency (df, 'concurrently_running', spec)
+        add_concurrency (df, 'concurrently_running', spec)
     """
     
-    import numpy
+    import numpy as np
 
     # create a temporary row over which we can do the commulative sum
     # --------------------------------------------------------------------------
@@ -133,7 +168,7 @@ def add_concurrency (frame, tgt, spec):
 
         # no filter matched
       # print "   : %-20s : %.2f : %-20s : %s " % (row['uid'], row['time'], row['event'], row['message'])
-        return  0
+        return  np.NaN
     # --------------------------------------------------------------------------
 
     # we only want to later look at changes of the concurrency -- leading or trailing 
@@ -145,7 +180,7 @@ def add_concurrency (frame, tgt, spec):
     def _time (x):
         global tmp
         if     x != tmp: tmp = x
-        else           : x   = numpy.NaN
+        else           : x   = np.NaN
         return x
 
 
@@ -155,7 +190,7 @@ def add_concurrency (frame, tgt, spec):
     # --------------------------------------------------------------------------
     def _abs (x):
         if x < 0:
-            return numpy.NaN
+            return np.NaN
         return x
     # --------------------------------------------------------------------------
     
@@ -163,6 +198,70 @@ def add_concurrency (frame, tgt, spec):
     frame[tgt] = frame.apply(lambda row: _abs (row[tgt]),  axis=1)
     frame[tgt] = frame.apply(lambda row: _time(row[tgt]),  axis=1)
   # print frame[[tgt, 'time']]
+
+    return frame
+
+
+
+# ------------------------------------------------------------------------------
+#
+def add_frequency(frame, tgt, window, spec):
+    """
+    This method will add a row 'tgt' to the given data frame, which will contain
+    a contain the frequency (1/s) of the events specified in 'spec'.
+
+    We first will filter the given frame by spec, and then apply a rolling
+    window over the time column, counting the rows which fall into the window.
+    The result is *not* divided by window size, so normalization is up to the
+    caller.
+    
+    The method looks backwards, so the resulting frequency column contains the
+    frequency which applied *up to* that point in time.
+    """
+    
+    # --------------------------------------------------------------------------
+    def _freq(t, _tmp, _window):
+        # get sequence of frame which falls within the time window, and return
+        # length of that sequence
+        return len(_tmp.uid[(_tmp.time > t-_window) & (_tmp.time <= t)])
+    # --------------------------------------------------------------------------
+    
+    # filter the frame by the given spec
+    tmp = frame
+    for key,val in spec.iteritems():
+        tmp = tmp[tmp[key].isin([val])]
+    frame[tgt] = tmp.time.apply(_freq, args=[tmp, window])
+
+    return frame
+
+
+# ------------------------------------------------------------------------------
+#
+def add_event_count(frame, tgt, spec):
+    """
+    This method will add a row 'tgt' to the given data frame, which will contain
+    a counter of the events specified in 'spec'.
+
+    This works similar to add_frequency: we first filter, and then add the
+    cumsum.
+    """
+
+    raise NotImplementedError('not yet implemented')
+
+    # --------------------------------------------------------------------------
+    def _ecnt(t, _tmp):
+        # get sequence of frame which falls within the time window, and return
+        # length of that sequence
+        return len(_tmp.uid[(_tmp.time > t-_window) & (_tmp.time <= t)])
+    # --------------------------------------------------------------------------
+
+    # filter the frame by the given spec
+    tmp = frame
+    for key,val in spec.iteritems():
+        tmp = tmp[tmp[key].isin([val])]
+    frame[tgt] = 1 if tmp else 0
+
+    return frame
 
 
 # ------------------------------------------------------------------------------
@@ -218,6 +317,8 @@ def calibrate_frame(frame, spec):
         print "Can't recalibrate, no matching timestamp found"
         return
     frame['time'] = frame.apply(lambda row: _calibrate(row, t0  ), axis=1)
+
+    return frame
 
 
 # ------------------------------------------------------------------------------
@@ -349,6 +450,218 @@ def create_analytical_frame (idx, kind, args, limits, step):
     else:
         raise ValueError ("No such frame kind '%s'" % kind)
         
+
+# ------------------------------------------------------------------------------
+#
+def add_derived(df):
+    """
+    Add additional (derived) colums to dataframes
+    create columns based on two other columns using an operator
+    """
+    
+    import operator
+
+    # TODO: The fields these are derived from are outdated by now!
+    df['executor_queue'] = operator.sub(df['ewo_get'],      df['as_to_ewo'])
+    df['raw_runtime']    = operator.sub(df['ewa_complete'], df['ewo_launch'])
+    df['full_runtime']   = operator.sub(df['uw_push_done'], df['as_to_ewo'])
+    df['watch_delay']    = operator.sub(df['ewa_get'],      df['ewo_to_ewa'])
+    df['allocation']     = operator.sub(df['as_allocated'], df['a_to_as'])
+
+    # add a flag to indicate if a unit / pilot / ... is cloned
+    # --------------------------------------------------------------------------
+    def _cloned (row):
+        return 'clone' in row['uid'].lower()
+    # --------------------------------------------------------------------------
+    df['cloned'] = df.apply(lambda row: _cloned (row), axis=1)
+
+    return df
+
+
+# ------------------------------------------------------------------------------
+#
+def add_info(df):
+    """
+    we also derive some specific info from the event/msg columns, based on
+    the mapping defined in _info_entries.  That should make it easier to
+    analyse the data.
+    """
+
+    import numpy as np
+
+    # --------------------------------------------------------------------------
+    def _info (row):
+        for info, name, event, msg in _info_entries:
+            if  (row['name'] and name  in row['name'] ) and \
+                (not event   or  event == row['event']) and \
+                (not msg     or  msg   == row['msg']  ):
+                return info
+
+        ret = ""
+        n   = 0  # 
+        for pat, pre in info_names.iteritems():
+            if pat in row['name']:
+                ret += pre
+                n   += 1
+                break
+        for pat, ev in _info_events.iteritems():
+            if ret and pat == row['event']:
+                ret += ev
+                n   += 1
+                break
+        for pat, s in _info_pending.iteritems():
+            if ret and pat in row['state']:
+                ret += s
+                break
+        # Also create separate info entries for Canceled and Failed units
+        for pat, f in _info_premature_final.iteritems():
+            if ret and pat in row['state']:
+                ret += f
+                break
+
+        if ret and n >= 2:
+            return ret
+        else:
+            return np.NaN
+    # --------------------------------------------------------------------------
+    df['info'] = df.apply(lambda row: _info (row), axis=1)
+
+    return df
+    
+
+# ------------------------------------------------------------------------------
+#
+def get_info_df(df):
+    """
+    This call will convert a raw profiling frame into a transposed frame where
+    possible info tags are columns, and each row contains the respective timings
+    for uni unit.  uid is df index.
+    """
+
+    import pandas as pd
+
+    uids  = list(df['uid'].unique())
+    cols  = set()
+    dicts = dict()
+
+    for uid in uids:
+        uf_n  = df[df['uid'] == uid]
+        tmp1   = uf_n[['time', 'info']].dropna()
+        tmp1_d = tmp1.set_index('info').to_dict()['time']
+
+        # add state transitions to dict.  We basically select all rows with
+        # a 'state_from', and add a dict entry for the 'state' column.
+        # Make sure we ignore transitions where 'state' == 'state_from'.
+        tmp2   = uf_n[uf_n['state_from'].notnull()]
+        tmp3   = tmp2[tmp2['state'] != tmp2['state_from']]
+        tmp4   = tmp3[['time', 'state']].dropna()
+        tmp2_d = tmp4.set_index('state').to_dict()['time']
+        for k,v in tmp2_d.iteritems():
+            tmp1_d[k] = v
+        # make sure the frame column headers are complete
+        for s in _info_states:
+            cols.add(s)
+
+        # make sure we got no info double defined on any unit.  Also derive
+        # column names
+        l = list(uf_n['info'].dropna())
+        for i in set(l):
+            cols.add(i)
+            if l.count(i)>1:
+                raise ValueError('doubled info entry %s (uid:%s)' % (i, uid))
+
+        dicts[uid] = tmp1_d
+
+
+    new_df = pd.DataFrame(columns=cols, index=uids)
+    for uid in dicts:
+        new_df.loc[uid] = pd.Series(dicts[uid])
+
+    return new_df
+
+
+# ------------------------------------------------------------------------------
+#
+def get_state_df(df):
+    """
+    This call accepts an 'info' df, and reduces it to only contain state
+    transitions.
+    """
+
+    return df[_info_states]
+
+
+# ------------------------------------------------------------------------------
+#
+def add_states(df):
+    """
+    Add one additional columns: 'state_from'.  It will have a value for all
+    columns where a stateful entity entered a new state, and will have the value
+    of the previous state.
+
+    We also fill out the state column, to continue to have the value of any
+    previous state setting.
+    """
+    
+    import numpy as np
+
+    # --------------------------------------------------------------------------
+    _old_states = dict()
+    def _state_from (row):
+        old = np.NaN
+        if  row['uid']   and \
+            row['state'] and \
+            row['event'] == 'advance': 
+            old = _old_states.get(row['uid'], np.NaN)
+            _old_states[row['uid']] = row['state']
+        return old
+    # --------------------------------------------------------------------------
+  # df['state_from'], df['state_to'] = zip(*df.apply(lambda row: _state(row), axis=1))
+    df['state_from'] = df.apply(lambda row: _state_from(row), axis=1)
+
+    _old_states = dict()
+    # --------------------------------------------------------------------------
+    def _state (row):
+        if  not row['uid']:
+            return np.NaN
+        if row['state']:
+            _old_states[row['uid']] = row['state']
+        return _old_states.get(row['uid'], '')
+    # --------------------------------------------------------------------------
+    df['state'] = df.apply(lambda row: _state(row), axis=1)
+
+    return df
+
+
+# ------------------------------------------------------------------------------
+#
+def get_span(df, spec):
+    """
+    get the timespan from the first of any of the listed events to the last of
+    any of the listed events.  Events are 'info' entries.
+    """
+    
+    import numpy as np
+
+    if not isinstance(spec, list):
+        spec = [spec]
+
+    first = float(df.tail(1)['time']) # max
+    last  = float(df.head(1)['time']) # min
+
+    ok = False
+    for s in spec:
+        tmp   = df[df['info'] == s]
+        if len(tmp):
+            ok = True
+            first = min(first, float(tmp.head(1).iloc[0]['time']))
+            last  = max(last,  float(tmp.tail(1).iloc[0]['time']))
+
+    if not ok:
+        return None
+
+    return last - first
+
 
 # ------------------------------------------------------------------------------
 

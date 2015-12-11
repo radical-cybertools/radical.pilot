@@ -10,18 +10,18 @@ and data submission capabilities that RADICAL-Pilot has, its important to
 understand the basics. 
 
 The simplest usage of a pilot-job system is to submit multiple identical tasks
-(a 'Bag of Tasks') collectively, i.e. as one big job! Such usage arises for example to perform
-either a parameter sweep job or a set of ensemble simulation.
+(a 'Bag of Tasks' / 'BoT') collectively, i.e. as one big job! Such usage arises 
+for example to perform parameter sweep jobs, or to execute ensemble simulation.
 
-We will create an example which submits N jobs using RADICAL-Pilot. The jobs are
+We will create an example which submits `N` jobs using RADICAL-Pilot. The jobs are
 all identical, except that they each record their number in their output. This
 type of run is very useful if you are running many jobs using the same
 executable (but perhaps with different input files).  Rather than submit each job
 individually to the queuing system and then wait for every job to become active
 and complete, you submit just one container job (called a Pilot) that reserves
 the number of cores needed to run all of your jobs. When this pilot becomes
-active, your tasks (which are named 'Compute Units' or 'CUs') are pulled by
-RADICAL-Pilot from the MongoDB server and executed. 
+active, it executes your tasks on the reserved cores.  RADICAL-Pilot names such 
+tasks 'Compute Units', or short 'CUs'.
 
 ------------
 Preparation
@@ -77,16 +77,16 @@ MongoDB server you want to use, for example:
 
     .. code-block:: bash
             
-            export RADICAL_PILOT_DBURL=mongodb://23.23.136.91:27017/
+            export RADICAL_PILOT_DBURL=mongodb://23.23.136.91:27017/<database>
 
 .. only:: release
 
     .. code-block:: bash
             
-            export RADICAL_PILOT_DBURL=mongodb://<user>:<pass>@<mongodb_server>:27017/
+            export RADICAL_PILOT_DBURL=mongodb://<user>:<pass>@<mongodb_server>:27017/<database>
 
 If RADICAL-Pilot is installed and the MongoDB URL is set, you should be good
-to run your program: 
+to run your program (the database is created on the fly): 
 
 .. code-block:: bash
 
@@ -104,7 +104,7 @@ The output should look something like this:
     Waiting for CUs to complete ...
     ...
     Waiting for CUs to complete ...
-    All CUs completed successfully!
+    All CUs completed!
     Closed session, exiting now ...
 
 

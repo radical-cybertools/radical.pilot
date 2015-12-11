@@ -15,14 +15,13 @@ import os
 import time
 import saga
 
-from radical.pilot.states import *
-from radical.pilot.logentry import *
-from radical.pilot.exceptions import *
+from .states     import *
+from .logentry   import *
+from .exceptions import *
+from .utils      import logger
 
-from radical.pilot.utils.logger import logger
-
-from radical.pilot.staging_directives import TRANSFER, COPY, LINK, MOVE, \
-    STAGING_AREA, expand_staging_directive
+from .staging_directives import TRANSFER, COPY, LINK, MOVE, STAGING_AREA, \
+                                expand_staging_directive
 
 # -----------------------------------------------------------------------------
 #
@@ -375,19 +374,19 @@ class ComputePilot (object):
 
     # -------------------------------------------------------------------------
     #
-    def register_callback(self, callback_func, callback_data=None):
+    def register_callback(self, cb_func, cb_data=None):
         """Registers a callback function that is triggered every time the
         ComputePilot's state changes.
 
         All callback functions need to have the same signature::
 
-            def callback_func(obj, state, data)
+            def cb_func(obj, state, data)
 
         where ``object`` is a handle to the object that triggered the callback,
         ``state`` is the new state of that object, and ``data`` is the data
         passed on callback registration.
         """
-        self._worker.register_pilot_callback(self, callback_func, callback_data)
+        self._worker.register_pilot_callback(self, cb_func, cb_data)
 
     # -------------------------------------------------------------------------
     #
@@ -476,7 +475,7 @@ class ComputePilot (object):
             raise Exception("Pilot already finished, no need to stage anymore!")
 
         # Iterate over all directives
-        for directive in expand_staging_directive(directives, logger):
+        for directive in expand_staging_directive(directives):
 
             # TODO: respect flags in directive
 

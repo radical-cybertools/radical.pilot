@@ -1,4 +1,3 @@
-
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
@@ -11,10 +10,12 @@ from radical.pilot.exceptions import *
 # ------------------------------------------------------------------------------
 # Attribute description keys
 LABEL                       = 'label'
+AGENT_LAUNCH_METHOD         = 'agent_launch_method'
 AGENT_MONGODB_ENDPOINT      = 'agent_mongodb_endpoint'
 AGENT_SCHEDULER             = 'agent_scheduler'
 AGENT_SPAWNER               = 'agent_spawner'
 AGENT_TYPE                  = 'agent_type'
+AGENT_CONFIG                = 'agent_config'
 BOOTSTRAPPER                = 'bootstrapper'
 CORES_PER_NODE              = 'cores_per_node'
 DEFAULT_QUEUE               = 'default_queue'
@@ -28,7 +29,8 @@ MANDATORY_ARGS              = 'mandatory_args'
 MPI_LAUNCH_METHOD           = 'mpi_launch_method'
 NOTES                       = 'notes'
 PILOT_AGENT                 = 'pilot_agent'
-PRE_BOOTSTRAP               = 'pre_bootstrap'
+PRE_BOOTSTRAP_1             = 'pre_bootstrap_1'
+PRE_BOOTSTRAP_2             = 'pre_bootstrap_2'
 RP_VERSION                  = 'rp_version'
 PYTHON_INTERPRETER          = 'python_interpreter'
 SCHEMAS                     = 'schemas'
@@ -58,7 +60,7 @@ class ResourceConfig(attributes.Attributes):
           rc.filesystem_endpoint  = "sftp://23.23.23.23"
           rc.default_queue        = "batch"
           rc.python_interpreter   = "/opt/python/2.7.6/bin/python"
-          rc.pre_bootstrap        = "module load mpi"
+          rc.pre_bootstrap_1      = "module load mpi"
           rc.valid_roots          = ["/home", "/work"]
           rc.bootstrapper         = "default_bootstrapper.sh"
 
@@ -106,7 +108,11 @@ class ResourceConfig(attributes.Attributes):
 
        [Type: `string`] [optional] TODO
 
-    .. data:: pre_bootstrap
+    .. data:: pre_bootstrap_1
+
+       [Type: `string`] [optional] TODO
+
+    .. data:: pre_bootstrap_2
 
        [Type: `string`] [optional] TODO
 
@@ -163,7 +169,10 @@ class ResourceConfig(attributes.Attributes):
           rcf_name = str(os.path.basename (filename))
 
           if  rcf_name.endswith ('.json'):
-              rcf_name = rcf_name[0:-5]
+              rcf_name = rcf_name[:-5]
+
+          if  rcf_name.startswith ('resource_'):
+              rcf_name = rcf_name[9:]
 
           if  'aliases' in rcf_dict:
               # return empty list
@@ -197,11 +206,13 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
-        self._attributes_register(LABEL,                   label, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(LABEL                  , label, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(AGENT_LAUNCH_METHOD    ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_MONGODB_ENDPOINT ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_SCHEDULER        ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_SPAWNER          ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_TYPE             ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(AGENT_CONFIG           ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(BOOTSTRAPPER           ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(CORES_PER_NODE         ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(DEFAULT_QUEUE          ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
@@ -215,7 +226,8 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(MPI_LAUNCH_METHOD      ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(NOTES                  ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PILOT_AGENT            ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(PRE_BOOTSTRAP          ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(PRE_BOOTSTRAP_1        ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(PRE_BOOTSTRAP_2        ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(RP_VERSION             ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PYTHON_INTERPRETER     ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(SCHEMAS                ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
@@ -239,4 +251,3 @@ class ResourceConfig(attributes.Attributes):
 
 
 # ------------------------------------------------------------------------------
-

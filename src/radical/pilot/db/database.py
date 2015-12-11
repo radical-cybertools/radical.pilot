@@ -13,14 +13,11 @@ __license__ = "MIT"
 
 import os 
 import saga
-import datetime
 import gridfs
 import radical.utils as ru
 
-from pymongo import *
-
+from radical.pilot.utils  import timestamp
 from radical.pilot.states import *
-from radical.pilot.utils  import DBConnectionInfo
 
 COMMAND_CANCEL_PILOT        = "Cancel_Pilot"
 COMMAND_CANCEL_COMPUTE_UNIT = "Cancel_Compute_Unit"
@@ -30,31 +27,6 @@ COMMAND_TYPE                = "type"
 COMMAND_ARG                 = "arg"
 COMMAND_TIME                = "time"
 
-# -----------------------------------------------------------------------------
-#
-class DBException(Exception):
-
-    # -------------------------------------------------------------------------
-    #
-    def __init__(self, msg, obj=None):
-        """Le constructeur. Creates a new exception object.
-        """
-        Exception.__init__(self, msg)
-        self._obj = obj
-
-
-# -----------------------------------------------------------------------------
-#
-class DBEntryExistsException(Exception):
-
-    # -------------------------------------------------------------------------
-    #
-    def __init__(self, msg, obj=None):
-        """Le constructeur. Creates a new exception object.
-        """
-        Exception.__init__(self, msg)
-        self._obj = obj
-
 
 #-----------------------------------------------------------------------------
 #
@@ -62,62 +34,8 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def __init__(self, db_url, db_name="radicalpilot"):
-        """ Le constructeur. Should not be called directrly, but rather
-            via the static methods new() or reconnect().
-        """
-
-        url = ru.Url (db_url)
-
-        if  db_name :
-            url.path = db_name
-
-        mongo, db, dbname, pname, cname = ru.mongodb_connect (url)
-
-        self._client = mongo
-        self._db     = db
-        self._dburl  = str(url)
-        self._dbname = dbname
-        if url.username and url.password:
-            self._dbauth = "%s:%s" % (url.username, url.password)
-        else:
-            self._dbauth = None
-
-        self._session_id = None
-
-        self._s  = None
-
-        self._w  = None
-        self._um = None
-
-        self._p  = None
-        self._pm = None
-
-    #--------------------------------------------------------------------------
-    #
-    @staticmethod
-    def new(sid, name, db_url, db_name="radicalpilot"):
-        """ Creates a new session (factory method).
-        """
-        creation_time = datetime.datetime.utcnow()
-
-        dbs = Session(db_url, db_name)
-        dbs.create(sid, name, creation_time)
-
-        connection_info = DBConnectionInfo(
-            session_id=sid,
-            dbname=dbs._dbname,
-            dbauth=dbs._dbauth,
-            dburl=dbs._dburl
-        )
-
-        return (dbs, creation_time, connection_info)
-
-    #--------------------------------------------------------------------------
-    #
-    def create(self, sid, name, creation_time):
-        """ Creates a new session (private).
-
+    def __init__(self, sid, name, dburl):
+        """ Creates a new session
             A session is a distinct collection with three sub-collections
             in MongoDB:
 
@@ -132,19 +50,30 @@ class Session():
             first insert. That's ok.
         """
 
-        # make sure session doesn't exist already
-        if  sid :
-            if  self._db[sid].count() != 0 :
-                raise DBEntryExistsException ("Session '%s' already exists." % sid)
+        # mpongodb_connect wants a string at the moment
+        mongo, db, _, _, _ = ru.mongodb_connect(str(dburl))
 
-        # remember session id
+        if not mongo or not db:
+            raise RuntimeError("Could not connect to database at %s" % dburl)
+
+        self._client     = mongo
+        self._db         = db
+        self._dburl      = ru.Url(dburl)
         self._session_id = sid
+        self._created    = timestamp()
+        self._connected  = self._created
+        self._closed     = None
 
+        # make sure session doesn't exist already
+        if self._db[sid].count() != 0:
+            raise RuntimeError("Session '%s' already exists." % sid)
+
+        # create the db entry
         self._s = self._db["%s" % sid]
         self._s.insert({"_id"       : sid,
                         "name"      : name,
-                        "created"   : creation_time,
-                        "connected" : creation_time})
+                        "created"   : self._created,
+                        "connected" : self._created})
 
         # Create the collection shortcut:
         self._w  = self._db["%s.cu" % sid]
@@ -153,61 +82,6 @@ class Session():
         self._p  = self._db["%s.p"  % sid]
         self._pm = self._db["%s.pm" % sid] 
 
-    #--------------------------------------------------------------------------
-    #
-    @staticmethod
-    def reconnect(sid, db_url, db_name="radical.pilot"):
-        """ Reconnects to an existing session.
-
-            Here we simply check if a radical.pilot.<sid> collection exists.
-        """
-        dbs = Session(db_url, db_name)
-        session_info = dbs._reconnect(sid)
-
-        connection_info = DBConnectionInfo(
-            session_id=sid,
-            dbname=dbs._dbname,
-            dbauth=dbs._dbauth,
-            dburl=dbs._dburl
-        )
-
-        return (dbs, session_info, connection_info)
-
-    #--------------------------------------------------------------------------
-    #
-    def _reconnect(self, sid):
-        """ Reconnects to an existing session (private).
-        """
-        # make sure session exists
-        #if sid not in self._db.collection_names():
-        #    raise DBEntryDoesntExistException("Session with id '%s' doesn't exists." % sid)
-
-        self._s = self._db["%s" % sid]
-        cursor = self._s.find({"_id": sid})
-
-        self._s.update({"_id"  : sid},
-                       {"$set" : {"connected" : datetime.datetime.utcnow()}}
-        )
-
-        cursor = self._s.find({"_id": sid})
-
-        # cursor -> dict
-        #if len(cursor) != 1:
-        #    raise DBEntryDoesntExistException("Session with id '%s' doesn't exists." % sid)
-
-        self._session_id = sid
-
-        # Create the collection shortcut:
-        self._w  = self._db["%s.cu" % sid]
-        self._um = self._db["%s.um" % sid]
-
-        self._p  = self._db["%s.p"  % sid]
-        self._pm = self._db["%s.pm" % sid]
-
-        try:
-            return cursor[0]
-        except:
-            raise Exception("Couldn't find Session UID '%s' in database." % sid)
 
     #--------------------------------------------------------------------------
     #
@@ -217,13 +91,68 @@ class Session():
         """
         return self._session_id
 
+
+    #--------------------------------------------------------------------------
+    #
+    @property
+    def dburl(self):
+        """ Returns the session db url.
+        """
+        return self._dburl
+
+
+    #--------------------------------------------------------------------------
+    #
+    def get_db(self):
+        """ Returns the session db.
+        """
+        return self._db
+
+
+    #--------------------------------------------------------------------------
+    #
+    @property
+    def created(self):
+        """ Returns the creation time
+        """
+        return self._created
+
+
+    #--------------------------------------------------------------------------
+    #
+    @property
+    def connected(self):
+        """ Returns the connection time
+        """
+        return self._connected
+
+
+    #--------------------------------------------------------------------------
+    #
+    @property
+    def closed(self):
+        """ Returns the connection time
+        """
+        return self._closed
+
+
+    #--------------------------------------------------------------------------
+    #
+    def close(self):
+        """ 
+        close the session
+        """
+        if self._s is None:
+            raise RuntimeError("No active session.")
+
+        self._closed = timestamp()
+
     #--------------------------------------------------------------------------
     #
     def delete(self):
         """ Removes a session and all associated collections from the DB.
         """
-        if self._s is None:
-            raise DBException("No active session.")
+        self.close()
 
         for collection in [self._s, self._w, self._um, self._p, self._pm]:
             collection.drop()
@@ -231,7 +160,7 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def insert_pilot_manager(self, pilot_manager_data, pilot_launcher_workers):
+    def insert_pilot_manager(self, pmgr_uid, pilot_manager_data, pilot_launcher_workers):
         """ Adds a pilot managers to the list of pilot managers.
 
             Pilot manager IDs are just kept for book-keeping.
@@ -239,7 +168,8 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        pilot_manager_json = {"data": pilot_manager_data,
+        pilot_manager_json = {"_id": pmgr_uid,
+                              "data": pilot_manager_data,
                               "pilot_launcher_workers": pilot_launcher_workers}
         result = self._pm.insert(pilot_manager_json)
 
@@ -304,7 +234,7 @@ class Session():
 
         if state :
             set_query["state"] = state
-            push_query["statehistory"] = [{'state': state, 'timestamp': datetime.datetime.utcnow()}]
+            push_query["statehistory"] = [{'state': state, 'timestamp': timestamp()}]
 
         if logs  : 
             push_query["log"] = logs
@@ -332,7 +262,7 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        ts = datetime.datetime.utcnow()
+        ts = timestamp()
 
         # the SAGA attribute interface does not expose private attribs in
         # as_dict().  That semantics may change in the future, for now we copy
@@ -344,7 +274,7 @@ class Session():
         pilot_doc = {
             "_id":            pilot_uid,
             "description":    pd_dict,
-            "submitted":      datetime.datetime.utcnow(),
+            "submitted":      ts,
             "input_transfer_started": None,
             "input_transfer_finished": None,
             "started":        None,
@@ -436,7 +366,7 @@ class Session():
 
         command = {COMMAND_FIELD: {COMMAND_TYPE: cmd,
                                    COMMAND_ARG:  arg,
-                                   COMMAND_TIME: datetime.datetime.utcnow()
+                                   COMMAND_TIME: timestamp()
         }}
 
         if pilot_ids is None:
@@ -493,11 +423,12 @@ class Session():
                  "unitmanager": unit_manager_id}
             )
 
-        units_json = []
+        # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
+        units_json = dict()
         for obj in cursor:
-            units_json.append(obj)
+            units_json[obj['_id']] = obj
 
-        return units_json
+        return units_json.values()
 
     #--------------------------------------------------------------------------
     #
@@ -505,8 +436,6 @@ class Session():
         """Update the state and the log of all compute units belonging to
            a specific pilot.
         """
-        ts = datetime.datetime.utcnow()
-
         if self._s is None:
             raise Exception("No active session.")
 
@@ -524,7 +453,7 @@ class Session():
         If src_states is given, this will only update units which are currently
         in those src states.
         """
-        ts = datetime.datetime.utcnow()
+        ts = timestamp()
 
         if  not unit_ids :
             return
@@ -595,16 +524,17 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def insert_unit_manager(self, scheduler, input_transfer_workers, output_transfer_workers):
+    def insert_unit_manager(self, umgr_uid, scheduler, input_transfer_workers, output_transfer_workers):
         """ Adds a unit managers to the list of unit managers.
 
             Unit manager IDs are just kept for book-keeping.
         """
-        if self._s is None:
+        if not self._s:
             raise Exception("No active session.")
 
         result = self._um.insert(
-            {"scheduler": scheduler,
+            {"_id": umgr_uid,
+             "scheduler": scheduler,
              "input_transfer_workers": input_transfer_workers,
              "output_transfer_workers": output_transfer_workers }
         )
@@ -617,20 +547,20 @@ class Session():
     def get_unit_manager(self, unit_manager_id):
         """ Get a unit manager.
         """
-        if self._s is None:
-            raise DBException("No active session.")
+        if not self._s:
+            raise RuntimeError("No active session.")
 
         cursor = self._um.find({"_id": unit_manager_id})
 
         if cursor.count() != 1:
             msg = "No unit manager with id %s found in DB." % unit_manager_id
-            raise DBException(msg=msg)
+            raise RuntimeError(msg=msg)
 
         try:
             return cursor[0]
         except:
             msg = "No UnitManager with id '%s' found in database." % unit_manager_id
-            raise DBException(msg=msg)
+            raise RuntimeError(msg=msg)
 
     #--------------------------------------------------------------------------
     #
@@ -638,7 +568,7 @@ class Session():
         """ Get a unit manager.
         """
         if self._s is None:
-            raise DBException("No active session.")
+            raise RuntimeError("No active session.")
 
         cursor = self._pm.find({"_id": pilot_manager_id})
 
@@ -646,7 +576,7 @@ class Session():
             return cursor[0]
         except:
             msg = "No pilot manager with id '%s' found in DB." % pilot_manager_id
-            raise DBException(msg=msg)
+            raise RuntimeError(msg=msg)
 
 
     #--------------------------------------------------------------------------
@@ -655,7 +585,7 @@ class Session():
         """ Lists all pilot managers.
         """
         if self._s is None:
-            raise Exception("No active session.")
+            raise RuntimeError("No active session.")
 
         unit_manager_uids = []
         cursor = self._um.find()
@@ -671,7 +601,7 @@ class Session():
         """ Adds a pilot from a unit manager.
         """
         if self._s is None:
-            raise Exception("No active session.")
+            raise RuntimeError("No active session.")
 
         for pilot_id in pilot_ids:
             self._p.update({"_id": pilot_id},
@@ -684,7 +614,7 @@ class Session():
         """ Removes one or more pilots from a unit manager.
         """
         if self._s is None:
-            raise Exception("No active session.")
+            raise RuntimeError("No active session.")
 
         # Add the ids to the pilot's queue
         for pilot_id in pilot_ids:
@@ -693,13 +623,13 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def unit_manager_list_pilots(self, unit_manager_uid):
+    def unit_manager_list_pilots(self, umgr_uid):
         """ Lists all pilots associated with a unit manager.
         """
         if self._s is None:
-            raise Exception("No active session.")
+            raise RuntimeError("No active session.")
 
-        cursor = self._p.find({"unitmanager": unit_manager_uid})
+        cursor = self._p.find({"unitmanager": umgr_uid})
 
         # cursor -> dict
         pilot_ids = []
@@ -709,18 +639,18 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def unit_manager_list_compute_units(self, unit_manager_uid, pilot_uid=None):
+    def unit_manager_list_compute_units(self, umgr_uid, pilot_uid=None):
         """ Lists all compute units associated with a unit manager.
         """
         # FIXME: why is this call not updating local unit state?
         if  self._s is None:
-            raise Exception("No active session.")
+            raise RuntimeError("No active session.")
 
         if  pilot_uid :
-            cursor = self._w.find({"unitmanager": unit_manager_uid, 
+            cursor = self._w.find({"unitmanager": umgr_uid, 
                                    "pilot"      : pilot_uid})
         else :
-            cursor = self._w.find({"unitmanager": unit_manager_uid})
+            cursor = self._w.find({"unitmanager": umgr_uid})
 
         # cursor -> dict
         unit_ids = []
@@ -735,7 +665,7 @@ class Session():
         """
         # FIXME: why is this call not updating local unit state?
         if  self._s is None:
-            raise Exception("No active session.")
+            raise RuntimeError("No active session.")
 
         cursor = self._w.find({"pilot"      : pilot_uid})
 
@@ -755,7 +685,7 @@ class Session():
             return
 
         if  self._s is None:
-            raise Exception("No active session.")
+            raise RuntimeError("No active session.")
 
         # Make sure we work on a list.
         if not isinstance(units, list):
@@ -790,19 +720,19 @@ class Session():
     def publish_compute_unit_callback_history(self, unit_uid, callback_history):
 
         if self._s is None:
-            raise Exception("No active session.")
+            raise RuntimeError("No active session.")
 
         self._w.update({"_id": unit_uid},
                        {"$set": {"callbackhistory": callback_history}})
 
     #--------------------------------------------------------------------------
     #
-    def insert_compute_units(self, unit_manager_uid, units, unit_log):
+    def insert_compute_units(self, umgr_uid, units, unit_log):
         """ Adds one or more compute units to the database and sets their state
             to 'PENDING'.
         """
         if self._s is None:
-            raise Exception("No active session.")
+            raise RuntimeError("No active session.")
 
         # Make sure we work on a list.
         if not isinstance(units, list):
@@ -813,18 +743,18 @@ class Session():
 
         for unit in units:
 
-            ts = datetime.datetime.utcnow()
+            ts = timestamp()
 
             unit_json = {
                 "_id":           unit.uid,
                 "description":   unit.description.as_dict(),
                 "restartable":   unit.description.restartable,
-                "unitmanager":   unit_manager_uid,
+                "unitmanager":   umgr_uid,
                 "pilot":         None,
                 "pilot_sandbox": None,
                 "state":         unit._local_state,
                 "statehistory":  [{"state": unit._local_state, "timestamp": ts}],
-                "submitted":     datetime.datetime.utcnow(),
+                "submitted":     ts,
                 "started":       None,
                 "finished":      None,
                 "exec_locs":     None,

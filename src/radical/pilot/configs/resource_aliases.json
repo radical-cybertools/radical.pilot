@@ -1,0 +1,16 @@
+
+{
+    "aliases": {
+        "archer.ac.uk"             : "epsrc.archer",
+        "blacklight.psc.xsede.org" : "xsede.blacklight",
+        "gordon.sdsc.xsede.org"    : "xsede.gordon",
+        "lonestar.tacc.xsede.org"  : "xsede.lonestar",
+        "stampede.tacc.utexas.edu" : "xsede.stampede",
+        "stampede.tacc.xsede.org"  : "xsede.stampede",
+        "stampede.xsede.org"       : "xsede.stampede",
+        "trestles.sdsc.xsede.org"  : "xsede.trestles",
+        "localhost"                : "local.localhost",
+        "lsu.supermic"             : "xsede.supermic"
+    }
+}
+

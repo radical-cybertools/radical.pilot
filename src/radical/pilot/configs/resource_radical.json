@@ -1,0 +1,33 @@
+
+{
+    "tutorial": {
+        "description"                 : "Our private tutorial VM on EC2",
+        "notes"                       : "None",
+        "schemas"                     : ["ssh", "local"],
+        "ssh"                         : 
+        {
+            "job_manager_endpoint"    : "torque+ssh://23.23.136.91/",
+            "filesystem_endpoint"     : "sftp://23.23.136.91/"
+        },
+        "local"                       : 
+        {
+            "job_manager_endpoint"    : "torque://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "FORK",
+        "task_launch_method"          : "FORK",
+        "mpi_launch_method"           : "MPIRUN",
+        "default_queue"               : "batch",
+        "python_interpreter"          : "/usr/bin/python",
+        "pre_bootstrap_1"             : [],
+        "valid_roots"                 : ["/home/","/tmp/"],
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_tutorial",
+        "virtenv_mode"                : "update"
+    }
+}
+

@@ -14,44 +14,34 @@
 # use a different RADICAL stack if needed, by rerouting the PYTHONPATH, w/o the
 # need to create a new virtualenv from scratch.
 #
-# Arguments passed to the bootstrapper should be required by the bootstrapper
-# itself, and not only to be passed down to the agent.
-# Configuration only used by the agent should go in the agent config file,
-# and not be passed as an argument to the bootstrapper.
-# Configuration used by both should be passed to the bootstrapper and
-# consecutively passed to the agent. Only in cases where it is justified, that
-# information can be "duplicated" in the agent config.
-# The rationale for this is:
-# 1) that the bootstrapper can't (easily) read from MongoDB, so it needs to
+# Arguments passed to bootstrap_1 should be required by bootstrap_1 itself,
+# and *not* be passed down to the agent.  Configuration used by the agent should
+# go in the agent config file, and *not( be passed as an argument to 
+# bootstrap_1.  Only parameters used by both should be passed to the bootstrap_1
+# and  consecutively passed to the agent. It is rarely justified to duplicate
+# information as parameters and agent config entries.  Exceptions would be:
+# 1) the shell scripts can't (easily) read from MongoDB, so they need to
 #    to get the information as arguments;
-# 2) that the agent needs information that goes beyond what can be put in
+# 2) the agent needs information that goes beyond what can be put in
 #    arguments, both qualitative and quantitatively.
 #
 # ------------------------------------------------------------------------------
 # global variables
 #
-AUTH=
 TUNNEL_BIND_DEVICE="lo"
 CLEANUP=
-CORES=
-DBNAME=
-DBURL=
-DEBUG=
+HOSTPORT=
 SDISTS=
 VIRTENV=
 VIRTENV_MODE=
-LRMS=
-MPI_LAUNCH_METHOD=
-SPAWNER=
-PILOT_ID=
+CCM=
+PILOTID=
 RP_VERSION=
-AGENT_TYPE=
 PYTHON=
-RUNTIME=
-SCHEDULER=
 SESSIONID=
-TASK_LAUNCH_METHOD=
 SANDBOX=`pwd`
+AGENT_TYPE='multicore'
+PREBOOTSTRAP2=""
 
 # flag which is set when a system level RP installation is found, triggers
 # '--upgrade' flag for pip
@@ -68,40 +58,67 @@ LOCK_TIMEOUT=180 # 3 min
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
 VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
-VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist"
-
-
-# --------------------------------------------------------------------
-#
-# it is suprisingly difficult to get seconds since epoch in POSIX --
-# 'date +%s' is a GNU extension...  Anyway, awk to the rescue!
-#
-timestamp () {
-  TIMESTAMP=`\awk 'BEGIN{srand(); print srand()}'`
-}
-
-
-if ! test -z "$RADICAL_PILOT_PROFILE"
-then
-    timestamp
-    TIME_ZERO=$TIMESTAMP
-    export TIME_ZERO
-fi
+VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces setproctitle"
 
 
 # ------------------------------------------------------------------------------
 #
-PROFILE_LOG="agent.prof"
+# If profiling is enabled, compile our little gtod app and take the first time
+#
+create_gtod()
+{
+
+    cat > gtod.c <<EOT
+#include <stdio.h>
+#include <sys/time.h>
+
+int main ()
+{
+    struct timeval tv;
+    (void) gettimeofday (&tv, NULL);
+    fprintf (stdout, "%d.%06d\n", tv.tv_sec, tv.tv_usec);
+    return (0);
+}
+EOT
+    cc -o gtod gtod.c
+
+    if ! test -e "./gtod"
+    then
+        # we "should" be able to build this everywhere ...
+        echo "can't build gtod binary!"
+        exit 1
+    fi
+
+    TIME_ZERO=`./gtod`
+    export TIME_ZERO
+
+}
+
+# ------------------------------------------------------------------------------
+#
 profile_event()
 {
-    if ! test -z "$RADICAL_PILOT_PROFILE"
+    PROFILE="bootstrap_1.prof"
+
+    if test -z "$RADICAL_PILOT_PROFILE"
     then
-        timestamp
-        NOW=$((TIMESTAMP-TIME_ZERO))
-        # Format: time, component, uid, event, message"
-        printf "%.4f,%s,%s,%s,%s\n" \
-            "$NOW" "Bootstrapper" "$PILOT_ID" "$@" "" >> $PROFILE_LOG
+        return
     fi
+
+    event=$1
+    msg=$2
+
+    NOW=`echo \`./gtod\` - "$TIME_ZERO" | bc`
+
+    if ! test -f "$PROFILE"
+    then
+        # initialize profile
+        echo "#time,name,uid,state,event,msg" > "$PROFILE"
+    fi
+
+    printf "%.4f,%s,%s,%s,%s,%s\n" \
+        "$NOW" "bootstrap_1" "$PILOTID" "ACTIVE" "$event" "$msg" \
+        >> "$PROFILE"
 }
 
 
@@ -343,30 +360,21 @@ usage: $0 options
 This script launches a RADICAL-Pilot agent.
 
 OPTIONS:
-   -a      The name of project / allocation to charge.
-   -b      name of sdist tarballs for radical stack install
-   -c      Number of requested cores.
-   -d      Specify debug level.
-   -e      List of commands to run before bootstrapping.
-   -f      Tunnel endpoint for connection forwarding.
-   -g      Global shared virtualenv (create if missing)
-   -h      Show this message.
-   -i      The Python interpreter to use, e.g., python2.7.
-   -j      Task launch method.
-   -k      MPI launch method.
-   -l      Type of Local Resource Management System.
-   -m      Address and port of the coordination service host (MongoDB).
-   -n      The name of the database.
-   -o      The agent job spawning mechanism.
-   -p      The unique identifier (uid) of the pilot.
-   -q      The scheduler to be used by the agent.
-   -s      The unique identifier (uid) of the session.
-   -r      Runtime in minutes.
-   -u      sandbox is user defined
-   -v      Version - the RADICAL-Pilot version to install in virtenv
-   -w      The working directory (sandbox) of the pilot.
-           (default is '.')
-   -x      Cleanup - delete pilot sandbox, virtualenv etc. after completion
+   -a   agent type (default: 'multicore')
+   -c   ccm mode of agent startup
+   -d   distribution source tarballs for radical stack install
+   -e   execute commands before bootstrapping phase 1: the main agent
+   -f   tunnel forward endpoint (MongoDB host:port)
+   -h   hostport to create tunnel to
+   -i   python Interpreter to use, e.g., python2.7
+   -m   mode of stack installion
+   -p   pilot ID
+   -r   radical-pilot version version to install in virtenv
+   -s   session ID
+   -t   tunnel device for connection forwarding
+   -v   virtualenv location (create if missing)
+   -w   execute commands before bootstrapping phase 2: the worker
+   -x   exit cleanup - delete pilot sandbox, virtualenv etc. after completion
 
 EOF
 
@@ -389,12 +397,12 @@ EOF
 #   'recreate': delete if it exists, otherwise create, then use
 #
 # create and update ops will be locked and thus protected against concurrent
-# bootstrapper invokations.
+# bootstrap_1 invokations.
 #
 # (private + location in pilot sandbox == old behavior)
 #
 # That locking will likely not scale nicely for larger numbers of concurrent
-# pilot, at least not for slow running updates (time for update of n pilots
+# pilots, at least not for slow running updates (time for update of n pilots
 # needs to be smaller than lock timeout).  OTOH, concurrent pip updates should
 # not have a negative impact on the virtenv in the first place, AFAIU -- lock on
 # create is more important, and should be less critical
@@ -407,17 +415,14 @@ virtenv_setup()
     virtenv="$2"
     virtenv_mode="$3"
 
-    virtenv_create=TRUE
-    virtenv_update=TRUE
-
-    lock "$pid" "$virtenv" # use default timeout
+    virtenv_create=UNDEFINED
+    virtenv_update=UNDEFINED
 
     if test "$virtenv_mode" = "private"
     then
         if test -f "$virtenv/bin/activate"
         then
             printf "\nERROR: private virtenv already exists at $virtenv\n\n"
-            unlock "$pid" "$virtenv"
             exit 1
         fi
         virtenv_create=TRUE
@@ -425,8 +430,9 @@ virtenv_setup()
 
     elif test "$virtenv_mode" = "update"
     then
-        test -f "$virtenv/bin/activate" || virtenv_create=TRUE
+        virtenv_create=FALSE
         virtenv_update=TRUE
+        test -f "$virtenv/bin/activate" || virtenv_create=TRUE
 
     elif test "$virtenv_mode" = "create"
     then
@@ -438,7 +444,6 @@ virtenv_setup()
         if ! test -f "$virtenv/bin/activate"
         then
             printf "\nERROR: given virtenv does not exists at $virtenv\n\n"
-            unlock "$pid" "$virtenv"
             exit 1
         fi
         virtenv_create=FALSE
@@ -450,9 +455,16 @@ virtenv_setup()
         virtenv_create=TRUE
         virtenv_update=FALSE
     else
+        virtenv_create=FALSE
+        virtenv_update=FALSE
         printf "\nERROR: virtenv mode invalid: $virtenv_mode\n\n"
-        unlock "$pid" "$virtenv"
         exit 1
+    fi
+
+    if test "$virtenv_create" = 'TRUE'
+    then
+        # no need to update a fresh ve
+        virtenv_update=FALSE
     fi
 
     echo "virtenv_create   : $virtenv_create"
@@ -552,8 +564,16 @@ virtenv_setup()
         fi
     fi
 
+    # A ve lock is not needed (nor desired) on sandbox installs.
+    RP_INSTALL_LOCK='FALSE'
+    if test "$RP_INSTALL_TARGET" = "VIRTENV"
+    then
+        RP_INSTALL_LOCK='TRUE'
+    fi
+
     echo "rp install sources: $RP_INSTALL_SOURCES"
     echo "rp install target : $RP_INSTALL_TARGET"
+    echo "rp install lock   : $RP_INSTALL_LOCK"
 
 
     # create virtenv if needed.  This also activates the virtenv.
@@ -561,6 +581,8 @@ virtenv_setup()
     then
         if ! test -f "$virtenv/bin/activate"
         then
+            echo 'rp lock for ve create'
+            lock "$pid" "$virtenv" # use default timeout
             virtenv_create "$virtenv"
             if ! test "$?" = 0
             then
@@ -568,6 +590,7 @@ virtenv_setup()
                unlock "$pid" "$virtenv"
                exit 1
             fi
+            unlock "$pid" "$virtenv"
         else
             echo "virtenv $virtenv exists"
         fi
@@ -582,6 +605,8 @@ virtenv_setup()
     # update virtenv if needed.  This also activates the virtenv.
     if test "$virtenv_update" = "TRUE"
     then
+        echo 'rp lock for ve update'
+        lock "$pid" "$virtenv" # use default timeout
         virtenv_update "$virtenv"
         if ! test "$?" = 0
         then
@@ -589,14 +614,22 @@ virtenv_setup()
            unlock "$pid" "$virtenv"
            exit 1
        fi
+       unlock "$pid" "$virtenv"
     else
         echo "do not update virtenv $virtenv"
     fi
 
     # install RP
+    if test "$RP_INSTALL_LOCK" = 'TRUE'
+    then
+        echo "rp lock for rp install (target: $RP_INSTALL_TARGET)"
+        lock "$pid" "$virtenv" # use default timeout
+    fi
     rp_install "$RP_INSTALL_SOURCES" "$RP_INSTALL_TARGET" "$RP_INSTALL_SDIST"
-
-    unlock "$pid" "$virtenv"
+    if test "$RP_INSTALL_LOCK" = 'TRUE'
+    then
+       unlock "$pid" "$virtenv"
+    fi
 
     profile_event 'virtenv_setup end'
 }
@@ -632,8 +665,8 @@ virtenv_activate()
     prefix="$virtenv/rp_install"
 
     # make sure the lib path into the prefix conforms to the python conventions
-    PYTHON_VERSION=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
-    VE_MOD_PREFIX=` python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
+    PYTHON_VERSION=`$PYTHON -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
+    VE_MOD_PREFIX=` $PYTHON -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
     echo "PYTHON INTERPRETER: $PYTHON"
     echo "PYTHON_VERSION    : $PYTHON_VERSION"
     echo "VE_MOD_PREFIX     : $VE_MOD_PREFIX"
@@ -1032,9 +1065,9 @@ verify_rp_install()
     echo
     echo "`$PYTHON --version` ($PYTHON)"
     echo "PYTHONPATH: $PYTHONPATH"
- (  python -c 'print "utils : ",; import radical.utils as ru; print ru.version_detail,; print ru.__file__' \
- && python -c 'print "saga  : ",; import saga          as rs; print rs.version_detail,; print rs.__file__' \
- && python -c 'print "pilot : ",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__' \
+ (  $PYTHON -c 'print "utils : ",; import radical.utils as ru; print ru.version_detail,; print ru.__file__' \
+ && $PYTHON -c 'print "saga  : ",; import saga          as rs; print rs.version_detail,; print rs.__file__' \
+ && $PYTHON -c 'print "pilot : ",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__' \
  && (echo 'install ok!'; true) \
  ) \
  || (echo 'install failed!'; false) \
@@ -1092,15 +1125,15 @@ find_available_port()
 
 # -------------------------------------------------------------------------------
 #
-# run a preprocess command -- and exit if it happens to fail
+# run a pre_bootstrap_1 command -- and exit if it happens to fail
 #
-# preprocess commands are executed right in arg parser loop because -e can be
+# pre_bootstrap_1 commands are executed right in arg parser loop because -e can be
 # passed multiple times
 #
-preprocess()
+pre_bootstrap_1()
 {
-    cmd=$@
-    run_cmd "Running pre-process command" "$cmd"
+    cmd="$@"
+    run_cmd "Running pre_bootstrap_1 command" "$cmd"
 
     if test $? -ne 0
     then
@@ -1109,6 +1142,17 @@ preprocess()
     fi
 }
 
+# -------------------------------------------------------------------------------
+#
+# Build the PREBOOTSTRAP2 variable to pass down to sub-agents
+#
+pre_bootstrap_2()
+{
+    cmd="$@"
+
+    PREBOOTSTRAP2="$PREBOOTSTRAP2
+$cmd"
+}
 
 # ------------------------------------------------------------------------------
 #
@@ -1118,53 +1162,43 @@ preprocess()
 # Report where we are, as this is not always what you expect ;-)
 # Print environment, useful for debugging
 echo "# -------------------------------------------------------------------"
-echo "# Bootstrapper running on host: `hostname -f`."
-echo "# Bootstrapper started as     : '$0 $@'"
-echo "# Environment of bootstrapper process:"
+echo "# bootstrap_1 running on host: `hostname -f`."
+echo "# bootstrap_1 started as     : '$0 $@'"
+echo "# Environment of bootstrap_1 process:"
 echo "#"
 echo "#"
 env | sort
 echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
-# free letters: b h o
-while getopts "a:b:c:D:d:e:f:g:hi:j:k:l:m:n:o:p:q:r:u:s:t:v:w:x:y:z:" OPTION; do
+while getopts "a:cd:e:f:h:i:m:p:r:s:t:v:w:x" OPTION; do
     case $OPTION in
-        a)  AUTH=$OPTARG  ;;
-        b)  SDISTS=$OPTARG  ;;
-        c)  CORES=$OPTARG  ;;
-        D)  TUNNEL_BIND_DEVICE=$OPTARG ;;
-        d)  DEBUG=$OPTARG  ;;
-        e)  preprocess "$OPTARG"  ;;
-        f)  FORWARD_TUNNEL_ENDPOINT=$OPTARG  ;;
-        g)  VIRTENV=$(eval echo $OPTARG)  ;;
-        i)  PYTHON=$OPTARG  ;;
-        j)  TASK_LAUNCH_METHOD=$OPTARG  ;;
-        k)  MPI_LAUNCH_METHOD=$OPTARG  ;;
-        l)  LRMS=$OPTARG  ;;
-        m)  DBURL=$OPTARG   ;;
-        n)  DBNAME=$OPTARG  ;;
-        o)  SPAWNER=$OPTARG  ;;
-        p)  PILOT_ID=$OPTARG  ;;
-        q)  SCHEDULER=$OPTARG  ;;
-        r)  RUNTIME=$OPTARG  ;;
-        s)  SESSIONID=$OPTARG  ;;
-        t)  AGENT_TYPE=$OPTARG  ;;
-        u)  VIRTENV_MODE=$OPTARG  ;;
-        v)  RP_VERSION=$OPTARG  ;;
-        w)  SANDBOX=$OPTARG  ;;
-        x)  CLEANUP=$OPTARG  ;;
-        *)  usage "Unknown option: $OPTION=$OPTARG"  ;;
+        a)  AGENT_TYPE="$OPTARG"  ;;
+        c)  CCM='TRUE'  ;;
+        d)  SDISTS="$OPTARG"  ;;
+        e)  pre_bootstrap_1 "$OPTARG"  ;;
+        f)  FORWARD_TUNNEL_ENDPOINT="$OPTARG"  ;;
+        h)  HOSTPORT="$OPTARG"  ;;
+        i)  PYTHON="$OPTARG"  ;;
+        m)  VIRTENV_MODE="$OPTARG"  ;;
+        p)  PILOTID="$OPTARG"  ;;
+        r)  RP_VERSION="$OPTARG"  ;;
+        s)  SESSIONID="$OPTARG"  ;;
+        t)  TUNNEL_BIND_DEVICE="$OPTARG" ;;
+        v)  VIRTENV=$(eval echo "$OPTARG")  ;;
+        w)  pre_bootstrap_2 "$OPTARG"  ;;
+        x)  CLEANUP="$OPTARG"  ;;
+        *)  usage "Unknown option: '$OPTION'='$OPTARG'"  ;;
     esac
 done
 
 # FIXME: By now the pre_process rules are already performed.
 #        We should split the parsing and the execution of those.
-#        "bootstrap start" is here so that $PILOT_ID is known.
+#        "bootstrap start" is here so that $PILOTID is known.
 # Create header for profile log
 if ! test -z "$RADICAL_PILOT_PROFILE"
 then
-    echo "time,component,uid,event,message" > $PROFILE_LOG
+    create_gtod
     profile_event 'bootstrap start'
 fi
 
@@ -1179,18 +1213,9 @@ echo "VIRTENV : $VIRTENV (normalized)"
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
-if test -z "$CORES"              ; then  usage "missing CORES             ";  fi
-if test -z "$DEBUG"              ; then  usage "missing DEBUG             ";  fi
-if test -z "$DBNAME"             ; then  usage "missing DBNAME            ";  fi
-if test -z "$DBURL"              ; then  usage "missing DBURL             ";  fi
-if test -z "$LRMS"               ; then  usage "missing LRMS              ";  fi
-if test -z "$SPAWNER"            ; then  usage "missing SPAWNER           ";  fi
-if test -z "$PILOT_ID"           ; then  usage "missing PILOT_ID          ";  fi
-if test -z "$RUNTIME"            ; then  usage "missing RUNTIME           ";  fi
-if test -z "$SCHEDULER"          ; then  usage "missing SCHEDULER         ";  fi
-if test -z "$SESSIONID"          ; then  usage "missing SESSIONID         ";  fi
-if test -z "$TASK_LAUNCH_METHOD" ; then  usage "missing TASK_LAUNCH_METHOD";  fi
-if test -z "$RP_VERSION"         ; then  usage "missing RP_VERSION        ";  fi
+if test -z "$PILOTID"     ; then  usage "missing PILOTID      ";  fi
+if test -z "$SESSIONID"   ; then  usage "missing SESSIONID    ";  fi
+if test -z "$RP_VERSION"  ; then  usage "missing RP_VERSION   ";  fi
 
 # If the host that will run the agent is not capable of communication
 # with the outside world directly, we will setup a tunnel.
@@ -1226,13 +1251,13 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
     else
         FORWARD_TUNNEL_ENDPOINT_HOST=$FORWARD_TUNNEL_ENDPOINT
     fi
-    ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$DBURL -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST &
+    ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$HOSTPORT -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST &
 
-    # Kill ssh process when bootstrapper dies, to prevent lingering ssh's
+    # Kill ssh process when bootstrap_1 dies, to prevent lingering ssh's
     trap 'jobs -p | xargs kill' EXIT
 
-    # Overwrite DBURL
-    DBURL=$BIND_ADDRESS:$DBPORT
+    # and export to agent
+    export RADICAL_PILOT_DB_HOSTPORT=$BIND_ADDRESS:$DBPORT
 
     profile_event 'tunnel setup done'
 
@@ -1241,7 +1266,7 @@ fi
 rehash "$PYTHON"
 
 # ready to setup the virtenv
-virtenv_setup    "$PILOT_ID" "$VIRTENV" "$VIRTENV_MODE"
+virtenv_setup    "$PILOTID" "$VIRTENV" "$VIRTENV_MODE"
 virtenv_activate "$VIRTENV"
 
 # Export the variables related to virtualenv,
@@ -1264,65 +1289,136 @@ export _OLD_VIRTUAL_PS1
 #       from the imported rp modules __file__.
 if test "$RP_INSTALL_TARGET" = 'SANDBOX'
 then
-    PILOT_SCRIPT="$SANDBOX/rp_install/bin/radical-pilot-agent-${AGENT_TYPE}.py"
+    PILOT_SCRIPT="$SANDBOX/rp_install/bin/radical-pilot-agent-$AGENT_TYPE.py"
     if ! test -e "$PILOT_SCRIPT"
     then
-        PILOT_SCRIPT="$SANDBOX/rp_install/lib/python$python_version/site-packages/radical/pilot/agent/radical-pilot-agent-${AGENT_TYPE}.py"
+        PILOT_SCRIPT="$SANDBOX/rp_install/lib/python$PYTHON_VERSION/site-packages/radical/pilot/agent/radical-pilot-agent-$AGENT_TYPE.py"
     fi
 else
-    PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent-${AGENT_TYPE}.py"
+    PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent-$AGENT_TYPE.py"
     if ! test -e "$PILOT_SCRIPT"
     then
-        PILOT_SCRIPT="$VIRTENV/rp_install/lib/python$python_version/site-packages/radical/pilot/agent/radical-pilot-agent-${AGENT_TYPE}.py"
+        PILOT_SCRIPT="$VIRTENV/rp_install/lib/python$PYTHON_VERSION/site-packages/radical/pilot/agent/radical-pilot-agent-$AGENT_TYPE.py"
     fi
 fi
 
-AGENT_CMD="python $PILOT_SCRIPT \
--c $CORES \
--d $DEBUG \
--j $TASK_LAUNCH_METHOD \
--l $LRMS \
--m $DBURL \
--n $DBNAME \
--o $SPAWNER \
--p $PILOT_ID \
--q $SCHEDULER \
--s $SESSIONID \
--r $RUNTIME"
 
-if ! test -z "$MPI_LAUNCH_METHOD"
+# TODO: Can this be generalized with our new split-agent now?
+if test -z "$CCM"
 then
-    AGENT_CMD="$AGENT_CMD -k $MPI_LAUNCH_METHOD"
-fi
-
-if ! test -z "$AUTH"
-then
-    AGENT_CMD="$AGENT_CMD -a $AUTH"
-fi
-
-if test "$LRMS" = "CCM"
-then
-    AGENT_CMD="ccmrun $AGENT_CMD"
+    AGENT_CMD="$PYTHON $PILOT_SCRIPT"
+else
+    AGENT_CMD="ccmrun $PYTHON $AGENT_CMD"
 fi
 
 verify_rp_install
 
+# TODO: (re)move this output?
 echo
 echo "# -------------------------------------------------------------------"
-echo "# Launching radical-pilot-agent for $CORES cores."
+echo "# Launching radical-pilot-agent "
 echo "# CMDLINE: $AGENT_CMD"
 
-# enable DebugHelper in agent
-export RADICAL_DEBUG=TRUE
+# At this point we expand the variables in $PREBOOTSTRAP2 to pick up the
+# changes made by the environment by pre_bootstrap_1.
+OLD_IFS=$IFS
+IFS=$'\n'
+for entry in $PREBOOTSTRAP2
+do
+    converted_entry=`eval echo $entry`
+    PREBOOTSTRAP2_EXPANDED="$PREBOOTSTRAP2_EXPANDED
+$converted_entry"
+done
+IFS=$OLD_IFS
 
+
+# we can't always lookup the ntp pool on compute nodes -- so do it once here,
+# and communicate the IP to the agent.  The agent may still not be able to
+# connect, but then a sensible timeout will kick in on ntplib.
+RADICAL_PILOT_NTPHOST=`dig +short 0.pool.ntp.org | grep -v -e ";;" -e "\.$" | head -n 1`
+
+# Before we start the (sub-)agent proper, we'll create a bootstrap_2.sh script
+# to do so.  For a single agent this is not needed -- but in the case where
+# we spawn out additional agent instances later, that script can be reused to
+# get proper # env settings etc, w/o running through bootstrap_1 again.
+# That includes pre_exec commands, virtualenv settings and sourcing (again),
+# and startup command).
+# We don't include any error checking right now, assuming that if the commands
+# worked once to get to this point, they should work again for the next agent.
+# Famous last words, I know...
+# Arguments to that script are passed on to the agent, which is specifically
+# done to distinguish agent instances.
+(cat <<EOT
+#!/bin/sh
+
+# some inspection for logging
+hostname
+
+# make sure we use the correct sandbox
+cd $SANDBOX
+
+# activate virtenv
+. $VIRTENV/bin/activate
+
+# make sure rp_install is used
+export PYTHONPATH=$PYTHONPATH
+
+# run agent in debug mode
+# FIXME: make option again?
 export SAGA_VERBOSE=DEBUG
-export RADIAL_VERBOSE=DEBUG
-export RADIAL_UTIL_VERBOSE=DEBUG
-export RADIAL_PILOT_VERBOSE=DEBUG
+export RADICAL_VERBOSE=DEBUG
+export RADICAL_UTIL_VERBOSE=DEBUG
+export RADICAL_PILOT_VERBOSE=DEBUG
+
+# avoid ntphost lookups on compute nodes
+export RADICAL_PILOT_NTPHOST=$RADICAL_PILOT_NTPHOST
+
+# pass environment variables down so that module load becomes effective at
+# the other side too (e.g. sub-agents).
+$PREBOOTSTRAP2_EXPANDED
+
+# start agent, forward arguments
+# NOTE: exec only makes sense in the last line of the script
+exec $AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
+
+EOT
+
+)> bootstrap_2.sh
+chmod 0755 bootstrap_2.sh
+# ------------------------------------------------------------------------------
+
+#
+# Create a barrier to start the agent.
+# This can be used by experimental scripts to push all units to the DB before
+# the agent starts.
+#
+if ! test -z "$RADICAL_PILOT_BARRIER"
+then
+    echo
+    echo "# -------------------------------------------------------------------"
+    echo "# Entering barrier for $RADICAL_PILOT_BARRIER ..."
+    echo "# -------------------------------------------------------------------"
+
+    profile_event 'bootstrap enter barrier'
+
+    while ! test -f $RADICAL_PILOT_BARRIER
+    do
+        sleep 1
+    done
+
+    profile_event 'bootstrap leave barrier'
+
+    echo
+    echo "# -------------------------------------------------------------------"
+    echo "# Leaving barrier"
+    echo "# -------------------------------------------------------------------"
+fi
 
 profile_event 'agent start'
 
-$AGENT_CMD
+# start the master agent instance (zero)
+profile_event 'sync rel' 'agent start'
+sh bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
 AGENT_EXITCODE=$?
 
 profile_event 'cleanup start'
@@ -1338,13 +1434,79 @@ echo "# CLEANUP: $CLEANUP"
 echo "#"
 contains $CLEANUP 'l' && rm -r "$SANDBOX/agent.*"
 contains $CLEANUP 'u' && rm -r "$SANDBOX/unit.*"
-contains $CLEANUP 'v' && rm -r "$VIRTENV/"
+contains $CLEANUP 'v' && rm -r "$VIRTENV/" # FIXME: in what cases?
 contains $CLEANUP 'e' && rm -r "$SANDBOX/"
 
 profile_event 'cleanup done'
 echo "#"
 echo "# -------------------------------------------------------------------"
 
+if ! test -z "`ls *.prof 2>/dev/null`"
+then
+    echo
+    echo "# -------------------------------------------------------------------"
+    echo "#"
+    echo "# Mark final profiling entry ..."
+    profile_event 'QED'
+    echo "#"
+    echo "# -------------------------------------------------------------------"
+    echo
+    FINAL_SLEEP=30
+    echo "# -------------------------------------------------------------------"
+    echo "#"
+    echo "# We wait for at most 30 seconds for the FS to flush profiles."
+    echo "# Success is assumed when all profiles end with a 'QED' event."
+    echo "#"
+    echo "# -------------------------------------------------------------------"
+    nprofs=`echo *.prof | wc -w`
+    nqed=`tail -n 1 *.prof | grep QED | wc -l`
+    nsleep=0
+    while ! test "$nprofs" = "$nqed"
+    do
+        nsleep=$((nsleep+1))
+        if test "$nsleep" = "30"
+        then
+            echo "abort profile sync @ $nsleep: $nprofs != $nqed"
+            break
+        fi
+        echo "delay profile sync @ $nsleep: $nprofs != $nqed"
+        sleep 1
+        # recheck nprofs too, just in case...
+        nprofs=`echo *.prof | wc -w`
+        nqed=`tail -n 1 *.prof | grep QED | wc -l`
+    done
+    echo
+    echo "# -------------------------------------------------------------------"
+    echo "#"
+    echo "# Tarring profiles ..."
+    PROFILES_TARBALL="$PILOTID.prof.tgz"
+    tar -czf $PROFILES_TARBALL *.prof
+    ls -l $PROFILES_TARBALL
+    echo "#"
+    echo "# -------------------------------------------------------------------"
+fi
+
+if ! test -z "`ls *{log,out,err,cfg} 2>/dev/null`"
+then
+    # TODO: This might not include all logs, as some systems only write
+    #       the output from the bootstrapper once the jobs completes.
+    echo
+    echo "# -------------------------------------------------------------------"
+    echo "#"
+    echo "# Tarring logfiles ..."
+    LOGFILES_TARBALL="$PILOTID.log.tgz"
+    tar -czf $LOGFILES_TARBALL *.{log,out,err,cfg}
+    ls -l $LOGFILES_TARBALL
+    echo "#"
+    echo "# -------------------------------------------------------------------"
+fi
+
+echo
+echo "# -------------------------------------------------------------------"
+echo "#"
+echo "# Done, exiting!"
+echo "#"
+echo "# -------------------------------------------------------------------"
+
 # ... and exit
 exit $AGENT_EXITCODE
-

@@ -1,0 +1,15 @@
+Basic minimisation, moving initial structure towards CoCo-generated target
+ &cntrl
+   imin=1, maxcyc=500,
+   ntpr=50,
+   ntr=1,
+   ntb=0, cut=25.0, igb=2, 
+ &end
+Atoms to be restrained
+1.0
+FIND
+* * * *
+SEARCH
+RES 1 999
+END
+END
