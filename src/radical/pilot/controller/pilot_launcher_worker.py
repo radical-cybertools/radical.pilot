@@ -737,6 +737,9 @@ class PilotLauncherWorker(threading.Thread):
                                 #'%s < %s' % (os.path.join(jd.working_directory, 'STDOUT'), 'unit.000000/STDOUT'),
                                 #'%s < %s' % (os.path.join(jd.working_directory, 'unit.000000/STDERR'), 'STDERR')
                                 #'%s < %s' % ('unit.000000/STDERR', 'unit.000000/STDERR')
+
+                                # TODO: This needs to go into a per pilot directory on the submit node
+                                '%s < %s' % ('pilot.0000.log.tgz', 'pilot.0000.log.tgz')
                             ]
 
                             if stage_sdist:
@@ -750,13 +753,14 @@ class PilotLauncherWorker(threading.Thread):
                                 ])
 
                             if agent_config:
-                                jd.file_transfer.append('%s > %s' % (cf_tmp_file, os.path.basename(cf_tmp_file)))
+                                jd.file_transfer.append('%s > %s' % (cfg_tmp_file, os.path.join(jd.working_directory, 'input', agent_cfg_name)))
 
                             if stage_cacerts:
-                                jd.file_transfer.append('%s > %s' % (cc_path, os.path.basename(cc_path)))
+                                jd.file_transfer.append('%s > %s' % (cc_path, os.path.join(jd.working_directory, 'input', os.path.basename(cc_path))))
 
                             if 'RADICAL_PILOT_PROFILE' in os.environ :
-                                jd.file_transfer.append('%s < %s' % ('agent.prof', 'agent.prof'))
+                                # TODO: This needs to go into a per pilot directory on the submit node
+                                jd.file_transfer.append('%s < %s' % ('pilot.0000.prof.tgz', 'pilot.0000.prof.tgz'))
 
                         # Set the SPMD variation only if required
                         if spmd_variation:
