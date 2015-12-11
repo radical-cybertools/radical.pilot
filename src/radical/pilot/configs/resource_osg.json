@@ -22,9 +22,11 @@
     "shared_filesystem": false,
     "health_check": false,
     "agent_scheduler": "CONTINUOUS",
-    "agent_spawner": "SHELL",
+    "agent_spawner": "POPEN",
+    "agent_config": "osg",
+    "agent_launch_method": "FORK",
     "task_launch_method": "FORK",
-    "pre_bootstrap": [
+    "pre_bootstrap_1": [
       "source /cvmfs/oasis.opensciencegrid.org/osg/modules/lmod/current/init/bash",
       "module load python/2.7"
     ],
@@ -55,9 +57,11 @@
     "shared_filesystem": false,
     "health_check": false,
     "agent_scheduler": "CONTINUOUS",
-    "agent_spawner": "SHELL",
+    "agent_spawner": "POPEN",
+    "agent_config": "osg",
+    "agent_launch_method": "FORK",
     "task_launch_method": "FORK",
-    "pre_bootstrap": [
+    "pre_bootstrap_1": [
       "source /cvmfs/oasis.opensciencegrid.org/osg/modules/lmod/current/init/bash",
       "module load python/2.7"
     ],
