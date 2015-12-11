@@ -479,16 +479,14 @@ class PilotLauncherWorker(threading.Thread):
                                                                 session=self._session,
                                                                 flags=saga.filesystem.CREATE_PARENTS)
 
-                        BOOTSTRAPPER_SCRIPT = "bootstrap_1.sh"
                         LOCAL_SCHEME = 'file'
 
                         # ------------------------------------------------------
-                        # Copy the bootstrap shell script.  This also creates
-                        # the sandbox. We use always "default_bootstrapper.sh"
-                        # TODO: Is this still configurable and/or in the resource configs?
-                        bootstrapper = "default_bootstrapper.sh"
+                        # Copy the bootstrap shell script.
+                        # This also creates the sandbox.
+                        BOOTSTRAPPER_SCRIPT = "bootstrap_1.sh"
                         bootstrapper_path = os.path.abspath("%s/../bootstrapper/%s" \
-                                % (mod_dir, bootstrapper))
+                                % (mod_dir, BOOTSTRAPPER_SCRIPT))
 
                         msg = "Using bootstrapper %s" % bootstrapper_path
                         logentries.append(Logentry(msg, logger=logger.info))
