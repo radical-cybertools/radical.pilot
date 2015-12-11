@@ -611,7 +611,6 @@ class PilotLauncherWorker(threading.Thread):
                         if not lrms               : raise RuntimeError("missing LRMS")
                         if not agent_launch_method: raise RuntimeError("missing agentlaunch method")
                         if not task_launch_method : raise RuntimeError("missing task launch method")
-                        if not mpi_launch_method  : raise RuntimeError("missing mpi launch method")
 
                         # massage some values
                         if not queue :
@@ -668,7 +667,8 @@ class PilotLauncherWorker(threading.Thread):
                         agent_cfg_dict['session_id']         = session_id
                         agent_cfg_dict['agent_launch_method']= agent_launch_method
                         agent_cfg_dict['task_launch_method'] = task_launch_method
-                        agent_cfg_dict['mpi_launch_method']  = mpi_launch_method
+                        if mpi_launch_method:
+                            agent_cfg_dict['mpi_launch_method']  = mpi_launch_method
                         if cores_per_node:
                             agent_cfg_dict['cores_per_node'] = cores_per_node
 

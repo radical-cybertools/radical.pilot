@@ -1471,6 +1471,10 @@ class LaunchMethod(object):
         if cls != LaunchMethod:
             raise TypeError("LaunchMethod factory only available to base class!")
 
+        # In case of undefined LM just return None
+        if not name:
+            return None
+
         try:
             impl = {
                 LAUNCH_METHOD_APRUN         : LaunchMethodAPRUN,
@@ -3163,7 +3167,8 @@ class LRMS(object):
         # launch methods.  Those hooks may need to adjust the LRMS settings
         # (hello ORTE).  We only call LM hooks *once*
         launch_methods = set() # set keeps entries unique
-        launch_methods.add(self._cfg['mpi_launch_method'])
+        if 'mpi_launch_method' in self._cfg:
+            launch_methods.add(self._cfg['mpi_launch_method'])
         launch_methods.add(self._cfg['task_launch_method'])
         launch_methods.add(self._cfg['agent_launch_method'])
 
@@ -3242,7 +3247,8 @@ class LRMS(object):
         # During LRMS termination, we call any existing shutdown hooks on the
         # launch methods.  We only call LM shutdown hooks *once*
         launch_methods = set() # set keeps entries unique
-        launch_methods.add(self._cfg['mpi_launch_method'])
+        if 'mpi_launch_method' in self._cfg:
+            launch_methods.add(self._cfg['mpi_launch_method'])
         launch_methods.add(self._cfg['task_launch_method'])
         launch_methods.add(self._cfg['agent_launch_method'])
 
@@ -4609,12 +4615,12 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         # The AgentExecutingComponent needs the LaunchMethods to construct
         # commands.
         self._task_launcher = LaunchMethod.create(
-                name   = self._cfg['task_launch_method'],
+                name   = self._cfg.get('task_launch_method'),
                 cfg    = self._cfg,
                 logger = self._log)
 
         self._mpi_launcher = LaunchMethod.create(
-                name   = self._cfg['mpi_launch_method'],
+                name   = self._cfg.get('mpi_launch_method'),
                 cfg    = self._cfg,
                 logger = self._log)
 
@@ -6895,7 +6901,6 @@ class AgentWorker(rpu.Worker):
         if not 'scheduler'           in self._cfg: raise ValueError("Missing agent scheduler")
         if not 'session_id'          in self._cfg: raise ValueError("Missing session id")
         if not 'spawner'             in self._cfg: raise ValueError("Missing agent spawner")
-        if not 'mpi_launch_method'   in self._cfg: raise ValueError("Missing mpi launch method")
         if not 'task_launch_method'  in self._cfg: raise ValueError("Missing unit launch method")
         if not 'agent_layout'        in self._cfg: raise ValueError("Missing agent layout")
 
