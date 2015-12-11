@@ -3273,7 +3273,7 @@ class LRMS(object):
         If interface is not given, do some magic.
         """
 
-        # List of interfaces that we probably dont want to bind to
+        # List of interfaces that we probably dont want to bind to by default
         black_list = ['lo', 'sit0']
 
         # Known intefaces in preferred order
@@ -3285,6 +3285,8 @@ class LRMS(object):
 
         # Get a list of all network interfaces
         all = netifaces.interfaces()
+
+        logger.debug("Network interfaces detected: %s", all)
 
         pref = None
         # If we got a request, see if it is in the list that we detected
@@ -7582,7 +7584,7 @@ def bootstrap_3():
             #        which hosts the bridge, not the local IP.  Until this
             #        is fixed, bridges MUST run on agent_0 (which is what
             #        LRMS.hostip() below will point to).
-            nodeip = LRMS.hostip(cfg.get('network_interface'))
+            nodeip = LRMS.hostip(cfg.get('network_interface'), logger=log)
             write_sub_configs(cfg, bridges, nodeip, log)
 
             # Store some runtime information into the session
