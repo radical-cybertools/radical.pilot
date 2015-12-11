@@ -674,22 +674,27 @@ class PilotLauncherWorker(threading.Thread):
 
                         # ------------------------------------------------------
                         # Write agent config dict to a json file in pilot sandbox.
-                        
-                        cfg_tmp_handle, cf_tmp_file = tempfile.mkstemp(suffix='.json', prefix='rp_agent_cfg_')
+
+                        cfg_tmp_dir = tempfile.mkdtemp(prefix='rp_agent_cfg_dir')
+                        agent_cfg_name = 'agent_0.cfg'
+                        cfg_tmp_file = os.path.join(cfg_tmp_dir, agent_cfg_name)
+                        cfg_tmp_handle = os.open(cfg_tmp_file, os.O_WRONLY|os.O_CREAT)
 
                         # Convert dict to json file
-                        msg = "Writing agent configuration to file '%s'." % cf_tmp_file
+                        msg = "Writing agent configuration to file '%s'." % cfg_tmp_file
                         logentries.append(Logentry (msg, logger=logger.debug))
-                        ru.write_json(agent_cfg_dict, cf_tmp_file)
+                        ru.write_json(agent_cfg_dict, cfg_tmp_file)
 
-                        cf_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, cf_tmp_file))
+                        cf_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, cfg_tmp_file))
                         msg = "Copying agent configuration file '%s' to sandbox (%s)." % (cf_url, pilot_sandbox)
                         logentries.append(Logentry (msg, logger=logger.debug))
-                        sandbox_tgt.copy(cf_url, 'agent_0.cfg')
+                        if shared_filesystem:
+                            sandbox_tgt.copy(cf_url, agent_cfg_name)
 
                         # close and remove temp file
                         os.close(cfg_tmp_handle)
-                        os.unlink(cf_tmp_file)
+                        if shared_filesystem:
+                            os.unlink(cfg_tmp_file)
 
                         # ------------------------------------------------------
                         # Done with all transfers to pilot sandbox, close handle
@@ -776,6 +781,9 @@ class PilotLauncherWorker(threading.Thread):
 
                         pilotjob = js.create_job(jd)
                         pilotjob.run()
+
+                        # Clean up agent config file after submission
+                        os.unlink(cfg_tmp_file)
 
                         # do a quick error check
                         if pilotjob.state == saga.FAILED:
