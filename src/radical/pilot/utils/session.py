@@ -73,7 +73,10 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
 
     _, db, _, _, _ = ru.mongodb_connect (dburl)
 
-    json_docs = get_session_docs(db, sid)
+    print dburl
+    print db
+
+    json_docs = get_session_docs(db=db, sid=sid)
 
     pilots = json_docs['pilot']
     num_pilots = len(pilots)
