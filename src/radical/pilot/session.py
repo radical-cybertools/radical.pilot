@@ -127,6 +127,7 @@ class Session (saga.Session):
         self._dbs       = None
         self._uid       = None
         self._connected = None
+        self._dburl     = None
 
         try:
             if name :
