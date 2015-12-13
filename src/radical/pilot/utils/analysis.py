@@ -613,7 +613,11 @@ def add_states(df):
             row['state'] and \
             row['event'] == 'advance': 
             old = _old_states.get(row['uid'], np.NaN)
-            _old_states[row['uid']] = row['state']
+            if old == row['state']:
+                # no change in state...
+                old = np.NaN
+            else:
+                _old_states[row['uid']] = row['state']
         return old
     # --------------------------------------------------------------------------
   # df['state_from'], df['state_to'] = zip(*df.apply(lambda row: _state(row), axis=1))
