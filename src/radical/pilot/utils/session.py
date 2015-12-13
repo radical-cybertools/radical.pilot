@@ -73,10 +73,7 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
 
     _, db, _, _, _ = ru.mongodb_connect (dburl)
 
-    print dburl
-    print db
-
-    json_docs = get_session_docs(db=db, sid=sid)
+    json_docs = get_session_docs(db, sid)
 
     pilots = json_docs['pilot']
     num_pilots = len(pilots)
@@ -140,7 +137,7 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
             tarball = tarfile.open(ftgt.path)
             tarball.extractall("%s/%s" % (tgt_url.path, pilot['_id']))
 
-            profiles = glob.glob("%s/*.prof" % tgt_url.path)
+            profiles = glob.glob("%s/%s/*.prof" % (tgt_url.path, pilot['_id']))
             print "Tarball %s extracted to '%s/%s/'." % (ftgt.path, tgt_url.path, pilot['_id'])
             ret.extend(profiles)
 
