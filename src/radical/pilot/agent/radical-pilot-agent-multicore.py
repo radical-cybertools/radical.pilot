@@ -1471,6 +1471,10 @@ class LaunchMethod(object):
         if cls != LaunchMethod:
             raise TypeError("LaunchMethod factory only available to base class!")
 
+        # In case of undefined LM just return None
+        if not name:
+            return None
+
         try:
             impl = {
                 LAUNCH_METHOD_APRUN         : LaunchMethodAPRUN,
@@ -3163,7 +3167,8 @@ class LRMS(object):
         # launch methods.  Those hooks may need to adjust the LRMS settings
         # (hello ORTE).  We only call LM hooks *once*
         launch_methods = set() # set keeps entries unique
-        launch_methods.add(self._cfg['mpi_launch_method'])
+        if 'mpi_launch_method' in self._cfg:
+            launch_methods.add(self._cfg['mpi_launch_method'])
         launch_methods.add(self._cfg['task_launch_method'])
         launch_methods.add(self._cfg['agent_launch_method'])
 
@@ -3242,7 +3247,8 @@ class LRMS(object):
         # During LRMS termination, we call any existing shutdown hooks on the
         # launch methods.  We only call LM shutdown hooks *once*
         launch_methods = set() # set keeps entries unique
-        launch_methods.add(self._cfg['mpi_launch_method'])
+        if 'mpi_launch_method' in self._cfg:
+            launch_methods.add(self._cfg['mpi_launch_method'])
         launch_methods.add(self._cfg['task_launch_method'])
         launch_methods.add(self._cfg['agent_launch_method'])
 
@@ -3273,7 +3279,7 @@ class LRMS(object):
         If interface is not given, do some magic.
         """
 
-        # List of interfaces that we probably dont want to bind to
+        # List of interfaces that we probably dont want to bind to by default
         black_list = ['lo', 'sit0']
 
         # Known intefaces in preferred order
@@ -3285,6 +3291,8 @@ class LRMS(object):
 
         # Get a list of all network interfaces
         all = netifaces.interfaces()
+
+        logger.debug("Network interfaces detected: %s", all)
 
         pref = None
         # If we got a request, see if it is in the list that we detected
@@ -4607,12 +4615,12 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         # The AgentExecutingComponent needs the LaunchMethods to construct
         # commands.
         self._task_launcher = LaunchMethod.create(
-                name   = self._cfg['task_launch_method'],
+                name   = self._cfg.get('task_launch_method'),
                 cfg    = self._cfg,
                 logger = self._log)
 
         self._mpi_launcher = LaunchMethod.create(
-                name   = self._cfg['mpi_launch_method'],
+                name   = self._cfg.get('mpi_launch_method'),
                 cfg    = self._cfg,
                 logger = self._log)
 
@@ -6893,7 +6901,6 @@ class AgentWorker(rpu.Worker):
         if not 'scheduler'           in self._cfg: raise ValueError("Missing agent scheduler")
         if not 'session_id'          in self._cfg: raise ValueError("Missing session id")
         if not 'spawner'             in self._cfg: raise ValueError("Missing agent spawner")
-        if not 'mpi_launch_method'   in self._cfg: raise ValueError("Missing mpi launch method")
         if not 'task_launch_method'  in self._cfg: raise ValueError("Missing unit launch method")
         if not 'agent_layout'        in self._cfg: raise ValueError("Missing agent layout")
 
@@ -7582,7 +7589,7 @@ def bootstrap_3():
             #        which hosts the bridge, not the local IP.  Until this
             #        is fixed, bridges MUST run on agent_0 (which is what
             #        LRMS.hostip() below will point to).
-            nodeip = LRMS.hostip(cfg.get('network_interface'))
+            nodeip = LRMS.hostip(cfg.get('network_interface'), logger=log)
             write_sub_configs(cfg, bridges, nodeip, log)
 
             # Store some runtime information into the session
@@ -7678,4 +7685,3 @@ if __name__ == "__main__":
 
 #
 # ------------------------------------------------------------------------------
-
