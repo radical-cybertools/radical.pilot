@@ -60,12 +60,12 @@
         "description"                 : "Your local machine.",
         "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
         "schemas"                     : ["local", "ssh"],
-        "ssh"                         : 
+        "ssh"                         :
         {
             "job_manager_endpoint"    : "ssh://localhost/",
             "filesystem_endpoint"     : "sftp://localhost/"
         },
-        "local"                       : 
+        "local"                       :
         {
             "job_manager_endpoint"    : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
