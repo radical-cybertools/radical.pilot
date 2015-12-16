@@ -27,7 +27,8 @@
         "valid_roots"                 : ["/home/","/tmp/"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_tutorial",
-        "virtenv_mode"                : "update"
+        "virtenv_mode"                : "update",
+        "python_dist"                 : "default"
     }
 }
 

@@ -137,7 +137,7 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
             tarball = tarfile.open(ftgt.path)
             tarball.extractall("%s/%s" % (tgt_url.path, pilot['_id']))
 
-            profiles = glob.glob("%s/*.prof" % tgt_url.path)
+            profiles = glob.glob("%s/%s/*.prof" % (tgt_url.path, pilot['_id']))
             print "Tarball %s extracted to '%s/%s/'." % (ftgt.path, tgt_url.path, pilot['_id'])
             ret.extend(profiles)
 
@@ -168,7 +168,7 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
 
 # ------------------------------------------------------------------------------
 #
-def get_session_frames (sids, db, cachedir=None) :
+def get_session_frames (sids, db=None, cachedir=None) :
 
     # use like this: 
     #
@@ -183,6 +183,16 @@ def get_session_frames (sids, db, cachedir=None) :
     # print u_min
     # print u_max
     # print u_max - u_min
+
+    mongo = None
+
+    if not db:
+        dburl = os.environ.get('RADICAL_PILOT_DBURL')
+        if not dburl:
+            raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
+
+        mongo, db, _, _, _ = ru.mongodb_connect(dburl)
+
 
     if not isinstance (sids, list) :
         sids = [sids]
@@ -416,6 +426,8 @@ def get_session_frames (sids, db, cachedir=None) :
     pilot_frame   = pandas.DataFrame (pilot_dicts)
     unit_frame    = pandas.DataFrame (unit_dicts)
 
+    if mongo:
+        mongo.close()
 
     return session_frame, pilot_frame, unit_frame
 

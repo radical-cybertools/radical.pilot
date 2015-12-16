@@ -408,6 +408,7 @@ class PilotLauncherWorker(threading.Thread):
                         cores_per_node          = resource_cfg.get ('cores_per_node')
                         shared_filesystem       = resource_cfg.get ('shared_filesystem', True)
                         health_check            = resource_cfg.get ('health_check', True)
+                        python_dist             = resource_cfg.get ('python_dist')
 
 
                         # Agent configuration that is not part of the public API.
@@ -485,7 +486,7 @@ class PilotLauncherWorker(threading.Thread):
                         # Copy the bootstrap shell script.
                         # This also creates the sandbox.
                         BOOTSTRAPPER_SCRIPT = "bootstrap_1.sh"
-                        bootstrapper_path = os.path.abspath("%s/../bootstrapper/%s" \
+                        bootstrapper_path   = os.path.abspath("%s/../bootstrapper/%s" \
                                 % (mod_dir, BOOTSTRAPPER_SCRIPT))
 
                         msg = "Using bootstrapper %s" % bootstrapper_path
@@ -643,6 +644,7 @@ class PilotLauncherWorker(threading.Thread):
                         bootstrap_args += " -r '%s'" % rp_version
                         bootstrap_args += " -s '%s'" % session_id
                         bootstrap_args += " -v '%s'" % virtenv
+                        bootstrap_args += " -b '%s'" % python_dist
 
                         # set optional args
                         if agent_type:              bootstrap_args += " -a '%s'" % agent_type
