@@ -148,9 +148,11 @@ import shutil
 import hostlist
 import tempfile
 import netifaces
+import fractions
 import threading
 import traceback
 import subprocess
+import collections
 import multiprocessing
 import json
 import urllib2 as ul
@@ -457,9 +459,15 @@ class AgentSchedulingComponent(rpu.Component):
         # all components use the command channel for control messages
         self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
 
-        # we declare a drop callback, so that cored allocated to clones can be
-        # freed again
-        self.declare_drop_cb(self.drop_cb)
+        # we declare a clone and a drop callback, so that cores can be assigned
+        # to clones, and can also be freed again.
+        self.declare_clone_cb(self.clone_cb)
+        self.declare_drop_cb (self.drop_cb)
+
+        # when cloning, we fake scheduling via round robin over all cores.
+        # These indexes keeps track of the last used core.
+        self._clone_slot_idx = 0
+        self._clone_core_idx = 0
 
         # The scheduler needs the LRMS information which have been collected
         # during agent startup.  We dig them out of the config at this point.
@@ -602,6 +610,8 @@ class AgentSchedulingComponent(rpu.Component):
                 with self._wait_lock :
                     self._wait_pool.remove(cu)
                     self._prof.prof('unqueue', msg="re-allocation done", uid=cu['_id'])
+            else:
+                # Break out of this loop if we didn't manage to schedule a task
                 break
 
         # Note: The extra space below is for visual alignment
@@ -640,6 +650,49 @@ class AgentSchedulingComponent(rpu.Component):
 
         # Note: The extra space below is for visual alignment
         self._log.info("slot status after  unschedule: %s" % self.slot_status ())
+
+
+    # --------------------------------------------------------------------------
+    #
+    def clone_cb(self, unit, name=None, mode=None, prof=None, logger=None):
+
+        if mode == 'output':
+
+            # so, this is tricky: we want to clone the unit after scheduling,
+            # but at the same time don't want to have all clones end up on the
+            # same core -- so the clones should be scheduled to a different (set
+            # of) core(s).  But also, we don't really want to schedule, that is
+            # why we blow up on output, right?
+            #
+            # So we fake scheduling.  This assumes the 'self.slots' structure as
+            # used by the continuous scheduler, wo will likely only work for
+            # this one (FIXME): we walk our own index into the slot structure,
+            # and simply assign that core, be it busy or not.
+            #
+            # FIXME: This method makes no attempt to set 'task_slots', so will
+            # not work properly for some launch methods.
+            #
+            # This is awful.  I mean, really awful.  Like, nothing good can come
+            # out of this.  Ticket #902 should be implemented, it will solve
+            # this problem much cleaner...
+
+            if prof: prof.prof      ('clone_cb', uid=unit['_id'])
+            else   : self._prof.prof('clone_cb', uid=unit['_id'])
+
+            slot = self.slots[self._clone_slot_idx]
+
+            unit['opaque_slots']['task_slots'][0] = '%s:%d' \
+                    % (slot['node'], self._clone_core_idx)
+          # self._log.debug(' === clone cb out : %s', unit['opaque_slots'])
+
+            if (self._clone_core_idx +  1) < self._lrms_cores_per_node:
+                self._clone_core_idx += 1
+            else:
+                self._clone_core_idx  = 0
+                self._clone_slot_idx += 1
+
+                if self._clone_slot_idx >= len(self.slots):
+                    self._clone_slot_idx = 0
 
 
     # --------------------------------------------------------------------------
@@ -1557,6 +1610,70 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
+    @classmethod
+    def _create_hostfile(cls, all_hosts, separator=' ', impaired=False):
+
+        # Open appropriately named temporary file
+        handle, filename = tempfile.mkstemp(prefix='rp_hostfile', dir=os.getcwd())
+
+        if not impaired:
+            #
+            # Write "hostN x\nhostM y\n" entries
+            #
+
+            # Create a {'host1': x, 'host2': y} dict
+            counter = collections.Counter(all_hosts)
+            # Convert it into an ordered dict,
+            # which hopefully resembles the original ordering
+            count_dict = collections.OrderedDict(sorted(counter.items(), key=lambda t: t[0]))
+
+            for (host, count) in count_dict.iteritems():
+                os.write(handle, '%s%s%d\n' % (host, separator, count))
+
+        else:
+            #
+            # Write "hostN\nhostM\n" entries
+            #
+            for host in all_hosts:
+                os.write(handle, '%s\n' % host)
+
+        # No longer need to write
+        os.close(handle)
+
+        # Return the filename, caller is responsible for cleaning up
+        return filename
+
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def _compress_hostlist(cls, all_hosts):
+
+        # Return gcd of a list of numbers
+        def gcd_list(l):
+            return reduce(fractions.gcd, l)
+
+        # Create a {'host1': x, 'host2': y} dict
+        count_dict = dict(collections.Counter(all_hosts))
+        # Find the gcd of the host counts
+        host_gcd = gcd_list(set(count_dict.values()))
+
+        # Divide the host counts by the gcd
+        for host in count_dict:
+            count_dict[host] /= host_gcd
+
+        # Recreate a list of hosts based on the normalized dict
+        hosts = []
+        [hosts.extend([host] * count)
+                for (host, count) in count_dict.iteritems()]
+        # Esthetically sort the list, as we lost ordering by moving to a dict/set
+        hosts.sort()
+
+        return hosts
+
+
+    # --------------------------------------------------------------------------
+    #
     def _create_arg_string(self, args):
 
         # unit Arguments (if any)
@@ -1659,7 +1776,7 @@ class LaunchMethodMPIRUN(LaunchMethod):
 
         task_slots = opaque_slots['task_slots']
 
-        if task_arstr:
+        if task_argstr:
             task_command = "%s %s" % (task_exec, task_argstr)
         else:
             task_command = task_exec
@@ -1790,8 +1907,25 @@ class LaunchMethodMPIEXEC(LaunchMethod):
 
         task_slots = opaque_slots['task_slots']
 
-        # Construct the hosts_string
-        hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
+        # Extract all the hosts from the slots
+        all_hosts = [slot.split(':')[0] for slot in task_slots]
+
+        # Shorten the host list as much as possible
+        hosts = self._compress_hostlist(all_hosts)
+
+        # If we have a CU with many cores, and the compression didn't work
+        # out, we will create a hostfile and pass  that as an argument
+        # instead of the individual hosts
+        if len(hosts) > 42:
+
+            # Create a hostfile from the list of hosts
+            hostfile = self._create_hostfile(all_hosts, separator=':')
+            hosts_string = "-hostfile %s" % hostfile
+
+        else:
+
+            # Construct the hosts_string ('h1 h2 .. hN')
+            hosts_string = "-host "+ ",".join(hosts)
 
         # Construct the executable and arguments
         if task_argstr:
@@ -1799,7 +1933,7 @@ class LaunchMethodMPIEXEC(LaunchMethod):
         else:
             task_command = task_exec
 
-        mpiexec_command = "%s -n %s -host %s %s" % (
+        mpiexec_command = "%s -n %s %s %s" % (
             self.launch_command, task_cores, hosts_string, task_command)
 
         return mpiexec_command, None
@@ -1833,6 +1967,7 @@ class LaunchMethodAPRUN(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
+        task_mpi     = cud['mpi']
         task_args    = cud.get('arguments') or []
         task_argstr  = self._create_arg_string(task_args)
 
@@ -1841,7 +1976,11 @@ class LaunchMethodAPRUN(LaunchMethod):
         else:
             task_command = task_exec
 
-        aprun_command = "%s -n %d %s" % (self.launch_command, task_cores, task_command)
+        if task_mpi:
+            pes = task_cores
+        else:
+            pes = 1
+        aprun_command = "%s -n %d %s" % (self.launch_command, pes, task_command)
 
         return aprun_command, None
 
@@ -2120,12 +2259,25 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
         else:
             task_command = task_exec
 
-        # Construct the hosts_string ('h1 h2 .. hN')
-        hosts_string = " ".join([slot.split(':')[0] for slot in task_slots])
+        # Extract all the hosts from the slots
+        hosts = [slot.split(':')[0] for slot in task_slots]
+
+        # If we have a CU with many cores, we will create a hostfile and pass
+        # that as an argument instead of the individual hosts
+        if len(hosts) > 42:
+
+            # Create a hostfile from the list of hosts
+            hostfile = self._create_hostfile(hosts, impaired=True)
+            hosts_string = "-hostfile %s" % hostfile
+
+        else:
+
+            # Construct the hosts_string ('h1 h2 .. hN')
+            hosts_string = " ".join(hosts)
 
         export_vars = ' '.join([var+"=$"+var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
-        mpirun_rsh_command = "%s -np %s %s %s %s" % (
+        mpirun_rsh_command = "%s -np %d %s %s %s" % (
             self.launch_command, task_cores, hosts_string, export_vars, task_command)
 
         return mpirun_rsh_command, None
@@ -2742,8 +2894,7 @@ class LaunchMethodYARN(LaunchMethod):
     @classmethod
     def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
         if 'name' not in lm_info:
-            raise RuntimeError('rm_ip not in lm_info for %s' \
-                    % (self.name))
+            raise RuntimeError('name not in lm_info for %s' % name)
 
         if lm_info['name'] != 'YARNLRMS':
             logger.info('Stoping YARN')
@@ -4338,7 +4489,7 @@ class YARNLRMS(LRMS):
 
         # I will leave it for the moment because I have not found another way
         # to take the necessary value yet.
-        yarn_conf_output = subprocess.check_output(['yarn', 'node', '-list']).split('\n')
+        yarn_conf_output = subprocess.check_output(['yarn', 'node', '-list'], stderr=subprocess.STDOUT).split('\n')
         for line in yarn_conf_output:
             if 'ResourceManager' in line:
                 settings = line.split('at ')[1]
