@@ -734,6 +734,7 @@ class PilotLauncherWorker(threading.Thread):
                             jd.file_transfer = [
                                 #'%s > %s' % (bootstrapper_path, os.path.basename(bootstrapper_path)),
                                 '%s > %s' % (bootstrapper_path, os.path.join(jd.working_directory, 'input', os.path.basename(bootstrapper_path))),
+                                '%s > %s' % (cfg_tmp_file, os.path.join(jd.working_directory, 'input', agent_cfg_name)),
                                 #'%s < %s' % ('agent.log', os.path.join(jd.working_directory, 'agent.log')),
                                 #'%s < %s' % (os.path.join(jd.working_directory, 'agent.log'), 'agent.log'),
                                 #'%s < %s' % ('agent.log', 'agent.log'),
@@ -754,9 +755,6 @@ class PilotLauncherWorker(threading.Thread):
                                     #'%s > %s' % (ru.sdist_path, os.path.basename(ru.sdist_path)),
                                     '%s > %s' % (ru.sdist_path, os.path.join(jd.working_directory, 'input', os.path.basename(ru.sdist_path)))
                                 ])
-
-                            if agent_config:
-                                jd.file_transfer.append('%s > %s' % (cfg_tmp_file, os.path.join(jd.working_directory, 'input', agent_cfg_name)))
 
                             if stage_cacerts:
                                 jd.file_transfer.append('%s > %s' % (cc_path, os.path.join(jd.working_directory, 'input', os.path.basename(cc_path))))
