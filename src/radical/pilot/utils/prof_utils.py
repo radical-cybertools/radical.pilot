@@ -546,7 +546,7 @@ def clone_units(cfg, units, name, mode, prof=None, clone_cb=None, logger=None):
             ret.append(clone)
 
             if clone_cb:
-               clone_cb(unit=clone, name=name, mode=mode, prof=prof, logger=logger)
+                clone_cb(unit=clone, name=name, mode=mode, prof=prof, logger=logger)
 
         # Append the original cu last, to increase the likelyhood that
         # application state only advances once all clone states have also
