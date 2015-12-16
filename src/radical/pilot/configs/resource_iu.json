@@ -21,7 +21,8 @@
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_br2",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True"
+        "stage_cacerts"               : "True",
+        "python_dist"                 : "default"
     },
     "bigred2_ccm": {
         "description"                 : "Indiana University's Cray XE6/XK7 cluster in Cluster Compatibility Mode (CCM) (https://kb.iu.edu/d/bcqt).",
@@ -53,6 +54,7 @@
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_br2",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True"
+        "stage_cacerts"               : "True",
+        "python_dist"                 : "default"
     }
 }
