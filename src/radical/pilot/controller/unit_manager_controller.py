@@ -26,7 +26,7 @@ from .input_file_transfer_worker  import InputFileTransferWorker
 from .output_file_transfer_worker import OutputFileTransferWorker
 
 
-IDLE_TIME = 1.0  # seconds to sleep between activities
+IDLE_TIME = 3.0  # seconds to sleep between activities
 
 # ----------------------------------------------------------------------------
 #
@@ -266,9 +266,8 @@ class UnitManagerController(threading.Thread):
                 if not self._initialized.is_set():
                     self._initialized.set()
 
-                # sleep a little if this cycle was idle
-                if  not action :
-                    time.sleep(IDLE_TIME)
+                # sleep a little to avoid overload of the DB
+                time.sleep(IDLE_TIME)
 
 
         except SystemExit as e :
