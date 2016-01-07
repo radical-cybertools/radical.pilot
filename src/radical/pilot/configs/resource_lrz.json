@@ -15,7 +15,7 @@
             "filesystem_endpoint"     : "sftp://supermuc.lrz.de/"
         },
         "default_queue"               : "test",
-        "lrms"                        : "LOADL",
+        "lrms"                        : "LOADLEVELER",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",

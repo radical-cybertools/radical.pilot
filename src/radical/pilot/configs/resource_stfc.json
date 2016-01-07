@@ -9,7 +9,7 @@
             "filesystem_endpoint"     : "sftp://login.joule.hartree.stfc.ac.uk/"
         },
         "default_queue"               : "prod",
-        "lrms"                        : "LOADL",
+        "lrms"                        : "LOADLEVELER",
         "agent_scheduler"             : "TORUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "RUNJOB",

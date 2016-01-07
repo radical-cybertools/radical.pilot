@@ -42,8 +42,11 @@ from .utils  import version, version_detail, version_branch
 from .utils  import sdist_name, sdist_path
 from .utils  import logger
 
-# make worker submodule available
+# make submodules available
+import utils
 import worker
+import agent
+
 
 # ------------------------------------------------------------------------------
 
