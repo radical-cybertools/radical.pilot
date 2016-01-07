@@ -35,3 +35,20 @@ AGENT_RESCHEDULE_PUBSUB        = 'agent_reschedule_pubsub'
 AGENT_COMMAND_PUBSUB           = 'agent_command_pubsub'
 AGENT_STATE_PUBSUB             = 'agent_state_pubsub'
 
+
+# ------------------------------------------------------------------------------
+#
+# protocol defines
+#
+COMMAND_CANCEL_PILOT        = "Cancel_Pilot"
+COMMAND_CANCEL_COMPUTE_UNIT = "Cancel_Compute_Unit"
+COMMAND_KEEP_ALIVE          = "Keep_Alive"
+COMMAND_FIELD               = "commands"
+COMMAND_TYPE                = "type"
+COMMAND_ARG                 = "arg"
+COMMAND_CANCEL              = "Cancel"
+COMMAND_SCHEDULE            = "schedule"
+COMMAND_RESCHEDULE          = "reschedule"
+COMMAND_UNSCHEDULE          = "unschedule"
+COMMAND_WAKEUP              = "wakeup"
+
