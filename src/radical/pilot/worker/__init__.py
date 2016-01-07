@@ -4,5 +4,6 @@ __license__   = "MIT"
 
 
 from .heartbeat import Heartbeat
+from .update    import Update
 
 
