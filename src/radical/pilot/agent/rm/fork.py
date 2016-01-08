@@ -5,7 +5,7 @@ __license__   = "MIT"
 import math
 import multiprocessing
 
-from base import LRMS
+from .base import LRMS
 
 # ==============================================================================
 #

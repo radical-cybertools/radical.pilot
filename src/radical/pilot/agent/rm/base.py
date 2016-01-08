@@ -9,8 +9,9 @@ import netifaces
 import radical.utils as ru
 
 
-RM_NAME_CCM         = 'CCM'
+# 'enum' for resource manager types
 RM_NAME_FORK        = 'FORK'
+RM_NAME_CCM         = 'CCM'
 RM_NAME_LOADLEVELER = 'LOADLEVELER'
 RM_NAME_LSF         = 'LSF'
 RM_NAME_PBSPRO      = 'PBSPRO'
@@ -204,8 +205,8 @@ class LRMS(object):
 
         try:
             impl = {
-                RM_NAME_CCM         : CCM,
                 RM_NAME_FORK        : Fork,
+                RM_NAME_CCM         : CCM,
                 RM_NAME_LOADLEVELER : LoadLeveler,
                 RM_NAME_LSF         : LSF,
                 RM_NAME_PBSPRO      : PBSPro,
