@@ -1,4 +1,7 @@
 
+__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
+__license__   = "MIT"
+
 
 import os
 import netifaces
@@ -185,8 +188,15 @@ class LRMS(object):
     @classmethod
     def create(cls, name, cfg, logger):
 
-        from .fork import Fork
-
+        from .ccm         import CCM        
+        from .fork        import Fork       
+        from .loadleveler import LoadLeveler
+        from .lsf         import LSF        
+        from .pbspro      import PBSPro     
+        from .sge         import SGE        
+        from .slurm       import Slurm      
+        from .torque      import Torque     
+        from .yarn        import Yarn       
 
         # Make sure that we are the base-class!
         if cls != LRMS:
@@ -194,15 +204,15 @@ class LRMS(object):
 
         try:
             impl = {
-              # RM_NAME_CCM         : CCMLRMS,
+                RM_NAME_CCM         : CCM,
                 RM_NAME_FORK        : Fork,
-              # RM_NAME_LOADLEVELER : LoadLevelerLRMS,
-              # RM_NAME_LSF         : LSFLRMS,
-              # RM_NAME_PBSPRO      : PBSProLRMS,
-              # RM_NAME_SGE         : SGELRMS,
-              # RM_NAME_SLURM       : SLURMLRMS,
-              # RM_NAME_TORQUE      : TORQUELRMS,
-              # RM_NAME_YARN        : YARNLRMS
+                RM_NAME_LOADLEVELER : LoadLeveler,
+                RM_NAME_LSF         : LSF,
+                RM_NAME_PBSPRO      : PBSPro,
+                RM_NAME_SGE         : SGE,
+                RM_NAME_SLURM       : Slurm,
+                RM_NAME_TORQUE      : Torque,
+                RM_NAME_YARN        : Yarn
             }[name]
             return impl(cfg, logger)
 

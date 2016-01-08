@@ -1,7 +1,16 @@
 
+__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
+__license__   = "MIT"
+
+
+import os
+
+from base import LRMS
+
+
 # ==============================================================================
 #
-class LoadLevelerLRMS(LRMS):
+class LoadLeveler(LRMS):
 
     # --------------------------------------------------------------------------
     #
@@ -331,7 +340,8 @@ class LoadLevelerLRMS(LRMS):
         midplane = midplanes[midplane_idx]['M']
 
         nodename = 'R%.2d-M%.1d-N%.2d-J%.2d' % (rack, midplane, board, node)
-        self._log.debug("from location %s constructed node name: %s, left at board: %d" % (self.loc2str(location), nodename, board))
+        self._log.debug("from location %s constructed node name: %s, left at board: %d" % \
+                        (self.loc2str(location), nodename, board))
 
         return nodename
 

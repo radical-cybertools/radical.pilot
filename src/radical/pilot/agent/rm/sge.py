@@ -1,8 +1,16 @@
 
+__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
+__license__   = "MIT"
+
+
+import os
+
+from base import LRMS
+
 
 # ==============================================================================
 #
-class SGELRMS(LRMS):
+class SGE(LRMS):
 
     # --------------------------------------------------------------------------
     #
