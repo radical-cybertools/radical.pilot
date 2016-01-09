@@ -131,30 +131,15 @@
 
 """
 
-__copyright__ = "Copyright 2014, http://radical.rutgers.edu"
+__copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
-import copy
-import math
-import stat
 import sys
+import copy
 import time
-import Queue
 import pprint
 import signal
-import shutil
-import hostlist
-import tempfile
-import netifaces
-import fractions
-import threading
-import traceback
-import subprocess
-import collections
-import multiprocessing
-import json
-import urllib2 as ul
 
 import saga                as rs
 import radical.utils       as ru
@@ -196,36 +181,6 @@ import radical.pilot.utils as rpu
 # this needs git attribute 'ident' set for this file
 git_ident = "$Id$"
 
-
-# ------------------------------------------------------------------------------
-# CONSTANTS
-#
-
-# defines for pilot commands
-COMMAND_CANCEL_PILOT        = "Cancel_Pilot"
-COMMAND_CANCEL_COMPUTE_UNIT = "Cancel_Compute_Unit"
-COMMAND_KEEP_ALIVE          = "Keep_Alive"
-COMMAND_FIELD               = "commands"
-COMMAND_TYPE                = "type"
-COMMAND_ARG                 = "arg"
-COMMAND_CANCEL              = "Cancel"
-COMMAND_SCHEDULE            = "schedule"
-COMMAND_RESCHEDULE          = "reschedule"
-COMMAND_UNSCHEDULE          = "unschedule"
-COMMAND_WAKEUP              = "wakeup"
-
-
-# 'enum' for staging action operators
-COPY     = 'Copy'     # local cp
-LINK     = 'Link'     # local ln -s
-MOVE     = 'Move'     # local mv
-TRANSFER = 'Transfer' # saga remote transfer
-                      # TODO: This might just be a special case of copy
-
-# tri-state for unit spawn retval
-OK       = 'OK'
-FAIL     = 'FAIL'
-RETRY    = 'RETRY'
 
 # ------------------------------------------------------------------------------
 #
