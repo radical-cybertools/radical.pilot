@@ -4,5 +4,6 @@ __license__   = "MIT"
 
 
 from .base import *
-from .base import LRMS as RM
+from .base import AgentExecutingComponent as Executing
+
 

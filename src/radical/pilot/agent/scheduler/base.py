@@ -13,7 +13,7 @@ from ... import constants as rpc
 
 
 # ------------------------------------------------------------------------------
-# 'enum' for pilot's unit scheduler types
+# 'enum' for RPs's pilot scheduler types
 SCHEDULER_NAME_CONTINUOUS   = "CONTINUOUS"
 SCHEDULER_NAME_SCATTERED    = "SCATTERED"
 SCHEDULER_NAME_TORUS        = "TORUS"
