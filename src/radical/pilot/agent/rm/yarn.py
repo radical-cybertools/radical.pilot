@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import subprocess
 import multiprocessing
 
 from base import LRMS

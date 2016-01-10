@@ -9,7 +9,7 @@ from ... import utils     as rpu
 from ... import states    as rps
 from ... import constants as rpc
 
-from .base import AgentSchedulingComponent, FREE, BUSY
+from .base import AgentSchedulingComponent
 
 
 # ==============================================================================

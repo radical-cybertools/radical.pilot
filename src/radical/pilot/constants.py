@@ -52,3 +52,8 @@ COMMAND_RESCHEDULE          = "reschedule"
 COMMAND_UNSCHEDULE          = "unschedule"
 COMMAND_WAKEUP              = "wakeup"
 
+# two-state for resource occupation.
+FREE = 'Free'
+BUSY = 'Busy'
+
+

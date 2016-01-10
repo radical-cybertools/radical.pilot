@@ -4,6 +4,13 @@ __license__   = "MIT"
 
 
 import os
+import copy
+import time
+import subprocess
+
+from ... import utils     as rpu
+from ... import states    as rps
+from ... import constants as rpc
 
 from base import LRMS
 
@@ -493,7 +500,7 @@ class LoadLeveler(LRMS):
                         for e in range(shape['E']):
                             location = {'A': a, 'B': b, 'C': c, 'D': d, 'E': e}
                             nodename = self._bgq_nodename_by_loc(midplanes, board, location)
-                            nodes.append([index, location, nodename, FREE])
+                            nodes.append([index, location, nodename, rpc.FREE])
                             index += 1
 
         return nodes

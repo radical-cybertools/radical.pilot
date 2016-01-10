@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import fractions
 import tempfile
 import collections
 
@@ -133,10 +134,14 @@ class LaunchMethod(object):
         if cls != LaunchMethod:
             raise TypeError("LaunchMethod config hook only available to base class!")
 
+        from .fork           import Fork
+        from .orte           import ORTE
+        from .yarn           import Yarn
+
         impl = {
-            LAUNCH_METHOD_FORK          : LaunchMethodFORK,
-            LAUNCH_METHOD_ORTE          : LaunchMethodORTE,
-            LAUNCH_METHOD_YARN          : LaunchMethodYARN
+            LM_NAME_FORK          : Fork,
+            LM_NAME_ORTE          : ORTE,
+            LM_NAME_YARN          : Yarn
         }.get(name)
 
         if not impl:
@@ -160,9 +165,12 @@ class LaunchMethod(object):
         if cls != LaunchMethod:
             raise TypeError("LaunchMethod shutdown hook only available to base class!")
 
+        from .orte           import ORTE
+        from .yarn           import Yarn
+
         impl = {
-            LAUNCH_METHOD_ORTE          : LaunchMethodORTE,
-            LAUNCH_METHOD_YARN          : LaunchMethodYARN
+            LM_NAME_ORTE          : ORTE,
+            LM_NAME_YARN          : Yarn
         }.get(name)
 
         if not impl:

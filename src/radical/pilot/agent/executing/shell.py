@@ -34,17 +34,19 @@ class Shell(AgentExecutingComponent):
     #
     def initialize_child(self):
 
-        self.declare_input (rp.EXECUTING_PENDING, rp.AGENT_EXECUTING_QUEUE)
-        self.declare_worker(rp.EXECUTING_PENDING, self.work)
+        from .... import pilot as rp
 
-        self.declare_output(rp.AGENT_STAGING_OUTPUT_PENDING, rp.AGENT_STAGING_OUTPUT_QUEUE)
+        self.declare_input (rps.EXECUTING_PENDING, rpc.AGENT_EXECUTING_QUEUE)
+        self.declare_worker(rps.EXECUTING_PENDING, self.work)
 
-        self.declare_publisher ('unschedule', rp.AGENT_UNSCHEDULE_PUBSUB)
-        self.declare_publisher ('state',      rp.AGENT_STATE_PUBSUB)
+        self.declare_output(rps.AGENT_STAGING_OUTPUT_PENDING, rpc.AGENT_STAGING_OUTPUT_QUEUE)
+
+        self.declare_publisher ('unschedule', rpc.AGENT_UNSCHEDULE_PUBSUB)
+        self.declare_publisher ('state',      rpc.AGENT_STATE_PUBSUB)
 
         # all components use the command channel for control messages
-        self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
-        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
+        self.declare_publisher ('command', rpc.AGENT_COMMAND_PUBSUB)
+        self.declare_subscriber('command', rpc.AGENT_COMMAND_PUBSUB, self.command_cb)
 
         # Mimic what virtualenv's "deactivate" would do
         self._deactivate = "# deactivate pilot virtualenv\n"
@@ -196,7 +198,7 @@ class Shell(AgentExecutingComponent):
                 self._cus_to_cancel.remove(cu['_id'])
 
             self.publish('unschedule', cu)
-            self.advance(cu, rp.CANCELED, publish=True, push=False)
+            self.advance(cu, rps.CANCELED, publish=True, push=False)
             return True
 
         # otherwise, check if we have any active units to cancel
@@ -215,10 +217,10 @@ class Shell(AgentExecutingComponent):
                     pid = inv_registry.get(cu_uid)
                     if pid:
                         # we own that cu, cancel it!
-                        ret, out, _ = self.launcher_shell.run_sync ('CANCEL %s\n' % pid)
+                        ret, out, _ = self.launcher_shell.run_sync ('CANCEL %s\n', pid)
                         if  ret != 0 :
-                            self._log.error ("failed to cancel unit '%s': (%s)(%s)" \
-                                            , (cu_uid, ret, out))
+                            self._log.error("failed to cancel unit '%s': (%s)(%s)", \
+                                            cu_uid, ret, out)
                         # successful or not, we only try once
                         del(self._registry[pid])
 
@@ -231,8 +233,8 @@ class Shell(AgentExecutingComponent):
             #        right here...
 
 
-      # self.advance(cu, rp.AGENT_EXECUTING, publish=True, push=False)
-        self.advance(cu, rp.EXECUTING, publish=True, push=False)
+      # self.advance(cu, rps.AGENT_EXECUTING, publish=True, push=False)
+        self.advance(cu, rps.EXECUTING, publish=True, push=False)
 
         try:
             if cu['description']['mpi']:
@@ -264,7 +266,7 @@ class Shell(AgentExecutingComponent):
             if cu['opaque_slots']:
                 self.publish('unschedule', cu)
 
-            self.advance(cu, rp.FAILED, publish=True, push=False)
+            self.advance(cu, rps.FAILED, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -418,9 +420,8 @@ class Shell(AgentExecutingComponent):
         ret, out, _ = self.launcher_shell.run_sync (run_cmd)
 
         if  ret != 0 :
-            self._log.error ("failed to run unit '%s': (%s)(%s)" \
-                            , (run_cmd, ret, out))
-            return FAIL
+            raise RuntimeError("failed to run unit '%s': (%s)(%s)" % \
+                               (run_cmd, ret, out))
 
         lines = filter (None, out.split ("\n"))
 
@@ -573,11 +574,11 @@ class Shell(AgentExecutingComponent):
         # got an explicit event to handle
         self._log.info ("monitoring handles event for %s: %s:%s:%s", cu['_id'], pid, state, data)
 
-        rp_state = {'DONE'     : rp.DONE,
-                    'FAILED'   : rp.FAILED,
-                    'CANCELED' : rp.CANCELED}.get (state, rp.UNKNOWN)
+        rp_state = {'DONE'     : rps.DONE,
+                    'FAILED'   : rps.FAILED,
+                    'CANCELED' : rps.CANCELED}[state]
 
-        if rp_state not in [rp.DONE, rp.FAILED, rp.CANCELED] :
+        if rp_state not in [rps.DONE, rps.FAILED, rps.CANCELED]:
             # non-final state
             self._log.debug ("ignore shell level state transition (%s:%s:%s)",
                              pid, state, data)
@@ -594,19 +595,19 @@ class Shell(AgentExecutingComponent):
         if data : cu['exit_code'] = int(data)
         else    : cu['exit_code'] = None
 
-        if rp_state in [rp.FAILED, rp.CANCELED] :
+        if rp_state in [rps.FAILED, rps.CANCELED] :
             # The unit failed - fail after staging output
             self._prof.prof('final', msg="execution failed", uid=cu['_id'])
-            cu['target_state'] = rp.FAILED
+            cu['target_state'] = rps.FAILED
 
         else:
             # The unit finished cleanly, see if we need to deal with
             # output data.  We always move to stageout, even if there are no
             # directives -- at the very least, we'll upload stdout/stderr
             self._prof.prof('final', msg="execution succeeded", uid=cu['_id'])
-            cu['target_state'] = rp.DONE
+            cu['target_state'] = rps.DONE
 
-        self.advance(cu, rp.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
+        self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
 
         # we don't need the cu in the registry anymore
         with self._registry_lock :

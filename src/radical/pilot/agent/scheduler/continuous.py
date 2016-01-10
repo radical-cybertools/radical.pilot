@@ -9,7 +9,7 @@ from ... import utils     as rpu
 from ... import states    as rps
 from ... import constants as rpc
 
-from .base import AgentSchedulingComponent, FREE, BUSY
+from .base import AgentSchedulingComponent
 
 
 # ==============================================================================
@@ -29,10 +29,12 @@ class Continuous(AgentSchedulingComponent):
     #
     def _configure(self):
         if not self._lrms_node_list:
-            raise RuntimeError("LRMS %s didn't _configure node_list." % self._lrms.name)
+            raise RuntimeError("LRMS %s didn't _configure node_list." % \
+                               self._lrms_info['name'])
 
         if not self._lrms_cores_per_node:
-            raise RuntimeError("LRMS %s didn't _configure cores_per_node." % self._lrms.name)
+            raise RuntimeError("LRMS %s didn't _configure cores_per_node." % \
+                               self._lrms_info['name'])
 
         # Slots represents the internal process management structure.
         # The structure is as follows:
@@ -49,7 +51,7 @@ class Continuous(AgentSchedulingComponent):
                 'node': node,
                 # TODO: Maybe use the real core numbers in the case of
                 # non-exclusive host reservations?
-                'cores': [FREE for _ in range(0, self._lrms_cores_per_node)]
+                'cores': [rpc.FREE for _ in range(0, self._lrms_cores_per_node)]
             })
 
 
@@ -63,7 +65,7 @@ class Continuous(AgentSchedulingComponent):
         for slot in self.slots:
             slot_matrix += "|"
             for core in slot['cores']:
-                if core == FREE:
+                if core == rpc.FREE:
                     slot_matrix += "-"
                 else:
                     slot_matrix += "+"
@@ -104,7 +106,7 @@ class Continuous(AgentSchedulingComponent):
             # allocation failed
             return {}
 
-        self._change_slot_states(task_slots, BUSY)
+        self._change_slot_states(task_slots, rpc.BUSY)
         task_offsets = self.slots2offset(task_slots)
 
         return {'task_slots'   : task_slots,
@@ -138,7 +140,7 @@ class Continuous(AgentSchedulingComponent):
             raise RuntimeError('insufficient information to release slots via %s: %s' \
                     % (self.name, opaque_slots))
 
-        self._change_slot_states(opaque_slots['task_slots'], FREE)
+        self._change_slot_states(opaque_slots['task_slots'], rpc.FREE)
 
 
     # --------------------------------------------------------------------------
@@ -177,7 +179,8 @@ class Continuous(AgentSchedulingComponent):
             slot_node = slot['node']
             slot_cores = slot['cores']
 
-            slot_cores_offset = self._find_cores_cont(slot_cores, cores_requested, FREE)
+            slot_cores_offset = self._find_cores_cont(slot_cores,
+                    cores_requested, rpc.FREE)
 
             if slot_cores_offset is not None:
               # self._log.info('Node %s satisfies %d cores at offset %d',
@@ -203,7 +206,8 @@ class Continuous(AgentSchedulingComponent):
         # self._log.debug("all_slot_cores: %s", all_slot_cores)
 
         # Find the start of the first available region
-        all_slots_first_core_offset = self._find_cores_cont(all_slot_cores, cores_requested, FREE)
+        all_slots_first_core_offset = self._find_cores_cont(all_slot_cores, 
+                cores_requested, rpc.FREE)
         self._log.debug("all_slots_first_core_offset: %s", all_slots_first_core_offset)
         if all_slots_first_core_offset is None:
             return None
@@ -259,7 +263,7 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    # Change the reserved state of slots (FREE or BUSY)
+    # Change the reserved state of slots (rpc.FREE or rpc.BUSY)
     #
     def _change_slot_states(self, task_slots, new_state):
 

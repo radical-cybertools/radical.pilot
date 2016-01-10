@@ -40,20 +40,22 @@ class ABDS(AgentExecutingComponent):
     #
     def initialize_child(self):
 
-      # self.declare_input (rp.AGENT_EXECUTING_PENDING, rp.AGENT_EXECUTING_QUEUE)
-      # self.declare_worker(rp.AGENT_EXECUTING_PENDING, self.work)
+        from .... import pilot as rp
 
-        self.declare_input (rp.EXECUTING_PENDING, rp.AGENT_EXECUTING_QUEUE)
-        self.declare_worker(rp.EXECUTING_PENDING, self.work)
+      # self.declare_input (rps.AGENT_EXECUTING_PENDING, rpc.AGENT_EXECUTING_QUEUE)
+      # self.declare_worker(rps.AGENT_EXECUTING_PENDING, self.work)
 
-        self.declare_output(rp.AGENT_STAGING_OUTPUT_PENDING, rp.AGENT_STAGING_OUTPUT_QUEUE)
+        self.declare_input (rps.EXECUTING_PENDING, rpc.AGENT_EXECUTING_QUEUE)
+        self.declare_worker(rps.EXECUTING_PENDING, self.work)
 
-        self.declare_publisher ('unschedule', rp.AGENT_UNSCHEDULE_PUBSUB)
-        self.declare_publisher ('state',      rp.AGENT_STATE_PUBSUB)
+        self.declare_output(rps.AGENT_STAGING_OUTPUT_PENDING, rpc.AGENT_STAGING_OUTPUT_QUEUE)
+
+        self.declare_publisher ('unschedule', rpc.AGENT_UNSCHEDULE_PUBSUB)
+        self.declare_publisher ('state',      rpc.AGENT_STATE_PUBSUB)
 
         # all components use the command channel for control messages
-        self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
-        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
+        self.declare_publisher ('command', rpc.AGENT_COMMAND_PUBSUB)
+        self.declare_subscriber('command', rpc.AGENT_COMMAND_PUBSUB, self.command_cb)
 
         self._cancel_lock    = threading.RLock()
         self._cus_to_cancel  = list()
@@ -162,7 +164,7 @@ class ABDS(AgentExecutingComponent):
     #
     def work(self, cu):
 
-        self.advance(cu, rp.ALLOCATING, publish=True, push=False)
+        self.advance(cu, rps.ALLOCATING, publish=True, push=False)
 
 
         try:
@@ -195,7 +197,7 @@ class ABDS(AgentExecutingComponent):
             if cu['opaque_slots']:
                 self.publish('unschedule', cu)
 
-            self.advance(cu, rp.FAILED, publish=True, push=False)
+            self.advance(cu, rps.FAILED, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -259,7 +261,7 @@ class ABDS(AgentExecutingComponent):
             try:
                 self._log.debug("Launch Script Name %s",launch_script_name)
                 launch_command, hop_cmd = launcher.construct_command(cu, launch_script_name)
-                self._log.debug("Launch Command %s from %s",(launch_command,launcher.name))
+                self._log.debug("Launch Command %s from %s", launch_command, launcher.name)
 
                 if hop_cmd : cmdline = hop_cmd
                 else       : cmdline = launch_script_name
@@ -396,7 +398,7 @@ class ABDS(AgentExecutingComponent):
             # This code snippet reads the YARN application report file and if
             # the application is RUNNING it update the state of the CU with the
             # right time stamp. In any other case it works as it was.
-            if cu['state']==rp.ALLOCATING \
+            if cu['state']==rps.ALLOCATING \
                and os.path.isfile(cu['workdir']+'/YarnApplicationReport.log'):
 
                 yarnreport=open(cu['workdir']+'/YarnApplicationReport.log','r')
@@ -412,7 +414,7 @@ class ABDS(AgentExecutingComponent):
                         proc = cu['proc']
                         self._log.debug('Proc Print {0}'.format(proc))
                         del(cu['proc'])  # proc is not json serializable
-                        self.advance(cu, rp.EXECUTING, publish=True, push=False,timestamp=timestamp)
+                        self.advance(cu, rps.EXECUTING, publish=True, push=False,timestamp=timestamp)
                         cu['proc']    = proc
 
                         # FIXME: Ioannis, what is this supposed to do?
@@ -449,7 +451,7 @@ class ABDS(AgentExecutingComponent):
 
                         del(cu['proc'])  # proc is not json serializable
                         self.publish('unschedule', cu)
-                        self.advance(cu, rp.CANCELED, publish=True, push=False)
+                        self.advance(cu, rps.CANCELED, publish=True, push=False)
 
                 else:
                     self._prof.prof('exec', msg='execution complete', uid=cu['_id'])
@@ -484,16 +486,16 @@ class ABDS(AgentExecutingComponent):
                     if exit_code != 0:
                         # The unit failed - fail after staging output
                         self._prof.prof('final', msg="execution failed", uid=cu['_id'])
-                        cu['target_state'] = rp.FAILED
+                        cu['target_state'] = rps.FAILED
 
                     else:
                         # The unit finished cleanly, see if we need to deal with
                         # output data.  We always move to stageout, even if there are no
                         # directives -- at the very least, we'll upload stdout/stderr
                         self._prof.prof('final', msg="execution succeeded", uid=cu['_id'])
-                        cu['target_state'] = rp.DONE
+                        cu['target_state'] = rps.DONE
 
-                    self.advance(cu, rp.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
+                    self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
 
         return action
 

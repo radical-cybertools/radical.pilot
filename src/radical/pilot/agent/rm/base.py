@@ -176,6 +176,7 @@ class LRMS(object):
         # for example may need to communicate YARN service endpoints etc.  an
         # LRMS can thus expand this dict, but is then likely bound to a specific
         # scheduler which can interpret the additional information.
+        self.lrms_info['name']           = self.name
         self.lrms_info['lm_info']        = self.lm_info
         self.lrms_info['node_list']      = self.node_list
         self.lrms_info['cores_per_node'] = self.cores_per_node

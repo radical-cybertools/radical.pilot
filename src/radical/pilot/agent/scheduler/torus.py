@@ -11,7 +11,7 @@ from ... import utils     as rpu
 from ... import states    as rps
 from ... import constants as rpc
 
-from .base import AgentSchedulingComponent, FREE, BUSY
+from .base import AgentSchedulingComponent
 
 
 # ==============================================================================
@@ -43,7 +43,8 @@ class Torus(AgentSchedulingComponent):
     #
     def _configure(self):
         if not self._lrms_cores_per_node:
-            raise RuntimeError("LRMS %s didn't _configure cores_per_node." % self._lrms.name)
+            raise RuntimeError("LRMS %s didn't _configure cores_per_node." % \
+                               self._lrms_info['name'])
 
         self._cores_per_node = self._lrms_cores_per_node
 
@@ -60,7 +61,7 @@ class Torus(AgentSchedulingComponent):
         slot_matrix = ""
         for slot in self._lrms.torus_block:
             slot_matrix += "|"
-            if slot[self.TORUS_BLOCK_STATUS] == FREE:
+            if slot[self.TORUS_BLOCK_STATUS] == rpc.FREE:
                 slot_matrix += "-" * self._lrms_cores_per_node
             else:
                 slot_matrix += "+" * self._lrms_cores_per_node
@@ -136,11 +137,11 @@ class Torus(AgentSchedulingComponent):
                 # TODO: If we want to workaround this, the coordinates need to overflow
 
             not_free = False
-            # Check if all nodes from offset till offset+size are FREE
+            # Check if all nodes from offset till offset+size are rpc.FREE
             for peek in range(num_nodes):
                 try:
-                    if block[offset+peek][self.TORUS_BLOCK_STATUS] == BUSY:
-                        # Once we find the first BUSY node we can discard this attempt
+                    if block[offset+peek][self.TORUS_BLOCK_STATUS] == rpc.BUSY:
+                        # Once we find the first rpc.BUSY node we can discard this attempt
                         not_free = True
                         break
                 except IndexError:
@@ -165,7 +166,7 @@ class Torus(AgentSchedulingComponent):
 
                 # Then mark the nodes busy
                 for peek in range(num_nodes):
-                    block[offset+peek][self.TORUS_BLOCK_STATUS] = BUSY
+                    block[offset+peek][self.TORUS_BLOCK_STATUS] = rpc.BUSY
 
                 return offset
 
@@ -199,9 +200,9 @@ class Torus(AgentSchedulingComponent):
         self._log.info("Freeing %d nodes starting at %d.", num_nodes, offset)
 
         for peek in range(num_nodes):
-            assert block[offset+peek][self.TORUS_BLOCK_STATUS] == BUSY, \
+            assert block[offset+peek][self.TORUS_BLOCK_STATUS] == rpc.BUSY, \
                 'Block %d not Free!' % block[offset+peek]
-            block[offset+peek][self.TORUS_BLOCK_STATUS] = FREE
+            block[offset+peek][self.TORUS_BLOCK_STATUS] = rpc.FREE
 
 
     # --------------------------------------------------------------------------

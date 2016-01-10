@@ -4,7 +4,9 @@ __license__   = "MIT"
 
 
 import os
+import sys
 import copy
+import stat
 import time
 import subprocess
 
@@ -514,7 +516,7 @@ class Agent(rpu.Worker):
 
         except Exception as e:
             # exception in the main loop is fatal
-            self.log.exception("ERROR in agent main loop: %s" % e)
+            self._log.exception("ERROR in agent main loop: %s" % e)
             sys.exit(1)
 
 

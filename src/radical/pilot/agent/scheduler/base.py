@@ -19,10 +19,6 @@ SCHEDULER_NAME_SCATTERED    = "SCATTERED"
 SCHEDULER_NAME_TORUS        = "TORUS"
 SCHEDULER_NAME_YARN         = "YARN"
 
-# two-state for slot occupation.
-FREE = 'Free'
-BUSY = 'Busy'
-
 
 # ==============================================================================
 #
@@ -33,6 +29,9 @@ class AgentSchedulingComponent(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg):
+
+        self._slots = None
+        self._lrms  = None
 
         rpu.Component.__init__(self, rpc.AGENT_SCHEDULING_COMPONENT, cfg)
 
@@ -75,6 +74,7 @@ class AgentSchedulingComponent(rpu.Component):
         # The scheduler needs the LRMS information which have been collected
         # during agent startup.  We dig them out of the config at this point.
         self._pilot_id = self._cfg['pilot_id']
+        self._lrms_info           = self._cfg['lrms_info']
         self._lrms_lm_info        = self._cfg['lrms_info']['lm_info']
         self._lrms_node_list      = self._cfg['lrms_info']['node_list']
         self._lrms_cores_per_node = self._cfg['lrms_info']['cores_per_node']
@@ -264,7 +264,7 @@ class AgentSchedulingComponent(rpu.Component):
             # of) core(s).  But also, we don't really want to schedule, that is
             # why we blow up on output, right?
             #
-            # So we fake scheduling.  This assumes the 'self.slots' structure as
+            # So we fake scheduling.  This assumes the 'self._slots' structure as
             # used by the continuous scheduler, wo will likely only work for
             # this one (FIXME): we walk our own index into the slot structure,
             # and simply assign that core, be it busy or not.
@@ -279,7 +279,7 @@ class AgentSchedulingComponent(rpu.Component):
             if prof: prof.prof      ('clone_cb', uid=unit['_id'])
             else   : self._prof.prof('clone_cb', uid=unit['_id'])
 
-            slot = self.slots[self._clone_slot_idx]
+            slot = self._slots[self._clone_slot_idx]
 
             unit['opaque_slots']['task_slots'][0] = '%s:%d' \
                     % (slot['node'], self._clone_core_idx)
@@ -291,7 +291,7 @@ class AgentSchedulingComponent(rpu.Component):
                 self._clone_core_idx  = 0
                 self._clone_slot_idx += 1
 
-                if self._clone_slot_idx >= len(self.slots):
+                if self._clone_slot_idx >= len(self._slots):
                     self._clone_slot_idx = 0
 
 

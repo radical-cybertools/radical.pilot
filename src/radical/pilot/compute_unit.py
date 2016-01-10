@@ -523,7 +523,7 @@ class ComputeUnit(object):
         else:
             raise IncorrectState("Unknown Compute Unit state: %s, cannot cancel" % self.state)
 
-        self._session.prof.prof('advance', msg=CANCELED, uid=unit.uid, state=CANCELED)
+        self._session.prof.prof('advance', msg=CANCELED, uid=self._uid, state=CANCELED)
 
         # done canceling
         return
