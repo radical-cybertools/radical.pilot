@@ -1,34 +1,22 @@
-    #pylint: disable=C0301, C0103, W0212
 
-"""
-.. module:: radical.pilot.unit_manager
-   :platform: Unix
-   :synopsis: Implementation of the UnitManager class.
+__copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
+__license__   = "MIT"
 
-.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
-"""
 
-__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
-__license__ = "MIT"
-
-import os
 import time
-import weakref
 
 import radical.utils as ru
-import utils         as rpu
 
-from .types        import *
-from .states       import *
-from .exceptions   import *
-from .utils        import logger
-from .compute_unit import ComputeUnit
-from .controller   import UnitManagerController
-from .scheduler    import get_scheduler, SCHED_DEFAULT
+from .. import pilot     as rp
+from .  import utils     as rpu
+from .  import states    as rps
+from .  import constants as rpc
+from .  import types     as rpt
+
 
 # -----------------------------------------------------------------------------
 #
-class UnitManager(object):
+class UnitManager(rpu.Worker):
     """A UnitManager manages :class:`radical.pilot.ComputeUnit` instances which
     represent the **executable** workload in RADICAL-Pilot. A UnitManager connects
     the ComputeUnits with one or more :class:`Pilot` instances (which represent
@@ -71,72 +59,78 @@ class UnitManager(object):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self, session, scheduler=None, input_transfer_workers=2,
-                 output_transfer_workers=2, report_state=True):
-        """Creates a new UnitManager and attaches it to the session.
+    def __init__(self, session, scheduler=None):
+        """
+        Creates a new UnitManager and attaches it to the session.
 
         **Args:**
-
-            * session (`string`): The session instance to use.
-
+            * session   (`string`): The session instance to use.
             * scheduler (`string`): The name of the scheduler plug-in to use.
-
-            * input_transfer_workers (`int`): The number of input file transfer 
-              worker processes to launch in the background. 
-
-            * output_transfer_workers (`int`): The number of output file transfer 
-              worker processes to launch in the background. 
-
-        .. note:: `input_transfer_workers` and `output_transfer_workers` can be
-                  used to tune RADICAL-Pilot's file transfer performance. 
-                  However, you should only change the default values if you 
-                  know what you are doing.
-
-        **Raises:**
-            * :class:`radical.pilot.PilotException`
         """
         logger.report.info('<<create unit manager')
 
-        self._session = session
-        self._worker  = None 
-        self._pilots  = list()
-        self._rec_id  = 0
-        self._report_state = report_state
+        self._session    = session
+        self._components = None
+        self._bridges    = None
+        self._pilots     = dict()
+        self._units      = dict()
+        self._rec_id     = 0
 
-        self._uid = ru.generate_id ('umgr') 
+        self._uid = ru.generate_id('umgr')
+        self._log = ru.get_logger(self.uid, "%s.%s.log" % (session.uid, self._uid))
 
         self._session.prof.prof('create umgr', uid=self._uid)
 
-        if not scheduler:
-            scheduler = SCHED_DEFAULT
+        rpu.Worker.__init__(self, cfg)
 
-        # keep track of some changing metrics
-        self.wait_queue_size = 0
+        try:
 
-        self._worker = UnitManagerController(
-            umgr_uid=self._uid, 
-            scheduler=scheduler,
-            input_transfer_workers=input_transfer_workers,
-            output_transfer_workers=output_transfer_workers, 
-            session=self._session)
-        self._worker.start()
+            cfg = read_json("%s/configs/umgr_%s.json" \
+                    % (os.path.dirname(__file_),
+                       os.envrion.get('RADICAL_PILOT_UMGR_CONFIG', 'default')))
 
-        self._scheduler = get_scheduler(name=scheduler, 
-                                        manager=self, 
-                                        session=self._session)
+            if scheduler:
+                # overwrite the scheduler from the config file
+                cfg['scheduler'] = scheduler
 
-        # Each unit manager has a worker thread associated with it.
-        # The task of the worker thread is to check and update the state
-        # of units, fire callbacks and so on.
-        self._session._unit_manager_objects[self.uid] = self
+            if not cfg.get('scheduler'):
+                # set default scheduler if needed
+                cfg['scheduler'] = SCHED_DEFAULT
 
-        # we always register our default unit state callback and our default
-        # wait queue size callback
-        if self._report_state:
-            self.register_callback(self._default_unit_state_cb,      UNIT_STATE)
-            self.register_callback(self._default_wait_queue_size_cb, WAIT_QUEUE_SIZE)
+            bridges    = cfg.get('bridges',    [])
+            components = cfg.get('components', [])
 
-        self._valid = True
+            # always start update and heartbeat workers
+            components[rp.UMGR_UPDATE_WORKER]    = 1
+            components[rp.UMGR_HEARTBEAT_WORKER] = 1
+
+            # we also need a map from component names to class types
+            typemap = {
+                rp.UMGR_STAGING_INPUT_COMPONENT  : UMGRStagingInputComponent,
+                rp.UMGR_SCHEDULING_COMPONENT     : UMGRSchedulingComponent,
+                rp.UMGR_STAGING_OUTPUT_COMPONENT : UMGRStagingOutputComponent,
+                rp.UMGR_UPDATE_WORKER            : UMGRUpdateWorker,
+                rp.UMGR_HEARTBEAT_WORKER         : UMGRHeartbeatWorker
+                }
+
+            self._bridges    = rpu.Component.start_bridges   (bridges)
+            self._components = rpu.Component.start_components(components, typemap)
+
+            # FIXME: make sure all communication channels are in place.  This could
+            # be replaced with a proper barrier, but not sure if that is worth it...
+            time.sleep(1)
+
+            # the command pubsub is used to communicate with the scheduler, and
+            # to shut down components, but also to cancel units.  The queue is
+            # used to forward submitted units to the scheduler
+            self.declare_publisher('command', rp.UMGR_COMMAND_PUBSUB)
+            self.declare_output(rp.UMGR_SCHEDULING_PENDING, rp.UMGR_SCHEDULING_QUEUE)
+
+        except Exception as e:
+            self._log.exception("UMGR setup error: %s" % e)
+            raise
+
+        self._prof.prof('UMGR setup done', logger=self._log.debug)
 
         logger.report.ok('>>ok\n')
 
