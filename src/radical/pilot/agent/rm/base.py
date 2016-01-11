@@ -146,9 +146,9 @@ class LRMS(object):
         for lm in launch_methods:
             if lm:
                 try:
-                    pass # FIXME
-                  # ru.dict_merge(self.lm_info,
-                  #         LaunchMethod.lrms_config_hook(lm, self._cfg, self, self._log))
+                    from .... import pilot as rp
+                    ru.dict_merge(self.lm_info,
+                            rp.agent.LM.lrms_config_hook(lm, self._cfg, self, self._log))
                 except Exception as e:
                     self._log.exception("lrms config hook failed")
                     raise
@@ -238,9 +238,10 @@ class LRMS(object):
         for lm in launch_methods:
             if lm:
                 try:
-                    pass # FIXME
-                  # LaunchMethod.lrms_shutdown_hook(lm, self._cfg, self,
-                  #                                 self.lm_info, self._log)
+                    from .... import pilot as rp
+                    ru.dict_merge(self.lm_info,
+                    rp.agent.LM.lrms_shutdown_hook(lm, self._cfg, self,
+                                                    self.lm_info, self._log)
                 except Exception as e:
                     self._log.exception("lrms shutdown hook failed")
                     raise
