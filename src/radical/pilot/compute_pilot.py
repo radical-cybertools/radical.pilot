@@ -152,6 +152,18 @@ class ComputePilot (object):
     # -------------------------------------------------------------------------
     #
     @property
+    def session(self):
+        """Returns the Pilot's session.
+
+        **Returns:**
+            * a `radical.pilot.Session` object
+        """
+        return self._manager.session
+
+
+    # -------------------------------------------------------------------------
+    #
+    @property
     def description(self):
         """Returns the pilot description the pilot was started with.
         """
