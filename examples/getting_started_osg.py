@@ -11,8 +11,8 @@ dh = ru.DebugHelper ()
 
 RUNTIME  =    60
 SLEEP    =    10
-PILOTS   =    50
-UNITS    =  1000
+PILOTS   =     2
+UNITS    =    10
 SCHED    = rp.SCHED_BACKFILLING
 
 resources = {
