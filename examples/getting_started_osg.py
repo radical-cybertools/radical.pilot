@@ -120,7 +120,8 @@ if __name__ == "__main__":
         pdesc.access_schema   = resources[resource]['schema']
         pdesc.candidate_hosts = [#'MIT_CMS',
                                  #'UConn-OSG',
-                                 #'SU-OG',
+                                 '!SU-OG', # No compiler
+                                 '!FIU_HPCOSG_CE', # zeromq build fails
                                  #'BU_ATLAS_Tier2',
                                  '!UCSDT2', # Failing because of format character ...
                                  '~(HAS_CVMFS_oasis_opensciencegrid_org =?= TRUE)'
