@@ -220,24 +220,26 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(FORWARD_TUNNEL_ENDPOINT,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(JOB_MANAGER_ENDPOINT   ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(LRMS                   ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(MANDATORY_ARGS         ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(MANDATORY_ARGS         ,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(MPI_LAUNCH_METHOD      ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(NOTES                  ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PILOT_AGENT            ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(PRE_BOOTSTRAP_1        ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(PRE_BOOTSTRAP_2        ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(PRE_BOOTSTRAP_1        ,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register(PRE_BOOTSTRAP_2        ,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(RP_VERSION             ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PYTHON_INTERPRETER     ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(SCHEMAS                ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(SCHEMAS                ,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(SPMD_VARIATION         ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(STAGE_CACERTS          ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(TASK_LAUNCH_METHOD     ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(TUNNEL_BIND_DEVICE     ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(VALID_ROOTS            ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(VALID_ROOTS            ,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(VIRTENV                ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(VIRTENV_MODE           ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(SHARED_FILESYSTEM      ,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(HEALTH_CHECK           ,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+
+        self['label'] = label
 
 
     # --------------------------------------------------------------------------
