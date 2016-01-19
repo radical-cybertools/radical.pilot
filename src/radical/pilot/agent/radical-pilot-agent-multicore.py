@@ -317,56 +317,6 @@ def pilot_DONE(mongo_p=None, pilot_uid=None, logger=None, msg=None):
 #
 # ==============================================================================
 #
-def start_bridges(cfg, log):
-    """
-    For all bridges defined on this agent instance, create that bridge.
-    Keep a handle around for shutting them down later.
-    """
-
-    log.debug('start_bridges')
-
-    # ----------------------------------------------------------------------
-    # shortcut for bridge creation
-    bridge_type = {rp.AGENT_STAGING_INPUT_QUEUE  : 'queue',
-                   rp.AGENT_SCHEDULING_QUEUE     : 'queue',
-                   rp.AGENT_EXECUTING_QUEUE      : 'queue',
-                   rp.AGENT_STAGING_OUTPUT_QUEUE : 'queue',
-                   rp.AGENT_UNSCHEDULE_PUBSUB    : 'pubsub',
-                   rp.AGENT_RESCHEDULE_PUBSUB    : 'pubsub',
-                   rp.AGENT_COMMAND_PUBSUB       : 'pubsub',
-                   rp.AGENT_STATE_PUBSUB         : 'pubsub'}
-
-    def _create_bridge(name):
-        if bridge_type[name] == 'queue':
-            return rpu.Queue.create(rpu.QUEUE_ZMQ, name, rpu.QUEUE_BRIDGE)
-        elif bridge_type[name] == 'pubsub':
-            return rpu.Pubsub.create(rpu.PUBSUB_ZMQ, name, rpu.PUBSUB_BRIDGE)
-        else:
-            raise ValueError('unknown bridge type for %s' % name)
-    # ----------------------------------------------------------------------
-
-    # create all bridges we need.  Use the default addresses,
-    # ie. they will bind to all local interfacces on ports 10.000++.
-    bridges = dict()
-    sub_cfg = cfg['agent_layout']['agent_0']
-    for b in sub_cfg.get('bridges', []):
-
-        bridge     = _create_bridge(b)
-        bridge_in  = bridge.bridge_in
-        bridge_out = bridge.bridge_out
-        bridges[b] = {'handle' : bridge,
-                      'in'     : bridge_in,
-                      'out'    : bridge_out,
-                      'alive'  : True}  # no alive check done, yet
-        log.info('created bridge %s: %s', b, bridge.name)
-
-    log.debug('start_bridges done')
-
-    return bridges
-
-
-# --------------------------------------------------------------------------
-#
 def write_sub_configs(cfg, bridges, nodeip, log):
     """
     create a sub_config for each sub-agent we intent to spawn
@@ -556,9 +506,10 @@ def bootstrap_3():
 
             # the master agent also is the only one which starts bridges.  It
             # has to do so before creating the Agent Worker instance, as that is
-            # using the bridges already.
+            # using the bridges already for the startup barrier.
+            bridge_list = cfg['agent_layout']['agent_0'].get('bridges', [])
+            bridges = rpu.Component.start_bridges(bridge_list, log)
 
-            bridges = start_bridges(cfg, log)
             # FIXME: make sure all communication channels are in place.  This could
             # be replaced with a proper barrier, but not sure if that is worth it...
             time.sleep (1)

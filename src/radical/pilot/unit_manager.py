@@ -3,11 +3,11 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import os
 import time
 
 import radical.utils as ru
 
-from .. import pilot     as rp
 from .  import utils     as rpu
 from .  import states    as rps
 from .  import constants as rpc
@@ -67,8 +67,9 @@ class UnitManager(rpu.Worker):
             * session   (`string`): The session instance to use.
             * scheduler (`string`): The name of the scheduler plug-in to use.
         """
-        logger.report.info('<<create unit manager')
 
+        from .. import pilot as rp
+        
         self._session    = session
         self._components = None
         self._bridges    = None
@@ -81,13 +82,13 @@ class UnitManager(rpu.Worker):
 
         self._session.prof.prof('create umgr', uid=self._uid)
 
-        rpu.Worker.__init__(self, cfg)
+        self._log.report.info('<<create unit manager')
 
         try:
 
-            cfg = read_json("%s/configs/umgr_%s.json" \
-                    % (os.path.dirname(__file_),
-                       os.envrion.get('RADICAL_PILOT_UMGR_CONFIG', 'default')))
+            cfg = ru.read_json("%s/configs/umgr_%s.json" \
+                    % (os.path.dirname(__file__),
+                       os.environ.get('RADICAL_PILOT_UMGR_CONFIG', 'default')))
 
             if scheduler:
                 # overwrite the scheduler from the config file
@@ -101,30 +102,65 @@ class UnitManager(rpu.Worker):
             components = cfg.get('components', [])
 
             # always start update and heartbeat workers
-            components[rp.UMGR_UPDATE_WORKER]    = 1
-            components[rp.UMGR_HEARTBEAT_WORKER] = 1
+            components[rpc.UPDATE_WORKER]    = 1
+            components[rpc.HEARTBEAT_WORKER] = 1
 
             # we also need a map from component names to class types
             typemap = {
-                rp.UMGR_STAGING_INPUT_COMPONENT  : UMGRStagingInputComponent,
-                rp.UMGR_SCHEDULING_COMPONENT     : UMGRSchedulingComponent,
-                rp.UMGR_STAGING_OUTPUT_COMPONENT : UMGRStagingOutputComponent,
-                rp.UMGR_UPDATE_WORKER            : UMGRUpdateWorker,
-                rp.UMGR_HEARTBEAT_WORKER         : UMGRHeartbeatWorker
+                rpc.UMGR_STAGING_INPUT_COMPONENT  : rp.umgr.Input,
+                rpc.UMGR_SCHEDULING_COMPONENT     : rp.umgr.Scheduler,
+                rpc.UMGR_STAGING_OUTPUT_COMPONENT : rp.umgr.Output,
+                rpc.UPDATE_WORKER                 : rp.worker.Update,
+                rpc.HEARTBEAT_WORKER              : rp.worker.Heartbeat
                 }
 
-            self._bridges    = rpu.Component.start_bridges   (bridges)
-            self._components = rpu.Component.start_components(components, typemap)
+            # before we start any components, we need to get the bridges up they
+            # want to connect to
+            self._bridges = rpu.Component.start_bridges(bridges)
+
+            # get bridge addresses from our bridges, and append them to the
+            # config, so that we can pass those addresses to the components
+            if not 'bridge_addresses' in cfg:
+                cfg['bridge_addresses'] = dict()
+
+            for b in self._bridges:
+
+                # to avoid confusion with component input and output, we call bridge
+                # input a 'sink', and a bridge output a 'source' (from the component
+                # perspective)
+                sink   = ru.Url(self._bridges[b]['in'])
+                source = ru.Url(self._bridges[b]['out'])
+
+                # for the unit manager, we assume all bridges to be local, so we
+                # really are only interested in the ports for now...
+                sink.host   = '127.0.0.1'
+                source.host = '127.0.0.1'
+
+                # keep the resultin URLs as strings, to be used as addresses
+                cfg['bridge_addresses'][b] = dict()
+                cfg['bridge_addresses'][b]['sink']   = str(sink)
+                cfg['bridge_addresses'][b]['source'] = str(source)
+
+            # the bridges are up, we can start to connect the components to them
+            self._components = rpu.Component.start_components(components, typemap, cfg)
 
             # FIXME: make sure all communication channels are in place.  This could
             # be replaced with a proper barrier, but not sure if that is worth it...
             time.sleep(1)
 
-            # the command pubsub is used to communicate with the scheduler, and
-            # to shut down components, but also to cancel units.  The queue is
+            # we only can initialize the base class once we have the bridges up
+            # and running, as those are needed to register any message event
+            # callbacks
+            rpu.Worker.__init__(self, 'UnitManager', cfg)
+
+            # the command pubsub is used to communicate with the scheduler,
+            # to shut down components, and to cancel units.  The queue is
             # used to forward submitted units to the scheduler
-            self.declare_publisher('command', rp.UMGR_COMMAND_PUBSUB)
-            self.declare_output(rp.UMGR_SCHEDULING_PENDING, rp.UMGR_SCHEDULING_QUEUE)
+            self.declare_publisher('command', rpc.UMGR_COMMAND_PUBSUB)
+            self.declare_output(rps.UMGR_SCHEDULING_PENDING, rpc.UMGR_SCHEDULING_QUEUE)
+
+            # The unit manager is always running
+            self.start()
 
         except Exception as e:
             self._log.exception("UMGR setup error: %s" % e)
@@ -132,7 +168,7 @@ class UnitManager(rpu.Worker):
 
         self._prof.prof('UMGR setup done', logger=self._log.debug)
 
-        logger.report.ok('>>ok\n')
+        self._log.report.ok('>>ok\n')
 
 
     #--------------------------------------------------------------------------
@@ -144,17 +180,17 @@ class UnitManager(rpu.Worker):
         if not self._valid:
             raise RuntimeError("instance is already closed")
 
-        logger.report.info('<<close unit manager')
+        self._log.report.info('<<close unit manager')
 
         if self._worker:
             self._worker.stop()
 
         self._session.prof.prof('closed umgr', uid=self._uid)
-        logger.info("Closed UnitManager %s." % str(self._uid))
+        self._log.info("Closed UnitManager %s." % str(self._uid))
 
         self._valid = False
 
-        logger.report.ok('>>ok\n')
+        self._log.report.ok('>>ok\n')
 
 
     # -------------------------------------------------------------------------
@@ -185,7 +221,7 @@ class UnitManager(rpu.Worker):
         if not unit:
             return
 
-        logger.info("[Callback]: unit %s state on pilot %s: %s.", unit.uid, unit.pilot_id, state)
+        self._log.info("[Callback]: unit %s state on pilot %s: %s.", unit.uid, unit.pilot_id, state)
 
 
     #------------------------------------------------------------------------------
@@ -193,7 +229,7 @@ class UnitManager(rpu.Worker):
     @staticmethod
     def _default_wait_queue_size_cb(umgr, wait_queue_size):
 
-        logger.info("[Callback]: wait_queue_size: %s.", wait_queue_size)
+        self._log.info("[Callback]: wait_queue_size: %s.", wait_queue_size)
 
 
     #--------------------------------------------------------------------------
@@ -250,7 +286,7 @@ class UnitManager(rpu.Worker):
         if len(pilots) == 0:
             raise ValueError('cannot add no pilots')
 
-        logger.report.info('<<add %d pilot(s)' % len(pilots))
+        self._log.report.info('<<add %d pilot(s)' % len(pilots))
 
         pilot_ids = self.list_pilots()
 
@@ -267,7 +303,7 @@ class UnitManager(rpu.Worker):
         for pilot in pilots :
             self._pilots.append (pilot)
 
-        logger.report.ok('>>ok\n')
+        self._log.report.ok('>>ok\n')
 
     # -------------------------------------------------------------------------
     #
@@ -408,7 +444,7 @@ class UnitManager(rpu.Worker):
             raise ValueError('cannot submit no unit descriptions')
 
 
-        logger.report.info('<<submit %d unit(s)\n\t' % len(unit_descriptions))
+        self._log.report.info('<<submit %d unit(s)\n\t' % len(unit_descriptions))
 
         # we return a list of compute units
         ret = list()
@@ -435,7 +471,7 @@ class UnitManager(rpu.Worker):
                 import radical.utils as ru
                 ru.write_json(ud.as_dict(), "%s/%s.batch.%03d.json" \
                         % (self._session._rec, u.uid, self._rec_id))
-            logger.report.progress()
+            self._log.report.progress()
         if self._session._rec:
             self._rec_id += 1
 
@@ -446,12 +482,12 @@ class UnitManager(rpu.Worker):
             schedule = self._scheduler.schedule (units=units)
        
         except Exception as e:
-            logger.exception ("Internal error - unit scheduler failed")
+            self._log.exception ("Internal error - unit scheduler failed")
             raise 
 
         self.handle_schedule (schedule)
 
-        logger.report.ok('>>ok\n')
+        self._log.report.ok('>>ok\n')
 
         if  return_list_type :
             return units
@@ -468,7 +504,7 @@ class UnitManager(rpu.Worker):
         # unscheduled units for later insertion into the wait queue.
         
         if  not schedule :
-            logger.debug ('skipping empty unit schedule')
+            self._log.debug ('skipping empty unit schedule')
             return
 
       # print 'handle schedule:'
@@ -510,7 +546,7 @@ class UnitManager(rpu.Worker):
                 if  not pid in schedule['pilots'] :
                     # lost pilot, do not schedule unit
                     self._session.prof.prof('unschedule', uid=unit.uid)
-                    logger.warn ("unschedule unit %s, lost pilot %s" % (unit.uid, pid))
+                    self._log.warn ("unschedule unit %s, lost pilot %s" % (unit.uid, pid))
                     continue
 
                 unit.sandbox = schedule['pilots'][pid]['sandbox'] + "/" + str(unit.uid)
@@ -522,11 +558,11 @@ class UnitManager(rpu.Worker):
                     try :
                         from radical.ensemblemd.mdkernels import MDTaskDescription
                     except Exception as ex :
-                        logger.error ("Kernels are not supported in" \
+                        self._log.error ("Kernels are not supported in" \
                               "compute unit descriptions -- install " \
                               "radical.ensemblemd.mdkernels!")
                         # FIXME: unit needs a '_set_state() method or something!
-                        self._session._dbs.set_compute_unit_state (unit._uid, FAILED, 
+                        self._session._dbs.set_compute_unit_state (unit._uid, rps.FAILED, 
                                 ["kernel expansion failed"])
                         continue
 
@@ -559,7 +595,7 @@ class UnitManager(rpu.Worker):
         if  len(unscheduled) :
             self._worker.unschedule_compute_units (units=unscheduled)
 
-        logger.info ('%s units remain unscheduled' % len(unscheduled))
+        self._log.info ('%s units remain unscheduled' % len(unscheduled))
 
 
     # -------------------------------------------------------------------------
@@ -598,7 +634,7 @@ class UnitManager(rpu.Worker):
     # -------------------------------------------------------------------------
     #
     def wait_units(self, unit_ids=None,
-                   state=[DONE, FAILED, CANCELED],
+                   state=[rps.DONE, rps.FAILED, rps.CANCELED],
                    timeout=None):
         """Returns when one or more :class:`radical.pilot.ComputeUnits` reach a
         specific state.
@@ -625,9 +661,9 @@ class UnitManager(rpu.Worker):
               By default `wait_units` waits for the ComputeUnits to
               reach a terminal state, which can be one of the following:
 
-              * :data:`radical.pilot.DONE`
-              * :data:`radical.pilot.FAILED`
-              * :data:`radical.pilot.CANCELED`
+              * :data:`radical.pilot.rps.DONE`
+              * :data:`radical.pilot.rps.FAILED`
+              * :data:`radical.pilot.rps.CANCELED`
 
             * **timeout** [`float`]
               Timeout in seconds before the call returns regardless of Pilot
@@ -652,7 +688,7 @@ class UnitManager(rpu.Worker):
         units  = self.get_units(unit_ids)
         start  = time.time()
 
-        logger.report.info('<<wait for %d unit(s)\n\t' % len(units))
+        self._log.report.info('<<wait for %d unit(s)\n\t' % len(units))
 
         # We don't want to iterate over all units again and again, as that would
         # duplicate checks on units which were found in matching states.  So we
@@ -662,21 +698,21 @@ class UnitManager(rpu.Worker):
         # Initially we need to check all units
         to_check = units
 
-        logger.report.idle(mode='start')
+        self._log.report.idle(mode='start')
         while to_check and not self._session._terminate.is_set():
 
-            logger.report.idle()
+            self._log.report.idle()
 
             for unit in to_check:
                 if unit.state in state:
                     # stop watching this unit
                     checked_units[unit] = True
-                    if unit.state in [FAILED]:
-                        logger.report.idle(color='error', c='-')
-                    elif unit.state in [CANCELED]:
-                        logger.report.idle(color='warn', c='*')
+                    if unit.state in [rps.FAILED]:
+                        self._log.report.idle(color='error', c='-')
+                    elif unit.state in [rps.CANCELED]:
+                        self._log.report.idle(color='warn', c='*')
                     else:
-                        logger.report.idle(color='ok', c='+')
+                        self._log.report.idle(color='ok', c='+')
 
             # check if units remain to be waited for.
             to_check = [unit for unit in checked_units if not checked_units[unit]]
@@ -684,17 +720,17 @@ class UnitManager(rpu.Worker):
             # check timeout
             if  (None != timeout) and (timeout <= (time.time() - start)):
                 if  to_check :
-                    logger.debug ("wait timed out")
+                    self._log.debug ("wait timed out")
                 break
 
             # if units remain to be watched and we have still time
             if to_check:
                 time.sleep (0.5)
 
-        logger.report.idle(mode='stop')
+        self._log.report.idle(mode='stop')
 
-        if not to_check: logger.report.ok(  '>>ok\n')
-        else           : logger.report.warn('>>timeout\n')
+        if not to_check: self._log.report.ok(  '>>ok\n')
+        else           : self._log.report.warn('>>timeout\n')
 
         # grab the current states to return
         states = [unit.state for unit in checked_units]
@@ -733,7 +769,7 @@ class UnitManager(rpu.Worker):
 
     # -------------------------------------------------------------------------
     #
-    def register_callback(self, cb_func, metric=UNIT_STATE, cb_data=None):
+    def register_callback(self, cb_func, metric=rpt.UNIT_STATE, cb_data=None):
 
         """
         Registers a new callback function with the UnitManager.  Manager-level

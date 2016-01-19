@@ -33,6 +33,9 @@ class Popen(AgentExecutingComponent) :
 
         AgentExecutingComponent.__init__ (self, cfg)
 
+        self._watcher   = None
+        self._terminate = threading.Event()
+
 
     # --------------------------------------------------------------------------
     #
@@ -61,10 +64,11 @@ class Popen(AgentExecutingComponent) :
         self._pilot_id = self._cfg['pilot_id']
 
         # run watcher thread
-        self._terminate = threading.Event()
-        self._watcher   = threading.Thread(target=self._watch, name="Watcher")
+        self._watcher = threading.Thread(target=self._watch, name="Watcher")
         self._watcher.daemon = True
         self._watcher.start ()
+
+        self._log.debug('=== watcher 1: %s - %s', self._watcher, type(self._watcher))
 
         # The AgentExecutingComponent needs the LaunchMethods to construct
         # commands.
@@ -93,7 +97,8 @@ class Popen(AgentExecutingComponent) :
 
         # terminate watcher thread
         self._terminate.set()
-        self._watcher.join()
+        if self._watcher:
+            self._watcher.join()
 
         # communicate finalization
         self.publish('command', {'cmd' : 'final',

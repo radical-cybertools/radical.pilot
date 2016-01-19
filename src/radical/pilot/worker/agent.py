@@ -25,8 +25,11 @@ class Agent(rpu.Worker):
     #
     def __init__(self, cfg):
 
-        self.agent_name = cfg['agent_name']
+        self.agent_name  = cfg['agent_name']
+        self.final_cause = None
+
         rpu.Worker.__init__(self, 'AgentWorker', cfg)
+
 
 
     # --------------------------------------------------------------------------
@@ -39,7 +42,6 @@ class Agent(rpu.Worker):
         # the current process, and will not be available in the worker process.
         self._pilot_id    = self._cfg['pilot_id']
         self._session_id  = self._cfg['session_id']
-        self.final_cause  = None
 
         # all components use the command channel for control messages
         self.declare_subscriber('command', rpc.AGENT_COMMAND_PUBSUB, self.command_cb)
@@ -120,6 +122,8 @@ class Agent(rpu.Worker):
         This prepares the stage for the component setup (self._setup()).
         """
 
+        from ... import pilot as rp
+
         # keep track of objects we need to stop in the finally clause
         self._sub_agents = dict()
         self._components = dict()
@@ -198,7 +202,27 @@ class Agent(rpu.Worker):
 
         try:
             self.start_sub_agents()
-            self.start_components()
+
+            # create the required number of agent components and workers,
+            # according to the config
+            clist = self._sub_cfg.get('components',{})
+            cmap  = {
+                rpc.AGENT_STAGING_INPUT_COMPONENT  : rp.agent.Input,
+                rpc.AGENT_SCHEDULING_COMPONENT     : rp.agent.Scheduler,
+                rpc.AGENT_EXECUTING_COMPONENT      : rp.agent.Executing,
+                rpc.AGENT_STAGING_OUTPUT_COMPONENT : rp.agent.Output,
+                rpc.UPDATE_WORKER                  : rp.worker.Update,
+                rpc.HEARTBEAT_WORKER               : rp.worker.Heartbeat
+                }
+            # we also create *one* instance of every 'worker' type -- which are the
+            # heartbeat and update worker.  To ensure this, we only create workers
+            # in agent_0.
+            # FIXME: make this configurable, both number and placement
+            if self.agent_name == 'agent_0':
+                clist[rpc.AGENT_UPDATE_WORKER   ] = 1
+                clist[rpc.AGENT_HEARTBEAT_WORKER] = 1
+
+            self._components = self.start_components(clist, cmap, self._cfg, self._log)
 
             # before we declare bootstrapping-success, the we wait for all
             # components, workers and sub_agents to complete startup.  For that,
@@ -444,57 +468,6 @@ class Agent(rpu.Worker):
             self._prof.prof("created", msg=sa, uid=self._pilot_id)
 
         self._log.debug('start_sub_agents done')
-
-    # --------------------------------------------------------------------------
-    #
-    def start_components(self):
-        """
-        For all componants defined on this agent instance, create the required
-        number of those.  Keep a handle around for shutting them down later.
-        """
-
-        from ... import pilot as rp
-
-        self._log.debug("start_components")
-
-        # We use a static map from component names to class types for now --
-        # a factory might be more appropriate (FIXME)
-        cmap = {
-            "AgentStagingInputComponent"  : rp.agent.Input,
-            "AgentSchedulingComponent"    : rp.agent.Scheduler,
-            "AgentExecutingComponent"     : rp.agent.Executing,
-            "AgentStagingOutputComponent" : rp.agent.Output,
-            }
-        for cname, cnum in self._sub_cfg.get('components',{}).iteritems():
-            for i in range(cnum):
-                # each component gets its own copy of the config
-                ccfg = copy.deepcopy(self._cfg)
-                ccfg['number'] = i
-                comp = cmap[cname].create(ccfg)
-                comp.start()
-                self._components[comp.childname] = {'handle' : comp,
-                                                    'alive'  : False}
-                self._log.info('created component %s (%s): %s', cname, cnum, comp.cname)
-
-        # we also create *one* instance of every 'worker' type -- which are the
-        # heartbeat and update worker.  To ensure this, we only create workers
-        # in agent_0.
-        # FIXME: make this configurable, both number and placement
-        if self.agent_name == 'agent_0':
-            wmap = {
-                rpc.AGENT_UPDATE_WORKER    : rp.worker.Update,
-                rpc.AGENT_HEARTBEAT_WORKER : rp.worker.Heartbeat
-                }
-            for wname in wmap:
-                self._log.info('create worker %s', wname)
-                wcfg   = copy.deepcopy(self._cfg)
-                worker = wmap[wname].create(wcfg)
-                worker.start()
-                self._workers[worker.childname] = {'handle' : worker,
-                                                   'alive'  : False}
-
-        self._log.debug("start_components done")
-
 
     # --------------------------------------------------------------------------
     #

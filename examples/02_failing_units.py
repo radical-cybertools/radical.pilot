@@ -49,31 +49,33 @@ if __name__ == '__main__':
 
         report.header('submit pilots')
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        pmgr = rp.PilotManager(session=session)
-
-        # Define an [n]-core local pilot that runs for [x] minutes
-        # Here we use a dict to initialize the description object
-        pd_init = {
-                'resource'      : resource,
-                'cores'         : 64,  # pilot size
-                'runtime'       : 15,  # pilot runtime (min)
-                'exit_on_error' : True,
-                'project'       : config[resource]['project'],
-                'queue'         : config[resource]['queue'],
-                'access_schema' : config[resource]['schema']
-                }
-        pdesc = rp.ComputePilotDescription(pd_init)
-
-        # Launch the pilot.
-        pilot = pmgr.submit_pilots(pdesc)
-
+      # # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+      # pmgr = rp.PilotManager(session=session)
+      #
+      # # Define an [n]-core local pilot that runs for [x] minutes
+      # # Here we use a dict to initialize the description object
+      # pd_init = {
+      #         'resource'      : resource,
+      #         'cores'         : 64,  # pilot size
+      #         'runtime'       : 15,  # pilot runtime (min)
+      #         'exit_on_error' : True,
+      #         'project'       : config[resource]['project'],
+      #         'queue'         : config[resource]['queue'],
+      #         'access_schema' : config[resource]['schema']
+      #         }
+      # pdesc = rp.ComputePilotDescription(pd_init)
+      #
+      # # Launch the pilot.
+      # pilot = pmgr.submit_pilots(pdesc)
+      #
+      # pilot.wait(state=rp.ACTIVE)
+      # print "state: %s" % pilot.state
 
         report.header('submit units')
 
         # Register the ComputePilot in a UnitManager object.
         umgr = rp.UnitManager(session=session)
-        umgr.add_pilots(pilot)
+      # umgr.add_pilots(pilot)
 
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
@@ -102,7 +104,8 @@ if __name__ == '__main__':
 
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
-        umgr.wait_units()
+        umgr.wait_units(timeout=3.0)
+        sys.exit()
     
         report.info('\n')
         for unit in units:

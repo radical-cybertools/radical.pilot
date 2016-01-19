@@ -1,6 +1,7 @@
 
 import os
 import sys
+import copy
 import time
 import signal
 
@@ -11,17 +12,19 @@ import radical.utils   as ru
 from ..states    import *
 
 from .prof_utils import Profiler, clone_units, drop_units
-from .prof_utils import timestamp as util_timestamp
+from .prof_utils import timestamp     as util_timestamp
 
-from .queue      import Queue        as rpu_Queue
-from .queue      import QUEUE_ZMQ    as rpu_QUEUE_ZMQ
-from .queue      import QUEUE_OUTPUT as rpu_QUEUE_OUTPUT
-from .queue      import QUEUE_INPUT  as rpu_QUEUE_INPUT
+from .queue      import Queue         as rpu_Queue
+from .queue      import QUEUE_ZMQ     as rpu_QUEUE_ZMQ
+from .queue      import QUEUE_OUTPUT  as rpu_QUEUE_OUTPUT
+from .queue      import QUEUE_INPUT   as rpu_QUEUE_INPUT
+from .queue      import QUEUE_BRIDGE  as rpu_QUEUE_BRIDGE
 
-from .pubsub     import Pubsub       as rpu_Pubsub
-from .pubsub     import PUBSUB_ZMQ   as rpu_PUBSUB_ZMQ
-from .pubsub     import PUBSUB_PUB   as rpu_PUBSUB_PUB
-from .pubsub     import PUBSUB_SUB   as rpu_PUBSUB_SUB
+from .pubsub     import Pubsub        as rpu_Pubsub
+from .pubsub     import PUBSUB_ZMQ    as rpu_PUBSUB_ZMQ
+from .pubsub     import PUBSUB_PUB    as rpu_PUBSUB_PUB
+from .pubsub     import PUBSUB_SUB    as rpu_PUBSUB_SUB
+from .pubsub     import PUBSUB_BRIDGE as rpu_PUBSUB_BRIDGE
 
 # TODO:
 #   - add PENDING states
@@ -139,8 +142,8 @@ class Component(mp.Process):
         self._ctype         = ctype
         self._cfg           = cfg
         self._debug         = cfg.get('debug', 'DEBUG') # FIXME
-        self._agent_name    = cfg['agent_name']
-        self._cname         = "%s.%s.%d" % (self._agent_name, self._ctype, cfg.get('number', 0))
+        self._module_name   = cfg.get('agent_name', 'client')
+        self._cname         = "%s.%s.%d" % (self._module_name, self._ctype, cfg.get('number', 0))
         self._childname     = "%s.child" % self._cname
         self._addr_map      = cfg['bridge_addresses']
         self._parent        = os.getpid() # pid of spawning process
@@ -158,7 +161,7 @@ class Component(mp.Process):
         self._clone_cb      = None        # allocate resources on cloning units
         self._drop_cb       = None        # free resources on dropping clones
 
-        # use agent_name for one log per agent, cname for one log per agent and component
+        # use cname for one log per agent, cname for one log per agent and component
         log_name = self._cname
         log_tgt  = self._cname + ".log"
         self._log = ru.get_logger(log_name, log_tgt, self._debug)
@@ -191,6 +194,116 @@ class Component(mp.Process):
     @property
     def childname(self):
         return self._childname
+
+
+    #
+    @staticmethod
+    def start_bridges(bridges, logger=None):
+        """
+        Helper method to start a given list of bridge names.  The type of bridge
+        (queue or pubsub) is derived from the name.  
+        
+        The call returns a dict with entries for each requested bridge, of the
+        form:
+
+          'handle' : bridge handle which can be close()'d
+          'in'     : 'in'  address of bridge to connect to
+          'out'    : 'out' address of bridge to connect to
+          'alive'  : boolean flag (always True at this point)
+        """
+
+        if logger:
+            log = logger
+        else:
+            log = ru.get_logger('radical.pilot')
+
+        log.debug('start_bridges')
+
+        # FIXME: in, out, alive should be exposed via the handle, which would
+        #        reduce this to a list.
+        ret = dict()
+        for b in bridges:
+
+            log.info('create bridge %s', b)
+            if b.endswith('queue'):
+                bridge = rpu_Queue.create(rpu_QUEUE_ZMQ, b, rpu_QUEUE_BRIDGE)
+
+            elif b.endswith('pubsub'):
+                bridge = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, b, rpu_PUBSUB_BRIDGE)
+
+            else:
+                raise ValueError('unknown bridge type for %s' % b)
+
+            bridge_in  = bridge.bridge_in
+            bridge_out = bridge.bridge_out
+            ret[b] = {'handle' : bridge,
+                      'in'     : bridge_in,
+                      'out'    : bridge_out,
+                      'alive'  : True}  # no alive check done for bridges, yet
+            log.info('created bridge %s: %s', b, bridge.name)
+
+        log.debug('start_bridges done')
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    @staticmethod
+    def start_components(components, typemap, cfg, logger=None):
+        """
+        This method expects a 'components' dict of the form:
+          {
+            'component_name' : <number>
+          }
+        where <number> specifies how many instances are to be created for each
+        type.  The 'typemap' is also expected to be a dict which maps the
+        component names from the 'components' dict to class types -- as an
+        example:
+          {
+            'agent_update_worker : AgentUpdateWorker
+          }
+        Components will be passed the 'cfg', but a deepcopy of that config is
+        created first, and a 'number' key is set to the index of the component
+        instance, so that the components can be uniquely identified.
+
+        The call returns a dictionary which contains an entry for each started
+        component (indexed by component.childname, which is unique).  The dict
+        entries are:
+
+          'handle' : a handle to the component instance
+          'alive'  : a boolean flag 
+
+        Note that this method can also create Workers, which are a specific type
+        of components.
+        """
+
+        if logger: log = logger
+        else     : log = ru.get_logger('radical.pilot')
+
+        log.debug("start_components")
+        import pprint
+        log.debug('config: %s', pprint.pformat(cfg))
+        pprint.pprint(cfg)
+        pprint.pprint(typemap)
+
+        # FIXME: alive should be in the component, which reduces this dict to
+        #        a list of handles
+        ret = dict()
+        for cname, cnum in components.iteritems():
+            for i in range(cnum):
+                # each component gets its own copy of the config
+                log.info('create component %s (%s)', cname, cnum)
+                ccfg = copy.deepcopy(cfg)
+                ccfg['number'] = i
+                comp = typemap[cname].create(ccfg)
+                comp.start()
+                ret[comp.childname] = {'handle' : comp,
+                                       'alive'  : False}
+
+        log.debug("start_components done")
+
+        return ret
 
 
     # --------------------------------------------------------------------------
@@ -548,7 +661,7 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def declare_subscriber(self, topic, pubsub, cb):
+    def declare_subscriber(self, topic, pubsub, cb, cb_data=None):
         """
         This method is complementary to the declare_publisher() above: it
         declares a subscription to a pubsub channel.  If a notification
@@ -564,13 +677,16 @@ class Component(mp.Process):
         """
 
         # ----------------------------------------------------------------------
-        def _subscriber(q, callback):
+        def _subscriber(q, callback, callback_data):
             try:
                 while not self._terminate.is_set():
                     topic, msg = q.get_nowait(1000) # timout in ms
                     if topic and msg:
                         with self._cb_lock:
-                            callback (topic=topic, msg=msg)
+                            if callback_data:
+                                callback (topic=topic, msg=msg, cb_data=callback_data)
+                            else:
+                                callback (topic=topic, msg=msg)
             except Exception as e:
                 self._log.exception("subscriber failed")
                 if self._exit_on_error:
@@ -585,13 +701,13 @@ class Component(mp.Process):
         q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB, addr)
         q.subscribe(topic)
 
-        t = mt.Thread(target=_subscriber, args=[q,cb],
+        t = mt.Thread(target=_subscriber, args=[q,cb,cb_data],
                       name="%s.subscriber" % self.cname)
         t.start()
         self._subscribers.append(t)
 
-        self._log.debug('%s declared subscriber: %s : %s : %s : %s' \
-                % (self._cname, topic, pubsub, cb, t.name))
+        self._log.debug('%s declared subscriber: %s : %s : %s(%s) : %s' \
+                % (self._cname, topic, pubsub, cb, str(cb_data), t.name))
 
     # --------------------------------------------------------------------------
     #
@@ -643,8 +759,6 @@ class Component(mp.Process):
 
         self._is_parent = False
         self._cname     = self.childname
-        self._log       = ru.get_logger(self._cname, "%s.log" % self._cname, self._debug)
-        self._prof      = Profiler(self._cname)
 
         # parent can call terminate, which we translate here into sys.exit(),
         # which is then excepted in the run loop below for an orderly shutdown.
@@ -655,6 +769,10 @@ class Component(mp.Process):
         # reset other signal handlers to their default
         signal.signal(signal.SIGINT,  signal.SIG_DFL)
         signal.signal(signal.SIGALRM, signal.SIG_DFL)
+
+        # create debug helper for nicer stack traces
+        dh = ru.DebugHelper()
+
 
         # set process name
         try:

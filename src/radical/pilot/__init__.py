@@ -39,6 +39,7 @@ from .utils                     import logger
 # make submodules available -- mostly for internal use
 import utils
 import worker
+import umgr
 import agent
 
 
