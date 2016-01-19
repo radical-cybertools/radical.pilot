@@ -243,7 +243,7 @@ def add_event_count(frame, tgt, spec):
     a counter of the events specified in 'spec'.
 
     This works similar to add_frequency: we first filter, and then add the
-    cumsum.
+    cumsum. 
     """
 
     raise NotImplementedError('not yet implemented')
@@ -252,14 +252,14 @@ def add_event_count(frame, tgt, spec):
     def _ecnt(t, _tmp):
         # get sequence of frame which falls within the time window, and return
         # length of that sequence
-        return len(_tmp.uid[(_tmp.time > t-_window) & (_tmp.time <= t)])
+        return len(_tmp.uid[(_tmp.time <= t)])
     # --------------------------------------------------------------------------
 
     # filter the frame by the given spec
     tmp = frame
     for key,val in spec.iteritems():
         tmp = tmp[tmp[key].isin([val])]
-    frame[tgt] = 1 if tmp else 0
+    frame[tgt] = tmp.time.apply(_ecnt, args=[tmp])
 
     return frame
 

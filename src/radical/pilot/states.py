@@ -1,15 +1,8 @@
 #pylint: disable=C0301, C0103, W0212
 
-"""
-.. module:: radical.pilot.states
-   :platform: Unix
-   :synopsis: State constants.
-
-.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
-"""
-
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
-__license__ = "MIT"
+__license__   = "MIT"
+
 
 import datetime
 

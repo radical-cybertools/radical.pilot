@@ -140,7 +140,7 @@ class Component(mp.Process):
         self._cfg           = cfg
         self._debug         = cfg.get('debug', 'DEBUG') # FIXME
         self._agent_name    = cfg['agent_name']
-        self._cname         = "%s.%s.%d" % (self._agent_name, type(self).__name__, cfg.get('number', 0))
+        self._cname         = "%s.%s.%d" % (self._agent_name, self._ctype, cfg.get('number', 0))
         self._childname     = "%s.child" % self._cname
         self._addr_map      = cfg['bridge_addresses']
         self._parent        = os.getpid() # pid of spawning process
