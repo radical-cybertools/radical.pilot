@@ -31,8 +31,9 @@
       "module load python/2.7"
     ],
     "rp_version": "debug",
-    "virtenv": "%(global_sandbox)s/ve_xd-login",
-    "virtenv_mode": "create"
+    "virtenv": "./ve_xd-login",
+    "virtenv_mode": "create",
+    "python_dist": "default"
   },
   "connect": {
     "description": "OSG Connect. (https://osgconnect.net).",
@@ -66,7 +67,8 @@
       "module load python/2.7"
     ],
     "rp_version": "debug",
-    "virtenv": "%(global_sandbox)s/ve_osgconnect",
-    "virtenv_mode": "create"
+    "virtenv": "./ve_osgconnect",
+    "virtenv_mode": "create",
+    "python_dist": "default"
   }
 }

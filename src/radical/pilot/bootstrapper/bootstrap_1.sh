@@ -653,6 +653,12 @@ virtenv_activate()
         source activate $virtenv/
     else
         . "$virtenv/bin/activate"
+        if test -z "$VIRTUAL_ENV"
+        then
+            echo "Loading of virtual env failed!"
+            exit 1
+        fi
+
     fi
     VIRTENV_IS_ACTIVATED=TRUE
 
