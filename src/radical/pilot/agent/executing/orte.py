@@ -101,7 +101,7 @@ class ORTE(AgentExecutingComponent):
                 "ORTE_LIB"):
             raise Exception("ORTE_LIB spawner only works with ORTE_LIB LM's.")
 
-        self._task_launcher = LaunchMethod.create(
+        self._task_launcher = rp.agent.LM.create(
             name   = "ORTE_LIB",
             cfg    = self._cfg,
             logger = self._log)
