@@ -3,12 +3,7 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import threading
-
-import radical.utils as ru
-
 from ... import utils     as rpu
-from ... import states    as rps
 from ... import constants as rpc
 
 
@@ -17,6 +12,7 @@ from ... import constants as rpc
 EXECUTING_NAME_POPEN = "POPEN"
 EXECUTING_NAME_SHELL = "SHELL"
 EXECUTING_NAME_ABDS  = "ABDS"
+EXECUTING_NAME_ORTE  = "ORTE"
 
 
 # ==============================================================================
@@ -52,13 +48,14 @@ class AgentExecutingComponent(rpu.Component):
         from .popen import Popen
         from .shell import Shell
       # from .abds  import ABDS
-
+        from .orte  import ORTE
 
         try:
             impl = {
                 EXECUTING_NAME_POPEN : Popen,
                 EXECUTING_NAME_SHELL : Shell,
       #         EXECUTING_NAME_ABDS  : ABDS
+                EXECUTING_NAME_ORTE  : ORTE
             }[name]
 
             impl = impl(cfg)

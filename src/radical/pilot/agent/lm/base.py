@@ -21,6 +21,7 @@ LM_NAME_MPIRUN_CCMRUN = 'MPIRUN_CCMRUN'
 LM_NAME_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
 LM_NAME_MPIRUN_RSH    = 'MPIRUN_RSH'
 LM_NAME_ORTE          = 'ORTE'
+LM_NAME_ORTE_LIB      = 'ORTE_LIB'
 LM_NAME_POE           = 'POE'
 LM_NAME_RUNJOB        = 'RUNJOB'
 LM_NAME_SSH           = 'SSH'
@@ -87,6 +88,7 @@ class LaunchMethod(object):
         from .mpirun_dplace  import MPIRunDPlace
         from .mpirun_rsh     import MPIRunRSH
         from .orte           import ORTE
+        from .orte_lib       import ORTELib
         from .poe            import POE
         from .runjob         import Runjob
         from .ssh            import SSH
@@ -105,6 +107,7 @@ class LaunchMethod(object):
                 LM_NAME_MPIRUN_DPLACE : MPIRunDPlace,
                 LM_NAME_MPIRUN_RSH    : MPIRunRSH,
                 LM_NAME_ORTE          : ORTE,
+                LM_NAME_ORTE_LIB      : ORTELib,
                 LM_NAME_POE           : POE,
                 LM_NAME_RUNJOB        : Runjob,
                 LM_NAME_SSH           : SSH,
@@ -136,11 +139,13 @@ class LaunchMethod(object):
 
         from .fork           import Fork
         from .orte           import ORTE
+        from .orte_lib       import ORTELib
         from .yarn           import Yarn
 
         impl = {
             LM_NAME_FORK          : Fork,
             LM_NAME_ORTE          : ORTE,
+            LM_NAME_ORTE_LIB      : ORTELib,
             LM_NAME_YARN          : Yarn
         }.get(name)
 
@@ -166,10 +171,12 @@ class LaunchMethod(object):
             raise TypeError("LaunchMethod shutdown hook only available to base class!")
 
         from .orte           import ORTE
+        from .orte_lib       import ORTELib
         from .yarn           import Yarn
 
         impl = {
             LM_NAME_ORTE          : ORTE,
+            LM_NAME_ORTE_LIB      : ORTELib,
             LM_NAME_YARN          : Yarn
         }.get(name)
 

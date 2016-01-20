@@ -6,6 +6,18 @@
             "schema"   : null
         },
 
+        "local.localhost_orte" : {
+            "project"  : null,
+            "queue"    : null,
+            "schema"   : null
+        },
+
+        "local.localhost_ortelib" : {
+            "project"  : null,
+            "queue"    : null,
+            "schema"   : null
+        },
+
         "ncsa.bw" : {
             "project"  : "gkd",
             "queue"    : "debug",
