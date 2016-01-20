@@ -309,10 +309,6 @@ class ORTE(AgentExecutingComponent):
             # launch_script.write("# Exit the script with the return code from the command\n")
 
 
-        # _stdout_file_h = open(cu['stdout_file'], "w")
-        # _stderr_file_h = open(cu['stderr_file'], "w")
-        # self._prof.prof('command', msg='stdout and stderr files created', uid=cu['_id'])
-
 
         # proc = subprocess.Popen(args               = cmdline,
         #                         bufsize            = 0,
@@ -332,15 +328,9 @@ class ORTE(AgentExecutingComponent):
 
         # self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['_id'])
 
-        #DVM_URI = "file:/Users/mark/proj/openmpi/mysubmit/dvm_uri"
-        dvm_uri = cu['opaque_slots']['lm_info']['dvm_uri']
-
-        #cmdline = "t=%d; echo $t; touch TOUCHME; sleep $t" % 0
-        #cmdline = "t=%d; echo $t; echo $RP_UNIT_ID > TOUCHME; sleep $t" % 0
-
         # The actual command line, constructed per launch-method
         try:
-            launch_command, _ = launcher.construct_command(cu, None)
+            orte_command, task_command = launcher.construct_command(cu, None)
         except Exception as e:
             msg = "Error in spawner (%s)" % e
             self._log.exception(msg)
@@ -349,16 +339,9 @@ class ORTE(AgentExecutingComponent):
         # Construct arguments to submit_job
         arg_list = []
 
-        # Set the argv[0], will be stripped off by the library.
-        # arg_list.append(ffi.new("char[]", "RADICAL-Pilot"))
-
-        # Where to reach the DVM
-        # arg_list.append(ffi.new("char[]", "--hnp"))
-        # arg_list.append(ffi.new("char[]", str(dvm_uri)))
-
-        # Number of cores
-        # arg_list.append(ffi.new("char[]", "--np"))
-        # arg_list.append(ffi.new("char[]", str(cu['description']['cores'])))
+        # Take the orte specific commands and split them
+        for arg in orte_command.split():
+            arg_list.append(ffi.new("char[]", str(arg)))
 
         # Set the working directory
         arg_list.append(ffi.new("char[]", "--wdir"))
@@ -389,20 +372,20 @@ class ORTE(AgentExecutingComponent):
                 arg_list.append(ffi.new("char[]", "%s=%s" % (key, val)))
 
         # Save retval of actual CU application (in case we have post-exec)
-        #cmdline += "; RETVAL=$?"
         # TODO: add the exit $RETVAL somewhere
+        task_command += "; RETVAL=$?"
 
         # Wrap in (sub)shell for output redirection
         arg_list.append(ffi.new("char[]", "sh"))
         arg_list.append(ffi.new("char[]", "-c"))
         if 'RADICAL_PILOT_PROFILE' in os.environ:
-            launch_command = "echo script start_script `%s` >> %s/PROF; " % (cu['gtod'], cu_tmpdir) + \
+            task_command = "echo script start_script `%s` >> %s/PROF; " % (cu['gtod'], cu_tmpdir) + \
                       "echo script after_cd `%s` >> %s/PROF; " % (cu['gtod'], cu_tmpdir) + \
-                      launch_command + \
+                      task_command + \
                       "; echo script after_exec `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir)
-        arg_list.append(ffi.new("char[]", "(%s) 1> STDOUT 2>STDERR" % str(launch_command)))
+        arg_list.append(ffi.new("char[]", str("(%s) 1>%s 2>%s; exit $RETVAL" % (str(task_command), cu['stdout_file'], cu['stderr_file']))))
 
-        self._log.debug("Launching unit %s via %s", cu['_id'], launch_command)
+        self._log.debug("Launching unit %s via %s %s", cu['_id'], orte_command, task_command)
 
         # NULL termination, required by ORTE
         arg_list.append(ffi.NULL)
@@ -412,7 +395,6 @@ class ORTE(AgentExecutingComponent):
         try:
             task = lib.submit_job(argv, global_spawn_cb, global_complete_cb, ffi.new_handle(self))
         except Exception:
-            self._log.error("submit job failed")
             raise Exception("submit job failed")
 
         # Record the mapping of ORTE index to CU

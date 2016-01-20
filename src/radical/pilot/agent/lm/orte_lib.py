@@ -232,8 +232,8 @@ class ORTELib(LaunchMethod):
             #'--mca oob_base_verbose 100',
             #'--mca rml_base_verbose 100'
         ]
-        orte_command = '%s %s --hnp "%s" %s -np %s -host %s %s' % (
-            self.launch_command, ' '.join(debug_strings), dvm_uri, export_vars, task_cores, hosts_string, task_command)
+        orte_command = '%s %s --hnp "%s" %s -np %s -host %s' % (
+            self.launch_command, ' '.join(debug_strings), dvm_uri, export_vars, task_cores, hosts_string)
 
-        return orte_command, None
+        return orte_command, task_command
 
