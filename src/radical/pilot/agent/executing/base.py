@@ -47,14 +47,14 @@ class AgentExecutingComponent(rpu.Component):
 
         from .popen import Popen
         from .shell import Shell
-      # from .abds  import ABDS
+        from .abds  import ABDS
         from .orte  import ORTE
 
         try:
             impl = {
                 EXECUTING_NAME_POPEN : Popen,
                 EXECUTING_NAME_SHELL : Shell,
-      #         EXECUTING_NAME_ABDS  : ABDS
+                EXECUTING_NAME_ABDS  : ABDS,
                 EXECUTING_NAME_ORTE  : ORTE
             }[name]
 
