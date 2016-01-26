@@ -15,6 +15,11 @@ from .. import constants as rpc
 
 # ==============================================================================
 #
+DEFAULT_BULK_COLLECTION_TIME = 1.0 # seconds
+
+
+# ==============================================================================
+#
 class Update(rpu.Worker):
     """
     An UpdateWorker pushes CU and Pilot state updates to mongodb.  Its instances
@@ -28,7 +33,7 @@ class Update(rpu.Worker):
     #
     def __init__(self, cfg):
 
-        rpu.Worker.__init__(self, 'AgentUpdateWorker', cfg)
+        rpu.Worker.__init__(self, 'UpdateWorker', cfg)
 
 
     # --------------------------------------------------------------------------
@@ -45,7 +50,7 @@ class Update(rpu.Worker):
 
         self._session_id    = self._cfg['session_id']
         self._mongodb_url   = self._cfg['mongodb_url']
-        self._pilot_id      = self._cfg['pilot_id']
+        self._owner_id      = self._cfg['owner_id']
 
         _, db, _, _, _      = ru.mongodb_connect(self._mongodb_url)
         self._mongo_db      = db
@@ -53,11 +58,11 @@ class Update(rpu.Worker):
         self._lock          = threading.RLock() # protect _cinfo
         self._state_cache   = dict()            # used to preserve state ordering
 
-        self.declare_subscriber('state', 'agent_state_pubsub', self.state_cb)
+        self.declare_subscriber('state', 'state_pubsub', self.state_cb)
         self.declare_idle_cb(self.idle_cb, self._cfg.get('bulk_collection_time'))
 
         # all components use the command channel for control messages
-        self.declare_publisher ('command', rpc.AGENT_COMMAND_PUBSUB)
+        self.declare_publisher ('command', rpc.COMMAND_PUBSUB)
 
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',
@@ -92,6 +97,8 @@ class Update(rpu.Worker):
                 - yes: push this state also
                 - no:  only update state history
         """
+        # FIXME: this is specific to agent side updates, but needs to be
+        #        generalized for the full state model
 
         s2i = {rps.NEW                          :  0,
 
@@ -139,7 +146,8 @@ class Update(rpu.Worker):
         if uid not in self._state_cache:
             self._state_cache[uid] = {'unsent' : list(),
                                       'final'  : False,
-                                      'last'   : rps.AGENT_STAGING_INPUT_PENDING} # we get the cu in this state
+                                      'last'   : rps.AGENT_STAGING_INPUT_PENDING} 
+                                      # we get the cu in this state
         cache = self._state_cache[uid]
 
         # if unit is already final, we don't push state
@@ -195,13 +203,14 @@ class Update(rpu.Worker):
         age = now - cinfo['last']
 
         # only push if collection time has been exceeded
-        if not age > self._cfg['bulk_collection_time']:
+        if not age > self._cfg.get('bulk_collection_time', DEFAULT_BULK_COLLECTION_TIME):
             return False
 
         res = cinfo['bulk'].execute()
         self._log.debug("bulk update result: %s", res)
 
-        self._prof.prof('unit update bulk pushed (%d)' % len(cinfo['uids']), uid=self._pilot_id)
+        self._prof.prof('unit update bulk pushed (%d)' % len(cinfo['uids']),
+                        uid=self._owner_id)
         for entry in cinfo['uids']:
             uid   = entry[0]
             state = entry[1]
@@ -262,6 +271,7 @@ class Update(rpu.Worker):
         # when the unit is about to leave the agent, we also update stdout,
         # stderr exit code etc
         # FIXME: this probably should be a parameter ('FULL') on 'msg'
+        # FIXME: this should only be done by the agent, not the UMGR
         if state in [rps.DONE, rps.FAILED, rps.CANCELED, rps.PENDING_OUTPUT_STAGING]:
             if not '$set' in update_dict:
                 update_dict['$set'] = dict()

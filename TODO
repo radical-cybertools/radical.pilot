@@ -14,7 +14,7 @@
   + make sure finalize is called on terminate (via atexit?)
   + make sure all profile entries exist, merge from module profiling branch
   + merge from devel
-  - merge from osgng
+  + merge from osgng
   = forward tunnel endpoint from bootstrap_1 to agent?
   + make sure opaque_slot is a dict
   + make sure that the lrms_config_hook is called only once
@@ -29,3 +29,6 @@
     declared explicitly.
   + rename 'worker' to 'sub-agent' to avoid confusion?
   - component: collapse declare_input and declare_worker
+  - cu['_id'] -> cu['uid'] etc
+
+  - state pubsub now has [cmd, ttype, thing] tuples fed from advance.

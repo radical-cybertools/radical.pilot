@@ -6,6 +6,9 @@
 UPDATE_WORKER                  = 'UpdateWorker'
 HEARTBEAT_WORKER               = 'HeartbeatWorker'
 
+PMGR_LAUNCHING_QUEUE           = 'pmgr_launching_queue'
+PMGR_LAUNCHING_COMPONENT       = 'PMGRLaunchingComponent'
+
 UMGR_SCHEDULING_QUEUE          = 'umgr_scheduling_queue'
 UMGR_STAGING_INPUT_QUEUE       = 'umgr_staging_input_queue'
 UMGR_STAGING_OUTPUT_QUEUE      = 'umgr_staging_output_queue'
@@ -25,16 +28,14 @@ AGENT_SCHEDULING_COMPONENT     = 'AgentSchedulingComponent'
 AGENT_EXECUTING_COMPONENT      = 'AgentExecutingComponent'
 AGENT_STAGING_OUTPUT_COMPONENT = 'AgentStagingOutputComponent'
 
-PMGR_LAUNCHING_QUEUE           = 'pmgr_launching_queue'
-
-PMGR_LAUNCHING_COMPONENT       = 'PMGRLaunchingComponent'
-
-UMGR_STATE_PUBSUB              = 'umgr_state_pubsub'
+UMGR_UNSCHEDULE_PUBSUB         = 'umgr_unschedule_pubsub'
+UMGR_RESCHEDULE_PUBSUB         = 'umgr_reschedule_pubsub'
 
 AGENT_UNSCHEDULE_PUBSUB        = 'agent_unschedule_pubsub'
 AGENT_RESCHEDULE_PUBSUB        = 'agent_reschedule_pubsub'
-AGENT_COMMAND_PUBSUB           = 'agent_command_pubsub'
-AGENT_STATE_PUBSUB             = 'agent_state_pubsub'
+
+COMMAND_PUBSUB                 = 'command_pubsub'
+STATE_PUBSUB                   = 'state_pubsub'
 
 
 # ------------------------------------------------------------------------------

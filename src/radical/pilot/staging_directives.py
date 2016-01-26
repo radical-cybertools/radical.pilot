@@ -38,10 +38,26 @@ STAGING_AREA     = 'staging_area'
 
 #-----------------------------------------------------------------------------
 #
+def expand_description(descr):
+    """
+    call expand_staging_directive for the 'input_staging' and 'output_staging'
+    elements of the given description
+    """
+
+    descr['input_staging']  = expand_staging_directive(descr.get('input_staging' ))
+    descr['output_staging'] = expand_staging_directive(descr.get('output_staging'))
+
+
+#-----------------------------------------------------------------------------
+#
 def expand_staging_directive(staging_directive):
-    """Take an abbreviated or compressed staging directive and expand it.
+    """
+    Take an abbreviated or compressed staging directive and expand it.
 
     """
+
+    if not staging_directive:
+        return []
 
     # Convert single entries into a list
     if not isinstance(staging_directive, list):

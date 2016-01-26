@@ -933,45 +933,63 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def advance(self, units, state=None, publish=True, push=False, prof=True,
+    def advance(self, things, state=None, publish=True, push=False, prof=True,
                 timestamp=None):
         """
-        Units which have been operated upon are pushed down into the queues
-        again, only to be picked up by the next component, according to their
-        state.  This method will update the unit state, and push it into the
-        output queue declared as target for that state.
+        Things (units or pilots) which have been operated upon are pushed down 
+        into the queues again, only to be picked up by the next component, 
+        according to their state model.  This method will update the unit state,
+        and push it into the output queue declared as target for that state.
 
-        units:   list of units to advance
-        state:   new state to set for the units
+        things:  list of things to advance
+        state:   new state to set for the things
         publish: determine if state update notifications should be issued
-        push:    determine if units should be pushed to outputs
+        push:    determine if things should be pushed to outputs
         prof:    determine if state advance creates a profile event
                  (publish, push, and drop are always profiled)
+
+        'Things' are expected to be a dictionary, and to have 'state', '_id' and
+        optionally 'type' set.
         """
+
+        # FIXME: this needs to be usable by pilots, too
 
         if not timestamp:
             timestamp = util_timestamp()
 
-        if not isinstance(units, list):
-            units = [units]
+        if not isinstance(things, list):
+            things = [things]
 
-        for unit in units:
+        for thing in things:
 
-            uid = unit['_id']
+            uid   = thing['_id']
+            ttype = thing.get('type')
+
+            if not ttype:
+                if   'unit'  in uid: ttype = 'unit'
+                elif 'pilot' in uid: ttype = 'pilot'
+
+                thing['ttype'] = ttype
+
+            if ttype not in ['unit', 'pilot']:
+                raise TypeError("thing has unknown type (%s)" % uid)
 
             if state:
-                unit['state']          = state
-                unit['state_timstamp'] = timestamp
+                thing['state']          = state
+                thing['state_timstamp'] = timestamp
                 if prof:
-                    self._prof.prof('advance', uid=unit['_id'], state=state,
+                    self._prof.prof('advance', uid=thing['_id'], state=state,
                             timestamp=timestamp)
             else:
-                state = unit['state']
+                state = thing['state']
 
             if publish:
                 # send state notifications
-                self.publish('state', unit)
-                self._prof.prof('publish', uid=unit['_id'], state=unit['state'])
+                self.publish('state', thing)
+                    output.put({'cmd'  : 'state_update', 
+                                'type' : ttype,
+                                'msg'  : _thing})
+                self._prof.prof('publish', uid=thing['_id'], state=thing['state'])
 
             if push:
                 if state not in self._outputs:
@@ -981,31 +999,31 @@ class Component(mp.Process):
                     continue
 
                 if not self._outputs[state]:
-                    # empty output -- drop unit
-                    self._log.debug('%s %s ===| %s' % ('state', unit['id'], unit['state']))
+                    # empty output -- drop thing
+                    self._log.debug('%s %s ===| %s' % ('state', thing['id'], thing['state']))
                     continue
 
 
                 output = self._outputs[state]
 
-                # depending on the queue we got the unit from, we can now either
-                # drop units or clone them to inject new ones
-                unit = drop_units(self._cfg, unit, self.ctype, 'output',
+                # depending on the queue we got the thing from, we can now either
+                # drop things or clone them to inject new ones
+                thing = drop_units(self._cfg, thing, self.ctype, 'output',
                                   drop_cb=self._drop_cb, logger=self._log)
-                if not unit:
+                if not thing:
                     self._prof.prof(event='drop', state=state, uid=uid, msg=output.name)
                     continue
 
-                units = clone_units(self._cfg, unit, self.ctype, 'output',
+                _things = clone_units(self._cfg, thing, self.ctype, 'output',
                                     clone_cb=self._clone_cb, logger=self._log)
 
-                for _unit in units:
-                    # FIXME: we should assert that the unit is in a PENDING state.
+                for _thing in _things:
+                    # FIXME: we should assert that the thing is in a PENDING state.
                     #        Better yet, enact the *_PENDING transition right here...
                     #
-                    # push the unit down the drain
-                    output.put(_unit)
-                    self._prof.prof('put', uid=_unit['_id'], state=state, msg=output.name)
+                    # push the thing down the drain
+                    output.put(_thing)
+                    self._prof.prof('put', uid=_thing['_id'], state=state, msg=output.name)
 
 
     # --------------------------------------------------------------------------

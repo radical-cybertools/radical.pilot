@@ -42,11 +42,11 @@ class Shell(AgentExecutingComponent):
         self.declare_output(rps.AGENT_STAGING_OUTPUT_PENDING, rpc.AGENT_STAGING_OUTPUT_QUEUE)
 
         self.declare_publisher ('unschedule', rpc.AGENT_UNSCHEDULE_PUBSUB)
-        self.declare_publisher ('state',      rpc.AGENT_STATE_PUBSUB)
+        self.declare_publisher ('state',      rpc.STATE_PUBSUB)
 
         # all components use the command channel for control messages
-        self.declare_publisher ('command', rpc.AGENT_COMMAND_PUBSUB)
-        self.declare_subscriber('command', rpc.AGENT_COMMAND_PUBSUB, self.command_cb)
+        self.declare_publisher ('command', rpc.COMMAND_PUBSUB)
+        self.declare_subscriber('command', rpc.COMMAND_PUBSUB, self.command_cb)
 
         # Mimic what virtualenv's "deactivate" would do
         self._deactivate = "# deactivate pilot virtualenv\n"

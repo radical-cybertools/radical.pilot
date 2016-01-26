@@ -65,6 +65,8 @@ CANCELED                     = 'Canceled'
 FAILED                       = 'Failed'
 PENDING                      = 'Pending'
 
+FINAL                        = [DONE, FAILED, CANCELED]
+
 # -----------------------------------------------------------------------------
 # ComputePilot States
 PENDING_LAUNCH               = 'PendingLaunch'
@@ -89,4 +91,12 @@ AGENT_STAGING_OUTPUT_PENDING = 'AgentStagingOutputPending'
 AGENT_STAGING_OUTPUT         = 'AgentStagingOutput'
 PENDING_OUTPUT_STAGING       = 'PendingOutputStaging'
 STAGING_OUTPUT               = 'StagingOutput'
+
+# new
+UMGR_SCHEDULING_PENDING      = 'UMGRSchedulingPending'
+UMGR_SCHEDULING              = SCHEDULING
+UMGR_STAGING_INPUT_PENDING   = PENDING_INPUT_STAGING
+UMGR_STAGING_INPUT           = STAGING_INPUT
+UMGR_STAGING_OUTPUT_PENDING  = PENDING_OUTPUT_STAGING
+UMGR_STAGING_OUTPUT          = STAGING_OUTPUT
 

@@ -11,6 +11,12 @@ from .. import utils     as rpu
 from .. import constants as rpc
 
 
+
+# ==============================================================================
+# defaults
+DEFAULT_HEARTBEAT_INTERVAL = 10.0   # seconds
+
+
 # ==============================================================================
 #
 class Heartbeat(rpu.Worker):
@@ -41,14 +47,15 @@ class Heartbeat(rpu.Worker):
         self._session_id    = self._cfg['session_id']
         self._mongodb_url   = self._cfg['mongodb_url']
 
-        self.declare_idle_cb(self.idle_cb, self._cfg.get('heartbeat_interval'))
+        self.declare_idle_cb(self.idle_cb, self._cfg.get('heartbeat_interval',
+                             DEFAULT_HEARTBEAT_INTERVAL))
 
         # all components use the command channel for control messages
-        self.declare_publisher ('command', rpc.AGENT_COMMAND_PUBSUB)
+        self.declare_publisher ('command', rpc.COMMAND_PUBSUB)
 
-        self._pilot_id      = self._cfg['pilot_id']
+        self._owner_id      = self._cfg['owner_id']
         self._session_id    = self._cfg['session_id']
-        self._runtime       = self._cfg['runtime']
+        self._runtime       = self._cfg.get('runtime')
         self._starttime     = time.time()
 
         # set up db connection
@@ -76,7 +83,8 @@ class Heartbeat(rpu.Worker):
     def idle_cb(self):
 
         try:
-            self._prof.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!', uid=self._pilot_id)
+            self._prof.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!',
+                            uid=self._owner_id)
             self._check_commands()
             self._check_state   ()
             return True
@@ -92,7 +100,7 @@ class Heartbeat(rpu.Worker):
 
         # Check if there's a command waiting
         retdoc = self._p.find_and_modify(
-                    query  = {"_id"  : self._pilot_id},
+                    query  = {"_id"  : self._owner_id},
                     update = {"$set" : {rpc.COMMAND_FIELD: []}}, # Wipe content of array
                     fields = [rpc.COMMAND_FIELD]
                     )
@@ -105,7 +113,8 @@ class Heartbeat(rpu.Worker):
             cmd = command[rpc.COMMAND_TYPE]
             arg = command[rpc.COMMAND_ARG]
 
-            self._prof.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" % (cmd, arg), uid=self._pilot_id)
+            self._prof.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" \
+                            % (cmd, arg), uid=self._owner_id)
 
             if cmd == rpc.COMMAND_CANCEL_PILOT:
                 self._log.info('cancel pilot cmd')
@@ -127,12 +136,13 @@ class Heartbeat(rpu.Worker):
     #
     def _check_state(self):
 
-        # Make sure that we haven't exceeded the agent runtime. if
+        # Make sure that we haven't exceeded the runtime (if one is set). If
         # we have, terminate.
-        if time.time() >= self._starttime + (int(self._runtime) * 60):
-            self._log.info("Agent has reached runtime limit of %s seconds.", self._runtime*60)
-            self.publish('command', {'cmd' : 'shutdown',
-                                     'arg' : 'timeout'})
+        if self._runtime:
+            if time.time() >= self._starttime + (int(self._runtime) * 60):
+                self._log.info("reached runtime limit (%ss).", self._runtime*60)
+                self.publish('command', {'cmd' : 'shutdown',
+                                         'arg' : 'timeout'})
 
 
 # ------------------------------------------------------------------------------

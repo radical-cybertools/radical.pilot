@@ -1,0 +1,50 @@
+# this is the default unit manager config which is used if no other config is
+# specified.  It contains the minimal set of settings required for
+# a functional unit manager.
+{
+    # time between checks of internal state and commands from mothership (seconds)
+    "scheduler" : "round_robin",
+
+    "bridges" : [
+        # which bridges are to be started by this umgr
+        "umgr_staging_input_queue",
+        "umgr_scheduling_queue",
+        "umgr_staging_output_queue",
+
+        "umgr_unschedule_pubsub",
+        "umgr_reschedule_pubsub",
+
+        "command_pubsub",
+        "state_pubsub"
+    ],
+    "components" : {
+        # how many instances of the respective components should be started
+        "UMGRStagingInputComponent"  : 1,
+        "UMGRSchedulingComponent"    : 1,
+        "UMGRStagingOutputComponent" : 1
+    },
+
+    # factor by which the number of units are increased at a certain step.  Value of
+    # "1" will leave the units unchanged.  Any blowup will leave on unit as the
+    # original, and will then create clones with an changed unit ID (see blowup()).
+    "clone" : {
+        "UMGRWorker"                 : {"input" : 1, "output" : 1},
+        "UMGRStagingInputComponent"  : {"input" : 1, "output" : 1},
+        "UMGRSchedulingComponent"    : {"input" : 1, "output" : 1},
+        "UMGRStagingOutputComponent" : {"input" : 1, "output" : 1}
+    },
+
+    # flag to drop all blown-up units at some point in the pipeline.  The units
+    # with the original IDs will again be left untouched, but all other units are
+    # silently discarded.
+    # 0: drop nothing
+    # 1: drop clones
+    # 2: drop everything
+    "drop" : {
+        "UMGRWorker"                 : {"input" : 1, "output" : 1},
+        "UMGRStagingInputComponent"  : {"input" : 1, "output" : 1},
+        "UMGRSchedulingComponent"    : {"input" : 1, "output" : 1},
+        "UMGRStagingOutputComponent" : {"input" : 1, "output" : 1}
+    }
+}
+

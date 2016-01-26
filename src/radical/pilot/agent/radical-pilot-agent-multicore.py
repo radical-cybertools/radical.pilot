@@ -393,9 +393,10 @@ def bootstrap_3():
     agent_cfg  = "%s/%s.cfg" % (os.getcwd(), agent_name)
     print "startup agent %s : %s" % (agent_name, agent_cfg)
 
-    cfg = ru.read_json_str(agent_cfg)
-    cfg['agent_name'] = agent_name
+    cfg      = ru.read_json_str(agent_cfg)
     pilot_id = cfg['pilot_id']
+    cfg['owner_id']   = pilot_id
+    cfg['agent_name'] = agent_name
 
     # set up a logger and profiler
     prof = rpu.Profiler ('%s.bootstrap_3' % agent_name)

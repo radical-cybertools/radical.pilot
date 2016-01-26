@@ -44,7 +44,7 @@ class Agent(rpu.Worker):
         self._session_id  = self._cfg['session_id']
 
         # all components use the command channel for control messages
-        self.declare_subscriber('command', rpc.AGENT_COMMAND_PUBSUB, self.command_cb)
+        self.declare_subscriber('command', rpc.COMMAND_PUBSUB, self.command_cb)
 
 
     # --------------------------------------------------------------------------
@@ -185,8 +185,8 @@ class Agent(rpu.Worker):
 
         # make sure we collect commands, specifically to implement the startup
         # barrier on bootstrap_4
-        self.declare_publisher ('command', rpc.AGENT_COMMAND_PUBSUB)
-        self.declare_subscriber('command', rpc.AGENT_COMMAND_PUBSUB, self.barrier_cb)
+        self.declare_publisher ('command', rpc.COMMAND_PUBSUB)
+        self.declare_subscriber('command', rpc.COMMAND_PUBSUB, self.barrier_cb)
 
         # Now instantiate all communication and notification channels, and all
         # components and workers.  It will then feed a set of units to the
@@ -253,7 +253,7 @@ class Agent(rpu.Worker):
         if self._pull_units:
 
             self.declare_output(rps.AGENT_STAGING_INPUT_PENDING, rpc.AGENT_STAGING_INPUT_QUEUE)
-            self.declare_publisher('state', rpc.AGENT_STATE_PUBSUB)
+            self.declare_publisher('state', rpc.STATE_PUBSUB)
 
             # register idle callback, to pull for units -- which is the only action
             # we have to perform, really
