@@ -1,104 +1,191 @@
-#pylint: disable=C0301, C0103, W0212
 
-"""
-.. module:: radical.pilot.pilot_manager
-   :platform: Unix
-   :synopsis: Provides the interface for the PilotManager class.
+__copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
+__license__   = "MIT"
 
-.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
-"""
-
-__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
-__license__ = "MIT"
 
 import os
-import sys
 import time
-import glob
-import copy
+import threading
 
 import radical.utils as ru
 
-from .states          import *
-from .exceptions      import *
-from .utils           import logger
-from .controller      import PilotManagerController
-from .compute_pilot   import ComputePilot
-from .exceptions      import PilotException, BadParameter
-from .resource_config import ResourceConfig
+from .  import utils     as rpu
+from .  import states    as rps
+from .  import constants as rpc
+from .  import types     as rpt
 
-# -----------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
-class PilotManager(object):
-    """A PilotManager holds :class:`radical.pilot.ComputePilot` instances that are
+class PilotManager(rpu.Component):
+    """
+    A PilotManager manages :class:`radical.pilot.ComputePilot` instances that are
     submitted via the :func:`radical.pilot.PilotManager.submit_pilots` method.
 
     It is possible to attach one or more :ref:`chapter_machconf`
     to a PilotManager to outsource machine specific configuration
     parameters to an external configuration file.
 
-    Each PilotManager has a unique identifier :data:`radical.pilot.PilotManager.uid`
-    that can be used to re-connect to previoulsy created PilotManager in a
-    given :class:`radical.pilot.Session`.
-
     **Example**::
 
-        s = radical.pilot.Session(database_url=dbURL)
+        s = radical.pilot.Session(database_url=DBURL)
 
-        pm1 = radical.pilot.PilotManager(session=s, resource_configurations=RESCONF)
-        # Re-connect via the 'get()' method.
-        pm2 = radical.pilot.PilotManager.get(session=s, pilot_manager_id=pm1.uid)
+        pm = radical.pilot.PilotManager(session=s)
 
-        # pm1 and pm2 are pointing to the same PilotManager
-        assert pm1.uid == pm2.uid
+        pd = radical.pilot.ComputePilotDescription()
+        pd.resource = "futuregrid.alamo"
+        pd.cores = 16
+
+        p1 = pm.submit_pilots(pd) # create first pilot with 16 cores
+        p2 = pm.submit_pilots(pd) # create second pilot with 16 cores
+
+        # Create a workload of 128 '/bin/sleep' compute units
+        compute_units = []
+        for unit_count in range(0, 128):
+            cu = radical.pilot.ComputeUnitDescription()
+            cu.executable = "/bin/sleep"
+            cu.arguments = ['60']
+            compute_units.append(cu)
+
+        # Combine the two pilots, the workload and a scheduler via
+        # a UnitManager.
+        um = radical.pilot.UnitManager(session=session,
+                                       scheduler=radical.pilot.SCHED_ROUND_ROBIN)
+        um.add_pilot(p1)
+        um.submit_units(compute_units)
     """
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    def __init__(self, session, pilot_launcher_workers=1, report_state=True):
-        """Creates a new PilotManager and attaches is to the session.
-
-        .. note:: The `resource_configurations` (see :ref:`chapter_machconf`)
-                  parameter is currently mandatory for creating a new
-                  PilotManager instance.
+    def __init__(self, session):
+        """
+        Creates a new PilotManager and attaches is to the session.
 
         **Arguments:**
-
-            * **session** [:class:`radical.pilot.Session`]:
+            * session [:class:`radical.pilot.Session`]:
               The session instance to use.
 
-            * **resource_configurations** [`string` or `list of strings`]:
-              A list of URLs pointing to :ref:`chapter_machconf`. Currently
-              `file://`, `http://` and `https://` URLs are supported.
-
-              If one or more resource_configurations are provided, Pilots
-              submitted  via this PilotManager can access the configuration
-              entries in the  files via the :class:`ComputePilotDescription`.
-              For example::
-
-                  pm = radical.pilot.PilotManager(session=s)
-
-                  pd = radical.pilot.ComputePilotDescription()
-                  pd.resource = "futuregrid.india"  # defined in futuregrid.json
-                  pd.cores    = 16
-                  pd.runtime  = 5 # minutes
-
-                  pilot = pm.submit_pilots(pd)
-
-            * pilot_launcher_workers (`int`): The number of pilot launcher 
-              worker processes to start in the background. 
-
-        .. note:: `pilot_launcher_workers` can be used to tune RADICAL-Pilot's 
-                  performance. However, you should only change the default values 
-                  if you know what you are doing.
-
         **Returns:**
-
             * A new `PilotManager` object [:class:`radical.pilot.PilotManager`].
-
-        **Raises:**
-            * :class:`radical.pilot.PilotException`
         """
+
+        from .. import pilot as rp
+        
+        self._session    = session
+        self._cfg        = None
+        self._components = None
+        self._bridges    = None
+        self._pilots     = dict()
+        self._units      = dict()
+        self._callbacks  = dict()
+        self._cb_lock    = threading.RLock()
+        self._closed     = False
+        self._rec_id     = 0       # used for session recording
+
+        # get an ID and initialize logging and profiling
+        # FIXME: log and prof are already provided by the base class -- but it
+        #        will take a while until we can initialize that, and meanwhile
+        #        we use these...
+        self._uid  = ru.generate_id('umgr')
+        self._log  = ru.get_logger(self.uid, "%s.%s.log" % (session.uid, self._uid))
+        self._prof = rpu.Profiler("%s.%s" % (session.uid, self._uid))
+
+        self._session.prof.prof('create umgr', uid=self._uid)
+
+        self._log.report.info('<<create unit manager')
+
+        try:
+
+            self._cfg = ru.read_json("%s/configs/umgr_%s.json" \
+                    % (os.path.dirname(__file__),
+                       os.environ.get('RADICAL_PILOT_UMGR_CONFIG', 'default')))
+
+            self._cfg['session_id']  = self._session.uid
+            self._cfg['mongodb_url'] = self._session._dburl
+            self._cfg['owner_id']    = self._uid
+
+            if scheduler:
+                # overwrite the scheduler from the config file
+                self._cfg['scheduler'] = scheduler
+
+            if not self._cfg.get('scheduler'):
+                # set default scheduler if needed
+                self._cfg['scheduler'] = SCHED_DEFAULT
+
+            bridges    = self._cfg.get('bridges',    [])
+            components = self._cfg.get('components', [])
+
+            # always start update and heartbeat workers
+            components[rpc.UPDATE_WORKER]    = 1
+            components[rpc.HEARTBEAT_WORKER] = 1
+
+            # we also need a map from component names to class types
+            typemap = {
+                rpc.UMGR_STAGING_INPUT_COMPONENT  : rp.umgr.Input,
+                rpc.UMGR_SCHEDULING_COMPONENT     : rp.umgr.Scheduler,
+                rpc.UMGR_STAGING_OUTPUT_COMPONENT : rp.umgr.Output,
+                rpc.UPDATE_WORKER                 : rp.worker.Update,
+                rpc.HEARTBEAT_WORKER              : rp.worker.Heartbeat
+                }
+
+            # before we start any components, we need to get the bridges up they
+            # want to connect to
+            self._bridges = rpu.Component.start_bridges(bridges)
+
+            # get bridge addresses from our bridges, and append them to the
+            # config, so that we can pass those addresses to the components
+            if not 'bridge_addresses' in self._cfg:
+                self._cfg['bridge_addresses'] = dict()
+
+            for b in self._bridges:
+
+                # to avoid confusion with component input and output, we call bridge
+                # input a 'sink', and a bridge output a 'source' (from the component
+                # perspective)
+                sink   = ru.Url(self._bridges[b]['in'])
+                source = ru.Url(self._bridges[b]['out'])
+
+                # for the unit manager, we assume all bridges to be local, so we
+                # really are only interested in the ports for now...
+                sink.host   = '127.0.0.1'
+                source.host = '127.0.0.1'
+
+                # keep the resultin URLs as strings, to be used as addresses
+                self._cfg['bridge_addresses'][b] = dict()
+                self._cfg['bridge_addresses'][b]['sink']   = str(sink)
+                self._cfg['bridge_addresses'][b]['source'] = str(source)
+
+            # the bridges are up, we can start to connect the components to them
+            self._components = rpu.Component.start_components(components,
+                    typemap, self._cfg)
+
+            # FIXME: make sure all communication channels are in place.  This could
+            # be replaced with a proper barrier, but not sure if that is worth it...
+            time.sleep(1)
+
+            # we only can initialize the base class once we have the bridges up
+            # and running, as those are needed to register any message event
+            # callbacks
+            rpu.Component.__init__(self, 'UnitManager', self._cfg)
+
+            # the command pubsub is used to communicate with the scheduler,
+            # to shut down components, and to cancel units.  The queue is
+            # used to forward submitted units to the scheduler
+            self.declare_publisher('command', rpc.COMMAND_PUBSUB)
+            self.declare_output(rps.UMGR_SCHEDULING_PENDING, rpc.UMGR_SCHEDULING_QUEUE)
+
+
+        except Exception as e:
+            self._log.exception("UMGR setup error: %s" % e)
+            raise
+
+        self._prof.prof('UMGR setup done', logger=self._log.debug)
+
+        self._log.report.ok('>>ok\n')
+
+
+
+        ## =====
         logger.report.info('<<create pilot manager')
 
         self._session = session

@@ -5,18 +5,6 @@
     # time between checks of internal state and commands from mothership (seconds)
     "scheduler" : "round_robin",
 
-    "bridges" : [
-        # which bridges are to be started by this umgr
-        "umgr_staging_input_queue",
-        "umgr_scheduling_queue",
-        "umgr_staging_output_queue",
-
-        "umgr_unschedule_pubsub",
-        "umgr_reschedule_pubsub",
-
-        "command_pubsub",
-        "state_pubsub"
-    ],
     "components" : {
         # how many instances of the respective components should be started
         "UMGRStagingInputComponent"  : 1,

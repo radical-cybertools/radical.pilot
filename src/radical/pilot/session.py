@@ -1,75 +1,51 @@
-#pylint: disable=C0301, C0103, W0212
 
-"""
-.. module:: radical.pilot.session
-   :platform: Unix
-   :synopsis: Implementation of the Session class.
-
-.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
-"""
-
-__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
+__copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import os 
-import bson
+
+import os
+import time
 import glob
 import copy
 import saga
 import threading
 import radical.utils as ru
 
-from .utils           import *
+from .  import utils     as rpu
+from .  import states    as rps
+from .  import constants as rpc
+from .  import types     as rpt
+
 from .unit_manager    import UnitManager
 from .pilot_manager   import PilotManager
 from .resource_config import ResourceConfig
-from .exceptions      import PilotException
 from .db              import Session as dbSession
 
 
 # ------------------------------------------------------------------------------
 #
 class Session (saga.Session):
-    """A Session encapsulates a RADICAL-Pilot instance and is the *root* object
+    """
+    A Session encapsulates a RADICAL-Pilot instance and is the *root* object
     for all other RADICAL-Pilot objects. 
 
-    A Session holds :class:`radical.pilot.PilotManager` and :class:`radical.pilot.UnitManager`
-    instances which in turn hold  :class:`radical.pilot.Pilot` and
-    :class:`radical.pilot.ComputeUnit` instances.
-
-    Each Session has a unique identifier :data:`radical.pilot.Session.uid` that can be
-    used to re-connect to a RADICAL-Pilot instance in the database.
-
-    **Example**::
-
-        s1 = radical.pilot.Session(database_url=DBURL)
-        s2 = radical.pilot.Session(database_url=DBURL, uid=s1.uid)
-
-        # s1 and s2 are pointing to the same session
-        assert s1.uid == s2.uid
+    A Session holds :class:`radical.pilot.PilotManager` and
+    :class:`radical.pilot.UnitManager` instances which in turn hold
+    :class:`radical.pilot.ComputePilot` and :class:`radical.pilot.ComputeUnit`
+    instances.
     """
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    def __init__ (self, database_url=None, database_name=None, name=None):
-        """Creates a new session.
-
-        If called without a uid, a new Session instance is created and 
-        stored in the database. If uid is set, an existing session is 
-        retrieved from the database. 
+    def __init__ (self, database_url=None):
+        """
+        Creates a new session.  A new Session instance is created and 
+        stored in the database.
 
         **Arguments:**
             * **database_url** (`string`): The MongoDB URL.  If none is given,
               RP uses the environment variable RADICAL_PILOT_DBURL.  If that is
               not set, an error will be raises.
-
-            * **database_name** (`string`): An alternative database name 
-              (default: 'radicalpilot').
-
-            * **uid** (`string`): If uid is set, we try 
-              re-connect to an existing session instead of creating a new one.
-
-            * **name** (`string`): An optional human readable name.
 
         **Returns:**
             * A new Session instance.
@@ -81,11 +57,6 @@ class Session (saga.Session):
 
         logger = ru.get_logger('radical.pilot')
 
-        if database_name:
-            logger.warning("The 'database_name' parameter is deprecated - please specify an URL path")
-        else:
-            database_name = 'radicalpilot'
-
         # init the base class inits
         saga.Session.__init__ (self)
         self._dh        = ru.DebugHelper()
@@ -93,6 +64,10 @@ class Session (saga.Session):
         self._terminate = threading.Event()
         self._terminate.clear()
 
+        # the session manages the communication bridges
+        self._cfg              = None
+        self._bridges          = None
+        self._bridge_addresses = dict()
         # before doing anything else, set up the debug helper for the lifetime
         # of the session.
         self._debug_helper = ru.DebugHelper ()
@@ -117,8 +92,7 @@ class Session (saga.Session):
         if  not dburl.path         or \
             dburl.path[0]   != '/' or \
             len(dburl.path) <=  1  :
-            logger.warning("incomplete URLs are deprecated -- missing database name!")
-            dburl.path = database_name # defaults to 'radicalpilot'
+            raise ValueError("incomplete DBURL -- missing database name!")
 
         logger.info("using database %s" % dburl)
 
@@ -130,12 +104,8 @@ class Session (saga.Session):
         self._dburl     = None
 
         try:
-            if name :
-                uid = name
-                ru.reset_id_counters(prefix=['pmgr', 'umgr', 'pilot', 'unit', 'unit.%(counter)06d'])
-            else :
-                uid = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
-                ru.reset_id_counters(prefix=['pmgr', 'umgr', 'pilot', 'unit', 'unit.%(counter)06d'])
+            uid = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
+            ru.reset_id_counters(prefix=['pmgr', 'umgr', 'pilot', 'unit', 'unit.%(counter)06d'])
 
             # initialize profiling
             self.prof = Profiler('%s' % uid)
@@ -147,12 +117,10 @@ class Session (saga.Session):
             logger.report.plain('[%s]' % dburl)
 
             self._dbs = dbSession(sid   = uid,
-                                  name  = name,
                                   dburl = dburl)
 
             # only now the session should have an uid
             self._dburl = self._dbs._dburl
-            self._name  = name
             self._uid   = uid
 
             # from here on we should be able to close the session again
@@ -162,7 +130,7 @@ class Session (saga.Session):
         except Exception, ex:
             logger.report.error(">>err\n")
             logger.exception ('session create failed')
-            raise PilotException("Couldn't create new session (database URL '%s' incorrect?): %s" \
+            raise RuntimeError("Couldn't create new session (database URL '%s' incorrect?): %s" \
                             % (self._dburl, ex))  
 
         # Loading all "default" resource configurations
@@ -219,6 +187,49 @@ class Session (saga.Session):
             logger.info("recording session in %s" % self._rec)
         else:
             self._rec = None
+
+        # create communication bridges for umgr and pmgr instances to use
+        try:
+
+            # load the session config
+            self._cfg = ru.read_json("%s/configs/session_%s.json" \
+                    % (os.path.dirname(__file__),
+                       os.environ.get('RADICAL_PILOT_SESSION_CONFIG', 'default')))
+            bridges       = self._cfg.get('bridges', [])
+            self._bridges = rpu.Component.start_bridges(bridges)
+
+            # get bridge addresses from our bridges, and append them to the
+            # config, so that we can pass those addresses to the umgr and pmgr 
+            # components
+            self._bridge_addresses = dict()
+
+            for b in self._bridges:
+
+                # to avoid confusion with component input and output, we call bridge
+                # input a 'sink', and a bridge output a 'source' (from the component
+                # perspective)
+                sink   = ru.Url(self._bridges[b]['in'])
+                source = ru.Url(self._bridges[b]['out'])
+
+                # for the unit manager, we assume all bridges to be local, so we
+                # really are only interested in the ports for now...
+                sink.host   = '127.0.0.1'
+                source.host = '127.0.0.1'
+
+                # keep the resultin URLs as strings, to be used as addresses
+                self._bridge_addresses][b] = dict()
+                self._bridge_addresses][b]['sink']   = str(sink)
+                self._bridge_addresses][b]['source'] = str(source)
+
+            # FIXME: make sure all communication channels are in place.  This could
+            # be replaced with a proper barrier, but not sure if that is worth it...
+            time.sleep(1)
+
+        except Exception as e:
+            logger.report.error(">>err\n")
+            logger.exception ('session create failed')
+            raise RuntimeError("Couldn't create bridges): %s" % e)  
+
 
         logger.report.ok('>>ok\n')
 
@@ -374,13 +385,6 @@ class Session (saga.Session):
     #
     def get_dbs(self):
         return self._dbs
-
-    #---------------------------------------------------------------------------
-    #
-    @property
-    def name(self):
-        return self._name
-
     #---------------------------------------------------------------------------
     #
     @property

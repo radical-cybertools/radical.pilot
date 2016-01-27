@@ -34,7 +34,7 @@ class Session():
 
     #--------------------------------------------------------------------------
     #
-    def __init__(self, sid, name, dburl):
+    def __init__(self, sid, dburl):
         """ Creates a new session
             A session is a distinct collection with three sub-collections
             in MongoDB:
@@ -71,7 +71,6 @@ class Session():
         # create the db entry
         self._s = self._db["%s" % sid]
         self._s.insert({"_id"       : sid,
-                        "name"      : name,
                         "created"   : self._created,
                         "connected" : self._created})
 

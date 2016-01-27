@@ -26,10 +26,6 @@ class UnitManager(rpu.Component):
     determines which :class:`ComputeUnit` gets executed on which
     :class:`Pilot`.
 
-    Each UnitManager has a unique identifier :data:`radical.pilot.UnitManager.uid`
-    that can be used to re-connect to previoulsy created UnitManager in a
-    given :class:`radical.pilot.Session`.
-
     **Example**::
 
         s = radical.pilot.Session(database_url=DBURL)
@@ -65,9 +61,14 @@ class UnitManager(rpu.Component):
         """
         Creates a new UnitManager and attaches it to the session.
 
-        **Args:**
-            * session   (`string`): The session instance to use.
-            * scheduler (`string`): The name of the scheduler plug-in to use.
+        **Arguments:**
+            * session [:class:`radical.pilot.Session`]:
+              The session instance to use.
+            * scheduler (`string`): 
+              The name of the scheduler plug-in to use.
+
+        **Returns:**
+            * A new `UnitManager` object [:class:`radical.pilot.UnitManager`].
         """
 
         from .. import pilot as rp
@@ -75,7 +76,6 @@ class UnitManager(rpu.Component):
         self._session    = session
         self._cfg        = None
         self._components = None
-        self._bridges    = None
         self._pilots     = dict()
         self._units      = dict()
         self._callbacks  = dict()
@@ -96,7 +96,6 @@ class UnitManager(rpu.Component):
         self._log.report.info('<<create unit manager')
 
         try:
-
             self._cfg = ru.read_json("%s/configs/umgr_%s.json" \
                     % (os.path.dirname(__file__),
                        os.environ.get('RADICAL_PILOT_UMGR_CONFIG', 'default')))
@@ -113,7 +112,6 @@ class UnitManager(rpu.Component):
                 # set default scheduler if needed
                 self._cfg['scheduler'] = SCHED_DEFAULT
 
-            bridges    = self._cfg.get('bridges',    [])
             components = self._cfg.get('components', [])
 
             # always start update and heartbeat workers
@@ -129,50 +127,23 @@ class UnitManager(rpu.Component):
                 rpc.HEARTBEAT_WORKER              : rp.worker.Heartbeat
                 }
 
-            # before we start any components, we need to get the bridges up they
-            # want to connect to
-            self._bridges = rpu.Component.start_bridges(bridges)
-
-            # get bridge addresses from our bridges, and append them to the
+            # get addresses from the bridges, and append them to the
             # config, so that we can pass those addresses to the components
-            if not 'bridge_addresses' in self._cfg:
-                self._cfg['bridge_addresses'] = dict()
+            self._cfg['bridge_addresses'] = copy.deepcopy(self._session._bridge_addresses)
 
-            for b in self._bridges:
-
-                # to avoid confusion with component input and output, we call bridge
-                # input a 'sink', and a bridge output a 'source' (from the component
-                # perspective)
-                sink   = ru.Url(self._bridges[b]['in'])
-                source = ru.Url(self._bridges[b]['out'])
-
-                # for the unit manager, we assume all bridges to be local, so we
-                # really are only interested in the ports for now...
-                sink.host   = '127.0.0.1'
-                source.host = '127.0.0.1'
-
-                # keep the resultin URLs as strings, to be used as addresses
-                self._cfg['bridge_addresses'][b] = dict()
-                self._cfg['bridge_addresses'][b]['sink']   = str(sink)
-                self._cfg['bridge_addresses'][b]['source'] = str(source)
-
-            # the bridges are up, we can start to connect the components to them
+            # the bridges are known, we can start to connect the components to them
             self._components = rpu.Component.start_components(components,
                     typemap, self._cfg)
 
-            # FIXME: make sure all communication channels are in place.  This could
-            # be replaced with a proper barrier, but not sure if that is worth it...
-            time.sleep(1)
-
-            # we only can initialize the base class once we have the bridges up
-            # and running, as those are needed to register any message event
-            # callbacks
+            # initialize the base class
             rpu.Component.__init__(self, 'UnitManager', self._cfg)
 
-            # the command pubsub is used to communicate with the scheduler,
-            # to shut down components, and to cancel units.  The queue is
-            # used to forward submitted units to the scheduler
+            # The command pubsub is used to communicate with the scheduler, to
+            # shut down components, and to cancel units.  .
             self.declare_publisher('command', rpc.COMMAND_PUBSUB)
+
+            # The output queue is used to forward submitted units to the
+            # scheduler.
             self.declare_output(rps.UMGR_SCHEDULING_PENDING, rpc.UMGR_SCHEDULING_QUEUE)
 
 
