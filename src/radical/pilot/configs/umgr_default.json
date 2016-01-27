@@ -2,7 +2,7 @@
 # specified.  It contains the minimal set of settings required for
 # a functional unit manager.
 {
-    # time between checks of internal state and commands from mothership (seconds)
+    # default scheduler
     "scheduler" : "round_robin",
 
     "components" : {

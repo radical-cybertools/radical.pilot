@@ -1,0 +1,23 @@
+# this is the default session config which is used if no other config is
+# specified.  It contains the minimal set of settings required for
+# a functional rp session.
+{
+    "bridges" : [
+        # which bridges are to be started by this umgr
+        "umgr_staging_input_queue",
+        "umgr_scheduling_queue",
+        "umgr_staging_output_queue",
+
+        "umgr_unschedule_pubsub",
+        "umgr_reschedule_pubsub",
+
+        "command_pubsub",
+        "state_pubsub"
+    ],
+    "components" : {
+        # how many instances of the respective components should be started
+        "UpdateWorker"    : 1,
+        "HeartbeatWorker" : 1
+    }
+}
+

@@ -66,6 +66,7 @@ class Session (saga.Session):
 
         # the session manages the communication bridges
         self._cfg              = None
+        self._components       = None
         self._bridges          = None
         self._bridge_addresses = dict()
         # before doing anything else, set up the debug helper for the lifetime
@@ -229,6 +230,30 @@ class Session (saga.Session):
             logger.report.error(">>err\n")
             logger.exception ('session create failed')
             raise RuntimeError("Couldn't create bridges): %s" % e)  
+
+
+        # create update and heartbeat worker components
+        try:
+            components = self._cfg.get('components', [])
+
+            # we also need a map from component names to class types
+            typemap = {
+                rpc.UPDATE_WORKER    : rp.worker.Update,
+                rpc.HEARTBEAT_WORKER : rp.worker.Heartbeat
+                }
+
+            # get addresses from the bridges, and append them to the
+            # config, so that we can pass those addresses to the components
+            self._cfg['bridge_addresses'] = copy.deepcopy(self._bridge_addresses)
+
+            # the bridges are known, we can start to connect the components to them
+            self._components = rpu.Component.start_components(components,
+                    typemap, self._cfg)
+
+        except Exception as e:
+            logger.report.error(">>err\n")
+            logger.exception ('session create failed')
+            raise RuntimeError("Couldn't create worker components): %s" % e)  
 
 
         logger.report.ok('>>ok\n')

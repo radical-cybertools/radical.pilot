@@ -1,0 +1,12 @@
+# this is the default pilot manager config which is used if no other config is
+# specified.  It contains the minimal set of settings required for
+# a functional pilot manager.
+{
+
+    "components" : {
+        # how many instances of the respective components should be started
+        "PMGRLaunchingComponent" : 1
+    }
+
+}
+

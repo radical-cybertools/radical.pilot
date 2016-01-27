@@ -114,17 +114,11 @@ class UnitManager(rpu.Component):
 
             components = self._cfg.get('components', [])
 
-            # always start update and heartbeat workers
-            components[rpc.UPDATE_WORKER]    = 1
-            components[rpc.HEARTBEAT_WORKER] = 1
-
             # we also need a map from component names to class types
             typemap = {
                 rpc.UMGR_STAGING_INPUT_COMPONENT  : rp.umgr.Input,
                 rpc.UMGR_SCHEDULING_COMPONENT     : rp.umgr.Scheduler,
-                rpc.UMGR_STAGING_OUTPUT_COMPONENT : rp.umgr.Output,
-                rpc.UPDATE_WORKER                 : rp.worker.Update,
-                rpc.HEARTBEAT_WORKER              : rp.worker.Heartbeat
+                rpc.UMGR_STAGING_OUTPUT_COMPONENT : rp.umgr.Output
                 }
 
             # get addresses from the bridges, and append them to the
@@ -136,6 +130,7 @@ class UnitManager(rpu.Component):
                     typemap, self._cfg)
 
             # initialize the base class
+            # FIXME: unique ID
             rpu.Component.__init__(self, 'UnitManager', self._cfg)
 
             # The command pubsub is used to communicate with the scheduler, to
@@ -143,7 +138,7 @@ class UnitManager(rpu.Component):
             self.declare_publisher('command', rpc.COMMAND_PUBSUB)
 
             # The output queue is used to forward submitted units to the
-            # scheduler.
+            # scheduling component.
             self.declare_output(rps.UMGR_SCHEDULING_PENDING, rpc.UMGR_SCHEDULING_QUEUE)
 
 
