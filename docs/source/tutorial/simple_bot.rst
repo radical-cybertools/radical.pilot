@@ -31,7 +31,7 @@ Download the file ``simple_bot.py`` with the following command:
 
 .. code-block:: bash
 
-    curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/docs/simple_bot.py
+    curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/master/examples/docs/simple_bot.py
 
 
 Open the file ``simple_bot.py`` with your favorite editor. The example should 

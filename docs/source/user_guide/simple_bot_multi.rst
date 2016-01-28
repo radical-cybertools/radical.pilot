@@ -82,7 +82,7 @@ Download the file ``simple_bot_mult_mach.py`` with the following command:
 
 .. code-block:: bash
 
-    curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/docs/simple_bot_mult_res.py
+    curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/master/docs/simple_bot_mult_res.py
 
 
 Open the file ``simple_bot_multi_mach.py`` with your favorite editor. The example should 
