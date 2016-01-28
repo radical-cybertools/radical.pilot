@@ -17,7 +17,7 @@ Download the file ``mpi_tasks.py`` with the following command:
 
 .. code-block:: bash
 
-    curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/tutorial/mpi_tasks.py
+    curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/docs/mpi_tasks.py
 
 Open the file ``mpi_tasks.py`` with your favorite editor. The example might
 work right out of the box on your local machine, this depends whether you
