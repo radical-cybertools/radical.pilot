@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import copy
 import time
 import threading
 
@@ -71,8 +72,6 @@ class UnitManager(rpu.Component):
             * A new `UnitManager` object [:class:`radical.pilot.UnitManager`].
         """
 
-        from .. import pilot as rp
-        
         self._session    = session
         self._cfg        = None
         self._components = None
@@ -114,6 +113,8 @@ class UnitManager(rpu.Component):
 
             components = self._cfg.get('components', [])
 
+            from .. import pilot as rp
+        
             # we also need a map from component names to class types
             typemap = {
                 rpc.UMGR_STAGING_INPUT_COMPONENT  : rp.umgr.Input,

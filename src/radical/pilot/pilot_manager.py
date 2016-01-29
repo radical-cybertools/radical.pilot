@@ -5,6 +5,7 @@ __license__   = "MIT"
 
 import os
 import sys
+import copy
 import time
 import threading
 
@@ -70,8 +71,6 @@ class PilotManager(rpu.Component):
             * A new `PilotManager` object [:class:`radical.pilot.PilotManager`].
         """
 
-        from .. import pilot as rp
-        
         self._session    = session
         self._cfg        = None
         self._components = None
@@ -105,6 +104,8 @@ class PilotManager(rpu.Component):
 
             components = self._cfg.get('components', [])
 
+            from .. import pilot as rp
+        
             # we also need a map from component names to class types
             typemap = {
                 rpc.PMGR_LAUNCHING_COMPONENT : rp.pmgr.Launching

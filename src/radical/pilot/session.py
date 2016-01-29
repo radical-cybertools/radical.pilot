@@ -109,7 +109,7 @@ class Session (saga.Session):
             ru.reset_id_counters(prefix=['pmgr', 'umgr', 'pilot', 'unit', 'unit.%(counter)06d'])
 
             # initialize profiling
-            self.prof = Profiler('%s' % uid)
+            self.prof = rpu.Profiler('%s' % uid)
             self.prof.prof('start session', uid=uid)
 
             self._log.report.info ('<<new session: ')
@@ -236,6 +236,8 @@ class Session (saga.Session):
         try:
             components = self._cfg.get('components', [])
 
+            from .. import pilot as rp
+
             # we also need a map from component names to class types
             typemap = {
                 rpc.UPDATE_WORKER    : rp.worker.Update,
@@ -245,6 +247,11 @@ class Session (saga.Session):
             # get addresses from the bridges, and append them to the
             # config, so that we can pass those addresses to the components
             self._cfg['bridge_addresses'] = copy.deepcopy(self._bridge_addresses)
+
+            # give some more information to the workers
+            self._cfg['owner']            = self.uid
+            self._cfg['session_id']       = self.uid
+            self._cfg['mongodb_url']      = self.dburl
 
             # the bridges are known, we can start to connect the components to them
             self._components = rpu.Component.start_components(components,

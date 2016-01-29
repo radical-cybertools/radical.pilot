@@ -1,22 +1,13 @@
-#pylint: disable=C0301, C0103, W0212, E1101, R0903
-
-"""
-.. module:: radical.pilot.compute_pilot_description
-   :platform: Unix
-   :synopsis: Provides the interface for the ComputePilotDescription class.
-
-.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
-"""
 
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import saga.attributes  as attributes
+import saga.attributes as attributes
 
 from .utils import logger
 
 
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Attribute description keys
 RESOURCE          = 'resource'
 ACCESS_SCHEMA     = 'access_schema'
@@ -34,16 +25,17 @@ EXIT_ON_ERROR     = 'exit_on_error'
 _CONFIG           = '_config'
 
 
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 class ComputePilotDescription(attributes.Attributes):
-    """A ComputePilotDescription object describes the requirements and
-    properties of a :class:`radical.pilot.Pilot` and is passed as a parameter to
-    :meth:`radical.pilot.PilotManager.submit_pilots` to instantiate a new pilot.
+    """
+    A ComputePilotDescription object describes the requirements and properties
+    of a :class:`radical.pilot.Pilot` and is passed as a parameter to
+    :meth:`radical.pilot.PilotManager.submit_pilots` to instantiate and run
+    a new pilot.
 
     .. note:: A ComputePilotDescription **MUST** define at least
-              :data:`resource` and the number of :data:`cores` to allocate on
-              the target resource.
+              :data:`resource`, :data:`cores` and :data:`runtime`.
 
     **Example**::
 
@@ -128,11 +120,10 @@ class ComputePilotDescription(attributes.Attributes):
 
     """
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def __init__(self, from_dict=None):
-        """Le constructeur.
-        """ 
+
         logger.report.info('<<create pilot description')
 
         # initialize attributes
@@ -183,7 +174,19 @@ class ComputePilotDescription(attributes.Attributes):
         logger.report.ok('>>ok\n')
 
 
-    # -------------------------------------------------------------------------
+    #---------------------------------------------------------------------------
+    #
+    def __deepcopy__ (self, memo):
+
+        other = ComputePilotDescription ()
+
+        for key in self.list_attributes ():
+            other.set_attribute(key, self.get_attribute (key))
+
+        return other
+
+
+    # --------------------------------------------------------------------------
     #
     def __str__(self):
         """Returns a string representation of the object.
@@ -191,4 +194,5 @@ class ComputePilotDescription(attributes.Attributes):
         return str(self.as_dict())
 
 
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+

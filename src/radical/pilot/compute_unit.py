@@ -63,7 +63,8 @@ class ComputeUnit(object):
         self._uid        = ru.generate_id('unit.%(counter)06d', ru.ID_CUSTOM)
         self._state      = rps.NEW
         self._state_hist = [[rps.NEW, rpu.timestamp()]]
-        self._log        = []
+        self._log        = umgr._log
+        self._log_msgs   = []
         self._exit_code  = None
         self._stdout     = None
         self._stderr     = None
@@ -72,7 +73,7 @@ class ComputeUnit(object):
 
         # sanity checks on description
         for check in ['cores']:
-            if  not self._descr.get(check):
+            if not self._descr.get(check):
                 raise ValueError("ComputeUnitDescription needs '%s'" % check)
 
         if  not self._descr.get('executable') and \
@@ -129,7 +130,7 @@ class ComputeUnit(object):
             'stderr':          self.stderr,
             'pilot':           self.pilot,
             'sandbox':         self.sandbox,
-            'description':     copy.deepcopy(self.description)
+            'description':     copy.deepcopy(self.description.as_dict())
         }
 
         return ret
@@ -232,7 +233,7 @@ class ComputeUnit(object):
             * log (list of [timestamp, string] tuples)
         """
 
-        return copy.deepcopy(self._log)
+        return copy.deepcopy(self._log_msgs)
 
 
     # --------------------------------------------------------------------------

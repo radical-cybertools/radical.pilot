@@ -44,25 +44,24 @@ class Heartbeat(rpu.Worker):
     #
     def initialize_child(self):
 
-        self._session_id    = self._cfg['session_id']
-        self._mongodb_url   = self._cfg['mongodb_url']
-
-        self.declare_idle_cb(self.idle_cb, self._cfg.get('heartbeat_interval',
-                             DEFAULT_HEARTBEAT_INTERVAL))
-
         # all components use the command channel for control messages
         self.declare_publisher ('command', rpc.COMMAND_PUBSUB)
 
         self._owner         = self._cfg['owner']
         self._session_id    = self._cfg['session_id']
+        self._mongodb_url   = self._cfg['mongodb_url']
         self._runtime       = self._cfg.get('runtime')
         self._starttime     = time.time()
 
         # set up db connection
-        _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
+        _, mongo_db, _, _, _  = ru.mongodb_connect(self._mongodb_url)
 
         self._p  = mongo_db["%s.p"  % self._session_id]
         self._cu = mongo_db["%s.cu" % self._session_id]
+
+        # register work routine
+        self.declare_idle_cb(self.idle_cb, self._cfg.get('heartbeat_interval',
+                             DEFAULT_HEARTBEAT_INTERVAL))
 
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',

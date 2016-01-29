@@ -57,7 +57,7 @@ class ComputePilot(object):
     def __init__(self, pmgr, descr):
 
         # 'static' members
-        self._descr = descr
+        self._descr = descr.as_dict()
         self._pmgr  = pmgr
 
         # initialize state
@@ -65,14 +65,15 @@ class ComputePilot(object):
         self._uid        = ru.generate_id('pilot.%(counter)04d', ru.ID_CUSTOM)
         self._state      = rps.NEW
         self._state_hist = [[rps.NEW, rpu.timestamp()]]
-        self._log        = []
+        self._log        = pmgr._log
+        self._log_msgs   = []
         self._stdout     = None
         self._stderr     = None
         self._sandbox    = None
 
         # sanity checks on description
         for check in ['resource', 'cores', 'runtime']:
-            if  not self._descr.get(check):
+            if not self._descr.get(check):
                 raise ValueError("ComputePilotDescription needs '%s'" % check)
 
 
@@ -121,7 +122,6 @@ class ComputePilot(object):
             'sandbox':         self.sandbox,
             'description':     copy.deepcopy(self.description)
         }
-
         return ret
 
 
@@ -209,7 +209,7 @@ class ComputePilot(object):
             * log (list of [timestamp, string] tuples)
         """
 
-        return copy.deepcopy(self._log)
+        return copy.deepcopy(self._log_msgs)
 
 
     # --------------------------------------------------------------------------

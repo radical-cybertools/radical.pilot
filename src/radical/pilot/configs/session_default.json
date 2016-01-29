@@ -3,10 +3,12 @@
 # a functional rp session.
 {
     "bridges" : [
-        # which bridges are to be started by this umgr
+        # which bridges are to be started by this session
         "umgr_staging_input_queue",
         "umgr_scheduling_queue",
         "umgr_staging_output_queue",
+
+        "pmgr_launching_queue",
 
         "umgr_unschedule_pubsub",
         "umgr_reschedule_pubsub",

@@ -208,7 +208,7 @@ class Default(PMGRLaunchingComponent):
         self._log.info('handle %s' % pilot['_id'])
         
         try:
-            pid = str(compute_pilot["_id"])
+            pid = str(pilot["_id"])
 
             self._log.info("Launching ComputePilot %s" % pid)
 
@@ -219,17 +219,17 @@ class Default(PMGRLaunchingComponent):
 
             # ------------------------------------------------------
             # pilot description and resource configuration
-            number_cores    = compute_pilot['description']['cores']
-            runtime         = compute_pilot['description']['runtime']
-            queue           = compute_pilot['description']['queue']
-            project         = compute_pilot['description']['project']
-            cleanup         = compute_pilot['description']['cleanup']
-            resource_key    = compute_pilot['description']['resource']
-            schema          = compute_pilot['description']['access_schema']
-            memory          = compute_pilot['description']['memory']
-            candidate_hosts = compute_pilot['description']['candidate_hosts']
-            pilot_sandbox   = compute_pilot['sandbox']
-            global_sandbox  = compute_pilot['global_sandbox']
+            number_cores    = pilot['description']['cores']
+            runtime         = pilot['description']['runtime']
+            queue           = pilot['description']['queue']
+            project         = pilot['description']['project']
+            cleanup         = pilot['description']['cleanup']
+            resource_key    = pilot['description']['resource']
+            schema          = pilot['description']['access_schema']
+            memory          = pilot['description']['memory']
+            candidate_hosts = pilot['description']['candidate_hosts']
+            pilot_sandbox   = pilot['sandbox']
+            global_sandbox  = pilot['global_sandbox']
 
             # we expand and exchange keys in the resource config,
             # depending on the selected schema so better use a deep
@@ -273,7 +273,7 @@ class Default(PMGRLaunchingComponent):
             # a string pointing to a configuration name.  If neither
             # is given, check if 'RADICAL_PILOT_AGENT_CONFIG' is
             # set.  The last fallback is 'agent_default'
-            agent_config = compute_pilot['description'].get('_config')
+            agent_config = pilot['description'].get('_config')
             if not agent_config:
                 agent_config = os.environ.get('RADICAL_PILOT_AGENT_CONFIG')
             if not agent_config:

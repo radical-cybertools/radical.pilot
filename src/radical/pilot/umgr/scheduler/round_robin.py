@@ -30,7 +30,7 @@ class RoundRobin(UMGRSchedulingComponent):
     #
     def _configure(self):
 
-        self._wait_pool = dict()             # set of unscheduled units
+        self._wait_pool = list()             # set of unscheduled units
         self._wait_lock = threading.RLock()  # look on the above set
 
         self._idx = 0
@@ -57,23 +57,25 @@ class RoundRobin(UMGRSchedulingComponent):
     def work(self, cu):
 
         with self._pilots_lock:
-            pids = self._pilots.keys ()
+            pids = self._pilots.keys()
 
         if not len(pids):
+
             # no pilot is active, yet -- we add to the wait queue
             with self._wait_lock:
                 self._wait_pool.append(cu)
 
-        if  self._idx >= len(pids) : 
-            self._idx = 0
+        else:
+            # we have active pilots: use them!
 
-        # this is what we consider scheduling :P
-        cu['pilot'] = pids[self._idx]
+            if  self._idx >= len(pids) : 
+                self._idx = 0
 
-        self.advance(cu, rps.UMGR_STAGING_INPUT_PENDING, publish=True, push=False)
+            # this is what we consider scheduling :P
+            cu['pilot'] = pids[self._idx]
+
+            self.advance(cu, rps.UMGR_STAGING_INPUT_PENDING, publish=True, push=False)
         
-        return 
-
 
     # --------------------------------------------------------------------------
     #

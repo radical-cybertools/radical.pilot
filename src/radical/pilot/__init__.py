@@ -40,6 +40,7 @@ from .utils                     import logger
 import utils
 import worker
 import umgr
+import pmgr
 import agent
 
 
