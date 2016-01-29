@@ -11,19 +11,19 @@ from ... import constants as rpc
 
 
 # ------------------------------------------------------------------------------
-# 'enum' for RP's agent staging input types
-RP_ASI_NAME_DEFAULT = "DEFAULT"
+# 'enum' for RP's umgr staging input types
+RP_USI_NAME_DEFAULT = "DEFAULT"
 
 
 # ==============================================================================
 #
-class AgentStagingInputComponent(rpu.Component):
+class UMGRStagingInputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg):
 
-        rpu.Component.__init__(self, rpc.AGENT_STAGING_INPUT_COMPONENT, cfg)
+        rpu.Component.__init__(self, rpc.UMGR_STAGING_INPUT_COMPONENT, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -33,24 +33,24 @@ class AgentStagingInputComponent(rpu.Component):
     @classmethod
     def create(cls, cfg):
 
-        name = cfg.get('agent_staging_input_component', RP_ASI_NAME_DEFAULT)
+        name = cfg.get('umgr_staging_input_component', RP_USI_NAME_DEFAULT)
 
         # Make sure that we are the base-class!
-        if cls != AgentStagingInputComponent:
+        if cls != UMGRStagingInputComponent:
             raise TypeError("Factory only available to base class!")
 
         from .default import Default
 
         try:
             impl = {
-                RP_ASI_NAME_DEFAULT: Default
+                RP_USI_NAME_DEFAULT: Default
             }[name]
 
             impl = impl(cfg)
             return impl
 
         except KeyError:
-            raise ValueError("AgentStagingInputComponent '%s' unknown or defunct" % name)
+            raise ValueError("UMGRStagingInputComponent '%s' unknown or defunct" % name)
 
 
 # ------------------------------------------------------------------------------

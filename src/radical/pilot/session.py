@@ -55,7 +55,7 @@ class Session (saga.Session):
 
         """
 
-        logger = ru.get_logger('radical.pilot')
+        self._log = ru.get_logger('radical.pilot')
 
         # init the base class inits
         saga.Session.__init__ (self)
@@ -80,11 +80,11 @@ class Session (saga.Session):
         # The resource configuration dictionary associated with the session.
         self._resource_configs = {}
 
-        if  not database_url:
+        if not database_url:
             database_url = os.getenv ("RADICAL_PILOT_DBURL", None)
 
-        if  not database_url:
-            raise PilotException ("no database URL (set RADICAL_PILOT_DBURL)")  
+        if not database_url:
+            raise RuntimeError("no database URL (set RADICAL_PILOT_DBURL)")  
 
         dburl = ru.Url(database_url)
 
@@ -95,7 +95,7 @@ class Session (saga.Session):
             len(dburl.path) <=  1  :
             raise ValueError("incomplete DBURL -- missing database name!")
 
-        logger.info("using database %s" % dburl)
+        self._log.info("using database %s" % dburl)
 
         # ----------------------------------------------------------------------
         # create new session
@@ -112,10 +112,10 @@ class Session (saga.Session):
             self.prof = Profiler('%s' % uid)
             self.prof.prof('start session', uid=uid)
 
-            logger.report.info ('<<new session: ')
-            logger.report.plain('[%s]' % uid)
-            logger.report.info ('<<database   : ')
-            logger.report.plain('[%s]' % dburl)
+            self._log.report.info ('<<new session: ')
+            self._log.report.plain('[%s]' % uid)
+            self._log.report.info ('<<database   : ')
+            self._log.report.plain('[%s]' % dburl)
 
             self._dbs = dbSession(sid   = uid,
                                   dburl = dburl)
@@ -126,11 +126,11 @@ class Session (saga.Session):
 
             # from here on we should be able to close the session again
             self._valid = True
-            logger.info("New Session created: %s." % str(self))
+            self._log.info("New Session created: %s." % str(self))
 
         except Exception, ex:
-            logger.report.error(">>err\n")
-            logger.exception ('session create failed')
+            self._log.report.error(">>err\n")
+            self._log.exception('session create failed')
             raise RuntimeError("Couldn't create new session (database URL '%s' incorrect?): %s" \
                             % (self._dburl, ex))  
 
@@ -142,14 +142,14 @@ class Session (saga.Session):
         for config_file in config_files:
 
             try :
-                logger.info("Load resource configurations from %s" % config_file)
+                self._log.info("Load resource configurations from %s" % config_file)
                 rcs = ResourceConfig.from_file(config_file)
             except Exception as e :
-                logger.error ("skip config file %s: %s" % (config_file, e))
+                self._log.error ("skip config file %s: %s" % (config_file, e))
                 continue
 
             for rc in rcs:
-                logger.info("Load resource configurations for %s" % rc)
+                self._log.info("Load resource configurations for %s" % rc)
                 self._resource_configs[rc] = rcs[rc].as_dict() 
 
         user_cfgs     = "%s/.radical/pilot/configs/resource_*.json" % os.environ.get ('HOME')
@@ -160,11 +160,11 @@ class Session (saga.Session):
             try :
                 rcs = ResourceConfig.from_file(config_file)
             except Exception as e :
-                logger.error ("skip config file %s: %s" % (config_file, e))
+                self._log.error ("skip config file %s: %s" % (config_file, e))
                 continue
 
             for rc in rcs:
-                logger.info("Load resource configurations for %s" % rc)
+                self._log.info("Load resource configurations for %s" % rc)
 
                 if  rc in self._resource_configs :
                     # config exists -- merge user config into it
@@ -185,7 +185,7 @@ class Session (saga.Session):
             self._rec = "%s/%s" % (_rec, self._uid)
             os.system('mkdir -p %s' % self._rec)
             ru.write_json({'dburl' : str(self._dburl)}, "%s/session.json" % self._rec)
-            logger.info("recording session in %s" % self._rec)
+            self._log.info("recording session in %s" % self._rec)
         else:
             self._rec = None
 
@@ -218,17 +218,17 @@ class Session (saga.Session):
                 source.host = '127.0.0.1'
 
                 # keep the resultin URLs as strings, to be used as addresses
-                self._bridge_addresses][b] = dict()
-                self._bridge_addresses][b]['sink']   = str(sink)
-                self._bridge_addresses][b]['source'] = str(source)
+                self._bridge_addresses[b] = dict()
+                self._bridge_addresses[b]['sink']   = str(sink)
+                self._bridge_addresses[b]['source'] = str(source)
 
             # FIXME: make sure all communication channels are in place.  This could
             # be replaced with a proper barrier, but not sure if that is worth it...
             time.sleep(1)
 
         except Exception as e:
-            logger.report.error(">>err\n")
-            logger.exception ('session create failed')
+            self._log.report.error(">>err\n")
+            self._log.exception('session create failed')
             raise RuntimeError("Couldn't create bridges): %s" % e)  
 
 
@@ -251,12 +251,12 @@ class Session (saga.Session):
                     typemap, self._cfg)
 
         except Exception as e:
-            logger.report.error(">>err\n")
-            logger.exception ('session create failed')
+            self._log.report.error(">>err\n")
+            self._log.exception('session create failed')
             raise RuntimeError("Couldn't create worker components): %s" % e)  
 
 
-        logger.report.ok('>>ok\n')
+        self._log.report.ok('>>ok\n')
 
 
 
@@ -306,8 +306,8 @@ class Session (saga.Session):
 
         self._is_valid()
 
-        logger.report.info('closing session %s' % self._uid)
-        logger.debug("session %s closing" % (str(self._uid)))
+        self._log.report.info('closing session %s' % self._uid)
+        self._log.debug("session %s closing" % (str(self._uid)))
         self.prof.prof("close", uid=self._uid)
 
         uid = self._uid
@@ -325,7 +325,7 @@ class Session (saga.Session):
             if  cleanup == True and terminate == True :
                 cleanup   = delete
                 terminate = delete
-                logger.warning("'delete' flag on session is deprecated. " \
+                self._log.warning("'delete' flag on session is deprecated. " \
                              "Please use 'cleanup' and 'terminate' instead!")
 
         if  cleanup :
@@ -336,14 +336,14 @@ class Session (saga.Session):
             self._terminate.set()
 
         for pmgr_uid, pmgr in self._pilot_manager_objects.iteritems():
-            logger.debug("session %s closes   pmgr   %s" % (str(self._uid), pmgr_uid))
+            self._log.debug("session %s closes   pmgr   %s" % (str(self._uid), pmgr_uid))
             pmgr.close (terminate=terminate)
-            logger.debug("session %s closed   pmgr   %s" % (str(self._uid), pmgr_uid))
+            self._log.debug("session %s closed   pmgr   %s" % (str(self._uid), pmgr_uid))
 
         for umgr_uid, umgr in self._unit_manager_objects.iteritems():
-            logger.debug("session %s closes   umgr   %s" % (str(self._uid), umgr._uid))
+            self._log.debug("session %s closes   umgr   %s" % (str(self._uid), umgr._uid))
             umgr.close()
-            logger.debug("session %s closed   umgr   %s" % (str(self._uid), umgr._uid))
+            self._log.debug("session %s closed   umgr   %s" % (str(self._uid), umgr._uid))
 
         if  cleanup :
             self.prof.prof("cleaning", uid=self._uid)
@@ -352,14 +352,14 @@ class Session (saga.Session):
         else:
             self._dbs.close()
 
-        logger.debug("session %s closed" % (str(self._uid)))
+        self._log.debug("session %s closed" % (str(self._uid)))
         self.prof.prof("closed", uid=self._uid)
         self.prof.close()
 
         self._valid = False
 
-        logger.report.info('<<session lifetime: %.1fs' % (self.closed - self.created))
-        logger.report.ok('>>ok\n')
+        self._log.report.info('<<session lifetime: %.1fs' % (self.closed - self.created))
+        self._log.report.ok('>>ok\n')
 
 
     #---------------------------------------------------------------------------
@@ -600,7 +600,7 @@ class Session (saga.Session):
             rcs = ResourceConfig.from_file(resource_config)
 
             for rc in rcs:
-                logger.info("Loaded resource configurations for %s" % rc)
+                self._log.info("Loaded resource configurations for %s" % rc)
                 self._resource_configs[rc] = rcs[rc].as_dict() 
 
         else :
@@ -613,13 +613,12 @@ class Session (saga.Session):
         """
 
         if  resource_key in self._resource_aliases :
-            logger.warning ("using alias '%s' for deprecated resource key '%s'" \
+            self._log.warning ("using alias '%s' for deprecated resource key '%s'" \
                          % (self._resource_aliases[resource_key], resource_key))
             resource_key = self._resource_aliases[resource_key]
 
         if  resource_key not in self._resource_configs:
-            error_msg = "Resource key '%s' is not known." % resource_key
-            raise PilotException(error_msg)
+            raise RuntimeError("Resource '%s' is not known." % resource_key)
 
         resource_cfg = copy.deepcopy (self._resource_configs[resource_key])
 
@@ -629,7 +628,7 @@ class Session (saga.Session):
 
         if  schema:
             if  schema not in resource_cfg :
-                raise RuntimeError ("schema %s unknown for resource %s" \
+                raise RuntimeError("schema %s unknown for resource %s" \
                                   % (schema, resource_key))
 
             for key in resource_cfg[schema] :
@@ -643,12 +642,12 @@ class Session (saga.Session):
     # -------------------------------------------------------------------------
     #
     def fetch_profiles (self, tgt=None):
-        return fetch_profiles (self._uid, dburl=self._dburl, tgt=tgt, session=self)
+        return rpu.fetch_profiles (self._uid, dburl=self._dburl, tgt=tgt, session=self)
 
 
     # -------------------------------------------------------------------------
     #
     def fetch_json (self, tgt=None):
-        return fetch_json (self._uid, dburl=self._dburl, tgt=tgt)
+        return rpu.fetch_json (self._uid, dburl=self._dburl, tgt=tgt)
 
 

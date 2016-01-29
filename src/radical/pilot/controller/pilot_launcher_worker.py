@@ -806,7 +806,7 @@ class PilotLauncherWorker(threading.Thread):
                             {"_id"  : pilot_id,
                              "state": LAUNCHING},
                             {"$set" : {"state": PENDING_ACTIVE,
-                                       "saga_job_id": saga_job_id,
+                                       "_saga_job_id": saga_job_id,
                                        "health_check_enabled": health_check,
                                        "agent_config": agent_cfg_dict},
                              "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
@@ -821,7 +821,7 @@ class PilotLauncherWorker(threading.Thread):
                             # FIXME: make sure of the agent state!
                             ret = pilot_col.update(
                                 {"_id"  : pilot_id},
-                                {"$set" : {"saga_job_id": saga_job_id,
+                                {"$set" : {"_saga_job_id": saga_job_id,
                                            "health_check_enabled": health_check},
                                  "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
                                  "$pushAll": {"log": log_dicts}}

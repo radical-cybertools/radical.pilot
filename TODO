@@ -32,3 +32,5 @@
   - cu['_id'] -> cu['uid'] etc
 
   - state pubsub now has [cmd, ttype, thing] tuples fed from advance.
+  - self.advance(cu, FAILED, ...) will not find a suitable output channel.
+    Handle gracefully!  Always push to DB!

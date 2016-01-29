@@ -1,33 +1,29 @@
-#pylint: disable=C0301, C0103, W0212
 
-"""
-.. module:: radical.pilot.compute_pilot
-   :platform: Unix
-   :synopsis: Provides the interface for the ComputePilot class.
+__copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
+__license__   = "MIT"
 
-.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
-"""
-
-__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
-__license__ = "MIT"
 
 import os
+import copy
 import time
 import saga
 
-from .states     import *
-from .logentry   import *
-from .exceptions import *
-from .utils      import logger
+import radical.utils as ru
 
-from .staging_directives import TRANSFER, COPY, LINK, MOVE, STAGING_AREA, \
-                                expand_staging_directive
+from . import utils     as rpu
+from . import states    as rps
+from . import constants as rpc
+from . import types     as rpt
 
-# -----------------------------------------------------------------------------
+from .staging_directives import expand_staging_directive
+from .staging_directives import TRANSFER, COPY, LINK, MOVE, STAGING_AREA
+
+
+# ------------------------------------------------------------------------------
 #
-class ComputePilot (object):
-    """A ComputePilot represent a resource overlay on a local or remote
-       resource.
+class ComputePilot(object):
+    """
+    A ComputePilot represent a resource overlay on a local or remote resource.
 
     .. note:: A ComputePilot cannot be created directly. The factory method
               :meth:`radical.pilot.PilotManager.submit_pilots` has to be used instead.
@@ -43,365 +39,300 @@ class ComputePilot (object):
 
                       pilot = pm.submit_pilots(pd)
     """
-    # -------------------------------------------------------------------------
+    
+    # --------------------------------------------------------------------------
+    # In terms of implementation, a Pilot is not much more than a dict whose
+    # content are dynamically updated to reflect the state progression through
+    # the PMGR components.  As a Pilot is always created via a PMGR, it is
+    # considered to *belong* to that PMGR, and all activities are actually
+    # implemented by that PMGR.
     #
-    def __init__(self):
-        """Le constructeur. Not meant to be called directly.
-        """
+    # Note that this implies that we could create Pilots before submitting them
+    # to a PMGR, w/o any problems. (FIXME?)
+    # --------------------------------------------------------------------------
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, pmgr, descr):
+
         # 'static' members
-        self._uid = None
-        self._description = None
-        self._manager = None
+        self._descr = descr
+        self._pmgr  = pmgr
 
-        # Registered callback functions
-        self._calback_wrappers = dict()
+        # initialize state
+        self._session    = self._pmgr.session
+        self._uid        = ru.generate_id('pilot.%(counter)04d', ru.ID_CUSTOM)
+        self._state      = rps.NEW
+        self._state_hist = [[rps.NEW, rpu.timestamp()]]
+        self._log        = []
+        self._stdout     = None
+        self._stderr     = None
+        self._sandbox    = None
 
-        # handle to the manager's worker
-        self._worker = None
+        # sanity checks on description
+        for check in ['resource', 'cores', 'runtime']:
+            if  not self._descr.get(check):
+                raise ValueError("ComputePilotDescription needs '%s'" % check)
 
-        # list of callback functions
-        self._callback_list = []
-
-    # -------------------------------------------------------------------------
-    #
-    @staticmethod
-    def create(pilot_manager_obj, pilot_description):
-        """ PRIVATE: Create a new pilot.
-        """
-        # Create and return pilot object.
-        pilot = ComputePilot()
-
-        #pilot._uid = pilot_uid
-        pilot._description = pilot_description
-        pilot._manager = pilot_manager_obj
-
-        # Pilots use the worker of their parent manager.
-        pilot._worker = pilot._manager._worker
-
-        #logger.info("Created new ComputePilot %s" % str(pilot))
-        return pilot
 
     # -------------------------------------------------------------------------
     #
     @staticmethod
-    def _get(pilot_manager_obj, pilot_ids):
-        """ PRIVATE: Get one or more pilot via their UIDs.
+    def create(pmgr, descr):
+        """ 
+        PRIVATE: Create a new compute pilot (in NEW state)
         """
-        pilots_json = pilot_manager_obj._worker.get_compute_pilot_data(
-            pilot_ids=pilot_ids)
 
-        # create and return pilot objects
-        pilots = []
+        return ComputePilot(pmgr=pmgr, descr=descr)
 
-        for p in pilots_json:
-            pilot = ComputePilot()
-            pilot._uid = str(p['_id'])
-            pilot._description = p['description']
-            pilot._manager = pilot_manager_obj
 
-            pilot._worker = pilot._manager._worker
-
-            logger.debug("Reconnected to existing ComputePilot %s" % str(pilot))
-            pilots.append(pilot)
-
-        return pilots
-
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    def as_dict(self):
-        """Returns a Python dictionary representation of the
-           ComputePilot object.
-        """
-        obj_dict = {
-            'uid':             self.uid,
-            'state':           self.state,
-            'stdout':          self.stdout,
-            'stderr':          self.stderr,
-            'logfile':         self.logfile,
-            'log':             self.log,
-            'sandbox':         self.sandbox,
-            'resource':        self.resource,
-            'submission_time': self.submission_time,
-            'start_time':      self.start_time,
-            'stop_time':       self.stop_time,
-            'resource_detail': self.resource_detail
-        }
-        return obj_dict
+    def __repr__(self):
 
-    # -------------------------------------------------------------------------
+        return self.as_dict()
+
+
+    # --------------------------------------------------------------------------
     #
     def __str__(self):
-        """Returns a string representation of the ComputePilot object.
-        """
+
         return str(self.as_dict())
 
-    # -------------------------------------------------------------------------
+
+    # --------------------------------------------------------------------------
+    #
+    def as_dict(self):
+        """
+        Returns a Python dictionary representation of the object.
+        """
+        ret = {
+            'session':         self.session.uid,
+            'pmgr':            self.pmgr.uid,
+            '_id':             self.uid,  # for component...
+            'uid':             self.uid,
+            'state':           self.state,
+            'state_history':   self.state_history,
+            'log':             self.log,
+            'stdout':          self.stdout,
+            'stderr':          self.stderr,
+            'resource':        self.resource,
+            'sandbox':         self.sandbox,
+            'description':     copy.deepcopy(self.description)
+        }
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def session(self):
+        """
+        Returns the pilot's session.
+
+        **Returns:**
+            * A :class:`Session`.
+        """
+
+        return self._session
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def pmgr(self):
+        """
+        Returns the pilot's manager.
+
+        **Returns:**
+            * A :class:`PilotManager`.
+        """
+
+        return self._pmgr
+
+
+    # --------------------------------------------------------------------------
     #
     @property
     def uid(self):
-        """Returns the Pilot's unique identifier.
+        """
+        Returns the pilot's unique identifier.
 
-        The uid identifies the Pilot within the :class:`PilotManager` and
-        can be used to retrieve an existing Pilot.
+        The uid identifies the pilot within a :class:`PilotManager`.
 
         **Returns:**
             * A unique identifier (string).
         """
         return self._uid
 
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def description(self):
-        """Returns the pilot description the pilot was started with.
-        """
-        return self._description
 
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def sandbox(self):
-        """Returns the Pilot's 'sandbox' / working directory url.
-
-        **Returns:**
-            * A URL string.
-        """
-        if not self._uid:
-            return None
-
-        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
-        return pilot_json['sandbox']
-
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def state(self):
-        """Returns the current state of the pilot.
         """
-        if not self._uid:
-            return None
+        Returns the current state of the pilot.
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
-        return pilot_json['state']
+        **Returns:**
+            * state (string enum)
+        """
 
-    # -------------------------------------------------------------------------
+        return self._state
+
+
+    # --------------------------------------------------------------------------
     #
     @property
     def state_history(self):
-        """Returns the complete state history of the pilot.
         """
-        if not self._uid:
-            return None
+        Returns the complete state history of the pilot.
 
-        states = []
-
-        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
-        for state in pilot_json['statehistory']:
-            states.append(State(state=state["state"], timestamp=state["timestamp"]))
-
-        return states
-
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def callback_history(self):
-        """Returns the complete callback history of the pilot.
+        **Returns:**
+            * list of tuples [[state, timestamp]]
         """
-        if not self._uid:
-            return None
 
-        callbacks = []
+        return copy.deepcopy(self._state_hist)
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
-        if 'callbackhostory' in pilot_json :
-            for callback in pilot_json['callbackhistory']:
-                callbacks.append(State(state=callback["state"], timestamp=callback["timestamp"]))
 
-        return callbacks
-
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def stdout(self):
-        """Returns the stdout of the pilot.
-        """
-        # Check if this instance is valid
-        if not self._uid:
-            raise IncorrectState("Invalid instance.")
-
-        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
-        return pilot_json.get ('stdout')
-
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def stderr(self):
-        """Returns the stderr of the pilot.
-        """
-        # Check if this instance is valid
-        if not self._uid:
-            raise IncorrectState("Invalid instance.")
-
-        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
-        return pilot_json.get ('stderr')
-
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def logfile(self):
-        """Returns the logfile of the pilot.
-        """
-        # Check if this instance is valid
-        if not self._uid:
-            raise IncorrectState("Invalid instance.")
-
-        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
-        return pilot_json.get ('logfile')
-
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def log(self):
-        """Returns the log of the pilot.
         """
-        if not self._uid:
-            return None
+        Returns a list of human readable [timestamp, string] tuples describing
+        various events during the pilot's lifetime.  Those strings are not
+        normative, only informative!
 
-        logs = []
+        **Returns:**
+            * log (list of [timestamp, string] tuples)
+        """
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
-        for log in pilot_json['log']:
-            logs.append (Logentry.from_dict (log))
+        return copy.deepcopy(self._log)
 
-        return logs
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
-    def resource_detail(self):
-        """Returns the names of the nodes managed by the pilot.
+    def stdout(self):
         """
-        # Check if this instance is valid
-        if not self._uid:
-            return None
+        Returns a snapshot of the pilot's STDOUT stream.
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
-        resource_details = {
-            'nodes':          pilot_json['nodes'],
-            'cores_per_node': pilot_json['cores_per_node']
-        }
-        return resource_details
+        If this property is queried before the pilot has reached
+        'DONE' or 'FAILED' state it will return None.
 
-    # -------------------------------------------------------------------------
+        .. warning: This can be inefficient.  Output may be incomplete and/or
+           filtered.
+
+        **Returns:**
+            * stdout (string)
+        """
+
+        return self._stdout
+
+
+    # --------------------------------------------------------------------------
     #
     @property
-    def pilot_manager(self):
-        """ Returns the pilot manager object for this pilot.
+    def stderr(self):
         """
-        return self._manager
+        Returns a snapshot of the pilot's STDERR stream.
 
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def unit_managers(self):
-        """ Returns the unit manager object UIDs for this pilot.
+        If this property is queried before the pilot has reached
+        'DONE' or 'FAILED' state it will return None.
+
+        .. warning: This can be inefficient.  Output may be incomplete and/or
+           filtered.
+
+        **Returns:**
+            * stderr (string)
         """
-        if not self._uid:
-            return None
 
-        raise NotImplementedError("Not Implemented")
+        return self._stderr
 
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def units(self):
-        """ Returns the units scheduled for this pilot.
-        """
-        # Check if this instance is valid
-        if not self._uid:
-            return None
 
-        raise NotImplementedError("Not Implemented")
-
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def submission_time(self):
-        """ Returns the time the pilot was submitted.
-        """
-        # Check if this instance is valid
-        if not self._uid:
-            return None
-
-        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
-        return pilot_json['submitted']
-
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def start_time(self):
-        """ Returns the time the pilot was started on the backend.
-        """
-        if not self._uid:
-            return None
-
-        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
-        return pilot_json['started']
-
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def stop_time(self):
-        """ Returns the time the pilot was stopped.
-        """
-        if not self._uid:
-            return None
-
-        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
-        return pilot_json['finished']
-
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def resource(self):
-        """ Returns the resource.
         """
-        if not self._uid:
-            return None
+        Returns the resource tag of this pilot.
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
-        return pilot_json['description']['resource']
+        **Returns:**
+            * A resource tag (string)
+        """
 
-    # -------------------------------------------------------------------------
+        return self._descr.get('resource')
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def sandbox(self):
+        """
+        Returns the full sandbox URL of this pilot, if that is already
+        known, or 'None' otherwise.
+
+        **Returns:**
+            * A URL (radical.utils.Url).
+        """
+
+        return self._sandbox
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def description(self):
+        """
+        Returns the description the pilot was started with, as a dictionary.
+
+        **Returns:**
+            * description (dict)
+        """
+
+        return copy.deepcopy(self._descr)
+
+
+    # --------------------------------------------------------------------------
     #
     def register_callback(self, cb_func, cb_data=None):
-        """Registers a callback function that is triggered every time the
-        ComputePilot's state changes.
+        """
+        Registers a callback function that is triggered every time the
+        pilot's state changes.
 
         All callback functions need to have the same signature::
 
-            def cb_func(obj, state, data)
+            def cb_func(obj, state)
 
-        where ``object`` is a handle to the object that triggered the callback,
-        ``state`` is the new state of that object, and ``data`` is the data
-        passed on callback registration.
+        where ``object`` is a handle to the object that triggered the callback
+        and ``state`` is the new state of that object.  If 'cb_data' is given,
+        then the 'cb_func' signature changes to 
+
+            def cb_func(obj, state, cb_data)
+
+        and 'cb_data' are passed along.
+
         """
-        self._worker.register_pilot_callback(self, cb_func, cb_data)
+        self._pmgr.register_callback(self.uid, rpt.PILOT_STATE, cb_func, cb_data)
 
-    # -------------------------------------------------------------------------
+
+    # --------------------------------------------------------------------------
     #
     def wait(self, state=None, timeout=None):
-        """Returns when the pilot reaches a specific state or
+        """
+        Returns when the pilot reaches a specific state or
         when an optional timeout is reached.
 
         **Arguments:**
 
             * **state** [`list of strings`]
-              The state(s) that Pilot has to reach in order for the
+              The state(s) that pilot has to reach in order for the
               call to return.
 
-              By default `wait` waits for the Pilot to reach
-              a **terminal** state, which can be one of the following:
+              By default `wait` waits for the pilot to reach a **final**
+              state, which can be one of the following:
 
               * :data:`radical.pilot.states.DONE`
               * :data:`radical.pilot.states.FAILED`
@@ -409,69 +340,61 @@ class ComputePilot (object):
 
             * **timeout** [`float`]
               Optional timeout in seconds before the call returns regardless
-              whether the Pilot has reached the desired state or not.
-              The default value **None** never times out.
-
-        **Raises:**
-
-            * :class:`radical.pilot.exceptions.radical.pilotException` if the state of
-              the pilot cannot be determined.
-        """
-        # Check if this instance is valid
-        if not self._uid:
-            raise IncorrectState("Invalid instance.")
+              whether the pilot has reached the desired state or not.  The
+              default value **None** never times out.  """
 
         if not state:
-            state = [DONE, FAILED, CANCELED]
+            states = rps.FINAL
+        if not isinstance(state, list):
+            states = [state]
+        else:
+            states = state
 
-        elif not isinstance(state, list):
-            state = [state]
+
+        if self.state in rps.FINAL:
+            # we will never see another state progression.  Raise an error
+            # (unless we waited for this)
+            if self.state in states:
+                return
+
+            # FIXME: do we want a raise here, really?  This introduces a race,
+            #        really, on application level
+            # raise RuntimeError("can't wait on a pilot in final state")
+            return self.state
 
         start_wait = time.time()
-        # the self.state property pulls the state from the back end.
-        new_state = self.state
+        while self.state not in states:
 
-        while new_state not in state:
             time.sleep(0.1)
-            new_state = self.state
 
-            if (timeout is not None) and (timeout <= (time.time() - start_wait)):
+            if timeout and (timeout <= (time.time() - start_wait)):
                 break
 
-        # done waiting -- return the state
-        return new_state
+        return self.state
 
-    # -------------------------------------------------------------------------
+
+    # --------------------------------------------------------------------------
     #
     def cancel(self):
-        """Sends sends a termination request to the pilot.
-
-        **Raises:**
-
-            * :class:`radical.pilot.radical.pilotException` if the termination
-              request cannot be fulfilled.
         """
-        # Check if this instance is valid
-        if not self._uid:
-            raise IncorrectState(msg="Invalid instance.")
+        Cancel the pilot.
+        """
+        
+        self._pmgr.cancel_pilot(self.uid)
 
-        if self.state in [DONE, FAILED, CANCELED]:
-            # nothing to do as we are already in a terminal state
-            return
 
-        # now we can send a 'cancel' command to the pilot.
-        self._manager.cancel_pilots(self.uid)
-
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def stage_in(self, directives):
         """Stages the content of the staging directive into the pilot's
         staging area"""
 
         # Wait until we can assume the pilot directory to be created
-        if self.state == NEW:
-            self.wait(state=[PENDING_LAUNCH, LAUNCHING, PENDING_ACTIVE, ACTIVE])
-        elif self.state in [DONE, FAILED, CANCELED]:
+        # # FIXME: can't we create it ourself?
+        if self.state == rps.NEW:
+            self.wait(state=[rps.PMGR_LAUNCHING_PENDING, rps.PMGR_LAUNCHING,
+                             rps.PMGR_ACTIVE_PENDING,    rps.PMGR_ACTIVE])
+        elif self.state in rps.FINAL:
             raise Exception("Pilot already finished, no need to stage anymore!")
 
         # Iterate over all directives
@@ -519,25 +442,27 @@ class ComputePilot (object):
                 # TODO: Does this make sense?
                 #log_message = 'Linking %s to %s' % (source, abs_target)
                 #os.symlink(source, abs_target)
-                logger.error("action 'LINK' not supported on pilot level staging")
+                self._log.error("action 'LINK' not supported on pilot level staging")
                 raise ValueError("action 'LINK' not supported on pilot level staging")
             elif action == COPY:
                 # TODO: Does this make sense?
                 #log_message = 'Copying %s to %s' % (source, abs_target)
                 #shutil.copyfile(source, abs_target)
-                logger.error("action 'COPY' not supported on pilot level staging")
+                self._log.error("action 'COPY' not supported on pilot level staging")
                 raise ValueError("action 'COPY' not supported on pilot level staging")
             elif action == MOVE:
                 # TODO: Does this make sense?
                 #log_message = 'Moving %s to %s' % (source, abs_target)
                 #shutil.move(source, abs_target)
-                logger.error("action 'MOVE' not supported on pilot level staging")
+                self._log.error("action 'MOVE' not supported on pilot level staging")
                 raise ValueError("action 'MOVE' not supported on pilot level staging")
             elif action == TRANSFER:
                 log_message = 'Transferring %s to %s' % (src_url, os.path.join(str(tgt_dir_url), tgt_filename))
-                logger.info(log_message)
+                self._log.info(log_message)
                 # Transfer the source file to the target staging area
                 target_dir.copy(src_url, tgt_filename)
             else:
                 raise Exception('Action %s not supported' % action)
+
+# ------------------------------------------------------------------------------
 

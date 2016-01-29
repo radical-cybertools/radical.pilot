@@ -11,46 +11,46 @@ from ... import constants as rpc
 
 
 # ------------------------------------------------------------------------------
-# 'enum' for RP's agent staging input types
-RP_ASI_NAME_DEFAULT = "DEFAULT"
+# 'enum' for RP's pmgr launching types
+RP_UL_NAME_DEFAULT = "DEFAULT"
 
 
 # ==============================================================================
 #
-class AgentStagingInputComponent(rpu.Component):
+class PMGRLaunchingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg):
 
-        rpu.Component.__init__(self, rpc.AGENT_STAGING_INPUT_COMPONENT, cfg)
+        rpu.Component.__init__(self, rpc.PMGR_LAUNCHING_COMPONENT, cfg)
 
 
     # --------------------------------------------------------------------------
     #
-    # This class-method creates the appropriate sub-class for the Stager
+    # This class-method creates the appropriate sub-class for the Launcher
     #
     @classmethod
     def create(cls, cfg):
 
-        name = cfg.get('agent_staging_input_component', RP_ASI_NAME_DEFAULT)
+        name = cfg.get('pmgr_launching_component', RP_UL_NAME_DEFAULT)
 
         # Make sure that we are the base-class!
-        if cls != AgentStagingInputComponent:
+        if cls != PMGRLaunchingComponent:
             raise TypeError("Factory only available to base class!")
 
         from .default import Default
 
         try:
             impl = {
-                RP_ASI_NAME_DEFAULT: Default
+                RP_UL_NAME_DEFAULT: Default
             }[name]
 
             impl = impl(cfg)
             return impl
 
         except KeyError:
-            raise ValueError("AgentStagingInputComponent '%s' unknown or defunct" % name)
+            raise ValueError("PMGRLaunchingComponent '%s' unknown or defunct" % name)
 
 
 # ------------------------------------------------------------------------------

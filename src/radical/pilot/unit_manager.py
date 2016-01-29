@@ -102,7 +102,7 @@ class UnitManager(rpu.Component):
 
             self._cfg['session_id']  = self._session.uid
             self._cfg['mongodb_url'] = self._session._dburl
-            self._cfg['owner_id']    = self._uid
+            self._cfg['owner']       = self._uid
 
             if scheduler:
                 # overwrite the scheduler from the config file
@@ -133,8 +133,7 @@ class UnitManager(rpu.Component):
             # FIXME: unique ID
             rpu.Component.__init__(self, 'UnitManager', self._cfg)
 
-            # The command pubsub is used to communicate with the scheduler, to
-            # shut down components, and to cancel units.  .
+            # The command pubsub is always used
             self.declare_publisher('command', rpc.COMMAND_PUBSUB)
 
             # The output queue is used to forward submitted units to the
@@ -154,23 +153,24 @@ class UnitManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def close(self):
-        """Shuts down the UnitManager and its background workers in a 
-        coordinated fashion.
+        """
+        Shuts down the UnitManager.  This will cancel all units.
         """
         if self._closed:
             raise RuntimeError("instance is already closed")
 
+        self._log.debug("closing %s", self.uid)
         self._log.report.info('<<close unit manager')
+
 
      ## if self._worker:
      ##     self._worker.stop()
-     ## TODO: kill bridges, components
+     ## TODO: kill components
 
         self._session.prof.prof('closed umgr', uid=self._uid)
         self._log.info("Closed UnitManager %s." % str(self._uid))
 
         self._closed = True
-
         self._log.report.ok('>>ok\n')
 
 
@@ -202,8 +202,7 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    @staticmethod
-    def _default_unit_state_cb (unit, state):
+    def _default_unit_state_cb (self, unit, state):
 
         self._log.info("[Callback]: unit %s state on pilot %s: %s.", 
                        unit.uid, unit.pilot_id, state)
@@ -211,8 +210,7 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    @staticmethod
-    def _default_wait_queue_size_cb(umgr, wait_queue_size):
+    def _default_wait_queue_size_cb(self, umgr, wait_queue_size):
         # FIXME: this needs to come from the scheduler?
 
         self._log.info("[Callback]: wait_queue_size: %s.", wait_queue_size)
@@ -253,7 +251,8 @@ class UnitManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def add_pilots(self, pilots):
-        """Associates one or more pilots with the unit manager.
+        """
+        Associates one or more pilots with the unit manager.
 
         **Arguments:**
 
@@ -284,10 +283,10 @@ class UnitManager(rpu.Component):
             # publish to the command channel for the scheduler to pick up
             self.publish('command', {'cmd' : 'add_pilot', 
                                      'arg' : {'pid'  : pid, 
-                                              'umgr' : self.uid})
+                                              'umgr' : self.uid}})
 
             # also keep pilots around for inspection
-            self._pilots[pid] = pilot<F3>
+            self._pilots[pid] = pilot
 
         self._log.report.ok('>>ok\n')
 
@@ -383,13 +382,13 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def submit_units(self, unit_descriptions):
+    def submit_units(self, descriptions):
         """
         Submits on or more :class:`radical.pilot.ComputeUnit` instances to the
         unit manager.
 
         **Arguments:**
-            * **unit_descriptions** [:class:`radical.pilot.ComputeUnitDescription`
+            * **descriptions** [:class:`radical.pilot.ComputeUnitDescription`
               or list of :class:`radical.pilot.ComputeUnitDescription`]: The
               description of the compute unit instance(s) to create.
 
@@ -402,30 +401,30 @@ class UnitManager(rpu.Component):
         if self._closed:
             raise RuntimeError("instance is already closed")
 
-        return_list_type = True
-        if not isinstance(unit_descriptions, list):
-            return_list_type  = False
-            unit_descriptions = [unit_descriptions]
+        ret_list = True
+        if not isinstance(descriptions, list):
+            ret_list     = False
+            descriptions = [descriptions]
 
-        if len(unit_descriptions) == 0:
+        if len(descriptions) == 0:
             raise ValueError('cannot submit no unit descriptions')
 
 
-        self._log.report.info('<<submit %d unit(s)\n\t' % len(unit_descriptions))
+        self._log.report.info('<<submit %d unit(s)\n\t' % len(descriptions))
 
         # we return a list of compute units
-        cus = list()
-        for ud in unit_descriptions :
+        ret = list()
+        for descr in descriptions :
 
-            cu = ComputeUnit.create (umgr=self, descr=ud)
-            cus.append(cu)
+            cu = ComputeUnit.create(umgr=self, descr=descr)
+            ret.append(cu)
 
             # keep units around
             self._units[cu.uid] = cu
 
             if self._session._rec:
                 import radical.utils as ru
-                ru.write_json(ud.as_dict(), "%s/%s.batch.%03d.json" \
+                ru.write_json(descr.as_dict(), "%s/%s.batch.%03d.json" \
                         % (self._session._rec, cu.uid, self._rec_id))
             self._log.report.progress()
 
@@ -437,17 +436,17 @@ class UnitManager(rpu.Component):
 
         self._log.report.ok('>>ok\n')
 
-        if return_list_type: return cus
-        else               : return cus[0]
+        if ret_list: return ret
+        else       : return ret[0]
 
 
     # --------------------------------------------------------------------------
     #
-    def get_units(self, unit_ids=None):
+    def get_units(self, uids=None):
         """Returns one or more compute units identified by their IDs.
 
         **Arguments:**
-            * **unit_ids** [`string` or `list of strings`]: The IDs of the
+            * **uids** [`string` or `list of strings`]: The IDs of the
               compute unit objects to return.
 
         **Returns:**
@@ -457,37 +456,35 @@ class UnitManager(rpu.Component):
         if self._closed:
             raise RuntimeError("instance is already closed")
 
-        if not unit_ids:
+        if not uids:
             return self._units.values()
 
 
-        return_list_type = True
-        if (not isinstance(unit_ids, list)) and (unit_ids is not None):
-            return_list_type = False
-            unit_ids = [unit_ids]
+        ret_list = True
+        if (not isinstance(uids, list)) and (uids is not None):
+            ret_list = False
+            uids = [uids]
 
         ret = list()
-        for uid in unit_ids:
+        for uid in uids:
             if uid not in self._units:
                 raise ValueError('unit %s not known' % uid)
             ret.append(self._units[uid])
 
-        if  return_list_type :
-            return ret
-        else :
-            return ret[0]
+        if ret_list: return ret
+        else       : return ret[0]
 
 
     # --------------------------------------------------------------------------
     #
-    def wait_units(self, unit_ids=None, state=None, timeout=None):
+    def wait_units(self, uids=None, state=None, timeout=None):
         """
         Returns when one or more :class:`radical.pilot.ComputeUnits` reach a
         specific state.
 
         If `unit_uids` is `None`, `wait_units` returns when **all**
-        ComputeUnits reach the state defined in `state`.  This may include units
-        which have previously terminated or waited upon.
+        ComputeUnits reach the state defined in `state`.  This may include
+        units which have previously terminated or waited upon.
 
         **Example**::
 
@@ -519,11 +516,11 @@ class UnitManager(rpu.Component):
         if self._closed:
             raise RuntimeError("instance is already closed")
 
-        if not unit_ids:
-            unit_ids = list()
+        if not uids:
+            uids = list()
             for uid,cu in self._units.iteritems():
                 if cu.state not in rps.FINAL:
-                    unit_ids.append(uid)
+                    uids.append(uid)
 
         if not state:
             states = rps.FINAL
@@ -532,15 +529,15 @@ class UnitManager(rpu.Component):
         else:
             states = [state]
 
-        return_list_type = True
-        if not isinstance(unit_ids, list):
-            return_list_type = False
-            unit_ids = [unit_ids]
+        ret_list = True
+        if not isinstance(uids, list):
+            ret_list = False
+            uids = [uids]
 
-        self._log.report.info('<<wait for %d unit(s)\n\t' % len(unit_ids))
+        self._log.report.info('<<wait for %d unit(s)\n\t' % len(uids))
 
         start    = time.time()
-        to_check = [self._units[uid] for uid in unit_ids]
+        to_check = [self._units[uid] for uid in uids]
 
         # We don't want to iterate over all units again and again, as that would
         # duplicate checks on units which were found in matching states.  So we
@@ -553,7 +550,7 @@ class UnitManager(rpu.Component):
 
             to_check = [cu for cu in to_check \
                             if cu.state not in states and \
-                               cu.state not in rps.final]
+                               cu.state not in rps.FINAL]
             # check timeout
             if to_check:
                 if timeout and (timeout <= (time.time() - start)):
@@ -568,35 +565,33 @@ class UnitManager(rpu.Component):
         else       : self._log.report.ok(  '>>ok\n')
 
         # grab the current states to return
-        states = [self._units[uid].state for uid in unit_ids]
+        states = [self._units[uid].state for uid in uids]
 
         # done waiting
-        if  return_list_type :
-            return states
-        else :
-            return states[0]
+        if ret_list: return states
+        else       : return states[0]
 
 
     # --------------------------------------------------------------------------
     #
-    def cancel_units(self, unit_ids=None):
+    def cancel_units(self, uids=None):
         """
         Cancel one or more :class:`radical.pilot.ComputeUnits`.
 
         **Arguments:**
-            * **unit_ids** [`string` or `list of strings`]: The IDs of the
+            * **uids** [`string` or `list of strings`]: The IDs of the
               compute unit objects to cancel.
         """
         if self._closed:
             raise RuntimeError("instance is already closed")
 
-        if not unit_ids:
-            unit_ids = self._units.keys()
+        if not uids:
+            uids = self._units.keys()
 
-        if not isinstance(unit_ids, list):
-            unit_ids = [unit_ids]
+        if not isinstance(uids, list):
+            uids = [uids]
 
-        cus = self.get_units(unit_ids)
+        cus = self.get_units(uids)
         for cu in cus:
             cu.cancel()
 
@@ -633,7 +628,7 @@ class UnitManager(rpu.Component):
 
         # FIXME: the signature should be (self, metrics, cb, cb_data)
 
-        if  metric not in rpt.UNIT_MANAGER_METRICS :
+        if  metric not in rpt.UMGR_METRICS :
             raise ValueError ("Metric '%s' is not available on the unit manager" % metric)
 
         with self._cb_lock:

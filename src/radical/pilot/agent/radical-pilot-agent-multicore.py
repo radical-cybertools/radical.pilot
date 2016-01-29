@@ -395,7 +395,7 @@ def bootstrap_3():
 
     cfg      = ru.read_json_str(agent_cfg)
     pilot_id = cfg['pilot_id']
-    cfg['owner_id']   = pilot_id
+    cfg['owner']      = pilot_id
     cfg['agent_name'] = agent_name
 
     # set up a logger and profiler

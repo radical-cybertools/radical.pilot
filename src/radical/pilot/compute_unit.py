@@ -16,14 +16,15 @@ from . import types     as rpt
 
 from .staging_directives import expand_description
 
-# -----------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 class ComputeUnit(object):
     """
     A ComputeUnit represent a 'task' that is executed on a ComputePilot.
     ComputeUnits allow to control and query the state of this task.
 
-    .. note:: A ComputeUnit cannot be created directly. The factory method
+    .. note:: A unit cannot be created directly. The factory method
               :meth:`radical.pilot.UnitManager.submit_units` has to be used instead.
 
                 **Example**::
@@ -44,8 +45,8 @@ class ComputeUnit(object):
     # considered to *belong* to that UMGR, and all activities are actually
     # implemented by that UMGR.
     #
-    # Note that this implies that we could create CUs before submitting them to
-    # a UMGR, w/o any problems. (FIXME?)
+    # Note that this implies that we could create CUs before submitting them
+    # to a UMGR, w/o any problems. (FIXME?)
     # --------------------------------------------------------------------------
 
 
@@ -59,25 +60,24 @@ class ComputeUnit(object):
 
         # initialize state
         self._session    = self._umgr.session
+        self._uid        = ru.generate_id('unit.%(counter)06d', ru.ID_CUSTOM)
         self._state      = rps.NEW
         self._state_hist = [[rps.NEW, rpu.timestamp()]]
-        self._uid        = ru.generate_id('unit.%(counter)06d', ru.ID_CUSTOM)
-        self._exit_code  = None
         self._log        = []
-        self._pilot      = None
-        self._sandbox    = None
-        self._start_time = None
-        self._stop_time  = None
+        self._exit_code  = None
         self._stdout     = None
         self._stderr     = None
+        self._pilot      = None
+        self._sandbox    = None
 
         # sanity checks on description
+        for check in ['cores']:
+            if  not self._descr.get(check):
+                raise ValueError("ComputeUnitDescription needs '%s'" % check)
+
         if  not self._descr.get('executable') and \
             not self._descr.get('kernel')     :
-            raise ValueError("ComputeUnitDescription needs executable or kernel")
-
-        if not self._descr.get('cores'):
-            raise ValueError("Can't run a Compute Unit without cores.")
+            raise ValueError("ComputeUnitDescription needs 'executable' or 'kernel'")
 
         # If staging directives exist, expand them
         expand_description(self._descr)
@@ -104,10 +104,6 @@ class ComputeUnit(object):
     # --------------------------------------------------------------------------
     #
     def __str__(self):
-        """Returns a string representation of the object.
-        """
-        if not self._uid:
-            return None
 
         return str(self.as_dict())
 
@@ -120,18 +116,51 @@ class ComputeUnit(object):
         """
         
         ret = {
-            '_id':         self.uid,  # for component...
-            'uid':         self.uid,
-            'name':        self.name,
-            'state':       self.state,
-            'exit_code':   self.exit_code,
-            'log':         self.log,
-            'pilot':       self.pilot,
-            'sandbox':     self.sandbox,
-            'description': copy.deepcopy(self.description)
+            'session':         self.session.uid,
+            'umgr':            self.umgr.uid,
+            '_id':             self.uid,  # for component...
+            'uid':             self.uid,
+            'name':            self.name,
+            'state':           self.state,
+            'state_history':   self.state_history,
+            'log':             self.log,
+            'exit_code':       self.exit_code,
+            'stdout':          self.stdout,
+            'stderr':          self.stderr,
+            'pilot':           self.pilot,
+            'sandbox':         self.sandbox,
+            'description':     copy.deepcopy(self.description)
         }
 
         return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def session(self):
+        """
+        Returns the unit's session.
+
+        **Returns:**
+            * A :class:`Session`.
+        """
+
+        return self._session
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def umgr(self):
+        """
+        Returns the unit's manager.
+
+        **Returns:**
+            * A :class:`UnitManager`.
+        """
+
+        return self._umgr
 
 
     # --------------------------------------------------------------------------
@@ -141,7 +170,7 @@ class ComputeUnit(object):
         """
         Returns the unit's unique identifier.
 
-        The uid identifies the ComputeUnit within a :class:`UnitManager`.
+        The uid identifies the unit within a :class:`UnitManager`.
 
         **Returns:**
             * A unique identifier (string).
@@ -165,48 +194,60 @@ class ComputeUnit(object):
     # --------------------------------------------------------------------------
     #
     @property
-    def working_directory(self):
+    def state(self):
         """
-        Returns the full working directory URL of this ComputeUnit, if that is
-        already known, or 'None' otherwise
+        Returns the current state of the unit.
 
         **Returns:**
-            * A URL (radical.utils.Url).
-
-        **NOTE:** deprecated, use *`sandbox`*
+            * state (string enum)
         """
 
-        return self.sandbox
+        return self._state
 
 
     # --------------------------------------------------------------------------
     #
     @property
-    def sandbox(self):
+    def state_history(self):
         """
-        Returns the full sandbox URL of this ComputeUnit, if that is already
-        known, or 'None' otherwise.
+        Returns the complete state history of the unit.
 
         **Returns:**
-            * A URL (radical.utils.Url).
+            * list of tuples [[state, timestamp]]
         """
 
-        return self._sandbox
+        return copy.deepcopy(self._state_hist)
 
 
     # --------------------------------------------------------------------------
     #
     @property
-    def pilot(self):
+    def log(self):
         """
-        Returns the pilot ID of this ComputeUnit, if that is already known, or
+        Returns a list of human readable [timestamp, string] tuples describing
+        various events during the unit's lifetime.  Those strings are not
+        normative, only informative!
+
+        **Returns:**
+            * log (list of [timestamp, string] tuples)
+        """
+
+        return copy.deepcopy(self._log)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def exit_code(self):
+        """
+        Returns the exit code of the unit, if that is already known, or
         'None' otherwise.
 
         **Returns:**
-            * A pilot ID (string)
+            * exit code (int)
         """
 
-        return self._pilot
+        return self._exit_code
 
 
     # --------------------------------------------------------------------------
@@ -216,7 +257,7 @@ class ComputeUnit(object):
         """
         Returns a snapshot of the executable's STDOUT stream.
 
-        If this property is queried before the ComputeUnit has reached
+        If this property is queried before the unit has reached
         'DONE' or 'FAILED' state it will return None.
 
         .. warning: This can be inefficient.  Output may be incomplete and/or
@@ -236,7 +277,7 @@ class ComputeUnit(object):
         """
         Returns a snapshot of the executable's STDERR stream.
 
-        If this property is queried before the ComputeUnit has reached
+        If this property is queried before the unit has reached
         'DONE' or 'FAILED' state it will return None.
 
         .. warning: This can be inefficient.  Output may be incomplete and/or
@@ -252,10 +293,56 @@ class ComputeUnit(object):
     # --------------------------------------------------------------------------
     #
     @property
+    def pilot(self):
+        """
+        Returns the pilot ID of this unit, if that is already known, or
+        'None' otherwise.
+
+        **Returns:**
+            * A pilot ID (string)
+        """
+
+        return self._pilot
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def working_directory(self):
+        """
+        Returns the full working directory URL of this unit, if that is
+        already known, or 'None' otherwise
+
+        **Returns:**
+            * A URL (radical.utils.Url).
+
+        **NOTE:** deprecated, use *`sandbox`*
+        """
+
+        return self.sandbox
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def sandbox(self):
+        """
+        Returns the full sandbox URL of this unit, if that is already
+        known, or 'None' otherwise.
+
+        **Returns:**
+            * A URL (radical.utils.Url).
+        """
+
+        return self._sandbox
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
     def description(self):
         """
-        Returns the ComputeUnitDescription the ComputeUnit was started with, as
-        a dictionary.
+        Returns the description the unit was started with, as a dictionary.
 
         **Returns:**
             * description (dict)
@@ -266,71 +353,10 @@ class ComputeUnit(object):
 
     # --------------------------------------------------------------------------
     #
-    @property
-    def state(self):
-        """
-        Returns the current state of the ComputeUnit.
-
-        **Returns:**
-            * state (string enum)
-        """
-
-        return self._state
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def state_history(self):
-        """
-        Returns the complete state history of the ComputeUnit.
-
-        **Returns:**
-            * list of tuples [[state, timestamp]]
-        """
-
-        return copy.deepcopy(self._state_hist)
-
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def exit_code(self):
-        """
-        Returns the exit code of the ComputeUnit, if that is already known, or
-        'None' otherwise.
-
-        **Returns:**
-            * exit code (int)
-        """
-
-        return self._exit_code
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def log(self):
-        """
-        Returns a list of human readable [timestamp, string] tuples describing
-        various events during the CU lifetime.  Those strings are not normative,
-        only informative!
-
-        **Returns:**
-            * log (list of [timestamp, string] tuples)
-        """
-
-        return copy.deepcopy(self._log)
-
-
-
-    # --------------------------------------------------------------------------
-    #
     def register_callback(self, cb_func, cb_data=None):
         """
         Registers a callback function that is triggered every time the
-        ComputeUnit's state changes.
+        unit's state changes.
 
         All callback functions need to have the same signature::
 
@@ -345,24 +371,24 @@ class ComputeUnit(object):
         and 'cb_data' are passed along.
 
         """
-        self._umgr.register_unit_callback(self.uid, cb_func, cb_data)
+        self._umgr.register_callback(self.uid, rpt.UNIT_STATE, cb_func, cb_data)
 
 
     # --------------------------------------------------------------------------
     #
     def wait(self, state=None, timeout=None):
         """
-        Returns when the ComputeUnit reaches a specific state or
+        Returns when the unit reaches a specific state or
         when an optional timeout is reached.
 
         **Arguments:**
 
             * **state** [`list of strings`]
-              The state(s) that compute unit has to reach in order for the
+              The state(s) that unit has to reach in order for the
               call to return.
 
-              By default `wait` waits for the compute unit to reach
-              a **terminal** state, which can be one of the following:
+              By default `wait` waits for the unit to reach a **final**
+              state, which can be one of the following:
 
               * :data:`radical.pilot.states.DONE`
               * :data:`radical.pilot.states.FAILED`
@@ -370,9 +396,8 @@ class ComputeUnit(object):
 
             * **timeout** [`float`]
               Optional timeout in seconds before the call returns regardless
-              whether the compute unit has reached the desired state or not.
-              The default value **None** never times out.
-        """
+              whether the unit has reached the desired state or not.  The
+              default value **None** never times out.  """
 
         if not state:
             states = rps.FINAL
@@ -408,7 +433,7 @@ class ComputeUnit(object):
     #
     def cancel(self):
         """
-        Cancel the ComputeUnit.
+        Cancel the unit.
         """
         
         self._umgr._cancel_unit(self.uid)

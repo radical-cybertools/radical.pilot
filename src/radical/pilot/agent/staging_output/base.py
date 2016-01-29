@@ -28,12 +28,12 @@ class AgentStagingOutputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    # This class-method creates the appropriate sub-class for the Spawner
+    # This class-method creates the appropriate sub-class for the Stager
     #
     @classmethod
     def create(cls, cfg):
 
-        name = cfg.get('agent_stagin_output_component', RP_ASI_NAME_DEFAULT)
+        name = cfg.get('agent_staging_output_component', RP_ASI_NAME_DEFAULT)
 
         # Make sure that we are the base-class!
         if cls != AgentStagingOutputComponent:

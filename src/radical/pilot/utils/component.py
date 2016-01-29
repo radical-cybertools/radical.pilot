@@ -986,9 +986,6 @@ class Component(mp.Process):
             if publish:
                 # send state notifications
                 self.publish('state', thing)
-                    output.put({'cmd'  : 'state_update', 
-                                'type' : ttype,
-                                'msg'  : _thing})
                 self._prof.prof('publish', uid=thing['_id'], state=thing['state'])
 
             if push:

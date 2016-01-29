@@ -50,7 +50,7 @@ class Update(rpu.Worker):
 
         self._session_id    = self._cfg['session_id']
         self._mongodb_url   = self._cfg['mongodb_url']
-        self._owner_id      = self._cfg['owner_id']
+        self._owner         = self._cfg['owner']
 
         _, db, _, _, _      = ru.mongodb_connect(self._mongodb_url)
         self._mongo_db      = db
@@ -210,7 +210,7 @@ class Update(rpu.Worker):
         self._log.debug("bulk update result: %s", res)
 
         self._prof.prof('unit update bulk pushed (%d)' % len(cinfo['uids']),
-                        uid=self._owner_id)
+                        uid=self._owner)
         for entry in cinfo['uids']:
             uid   = entry[0]
             state = entry[1]

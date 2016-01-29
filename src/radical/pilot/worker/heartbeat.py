@@ -53,7 +53,7 @@ class Heartbeat(rpu.Worker):
         # all components use the command channel for control messages
         self.declare_publisher ('command', rpc.COMMAND_PUBSUB)
 
-        self._owner_id      = self._cfg['owner_id']
+        self._owner         = self._cfg['owner']
         self._session_id    = self._cfg['session_id']
         self._runtime       = self._cfg.get('runtime')
         self._starttime     = time.time()
@@ -84,7 +84,7 @@ class Heartbeat(rpu.Worker):
 
         try:
             self._prof.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!',
-                            uid=self._owner_id)
+                            uid=self._owner)
             self._check_commands()
             self._check_state   ()
             return True
@@ -100,7 +100,7 @@ class Heartbeat(rpu.Worker):
 
         # Check if there's a command waiting
         retdoc = self._p.find_and_modify(
-                    query  = {"_id"  : self._owner_id},
+                    query  = {"_id"  : self._owner},
                     update = {"$set" : {rpc.COMMAND_FIELD: []}}, # Wipe content of array
                     fields = [rpc.COMMAND_FIELD]
                     )
@@ -114,7 +114,7 @@ class Heartbeat(rpu.Worker):
             arg = command[rpc.COMMAND_ARG]
 
             self._prof.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" \
-                            % (cmd, arg), uid=self._owner_id)
+                            % (cmd, arg), uid=self._owner)
 
             if cmd == rpc.COMMAND_CANCEL_PILOT:
                 self._log.info('cancel pilot cmd')
