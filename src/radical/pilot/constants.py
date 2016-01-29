@@ -57,3 +57,26 @@ FREE = 'Free'
 BUSY = 'Busy'
 
 
+# ------------------------------------------------------------------------------
+#
+# staging defines
+#
+COPY     = 'Copy'     # local cp
+LINK     = 'Link'     # local ln -s
+MOVE     = 'Move'     # local mv
+TRANSFER = 'Transfer' # saga remote transfer TODO: This might just be a special case of copy
+
+#
+# Flags
+#
+CREATE_PARENTS = 'CreateParents'  # Create parent directories while writing file
+SKIP_FAILED    = 'SkipFailed'     # Don't stage out files if tasks failed
+
+#
+# Defaults
+#
+DEFAULT_ACTION   = TRANSFER
+DEFAULT_PRIORITY = 0
+DEFAULT_FLAGS    = [CREATE_PARENTS, SKIP_FAILED]
+STAGING_AREA     = 'staging_area'
+
