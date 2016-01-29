@@ -138,7 +138,7 @@ class Default(AgentStagingOutputComponent):
                 self._log.info("unit output staging directives %s for cu: %s to %s",
                         directive, cu['_id'], workdir)
 
-                # Convert the target_url into a SAGA Url object
+                # Convert the target_url into a RU Url object
                 target_url = ru.Url(directive['target'])
 
                 # Handle special 'staging' scheme
@@ -164,10 +164,13 @@ class Default(AgentStagingOutputComponent):
 
                 self._log.info("Going to '%s' %s to %s", directive['action'], abs_source, target)
 
-                # This is probably not a brilliant idea, so at least give a warning
-                if   directive['action'] == rpc.LINK: os.symlink     (abs_source, target)
-                elif directive['action'] == rpc.COPY: shutil.copyfile(abs_source, target)
-                elif directive['action'] == rpc.MOVE: shutil.move    (abs_source, target)
+                if directive['action'] == rpc.LINK:
+                    # This is probably not a brilliant idea, so at least give a warning
+                    os.symlink(abs_source, target)
+                elif directive['action'] == rpc.COPY:
+                    shutil.copyfile(abs_source, target)
+                elif directive['action'] == rpc.MOVE:
+                    shutil.move(abs_source, target)
                 else:
                     # FIXME: implement TRANSFER mode
                     raise NotImplementedError('Action %s not supported' % directive['action'])
