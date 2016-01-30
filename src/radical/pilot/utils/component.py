@@ -125,7 +125,7 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, ctype, cfg):
+    def __init__(self, ctype, cfg, session=None):
         """
         This constructor MUST be called by inheriting classes.
 
@@ -141,6 +141,7 @@ class Component(mp.Process):
 
         self._ctype         = ctype
         self._cfg           = cfg
+        self._session       = session
         self._debug         = cfg.get('debug', 'DEBUG') # FIXME
         self._module_name   = cfg.get('agent_name', 'client')
         self._cname         = "%s.%s.%d" % (self._module_name, self._ctype, cfg.get('number', 0))
@@ -250,7 +251,7 @@ class Component(mp.Process):
     # --------------------------------------------------------------------------
     #
     @staticmethod
-    def start_components(components, typemap, cfg, logger=None):
+    def start_components(components, typemap, cfg, session=None, logger=None):
         """
         This method expects a 'components' dict of the form:
           {
@@ -296,7 +297,7 @@ class Component(mp.Process):
                 log.info('create component %s (%s)', cname, cnum)
                 ccfg = copy.deepcopy(cfg)
                 ccfg['number'] = i
-                comp = typemap[cname].create(ccfg)
+                comp = typemap[cname].create(ccfg, session)
                 comp.start()
                 ret[comp.childname] = {'handle' : comp,
                                        'alive'  : False}
@@ -1061,9 +1062,9 @@ class Worker(Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, ctype, cfg):
+    def __init__(self, ctype, cfg, session=None):
 
-        Component.__init__(self, ctype, cfg)
+        Component.__init__(self, ctype=ctype, cfg=cfg, session=session)
 
 
     # --------------------------------------------------------------------------

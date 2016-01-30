@@ -71,7 +71,6 @@ class PilotManager(rpu.Component):
             * A new `PilotManager` object [:class:`radical.pilot.PilotManager`].
         """
 
-        self._session    = session
         self._cfg        = None
         self._components = None
         self._pilots     = dict()
@@ -89,7 +88,7 @@ class PilotManager(rpu.Component):
         self._log  = ru.get_logger(self.uid, "%s.%s.log" % (session.uid, self._uid))
         self._prof = rpu.Profiler("%s.%s" % (session.uid, self._uid))
 
-        self._session.prof.prof('create pmgr', uid=self._uid)
+        session.prof.prof('create pmgr', uid=self._uid)
 
         self._log.report.info('<<create unit manager')
 
@@ -98,8 +97,8 @@ class PilotManager(rpu.Component):
                     % (os.path.dirname(__file__),
                        os.environ.get('RADICAL_PILOT_PMGR_CONFIG', 'default')))
 
-            self._cfg['session_id']  = self._session.uid
-            self._cfg['mongodb_url'] = self._session._dburl
+            self._cfg['session_id']  = session.uid
+            self._cfg['mongodb_url'] = session._dburl
             self._cfg['owner']       = self._uid
 
             components = self._cfg.get('components', [])
@@ -113,15 +112,16 @@ class PilotManager(rpu.Component):
 
             # get addresses from the bridges, and append them to the
             # config, so that we can pass those addresses to the components
-            self._cfg['bridge_addresses'] = copy.deepcopy(self._session._bridge_addresses)
+            self._cfg['bridge_addresses'] = copy.deepcopy(session._bridge_addresses)
 
             # the bridges are known, we can start to connect the components to them
             self._components = rpu.Component.start_components(components,
-                    typemap, self._cfg)
+                    typemap, self._cfg, session=session)
 
             # initialize the base class
+            # FIXME: why so late?
             # FIXME: unique ID
-            rpu.Component.__init__(self, 'PilotManager', self._cfg)
+            rpu.Component.__init__(self, 'PilotManager', self._cfg, session)
 
             # The command pubsub is always used
             self.declare_publisher('command', rpc.COMMAND_PUBSUB)

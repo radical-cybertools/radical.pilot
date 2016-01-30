@@ -34,16 +34,9 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        rpu.Component.__init__(self, rpc.PMGR_LAUNCHING_COMPONENT, cfg)
-
-    # --------------------------------------------------------------------------
-    #
-    @classmethod
-    def create(cls, cfg):
-
-        return cls(cfg)
+        rpu.Component.__init__(self, rpc.PMGR_LAUNCHING_COMPONENT, cfg, session)
 
 
     # --------------------------------------------------------------------------

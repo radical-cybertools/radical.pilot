@@ -27,17 +27,17 @@ class Heartbeat(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session=None):
 
-        rpu.Worker.__init__(self, 'Heartbeat', cfg)
+        rpu.Worker.__init__(self, 'Heartbeat', cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def create(cls, cfg):
+    def create(cls, cfg, session=None):
 
-        return cls(cfg)
+        return cls(cfg, session)
 
 
     # --------------------------------------------------------------------------

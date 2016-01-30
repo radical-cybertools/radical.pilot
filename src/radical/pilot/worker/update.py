@@ -31,17 +31,17 @@ class Update(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session=None):
 
-        rpu.Worker.__init__(self, 'UpdateWorker', cfg)
+        rpu.Worker.__init__(self, 'UpdateWorker', cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def create(cls, cfg):
+    def create(cls, cfg, session=None):
 
-        return cls(cfg)
+        return cls(cfg, session)
 
 
     # --------------------------------------------------------------------------

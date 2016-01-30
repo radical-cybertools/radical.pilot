@@ -31,7 +31,7 @@ class UMGRStagingOutputComponent(rpu.Component):
     # This class-method creates the appropriate sub-class for the Stager
     #
     @classmethod
-    def create(cls, cfg):
+    def create(cls, cfg, session):
 
         name = cfg.get('umgr_staging_output_component', RP_USO_NAME_DEFAULT)
 
@@ -46,7 +46,7 @@ class UMGRStagingOutputComponent(rpu.Component):
                 RP_USO_NAME_DEFAULT: Default
             }[name]
 
-            impl = impl(cfg)
+            impl = impl(cfg, session)
             return impl
 
         except KeyError:

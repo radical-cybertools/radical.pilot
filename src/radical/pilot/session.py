@@ -180,8 +180,7 @@ class Session (saga.Session):
 
         self.prof.prof('configs parsed', uid=self._uid)
 
-        _rec = os.environ.get('RADICAL_PILOT_RECORD_SESSION')
-        if _rec:
+        if os.environ.get('RADICAL_PILOT_RECORD_SESSION'):
             self._rec = "%s/%s" % (_rec, self._uid)
             os.system('mkdir -p %s' % self._rec)
             ru.write_json({'dburl' : str(self._dburl)}, "%s/session.json" % self._rec)

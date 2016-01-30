@@ -18,11 +18,11 @@ class Direct(UMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
         self.pilots = None
 
-        UMGRSchedulingComponent.__init__(self, cfg)
+        UMGRSchedulingComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
