@@ -21,9 +21,9 @@ class PMGRLaunchingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        rpu.Component.__init__(self, rpc.PMGR_LAUNCHING_COMPONENT, cfg)
+        rpu.Component.__init__(self, rpc.PMGR_LAUNCHING_COMPONENT, cfg, session)
 
 
     # --------------------------------------------------------------------------
