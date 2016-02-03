@@ -121,6 +121,8 @@ class ORTELib(LaunchMethod):
                     # Process is gone: fatal!
                     raise Exception("ORTE DVM process disappeared")
 
+
+
         # ----------------------------------------------------------------------
         def _watch_dvm(dvm_process):
 
@@ -180,6 +182,8 @@ class ORTELib(LaunchMethod):
         # Request to create a background asynchronous event loop
         os.putenv("OMPI_MCA_ess_tool_async_progress", "enabled")
 
+
+
     # --------------------------------------------------------------------------
     #
     def construct_command(self, cu, launch_script_hop):
@@ -195,20 +199,7 @@ class ORTELib(LaunchMethod):
             raise RuntimeError('No task_slots to launch via %s: %s' \
                                % (self.name, opaque_slots))
 
-        if 'lm_info' not in opaque_slots:
-            raise RuntimeError('No lm_info to launch via %s: %s' \
-                    % (self.name, opaque_slots))
-
-        if not opaque_slots['lm_info']:
-            raise RuntimeError('lm_info missing for %s: %s' \
-                               % (self.name, opaque_slots))
-
-        if 'dvm_uri' not in opaque_slots['lm_info']:
-            raise RuntimeError('dvm_uri not in lm_info for %s: %s' \
-                    % (self.name, opaque_slots))
-
         task_slots = opaque_slots['task_slots']
-        dvm_uri    = opaque_slots['lm_info']['dvm_uri']
 
         if task_argstr:
             task_command = "%s %s" % (task_exec, task_argstr)
@@ -232,8 +223,8 @@ class ORTELib(LaunchMethod):
             #'--mca oob_base_verbose 100',
             #'--mca rml_base_verbose 100'
         ]
-        orte_command = '%s %s --hnp "%s" %s -np %s -host %s' % (
-            self.launch_command, ' '.join(debug_strings), dvm_uri, export_vars, task_cores, hosts_string)
+        orte_command = '%s %s %s -np %s -host %s' % (
+            self.launch_command, ' '.join(debug_strings), export_vars, task_cores, hosts_string)
 
         return orte_command, task_command
 

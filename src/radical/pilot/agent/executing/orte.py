@@ -13,9 +13,7 @@ import tempfile
 import threading
 import traceback
 
-# TODO: need proper installation
-sys.path.append("/Users/mark/proj/openmpi/mysubmit")
-from ompi_cffi import ffi, lib
+from orte_cffi import ffi, lib
 
 from .... import pilot     as rp
 from ...  import utils     as rpu
@@ -41,16 +39,16 @@ def rec_makedir(target):
 
 # ==============================================================================
 #
-@ffi.callback("void(int, void *)")
-def global_spawn_cb(x, handle):
-    return ffi.from_handle(handle).unit_spawned_cb(x)
+@ffi.def_extern()
+def launch_cb(task, jdata, status, cbdata):
+    return ffi.from_handle(cbdata).unit_spawned_cb(task)
 
 
 # ==============================================================================
 #
-@ffi.callback("void(int, int, void *)")
-def global_complete_cb(x, y, handle):
-    return ffi.from_handle(handle).unit_completed_cb(x, y)
+@ffi.def_extern()
+def finish_cb(task, jdata, status, cbdata):
+    return ffi.from_handle(cbdata).unit_completed_cb(task, status)
 
 
 # ==============================================================================
@@ -105,6 +103,8 @@ class ORTE(AgentExecutingComponent):
             name   = "ORTE_LIB",
             cfg    = self._cfg,
             logger = self._log)
+
+        self._orte_initialized = False
 
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive', 'arg' : self.cname})
@@ -178,6 +178,14 @@ class ORTE(AgentExecutingComponent):
     #
     def work(self, cu):
 
+        if not self._orte_initialized:
+            self._log.debug("ORTE not yet initialized!")
+            ret = self.init_orte(cu)
+            if ret != 0:
+                self._log.debug("ORTE initialisation failed!")
+            else:
+                self._log.debug("ORTE initialisation succeeded!")
+
         try:
             launcher = self._task_launcher
 
@@ -197,7 +205,7 @@ class ORTE(AgentExecutingComponent):
             # not completely correct (as this text is not produced
             # by the unit), but it seems the most intuitive way to
             # communicate that error to the application/user.
-            self._log.exception("error running CU")
+            self._log.exception("error running CU: %s", str(e))
             cu['stderr'] += "\nPilot cannot start compute unit:\n%s\n%s" \
                             % (str(e), traceback.format_exc())
 
@@ -254,9 +262,45 @@ class ORTE(AgentExecutingComponent):
         # TODO: push=False because this is a callback?
         self.advance(cu, rp.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
 
+
+    # --------------------------------------------------------------------------
+    #
+    def init_orte(self, cu):
+        # TODO: it feels as a hack to get the DVM URI from the first CU
+
+        opaque_slots = cu['opaque_slots']
+
+        if 'lm_info' not in opaque_slots:
+            raise RuntimeError('No lm_info to init via %s: %s' \
+                               % (self.name, opaque_slots))
+
+        if not opaque_slots['lm_info']:
+            raise RuntimeError('lm_info missing for %s: %s' \
+                               % (self.name, opaque_slots))
+
+        if 'dvm_uri' not in opaque_slots['lm_info']:
+            raise RuntimeError('dvm_uri not in lm_info for %s: %s' \
+                               % (self.name, opaque_slots))
+
+        dvm_uri    = opaque_slots['lm_info']['dvm_uri']
+
+        argv_keepalive = [
+            ffi.new("char[]", "RADICAL-Pilot"), # Will be stripped off by the library
+            ffi.new("char[]", "--hnp"), ffi.new("char[]", str(dvm_uri)),
+            ffi.NULL, # Required
+        ]
+        argv = ffi.new("char *[]", argv_keepalive)
+        ret = lib.orte_submit_init(3, argv)
+
+        self._myhandle = ffi.new_handle(self)
+        self._orte_initialized = True
+
+        return ret
+
     # --------------------------------------------------------------------------
     #
     def spawn(self, launcher, cu):
+
 
         self._prof.prof('spawn', msg='unit spawn', uid=cu['_id'])
 
@@ -393,9 +437,9 @@ class ORTE(AgentExecutingComponent):
 
         # Submit to the DVM!
         try:
-            task = lib.submit_job(argv, global_spawn_cb, global_complete_cb, ffi.new_handle(self))
-        except Exception:
-            raise Exception("submit job failed")
+            task = lib.orte_submit_job(argv, lib.launch_cb, self._myhandle, lib.finish_cb, self._myhandle)
+        except Exception as e:
+            raise Exception("submit job failed: %s" % str(e))
 
         # Record the mapping of ORTE index to CU
         self.task_map[task] = cu
