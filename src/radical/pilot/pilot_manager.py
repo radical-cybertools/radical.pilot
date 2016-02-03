@@ -215,6 +215,18 @@ class PilotManager(object):
         return str(self.as_dict())
 
 
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def session(self):
+        """Returns the Pilot Manager's session.
+
+        **Returns:**
+            * a `radical.pilot.Session` object
+        """
+        return self._session
+
+
     #------------------------------------------------------------------------------
     #
     @staticmethod
@@ -294,7 +306,8 @@ class PilotManager(object):
             if "mandatory_args" in resource_cfg:
                 for ma in resource_cfg["mandatory_args"]:
                     if getattr(pd, ma) is None:
-                        error_msg = "ComputePilotDescription does not define attribute '{0}' which is required for '{1}'.".format(ma, resource_key)
+                        error_msg = "ComputePilotDescription for '%s' needs mandatory %s." \
+                                    % (resource_key, ma)
                         raise BadParameter(error_msg)
 
 

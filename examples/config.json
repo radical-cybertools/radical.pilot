@@ -19,18 +19,14 @@
         },
 
         "epsrc.archer" : {
-            "project"  : "y14-CECAM",
-            "queue"    : "R3211460",
-          # "queue"    : "R3211496",
-          # "queue"    : "R3211473",
+            "project"  : "e290",
+            "queue"    : "short",
             "schema"   : null
         },
 
         "epsrc.archer_orte" : {
-            "project"  : "y14-CECAM",
-            "queue"    : "R3211460",
-          # "queue"    : "R3211496",
-          # "queue"    : "R3211473",
+            "project"  : "e290",
+            "queue"    : "short",
             "schema"   : null
         },
 
@@ -49,18 +45,24 @@
         "xsede.stampede" : {
             "project"  : "TG-MCB150124",
             "queue"    : "development",
-            "schema"   : "gsissh"
+            "schema"   : null
         },
 
         "xsede.comet"  : {
             "project"  : "unc100",
             "queue"    : "",
-            "schema"   : "gsissh"
+            "schema"   : null
+        },
+
+        "xsede.comet_orte": {
+            "project"  : "unc100",
+            "queue"    : "",
+            "schema"   : null
         },
 
         "xsede.gordon" : {
             "project"  : null,
-            "queue"    : "debug",
+            "queue"    : "normal",
             "schema"   : null
         },
 
@@ -92,6 +94,11 @@
             "project"  : null,
             "queue"    : "debug",
             "schema"   : "ssh"
+        },
+
+        "yale.grace"   : {
+            "project"  : null,
+            "queue"    : "shared",
+            "schema"   : "ssh"
         }
 }
-

@@ -82,14 +82,14 @@ class Session (saga.Session):
         logger = ru.get_logger('radical.pilot')
 
         if database_name:
-            logger.error("The 'database_name' parameter is deprecated - please specify an URL path") 
+            logger.warning("The 'database_name' parameter is deprecated - please specify an URL path")
         else:
             database_name = 'radicalpilot'
 
         # init the base class inits
         saga.Session.__init__ (self)
         self._dh        = ru.DebugHelper()
-        self._valid     = True
+        self._valid     = False
         self._terminate = threading.Event()
         self._terminate.clear()
 
@@ -110,48 +110,60 @@ class Session (saga.Session):
         if  not database_url:
             raise PilotException ("no database URL (set RADICAL_PILOT_DBURL)")  
 
-        self._dburl = ru.Url(database_url)
+        dburl = ru.Url(database_url)
 
         # if the database url contains a path element, we interpret that as
         # database name (without the leading slash)
-        if  not self._dburl.path         or \
-            self._dburl.path[0]   != '/' or \
-            len(self._dburl.path) <=  1  :
-            logger.error("incomplete URLs are deprecated -- missing database name!")
-            self._dburl.path = database_name # defaults to 'radicalpilot'
+        if  not dburl.path         or \
+            dburl.path[0]   != '/' or \
+            len(dburl.path) <=  1  :
+            logger.warning("incomplete URLs are deprecated -- missing database name!")
+            dburl.path = database_name # defaults to 'radicalpilot'
 
-        logger.info("using database %s" % self._dburl)
+        logger.info("using database %s" % dburl)
 
         # ----------------------------------------------------------------------
         # create new session
+        self._dbs       = None
+        self._uid       = None
+        self._connected = None
+        self._dburl     = None
+
         try:
             if name :
-                self._name = name
-                self._uid  = name
-              # self._uid  = ru.generate_id ('rp.session.'+name+'.%(item_counter)06d', mode=ru.ID_CUSTOM)
+                uid = name
+                ru.reset_id_counters(prefix=['pmgr', 'umgr', 'pilot', 'unit', 'unit.%(counter)06d'])
             else :
-                self._uid  = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
-                self._name = self._uid
+                uid = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
+                ru.reset_id_counters(prefix=['pmgr', 'umgr', 'pilot', 'unit', 'unit.%(counter)06d'])
 
-            logger.report.info('<<create session %s' % self._uid)
+            # initialize profiling
+            self.prof = Profiler('%s' % uid)
+            self.prof.prof('start session', uid=uid)
 
+            logger.report.info ('<<new session: ')
+            logger.report.plain('[%s]' % uid)
+            logger.report.info ('<<database   : ')
+            logger.report.plain('[%s]' % dburl)
 
-            self._dbs = dbSession(sid   = self._uid,
-                                  name  = self._name,
-                                  dburl = self._dburl)
-        
-            self._dburl  = self._dbs._dburl
+            self._dbs = dbSession(sid   = uid,
+                                  name  = name,
+                                  dburl = dburl)
 
+            # only now the session should have an uid
+            self._dburl = self._dbs._dburl
+            self._name  = name
+            self._uid   = uid
+
+            # from here on we should be able to close the session again
+            self._valid = True
             logger.info("New Session created: %s." % str(self))
 
         except Exception, ex:
+            logger.report.error(">>err\n")
             logger.exception ('session create failed')
             raise PilotException("Couldn't create new session (database URL '%s' incorrect?): %s" \
                             % (self._dburl, ex))  
-
-        # initialize profiling
-        self.prof = Profiler('%s' % self._uid)
-        self.prof.prof('start session', uid=self._uid)
 
         # Loading all "default" resource configurations
         module_path  = os.path.dirname(os.path.abspath(__file__))
@@ -213,6 +225,18 @@ class Session (saga.Session):
 
 
     #---------------------------------------------------------------------------
+    # Allow Session to function as a context manager in a `with` clause
+    def __enter__ (self):
+        return self
+
+
+    #---------------------------------------------------------------------------
+    # Allow Session to function as a context manager in a `with` clause
+    def __exit__ (self, type, value, traceback) :
+        self.close()
+
+
+    #---------------------------------------------------------------------------
     #
     def __del__ (self) :
         pass
@@ -244,14 +268,13 @@ class Session (saga.Session):
               or doesn't exist. 
         """
 
+        self._is_valid()
+
         logger.report.info('closing session %s' % self._uid)
         logger.debug("session %s closing" % (str(self._uid)))
         self.prof.prof("close", uid=self._uid)
 
         uid = self._uid
-
-        if not self._valid:
-            raise RuntimeError("Session object already closed.")
 
         # set defaults
         if cleanup   == None: cleanup   = True
@@ -266,7 +289,7 @@ class Session (saga.Session):
             if  cleanup == True and terminate == True :
                 cleanup   = delete
                 terminate = delete
-                logger.error("'delete' flag on session is deprecated. " \
+                logger.warning("'delete' flag on session is deprecated. " \
                              "Please use 'cleanup' and 'terminate' instead!")
 
         if  cleanup :
@@ -295,6 +318,7 @@ class Session (saga.Session):
 
         logger.debug("session %s closed" % (str(self._uid)))
         self.prof.prof("closed", uid=self._uid)
+        self.prof.close()
 
         self._valid = False
 
@@ -307,6 +331,9 @@ class Session (saga.Session):
     def as_dict(self):
         """Returns a Python dictionary representation of the object.
         """
+
+        self._is_valid()
+
         object_dict = {
             "uid"           : self._uid,
             "created"       : self._dbs.created,
@@ -333,11 +360,14 @@ class Session (saga.Session):
     #
     @property
     def dburl(self):
+        self._is_valid()
         return self._dbs.dburl
 
     #---------------------------------------------------------------------------
     #
     def get_db(self):
+
+        self._is_valid()
         return self._dbs.get_db()
 
     #---------------------------------------------------------------------------
@@ -501,9 +531,9 @@ class Session (saga.Session):
             unit_manager_ids = [unit_manager_ids]
             return_scalar = True
 
-        pilot_manager_objects = list()
+        unit_manager_objects = list()
         for uid in unit_manager_ids:
-            unit_manager_objects.append (self._unit_manager_objects[pid])
+            unit_manager_objects.append (self._unit_manager_objects[uid])
 
         if return_scalar is True:
             unit_manager_objects = unit_manager_objects[0]

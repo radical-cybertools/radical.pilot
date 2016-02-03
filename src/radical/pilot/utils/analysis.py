@@ -8,7 +8,6 @@ info_names = {
         'AgentStagingInputComponent'  : 'asic',
         'SchedulerContinuous'         : 'asc',  # agent scheduler component
         'AgentExecutingComponent'     : 'aec',
-        'AgentExecutingWatcher'       : 'aew',
         'AgentStagingOutputComponent' : 'asoc',
         'session'                     : 'mod'
         }
@@ -26,6 +25,11 @@ _info_events = {
 _info_pending = {
         'Pending'    : '_pend'
         }
+
+_info_premature_final = {
+        'Failed'   : '_fail',
+        'Canceled'   : '_canc'
+}
 
 _info_states = [
         ACTIVE,
@@ -55,7 +59,6 @@ _info_states = [
         ]
 
 _info_entries = [
-    # FIXME: the names below will break for other schedulers
     ('umgr_get_u',      'MainThread',             'advance',   'New'),
     ('umgr_adv_u_pend', 'MainThread',             'advance',   'PendingInputStaging'),
     ('usic_get_u',      'InputFileTransfer',      'advance',   'StagingInput'),
@@ -64,6 +67,7 @@ _info_entries = [
     ('usoc_get_u',      'OutputFileTransfer',     'advance',   'StagingOutput'),
     ('usoc_adv_u',      'OutputFileTransfer',     'advance',   'Done'),
 
+    # FIXME: the names below will break for other schedulers
     ('asc_allocated',   'SchedulerContinuous',    'schedule',  'allocated'),
     ('asc_alloc_nok',   'SchedulerContinuous',    'schedule',  'allocation failed'),
     ('asc_alloc_ok',    'SchedulerContinuous',    'schedule',  'allocation succeeded'),
@@ -78,11 +82,11 @@ _info_entries = [
     ('aec_handover',    'AgentExecuting',         'spawn',     'spawning passed to popen'),
     ('aec_end',         'AgentExecuting',         'final',     ''),
 
-    ('aew_pickup',      'AgentExecuting',         'passed',    'ExecWatcher picked up unit'),
-    ('aew_start_script','AgentStagingOutputComponent','script','start_script'),
-    ('aew_after_cd',    'AgentStagingOutputComponent','script','after_cd'),
-    ('aew_after_exec',  'AgentStagingOutputComponent','script','after_exec'),
-    ('aew_complete',    'AgentExecuting',         'exec',      'execution complete'),
+    ('aec_pickup',      'AgentExecuting',         'passed',    'ExecWatcher picked up unit'),
+    ('aec_start_script','AgentStagingOutputComponent','script','start_script'),
+    ('aec_after_cd',    'AgentStagingOutputComponent','script','after_cd'),
+    ('aec_after_exec',  'AgentStagingOutputComponent','script','after_exec'),
+    ('aec_complete',    'AgentExecuting',         'exec',      'execution complete'),
 ]
 
 # ------------------------------------------------------------------------------
@@ -239,7 +243,7 @@ def add_event_count(frame, tgt, spec):
     a counter of the events specified in 'spec'.
 
     This works similar to add_frequency: we first filter, and then add the
-    cumsum.
+    cumsum. 
     """
 
     raise NotImplementedError('not yet implemented')
@@ -248,14 +252,14 @@ def add_event_count(frame, tgt, spec):
     def _ecnt(t, _tmp):
         # get sequence of frame which falls within the time window, and return
         # length of that sequence
-        return len(_tmp.uid[(_tmp.time > t-_window) & (_tmp.time <= t)])
+        return len(_tmp.uid[(_tmp.time <= t)])
     # --------------------------------------------------------------------------
 
     # filter the frame by the given spec
     tmp = frame
     for key,val in spec.iteritems():
         tmp = tmp[tmp[key].isin([val])]
-    frame[tgt] = 1 if tmp else 0
+    frame[tgt] = tmp.time.apply(_ecnt, args=[tmp])
 
     return frame
 
@@ -456,7 +460,8 @@ def add_derived(df):
     """
     
     import operator
-    
+
+    # TODO: The fields these are derived from are outdated by now!
     df['executor_queue'] = operator.sub(df['ewo_get'],      df['as_to_ewo'])
     df['raw_runtime']    = operator.sub(df['ewa_complete'], df['ewo_launch'])
     df['full_runtime']   = operator.sub(df['uw_push_done'], df['as_to_ewo'])
@@ -507,6 +512,11 @@ def add_info(df):
         for pat, s in _info_pending.iteritems():
             if ret and pat in row['state']:
                 ret += s
+                break
+        # Also create separate info entries for Canceled and Failed units
+        for pat, f in _info_premature_final.iteritems():
+            if ret and pat in row['state']:
+                ret += f
                 break
 
         if ret and n >= 2:

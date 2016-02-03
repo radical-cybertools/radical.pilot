@@ -16,7 +16,6 @@ AGENT_SCHEDULER             = 'agent_scheduler'
 AGENT_SPAWNER               = 'agent_spawner'
 AGENT_TYPE                  = 'agent_type'
 AGENT_CONFIG                = 'agent_config'
-BOOTSTRAPPER                = 'bootstrapper'
 CORES_PER_NODE              = 'cores_per_node'
 DEFAULT_QUEUE               = 'default_queue'
 DEFAULT_REMOTE_WORKDIR      = 'default_remote_workdir'
@@ -41,6 +40,8 @@ TUNNEL_BIND_DEVICE          = "tunnel_bind_device"
 VALID_ROOTS                 = 'valid_roots'
 VIRTENV                     = 'virtenv'
 VIRTENV_MODE                = 'private'
+SHARED_FILESYSTEM           = 'shared_filesystem'
+HEALTH_CHECK                = 'health_check'
 
 
 # ------------------------------------------------------------------------------
@@ -142,6 +143,15 @@ class ResourceConfig(attributes.Attributes):
 
        [Type: `string`] [optional] TODO
 
+    .. data:: shared_filesystem
+
+       [Type: `bool`] [optional] Resource has a shared_filesystem.
+
+    .. data:: health_check
+
+       [Type: `bool`] [optional] Perform periodical healthcheck on agent.
+
+
     """
 
     # --------------------------------------------------------------------------
@@ -202,7 +212,6 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(AGENT_SPAWNER          ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_TYPE             ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_CONFIG           ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(BOOTSTRAPPER           ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(CORES_PER_NODE         ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(DEFAULT_QUEUE          ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(DEFAULT_REMOTE_WORKDIR ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
@@ -211,22 +220,26 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(FORWARD_TUNNEL_ENDPOINT,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(JOB_MANAGER_ENDPOINT   ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(LRMS                   ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(MANDATORY_ARGS         ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(MANDATORY_ARGS         ,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(MPI_LAUNCH_METHOD      ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(NOTES                  ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PILOT_AGENT            ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(PRE_BOOTSTRAP_1        ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(PRE_BOOTSTRAP_2        ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(PRE_BOOTSTRAP_1        ,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register(PRE_BOOTSTRAP_2        ,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(RP_VERSION             ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PYTHON_INTERPRETER     ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(SCHEMAS                ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(SCHEMAS                ,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(SPMD_VARIATION         ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(STAGE_CACERTS          ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(TASK_LAUNCH_METHOD     ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(TUNNEL_BIND_DEVICE     ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(VALID_ROOTS            ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(VALID_ROOTS            ,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(VIRTENV                ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(VIRTENV_MODE           ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(SHARED_FILESYSTEM      ,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(HEALTH_CHECK           ,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+
+        self['label'] = label
 
 
     # --------------------------------------------------------------------------

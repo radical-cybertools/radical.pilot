@@ -2,7 +2,10 @@
 
 **Documentation:** http://radicalpilot.readthedocs.org/en/latest/
 
-**Mailinglist:** radical-pilot-devel@googlegroups.com
+**Mailinglists:** 
+
+* radical-pilot-users@googlegroups.com
+* radical-pilot-devel@googlegroups.com
 
 The `master` branch generally reflects the RADICAL-Pilot release on Pypi, and is
 considered stable: it should work 'out of the box' for the supported backends.
