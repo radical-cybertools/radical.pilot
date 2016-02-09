@@ -84,7 +84,8 @@ if __name__ == '__main__':
         # we create one pseudo unit which installs radical.synapse in the pilot
         # ve
         cud = rp.ComputeUnitDescription()
-        cud.pre_exec    = ["virtualenv /tmp/rp_synapse_ve_$USER",
+        cud.pre_exec    = ["unset PYTHONPATH",
+                           "virtualenv /tmp/rp_synapse_ve_$USER",
                            ". /tmp/rp_synapse_ve_$USER/bin/activate",
                            "pip install --upgrade radical.synapse"]
         cud.executable  = "radical-synapse-version"
@@ -110,7 +111,8 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.pre_exec       = [". /tmp/rp_synapse_ve_$USER/bin/activate"]
+            cud.pre_exec       = ["unset PYTHONPATH",
+                                  ". /tmp/rp_synapse_ve_$USER/bin/activate"]
             cud.executable     = "radical-synapse-sample"
             cud.arguments      = ("-m sample -f %s -s 1" % (FLOPS)).split()
             cuds.append(cud)
