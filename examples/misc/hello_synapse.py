@@ -169,7 +169,8 @@ if __name__ == "__main__":
         # we create one pseudo unit which installs radical.synapse in the pilot
         # ve
         cud = rp.ComputeUnitDescription()
-        cud.pre_exec    = ["pip uninstall -y radical.synapse",
+        cud.pre_exec    = ["virtualenv /tmp/rp_synapse_ve_$USER",
+                           "source /tmp/rp_synapse_ve_$USER/bin/activate",
                            "pip install --upgrade radical.synapse"]
         cud.executable  = "radical-synapse-version"
         cud.cores       = 1
@@ -181,6 +182,7 @@ if __name__ == "__main__":
         cuds = list()
         for n in range(1,UNITS+1):
             cud = rp.ComputeUnitDescription()
+            cud.pre_exec       = ["source /tmp/rp_synapse_ve_$USER/bin/activate"]
             cud.executable     = "radical-synapse-sample"
             cud.arguments      = ("-m sample -f %s -s %d" % (FLOPS, n)).split()
             cud.cores          = n
