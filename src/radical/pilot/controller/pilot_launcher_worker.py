@@ -632,10 +632,17 @@ class PilotLauncherWorker(threading.Thread):
 
                         # if cores_per_node is set (!= None), then we need to
                         # allocation full nodes, and thus round up
+                        # FIXME: shouldn't that be decided on the SAGA layer?
+                        # We assume cpn to be formatted as <INT> or <INT>:<STR>
                         if cores_per_node:
-                            cores_per_node = int(cores_per_node)
-                            number_cores = int(cores_per_node
-                                    * math.ceil(float(number_cores)/cores_per_node))
+                            if ':' in cores_per_node:
+                                ppn_int, ppn_str = cores_per_node.split(':', 1)
+                            else:
+                                ppn_int, ppn_str = cores_per_node, None
+
+                            ppn_int = int(ppn_int)
+                            number_cores = int(ppn_int
+                                    * math.ceil(float(number_cores)/ppn_int))
 
                         # set mandatory args
                         bootstrap_args  = ""
