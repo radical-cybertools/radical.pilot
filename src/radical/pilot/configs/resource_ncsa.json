@@ -85,7 +85,7 @@
             "module switch PrgEnv-cray PrgEnv-gnu",
             "module load bwpy",
             "module use --append /projects/sciteam/gkd/modules",
-            "module load openmpi"
+            "module load openmpi/rhc_static"
         ],
         "pre_bootstrap_2"             : [
             "export HOME=$HOME",
