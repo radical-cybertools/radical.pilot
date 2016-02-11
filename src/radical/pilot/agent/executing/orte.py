@@ -83,7 +83,6 @@ class ORTE(AgentExecutingComponent):
         self._pilot_id = self._cfg['pilot_id']
 
         self.task_map = {}
-        self.completed_tasks = []
 
         # run watcher thread
         self._terminate = threading.Event()
