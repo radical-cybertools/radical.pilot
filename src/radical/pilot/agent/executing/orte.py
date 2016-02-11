@@ -12,7 +12,7 @@ import tempfile
 import threading
 import traceback
 
-from orte_cffi import ffi, lib
+from orte_cffi import ffi, lib as orte_lib
 
 from .... import pilot     as rp
 from ...  import utils     as rpu
@@ -436,7 +436,7 @@ class ORTE(AgentExecutingComponent):
 
         # Submit to the DVM!
         try:
-            task = lib.orte_submit_job(argv, lib.launch_cb, self._myhandle, lib.finish_cb, self._myhandle)
+            task = orte_lib.orte_submit_job(argv, orte_lib.launch_cb, self._myhandle, orte_lib.finish_cb, self._myhandle)
         except Exception as e:
             raise Exception("submit job failed: %s" % str(e))
 
