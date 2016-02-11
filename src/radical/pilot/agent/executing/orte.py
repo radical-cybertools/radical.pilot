@@ -312,7 +312,7 @@ class ORTE(AgentExecutingComponent):
 
         rec_makedir(cu_tmpdir)
 
-        #
+        # TODO: pre_exec
         #     # Before the Big Bang there was nothing
         #     if cu['description']['pre_exec']:
         #         pre_exec_string = ''
@@ -328,47 +328,22 @@ class ORTE(AgentExecutingComponent):
         #         launch_script.write(pre_exec_string)
         #         if 'RADICAL_PILOT_PROFILE' in os.environ:
         #             launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
-        #
-        #
-        #
-        #
 
-            # launch_script.write("# The command to run\n")
-            # launch_script.write("%s\n" % launch_command)
-            #
-            # # After the universe dies the infrared death, there will be nothing
-            # if cu['description']['post_exec']:
-            #     post_exec_string = ''
-            #     if isinstance(cu['description']['post_exec'], list):
-            #         for elem in cu['description']['post_exec']:
-            #             post_exec_string += "%s\n" % elem
-            #     else:
-            #         post_exec_string += "%s\n" % cu['description']['post_exec']
-            #     launch_script.write("# Post-exec commands\n")
-            #     if 'RADICAL_PILOT_PROFILE' in os.environ:
-            #         launch_script.write("echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
-            #     launch_script.write('%s\n' % post_exec_string)
-            #     if 'RADICAL_PILOT_PROFILE' in os.environ:
-            #         launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
-            #
-            # launch_script.write("# Exit the script with the return code from the command\n")
-
-
-
-        # proc = subprocess.Popen(args               = cmdline,
-        #                         bufsize            = 0,
-        #                         executable         = None,
-        #                         stdin              = None,
-        #                         stdout             = _stdout_file_h,
-        #                         stderr             = _stderr_file_h,
-        #                         preexec_fn         = None,
-        #                         close_fds          = True,
-        #                         shell              = True,
-        #                         cwd                = cu_tmpdir,
-        #                         env                = self._cu_environment,
-        #                         universal_newlines = False,
-        #                         startupinfo        = None,
-        #                         creationflags      = 0)
+        # TODO: post_exec
+        # # After the universe dies the infrared death, there will be nothing
+        # if cu['description']['post_exec']:
+        #     post_exec_string = ''
+        #     if isinstance(cu['description']['post_exec'], list):
+        #         for elem in cu['description']['post_exec']:
+        #             post_exec_string += "%s\n" % elem
+        #     else:
+        #         post_exec_string += "%s\n" % cu['description']['post_exec']
+        #     launch_script.write("# Post-exec commands\n")
+        #     if 'RADICAL_PILOT_PROFILE' in os.environ:
+        #         launch_script.write("echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+        #     launch_script.write('%s\n' % post_exec_string)
+        #     if 'RADICAL_PILOT_PROFILE' in os.environ:
+        #         launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
 
 
