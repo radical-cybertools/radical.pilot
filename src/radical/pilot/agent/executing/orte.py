@@ -166,7 +166,8 @@ class ORTE(AgentExecutingComponent):
         # environment that we pass to Popen.
         for e in new_env.keys():
             env_removables = list()
-            if self._task_launcher: env_removables += self._task_launcher.env_removables
+            if self._task_launcher:
+                env_removables += self._task_launcher.env_removables
             for r in  env_removables:
                 if e.startswith(r):
                     new_env.pop(e, None)

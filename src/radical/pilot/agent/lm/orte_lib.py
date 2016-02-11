@@ -23,10 +23,6 @@ class ORTELib(LaunchMethod):
 
         LaunchMethod.__init__(self, cfg, logger)
 
-        # We remove all ORTE related environment variables from the launcher
-        # environment, so that we can use ORTE for both launch of the
-        # (sub-)agent and CU execution.
-        self.env_removables.extend(["OMPI_", "OPAL_", "PMIX_"])
 
     # --------------------------------------------------------------------------
     #
