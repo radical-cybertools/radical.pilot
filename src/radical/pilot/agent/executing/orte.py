@@ -5,7 +5,6 @@ __license__   = "MIT"
 
 import os
 import copy
-import sys
 import time
 import errno
 import Queue
