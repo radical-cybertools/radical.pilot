@@ -189,7 +189,7 @@ class ORTELib(LaunchMethod):
         task_exec    = cud['executable']
         task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
-        task_argstr  = self._create_arg_string(task_args)
+        task_argstr  = " ".join(task_args)
 
         if 'task_slots' not in opaque_slots:
             raise RuntimeError('No task_slots to launch via %s: %s' \
