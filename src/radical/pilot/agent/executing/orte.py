@@ -290,7 +290,7 @@ class ORTE(AgentExecutingComponent):
             ffi.NULL, # Required
         ]
         argv = ffi.new("char *[]", argv_keepalive)
-        ret = lib.orte_submit_init(3, argv)
+        ret = orte_lib.orte_submit_init(3, argv, ffi.NULL)
 
         self._myhandle = ffi.new_handle(self)
         self._orte_initialized = True
