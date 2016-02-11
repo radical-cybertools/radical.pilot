@@ -118,7 +118,6 @@ class ORTELib(LaunchMethod):
                     raise Exception("ORTE DVM process disappeared")
 
 
-
         # ----------------------------------------------------------------------
         def _watch_dvm(dvm_process):
 
@@ -179,7 +178,6 @@ class ORTELib(LaunchMethod):
         os.putenv("OMPI_MCA_ess_tool_async_progress", "enabled")
 
 
-
     # --------------------------------------------------------------------------
     #
     def construct_command(self, cu, launch_script_hop):
@@ -223,4 +221,3 @@ class ORTELib(LaunchMethod):
             self.launch_command, ' '.join(debug_strings), export_vars, task_cores, hosts_string)
 
         return orte_command, task_command
-

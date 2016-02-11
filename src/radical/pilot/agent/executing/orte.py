@@ -233,7 +233,9 @@ class ORTE(AgentExecutingComponent):
     def unit_completed_cb(self, task, exit_code):
 
         timestamp = rpu.timestamp()
+
         cu = self.task_map[task]
+        del self.task_map[task]
 
         self._prof.prof('exec', msg='execution complete', uid=cu['_id'])
 
