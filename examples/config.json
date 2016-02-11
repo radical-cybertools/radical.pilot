@@ -24,6 +24,12 @@
             "schema"   : "gsissh"
         },
 
+        "ncsa.bw_lib" : {
+            "project"  : "gkd",
+            "queue"    : "debug",
+            "schema"   : "gsissh"
+        },
+
         "nersc.edison" : {
             "project"  : null,
             "queue"    : "debug",
