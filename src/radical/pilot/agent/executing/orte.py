@@ -371,7 +371,6 @@ class ORTE(AgentExecutingComponent):
         #                         creationflags      = 0)
 
 
-        # self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['_id'])
 
         # The actual command line, constructed per launch-method
         try:
@@ -435,12 +434,15 @@ class ORTE(AgentExecutingComponent):
         # NULL termination, required by ORTE
         arg_list.append(ffi.NULL)
         argv = ffi.new("char *[]", arg_list)
+        self._prof.prof('command', msg='launch command constructed', uid=cu['_id'])
 
         # Submit to the DVM!
         try:
             task = orte_lib.orte_submit_job(argv, orte_lib.launch_cb, self._myhandle, orte_lib.finish_cb, self._myhandle)
         except Exception as e:
             raise Exception("submit job failed: %s" % str(e))
+
+        self._prof.prof('spawn', msg='spawning passed to orte', uid=cu['_id'])
 
         # Record the mapping of ORTE index to CU
         self.task_map[task] = cu
