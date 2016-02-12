@@ -40,7 +40,7 @@ def rec_makedir(target):
 #
 @ffi.def_extern()
 def launch_cb(task, jdata, status, cbdata):
-    return ffi.from_handle(cbdata).unit_spawned_cb(task)
+    return ffi.from_handle(cbdata).unit_spawned_cb(task, status)
 
 
 # ==============================================================================
@@ -216,17 +216,28 @@ class ORTE(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def unit_spawned_cb(self, task):
+    def unit_spawned_cb(self, task, status):
 
         cu = self.task_map[task]
 
-        cu['started'] = rpu.timestamp()
+        if status:
+            del self.task_map[task]
 
-        cu_id = cu['_id']
-        self._log.debug("[%s] Unit %s has spawned." % (time.ctime(), cu_id))
-        self._prof.prof('passed', msg="ExecWatcher picked up unit", uid=cu_id)
+            # unit launch failed
+            self._prof.prof('final', msg="startup failed", uid=cu['_id'])
+            cu['target_state'] = rp.FAILED
 
-        self.advance(cu, rp.EXECUTING, publish=True, push=False)
+            self.advance(cu, rp.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
+
+        else:
+            cu['started'] = rpu.timestamp()
+
+            cu_id = cu['_id']
+            self._log.debug("[%s] Unit %s has spawned." % (time.ctime(), cu_id))
+            self._prof.prof('passed', msg="ExecWatcher picked up unit", uid=cu_id)
+
+            self.advance(cu, rp.EXECUTING, publish=True, push=False)
+
 
     # --------------------------------------------------------------------------
     #
