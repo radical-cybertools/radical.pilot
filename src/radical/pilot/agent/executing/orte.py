@@ -412,10 +412,11 @@ class ORTE(AgentExecutingComponent):
         self._prof.prof('command', msg='launch command constructed', uid=cu['_id'])
 
         # Submit to the DVM!
-        try:
-            task = orte_lib.orte_submit_job(argv, orte_lib.launch_cb, self._myhandle, orte_lib.finish_cb, self._myhandle)
-        except Exception as e:
-            raise Exception("submit job failed: %s" % str(e))
+        index = ffi.new("int *")
+        rc = orte_lib.orte_submit_job(argv, index, orte_lib.launch_cb, self._myhandle, orte_lib.finish_cb, self._myhandle)
+        if rc:
+            raise Exception("submit job failed with error: %d" % rc)
+        task = index[0]
 
         self._prof.prof('spawn', msg='spawning passed to orte', uid=cu['_id'])
 
