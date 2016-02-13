@@ -67,11 +67,12 @@ class LRMS(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg, session):
 
         self.name            = type(self).__name__
         self._cfg            = cfg
-        self._log            = logger
+        self._session        = session
+        self._log            = self._session._log
         self.requested_cores = self._cfg['cores']
 
         self._log.info("Configuring LRMS %s.", self.name)
@@ -105,7 +106,7 @@ class LRMS(object):
         # We are good to get rolling, and to detect the runtime environment of
         # the local LRMS.
         self._configure()
-        logger.info("Discovered execution environment: %s", self.node_list)
+        self._log.info("Discovered execution environment: %s", self.node_list)
 
         # Make sure we got a valid nodelist and a valid setting for
         # cores_per_node
@@ -188,7 +189,7 @@ class LRMS(object):
     # This class-method creates the appropriate sub-class for the LRMS.
     #
     @classmethod
-    def create(cls, name, cfg, logger):
+    def create(cls, name, cfg, session):
 
         from .ccm         import CCM        
         from .fork        import Fork       
@@ -216,10 +217,10 @@ class LRMS(object):
                 RM_NAME_TORQUE      : Torque,
                 RM_NAME_YARN        : Yarn
             }[name]
-            return impl(cfg, logger)
+            return impl(cfg, session)
 
         except KeyError:
-            logger.exception('lrms construction error')
+            session._log.exception('lrms construction error')
             raise RuntimeError("LRMS type '%s' unknown or defunct" % name)
 
 

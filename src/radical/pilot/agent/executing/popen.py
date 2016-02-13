@@ -29,9 +29,9 @@ class Popen(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        AgentExecutingComponent.__init__ (self, cfg)
+        AgentExecutingComponent.__init__ (self, cfg, session)
 
         self._watcher   = None
         self._terminate = threading.Event()
@@ -73,14 +73,14 @@ class Popen(AgentExecutingComponent) :
         # The AgentExecutingComponent needs the LaunchMethods to construct
         # commands.
         self._task_launcher = rp.agent.LM.create(
-                name   = self._cfg.get('task_launch_method'),
-                cfg    = self._cfg,
-                logger = self._log)
+                name    = self._cfg.get('task_launch_method'),
+                cfg     = self._cfg,
+                session = self._session)
 
         self._mpi_launcher = rp.agent.LM.create(
-                name   = self._cfg.get('mpi_launch_method'),
-                cfg    = self._cfg,
-                logger = self._log)
+                name    = self._cfg.get('mpi_launch_method'),
+                cfg     = self._cfg,
+                session = self._session)
 
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',

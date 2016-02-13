@@ -31,9 +31,9 @@ class AgentExecutingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        rpu.Component.__init__(self, rpc.AGENT_EXECUTING_COMPONENT, cfg)
+        rpu.Component.__init__(self, rpc.AGENT_EXECUTING_COMPONENT, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -41,7 +41,7 @@ class AgentExecutingComponent(rpu.Component):
     # This class-method creates the appropriate sub-class for the Spawner
     #
     @classmethod
-    def create(cls, cfg):
+    def create(cls, cfg, session):
 
         name = cfg['spawner']
 
@@ -61,7 +61,7 @@ class AgentExecutingComponent(rpu.Component):
       #         EXECUTING_NAME_ABDS  : ABDS
             }[name]
 
-            impl = impl(cfg)
+            impl = impl(cfg, session)
             return impl
 
         except KeyError:

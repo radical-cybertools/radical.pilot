@@ -33,9 +33,9 @@ class Default(AgentStagingOutputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        rpu.Component.__init__(self, 'AgentStagingOutputComponent', cfg)
+        rpu.Component.__init__(self, 'AgentStagingOutputComponent', cfg, session)
 
 
     # --------------------------------------------------------------------------

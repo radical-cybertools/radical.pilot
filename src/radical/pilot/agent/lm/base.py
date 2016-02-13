@@ -42,11 +42,12 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg, session):
 
-        self.name = type(self).__name__
-        self._cfg = cfg
-        self._log = logger
+        self.name     = type(self).__name__
+        self._cfg     = cfg
+        seld._session = session
+        self._log     = self._session._log
 
         # A per-launch_method list of environment to remove from the CU environment
         self.env_removables = []
@@ -66,7 +67,7 @@ class LaunchMethod(object):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, name, cfg, logger):
+    def create(cls, name, cfg, session):
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
@@ -110,13 +111,13 @@ class LaunchMethod(object):
                 LM_NAME_SSH           : SSH,
                 LM_NAME_YARN          : Yarn
             }[name]
-            return impl(cfg, logger)
+            return impl(cfg, session)
 
         except KeyError:
-            logger.exception("LaunchMethod '%s' unknown or defunct" % name)
+            session._log.exception("LaunchMethod '%s' unknown or defunct" % name)
 
         except Exception as e:
-            logger.exception("LaunchMethod cannot be used: %s!" % e)
+            session._log.exception("LaunchMethod cannot be used: %s!" % e)
 
 
     # --------------------------------------------------------------------------

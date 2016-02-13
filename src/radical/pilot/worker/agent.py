@@ -23,7 +23,7 @@ class Agent(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session=None):
 
         self.agent_name  = cfg['agent_name']
         self.final_cause = None
@@ -148,6 +148,9 @@ class Agent(rpu.Worker):
         self._sub_cfg    = self._cfg['agent_layout'][self.agent_name]
         self._pull_units = self._sub_cfg.get('pull_units', False)
 
+        # reconnect to session
+        self._session = rp.Session(uid=self._session_id)
+
         # this better be on a shared FS!
         self._cfg['workdir'] = os.getcwd()
 
@@ -219,10 +222,10 @@ class Agent(rpu.Worker):
             # in agent_0.
             # FIXME: make this configurable, both number and placement
             if self.agent_name == 'agent_0':
-                clist[rpc.AGENT_UPDATE_WORKER   ] = 1
-                clist[rpc.AGENT_HEARTBEAT_WORKER] = 1
+                clist[rpc.UPDATE_WORKER   ] = 1
+                clist[rpc.HEARTBEAT_WORKER] = 1
 
-            self._components = self.start_components(clist, cmap, self._cfg, self._log)
+            self._components = self.start_components(clist, cmap, self._cfg, self._session)
 
             # before we declare bootstrapping-success, the we wait for all
             # components, workers and sub_agents to complete startup.  For that,

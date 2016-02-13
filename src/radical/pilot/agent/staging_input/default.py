@@ -29,9 +29,9 @@ class Default(AgentStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        rpu.Component.__init__(self, rpc.AGENT_STAGING_INPUT_COMPONENT, cfg)
+        rpu.Component.__init__(self, rpc.AGENT_STAGING_INPUT_COMPONENT, cfg, session)
 
 
     # --------------------------------------------------------------------------

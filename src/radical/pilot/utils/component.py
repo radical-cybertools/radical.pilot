@@ -125,7 +125,7 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, ctype, cfg, session=None):
+    def __init__(self, ctype, cfg, session):
         """
         This constructor MUST be called by inheriting classes.
 
@@ -163,8 +163,8 @@ class Component(mp.Process):
         self._drop_cb       = None        # free resources on dropping clones
 
         # use cname for one log per agent, cname for one log per agent and component
-        log_name = self._cname
-        log_tgt  = self._cname + ".log"
+        log_name  = self._cname
+        log_tgt   = self._cname + ".log"
         self._log = ru.get_logger(log_name, log_tgt, self._debug)
         self._log.info('creating %s' % self._cname)
 
@@ -199,7 +199,7 @@ class Component(mp.Process):
 
     #
     @staticmethod
-    def start_bridges(bridges, logger=None):
+    def start_bridges(bridges, session):
         """
         Helper method to start a given list of bridge names.  The type of bridge
         (queue or pubsub) is derived from the name.  
@@ -213,10 +213,7 @@ class Component(mp.Process):
           'alive'  : boolean flag (always True at this point)
         """
 
-        if logger:
-            log = logger
-        else:
-            log = ru.get_logger('radical.pilot')
+        log = session._log
 
         log.debug('start_bridges')
 
@@ -251,7 +248,7 @@ class Component(mp.Process):
     # --------------------------------------------------------------------------
     #
     @staticmethod
-    def start_components(components, typemap, cfg, session=None, logger=None):
+    def start_components(components, typemap, cfg, session):
         """
         This method expects a 'components' dict of the form:
           {
@@ -279,8 +276,7 @@ class Component(mp.Process):
         of components.
         """
 
-        if logger: log = logger
-        else     : log = ru.get_logger('radical.pilot')
+        log = session._log
 
         log.debug("start_components")
         import pprint

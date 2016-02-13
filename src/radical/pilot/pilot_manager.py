@@ -98,8 +98,8 @@ class PilotManager(rpu.Component):
                        os.environ.get('RADICAL_PILOT_PMGR_CONFIG', 'default')))
 
             self._cfg['session_id']  = session.uid
-            self._cfg['mongodb_url'] = session._dburl
-            self._cfg['owner']       = self._uid
+            self._cfg['mongodb_url'] = session.dburl
+            self._cfg['owner']       = self.uid
 
             components = self._cfg.get('components', [])
 

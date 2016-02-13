@@ -61,18 +61,23 @@ class Session():
         self._dburl      = ru.Url(dburl)
         self._session_id = sid
         self._created    = timestamp()
-        self._connected  = self._created
+        self._connected  = timestamp()
         self._closed     = None
 
-        # make sure session doesn't exist already
-        if self._db[sid].count() != 0:
-            raise RuntimeError("Session '%s' already exists." % sid)
+        self._s = self._db[sid]
 
-        # create the db entry
-        self._s = self._db["%s" % sid]
-        self._s.insert({"_id"       : sid,
-                        "created"   : self._created,
-                        "connected" : self._created})
+        # If session exists, we assume this is a reconnect, otherwise we create
+        # the session entry.
+        # NOTE: hell will break loose if session IDs are not unique!
+        if not self._s.count():
+            self._s.insert({"_id"       : sid,
+                            "created"   : self._created,
+                            "connected" : self._connected})
+
+        else:
+            pass
+            # FIXME: get self._created from DB
+            # FIXME: get bridge addresses from DB (not here though)
 
         # Create the collection shortcut:
         self._w  = self._db["%s.cu" % sid]
