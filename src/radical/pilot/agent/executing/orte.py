@@ -402,8 +402,7 @@ class ORTE(AgentExecutingComponent):
                 arg_list.append(ffi.new("char[]", "%s=%s" % (key, val)))
 
         # Save retval of actual CU application (in case we have post-exec)
-        # TODO: add the exit $RETVAL somewhere
-        task_command += "; RETVAL=$?"
+        task_command += "; echo $? > RETVAL"
 
         # Wrap in (sub)shell for output redirection
         arg_list.append(ffi.new("char[]", "sh"))
@@ -413,7 +412,7 @@ class ORTE(AgentExecutingComponent):
                       "echo script after_cd `%s` >> %s/PROF; " % (cu['gtod'], cu_tmpdir) + \
                       task_command + \
                       "; echo script after_exec `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir)
-        arg_list.append(ffi.new("char[]", str("(%s) 1>%s 2>%s; exit $RETVAL" % (str(task_command), cu['stdout_file'], cu['stderr_file']))))
+        arg_list.append(ffi.new("char[]", str("(%s) 1>%s 2>%s; exit `cat RETVAL`" % (str(task_command), cu['stdout_file'], cu['stderr_file']))))
 
         self._log.debug("Launching unit %s via %s %s", cu['_id'], orte_command, task_command)
 
