@@ -61,7 +61,19 @@
         },
 
         "xsede.stampede" : {
-            "project"  : "TG-MCB150124",
+            "project"  : "TG-MCB090174",
+            "queue"    : "development",
+            "schema"   : null
+        },
+
+        "xsede.stampede_orte" : {
+            "project"  : "TG-MCB090174",
+            "queue"    : "development",
+            "schema"   : null
+        },
+
+        "xsede.stampede_ortelib" : {
+            "project"  : "TG-MCB090174",
             "queue"    : "development",
             "schema"   : null
         },
