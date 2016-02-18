@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.40.1 Release                                                        2016-02-11
+--------------------------------------------------------------------------------
+
+  - hotfix which makes sure agents don't report FAILED on cancel()
+
+
 0.40 Release                                                          2016-02-03
 --------------------------------------------------------------------------------
 

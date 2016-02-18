@@ -248,6 +248,9 @@ class Update(rpu.Worker):
         state     = cu.get('state')
         timestamp = cu.get('state_timestamp', rpu.timestamp())
 
+        if 'clone' in uid:
+            return
+
         self._prof.prof('get', msg="update unit state to %s" % state, uid=uid)
 
         cbase       = cu.get('cbase',  '.cu')
