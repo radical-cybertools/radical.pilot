@@ -43,7 +43,7 @@
         },
 
         "xsede.stampede" : {
-            "project"  : "TG-MCB150124",
+            "project"  : "TG-MCB090174",
             "queue"    : "development",
             "schema"   : null
         },
