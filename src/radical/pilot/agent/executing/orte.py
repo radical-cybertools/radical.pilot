@@ -401,6 +401,10 @@ class ORTE(AgentExecutingComponent):
                 arg_list.append(ffi.new("char[]", "-x"))
                 arg_list.append(ffi.new("char[]", "%s=%s" % (key, val)))
 
+        # Let the orted write stdout and stderr to rank-based output files
+        arg_list.append(ffi.new("char[]", "--output-filename"))
+        arg_list.append(ffi.new("char[]", "%s:nojobid,nocopy" % str(cu_tmpdir)))
+
         # Save retval of actual CU application (in case we have post-exec)
         task_command += "; echo $? > RETVAL"
 
@@ -411,8 +415,8 @@ class ORTE(AgentExecutingComponent):
             task_command = "echo script start_script `%s` >> %s/PROF; " % (cu['gtod'], cu_tmpdir) + \
                       "echo script after_cd `%s` >> %s/PROF; " % (cu['gtod'], cu_tmpdir) + \
                       task_command + \
-                      "; echo script after_exec `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir)
-        arg_list.append(ffi.new("char[]", str("(%s) 1>%s 2>%s; exit `cat RETVAL`" % (str(task_command), cu['stdout_file'], cu['stderr_file']))))
+                      "; echo script after_exec `%s` >> %s/PROF" % (cu['gtod'], cu_tmpdir)
+        arg_list.append(ffi.new("char[]", str("%s; exit `cat RETVAL`" % str(task_command))))
 
         self._log.debug("Launching unit %s via %s %s", cu['_id'], orte_command, task_command)
 
