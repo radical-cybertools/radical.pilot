@@ -210,7 +210,8 @@ def pilot_FAILED(mongo_p=None, pilot_uid=None, logger=None, msg=None):
         msg = [{"message": msg,              "timestamp": now},
                {"message": rpu.get_rusage(), "timestamp": now}]
 
-        mongo_p.update({"_id": pilot_uid},
+        mongo_p.update({'type' : 'pilot', 
+                        "_id"  : pilot_uid},
             {"$pushAll": {"log"         : msg},
              "$push"   : {"statehistory": {"state"     : rp.FAILED,
                                            "timestamp" : now}},
@@ -254,7 +255,8 @@ def pilot_CANCELED(mongo_p=None, pilot_uid=None, logger=None, msg=None):
         msg = [{"message": msg,              "timestamp": now},
                {"message": rpu.get_rusage(), "timestamp": now}]
 
-        mongo_p.update({"_id": pilot_uid},
+        mongo_p.update({'type' : 'pilot', 
+                        "_id": pilot_uid},
             {"$pushAll": {"log"         : msg},
              "$push"   : {"statehistory": {"state"     : rp.CANCELED,
                                            "timestamp" : now}},
@@ -293,7 +295,8 @@ def pilot_DONE(mongo_p=None, pilot_uid=None, logger=None, msg=None):
         msg = [{"message": "pilot done",     "timestamp": now},
                {"message": rpu.get_rusage(), "timestamp": now}]
 
-        mongo_p.update({"_id": pilot_uid},
+        mongo_p.update({'type' : 'pilot', 
+                        "_id": pilot_uid},
             {"$pushAll": {"log"         : msg},
              "$push"   : {"statehistory": {"state"    : rp.DONE,
                                            "timestamp": now}},
@@ -420,7 +423,7 @@ def bootstrap_3():
     print "Agent config (%s):\n%s\n\n" % (agent_cfg, pprint.pformat(cfg))
 
     # quickly set up a mongodb handle so that we can report errors.
-    # FIXME: signal handlers need mongo_p, but we won't have that until later
+    # FIXME: signal handlers need mongo_c, but we won't have that until later
     if agent_name == 'agent_0':
 
         # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold the
@@ -433,9 +436,9 @@ def bootstrap_3():
             cfg['mongodb_url'] = str(dburl)
 
         _, mongo_db, _, _, _  = ru.mongodb_connect(cfg['mongodb_url'])
-        mongo_p = mongo_db["%s.p" % session.uid]
+        mongo_c = mongo_db["%s" % session.uid]
 
-        if not mongo_p:
+        if not mongo_c:
             raise RuntimeError('could not get a mongodb handle')
 
 
@@ -531,8 +534,9 @@ def bootstrap_3():
 
             # Store some runtime information into the session
             if 'version_info' in lrms.lm_info:
-                mongo_p.update({"_id": pilot_id},
-                               {"$set": {"lm_info": lrms.lm_info['version_info']}})
+                mongo_c.update({'type' : 'pilot', 
+                                "_id"  : pilot_id},
+                               {"$set" : {"lm_info": lrms.lm_info['version_info']}})
 
         # we now have correct bridge addresses added to the agent_0.cfg, and all
         # other agents will have picked that up from their config files -- we

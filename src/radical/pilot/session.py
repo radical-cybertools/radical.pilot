@@ -7,9 +7,9 @@ import os
 import time
 import glob
 import copy
-import saga
 import threading
 import radical.utils as ru
+import saga          as rs
 
 from .  import utils     as rpu
 from .  import states    as rps
@@ -19,12 +19,12 @@ from .  import types     as rpt
 from .unit_manager    import UnitManager
 from .pilot_manager   import PilotManager
 from .resource_config import ResourceConfig
-from .db              import Session as dbSession
+from .db              import DBSession
 
 
 # ------------------------------------------------------------------------------
 #
-class Session (saga.Session):
+class Session (rs.Session):
     """
     A Session encapsulates a RADICAL-Pilot instance and is the *root* object
     for all other RADICAL-Pilot objects. 
@@ -37,7 +37,7 @@ class Session (saga.Session):
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, dburl=None, uid=None, database_url=None):
+    def __init__ (self, dburl=None, uid=None, database_url=None, connect=True):
         """
         Creates a new session.  A new Session instance is created and 
         stored in the database.
@@ -61,7 +61,7 @@ class Session (saga.Session):
         self._log = ru.get_logger('radical.pilot')
 
         # init the base class inits
-        saga.Session.__init__ (self)
+        rs.Session.__init__ (self)
         self._dh        = ru.DebugHelper()
         self._valid     = False
         self._terminate = threading.Event()
@@ -140,8 +140,9 @@ class Session (saga.Session):
                 self._log.report.plain('[%s]' % self._dburl)
 
             if self._dburl:
-                self._dbs = dbSession(sid   = self._uid,
-                                      dburl = self._dburl)
+                if connect:
+                    self._dbs = DBSession(sid   = self._uid,
+                                          dburl = self._dburl)
 
             # from here on we should be able to close the session again
             self._valid = True
@@ -487,11 +488,6 @@ class Session (saga.Session):
         else        : return None
 
 
-    #---------------------------------------------------------------------------
-    #
-    def get_dbs(self):
-        return self._dbs
-    
     
     #---------------------------------------------------------------------------
     #
@@ -527,8 +523,32 @@ class Session (saga.Session):
 
     #---------------------------------------------------------------------------
     #
+    def inject_metadata(self, metadata):
+        """
+        Insert (experiment) metadata into an active session
+        RP stack version info always get added.
+        """
+
+        if not isinstance(metadata, dict):
+            raise Exception("Session metadata should be a dict!")
+
+        from .utils import version_detail as rp_version_detail
+
+        # Always record the radical software stack
+        metadata['radical_stack'] = {'rp': rp_version_detail,
+                                     'rs': rs.version_detail,
+                                     'ru': ru.version_detail}
+
+        result = self._dbs._c.update({'type' : 'session', 
+                                      "_id"  : session._uid},
+                                     {"$set" : {"metadata": metadata}})
+
+
+    #---------------------------------------------------------------------------
+    #
     def list_pilot_managers(self):
-        """Lists the unique identifiers of all :class:`radical.pilot.PilotManager` 
+        """
+        Lists the unique identifiers of all :class:`radical.pilot.PilotManager` 
         instances associated with this session.
 
         **Example**::
@@ -538,7 +558,7 @@ class Session (saga.Session):
                 pm = radical.pilot.PilotManager(session=s, pilot_manager_uid=pm_uid) 
 
         **Returns:**
-            * A list of :class:`radical.pilot.PilotManager` uids (`list` oif strings`).
+            * A list of :class:`radical.pilot.PilotManager` uids (`list` of strings`).
 
         **Raises:**
             * :class:`radical.pilot.IncorrectState` if the session is closed

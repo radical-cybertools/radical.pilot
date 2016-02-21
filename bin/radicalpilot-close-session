@@ -40,6 +40,7 @@ def usage (msg=None, noexit=False) :
         list     : list   matching sessions
         purge    : remove matching sessions
         export   : export matching sessions to .json files
+        dump     : dump 1 matching session  to stdout
 
       options :
         -a <age> : apply mode to all sessions older than <age>
@@ -185,7 +186,6 @@ def purge_sessions (db, dbname, age, session) :
 def export_sessions (db, dbname, age, session) :
 
     sessions = get_sessions (db, dbname, age, session)
-    database = db[dbname]
 
     for sid in sessions :
 
@@ -193,6 +193,19 @@ def export_sessions (db, dbname, age, session) :
 
         print "export session %s.json" % sid
         ru.write_json (docs, "%s.json" % sid)
+
+
+# ------------------------------------------------------------------------------
+#
+def dump_session (db, dbname, age, session) :
+
+    sessions = get_sessions (db, dbname, age, session)
+
+    for sid in sessions :
+
+        import pprint
+        pprint.pprint(sessions[sid])
+        return
 
 
 # ------------------------------------------------------------------------------
@@ -274,14 +287,12 @@ if __name__ == '__main__' :
 
     for m in mode.split (',') :
 
-        if  m not in ['list', 'purge', 'export', 'help'] : 
-            usage ("Unsupported mode '%s'" % m)
-
         if   m == 'list'  : list_sessions   (db, dbname, age, session)
+        elif m == 'dump'  : dump_session    (db, dbname, age, session)
         elif m == 'purge' : purge_sessions  (db, dbname, age, session) 
         elif m == 'export': export_sessions (db, dbname, age, session) 
         elif m == 'help'  : usage (noexit=True)
-        else              : usage ("unknown mode '%s'" % mode)
+        else              : usage ("unknown mode '%s'" % m)
 
     mongo.disconnect ()
 

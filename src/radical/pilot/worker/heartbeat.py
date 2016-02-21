@@ -53,15 +53,10 @@ class Heartbeat(rpu.Worker):
         self._runtime       = self._cfg.get('runtime')
         self._starttime     = time.time()
 
-        # set up db connection
-        _, mongo_db, _, _, _  = ru.mongodb_connect(self._mongodb_url)
-
-        self._p  = mongo_db["%s.p"  % self._session_id]
-        self._cu = mongo_db["%s.cu" % self._session_id]
-
-        # register work routine
-        self.declare_idle_cb(self.idle_cb, self._cfg.get('heartbeat_interval',
-                             DEFAULT_HEARTBEAT_INTERVAL))
+        # register work routine (this component is lazy, and only registers an
+        # idle callback)
+        self.declare_idle_cb(self.idle_cb, timeout=self._cfg.get('heartbeat_interval',
+                                                                 DEFAULT_HEARTBEAT_INTERVAL))
 
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',
@@ -98,7 +93,7 @@ class Heartbeat(rpu.Worker):
     def _check_commands(self):
 
         # Check if there's a command waiting
-        retdoc = self._p.find_and_modify(
+        retdoc = self._session._dbs._c.find_and_modify(
                     query  = {"_id"  : self._owner},
                     update = {"$set" : {rpc.COMMAND_FIELD: []}}, # Wipe content of array
                     fields = [rpc.COMMAND_FIELD]

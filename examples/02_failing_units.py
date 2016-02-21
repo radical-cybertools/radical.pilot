@@ -91,7 +91,9 @@ if __name__ == '__main__':
             cud = rp.ComputeUnitDescription()
             # trigger an error now and then
             if not i % 10: cud.executable = '/bin/data' # does not exist
-            else         : cud.executable = '/bin/date'
+            else         : cud.executable = '/bin/sleep'
+
+            cud.arguments = ['10']
 
             cuds.append(cud)
             report.progress()
@@ -141,7 +143,7 @@ if __name__ == '__main__':
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.
         report.header('finalize')
-        session.close()
+        session.close(cleanup=False)
 
     report.header()
 

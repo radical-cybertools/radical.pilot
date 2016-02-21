@@ -59,7 +59,7 @@ class Update(rpu.Worker):
         self._state_cache   = dict()            # used to preserve state ordering
 
         self.declare_subscriber('state', 'state_pubsub', self.state_cb)
-        self.declare_idle_cb(self.idle_cb, self._cfg.get('bulk_collection_time'))
+        self.declare_idle_cb(self.idle_cb, timeout=self._cfg.get('bulk_collection_time'))
 
         # all components use the command channel for control messages
         self.declare_publisher ('command', rpc.COMMAND_PUBSUB)
@@ -249,7 +249,7 @@ class Update(rpu.Worker):
         #        down the pilot.
         #
         # FIXME: at the moment, the update worker only operates on units.
-        #        Should it accept other updates, eg. for pilot states?
+        #        it should also accept other updates, eg. for pilot states.
         #
         # got a new request.  Add to bulk (create as needed),
         # and push bulk if time is up.
@@ -259,7 +259,6 @@ class Update(rpu.Worker):
 
         self._prof.prof('get', msg="update unit state to %s" % state, uid=uid)
 
-        cbase       = cu.get('cbase',  '.cu')
         query_dict  = cu.get('query')
         update_dict = cu.get('update')
 
@@ -280,7 +279,7 @@ class Update(rpu.Worker):
             update_dict['$set']['exit_code'] = cu.get('exit_code')
 
         # check if we handled the collection before.  If not, initialize
-        cname = self._session_id + cbase
+        cname = self._session_id
 
         with self._lock:
             if not cname in self._cinfo:

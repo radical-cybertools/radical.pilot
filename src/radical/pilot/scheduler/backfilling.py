@@ -53,7 +53,6 @@ class BackfillingScheduler(Scheduler):
         self.pmgrs   = list()
         self.pilots  = dict()
         self.lock    = threading.RLock ()
-        self._dbs    = self.session.get_dbs()
 
         # make sure the UM notifies us on all unit state changes
         manager.register_callback (self._unit_state_callback)
@@ -195,8 +194,9 @@ class BackfillingScheduler(Scheduler):
                     # need to reschedule the units which are reschedulable --
                     # all others are marked 'FAILED' if they are already
                     # 'EXECUTING' and not restartable
+                    # FIXME: handle state races
                     ts = timestamp()
-                    self._dbs.change_compute_units (
+                    self.session._dbs.change_compute_units(
                         filter_dict = {"pilot"       : pid, 
                                        "state"       : {"$in": [UNSCHEDULED,
                                                                 SCHEDULING,
@@ -206,12 +206,7 @@ class BackfillingScheduler(Scheduler):
                                                                 AGENT_STAGING_INPUT,
                                                                 ALLOCATING_PENDING,
                                                                 ALLOCATING,
-                                                                EXECUTING_PENDING,
-                                                                EXECUTING,
-                                                                AGENT_STAGING_OUTPUT_PENDING,
-                                                                AGENT_STAGING_OUTPUT,
-                                                                PENDING_OUTPUT_STAGING,
-                                                                STAGING_OUTPUT]}},
+                                                                EXECUTING_PENDING]}},
                         set_dict    = {"state"       : UNSCHEDULED, 
                                        "pilot"       : None},
                         push_dict   = {"statehistory": {"state"     : UNSCHEDULED, 
@@ -220,7 +215,7 @@ class BackfillingScheduler(Scheduler):
                                                         "timestamp" : ts}
                                       })
 
-                    self._dbs.change_compute_units (
+                    self.session._dbs.change_compute_units (
                         filter_dict = {"pilot"       : pid, 
                                        "restartable" : True, 
                                        "state"       : {"$in": [EXECUTING, 
@@ -236,7 +231,7 @@ class BackfillingScheduler(Scheduler):
                                                         "timestamp" : ts}
                                       })
 
-                    self._dbs.change_compute_units (
+                    self.session._dbs.change_compute_units (
                         filter_dict = {"pilot"       : pid, 
                                        "restartable" : False, 
                                        "state"       : {"$in": [EXECUTING, 

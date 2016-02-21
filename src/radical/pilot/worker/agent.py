@@ -149,7 +149,13 @@ class Agent(rpu.Worker):
         self._pull_units = self._sub_cfg.get('pull_units', False)
 
         # reconnect to session
-        self._session = rp.Session(uid=self._session_id)
+        # only for the master agent and for the agent
+        # which pulls units (which might be the same), we connect to MongoDB
+        if self.agent_name == 'agent_0' or self._pull_units:
+            self._log.debug('connecting to mongodb at %s for unit pull')
+            self._session = rp.Session(uid=self._session_id, _connect=True)
+        else:
+            self._session = rp.Session(uid=self._session_id, _connect=False)
 
         # this better be on a shared FS!
         self._cfg['workdir'] = os.getcwd()
@@ -166,23 +172,20 @@ class Agent(rpu.Worker):
         # which pulls units (which might be the same)
         if self.agent_name == 'agent_0' or self._pull_units:
             self._log.debug('connecting to mongodb at %s for unit pull')
-            _, mongo_db, _, _, _  = ru.mongodb_connect(self._cfg['mongodb_url'])
-
-            self._p  = mongo_db["%s.p"  % self._session_id]
-            self._cu = mongo_db["%s.cu" % self._session_id]
             self._log.debug('connected to mongodb')
 
         # first order of business: set the start time and state of the pilot
         # Only the master agent performs this action
         if self.agent_name == 'agent_0':
             now = rpu.timestamp()
-            ret = self._p.update(
-                {"_id": self._pilot_id},
-                {"$set" : {"state"        : rps.ACTIVE,
-                           "started"      : now},
-                 "$push": {"statehistory" : {"state"    : rps.ACTIVE,
-                                             "timestamp": now}}
-                })
+            ret = self._session._dbs._c.update(
+                    {'type' : 'pilot',
+                     "_id"  : self._pilot_id},
+                    {"$set" : {"state"        : rps.ACTIVE,
+                               "started"      : now},
+                     "$push": {"statehistory" : {"state"    : rps.ACTIVE,
+                                                 "timestamp": now}}
+                    })
             # TODO: Check for return value, update should be true!
             self._log.info("Database updated: %s", ret)
 
@@ -241,7 +244,7 @@ class Agent(rpu.Worker):
         self._prof.prof('Agent setup done', logger=self._log.debug, uid=self._pilot_id)
 
         # also watch all components (once per second)
-        self.declare_idle_cb(self.watcher_cb, 10.0)
+        self.declare_idle_cb(self.watcher_cb, timeout=10.0)
 
         # once bootstrap_4 is done, we signal success to the parent agent
         # -- if we have any parent...
@@ -260,7 +263,7 @@ class Agent(rpu.Worker):
 
             # register idle callback, to pull for units -- which is the only action
             # we have to perform, really
-            self.declare_idle_cb(self.idle_cb, self._cfg['db_poll_sleeptime'])
+            self.declare_idle_cb(self.idle_cb, timeout=self._cfg['db_poll_sleeptime'])
 
 
     # --------------------------------------------------------------------------
@@ -509,7 +512,8 @@ class Agent(rpu.Worker):
         # right here...  No idea how to avoid that roundtrip...
         # This also blocks us from using multiple ingest threads, or from doing
         # late binding by unit pull :/
-        cu_cursor = self._cu.find(spec  = {"pilot"   : self._pilot_id,
+        cu_cursor = self._session._dbs._c.find(spec  = {'type'    : 'unit',
+                                           "pilot"   : self._pilot_id,
                                            'state'   : rps.AGENT_STAGING_INPUT_PENDING,
                                            'control' : 'umgr'})
         if not cu_cursor.count():
@@ -521,8 +525,9 @@ class Agent(rpu.Worker):
         cu_list = list(cu_cursor)
         cu_uids = [cu['_id'] for cu in cu_list]
 
-        self._cu.update(multi    = True,
-                        spec     = {"_id"   : {"$in"     : cu_uids}},
+        self._session._dbs._c.update(multi    = True,
+                        spec     = {'type'  : 'unit',
+                                    "_id"   : {"$in"     : cu_uids}},
                         document = {"$set"  : {"control" : 'agent'}})
 
         self._log.info("units pulled: %4d"   % len(cu_list))

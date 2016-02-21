@@ -46,7 +46,7 @@ class LaunchMethod(object):
 
         self.name     = type(self).__name__
         self._cfg     = cfg
-        seld._session = session
+        self._session = session
         self._log     = self._session._log
 
         # A per-launch_method list of environment to remove from the CU environment
@@ -59,7 +59,7 @@ class LaunchMethod(object):
         if self.launch_command is None:
             raise RuntimeError("Launch command not found for LaunchMethod '%s'" % self.name)
 
-        logger.info("Discovered launch command: '%s'.", self.launch_command)
+        self._log.info("Discovered launch command: '%s'.", self.launch_command)
 
 
     # --------------------------------------------------------------------------

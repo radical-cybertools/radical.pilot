@@ -285,7 +285,7 @@ class DBSession(object):
 
         pilot_doc = {
             "_id":            pilot_uid,
-            "type":           'pilot'
+            "type":           'pilot',
             "description":    pd_dict,
             "submitted":      ts,
             "input_transfer_started": None,   # FIXME
@@ -596,7 +596,7 @@ class DBSession(object):
         if not self._c:
             raise RuntimeError("No active session.")
 
-        cursor = self._c.find('type' : 'umgr')
+        cursor = self._c.find({'type' : 'umgr'})
 
         return [doc['_id'] for doc in cursor]
 

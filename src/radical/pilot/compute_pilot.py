@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import sys
 import copy
 import time
 import saga
@@ -61,15 +62,20 @@ class ComputePilot(object):
         self._pmgr  = pmgr
 
         # initialize state
-        self._session    = self._pmgr.session
-        self._uid        = ru.generate_id('pilot.%(counter)04d', ru.ID_CUSTOM)
-        self._state      = rps.NEW
-        self._state_hist = [[rps.NEW, rpu.timestamp()]]
-        self._log        = pmgr._log
-        self._log_msgs   = []
-        self._stdout     = None
-        self._stderr     = None
-        self._sandbox    = None
+        self._session       = self._pmgr.session
+        self._uid           = ru.generate_id('pilot.%(counter)04d', ru.ID_CUSTOM)
+        self._state         = rps.NEW
+        self._state_hist    = [[rps.NEW, rpu.timestamp()]]
+        self._log           = pmgr._log
+        self._log_msgs      = list()
+        self._stdout        = None
+        self._stderr        = None
+        self._sandbox       = None
+        self._callbacks     = list()
+        self._exit_on_error = self._descr.get('exit_on_error')
+
+        # we always invke the default state cb
+        self._callbacks.append([self._default_state_cb, None])
 
         # sanity checks on description
         for check in ['resource', 'cores', 'runtime']:
@@ -104,6 +110,63 @@ class ComputePilot(object):
 
     # --------------------------------------------------------------------------
     #
+    def _default_state_cb(self, pilot, state):
+
+        self._log.info("[Callback]: pilot %s state: %s.", self.uid, self.state)
+        print self.uid, self.state
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _default_error_cb(self):
+
+        # FIXME: use when 'exit_on_error' is set
+        if self.state == rps.FAILED and self._exit_on_error:
+            self._log.error("[Callback]: pilot '%s' failed -- exit", self.uid)
+            sys.exit(1)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _update(self, pilot_dict):
+        """
+        This will update the facade object after state changes etc, and is
+        invoked by whatever component receiving that updated information.
+
+        Return True if state changed, False otherwise
+        """
+
+        # _update() calls can happen out of order -- it is up to *this* method
+        # to make sure that the update results in a consistent state.
+        #
+        # FIXME: add sanity checks
+
+        if 'state' in pilot_dict: 
+            old_state   = self.state
+            new_state   = pilot_dict['state']
+            self._state = new_state
+
+            if old_state != new_state:
+
+                for cb_func, cb_data in self._callbacks:
+                    if cb_data: cb_func(self, self.state, cb_data)
+                    else      : cb_func(self, self.state)
+
+                # also inform pmgr about state change, to collect any callbacks
+                # it has registered globally
+                self._pmgr._call_pilot_callbacks(self, self.state)
+
+                # this should be the ast cb invoked on state changes
+                if self.state == rps.FAILED and self._exit_on_error:
+                    self._default_error_cb()
+
+                return True
+
+        return False
+
+
+    # --------------------------------------------------------------------------
+    #
     def as_dict(self):
         """
         Returns a Python dictionary representation of the object.
@@ -113,6 +176,7 @@ class ComputePilot(object):
             'pmgr':            self.pmgr.uid,
             '_id':             self.uid,  # for component...
             'uid':             self.uid,
+            'type':            'pilot',
             'state':           self.state,
             'state_history':   self.state_history,
             'log':             self.log,
@@ -315,7 +379,7 @@ class ComputePilot(object):
         and 'cb_data' are passed along.
 
         """
-        self._pmgr.register_callback(self.uid, rpt.PILOT_STATE, cb_func, cb_data)
+        self._callbacks.append([cb_func, cb_data])
 
 
     # --------------------------------------------------------------------------
