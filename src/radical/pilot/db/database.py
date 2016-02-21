@@ -239,11 +239,11 @@ class DBSession(object):
         set_query  = dict()
         push_query = dict()
 
-        if state :
+        if state:
             set_query["state"] = state
             push_query["statehistory"] = [{'state': state, 'timestamp': timestamp()}]
 
-        if logs  : 
+        if logs: 
             push_query["log"] = logs
 
         if started        : set_query["started"]        = started 
@@ -448,7 +448,7 @@ class DBSession(object):
 
     #--------------------------------------------------------------------------
     #
-    def change_compute_units (self, filter_dict, set_dict, push_dict):
+    def change_compute_units(self, filter_dict, set_dict, push_dict):
         """
         Update the state and the log of all compute units belonging to
         a specific pilot.
@@ -476,7 +476,7 @@ class DBSession(object):
         """
         ts = timestamp()
 
-        if  not unit_ids :
+        if not unit_ids:
             return
 
         if not self._c:
@@ -486,21 +486,21 @@ class DBSession(object):
         if not isinstance(unit_ids, list):
             unit_ids = [unit_ids]
 
-        if src_states and not isinstance (src_states, list) :
+        if src_states and not isinstance(src_states, list):
             src_states = [src_states]
 
-        bulk = self._c.initialize_ordered_bulk_op ()
+        bulk = self._c.initialize_ordered_bulk_op()
 
-        for uid in unit_ids :
+        for uid in unit_ids:
 
-            if src_states :
+            if src_states:
                 bulk.find  ({"type"  : 'unit', 
                              "_id"   : uid, 
                              "state" : {"$in"  : src_states} }) \
                     .update({"$set"  : {"state": state},
                              "$push" : {"statehistory": {"state":   state, "timestamp": ts}},
                              "$push" : {"log"         : {"message": log,   "timestamp": ts}}})
-            else :
+            else:
                 bulk.find  ({"type"  : 'unit', 
                              "_id"   : uid}) \
                     .update({"$set"  : {"state": state},
@@ -662,11 +662,11 @@ class DBSession(object):
         if not self._c:
             raise RuntimeError("No active session.")
 
-        if  pilot_uid :
+        if pilot_uid:
             cursor = self._c.find({"type"  : 'unit', 
                                    "umgr"  : umgr_uid, 
                                    "pilot" : pilot_uid})
-        else :
+        else:
             cursor = self._c.find({"type"  : 'unit', 
                                    "umgr"  : umgr_uid})
 
@@ -694,7 +694,7 @@ class DBSession(object):
         """Assigns one or more compute units to a pilot.
         """
 
-        if  not units :
+        if not units:
             return
 
         if not self._c:
@@ -704,9 +704,9 @@ class DBSession(object):
         if not isinstance(units, list):
             units = [units]
 
-        bulk = self._c.initialize_ordered_bulk_op ()
+        bulk = self._c.initialize_ordered_bulk_op()
 
-        for unit in units :
+        for unit in units:
 
             bulk.find  ({'type' : 'unit', 
                          "_id"  : unit.uid}) \
