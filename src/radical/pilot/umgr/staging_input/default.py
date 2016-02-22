@@ -31,8 +31,8 @@ class Default(UMGRStagingInputComponent):
     #
     def initialize_child(self):
 
-        self.declare_input (rps.UMGR_STAGING_INPUT_PENDING, rpc.UMGR_STAGING_INPUT_QUEUE)
-        self.declare_worker(rps.UMGR_STAGING_INPUT_PENDING, self.work)
+        self.declare_input(rps.UMGR_STAGING_INPUT_PENDING,
+                           rpc.UMGR_STAGING_INPUT_QUEUE, self.work)
 
         self.declare_output(rps.ALLOCATING_PENDING, rpc.UMGR_SCHEDULING_QUEUE)
 

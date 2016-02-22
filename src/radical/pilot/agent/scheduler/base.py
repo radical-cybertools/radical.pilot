@@ -40,11 +40,10 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def initialize_child(self):
 
-      # self.declare_input (rps.AGENT_SCHEDULING_PENDING, rpc.AGENT_SCHEDULING_QUEUE)
-      # self.declare_worker(rps.AGENT_SCHEDULING_PENDING, self.work)
-
-        self.declare_input (rps.ALLOCATING_PENDING, rpc.AGENT_SCHEDULING_QUEUE)
-        self.declare_worker(rps.ALLOCATING_PENDING, self.work)
+      # self.declare_input(rps.AGENT_SCHEDULING_PENDING, 
+      #                    rpc.AGENT_SCHEDULING_QUEUE, self.work)
+        self.declare_input(rps.ALLOCATING_PENDING, 
+                           rpc.AGENT_SCHEDULING_QUEUE, self.work)
 
         self.declare_output(rps.EXECUTING_PENDING,  rpc.AGENT_EXECUTING_QUEUE)
 

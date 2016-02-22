@@ -36,8 +36,8 @@ class Shell(AgentExecutingComponent):
 
         from .... import pilot as rp
 
-        self.declare_input (rps.EXECUTING_PENDING, rpc.AGENT_EXECUTING_QUEUE)
-        self.declare_worker(rps.EXECUTING_PENDING, self.work)
+        self.declare_input(rps.EXECUTING_PENDING, 
+                           rpc.AGENT_EXECUTING_QUEUE, self.work)
 
         self.declare_output(rps.AGENT_STAGING_OUTPUT_PENDING, rpc.AGENT_STAGING_OUTPUT_QUEUE)
 

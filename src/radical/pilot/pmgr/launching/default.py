@@ -48,8 +48,8 @@ class Default(PMGRLaunchingComponent):
     #
     def initialize_child(self):
 
-        self.declare_input (rps.PMGR_LAUNCHING_PENDING, rpc.PMGR_LAUNCHING_QUEUE)
-        self.declare_worker(rps.PMGR_LAUNCHING_PENDING, self.work)
+        self.declare_input(rps.PMGR_LAUNCHING_PENDING, 
+                           rpc.PMGR_LAUNCHING_QUEUE, self.work)
 
         # we don't really have an output queue, as we pass control over the
         # pilot jobs to the resource management system (RM).  We still publish

@@ -50,8 +50,8 @@ class Default(AgentStagingOutputComponent):
     #
     def initialize_child(self):
 
-        self.declare_input (rps.AGENT_STAGING_OUTPUT_PENDING, rpc.AGENT_STAGING_OUTPUT_QUEUE)
-        self.declare_worker(rps.AGENT_STAGING_OUTPUT_PENDING, self.work)
+        self.declare_input(rps.AGENT_STAGING_OUTPUT_PENDING, 
+                           rpc.AGENT_STAGING_OUTPUT_QUEUE, self.work)
 
         # we don't need an output queue -- units are picked up via mongodb
         self.declare_output(rps.PENDING_OUTPUT_STAGING, None) # drop units

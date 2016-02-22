@@ -46,8 +46,8 @@ class Default(AgentStagingInputComponent):
     #
     def initialize_child(self):
 
-        self.declare_input (rps.AGENT_STAGING_INPUT_PENDING, rpc.AGENT_STAGING_INPUT_QUEUE)
-        self.declare_worker(rps.AGENT_STAGING_INPUT_PENDING, self.work)
+        self.declare_input (rps.AGENT_STAGING_INPUT_PENDING,
+                rpc.AGENT_STAGING_INPUT_QUEUE, self.work)
 
         self.declare_output(rps.ALLOCATING_PENDING, rpc.AGENT_SCHEDULING_QUEUE)
 
