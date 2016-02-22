@@ -192,10 +192,10 @@ class Shell(AgentExecutingComponent):
     def work(self, cu):
 
         # check that we don't start any units which need cancelling
-        if cu['_id'] in self._cus_to_cancel:
+        if cu['uid'] in self._cus_to_cancel:
 
             with self._cancel_lock:
-                self._cus_to_cancel.remove(cu['_id'])
+                self._cus_to_cancel.remove(cu['uid'])
 
             self.publish('unschedule', cu)
             self.advance(cu, rps.CANCELED, publish=True, push=False)
@@ -248,7 +248,7 @@ class Shell(AgentExecutingComponent):
             self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
             assert(cu['opaque_slots']) # FIXME: no assert, but check
-            self._prof.prof('exec', msg='unit launch', uid=cu['_id'])
+            self._prof.prof('exec', msg='unit launch', uid=cu['uid'])
 
             # Start a new subprocess to launch the unit
             self.spawn(launcher=launcher, cu=cu)
@@ -327,7 +327,7 @@ class Shell(AgentExecutingComponent):
         env  += "export RP_PILOT_ID=%s\n"   % self._cfg['pilot_id']
         env  += "export RP_AGENT_ID=%s\n"   % self._cfg['agent_name']
         env  += "export RP_SPAWNER_ID=%s\n" % self.cname
-        env  += "export RP_UNIT_ID=%s\n"    % cu['_id']
+        env  += "export RP_UNIT_ID=%s\n"    % cu['uid']
         env  += "\n"
 
         if  descr['pre_exec'] :
@@ -402,7 +402,7 @@ class Shell(AgentExecutingComponent):
     #
     def spawn(self, launcher, cu):
 
-        uid = cu['_id']
+        uid = cu['uid']
 
         self._prof.prof('spawn', msg='unit spawn', uid=uid)
 
@@ -411,7 +411,7 @@ class Shell(AgentExecutingComponent):
         cmd       = self._cu_to_cmd (cu, launcher)
         run_cmd   = "BULK\nLRUN\n%s\nLRUN_EOT\nBULK_RUN\n" % cmd
 
-        self._prof.prof('command', msg='launch script constructed', uid=cu['_id'])
+        self._prof.prof('command', msg='launch script constructed', uid=cu['uid'])
 
       # TODO: Remove this commented out block?
       # if  self.lrms.target_is_macos :
@@ -457,7 +457,7 @@ class Shell(AgentExecutingComponent):
         # FIXME: this is too late, there is already a race with the monitoring
         # thread for this CU execution.  We need to communicate the PIDs/CUs via
         # a queue again!
-        self._prof.prof('pass', msg="to watcher (%s)" % cu['state'], uid=cu['_id'])
+        self._prof.prof('pass', msg="to watcher (%s)" % cu['state'], uid=cu['uid'])
         with self._registry_lock :
             self._registry[pid] = cu
 
@@ -556,7 +556,7 @@ class Shell(AgentExecutingComponent):
 
                     if cu:
                         self._prof.prof('passed', msg="ExecWatcher picked up unit",
-                                state=cu['state'], uid=cu['_id'])
+                                state=cu['state'], uid=cu['uid'])
                         self._handle_event (cu, pid, state, data)
                     else:
                         self._cached_events.append ([pid, state, data])
@@ -572,7 +572,7 @@ class Shell(AgentExecutingComponent):
     def _handle_event (self, cu, pid, state, data) :
 
         # got an explicit event to handle
-        self._log.info ("monitoring handles event for %s: %s:%s:%s", cu['_id'], pid, state, data)
+        self._log.info ("monitoring handles event for %s: %s:%s:%s", cu['uid'], pid, state, data)
 
         rp_state = {'DONE'     : rps.DONE,
                     'FAILED'   : rps.FAILED,
@@ -584,7 +584,7 @@ class Shell(AgentExecutingComponent):
                              pid, state, data)
             return
 
-        self._prof.prof('exec', msg='execution complete', uid=cu['_id'])
+        self._prof.prof('exec', msg='execution complete', uid=cu['uid'])
 
         # for final states, we can free the slots.
         self.publish('unschedule', cu)
@@ -597,14 +597,14 @@ class Shell(AgentExecutingComponent):
 
         if rp_state in [rps.FAILED, rps.CANCELED] :
             # The unit failed - fail after staging output
-            self._prof.prof('final', msg="execution failed", uid=cu['_id'])
+            self._prof.prof('final', msg="execution failed", uid=cu['uid'])
             cu['target_state'] = rps.FAILED
 
         else:
             # The unit finished cleanly, see if we need to deal with
             # output data.  We always move to stageout, even if there are no
             # directives -- at the very least, we'll upload stdout/stderr
-            self._prof.prof('final', msg="execution succeeded", uid=cu['_id'])
+            self._prof.prof('final', msg="execution succeeded", uid=cu['uid'])
             cu['target_state'] = rps.DONE
 
         self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)

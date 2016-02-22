@@ -106,7 +106,7 @@ class PilotLauncherWorker(threading.Thread):
         # attempt to get stdout/stderr/log.  We only expect those if pilot was
         # attempting launch at some point
         launched = False
-        pilot    = pilot_col.find ({"_id": pilot_id})[0]
+        pilot    = pilot_col.find ({"uid": pilot_id})[0]
 
         for entry in pilot['statehistory'] :
             if entry['state'] == LAUNCHING :
@@ -155,7 +155,7 @@ class PilotLauncherWorker(threading.Thread):
             pilot_failed = False
             pilot_done   = False
             reconnected  = False
-            pilot_id     = pending_pilot["_id"]
+            pilot_id     = pending_pilot["uid"]
             log_message  = ""
             saga_job_id  = pending_pilot["saga_job_id"]
 
@@ -209,7 +209,7 @@ class PilotLauncherWorker(threading.Thread):
                 out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
                 ts = timestamp()
                 pilot_col.update(
-                    {"_id"  : pilot_id,
+                    {"uid"  : pilot_id,
                      "state": {"$ne"     : DONE}},
                     {"$set" : {
                         "state"          : FAILED,
@@ -239,7 +239,7 @@ class PilotLauncherWorker(threading.Thread):
                 out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
                 ts = timestamp()
                 pilot_col.update(
-                    {"_id"  : pilot_id,
+                    {"uid"  : pilot_id,
                      "state": {"$ne"     : DONE}},
                     {"$set" : {
                         "state"          : DONE,
@@ -352,7 +352,7 @@ class PilotLauncherWorker(threading.Thread):
                         # LAUNCH THE PILOT AGENT VIA SAGA
                         #
                         logentries = []
-                        pilot_id   = str(compute_pilot["_id"])
+                        pilot_id   = str(compute_pilot["uid"])
 
                         logger.info("Launching ComputePilot %s" % pilot_id)
 
@@ -804,7 +804,7 @@ class PilotLauncherWorker(threading.Thread):
                         # Update the Pilot's state to 'PENDING_ACTIVE' if SAGA job submission was successful.
                         ts = timestamp()
                         ret = pilot_col.update(
-                            {"_id"  : pilot_id,
+                            {"uid"  : pilot_id,
                              "state": LAUNCHING},
                             {"$set" : {"state": PENDING_ACTIVE,
                                        "_saga_job_id": saga_job_id,
@@ -821,7 +821,7 @@ class PilotLauncherWorker(threading.Thread):
                             # jobid then
                             # FIXME: make sure of the agent state!
                             ret = pilot_col.update(
-                                {"_id"  : pilot_id},
+                                {"uid"  : pilot_id},
                                 {"$set" : {"_saga_job_id": saga_job_id,
                                            "health_check_enabled": health_check},
                                  "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
@@ -848,7 +848,7 @@ class PilotLauncherWorker(threading.Thread):
                             log_messages.append (str(le.message))
 
                         pilot_col.update(
-                            {"_id"  : pilot_id,
+                            {"uid"  : pilot_id,
                              "state": {"$ne" : FAILED}},
                             {"$set" : {
                                 "state"   : FAILED,

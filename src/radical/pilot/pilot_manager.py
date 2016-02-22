@@ -258,7 +258,7 @@ class PilotManager(rpu.Component):
 
         if 'type' in msg and msg['type'] == 'pilot':
 
-            pid   = msg["_id"]
+            pid   = msg["uid"]
             state = msg["state"]
 
             self._update_pilot(pid, {'state' : state})

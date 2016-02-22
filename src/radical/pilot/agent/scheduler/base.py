@@ -178,7 +178,7 @@ class AgentSchedulingComponent(rpu.Component):
             return False
 
         # got an allocation, go off and launch the process
-        self._prof.prof('schedule', msg="allocated", uid=cu['_id'])
+        self._prof.prof('schedule', msg="allocated", uid=cu['uid'])
         self._log.info("slot status after allocated  : %s" % self.slot_status ())
 
         return True
@@ -210,7 +210,7 @@ class AgentSchedulingComponent(rpu.Component):
                 # remove it from the wait queue
                 with self._wait_lock :
                     self._wait_pool.remove(cu)
-                    self._prof.prof('unqueue', msg="re-allocation done", uid=cu['_id'])
+                    self._prof.prof('unqueue', msg="re-allocation done", uid=cu['uid'])
             else:
                 # Break out of this loop if we didn't manage to schedule a task
                 break
@@ -228,7 +228,7 @@ class AgentSchedulingComponent(rpu.Component):
         """
 
         cu = msg
-        self._prof.prof('unschedule', uid=cu['_id'])
+        self._prof.prof('unschedule', uid=cu['uid'])
 
         if not cu['opaque_slots']:
             # Nothing to do -- how come?
@@ -241,7 +241,7 @@ class AgentSchedulingComponent(rpu.Component):
         # in a different thread....
         with self._slot_lock :
             self._release_slot(cu['opaque_slots'])
-            self._prof.prof('unschedule', msg='released', uid=cu['_id'])
+            self._prof.prof('unschedule', msg='released', uid=cu['uid'])
 
         # notify the scheduling thread, ie. trigger a reschedule to utilize
         # the freed slots
@@ -275,8 +275,8 @@ class AgentSchedulingComponent(rpu.Component):
             # out of this.  Ticket #902 should be implemented, it will solve
             # this problem much cleaner...
 
-            if prof: prof.prof      ('clone_cb', uid=unit['_id'])
-            else   : self._prof.prof('clone_cb', uid=unit['_id'])
+            if prof: prof.prof      ('clone_cb', uid=unit['uid'])
+            else   : self._prof.prof('clone_cb', uid=unit['uid'])
 
             slot = self._slots[self._clone_slot_idx]
 
@@ -302,9 +302,9 @@ class AgentSchedulingComponent(rpu.Component):
             # we only unscheduler *after* scheduling.  Duh!
 
             if prof:
-                prof.prof('drop_cb', uid=unit['_id'])
+                prof.prof('drop_cb', uid=unit['uid'])
             else:
-                self._prof.prof('drop_cb', uid=unit['_id'])
+                self._prof.prof('drop_cb', uid=unit['uid'])
 
             self.unschedule_cb(topic=None, msg=unit)
 
@@ -321,12 +321,12 @@ class AgentSchedulingComponent(rpu.Component):
         # straight away and move it to execution, or we have to
         # put it on the wait queue.
         if self._try_allocation(cu):
-            self._prof.prof('schedule', msg="allocation succeeded", uid=cu['_id'])
+            self._prof.prof('schedule', msg="allocation succeeded", uid=cu['uid'])
             self.advance(cu, rps.EXECUTING_PENDING, publish=True, push=True)
 
         else:
             # No resources available, put in wait queue
-            self._prof.prof('schedule', msg="allocation failed", uid=cu['_id'])
+            self._prof.prof('schedule', msg="allocation failed", uid=cu['uid'])
             with self._wait_lock :
                 self._wait_pool.append(cu)
 

@@ -440,7 +440,7 @@ def drop_units(cfg, units, name, mode, drop_cb=None, prof=None, logger=None):
         if logger:
             logger.debug('dropped all')
             for unit in units:
-                logger.debug('dropped %s', unit['_id'])
+                logger.debug('dropped %s', unit['uid'])
         if return_list: return []
         else          : return None
 
@@ -450,15 +450,15 @@ def drop_units(cfg, units, name, mode, drop_cb=None, prof=None, logger=None):
 
     ret = list()
     for unit in units :
-        if '.clone_' not in unit['_id']:
+        if '.clone_' not in unit['uid']:
             ret.append(unit)
           # if logger:
-          #     logger.debug('dropped not %s', unit['_id'])
+          #     logger.debug('dropped not %s', unit['uid'])
         else:
             if drop_cb:
                 drop_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
             if logger:
-                logger.debug('dropped %s', unit['_id'])
+                logger.debug('dropped %s', unit['uid'])
 
     if return_list: 
         return ret
@@ -515,7 +515,7 @@ def clone_units(cfg, units, name, mode, prof=None, clone_cb=None, logger=None):
     ret = list()
     for unit in units :
 
-        uid = unit['_id']
+        uid = unit['uid']
 
         for idx in range(factor-1) :
 

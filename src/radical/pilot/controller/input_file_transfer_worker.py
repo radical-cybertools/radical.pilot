@@ -105,7 +105,7 @@ class InputFileTransferWorker(threading.Thread):
 
                         # We have found a new CU. Now we can process the transfer
                         # directive(s) wit SAGA.
-                        compute_unit_id = str(compute_unit["_id"])
+                        compute_unit_id = str(compute_unit["uid"])
 
                         logger.debug ("InputStagingController: unit found: %s" % compute_unit_id)
                         self._session.prof.prof('advance', uid=compute_unit_id,
@@ -154,7 +154,7 @@ class InputFileTransferWorker(threading.Thread):
 
                             # Check if there was a cancel request
                             state_doc = um_col.find_one(
-                                {"_id": compute_unit_id},
+                                {"uid": compute_unit_id},
                                 fields=["state"]
                             )
                             if state_doc['state'] == CANCELED:
@@ -200,7 +200,7 @@ class InputFileTransferWorker(threading.Thread):
                         # marked as under 'agent' control, before the
                         # agent_stging_output_component passes control back in
                         # a similar manner.
-                        um_col.update({'_id': compute_unit_id},
+                        um_col.update({'uid': compute_unit_id},
                                       {'$set': {'state'  : AGENT_STAGING_INPUT_PENDING, 
                                                 'control': 'umgr'},
                                        '$push': {
@@ -222,7 +222,7 @@ class InputFileTransferWorker(threading.Thread):
                         logentry = {'message': "Input transfer failed: %s" % e,
                                     'timestamp': ts}
 
-                        um_col.update({'_id': compute_unit_id},
+                        um_col.update({'uid': compute_unit_id},
                                       {'$set': {'state': FAILED},
                                        '$push': {
                                            'statehistory': {'state': FAILED, 'timestamp': ts},

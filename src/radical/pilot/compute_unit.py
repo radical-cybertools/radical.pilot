@@ -119,7 +119,6 @@ class ComputeUnit(object):
         ret = {
             'session':         self.session.uid,
             'umgr':            self.umgr.uid,
-            '_id':             self.uid,  # for component...
             'uid':             self.uid,
             'type':            'unit',
             'name':            self.name,

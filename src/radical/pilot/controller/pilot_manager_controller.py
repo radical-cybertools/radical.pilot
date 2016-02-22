@@ -297,7 +297,7 @@ class PilotManagerController(threading.Thread):
                 action = False
 
                 for pilot in pilot_list:
-                    pilot_id = str(pilot["_id"])
+                    pilot_id = pilot["uid"]
 
                     new_state = pilot["state"]
                     if pilot_id in self._shared_data:
@@ -526,7 +526,7 @@ class PilotManagerController(threading.Thread):
             pilot_ids = list()
 
             for pilot in self._dbs.get_pilots(pmgr_uid=self._pm_id) :
-                pilot_ids.append (str(pilot["_id"]))
+                pilot_ids.append (pilot["uid"])
 
 
         self._dbs.send_command_to_pilot(COMMAND_CANCEL_PILOT, pilot_ids=pilot_ids)

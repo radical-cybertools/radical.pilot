@@ -350,12 +350,12 @@ class Default(PMGRLaunchingComponent):
     def work(self, pilot):
 
         self.advance(pilot, rps.PMGR_LAUNCHING, publish=True, push=False)
-        self._log.info('handle %s' % pilot['_id'])
+        self._log.info('handle %s' % pilot['uid'])
 
         self._dh.fs_block(pilot)
         
         try:
-            pid = str(pilot["_id"])
+            pid = pilot["uid"]
 
             self._log.info("Launching ComputePilot %s" % pid)
 

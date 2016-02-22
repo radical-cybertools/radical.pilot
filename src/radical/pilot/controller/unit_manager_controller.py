@@ -237,7 +237,7 @@ class UnitManagerController(threading.Thread):
                 action    = False
 
                 for unit in unit_list:
-                    unit_id = str(unit["_id"])
+                    unit_id = unit["uid"]
 
                     new_state = unit["state"]
                     if unit_id in self._shared_data:

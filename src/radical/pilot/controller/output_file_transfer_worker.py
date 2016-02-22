@@ -103,7 +103,7 @@ class OutputFileTransferWorker(threading.Thread):
 
                         # We have found a new CU. Now we can process the transfer
                         # directive(s) with SAGA.
-                        compute_unit_id = str(compute_unit["_id"])
+                        compute_unit_id = compute_unit["uid"]
 
                         self._session.prof.prof('advance', uid=compute_unit_id,
                                 msg=STAGING_OUTPUT, state=STAGING_OUTPUT)
@@ -121,7 +121,7 @@ class OutputFileTransferWorker(threading.Thread):
                             # Check if there was a cancel request for this CU
                             # TODO: Can't these cancel requests come from a central place?
                             state_doc = um_col.find_one(
-                                {"_id": compute_unit_id},
+                                {"uid": compute_unit_id},
                                 fields=["state"]
                             )
                             if state_doc['state'] == CANCELED:
@@ -166,7 +166,7 @@ class OutputFileTransferWorker(threading.Thread):
                         # Update the CU's state to 'DONE'.
                         ts = timestamp()
                         log_message = "Output transfer completed."
-                        um_col.update({'_id': compute_unit_id}, {
+                        um_col.update({'uid': compute_unit_id}, {
                             '$set': {'state': DONE},
                             '$push': {
                                 'statehistory': {'state': DONE, 'timestamp': ts},
@@ -180,7 +180,7 @@ class OutputFileTransferWorker(threading.Thread):
                         # Update the CU's state to 'FAILED'.
                         ts = timestamp()
                         log_message = "Output transfer failed: %s" % e
-                        um_col.update({'_id': compute_unit_id}, {
+                        um_col.update({'uid': compute_unit_id}, {
                             '$set': {'state': FAILED},
                             '$push': {
                                 'statehistory': {'state': FAILED, 'timestamp': ts},

@@ -178,7 +178,7 @@ class ABDS(AgentExecutingComponent):
             self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
             assert(cu['opaque_slots']) # FIXME: no assert, but check
-            self._prof.prof('exec', msg='unit launch', uid=cu['_id'])
+            self._prof.prof('exec', msg='unit launch', uid=cu['uid'])
 
             # Start a new subprocess to launch the unit
             self.spawn(launcher=launcher, cu=cu)
@@ -203,10 +203,10 @@ class ABDS(AgentExecutingComponent):
     #
     def spawn(self, launcher, cu):
 
-        self._prof.prof('spawn', msg='unit spawn', uid=cu['_id'])
+        self._prof.prof('spawn', msg='unit spawn', uid=cu['uid'])
 
         if False:
-            cu_tmpdir = '%s/%s' % (self.tmpdir, cu['_id'])
+            cu_tmpdir = '%s/%s' % (self.tmpdir, cu['uid'])
         else:
             cu_tmpdir = cu['workdir']
 
@@ -253,7 +253,7 @@ class ABDS(AgentExecutingComponent):
             env_string += " RP_PILOT_ID=%s"   % self._cfg['pilot_id']
             env_string += " RP_AGENT_ID=%s"   % self._cfg['agent_name']
             env_string += " RP_SPAWNER_ID=%s" % self.cname
-            env_string += " RP_UNIT_ID=%s"    % cu['_id']
+            env_string += " RP_UNIT_ID=%s"    % cu['uid']
             launch_script.write('# Environment variables\n%s\n' % env_string)
 
             # The actual command line, constructed per launch-method
@@ -301,13 +301,13 @@ class ABDS(AgentExecutingComponent):
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
-        self._prof.prof('command', msg='launch script constructed', uid=cu['_id'])
+        self._prof.prof('command', msg='launch script constructed', uid=cu['uid'])
 
         _stdout_file_h = open(cu['stdout_file'], "w")
         _stderr_file_h = open(cu['stderr_file'], "w")
-        self._prof.prof('command', msg='stdout and stderr files created', uid=cu['_id'])
+        self._prof.prof('command', msg='stdout and stderr files created', uid=cu['uid'])
 
-        self._log.info("Launching unit %s via %s in %s", cu['_id'], cmdline, cu_tmpdir)
+        self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, cu_tmpdir)
 
         proc = subprocess.Popen(args               = cmdline,
                                 bufsize            = 0,
@@ -324,7 +324,7 @@ class ABDS(AgentExecutingComponent):
                                 startupinfo        = None,
                                 creationflags      = 0)
 
-        self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['_id'])
+        self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['uid'])
 
         cu['started'] = rpu.timestamp()
         cu['proc']    = proc
@@ -367,7 +367,7 @@ class ABDS(AgentExecutingComponent):
                 # add all cus we found to the watchlist
                 for cu in cus :
 
-                    self._prof.prof('passed', msg="ExecWatcher picked up unit", uid=cu['_id'])
+                    self._prof.prof('passed', msg="ExecWatcher picked up unit", uid=cu['uid'])
                     self._cus_to_watch.append (cu)
 
                 # check on the known cus.
@@ -430,7 +430,7 @@ class ABDS(AgentExecutingComponent):
                 if exit_code is None:
                     # Process is still running
 
-                    if cu['_id'] in self._cus_to_cancel:
+                    if cu['uid'] in self._cus_to_cancel:
 
                         # FIXME: there is a race condition between the state poll
                         # above and the kill command below.  We probably should pull
@@ -442,9 +442,9 @@ class ABDS(AgentExecutingComponent):
                         cu['proc'].wait() # make sure proc is collected
 
                         with self._cancel_lock:
-                            self._cus_to_cancel.remove(cu['_id'])
+                            self._cus_to_cancel.remove(cu['uid'])
 
-                        self._prof.prof('final', msg="execution canceled", uid=cu['_id'])
+                        self._prof.prof('final', msg="execution canceled", uid=cu['uid'])
 
                         self._cus_to_watch.remove(cu)
 
@@ -453,7 +453,7 @@ class ABDS(AgentExecutingComponent):
                         self.advance(cu, rps.CANCELED, publish=True, push=False)
 
                 else:
-                    self._prof.prof('exec', msg='execution complete', uid=cu['_id'])
+                    self._prof.prof('exec', msg='execution complete', uid=cu['uid'])
 
 
                     # make sure proc is collected
@@ -461,7 +461,7 @@ class ABDS(AgentExecutingComponent):
 
                     # we have a valid return code -- unit is final
                     action += 1
-                    self._log.info("Unit %s has return code %s.", cu['_id'], exit_code)
+                    self._log.info("Unit %s has return code %s.", cu['uid'], exit_code)
 
                     cu['exit_code'] = exit_code
                     cu['finished']  = now
@@ -478,20 +478,20 @@ class ABDS(AgentExecutingComponent):
                                 for line in txt.split("\n"):
                                     if line:
                                         x1, x2, x3 = line.split()
-                                        self._prof.prof(x1, msg=x2, timestamp=float(x3), uid=cu['_id'])
+                                        self._prof.prof(x1, msg=x2, timestamp=float(x3), uid=cu['uid'])
                             except Exception as e:
                                 self._log.error("Pre/Post profiling file read failed: `%s`" % e)
 
                     if exit_code != 0:
                         # The unit failed - fail after staging output
-                        self._prof.prof('final', msg="execution failed", uid=cu['_id'])
+                        self._prof.prof('final', msg="execution failed", uid=cu['uid'])
                         cu['target_state'] = rps.FAILED
 
                     else:
                         # The unit finished cleanly, see if we need to deal with
                         # output data.  We always move to stageout, even if there are no
                         # directives -- at the very least, we'll upload stdout/stderr
-                        self._prof.prof('final', msg="execution succeeded", uid=cu['_id'])
+                        self._prof.prof('final', msg="execution succeeded", uid=cu['uid'])
                         cu['target_state'] = rps.DONE
 
                     self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)

@@ -81,7 +81,7 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
 
     for pilot in pilots:
 
-      # print "Processing pilot '%s'" % pilot['_id']
+      # print "Processing pilot '%s'" % pilot['uid']
 
         sandbox_url = saga.Url(pilot['sandbox'])
 
@@ -98,7 +98,7 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
         sandbox  = saga.filesystem.Directory (sandbox_url, session=session)
 
         # Try to fetch a tarball of profiles, so that we can get them all in one (SAGA) go!
-        PROFILES_TARBALL = '%s.prof.tgz' % pilot['_id']
+        PROFILES_TARBALL = '%s.prof.tgz' % pilot['uid']
         tarball_available = False
         try:
             if sandbox.is_file(PROFILES_TARBALL):
@@ -126,7 +126,7 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
             print "exception(TODO): profiles tarball doesnt exists!"
 
         try:
-            os.mkdir("%s/%s" % (tgt_url.path, pilot['_id']))
+            os.mkdir("%s/%s" % (tgt_url.path, pilot['uid']))
         except OSError:
             pass
 
@@ -134,10 +134,10 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
         if tarball_available:
             print "Extracting tarball %s into '%s'." % (ftgt.path, tgt_url.path)
             tarball = tarfile.open(ftgt.path)
-            tarball.extractall("%s/%s" % (tgt_url.path, pilot['_id']))
+            tarball.extractall("%s/%s" % (tgt_url.path, pilot['uid']))
 
-            profiles = glob.glob("%s/%s/*.prof" % (tgt_url.path, pilot['_id']))
-            print "Tarball %s extracted to '%s/%s/'." % (ftgt.path, tgt_url.path, pilot['_id'])
+            profiles = glob.glob("%s/%s/*.prof" % (tgt_url.path, pilot['uid']))
+            print "Tarball %s extracted to '%s/%s/'." % (ftgt.path, tgt_url.path, pilot['uid'])
             ret.extend(profiles)
 
             # If extract succeeded, no need to fetch individual profiles
@@ -148,7 +148,7 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
 
         for prof in profiles:
 
-            ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['_id'], prof))
+            ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['uid'], prof))
             ret.append("%s" % ftgt.path)
 
             if skip_existing and os.path.isfile(ftgt.path) \
@@ -217,7 +217,7 @@ def get_session_frames (sids, db=None, cachedir=None) :
         last_pilot_event = 0
         for pilot in docs['pilot'] :
 
-            pid         = pilot['_id']
+            pid         = pilot['uid']
             description = pilot.get ('description', dict())
             started     = pilot.get ('started')
             finished    = pilot.get ('finished')
@@ -268,7 +268,7 @@ def get_session_frames (sids, db=None, cachedir=None) :
 
         for unit in docs['unit']:
 
-            uid         = unit['_id']
+            uid         = unit['uid']
             started     = unit.get ('started')
             finished    = unit.get ('finished')
             description = unit.get ('description', dict())

@@ -174,7 +174,6 @@ class ComputePilot(object):
         ret = {
             'session':         self.session.uid,
             'pmgr':            self.pmgr.uid,
-            '_id':             self.uid,  # for component...
             'uid':             self.uid,
             'type':            'pilot',
             'state':           self.state,

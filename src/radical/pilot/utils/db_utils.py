@@ -100,8 +100,8 @@ def get_session_docs(db, sid, cache=None, cachedir=None) :
 
         for unit in json_data['unit'] :
 
-            if  unit['pilot'] == str(pilot['_id']) :
-                pilot['unit_ids'].append (str(unit['_id']))
+            if  unit['pilot'] == pilot['uid']:
+                pilot['unit_ids'].append (unit['uid'])
 
     # if we got here, we did not find a cached version -- thus add this dataset
     # to the cache
@@ -133,7 +133,7 @@ def get_session_slothist(db, sid, cache=None, cachedir=None) :
 
     for pilot_doc in docs['pilot'] :
 
-        pilot_id     = pilot_doc['_id'] 
+        pilot_id     = pilot_doc['uid'] 
         slot_names   = list()
         slot_infos   = dict()
         slot_started = dict()
@@ -153,7 +153,7 @@ def get_session_slothist(db, sid, cache=None, cachedir=None) :
                 slot_started[slot_name] = sys.maxint
 
         for unit_doc in docs['unit'] :
-            if unit_doc['pilot'] == pilot_doc['_id'] :
+            if unit_doc['pilot'] == pilot_doc['uid'] :
 
                 started  = None
                 finished = None
@@ -166,7 +166,7 @@ def get_session_slothist(db, sid, cache=None, cachedir=None) :
                         started = event['timestamp']
 
                 if not started or not finished :
-                  # print "no start/finish for cu %s - ignored" % unit_doc['_id']
+                  # print "no start/finish for cu %s - ignored" % unit_doc['uid']
                     continue
 
                 for slot_id in unit_doc['slots'] :
@@ -213,14 +213,14 @@ def get_session_events(db, sid, cache=None, cachedir=None) :
         doc   = docs['session']
         odoc  = dict()
         otype = 'session'
-        oid   = str(doc['_id'])
+        oid   = doc['uid']
         ret.append (['state', otype, oid, None, doc['created'],   'created',   odoc])
         ret.append (['state', otype, oid, None, doc['connected'], 'connected', odoc])
 
     for doc in docs['pilot'] :
         odoc  = dict()
         otype = 'pilot'
-        oid   = str(doc['_id'])
+        oid   = doc['uid']
 
         for event in [# 'submitted', 'started',    'finished',  # redundant to states..
                       'input_transfer_started',  'input_transfer_finished', 
@@ -241,8 +241,8 @@ def get_session_events(db, sid, cache=None, cachedir=None) :
     for doc in docs['unit'] :
         odoc  = dict()
         otype = 'unit'
-        oid   = str(doc['_id'])
-        pid   = str(doc['pilot'])
+        oid   = doc['uid']
+        pid   = doc['pilot']
 
         # TODO: change states to look for
         for event in [# 'submitted', 'started',    'finished',  # redundant to states..

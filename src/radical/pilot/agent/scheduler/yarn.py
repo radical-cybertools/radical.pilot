@@ -173,7 +173,7 @@ class Yarn(AgentSchedulingComponent):
             return False
 
         # got an allocation, go off and launch the process
-        self._prof.prof('schedule', msg="allocated", uid=cu['_id'])
+        self._prof.prof('schedule', msg="allocated", uid=cu['uid'])
         self._log.info("slot status after allocated  : %s" % self.slot_status ())
 
         return True
@@ -190,12 +190,12 @@ class Yarn(AgentSchedulingComponent):
         # straight away and move it to execution, or we have to
         # put it on the wait queue.
         if self._try_allocation(cu):
-            self._prof.prof('schedule', msg="allocation succeeded", uid=cu['_id'])
+            self._prof.prof('schedule', msg="allocation succeeded", uid=cu['uid'])
             self.advance(cu, rps.EXECUTING_PENDING, publish=False, push=True)
 
         else:
             # No resources available, put in wait queue
-            self._prof.prof('schedule', msg="allocation failed", uid=cu['_id'])
+            self._prof.prof('schedule', msg="allocation failed", uid=cu['uid'])
             with self._wait_lock :
                 self._wait_pool.append(cu)
 
