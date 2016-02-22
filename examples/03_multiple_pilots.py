@@ -57,8 +57,8 @@ if __name__ == '__main__':
         for resource in resources:
             pd_init = {
                     'resource'      : resource,
-                    'cores'         : 64,  # pilot size
-                    'runtime'       : 15,  # pilot runtime (min)
+                    'cores'         : 512, # pilot size
+                    'runtime'       : 60,  # pilot runtime (min)
                     'exit_on_error' : True,
                     'project'       : config[resource]['project'],
                     'queue'         : config[resource]['queue'],
@@ -70,39 +70,35 @@ if __name__ == '__main__':
         pilots = pmgr.submit_pilots(pdescs)
 
 
-        report.header('submit units')
+        for gen in range(1):
 
-        # Register the ComputePilot in a UnitManager object.
-        umgr = rp.UnitManager(session=session)
-        umgr.add_pilots(pilots)
+            report.header('submit units [%d]' % gen)
 
-        # Create a workload of ComputeUnits.
-        # Each compute unit reports the id of the pilot it runs on.
+            # Register the ComputePilot in a UnitManager object.
+            umgr = rp.UnitManager(session=session)
+            umgr.add_pilots(pilots)
 
-        n = 128   # number of units to run
-        report.info('create %d unit description(s)\n\t' % n)
+            # Create a workload of ComputeUnits.
+            # Each compute unit reports the id of the pilot it runs on.
 
-        cuds = list()
-        for i in range(0, n):
+            n = 5   # number of units to run
+            report.info('create %d unit description(s)\n\t' % n)
 
-            # create a new CU description, and fill it.
-            # Here we don't use dict initialization.
-            cud = rp.ComputeUnitDescription()
-            cud.executable = '/bin/echo'
-            cud.arguments  = ['$RP_PILOT_ID']
+            cuds = list()
+            for i in range(0, n):
 
-            cuds.append(cud)
-            report.progress()
-        report.ok('>>ok\n')
+                # create a new CU description, and fill it.
+                # Here we don't use dict initialization.
+                cud = rp.ComputeUnitDescription()
+                cud.executable = '/bin/sleep'
+                cud.arguments  = ['60']
 
-        # Submit the previously created ComputeUnit descriptions to the
-        # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(cuds)
-
-        # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
-        report.header('gather results')
-        umgr.wait_units()
+                cuds.append(cud)
+                report.progress()
+            report.ok('>>ok\n')
+            units = umgr.submit_units(cuds)
+            report.header('gather results')
+            umgr.wait_units()
     
         report.info('\n')
         counts = dict()

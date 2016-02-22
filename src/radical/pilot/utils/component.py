@@ -143,7 +143,7 @@ class Component(mp.Process):
         self._cfg           = cfg
         self._session       = session
         self._debug         = cfg.get('debug', 'DEBUG') # FIXME
-        self._module_name   = cfg.get('agent_name', 'client')
+        self._module_name   = cfg.get('name', self._ctype)
         self._cname         = "%s.%s.%d" % (self._module_name, self._ctype, cfg.get('number', 0))
         self._childname     = "%s.child" % self._cname
         self._addr_map      = cfg['bridge_addresses']
@@ -162,7 +162,7 @@ class Component(mp.Process):
         self._clone_cb      = None        # allocate resources on cloning units
         self._drop_cb       = None        # free resources on dropping clones
 
-        # use cname for one log per agent, cname for one log per agent and component
+        # use 'name' for one log per 'name', cname for one log per component instance
         log_name = self._cname
         log_tgt  = self._cname + ".log"
         self._log = ru.get_logger(log_name, log_tgt, self._debug)
@@ -512,15 +512,23 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def declare_input(self, states, input):
+    def declare_input(self, states, input, worker):
         """
         Using this method, the component can be connected to a queue on which
         units are received to be worked upon.  The given set of states (which
         can be a single state or a list of states) will trigger an assert check
         upon unit arrival.
 
-        For each state specified by an declare_input() call, the component MUST
-        also declare an respective work method.
+        This method will further associate a unit state with a specific worker.  
+        Upon unit arrival, the unit state will be used to lookup the respective
+        worker, and the unit will be handed over.  Workers should call
+        self.advance(unit), in order to push the unit toward the next component.
+        If, for some reason, that is not possible before the worker returns, the
+        component will retain ownership of the unit, and should call advance()
+        asynchronously at a later point in time.
+
+        Worker invocation is synchronous, ie. the main event loop will only
+        check for the next unit once the worker method returns.
         """
 
         if not isinstance(states, list):
@@ -536,6 +544,19 @@ class Component(mp.Process):
         for state in states:
             self._log.debug('declared input     : %s : %s : %s' \
                     % (state, input, q.name))
+
+        # we want exactly one worker associated with a state -- but a worker can
+        # be responsible for multiple states
+        for state in states:
+            if state in self._workers:
+                self._log.warn("%s replaces worker for %s (%s)" \
+                        % (self._cname, state, self._workers[state]))
+            self._workers[state] = worker
+
+            self._log.debug('declared worker    : %s : %s' \
+                    % (state, worker.__name__))
+
+
 
 
     # --------------------------------------------------------------------------
@@ -579,38 +600,6 @@ class Component(mp.Process):
 
                 self._log.debug('declared output    : %s : %s : %s' \
                      % (state, output, q.name))
-
-
-    # --------------------------------------------------------------------------
-    #
-    def declare_worker(self, states, worker):
-        """
-        This method will associate a unit state with a specific worker.  Upon
-        unit arrival, the unit state will be used to lookup the respective
-        worker, and the unit will be handed over.  Workers should call
-        self.advance(unit), in order to push the unit toward the next component.
-        If, for some reason, that is not possible before the worker returns, the
-        component will retain ownership of the unit, and should call advance()
-        asynchronously at a later point in time.
-
-        Worker invocation is synchronous, ie. the main event loop will only
-        check for the next unit once the worker method returns.
-        """
-
-        if not isinstance(states, list):
-            states = [states]
-
-        # we want exactly one worker associated with a state -- but a worker can
-        # be responsible for multiple states
-        for state in states:
-            if state in self._workers:
-                self._log.warn("%s replaces worker for %s (%s)" \
-                        % (self._cname, state, self._workers[state]))
-            self._workers[state] = worker
-
-            self._log.debug('declared worker    : %s : %s' \
-                    % (state, worker.__name__))
-
 
 
     # --------------------------------------------------------------------------
@@ -831,13 +820,13 @@ class Component(mp.Process):
                         continue
 
                     state = unit['state']
-                    uid   = unit['_id']
+                    uid   = unit['uid']
 
                     # assert that the unit is in an expected state
                     if state not in states:
                         self.advance(unit, FAILED, publish=True, push=False)
                         self._prof.prof(event='failed', msg="unexpected state %s" % state,
-                                uid=unit['_id'], state=unit['state'], logger=self._log.error)
+                                uid=unit['uid'], state=unit['state'], logger=self._log.error)
                         continue
 
                     # depending on the queue we got the unit from, we can either
@@ -854,7 +843,7 @@ class Component(mp.Process):
 
                     for _unit in units:
 
-                        uid = _unit['_id']
+                        uid = _unit['uid']
                         active = True
                         self._prof.prof(event='get', state=state, uid=uid, msg=input.name)
 
@@ -963,7 +952,7 @@ class Component(mp.Process):
 
         for thing in things:
 
-            uid   = thing['_id']
+            uid   = thing['uid']
             ttype = thing.get('type')
 
             if not ttype:
@@ -979,7 +968,7 @@ class Component(mp.Process):
                 thing['state']          = state
                 thing['state_timstamp'] = timestamp
                 if prof:
-                    self._prof.prof('advance', uid=thing['_id'], state=state,
+                    self._prof.prof('advance', uid=thing['uid'], state=state,
                             timestamp=timestamp)
             else:
                 state = thing['state']
@@ -987,7 +976,7 @@ class Component(mp.Process):
             if publish:
                 # send state notifications
                 self.publish('state', thing)
-                self._prof.prof('publish', uid=thing['_id'], state=thing['state'])
+                self._prof.prof('publish', uid=thing['uid'], state=thing['state'])
 
             if push:
                 if state not in self._outputs:
@@ -1021,7 +1010,7 @@ class Component(mp.Process):
                     #
                     # push the thing down the drain
                     output.put(_thing)
-                    self._prof.prof('put', uid=_thing['_id'], state=state, msg=output.name)
+                    self._prof.prof('put', uid=_thing['uid'], state=state, msg=output.name)
 
 
     # --------------------------------------------------------------------------
