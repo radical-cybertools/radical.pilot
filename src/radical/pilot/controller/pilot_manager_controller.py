@@ -41,7 +41,7 @@ class PilotManagerController(threading.Thread):
 
     # ------------------------------------------------------------------------
     #
-    def __init__(self, pmgr_uid, pilot_manager_data, 
+    def __init__(self, pmgr_uid, pmgr_data, 
         session, pilot_launcher_workers=1):
         """Le constructeur.
         """
@@ -95,8 +95,7 @@ class PilotManagerController(threading.Thread):
         # Try to register the PilotManager with the database.
         self._pm_id = self._dbs.insert_pilot_manager(
             pmgr_uid=pmgr_uid,
-            pilot_manager_data=pilot_manager_data,
-            pilot_launcher_workers=pilot_launcher_workers
+            pmgr_data=pmgr_data
         )
         self._num_pilot_launcher_workers = pilot_launcher_workers
 
@@ -272,7 +271,8 @@ class PilotManagerController(threading.Thread):
         # if we meet a final state, we record the object's callback history for
         # later evalutation
         if new_state in (DONE, FAILED, CANCELED):
-            self._dbs.publish_compute_pilot_callback_history (pilot_id, self._callback_histories[pilot_id])
+            self._dbs.publish_compute_pilot_callback_history(pilot_id, 
+                    self._callback_histories[pilot_id])
 
 
     # ------------------------------------------------------------------------
@@ -293,7 +293,7 @@ class PilotManagerController(threading.Thread):
                 # Check and update pilots. This needs to be optimized at
                 # some point, i.e., state pulling should be conditional
                 # or triggered by a tailable MongoDB cursor, etc.
-                pilot_list = self._dbs.get_pilots(pilot_manager_id=self._pm_id)
+                pilot_list = self._dbs.get_pilots(pmgr_uid=self._pm_id)
                 action = False
 
                 for pilot in pilot_list:
@@ -357,7 +357,8 @@ class PilotManagerController(threading.Thread):
                                         EXECUTING,
                                         AGENT_STAGING_OUTPUT_PENDING,
                                         AGENT_STAGING_OUTPUT],
-                            log="Pilot '%s' has terminated with state '%s'. CU canceled." % (pilot_id, new_state))
+                            log="Pilot '%s' has terminated with state '%s'. CU canceled." \
+                                    % (pilot_id, new_state))
 
                 # After the first iteration, we are officially initialized!
                 if not self._initialized.is_set():
@@ -452,7 +453,7 @@ class PilotManagerController(threading.Thread):
         # Create a database entry for the new pilot.
         pilot_uid, pilot_json = self._dbs.insert_pilot(
             pilot_uid=pilot_uid,
-            pilot_manager_uid=self._pm_id,
+            pmgr_uid=self._pm_id,
             pilot_description=pilot.description,
             pilot_sandbox=str(agent_dir_url), 
             global_sandbox=str(fs_url.path)
@@ -524,7 +525,7 @@ class PilotManagerController(threading.Thread):
 
             pilot_ids = list()
 
-            for pilot in self._dbs.get_pilots(pilot_manager_id=self._pm_id) :
+            for pilot in self._dbs.get_pilots(pmgr_uid=self._pm_id) :
                 pilot_ids.append (str(pilot["_id"]))
 
 

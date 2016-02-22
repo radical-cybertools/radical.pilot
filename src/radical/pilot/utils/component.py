@@ -958,7 +958,7 @@ class Component(mp.Process):
         prof:    determine if state advance creates a profile event
                  (publish, push, and drop are always profiled)
 
-        'Things' are expected to be a dictionary, and to have 'state', '_id' and
+        'Things' are expected to be a dictionary, and to have 'state', 'uid' and
         optionally 'type' set.
         """
 

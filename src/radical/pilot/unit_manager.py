@@ -127,8 +127,8 @@ class UnitManager(rpu.Component):
             self._cfg['bridge_addresses'] = copy.deepcopy(self._session._bridge_addresses)
 
             # the bridges are known, we can start to connect the components to them
-            self._components = rpu.Component.start_components(components,
-                    typemap, self._cfg)
+            self._components = rpu.Component.start_components(components, 
+                    typemap, self._cfg, self.session)
 
             # initialize the base class
             # FIXME: unique ID

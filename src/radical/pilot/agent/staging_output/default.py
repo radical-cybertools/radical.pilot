@@ -40,14 +40,6 @@ class Default(AgentStagingOutputComponent):
 
     # --------------------------------------------------------------------------
     #
-    @classmethod
-    def create(cls, cfg):
-
-        return cls(cfg)
-
-
-    # --------------------------------------------------------------------------
-    #
     def initialize_child(self):
 
         self.declare_input(rps.AGENT_STAGING_OUTPUT_PENDING, 

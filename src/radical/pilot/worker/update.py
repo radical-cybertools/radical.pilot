@@ -80,7 +80,7 @@ class Update(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _ordered_update(self, cu, state, timestamp=None):
+    def _ordered_unit_update(self, unit, state, timestamp=None):
         """
         The update worker can receive states for a specific unit in any order.
         If states are pushed straight to theh DB, the state attribute of a unit
@@ -139,7 +139,7 @@ class Update(rpu.Worker):
                            'statehistory': {
                                'state'    : state,
                                'timestamp': timestamp}}}
-        uid = cu['_id']
+        uid = unit['uid']
 
       # self._log.debug(" === inp %s: %s" % (uid, state))
 
@@ -147,7 +147,7 @@ class Update(rpu.Worker):
             self._state_cache[uid] = {'unsent' : list(),
                                       'final'  : False,
                                       'last'   : rps.AGENT_STAGING_INPUT_PENDING}
-                                      # we get the cu in this state
+                                      # we get the unit in this state
         cache = self._state_cache[uid]
 
         # if unit is already final, we don't push state
@@ -249,7 +249,7 @@ class Update(rpu.Worker):
         'msg' is expected to be of the form ['cmd', 'thing'], where 'thing' is
         an entity to update in the DB, and 'cmd' specifies the mode of update.
 
-        'things' are expected to be dicts with a 'type' and '_id' field.  If
+        'things' are expected to be dicts with a 'type' and 'uid' field.  If
         either one does not exist, an exception is raised.
 
         Supported types are:
@@ -283,7 +283,7 @@ class Update(rpu.Worker):
         That implies that all potential 'list' types should be defined in the
         initial 'thing' insert as such, as (potentially empty) lists.
 
-        For 'cmd' in ['state', 'state_flush'], only the '_id' and 'state' fields
+        For 'cmd' in ['state', 'state_flush'], only the 'uid' and 'state' fields
         of the given 'thing' are used, all other fields are ignored.  If 'state'
         does not exist, an exception is raised.
         """
@@ -297,26 +297,24 @@ class Update(rpu.Worker):
         # FIXME: at the moment, the update worker only operates on units.
         #        it should also accept other updates, eg. for pilot states.
         #
-        # FIXME: '_id' -> 'uid' (indexed)
-        #
         # got a new request.  Add to bulk (create as needed),
         # and push bulk if time is up.
-        uid       = cu['_id']
-        state     = cu.get('state')
-        timestamp = cu.get('state_timestamp', rpu.timestamp())
+        uid       = thing['uid']
+        state     = thing.get('state')
+        timestamp = thing.get('state_timestamp', rpu.timestamp())
 
         if 'clone' in uid:
             return
 
         self._prof.prof('get', msg="update unit state to %s" % state, uid=uid)
 
-        query_dict  = cu.get('query')
-        update_dict = cu.get('update')
+        query_dict  = thing.get('query')
+        update_dict = thing.get('update')
 
         if not query_dict:
-            query_dict  = {'_id' : uid} # make sure unit is not final?
+            query_dict  = {'uid' : uid} # make sure unit is not final?
         if not update_dict:
-            update_dict = self._ordered_update (cu, state, timestamp)
+            update_dict = self._ordered_unit_update (thing, state, timestamp)
 
         # when the unit is about to leave the agent, we also update stdout,
         # stderr exit code etc
@@ -325,9 +323,9 @@ class Update(rpu.Worker):
         if state in [rps.DONE, rps.FAILED, rps.CANCELED, rps.PENDING_OUTPUT_STAGING]:
             if not '$set' in update_dict:
                 update_dict['$set'] = dict()
-            update_dict['$set']['stdout'   ] = cu.get('stdout')
-            update_dict['$set']['stderr'   ] = cu.get('stderr')
-            update_dict['$set']['exit_code'] = cu.get('exit_code')
+            update_dict['$set']['stdout'   ] = thing.get('stdout')
+            update_dict['$set']['stderr'   ] = thing.get('stderr')
+            update_dict['$set']['exit_code'] = thing.get('exit_code')
 
         # check if we handled the collection before.  If not, initialize
         cname = self._session_id

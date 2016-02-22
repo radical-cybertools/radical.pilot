@@ -37,7 +37,7 @@ class Session (rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, dburl=None, uid=None, database_url=None, connect=True):
+    def __init__ (self, dburl=None, uid=None, database_url=None, _connect=True):
         """
         Creates a new session.  A new Session instance is created and 
         stored in the database.
@@ -540,7 +540,7 @@ class Session (rs.Session):
                                      'ru': ru.version_detail}
 
         result = self._dbs._c.update({'type' : 'session', 
-                                      "_id"  : session._uid},
+                                      "uid"  : self.uid},
                                      {"$set" : {"metadata": metadata}})
 
 

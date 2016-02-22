@@ -180,7 +180,7 @@ class Agent(rpu.Worker):
             now = rpu.timestamp()
             ret = self._session._dbs._c.update(
                     {'type' : 'pilot',
-                     "_id"  : self._pilot_id},
+                     "uid"  : self._pilot_id},
                     {"$set" : {"state"        : rps.ACTIVE,
                                "started"      : now},
                      "$push": {"statehistory" : {"state"    : rps.ACTIVE,
@@ -413,9 +413,9 @@ class Agent(rpu.Worker):
 
                 if not agent_lm:
                     agent_lm = rp.agent.LM.create(
-                        name   = self._cfg['agent_launch_method'],
-                        cfg    = self._cfg,
-                        logger = self._log)
+                        name    = self._cfg['agent_launch_method'],
+                        cfg     = self._cfg,
+                        session = self._session)
 
                 node = self._cfg['lrms_info']['agent_nodes'][sa]
                 # start agent remotely, use launch method
@@ -523,17 +523,17 @@ class Agent(rpu.Worker):
 
         # update the unit states to avoid pulling them again next time.
         cu_list = list(cu_cursor)
-        cu_uids = [cu['_id'] for cu in cu_list]
+        cu_uids = [cu['uid'] for cu in cu_list]
 
         self._session._dbs._c.update(multi    = True,
                         spec     = {'type'  : 'unit',
-                                    "_id"   : {"$in"     : cu_uids}},
+                                    "uid"   : {"$in"     : cu_uids}},
                         document = {"$set"  : {"control" : 'agent'}})
 
         self._log.info("units pulled: %4d"   % len(cu_list))
         self._prof.prof('get', msg="bulk size: %d" % len(cu_list), uid=self._pilot_id)
         for cu in cu_list:
-            self._prof.prof('get', msg="bulk size: %d" % len(cu_list), uid=cu['_id'])
+            self._prof.prof('get', msg="bulk size: %d" % len(cu_list), uid=cu['uid'])
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline).  We don't publish nor profile as advance,

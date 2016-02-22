@@ -94,7 +94,7 @@ class Heartbeat(rpu.Worker):
 
         # Check if there's a command waiting
         retdoc = self._session._dbs._c.find_and_modify(
-                    query  = {"_id"  : self._owner},
+                    query  = {"uid"  : self._owner},
                     update = {"$set" : {rpc.COMMAND_FIELD: []}}, # Wipe content of array
                     fields = [rpc.COMMAND_FIELD]
                     )

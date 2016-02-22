@@ -184,7 +184,7 @@ git_ident = "$Id$"
 
 # ------------------------------------------------------------------------------
 #
-def pilot_FAILED(mongo_p=None, pilot_uid=None, logger=None, msg=None):
+def pilot_FAILED(mongo_c=None, pilot_uid=None, logger=None, msg=None):
 
     if logger:
         logger.error(msg)
@@ -193,7 +193,7 @@ def pilot_FAILED(mongo_p=None, pilot_uid=None, logger=None, msg=None):
     print msg
     print ru.get_trace()
 
-    if mongo_p and pilot_uid:
+    if mongo_c and pilot_uid:
 
         now = rpu.timestamp()
         out = None
@@ -210,8 +210,8 @@ def pilot_FAILED(mongo_p=None, pilot_uid=None, logger=None, msg=None):
         msg = [{"message": msg,              "timestamp": now},
                {"message": rpu.get_rusage(), "timestamp": now}]
 
-        mongo_p.update({'type' : 'pilot', 
-                        "_id"  : pilot_uid},
+        mongo_c.update({'type' : 'pilot', 
+                        "uid"  : pilot_uid},
             {"$pushAll": {"log"         : msg},
              "$push"   : {"statehistory": {"state"     : rp.FAILED,
                                            "timestamp" : now}},
@@ -231,14 +231,14 @@ def pilot_FAILED(mongo_p=None, pilot_uid=None, logger=None, msg=None):
 
 # ------------------------------------------------------------------------------
 #
-def pilot_CANCELED(mongo_p=None, pilot_uid=None, logger=None, msg=None):
+def pilot_CANCELED(mongo_c=None, pilot_uid=None, logger=None, msg=None):
 
     if logger:
         logger.warning(msg)
 
     print msg
 
-    if mongo_p and pilot_uid:
+    if mongo_c and pilot_uid:
 
         now = rpu.timestamp()
         out = None
@@ -255,8 +255,8 @@ def pilot_CANCELED(mongo_p=None, pilot_uid=None, logger=None, msg=None):
         msg = [{"message": msg,              "timestamp": now},
                {"message": rpu.get_rusage(), "timestamp": now}]
 
-        mongo_p.update({'type' : 'pilot', 
-                        "_id": pilot_uid},
+        mongo_c.update({'type' : 'pilot', 
+                        "uid": pilot_uid},
             {"$pushAll": {"log"         : msg},
              "$push"   : {"statehistory": {"state"     : rp.CANCELED,
                                            "timestamp" : now}},
@@ -276,9 +276,9 @@ def pilot_CANCELED(mongo_p=None, pilot_uid=None, logger=None, msg=None):
 
 # ------------------------------------------------------------------------------
 #
-def pilot_DONE(mongo_p=None, pilot_uid=None, logger=None, msg=None):
+def pilot_DONE(mongo_c=None, pilot_uid=None, logger=None, msg=None):
 
-    if mongo_p and pilot_uid:
+    if mongo_c and pilot_uid:
 
         now = rpu.timestamp()
         out = None
@@ -295,8 +295,8 @@ def pilot_DONE(mongo_p=None, pilot_uid=None, logger=None, msg=None):
         msg = [{"message": "pilot done",     "timestamp": now},
                {"message": rpu.get_rusage(), "timestamp": now}]
 
-        mongo_p.update({'type' : 'pilot', 
-                        "_id": pilot_uid},
+        mongo_c.update({'type' : 'pilot', 
+                        "uid": pilot_uid},
             {"$pushAll": {"log"         : msg},
              "$push"   : {"statehistory": {"state"    : rp.DONE,
                                            "timestamp": now}},
@@ -535,7 +535,7 @@ def bootstrap_3():
             # Store some runtime information into the session
             if 'version_info' in lrms.lm_info:
                 mongo_c.update({'type' : 'pilot', 
-                                "_id"  : pilot_id},
+                                "uid"  : pilot_id},
                                {"$set" : {"lm_info": lrms.lm_info['version_info']}})
 
         # we now have correct bridge addresses added to the agent_0.cfg, and all
@@ -586,18 +586,18 @@ def bootstrap_3():
         # agent_0 will also report final pilot state to the DB
         if agent_name == 'agent_0':
             if agent and agent.final_cause == 'timeout':
-                pilot_DONE(mongo_p, pilot_id, log, "TIMEOUT received. Terminating.")
+                pilot_DONE(mongo_c, pilot_id, log, "TIMEOUT received. Terminating.")
             elif agent and agent.final_cause == 'cancel':
-                pilot_CANCELED(mongo_p, pilot_id, log, "CANCEL received. Terminating.")
+                pilot_CANCELED(mongo_c, pilot_id, log, "CANCEL received. Terminating.")
             elif agent and agent.final_cause == 'sys.exit':
-                pilot_CANCELED(mongo_p, pilot_id, log, "EXIT received. Terminating.")
+                pilot_CANCELED(mongo_c, pilot_id, log, "EXIT received. Terminating.")
             elif agent and agent.final_cause == 'finalize':
                 log.info('shutdown due to component finalization -- assuming error')
-                pilot_FAILED(mongo_p, pilot_id, log, "FINALIZE received")
+                pilot_FAILED(mongo_c, pilot_id, log, "FINALIZE received")
             elif agent:
-                pilot_FAILED(mongo_p, pilot_id, log, "TERMINATE received")
+                pilot_FAILED(mongo_c, pilot_id, log, "TERMINATE received")
             else:
-                pilot_FAILED(mongo_p, pilot_id, log, "FAILED startup")
+                pilot_FAILED(mongo_c, pilot_id, log, "FAILED startup")
 
         log.info('stop')
         prof.prof('stop', msg='finally clause agent', uid=pilot_id)

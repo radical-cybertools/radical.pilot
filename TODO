@@ -29,7 +29,7 @@
     declared explicitly.
   + rename 'worker' to 'sub-agent' to avoid confusion?
   - component: collapse declare_input and declare_worker
-  - cu['_id'] -> cu['uid'] etc
+  + cu['_id'] -> cu['uid'] etc
 
   - state pubsub now has [cmd, ttype, thing] tuples fed from advance.
   - self.advance(cu, FAILED, ...) will not find a suitable output channel.

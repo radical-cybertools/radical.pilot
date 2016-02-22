@@ -14,6 +14,7 @@ __license__ = "MIT"
 import os 
 import saga
 import gridfs
+import pymongo
 import radical.utils as ru
 
 from radical.pilot.utils  import timestamp
@@ -67,7 +68,15 @@ class DBSession(object):
         # the session entry.
         # NOTE: hell will break loose if session IDs are not unique!
         if not self._c.count():
-            self._c.insert({"_id"       : sid,
+
+            # make 'uid', 'type' and 'state' indexes, as we frequently query
+            # based on combinations of those.  Only 'uid' is unique
+            self._c.create_index([('uid',   pymongo.ASCENDING)], unique=True,  sparse=False)
+            self._c.create_index([('type',  None             )], unique=False, sparse=False)
+            self._c.create_index([('state', None             )], unique=False, sparse=False)
+
+            # insert the session doc
+            self._c.insert({"uid"       : sid,
                             "type"      : 'session',
                             "created"   : self._created,
                             "connected" : self._connected})
@@ -168,7 +177,7 @@ class DBSession(object):
 
         # FIXME: also stor cfg
         result = self._c.insert({'type' : 'pmgr', 
-                                 "_id"  : pmgr_uid,
+                                 "uid"  : pmgr_uid,
                                  "data" : pmgr_data})
 
         return result
@@ -185,7 +194,7 @@ class DBSession(object):
         pilot_manager_uids = []
         cursor = self._c.find({'type' : 'pmgr'})
 
-        return [doc['_id'] for doc in cursor]
+        return [doc['uid'] for doc in cursor]
 
 
     #--------------------------------------------------------------------------
@@ -199,7 +208,7 @@ class DBSession(object):
             raise Exception("No active session.")
 
         cursor = self._c.find({'type' : 'unit', 
-                               '_id'  : uid})
+                               'uid'  : uid})
 
         return cursor[0]['stdout']
 
@@ -215,7 +224,7 @@ class DBSession(object):
             raise Exception("No active session.")
 
         cursor = self._c.find({'type' : 'unit', 
-                               '_id'  : uid})
+                               'uid'  : uid})
 
         return cursor[0]['stderr']
 
@@ -255,7 +264,7 @@ class DBSession(object):
 
         # update pilot entry.
         self._c.update({'type'     : 'pilot', 
-                        "_id"      : pilot_uid},
+                        "uid"      : pilot_uid},
                        {"$set"     : set_query, 
                         "$pushAll" : push_query},
                        multi=True)
@@ -284,7 +293,7 @@ class DBSession(object):
             pd_dict[k] = pilot_description[k]
 
         pilot_doc = {
-            "_id":            pilot_uid,
+            "uid":            pilot_uid,
             "type":           'pilot',
             "description":    pd_dict,
             "submitted":      ts,
@@ -333,7 +342,7 @@ class DBSession(object):
         else:
             cursor = self._c.find({'type' : 'pilot'})
 
-        return [doc['_id'] for doc in cursor]
+        return [doc['uid'] for doc in cursor]
 
 
     #--------------------------------------------------------------------------
@@ -357,11 +366,11 @@ class DBSession(object):
                 pilot_ids = [pilot_ids]
 
             cursor = self._c.find({'type' : 'pilot', 
-                                   "_id"  : {"$in": pilot_ids}})
+                                   "uid"  : {"$in": pilot_ids}})
 
         # make sure we return every unit doc only once
         # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
-        ret = { doc['_id'] : doc for doc in cursor}
+        ret = { doc['uid'] : doc for doc in cursor}
 
         return ret.values
 
@@ -401,7 +410,7 @@ class DBSession(object):
             # send command to selected pilots if pilot_ids are
             for pid in pilot_ids:
                 self._c.update({'type' : 'pilot', 
-                                "_id"  : pid},
+                                "uid"  : pid},
                                {"$push": command})
 
 
@@ -415,7 +424,7 @@ class DBSession(object):
             raise Exception("No active session.")
 
         self._c.update({'type' : 'pilot', 
-                        "_id"  : pilot_uid},
+                        "uid"  : pilot_uid},
                        {"$set" : {"callbackhistory": callback_history}})
 
 
@@ -436,12 +445,12 @@ class DBSession(object):
 
         else:
             cursor = self._c.find({'type' : 'unit', 
-                                   '_id'  : {"$in": unit_ids},
+                                   'uid'  : {"$in": unit_ids},
                                    'umgr' : umgr_uid})
 
         # make sure we return every unit doc only once
         # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
-        ret = { doc['_id'] : doc for doc in cursor}
+        ret = { doc['uid'] : doc for doc in cursor}
 
         return ret.values
 
@@ -495,14 +504,14 @@ class DBSession(object):
 
             if src_states:
                 bulk.find  ({"type"  : 'unit', 
-                             "_id"   : uid, 
+                             "uid"   : uid, 
                              "state" : {"$in"  : src_states} }) \
                     .update({"$set"  : {"state": state},
                              "$push" : {"statehistory": {"state":   state, "timestamp": ts}},
                              "$push" : {"log"         : {"message": log,   "timestamp": ts}}})
             else:
                 bulk.find  ({"type"  : 'unit', 
-                             "_id"   : uid}) \
+                             "uid"   : uid}) \
                     .update({"$set"  : {"state": state},
                              "$push" : {"statehistory": {"state"  : state, "timestamp": ts}},
                              "$push" : {"log"         : {"message": log,   "timestamp": ts}}})
@@ -531,7 +540,7 @@ class DBSession(object):
 
         else:
             cursor = self._c.find({'type'  : 'unit', 
-                                   "_id"   : {"$in": unit_ids},
+                                   "uid"   : {"$in": unit_ids},
                                    "umgr"  : umgr_uid},
                                   {"state": 1})
 
@@ -549,7 +558,7 @@ class DBSession(object):
 
         # FIXME: also store cfg
         result = self._c.insert({'type'      : 'umgr', 
-                                 "_id"       : umgr_uid,
+                                 "uid"       : umgr_uid,
                                  "scheduler" : scheduler})
         return result
 
@@ -563,7 +572,7 @@ class DBSession(object):
             raise RuntimeError("No active session.")
 
         cursor = self._c.find({'type' : 'umgr', 
-                               "_id"  : umgr_uid})
+                               "uid"  : umgr_uid})
         try:
             return cursor[0]
         except:
@@ -579,7 +588,7 @@ class DBSession(object):
             raise RuntimeError("No active session.")
 
         cursor = self._c.find({'type' : 'pmgr', 
-                               "_id"  : pmgr_uid})
+                               "uid"  : pmgr_uid})
         try:
             return cursor[0]
         except:
@@ -598,7 +607,7 @@ class DBSession(object):
 
         cursor = self._c.find({'type' : 'umgr'})
 
-        return [doc['_id'] for doc in cursor]
+        return [doc['uid'] for doc in cursor]
 
 
     #--------------------------------------------------------------------------
@@ -613,7 +622,7 @@ class DBSession(object):
 
         for pilot_uid in pilot_ids:
             self._c.update({'type' : 'pilot', 
-                            "_id"  : pilot_uid},
+                            "uid"  : pilot_uid},
                            {"$set" : {"umgr": umgr_uid}},
                            multi=True)
 
@@ -631,7 +640,7 @@ class DBSession(object):
         # Add the ids to the pilot's queue
         for pilot_uid in pilot_ids:
             self._c.update({'type' : 'pilot', 
-                            "_id"  : pilot_uid},
+                            "uid"  : pilot_uid},
                            {"$set" : {"umgr": None}}, 
                            multi=True)
 
@@ -650,7 +659,7 @@ class DBSession(object):
         cursor = self._c.find({'type' : 'pilot',
                                "umgr" : umgr_uid})
 
-        return [doc['_id'] for doc in cursor]
+        return [doc['uid'] for doc in cursor]
 
 
     #--------------------------------------------------------------------------
@@ -670,7 +679,7 @@ class DBSession(object):
             cursor = self._c.find({"type"  : 'unit', 
                                    "umgr"  : umgr_uid})
 
-        return [doc['_id'] for doc in cursor]
+        return [doc['uid'] for doc in cursor]
 
 
     #--------------------------------------------------------------------------
@@ -685,7 +694,7 @@ class DBSession(object):
         cursor = self._c.find({'type'  : 'unit', 
                                "pilot" : pilot_uid})
 
-        return [doc['_id'] for doc in cursor]
+        return [doc['uid'] for doc in cursor]
 
 
     #--------------------------------------------------------------------------
@@ -709,7 +718,7 @@ class DBSession(object):
         for unit in units:
 
             bulk.find  ({'type' : 'unit', 
-                         "_id"  : unit.uid}) \
+                         "uid"  : unit.uid}) \
                 .update({"$set" : {"description"   : unit.description.as_dict(),
                                    "pilot"         : pilot_uid,
                                    "pilot_sandbox" : pilot_sandbox,
@@ -732,7 +741,7 @@ class DBSession(object):
             raise RuntimeError("No active session.")
 
         self._c.update({'type' : 'unit', 
-                        "_id"  : uid},
+                        "uid"  : uid},
                        {"$set" : {"callbackhistory": callback_history}})
 
 
@@ -757,7 +766,7 @@ class DBSession(object):
             ts = timestamp()
 
             unit_json = {
-                "_id":                     unit.uid,
+                "uid":                     unit.uid,
                 "type":                    'unit',
                 "description":             unit.description.as_dict(),
                 "restartable":             unit.description.restartable,

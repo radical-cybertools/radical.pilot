@@ -226,18 +226,6 @@ class PilotManager(rpu.Component):
         return str(self.as_dict())
 
 
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def session(self):
-        """Returns the Pilot Manager's session.
-
-        **Returns:**
-            * a `radical.pilot.Session` object
-        """
-        return self._session
-
-
     #---------------------------------------------------------------------------
     #
     def _state_pull_cb(self):
@@ -250,7 +238,7 @@ class PilotManager(rpu.Component):
         #        a ZMQ pubsub.
         print "state pull cb"
 
-        pilots = self._session._dbs.get_pilots(pmgr_id=self.uid)
+        pilots = self._session._dbs.get_pilots(pmgr_uid=self.uid)
         import pprint
         pprint.pprint(pilots)
         action = False

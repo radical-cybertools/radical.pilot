@@ -36,14 +36,6 @@ class Default(AgentStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    @classmethod
-    def create(cls, cfg):
-
-        return cls(cfg)
-
-
-    # --------------------------------------------------------------------------
-    #
     def initialize_child(self):
 
         self.declare_input (rps.AGENT_STAGING_INPUT_PENDING,
@@ -76,9 +68,9 @@ class Default(AgentStagingInputComponent):
     def work(self, cu):
 
         self.advance(cu, rps.AGENT_STAGING_INPUT, publish=True, push=False)
-        self._log.info('handle %s' % cu['_id'])
+        self._log.info('handle %s' % cu['uid'])
 
-        workdir      = os.path.join(self._cfg['workdir'], '%s' % cu['_id'])
+        workdir      = os.path.join(self._cfg['workdir'], '%s' % cu['uid'])
         gtod         = os.path.join(self._cfg['workdir'], 'gtod')
         staging_area = os.path.join(self._cfg['workdir'], self._cfg['staging_area'])
         staging_ok   = True
@@ -100,17 +92,17 @@ class Default(AgentStagingInputComponent):
 
         # create unit workdir
         rpu.rec_makedir(workdir)
-        self._prof.prof('unit mkdir', uid=cu['_id'])
+        self._prof.prof('unit mkdir', uid=cu['uid'])
 
         try:
             for directive in cu['Agent_Input_Directives']:
 
-                self._prof.prof('Agent input_staging queue', uid=cu['_id'],
+                self._prof.prof('Agent input_staging queue', uid=cu['uid'],
                          msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
 
                 # Perform input staging
                 self._log.info("unit input staging directives %s for cu: %s to %s",
-                               directive, cu['_id'], workdir)
+                               directive, cu['uid'], workdir)
 
                 # Convert the source_url into a SAGA Url object
                 source_url = ru.Url(directive['source'])

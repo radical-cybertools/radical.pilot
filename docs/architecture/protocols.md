@@ -49,6 +49,7 @@ only send 'ttype', 'uid' and 'state'.  At the moment though the channel doubles
 as pipe to the DB, and we usually want to push several other fields  to the DB,
 thus the overload.  This may get separated in the future.
 
+see also code comments in rp/worker/update.py
 
 ### `COMMAND`
 
