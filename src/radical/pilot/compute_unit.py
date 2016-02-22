@@ -121,6 +121,7 @@ class ComputeUnit(object):
             'umgr':            self.umgr.uid,
             '_id':             self.uid,  # for component...
             'uid':             self.uid,
+            'type':            'unit',
             'name':            self.name,
             'state':           self.state,
             'state_history':   self.state_history,

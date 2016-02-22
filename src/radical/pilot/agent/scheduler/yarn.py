@@ -23,9 +23,10 @@ class Yarn(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        AgentSchedulingComponent.__init__(self, cfg)
+        AgentSchedulingComponent.__init__(self, cfg, session)
+
 
     # --------------------------------------------------------------------------
     #

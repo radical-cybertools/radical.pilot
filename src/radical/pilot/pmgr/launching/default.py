@@ -81,7 +81,6 @@ class Default(PMGRLaunchingComponent):
                 ru.get_version([self._root_dir, self._mod_dir])
 
 
-
     # --------------------------------------------------------------------------
     #
     def finalize_child(self):
@@ -137,6 +136,7 @@ class Default(PMGRLaunchingComponent):
     #
     def _get_resource_config(self, pilot):
 
+        pid   = pilot['uid']
         descr = pilot['description']
         res   = pilot['resource']
         rcfg  = self._session.get_resource_config(res)
@@ -351,6 +351,8 @@ class Default(PMGRLaunchingComponent):
 
         self.advance(pilot, rps.PMGR_LAUNCHING, publish=True, push=False)
         self._log.info('handle %s' % pilot['_id'])
+
+        self._dh.fs_block(pilot)
         
         try:
             pid = str(pilot["_id"])
@@ -811,8 +813,9 @@ class Default(PMGRLaunchingComponent):
 
         except Exception as e:
             self.advance(pilot, rps.FAILED, push=False, publish=True)
-            self._log.exception ('pilot launching failed')
+            self._log.exception('pilot launching failed')
 
+        self._log.debug("work done")
 
 # ------------------------------------------------------------------------------
 

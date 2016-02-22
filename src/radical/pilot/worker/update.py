@@ -59,7 +59,7 @@ class Update(rpu.Worker):
         self._state_cache   = dict()            # used to preserve state ordering
 
         self.declare_subscriber('state', 'state_pubsub', self.state_cb)
-        self.declare_idle_cb(self.idle_cb, self._cfg.get('bulk_collection_time'))
+        self.declare_idle_cb(self.idle_cb, timeout=self._cfg.get('bulk_collection_time'))
 
         # all components use the command channel for control messages
         self.declare_publisher ('command', rpc.COMMAND_PUBSUB)
@@ -146,7 +146,7 @@ class Update(rpu.Worker):
         if uid not in self._state_cache:
             self._state_cache[uid] = {'unsent' : list(),
                                       'final'  : False,
-                                      'last'   : rps.AGENT_STAGING_INPUT_PENDING} 
+                                      'last'   : rps.AGENT_STAGING_INPUT_PENDING}
                                       # we get the cu in this state
         cache = self._state_cache[uid]
 
@@ -193,7 +193,7 @@ class Update(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _timed_bulk_execute(self, cinfo):
+    def _timed_bulk_execute(self, cinfo, flush=False):
 
         # is there any bulk to look at?
         if not cinfo['bulk']:
@@ -241,15 +241,59 @@ class Update(rpu.Worker):
     # --------------------------------------------------------------------------
     #
     def state_cb(self, topic, msg):
+        """
+        'msg' is expected to be of the form ['cmd', 'thing'], where 'thing' is
+        an entity to update in the DB, and 'cmd' specifies the mode of update.
 
-        cu = msg
+        'things' are expected to be dicts with a 'type' and '_id' field.  If
+        either one does not exist, an exception is raised.
+
+        Supported types are:
+
+          - session
+          - umgr
+          - unit
+          - pmgr
+          - pilot
+
+        supported 'cmds':
+
+          - insert      : insert can be delayed until bulk is collected/flushed
+          - delete      : delete can be delayed until bulk is collected/flushed
+          - update      : update can be delayed until bulk is collected/flushed
+          - state       : update can be delayed until bulk is collected/flushed
+                          only state and state history are updated
+          - insert_flush: insert is send immediately (possibly in a bulk)
+          - delete_flush: delete is send immediately (possibly in a bulk)
+          - update_flush: update is send immediately (possibly in a bulk)
+          - state_flush : update is send immediately (possibly in a bulk)
+                          only state and state history are updated
+
+        The 'thing' can contains '$set' and '$push' fields, which will then be
+        used as given.  For all other fields, we use the following convention:
+
+          - scalar values: use '$set'
+          - dict   values: use '$set'
+          - list   values: use '$push'
+
+        That implies that all potential 'list' types should be defined in the
+        initial 'thing' insert as such, as (potentially empty) lists.
+
+        For 'cmd' in ['state', 'state_flush'], only the '_id' and 'state' fields
+        of the given 'thing' are used, all other fields are ignored.  If 'state'
+        does not exist, an exception is raised.
+        """
+
+        cmd, thing = msg
 
         # FIXME: we don't have any error recovery -- any failure to update unit
         #        state in the DB will thus result in an exception here and tear
         #        down the pilot.
         #
         # FIXME: at the moment, the update worker only operates on units.
-        #        Should it accept other updates, eg. for pilot states?
+        #        it should also accept other updates, eg. for pilot states.
+        #
+        # FIXME: '_id' -> 'uid' (indexed)
         #
         # got a new request.  Add to bulk (create as needed),
         # and push bulk if time is up.
@@ -259,7 +303,6 @@ class Update(rpu.Worker):
 
         self._prof.prof('get', msg="update unit state to %s" % state, uid=uid)
 
-        cbase       = cu.get('cbase',  '.cu')
         query_dict  = cu.get('query')
         update_dict = cu.get('update')
 
@@ -280,7 +323,7 @@ class Update(rpu.Worker):
             update_dict['$set']['exit_code'] = cu.get('exit_code')
 
         # check if we handled the collection before.  If not, initialize
-        cname = self._session_id + cbase
+        cname = self._session_id
 
         with self._lock:
             if not cname in self._cinfo:

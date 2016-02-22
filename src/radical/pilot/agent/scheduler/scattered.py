@@ -16,7 +16,7 @@ from .base import AgentSchedulingComponent
 #
 class Scattered(AgentSchedulingComponent):
     
-    def __init__(self):
+    def __init__(self, cfg, session):
         raise NotImplementedError('Scattered agent scheduler is not yet implemented')
 
 

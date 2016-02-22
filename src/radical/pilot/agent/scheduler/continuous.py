@@ -18,11 +18,11 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
         self.slots = None
 
-        AgentSchedulingComponent.__init__(self, cfg)
+        AgentSchedulingComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -270,10 +270,10 @@ class Continuous(AgentSchedulingComponent):
         # Convenience alias
         all_slots = self.slots
 
-        # logger.debug("change_slot_states: unit slots: %s", task_slots)
+        # self._log.debug("change_slot_states: unit slots: %s", task_slots)
 
         for slot in task_slots:
-            # logger.debug("change_slot_states: slot content: %s", slot)
+            # self._log.debug("change_slot_states: slot content: %s", slot)
             # Get the node and the core part
             [slot_node, slot_core] = slot.split(':')
             # Find the entry in the the all_slots list

@@ -25,9 +25,9 @@ class Shell(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        AgentExecutingComponent.__init__ (self, cfg)
+        AgentExecutingComponent.__init__ (self, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -94,14 +94,14 @@ class Shell(AgentExecutingComponent):
         # place...
 
         self._task_launcher = rp.agent.LM.create(
-                name   = self._cfg['task_launch_method'],
-                cfg    = self._cfg,
-                logger = self._log)
+                name    = self._cfg['task_launch_method'],
+                cfg     = self._cfg,
+                session = self._session)
 
         self._mpi_launcher = rp.agent.LM.create(
-                name   = self._cfg['mpi_launch_method'],
-                cfg    = self._cfg,
-                logger = self._log)
+                name    = self._cfg['mpi_launch_method'],
+                cfg     = self._cfg,
+                session = self._session)
 
         # TODO: test that this actually works
         # Remove the configured set of environment variables from the

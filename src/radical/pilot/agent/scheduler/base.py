@@ -28,12 +28,12 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
         self._slots = None
         self._lrms  = None
 
-        rpu.Component.__init__(self, rpc.AGENT_SCHEDULING_COMPONENT, cfg)
+        rpu.Component.__init__(self, rpc.AGENT_SCHEDULING_COMPONENT, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -106,7 +106,7 @@ class AgentSchedulingComponent(rpu.Component):
     # This class-method creates the appropriate sub-class for the Scheduler.
     #
     @classmethod
-    def create(cls, cfg):
+    def create(cls, cfg, session):
 
         # Make sure that we are the base-class!
         if cls != AgentSchedulingComponent:
@@ -127,7 +127,7 @@ class AgentSchedulingComponent(rpu.Component):
                 SCHEDULER_NAME_YARN       : Yarn
             }[name]
 
-            impl = impl(cfg)
+            impl = impl(cfg, session)
             return impl
 
         except KeyError:

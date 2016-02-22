@@ -210,7 +210,8 @@ def pilot_FAILED(mongo_p=None, pilot_uid=None, logger=None, msg=None):
         msg = [{"message": msg,              "timestamp": now},
                {"message": rpu.get_rusage(), "timestamp": now}]
 
-        mongo_p.update({"_id": pilot_uid},
+        mongo_p.update({'type' : 'pilot', 
+                        "_id"  : pilot_uid},
             {"$pushAll": {"log"         : msg},
              "$push"   : {"statehistory": {"state"     : rp.FAILED,
                                            "timestamp" : now}},
@@ -254,7 +255,8 @@ def pilot_CANCELED(mongo_p=None, pilot_uid=None, logger=None, msg=None):
         msg = [{"message": msg,              "timestamp": now},
                {"message": rpu.get_rusage(), "timestamp": now}]
 
-        mongo_p.update({"_id": pilot_uid},
+        mongo_p.update({'type' : 'pilot', 
+                        "_id": pilot_uid},
             {"$pushAll": {"log"         : msg},
              "$push"   : {"statehistory": {"state"     : rp.CANCELED,
                                            "timestamp" : now}},
@@ -293,7 +295,8 @@ def pilot_DONE(mongo_p=None, pilot_uid=None, logger=None, msg=None):
         msg = [{"message": "pilot done",     "timestamp": now},
                {"message": rpu.get_rusage(), "timestamp": now}]
 
-        mongo_p.update({"_id": pilot_uid},
+        mongo_p.update({'type' : 'pilot', 
+                        "_id": pilot_uid},
             {"$pushAll": {"log"         : msg},
              "$push"   : {"statehistory": {"state"    : rp.DONE,
                                            "timestamp": now}},
@@ -394,9 +397,12 @@ def bootstrap_3():
     print "startup agent %s : %s" % (agent_name, agent_cfg)
 
     cfg      = ru.read_json_str(agent_cfg)
+    sid      = cfg['session_id']
     pilot_id = cfg['pilot_id']
     cfg['owner']      = pilot_id
     cfg['agent_name'] = agent_name
+
+    session  = rp.Session(uid=sid) 
 
     # set up a logger and profiler
     prof = rpu.Profiler ('%s.bootstrap_3' % agent_name)
@@ -417,7 +423,7 @@ def bootstrap_3():
     print "Agent config (%s):\n%s\n\n" % (agent_cfg, pprint.pformat(cfg))
 
     # quickly set up a mongodb handle so that we can report errors.
-    # FIXME: signal handlers need mongo_p, but we won't have that until later
+    # FIXME: signal handlers need mongo_c, but we won't have that until later
     if agent_name == 'agent_0':
 
         # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold the
@@ -430,9 +436,9 @@ def bootstrap_3():
             cfg['mongodb_url'] = str(dburl)
 
         _, mongo_db, _, _, _  = ru.mongodb_connect(cfg['mongodb_url'])
-        mongo_p = mongo_db["%s.p" % cfg['session_id']]
+        mongo_c = mongo_db["%s" % session.uid]
 
-        if not mongo_p:
+        if not mongo_c:
             raise RuntimeError('could not get a mongodb handle')
 
 
@@ -446,7 +452,7 @@ def bootstrap_3():
             lrms = None
         if bridges:
             for b in bridges:
-                b.stop()
+                bridges[b]['handle'].stop()
             bridges = dict()
         if agent:
             agent.stop()
@@ -498,10 +504,9 @@ def bootstrap_3():
             # The LRMS which will give us the set of agent_nodes to use for
             # sub-agent startup.  Add the remaining LRMS information to the
             # config, for the benefit of the scheduler).
-
-            lrms = rp.agent.RM.create(name   = cfg['lrms'],
-                             cfg    = cfg,
-                             logger = log)
+            lrms = rp.agent.RM.create(name    = cfg['lrms'],
+                                      cfg     = cfg,
+                                      session = session)
             cfg['lrms_info'] = lrms.lrms_info
 
 
@@ -509,7 +514,7 @@ def bootstrap_3():
             # has to do so before creating the Agent Worker instance, as that is
             # using the bridges already for the startup barrier.
             bridge_list = cfg['agent_layout']['agent_0'].get('bridges', [])
-            bridges = rpu.Component.start_bridges(bridge_list, log)
+            bridges = rpu.Component.start_bridges(bridge_list, session=session)
 
             # FIXME: make sure all communication channels are in place.  This could
             # be replaced with a proper barrier, but not sure if that is worth it...
@@ -529,13 +534,14 @@ def bootstrap_3():
 
             # Store some runtime information into the session
             if 'version_info' in lrms.lm_info:
-                mongo_p.update({"_id": pilot_id},
-                               {"$set": {"lm_info": lrms.lm_info['version_info']}})
+                mongo_c.update({'type' : 'pilot', 
+                                "_id"  : pilot_id},
+                               {"$set" : {"lm_info": lrms.lm_info['version_info']}})
 
         # we now have correct bridge addresses added to the agent_0.cfg, and all
         # other agents will have picked that up from their config files -- we
         # can start the agent and all its components!
-        agent = rp.worker.Agent(cfg)
+        agent = rp.worker.Agent(cfg, session)
         agent.start()
 
         log.debug('waiting for agent %s to join' % agent_name)

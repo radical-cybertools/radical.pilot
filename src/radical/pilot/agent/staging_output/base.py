@@ -21,9 +21,9 @@ class AgentStagingOutputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        rpu.Component.__init__(self, rpc.AGENT_STAGING_OUTPUT_COMPONENT, cfg)
+        rpu.Component.__init__(self, rpc.AGENT_STAGING_OUTPUT_COMPONENT, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -31,7 +31,7 @@ class AgentStagingOutputComponent(rpu.Component):
     # This class-method creates the appropriate sub-class for the Stager
     #
     @classmethod
-    def create(cls, cfg):
+    def create(cls, cfg, session):
 
         name = cfg.get('agent_staging_output_component', RP_ASI_NAME_DEFAULT)
 
@@ -46,7 +46,7 @@ class AgentStagingOutputComponent(rpu.Component):
                 RP_ASI_NAME_DEFAULT: Default
             }[name]
 
-            impl = impl(cfg)
+            impl = impl(cfg, session)
             return impl
 
         except KeyError:

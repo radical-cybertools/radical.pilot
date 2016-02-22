@@ -7,9 +7,9 @@ import os
 import time
 import glob
 import copy
-import saga
 import threading
 import radical.utils as ru
+import saga          as rs
 
 from .  import utils     as rpu
 from .  import states    as rps
@@ -19,12 +19,12 @@ from .  import types     as rpt
 from .unit_manager    import UnitManager
 from .pilot_manager   import PilotManager
 from .resource_config import ResourceConfig
-from .db              import Session as dbSession
+from .db              import DBSession
 
 
 # ------------------------------------------------------------------------------
 #
-class Session (saga.Session):
+class Session (rs.Session):
     """
     A Session encapsulates a RADICAL-Pilot instance and is the *root* object
     for all other RADICAL-Pilot objects. 
@@ -37,15 +37,18 @@ class Session (saga.Session):
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, database_url=None):
+    def __init__ (self, dburl=None, uid=None, database_url=None, connect=True):
         """
         Creates a new session.  A new Session instance is created and 
         stored in the database.
 
         **Arguments:**
-            * **database_url** (`string`): The MongoDB URL.  If none is given,
+            * **dburl** (`string`): The MongoDB URL.  If none is given,
               RP uses the environment variable RADICAL_PILOT_DBURL.  If that is
               not set, an error will be raises.
+
+            * **uid** (`string`): Create a session with this UID.  
+              *Only use this when you know what you are doing!*
 
         **Returns:**
             * A new Session instance.
@@ -58,7 +61,7 @@ class Session (saga.Session):
         self._log = ru.get_logger('radical.pilot')
 
         # init the base class inits
-        saga.Session.__init__ (self)
+        rs.Session.__init__ (self)
         self._dh        = ru.DebugHelper()
         self._valid     = False
         self._terminate = threading.Event()
@@ -80,49 +83,66 @@ class Session (saga.Session):
         # The resource configuration dictionary associated with the session.
         self._resource_configs = {}
 
-        if not database_url:
-            database_url = os.getenv ("RADICAL_PILOT_DBURL", None)
+        if database_url and not dburl:
+            self._log.warning('"database_url" for session is deprectaed, use dburl')
+            dburl = database_url
 
-        if not database_url:
+        if not dburl:
+            dburl = os.getenv ("RADICAL_PILOT_DBURL", None)
+
+        if not dburl and not uid:
+            # we forgive missing dburl on reconnect, but not otherwise
             raise RuntimeError("no database URL (set RADICAL_PILOT_DBURL)")  
 
-        dburl = ru.Url(database_url)
+        self._dburl = None
+        if dburl:
+            self._dburl = ru.Url(dburl)
 
-        # if the database url contains a path element, we interpret that as
-        # database name (without the leading slash)
-        if  not dburl.path         or \
-            dburl.path[0]   != '/' or \
-            len(dburl.path) <=  1  :
-            raise ValueError("incomplete DBURL -- missing database name!")
+            # if the database url contains a path element, we interpret that as
+            # database name (without the leading slash)
+            if  not self._dburl.path         or \
+                self._dburl.path[0]   != '/' or \
+                len(self._dburl.path) <=  1  :
+                if not uid:
+                    # we fake reconnnect if no DB is available -- but otherwise we
+                    # really really need a db connection...
+                    raise ValueError("incomplete DBURL '%s' no db name!" % self._dburl)
 
-        self._log.info("using database %s" % dburl)
+            self._log.info("using database %s" % self._dburl)
 
-        # ----------------------------------------------------------------------
-        # create new session
-        self._dbs       = None
-        self._uid       = None
-        self._connected = None
-        self._dburl     = None
+
+        # create database handle
+        self._dbs         = None
+        self._uid         = None
+        self._reconnected = False
 
         try:
-            uid = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
-            ru.reset_id_counters(prefix=['pmgr', 'umgr', 'pilot', 'unit', 'unit.%(counter)06d'])
+            if uid:
+                self._uid         = uid
+                self._reconnected = True
+            else:
+                # generate new uid
+                self._uid = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
+                ru.reset_id_counters(prefix=['pmgr', 'umgr', 'pilot', 'unit', 'unit.%(counter)06d'])
+
 
             # initialize profiling
-            self.prof = rpu.Profiler('%s' % uid)
-            self.prof.prof('start session', uid=uid)
+            self.prof = rpu.Profiler('%s' % self._uid)
 
-            self._log.report.info ('<<new session: ')
-            self._log.report.plain('[%s]' % uid)
-            self._log.report.info ('<<database   : ')
-            self._log.report.plain('[%s]' % dburl)
+            if self._reconnected:
+                self.prof.prof('reconnect session', uid=self._uid)
 
-            self._dbs = dbSession(sid   = uid,
-                                  dburl = dburl)
+            else:
+                self.prof.prof('start session', uid=self._uid)
+                self._log.report.info ('<<new session: ')
+                self._log.report.plain('[%s]' % self._uid)
+                self._log.report.info ('<<database   : ')
+                self._log.report.plain('[%s]' % self._dburl)
 
-            # only now the session should have an uid
-            self._dburl = self._dbs._dburl
-            self._uid   = uid
+            if self._dburl:
+                if connect:
+                    self._dbs = DBSession(sid   = self._uid,
+                                          dburl = self._dburl)
 
             # from here on we should be able to close the session again
             self._valid = True
@@ -152,78 +172,99 @@ class Session (saga.Session):
                 self._log.info("Load resource configurations for %s" % rc)
                 self._resource_configs[rc] = rcs[rc].as_dict() 
 
-        user_cfgs     = "%s/.radical/pilot/configs/resource_*.json" % os.environ.get ('HOME')
-        config_files  = glob.glob(user_cfgs)
+        user_cfgs    = "%s/.radical/pilot/configs/resource_*.json" % os.environ.get ('HOME')
+        config_files = glob.glob(user_cfgs)
 
         for config_file in config_files:
 
-            try :
+            try:
                 rcs = ResourceConfig.from_file(config_file)
-            except Exception as e :
+            except Exception as e:
                 self._log.error ("skip config file %s: %s" % (config_file, e))
                 continue
 
             for rc in rcs:
                 self._log.info("Load resource configurations for %s" % rc)
 
-                if  rc in self._resource_configs :
+                if rc in self._resource_configs:
                     # config exists -- merge user config into it
                     ru.dict_merge (self._resource_configs[rc],
                                    rcs[rc].as_dict(),
                                    policy='overwrite')
-                else :
+                else:
                     # new config -- add as is
                     self._resource_configs[rc] = rcs[rc].as_dict() 
 
         default_aliases = "%s/configs/resource_aliases.json" % module_path
-        self._resource_aliases = ru.read_json_str (default_aliases)['aliases']
+        self._resource_aliases = ru.read_json_str(default_aliases)['aliases']
 
         self.prof.prof('configs parsed', uid=self._uid)
 
-        if os.environ.get('RADICAL_PILOT_RECORD_SESSION'):
-            self._rec = "%s/%s" % (_rec, self._uid)
-            os.system('mkdir -p %s' % self._rec)
-            ru.write_json({'dburl' : str(self._dburl)}, "%s/session.json" % self._rec)
-            self._log.info("recording session in %s" % self._rec)
-        else:
-            self._rec = None
+        self._rec = os.environ.get('RADICAL_PILOT_RECORD_SESSION')
+        if self._rec:
+            # NOTE: Session recording cannot handle reconnected sessions, yet.
+            #       We thus turn it off here with a warning
+            if self._reconnected:
+                self._log.warn("no session recording on reconnected session")
+
+            else:
+                # append session ID to recording path
+                self._rec = "%s/%s" % (self._rec, self._uid)
+
+                # create recording path and record session
+                os.system('mkdir -p %s' % self._rec)
+                ru.write_json({'dburl': str(self._dburl)}, 
+                              "%s/session.json" % self._rec)
+                self._log.info("recording session in %s" % self._rec)
+
 
         # create communication bridges for umgr and pmgr instances to use
+        # NOTE:  sessions can be reconnected in a different host context,
+        #        specifically in the agent.  In that case the bridge
+        #        addresses would be useless.  We thus record the bridge
+        #        addresses in a kind of namespace, refering to 'client' as
+        #        the original session (which lives in the client module), 
+        #        and to pilot level bridges via the pilot uid.  
+        # FIXME: For now, we don't use the DB, but only create bridges in
+        #        new sessions.
         try:
-
             # load the session config
             self._cfg = ru.read_json("%s/configs/session_%s.json" \
                     % (os.path.dirname(__file__),
                        os.environ.get('RADICAL_PILOT_SESSION_CONFIG', 'default')))
             bridges       = self._cfg.get('bridges', [])
-            self._bridges = rpu.Component.start_bridges(bridges)
 
-            # get bridge addresses from our bridges, and append them to the
-            # config, so that we can pass those addresses to the umgr and pmgr 
-            # components
-            self._bridge_addresses = dict()
+            # new session start bridges, reconnected sessions get bridge
+            # addresses from the DB
+            if not self._reconnected:
+                self._bridges = rpu.Component.start_bridges(bridges, session=self)
 
-            for b in self._bridges:
+                # get bridge addresses from our bridges, and append them to the
+                # config, so that we can pass those addresses to the umgr and pmgr 
+                # components
+                self._bridge_addresses = dict()
 
-                # to avoid confusion with component input and output, we call bridge
-                # input a 'sink', and a bridge output a 'source' (from the component
-                # perspective)
-                sink   = ru.Url(self._bridges[b]['in'])
-                source = ru.Url(self._bridges[b]['out'])
+                for b in self._bridges:
 
-                # for the unit manager, we assume all bridges to be local, so we
-                # really are only interested in the ports for now...
-                sink.host   = '127.0.0.1'
-                source.host = '127.0.0.1'
+                    # to avoid confusion with component input and output, we call bridge
+                    # input a 'sink', and a bridge output a 'source' (from the component
+                    # perspective)
+                    sink   = ru.Url(self._bridges[b]['in'])
+                    source = ru.Url(self._bridges[b]['out'])
 
-                # keep the resultin URLs as strings, to be used as addresses
-                self._bridge_addresses[b] = dict()
-                self._bridge_addresses[b]['sink']   = str(sink)
-                self._bridge_addresses[b]['source'] = str(source)
+                    # for the unit manager, we assume all bridges to be local, so we
+                    # really are only interested in the ports for now...
+                    sink.host   = '127.0.0.1'
+                    source.host = '127.0.0.1'
 
-            # FIXME: make sure all communication channels are in place.  This could
-            # be replaced with a proper barrier, but not sure if that is worth it...
-            time.sleep(1)
+                    # keep the resultin URLs as strings, to be used as addresses
+                    self._bridge_addresses[b] = dict()
+                    self._bridge_addresses[b]['sink']   = str(sink)
+                    self._bridge_addresses[b]['source'] = str(source)
+
+                # FIXME: make sure all communication channels are in place.  This could
+                # be replaced with a proper barrier, but not sure if that is worth it...
+                time.sleep(1)
 
         except Exception as e:
             self._log.report.error(">>err\n")
@@ -232,38 +273,42 @@ class Session (saga.Session):
 
 
         # create update and heartbeat worker components
+        #
+        # NOTE: reconnected sessions will not start components
         try:
-            components = self._cfg.get('components', [])
 
-            from .. import pilot as rp
+            if not self._reconnected:
+                components = self._cfg.get('components', [])
 
-            # we also need a map from component names to class types
-            typemap = {
-                rpc.UPDATE_WORKER    : rp.worker.Update,
-                rpc.HEARTBEAT_WORKER : rp.worker.Heartbeat
-                }
+                from .. import pilot as rp
 
-            # get addresses from the bridges, and append them to the
-            # config, so that we can pass those addresses to the components
-            self._cfg['bridge_addresses'] = copy.deepcopy(self._bridge_addresses)
+                # we also need a map from component names to class types
+                typemap = {
+                    rpc.UPDATE_WORKER    : rp.worker.Update,
+                    rpc.HEARTBEAT_WORKER : rp.worker.Heartbeat
+                    }
 
-            # give some more information to the workers
-            self._cfg['owner']            = self.uid
-            self._cfg['session_id']       = self.uid
-            self._cfg['mongodb_url']      = self.dburl
+                # get addresses from the bridges, and append them to the
+                # config, so that we can pass those addresses to the components
+                self._cfg['bridge_addresses'] = copy.deepcopy(self._bridge_addresses)
 
-            # the bridges are known, we can start to connect the components to them
-            self._components = rpu.Component.start_components(components,
-                    typemap, self._cfg)
+                # give some more information to the workers
+                self._cfg['owner']       = self._uid
+                self._cfg['session_id']  = self._uid
+                self._cfg['mongodb_url'] = self._dburl
+
+                # the bridges are known, we can start to connect the components to them
+                self._components = rpu.Component.start_components(components,
+                        typemap, cfg=self._cfg, session=self)
 
         except Exception as e:
             self._log.report.error(">>err\n")
             self._log.exception('session create failed')
             raise RuntimeError("Couldn't create worker components): %s" % e)  
 
-
+        # FIXME: make sure the above code results in a usable session on
+        #        reconnect
         self._log.report.ok('>>ok\n')
-
 
 
     #---------------------------------------------------------------------------
@@ -294,6 +339,30 @@ class Session (saga.Session):
 
     #---------------------------------------------------------------------------
     #
+    def start_bridges(self):
+
+        raise NotImplementedError('not implemented')
+
+
+    #---------------------------------------------------------------------------
+    #
+    def use_bridges(self):
+
+        raise NotImplementedError('not implemented')
+
+
+    #---------------------------------------------------------------------------
+    #
+    def start_components(self):
+
+        if not self._bridge_addresses:
+            raise RuntimeError("can't start components w/o bridges")
+
+        raise NotImplementedError('not implemented')
+
+
+    #---------------------------------------------------------------------------
+    #
     def close(self, cleanup=None, terminate=None, delete=None):
         """Closes the session.
 
@@ -315,8 +384,6 @@ class Session (saga.Session):
         self._log.report.info('closing session %s' % self._uid)
         self._log.debug("session %s closing" % (str(self._uid)))
         self.prof.prof("close", uid=self._uid)
-
-        uid = self._uid
 
         # set defaults
         if cleanup   == None: cleanup   = True
@@ -353,10 +420,12 @@ class Session (saga.Session):
 
         if  cleanup :
             self.prof.prof("cleaning", uid=self._uid)
-            self._dbs.delete()
+            if self._dbs:
+                self._dbs.delete()
             self.prof.prof("cleaned", uid=self._uid)
         else:
-            self._dbs.close()
+            if self._dbs:
+                self._dbs.close()
 
         self._log.debug("session %s closed" % (str(self._uid)))
         self.prof.prof("closed", uid=self._uid)
@@ -377,13 +446,14 @@ class Session (saga.Session):
         self._is_valid()
 
         object_dict = {
-            "uid"           : self._uid,
-            "created"       : self._dbs.created,
-            "connected"     : self._dbs.connected,
-            "closed"        : self._dbs.closed,
-            "database_url"  : str(self._dbs.dburl)
+            "uid"       : self._uid,
+            "created"   : self.created,
+            "connected" : self.connected,
+            "closed"    : self.closed,
+            "dburl"     : str(self._dburl)
         }
         return object_dict
+
 
     #---------------------------------------------------------------------------
     #
@@ -392,37 +462,41 @@ class Session (saga.Session):
         """
         return str(self.as_dict())
 
+
     #---------------------------------------------------------------------------
     #
     @property
     def uid(self):
         return self._uid
 
+
     #---------------------------------------------------------------------------
     #
     @property
     def dburl(self):
         self._is_valid()
-        return self._dbs.dburl
+        return self._dburl
+
 
     #---------------------------------------------------------------------------
     #
     def get_db(self):
 
         self._is_valid()
-        return self._dbs.get_db()
 
-    #---------------------------------------------------------------------------
-    #
-    def get_dbs(self):
-        return self._dbs
+        if self._dbs: return self._dbs.get_db()
+        else        : return None
+
+
+    
     #---------------------------------------------------------------------------
     #
     @property
     def created(self):
         """Returns the UTC date and time the session was created.
         """
-        return self._dbs.created
+        if self._dbs: return self._dbs.created
+        else        : return None
 
 
     #---------------------------------------------------------------------------
@@ -432,7 +506,8 @@ class Session (saga.Session):
         """Returns the most recent UTC date and time the session was
         reconnected to.
         """
-        return self._dbs.connected 
+        if self._dbs: return self._dbs.connected
+        else        : return None
 
 
     #---------------------------------------------------------------------------
@@ -442,23 +517,48 @@ class Session (saga.Session):
         """
         Returns the time of closing
         """
-        return self._dbs.closed 
+        if self._dbs: return self._dbs.closed
+        else        : return None
+
+
+    #---------------------------------------------------------------------------
+    #
+    def inject_metadata(self, metadata):
+        """
+        Insert (experiment) metadata into an active session
+        RP stack version info always get added.
+        """
+
+        if not isinstance(metadata, dict):
+            raise Exception("Session metadata should be a dict!")
+
+        from .utils import version_detail as rp_version_detail
+
+        # Always record the radical software stack
+        metadata['radical_stack'] = {'rp': rp_version_detail,
+                                     'rs': rs.version_detail,
+                                     'ru': ru.version_detail}
+
+        result = self._dbs._c.update({'type' : 'session', 
+                                      "_id"  : session._uid},
+                                     {"$set" : {"metadata": metadata}})
 
 
     #---------------------------------------------------------------------------
     #
     def list_pilot_managers(self):
-        """Lists the unique identifiers of all :class:`radical.pilot.PilotManager` 
+        """
+        Lists the unique identifiers of all :class:`radical.pilot.PilotManager` 
         instances associated with this session.
 
         **Example**::
 
-            s = radical.pilot.Session(database_url=DBURL)
+            s = radical.pilot.Session(dburl=DBURL)
             for pm_uid in s.list_pilot_managers():
                 pm = radical.pilot.PilotManager(session=s, pilot_manager_uid=pm_uid) 
 
         **Returns:**
-            * A list of :class:`radical.pilot.PilotManager` uids (`list` oif strings`).
+            * A list of :class:`radical.pilot.PilotManager` uids (`list` of strings`).
 
         **Raises:**
             * :class:`radical.pilot.IncorrectState` if the session is closed
@@ -519,7 +619,7 @@ class Session (saga.Session):
 
         **Example**::
 
-            s = radical.pilot.Session(database_url=DBURL)
+            s = radical.pilot.Session(dburl=DBURL)
             for pm_uid in s.list_unit_managers():
                 pm = radical.pilot.PilotManager(session=s, pilot_manager_uid=pm_uid) 
 
@@ -648,12 +748,12 @@ class Session (saga.Session):
     # -------------------------------------------------------------------------
     #
     def fetch_profiles (self, tgt=None):
-        return rpu.fetch_profiles (self._uid, dburl=self._dburl, tgt=tgt, session=self)
+        return rpu.fetch_profiles (self._uid, dburl=self.dburl, tgt=tgt, session=self)
 
 
     # -------------------------------------------------------------------------
     #
     def fetch_json (self, tgt=None):
-        return rpu.fetch_json (self._uid, dburl=self._dburl, tgt=tgt)
+        return rpu.fetch_json (self._uid, dburl=self.dburl, tgt=tgt)
 
 

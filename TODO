@@ -41,4 +41,14 @@
     Same holds for other component implementations.
   - The component base.create calls should pick up all component implmentations
     automatically, instead of having a static type map
+  - Bridges should be created by session, both on client and on agent side.
+    The bridge addresses should get stored in DB, and  retrieved from DB on session
+    reconnect (if not available otherwise: not all nodes will be able to connect
+               to the DB).
+  - use session as component and bridge container, and move start_bridges etc.
+    to there.
+  - on the component, add 'declare_thread' for actiions which are needed more
+    frequent than idle callbacks, and also need some guarantees on the
+    frequency.  Prominent example: execution watcher threads.  Handle the
+    'work()' loop as just one of those threads (the default one).
 

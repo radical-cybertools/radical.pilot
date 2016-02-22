@@ -125,7 +125,7 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, ctype, cfg, session=None):
+    def __init__(self, ctype, cfg, session):
         """
         This constructor MUST be called by inheriting classes.
 
@@ -156,15 +156,17 @@ class Component(mp.Process):
         self._idlers        = list()      # idle_callback registry
         self._terminate     = mt.Event()  # signal for thread termination
         self._finalized     = False       # finalization guard
-        self._is_parent     = None        # guard initialize/initialize_child
+        self._is_parent     = True        # guard initialize/initialize_child
         self._exit_on_error = True        # FIXME: make configurable
         self._cb_lock       = mt.Lock()   # guard threaded callback invokations
         self._clone_cb      = None        # allocate resources on cloning units
         self._drop_cb       = None        # free resources on dropping clones
+        self._dh            = ru.DebugHelper(name=self.cname)
 
-        # use 'name' for one log per 'name', cname for one log per component instance
-        log_name = self._cname
-        log_tgt  = self._cname + ".log"
+
+        # use 'name' for one log per 'name', 'cname' for one log per component instance
+        log_name  = self._cname
+        log_tgt   = self._cname + ".log"
         self._log = ru.get_logger(log_name, log_tgt, self._debug)
         self._log.info('creating %s' % self._cname)
 
@@ -197,9 +199,10 @@ class Component(mp.Process):
         return self._childname
 
 
+    # --------------------------------------------------------------------------
     #
     @staticmethod
-    def start_bridges(bridges, logger=None):
+    def start_bridges(bridges, session):
         """
         Helper method to start a given list of bridge names.  The type of bridge
         (queue or pubsub) is derived from the name.  
@@ -213,10 +216,7 @@ class Component(mp.Process):
           'alive'  : boolean flag (always True at this point)
         """
 
-        if logger:
-            log = logger
-        else:
-            log = ru.get_logger('radical.pilot')
+        log = session._log
 
         log.debug('start_bridges')
 
@@ -251,7 +251,7 @@ class Component(mp.Process):
     # --------------------------------------------------------------------------
     #
     @staticmethod
-    def start_components(components, typemap, cfg, session=None, logger=None):
+    def start_components(components, typemap, cfg, session):
         """
         This method expects a 'components' dict of the form:
           {
@@ -279,14 +279,12 @@ class Component(mp.Process):
         of components.
         """
 
-        if logger: log = logger
-        else     : log = ru.get_logger('radical.pilot')
+        log = session._log
 
         log.debug("start_components")
-        import pprint
-        log.debug('config: %s', pprint.pformat(cfg))
-        pprint.pprint(cfg)
-        pprint.pprint(typemap)
+      # log.debug('config: %s', pprint.pformat(cfg))
+      # pprint.pprint(cfg)
+      # pprint.pprint(typemap)
 
         # FIXME: alive should be in the component, which reduces this dict to
         #        a list of handles
@@ -372,11 +370,6 @@ class Component(mp.Process):
                 run()
 
         """
-
-        if self._is_parent != None:
-            raise RuntimeError('start() can be called only once')
-
-        self._is_parent = True # run will reset this for the child
 
         # make sure we don't keep any profile entries buffered across fork
         self._prof.flush()
@@ -557,8 +550,6 @@ class Component(mp.Process):
                     % (state, worker.__name__))
 
 
-
-
     # --------------------------------------------------------------------------
     #
     def declare_output(self, states, output=None):
@@ -604,16 +595,46 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def declare_idle_cb(self, cb, timeout=0.0):
+    def declare_idle_cb(self, cb, cb_data=None, timeout=None):
+        """
+        Idle callbacks are invoked at regular intervals from the child's main
+        loop.  They are guaranteed to *not* be called more frequently than
+        'timeout' seconds, no promise is made on a minimal call frequency.
+
+        The intent for these callbacks is to use idle times, ie. times where no
+        actual work is performed in self.work().  For anything else, and
+        sepcifically for high throughput concurrency, the component should use
+        its own threading.
+        """
 
         if None == timeout:
-            timeout = 0.0
+            timeout = 0.1
         timeout = float(timeout)
 
-        self._idlers.append({
-            'cb'      : cb,       # call this whenever we are idle
-            'last'    : 0.0,      # was never called before
-            'timeout' : timeout}) # call no more often than this many seconds
+        # create a separate thread per idle cb
+        # ------------------------------------------------------------------
+        def _idler(callback, callback_data, to):
+            name = "[%s : %s : %s : %s]" % (self.cname, mt.currentThread().name, 
+                    callback, mt.currentThread().ident)
+            try:
+                while not self._terminate.is_set():
+                    with self._cb_lock:
+                        if callback_data != None:
+                            callback(cb_data=callback_data)
+                        else:
+                            callback()
+                    time.sleep(to)
+            except Exception as e:
+                self._log.exception("idler failed %s" % name)
+                if self._exit_on_error:
+                    raise
+        # ----------------------------------------------------------------------
+
+        # create a idler thread
+        t = mt.Thread(target=_idler, args=[cb,cb_data,timeout], 
+                      name="%s.idler" % self.cname)
+        t.start()
+        self._idlers.append(t)
 
         self._log.debug('declared idler     : %s : %s' % (cb.__name__, timeout))
 
@@ -668,6 +689,8 @@ class Component(mp.Process):
 
         # ----------------------------------------------------------------------
         def _subscriber(q, callback, callback_data):
+            name = "[%s : %s : %s : %s]" % (self.cname, mt.currentThread().name, 
+                    callback, mt.currentThread().ident)
             try:
                 while not self._terminate.is_set():
                     topic, msg = q.get_nowait(1000) # timout in ms
@@ -678,7 +701,7 @@ class Component(mp.Process):
                             else:
                                 callback (topic=topic, msg=msg)
             except Exception as e:
-                self._log.exception("subscriber failed")
+                self._log.exception("subscriber failed %s" % name)
                 if self._exit_on_error:
                     raise
         # ----------------------------------------------------------------------
@@ -731,8 +754,17 @@ class Component(mp.Process):
     def _subscriber_check_cb(self):
 
         for t in self._subscribers:
-            if not t.isAlive():
-                raise RuntimeError('subscriber %s died' % t.name)
+            if not t.is_alive():
+                self._log.error('subscriber %s died', t.name)
+                if self._exit_on_error:
+                    raise RuntimeError('subscriber %s died' % t.name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _profile_flush_cb(self):
+
+        self._prof.flush()
 
 
     # --------------------------------------------------------------------------
@@ -747,8 +779,20 @@ class Component(mp.Process):
         attempt ar getting a unit is up.
         """
 
+        # set some child-provate state
         self._is_parent = False
         self._cname     = self.childname
+        self._dh        = ru.DebugHelper(name=self.cname)
+
+        # other state we don't want to carry over the fork:
+        self._inputs        = list()      # queues to get units from
+        self._outputs       = dict()      # queues to send units to
+        self._publishers    = dict()      # channels to send notifications to
+        self._subscribers   = list()      # callbacks for received notifications
+        self._workers       = dict()      # where units get worked upon
+        self._idlers        = list()      # idle_callback registry
+        self._clone_cb      = None        # allocate resources on cloning units
+        self._drop_cb       = None        # free resources on dropping clones
 
         # parent can call terminate, which we translate here into sys.exit(),
         # which is then excepted in the run loop below for an orderly shutdown.
@@ -759,10 +803,6 @@ class Component(mp.Process):
         # reset other signal handlers to their default
         signal.signal(signal.SIGINT,  signal.SIG_DFL)
         signal.signal(signal.SIGALRM, signal.SIG_DFL)
-
-        # create debug helper for nicer stack traces
-        dh = ru.DebugHelper()
-
 
         # set process name
         try:
@@ -785,8 +825,11 @@ class Component(mp.Process):
             self.initialize_child()
             self._prof.prof('initialized')
 
-            # register own idle callback to watch the subscriber threads (1/sec)
-            self.declare_idle_cb(self._subscriber_check_cb, 1.0)
+            # register own idle callbacks to 
+            #  - watch the subscriber threads (1/sec)
+            #  - flush profiles to the FS (1/sec)
+            self.declare_idle_cb(self._subscriber_check_cb, timeout=1.0)
+            self.declare_idle_cb(self._profile_flush_cb, timeout=60.0)
 
             # perform a sanity check: for each declared input state, we expect
             # a corresponding work method to be declared, too.
@@ -872,29 +915,6 @@ class Component(mp.Process):
 
                             if self._exit_on_error:
                                 raise
-
-
-                # if nothing happened, we can call the idle callbacks.  Don't
-                # call them more frequently than what they specified as sleep
-                # time though!
-                if not active:
-
-                    now = time.time()
-
-                    for idler in self._idlers:
-
-                        if (now - idler['last']) > idler['timeout']:
-
-                            try:
-                                with self._cb_lock:
-                                    if idler['cb']():
-                                        # something happened!
-                                        idler['last'] = now
-                                        active = True
-                            except Exception as e:
-                                self._log.exception('idle cb failed')
-                                if self._exit_on_error:
-                                    raise
 
                 if not active:
                     # FIXME: make configurable

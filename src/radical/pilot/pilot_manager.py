@@ -55,6 +55,18 @@ class PilotManager(rpu.Component):
                                        scheduler=radical.pilot.SCHED_ROUND_ROBIN)
         um.add_pilot(p1)
         um.submit_units(compute_units)
+
+
+    The pilot manager can issue notification on pilot state changes.  It has two
+    sources for state information notifications itself:
+
+      * the pmgr pulls mongodb for state changes writte by the agent
+      * the pmgr listens to the state pubsub for pilot state changes
+
+    Whenever state notification arrives, any callback registered for that
+    notification is fired.  
+    
+    NOTE: State notifications can arrive out of order wrt the pilot state model!
     """
 
     # --------------------------------------------------------------------------
@@ -71,14 +83,17 @@ class PilotManager(rpu.Component):
             * A new `PilotManager` object [:class:`radical.pilot.PilotManager`].
         """
 
-        self._cfg        = None
-        self._components = None
-        self._pilots     = dict()
-        self._units      = dict()
-        self._callbacks  = dict()
-        self._cb_lock    = threading.RLock()
-        self._closed     = False
-        self._rec_id     = 0       # used for session recording
+        self._cfg         = None
+        self._components  = None
+        self._pilots      = dict()
+        self._pilots_lock = threading.RLock()
+        self._callbacks   = dict()
+        self._cb_lock     = threading.RLock()
+        self._closed      = False
+        self._rec_id      = 0       # used for session recording
+
+        for m in rpt.PMGR_METRICS:
+            self._callbacks[m] = list()
 
         # get an ID and initialize logging and profiling
         # FIXME: log and prof are already provided by the base class -- but it
@@ -90,7 +105,7 @@ class PilotManager(rpu.Component):
 
         session.prof.prof('create pmgr', uid=self._uid)
 
-        self._log.report.info('<<create unit manager')
+        self._log.report.info('<<create pilot manager')
 
         try:
             self._cfg = ru.read_json("%s/configs/pmgr_%s.json" \
@@ -98,8 +113,8 @@ class PilotManager(rpu.Component):
                        os.environ.get('RADICAL_PILOT_PMGR_CONFIG', 'default')))
 
             self._cfg['session_id']  = session.uid
-            self._cfg['mongodb_url'] = session._dburl
-            self._cfg['owner']       = self._uid
+            self._cfg['mongodb_url'] = session.dburl
+            self._cfg['owner']       = self.uid
 
             components = self._cfg.get('components', [])
 
@@ -130,6 +145,14 @@ class PilotManager(rpu.Component):
             # launching component.
             self.declare_output(rps.PMGR_LAUNCHING_PENDING, rpc.PMGR_LAUNCHING_QUEUE)
 
+            # FIXME: idle callbacks need to be in the component child to get activated.
+            # register the state notification pull cb
+            # FIXME: we may want to have the frequency configurable
+            self.declare_idle_cb(self._state_pull_cb, timeout=1.0)
+
+            # also listen to the state pubsub for pilot state changes
+            self.declare_subscriber('state', 'state_pubsub', self._state_sub_cb)
+
 
         except Exception as e:
             self._log.exception("PMGR setup error: %s" % e)
@@ -138,6 +161,8 @@ class PilotManager(rpu.Component):
         self._prof.prof('PMGR setup done', logger=self._log.debug)
 
         self._log.report.ok('>>ok\n')
+
+        self.start()
 
 
     #--------------------------------------------------------------------------
@@ -165,6 +190,9 @@ class PilotManager(rpu.Component):
      ## if self._worker:
      ##     self._worker.stop()
      ## TODO: kill components
+
+        # kill child process
+        self.stop()
 
         self._session.prof.prof('closed pmgr', uid=self._uid)
         self._log.info("Closed PilotManager %s." % str(self._uid))
@@ -200,19 +228,64 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _default_pilot_state_cb(self, pilot, state):
+    def _state_pull_cb(self):
 
-        self._log.info("[Callback]: pilot %s state: %s.", pilot.uid, state)
+        # pull all pilot states from the DB, and compare to the states we know
+        # about.  If any state changed, update the pilot instance and issue
+        # notification callbacks as needed
+        # FIXME: we also pull for dead pilots.  That is not efficient...
+        # FIXME: this needs to be converted into a tailed cursor, or better
+        #        a ZMQ pubsub.
+        print "state pull cb"
+
+        pilots = self._session._dbs.get_pilots(pmgr_id=self.uid)
+        import pprint
+        pprint.pprint(pilots)
+        action = False
+
+        for pilot in pilots:
+            if self._update_pilot(pilot.uid, pilot):
+                action = True
+
+        print action
+
+        return action
 
 
     # --------------------------------------------------------------------------
     #
-    def _default_pilot_error_cb(self, pilot, state):
+    def _state_sub_cb(self, topic, msg):
 
-        # FIXME: use when 'exit_on_error' is set
-        if state == rps.FAILED:
-            self._log.error("[Callback]: pilot '%s' failed -- calling exit", pilot.uid)
-            sys.exit(1)
+        if 'type' in msg and msg['type'] == 'pilot':
+
+            pid   = msg["_id"]
+            state = msg["state"]
+
+            self._update_pilot(pid, {'state' : state})
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _update_pilot(self, pid, pilot):
+
+        # we don't care about pilots we don't know
+        # otherwise get old state
+        with self._pilots_lock:
+
+            if pid not in self._pilots:
+                return False
+
+            return self._pilots[pid]._update(pilot)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _call_pilot_callbacks(self, pilot, state):
+
+        for cb_func, cb_data in self._callbacks[rpt.PILOT_STATE]:
+
+            if cb_data: cb_func(pilot, state, cb_data)
+            else      : cb_func(pilot, state)
 
 
     # --------------------------------------------------------------------------
@@ -251,7 +324,10 @@ class PilotManager(rpu.Component):
         if self._closed:
             raise RuntimeError("instance is already closed")
 
-        return self._pilots.keys()
+        with self._pilots_lock:
+            ret = self._pilots.keys()
+
+        return ret
 
 
     # --------------------------------------------------------------------------
@@ -294,7 +370,8 @@ class PilotManager(rpu.Component):
             ret.append(pilot)
 
             # keep pilots around
-            self._pilots[pilot.uid] = pilot
+            with self._pilots_lock:
+                self._pilots[pilot.uid] = pilot
 
             if self._session._rec:
                 import radical.utils as ru
@@ -311,7 +388,7 @@ class PilotManager(rpu.Component):
         self._log.report.ok('>>ok\n')
 
         if ret_list: return ret
-        else               : return ret[0]
+        else       : return ret[0]
 
 
     # --------------------------------------------------------------------------
@@ -331,7 +408,9 @@ class PilotManager(rpu.Component):
             raise RuntimeError("instance is already closed")
 
         if not uids:
-            return self._pilots.values()
+            with self._pilots_lock:
+                ret = self._pilots.values()
+            return ret
 
 
         ret_list = True
@@ -340,10 +419,11 @@ class PilotManager(rpu.Component):
             uids = [uids]
 
         ret = list()
-        for uid in uids:
-            if uid not in self._pilots:
-                raise ValueError('pilot %s not known' % uid)
-            ret.append(self._pilots[uid])
+        with self._pilots_lock:
+            for uid in uids:
+                if uid not in self._pilots:
+                    raise ValueError('pilot %s not known' % uid)
+                ret.append(self._pilots[uid])
 
         if ret_list: return ret
         else       : return ret[0]
@@ -391,10 +471,11 @@ class PilotManager(rpu.Component):
             raise RuntimeError("instance is already closed")
 
         if not uids:
-            uids = list()
-            for uid,pilot in self._pilots.iteritems():
-                if pilot.state not in rps.FINAL:
-                    uids.append(uid)
+            with self._pilots_lock:
+                uids = list()
+                for uid,pilot in self._pilots.iteritems():
+                    if pilot.state not in rps.FINAL:
+                        uids.append(uid)
 
         if not state:
             states = rps.FINAL
@@ -411,7 +492,10 @@ class PilotManager(rpu.Component):
         self._log.report.info('<<wait for %d pilot(s)\n\t' % len(uids))
 
         start    = time.time()
-        to_check = [self._pilots[uid] for uid in uids]
+        to_check = None
+
+        with self._pilots_lock:
+            to_check = [self._pilots[uid] for uid in uids]
 
         # We don't want to iterate over all pilots again and again, as that would
         # duplicate checks on pilots which were found in matching states.  So we
@@ -439,7 +523,9 @@ class PilotManager(rpu.Component):
         else       : self._log.report.ok(  '>>ok\n')
 
         # grab the current states to return
-        states = [self._pilots[uid].state for uid in uids]
+        state = None
+        with self._pilots_lock:
+            states = [self._pilots[uid].state for uid in uids]
 
         # done waiting
         if ret_list: return states
@@ -460,7 +546,8 @@ class PilotManager(rpu.Component):
             raise RuntimeError("instance is already closed")
 
         if not uids:
-            uids = self._pilots.keys()
+            with self._pilots_lock:
+                uids = self._pilots.keys()
 
         if not isinstance(uids, list):
             uids = [uids]
@@ -498,11 +585,11 @@ class PilotManager(rpu.Component):
 
         # FIXME: the signature should be (self, metrics, cb, cb_data)
 
-        if  metric not in rpt.PMGR_METRICS :
+        if metric not in rpt.PMGR_METRICS :
             raise ValueError ("Metric '%s' is not available on the unit manager" % metric)
 
         with self._cb_lock:
-            self._callbacks['umgr'][metric].append([cb_func, cb_data])
+            self._callbacks[metric].append([cb_func, cb_data])
 
 
 # ------------------------------------------------------------------------------
