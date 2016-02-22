@@ -27,18 +27,9 @@ Preparation
 
 Download the file ``chained_tasks.py`` with the following command:
 
-.. only:: tutorial
+.. code-block:: bash
 
-    .. code-block:: bash
-    
-        curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs.tutorial/examples/tutorial/chained_tasks.py
-
-
-.. only:: release
-
-    .. code-block:: bash
-    
-        curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/tutorial/chained_tasks.py
+    curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/master/examples/docs/chained_tasks.py
 
 Open the file ``chained_tasks.py`` with your favorite editor. The example should 
 work right out of the box on your local machine. However, if you want to try it
@@ -82,17 +73,9 @@ Python virtualenv. You also need access to a MongoDB server.**
 Set the `RADICAL_PILOT_DBURL` environment variable in your shell to the 
 MongoDB server you want to use, for example:
 
-.. only:: tutorial
-
-    .. code-block:: bash
-            
-            export RADICAL_PILOT_DBURL=mongodb://23.23.136.91:27017/
-
-.. only:: release
-
-    .. code-block:: bash
-            
-            export RADICAL_PILOT_DBURL=mongodb://<user>:<pass>@<mongodb_server>:27017/
+.. code-block:: bash
+        
+        export RADICAL_PILOT_DBURL=mongodb://<user>:<pass>@<mongodb_server>:27017/
 
 If RADICAL-Pilot is installed and the MongoDB URL is set, you should be good
 to run your program: 

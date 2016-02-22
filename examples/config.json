@@ -62,7 +62,7 @@
 
         "xsede.gordon" : {
             "project"  : null,
-            "queue"    : "debug",
+            "queue"    : "normal",
             "schema"   : null
         },
 

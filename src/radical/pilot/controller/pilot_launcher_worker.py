@@ -38,6 +38,7 @@ DEFAULT_RP_VERSION    = 'local'
 DEFAULT_VIRTENV       = '%(global_sandbox)s/ve'
 DEFAULT_VIRTENV_MODE  = 'update'
 DEFAULT_AGENT_CONFIG  = 'default'
+DEFAULT_PYTHON_DIST   = 'default'
 
 # ----------------------------------------------------------------------------
 #
@@ -408,7 +409,7 @@ class PilotLauncherWorker(threading.Thread):
                         cores_per_node          = resource_cfg.get ('cores_per_node')
                         shared_filesystem       = resource_cfg.get ('shared_filesystem', True)
                         health_check            = resource_cfg.get ('health_check', True)
-                        python_dist             = resource_cfg.get ('python_dist')
+                        python_dist             = resource_cfg.get ('python_dist', DEFAULT_PYTHON_DIST)
 
 
                         # Agent configuration that is not part of the public API.

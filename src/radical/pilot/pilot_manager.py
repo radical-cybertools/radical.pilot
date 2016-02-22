@@ -228,6 +228,18 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    @property
+    def session(self):
+        """Returns the Pilot Manager's session.
+
+        **Returns:**
+            * a `radical.pilot.Session` object
+        """
+        return self._session
+
+
+    #---------------------------------------------------------------------------
+    #
     def _state_pull_cb(self):
 
         # pull all pilot states from the DB, and compare to the states we know

@@ -589,6 +589,8 @@ def bootstrap_3():
                 pilot_DONE(mongo_p, pilot_id, log, "TIMEOUT received. Terminating.")
             elif agent and agent.final_cause == 'cancel':
                 pilot_CANCELED(mongo_p, pilot_id, log, "CANCEL received. Terminating.")
+            elif agent and agent.final_cause == 'sys.exit':
+                pilot_CANCELED(mongo_p, pilot_id, log, "EXIT received. Terminating.")
             elif agent and agent.final_cause == 'finalize':
                 log.info('shutdown due to component finalization -- assuming error')
                 pilot_FAILED(mongo_p, pilot_id, log, "FINALIZE received")
