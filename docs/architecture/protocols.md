@@ -18,8 +18,8 @@ and we only send 'things', ie. pilots or units, which are represented by plain
 python dicts.  All 'things' are guaranteed to have the following fields:
 
     'uid':    string, unique ID
-    '_id':    string, unique ID (deprecated, historic because of MongoDB)
-    'state':  string, state of the thing
+    'type':   string, entity type (session | umgr | unit | pmgr | pilot)
+    'state':  string, state of the thing if stateful, 'None' otherwise
 
 
 ## PubSub channels
