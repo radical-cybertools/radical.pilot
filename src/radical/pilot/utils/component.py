@@ -168,7 +168,7 @@ class Component(mp.Process):
         log_name  = self._cname
         log_tgt   = self._cname + ".log"
         self._log = ru.get_logger(log_name, log_tgt, self._debug)
-        self._log.info('creating %s' % self._cname)
+        self._log.info('creating %s', self._cname)
 
         self._prof = Profiler(self._cname)
 
@@ -862,6 +862,8 @@ class Component(mp.Process):
                     if not unit:
                         continue
 
+                    self._log.debug('got %s (%s)', type(unit), unit)
+
                     state = unit['state']
                     uid   = unit['uid']
 
@@ -995,7 +997,7 @@ class Component(mp.Process):
 
             if publish:
                 # send state notifications
-                self.publish('state', thing)
+                self.publish('state', ['update', thing])
                 self._prof.prof('publish', uid=thing['uid'], state=thing['state'])
 
             if push:
@@ -1029,6 +1031,7 @@ class Component(mp.Process):
                     #        Better yet, enact the *_PENDING transition right here...
                     #
                     # push the thing down the drain
+                    self._log.debug('### 1 put %s', _thing)
                     output.put(_thing)
                     self._prof.prof('put', uid=_thing['uid'], state=state, msg=output.name)
 
@@ -1053,9 +1056,9 @@ class Component(mp.Process):
                     % (self._cname, topic, msg, self._publishers.keys()))
             return
 
-        for m in msg:
-            for p in self._publishers[topic]:
-                p.put (topic, m)
+        for p in self._publishers[topic]:
+            self._log.debug('### 2 put %s, %s', topic, msg)
+            p.put (topic, msg)
 
 
 

@@ -68,6 +68,7 @@ def get_session_docs(db, sid, cache=None, cachedir=None) :
 
     try :
         if  os.path.isfile (cache) :
+            print cache
             return ru.read_json (cache)
     except Exception as e :
         # continue w/o cache
@@ -78,11 +79,11 @@ def get_session_docs(db, sid, cache=None, cachedir=None) :
     json_data = dict()
 
     # convert bson to json, i.e. serialize the ObjectIDs into strings.
-    json_data['session'] = bson2json(list(db["%s"    % sid].find({'type' : 'session'})))
-    json_data['pmgr'   ] = bson2json(list(db["%s.pm" % sid].find({'type' : 'pmgr'   })))
-    json_data['pilot'  ] = bson2json(list(db["%s.p"  % sid].find({'type' : 'pilot'  })))
-    json_data['umgr'   ] = bson2json(list(db["%s.um" % sid].find({'type' : 'umgr'   })))
-    json_data['unit'   ] = bson2json(list(db["%s.cu" % sid].find({'type' : 'unit'   })))
+    json_data['session'] = bson2json(list(db[sid].find({'type' : 'session'})))
+    json_data['pmgr'   ] = bson2json(list(db[sid].find({'type' : 'pmgr'   })))
+    json_data['pilot'  ] = bson2json(list(db[sid].find({'type' : 'pilot'  })))
+    json_data['umgr'   ] = bson2json(list(db[sid].find({'type' : 'umgr'   })))
+    json_data['unit'   ] = bson2json(list(db[sid].find({'type' : 'unit'   })))
 
     if  len(json_data['session']) == 0 :
         raise ValueError ('no such session %s' % sid)

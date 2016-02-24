@@ -405,12 +405,12 @@ def bootstrap_3():
     session  = rp.Session(uid=sid) 
 
     # set up a logger and profiler
-    prof = rpu.Profiler ('%s.bootstrap_3' % agent_name)
-    prof.prof('sync ref', msg='agent start', uid=pilot_id)
-    log  = ru.get_logger('%s.bootstrap_3' % agent_name,
+    prof = rpu.Profiler ('%s.bootstrap_3'     % agent_name)
+    log  = ru.get_logger('%s.bootstrap_3'     % agent_name,
                          '%s.bootstrap_3.log' % agent_name, 'DEBUG')  # FIXME?
+
+    prof.prof('sync ref', msg='agent start', uid=pilot_id)
     log.info('start')
-    prof.prof('sync ref', msg='agent start')
 
     try:
         import setproctitle as spt

@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import copy
 import time
 import glob
 import copy
@@ -67,6 +68,12 @@ class Session (rs.Session):
         self._terminate = threading.Event()
         self._terminate.clear()
 
+        # class state
+        self._dbs         = None
+        self._uid         = None
+        self._dburl       = None
+        self._reconnected = False
+
         # the session manages the communication bridges
         self._cfg              = None
         self._components       = None
@@ -94,7 +101,6 @@ class Session (rs.Session):
             # we forgive missing dburl on reconnect, but not otherwise
             raise RuntimeError("no database URL (set RADICAL_PILOT_DBURL)")  
 
-        self._dburl = None
         if dburl:
             self._dburl = ru.Url(dburl)
 
@@ -111,48 +117,26 @@ class Session (rs.Session):
             self._log.info("using database %s" % self._dburl)
 
 
-        # create database handle
-        self._dbs         = None
-        self._uid         = None
-        self._reconnected = False
+        if uid:
+            self._uid         = uid
+            self._reconnected = True
+        else:
+            # generate new uid
+            self._uid = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
+            ru.reset_id_counters(prefix=['pmgr', 'umgr', 'pilot', 'unit', 'unit.%(counter)06d'])
 
-        try:
-            if uid:
-                self._uid         = uid
-                self._reconnected = True
-            else:
-                # generate new uid
-                self._uid = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
-                ru.reset_id_counters(prefix=['pmgr', 'umgr', 'pilot', 'unit', 'unit.%(counter)06d'])
+        # initialize profiling
+        self.prof = rpu.Profiler('%s' % self._uid)
 
+        if self._reconnected:
+            self.prof.prof('reconnect session', uid=self._uid)
 
-            # initialize profiling
-            self.prof = rpu.Profiler('%s' % self._uid)
-
-            if self._reconnected:
-                self.prof.prof('reconnect session', uid=self._uid)
-
-            else:
-                self.prof.prof('start session', uid=self._uid)
-                self._log.report.info ('<<new session: ')
-                self._log.report.plain('[%s]' % self._uid)
-                self._log.report.info ('<<database   : ')
-                self._log.report.plain('[%s]' % self._dburl)
-
-            if self._dburl:
-                if connect:
-                    self._dbs = DBSession(sid   = self._uid,
-                                          dburl = self._dburl)
-
-            # from here on we should be able to close the session again
-            self._valid = True
-            self._log.info("New Session created: %s." % str(self))
-
-        except Exception, ex:
-            self._log.report.error(">>err\n")
-            self._log.exception('session create failed')
-            raise RuntimeError("Couldn't create new session (database URL '%s' incorrect?): %s" \
-                            % (self._dburl, ex))  
+        else:
+            self.prof.prof('start session', uid=self._uid)
+            self._log.report.info ('<<new session: ')
+            self._log.report.plain('[%s]' % self._uid)
+            self._log.report.info ('<<database   : ')
+            self._log.report.plain('[%s]' % self._dburl)
 
         # Loading all "default" resource configurations
         module_path  = os.path.dirname(os.path.abspath(__file__))
@@ -232,7 +216,7 @@ class Session (rs.Session):
             self._cfg = ru.read_json("%s/configs/session_%s.json" \
                     % (os.path.dirname(__file__),
                        os.environ.get('RADICAL_PILOT_SESSION_CONFIG', 'default')))
-            bridges       = self._cfg.get('bridges', [])
+            bridges = self._cfg.get('bridges', [])
 
             # new session start bridges, reconnected sessions get bridge
             # addresses from the DB
@@ -293,9 +277,14 @@ class Session (rs.Session):
                 self._cfg['bridge_addresses'] = copy.deepcopy(self._bridge_addresses)
 
                 # give some more information to the workers
-                self._cfg['owner']       = self._uid
                 self._cfg['session_id']  = self._uid
-                self._cfg['mongodb_url'] = self._dburl
+                self._cfg['mongodb_url'] = str(self._dburl)
+
+                if _connect:
+                    # connect but not reconnect: this is a fresh client session
+                    self._cfg['owner'] = 'client'
+                else:
+                    self._cfg['owner'] = None  # raise where owners are needed
 
                 # the bridges are known, we can start to connect the components to them
                 self._components = rpu.Component.start_components(components,
@@ -305,6 +294,23 @@ class Session (rs.Session):
             self._log.report.error(">>err\n")
             self._log.exception('session create failed')
             raise RuntimeError("Couldn't create worker components): %s" % e)  
+
+
+        # create/connect database handle
+        try:
+            self._dbs = DBSession(sid=self.uid, dburl=self.dburl,
+                                  cfg=self.cfg, connect=_connect)
+
+            # from here on we should be able to close the session again
+            self._valid = True
+            self._log.info("New Session created: %s." % str(self))
+
+        except Exception, ex:
+            self._log.report.error(">>err\n")
+            self._log.exception('session create failed')
+            raise RuntimeError("Couldn't create new session (database URL '%s' incorrect?): %s" \
+                            % (self._dburl, ex))  
+
 
         # FIXME: make sure the above code results in a usable session on
         #        reconnect
@@ -450,7 +456,8 @@ class Session (rs.Session):
             "created"   : self.created,
             "connected" : self.connected,
             "closed"    : self.closed,
-            "dburl"     : str(self._dburl)
+            "dburl"     : str(self.dburl),
+            "cfg"       : self.cfg     # this is a deep copy
         }
         return object_dict
 
@@ -473,16 +480,20 @@ class Session (rs.Session):
     #---------------------------------------------------------------------------
     #
     @property
+    def cfg(self):
+        return copy.deepcopy(self._cfg)
+
+
+    #---------------------------------------------------------------------------
+    #
+    @property
     def dburl(self):
-        self._is_valid()
         return self._dburl
 
 
     #---------------------------------------------------------------------------
     #
     def get_db(self):
-
-        self._is_valid()
 
         if self._dbs: return self._dbs.get_db()
         else        : return None

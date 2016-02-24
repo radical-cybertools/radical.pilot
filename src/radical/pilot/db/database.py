@@ -12,6 +12,7 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 import os 
+import copy
 import saga
 import gridfs
 import pymongo
@@ -35,7 +36,7 @@ class DBSession(object):
 
     #--------------------------------------------------------------------------
     #
-    def __init__(self, sid, dburl):
+    def __init__(self, sid, dburl, cfg, connect=True):
         """ Creates a new session
 
             A session is a MongoDB collection which contains documents of
@@ -48,6 +49,17 @@ class DBSession(object):
             units   : document describing a rp.Unit
         """
 
+        self._dburl      = ru.Url(dburl)
+        self._client     = None
+        self._db         = None
+        self._created    = None
+        self._connected  = None
+        self._closed     = None
+        self._c          = None
+
+        if not connect:
+            return
+
         # mpongodb_connect wants a string at the moment
         mongo, db, _, _, _ = ru.mongodb_connect(str(dburl))
 
@@ -56,11 +68,7 @@ class DBSession(object):
 
         self._client     = mongo
         self._db         = db
-        self._dburl      = ru.Url(dburl)
-        self._session_id = sid
-        self._created    = timestamp()
         self._connected  = timestamp()
-        self._closed     = None
 
         self._c = self._db[sid] # creates collection (lazily)
 
@@ -72,27 +80,28 @@ class DBSession(object):
             # make 'uid', 'type' and 'state' indexes, as we frequently query
             # based on combinations of those.  Only 'uid' is unique
             self._c.create_index([('uid',   pymongo.ASCENDING)], unique=True,  sparse=False)
-            self._c.create_index([('type',  None             )], unique=False, sparse=False)
-            self._c.create_index([('state', None             )], unique=False, sparse=False)
+            self._c.create_index([('type',  pymongo.ASCENDING)], unique=False, sparse=False)
+            self._c.create_index([('state', pymongo.ASCENDING)], unique=False, sparse=False)
 
             # insert the session doc
-            self._c.insert({"uid"       : sid,
-                            "type"      : 'session',
+            self._created = timestamp()
+            self._c.insert({"type"      : 'session',
+                            "_id"       : sid,
+                            "uid"       : sid,
+                            "cfg"       : copy.deepcopy(cfg),
                             "created"   : self._created,
                             "connected" : self._connected})
         else:
-            pass
-            # FIXME: get self._created from DB
-            # FIXME: get bridge addresses from DB (not here though)
+            docs = self._c.find({'type' : 'session', 
+                                 'uid'  : sid})
+            if not docs.count():
+                raise ValueError('cannot reconnect to session %s' % sid)
 
+            doc = docs[0]
+            self._created   = doc['created']
+            self._connected = timestamp()
 
-    #--------------------------------------------------------------------------
-    #
-    @property
-    def session_id(self):
-        """ Returns the session id.
-        """
-        return self._session_id
+            # FIXME: get bridge addresses from DB?  If not, from where?
 
 
     #--------------------------------------------------------------------------
@@ -168,19 +177,19 @@ class DBSession(object):
 
     #--------------------------------------------------------------------------
     #
-    def insert_pilot_manager(self, pmgr_uid, pmgr_data):
+    def insert_pilot_manager(self, pmgr_doc):
         """ 
-        Adds a pilot managers to the list of pilot managers.
+        Adds a pilot managers doc
         """
         if not self._c:
             raise Exception("No active session.")
 
-        # FIXME: also stor cfg
-        result = self._c.insert({'type' : 'pmgr', 
-                                 "uid"  : pmgr_uid,
-                                 "data" : pmgr_data})
+        pmgr_doc['_id']  = pmgr_doc['uid']
+        pmgr_doc['type'] = 'pmgr'
 
-        return result
+        result = self._c.insert(pmgr_doc)
+
+        # FIXME: evaluate result
 
 
     #--------------------------------------------------------------------------
@@ -372,7 +381,7 @@ class DBSession(object):
         # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
         ret = { doc['uid'] : doc for doc in cursor}
 
-        return ret.values
+        return ret.values()
 
 
     #--------------------------------------------------------------------------
@@ -452,7 +461,7 @@ class DBSession(object):
         # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
         ret = { doc['uid'] : doc for doc in cursor}
 
-        return ret.values
+        return ret.values()
 
 
     #--------------------------------------------------------------------------
@@ -549,18 +558,19 @@ class DBSession(object):
 
     #--------------------------------------------------------------------------
     #
-    def insert_unit_manager(self, umgr_uid, scheduler):
+    def insert_unit_manager(self, umgr_doc):
         """ 
-        Adds a unit managers to the list of unit managers.
+        Adds a unit managers document
         """
         if not self._c:
             raise Exception("No active session.")
 
-        # FIXME: also store cfg
-        result = self._c.insert({'type'      : 'umgr', 
-                                 "uid"       : umgr_uid,
-                                 "scheduler" : scheduler})
-        return result
+        umgr_doc['_id']  = umgr_doc['uid']
+        umgr_doc['type'] = 'umgr'
+
+        result = self._c.insert(umgr_doc)
+
+        # FIXME: evaluate result
 
 
     #--------------------------------------------------------------------------

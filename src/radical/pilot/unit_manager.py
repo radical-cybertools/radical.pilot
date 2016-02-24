@@ -146,8 +146,9 @@ class UnitManager(rpu.Component):
             self._log.exception("UMGR setup error: %s" % e)
             raise
 
-        self._prof.prof('UMGR setup done', logger=self._log.debug)
+        self._session._dbs.insert_unit_manager(self.as_dict())
 
+        self._prof.prof('UMGR setup done', logger=self._log.debug)
         self._log.report.ok('>>ok\n')
 
 
@@ -183,8 +184,8 @@ class UnitManager(rpu.Component):
         """
 
         ret = {
-            'uid':       self.uid,
-            'scheduler': self._cfg.get('scheduler'),
+            'uid': self.uid,
+            'cfg': self.cfg,
         }
 
         return ret
@@ -225,6 +226,13 @@ class UnitManager(rpu.Component):
         Returns the unique id.
         """
         return self._uid
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def cfg(self):
+        return copy.deepcopy(self._cfg)
 
 
     # --------------------------------------------------------------------------

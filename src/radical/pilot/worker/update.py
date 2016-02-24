@@ -288,7 +288,11 @@ class Update(rpu.Worker):
         does not exist, an exception is raised.
         """
 
-        cmd, thing = msg
+        try:
+            cmd, thing = msg
+        except Exception as e:
+            import pprint
+            raise RuntimeError('protocol error %s: \n%s\n' % (type(msg), pprint.pformat(msg)))
 
         # FIXME: we don't have any error recovery -- any failure to update unit
         #        state in the DB will thus result in an exception here and tear

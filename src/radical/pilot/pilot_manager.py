@@ -113,7 +113,7 @@ class PilotManager(rpu.Component):
                        os.environ.get('RADICAL_PILOT_PMGR_CONFIG', 'default')))
 
             self._cfg['session_id']  = session.uid
-            self._cfg['mongodb_url'] = session.dburl
+            self._cfg['mongodb_url'] = str(session.dburl)
             self._cfg['owner']       = self.uid
 
             components = self._cfg.get('components', [])
@@ -158,8 +158,9 @@ class PilotManager(rpu.Component):
             self._log.exception("PMGR setup error: %s" % e)
             raise
 
-        self._prof.prof('PMGR setup done', logger=self._log.debug)
+        self._session._dbs.insert_pilot_manager(self.as_dict())
 
+        self._prof.prof('PMGR setup done', logger=self._log.debug)
         self._log.report.ok('>>ok\n')
 
         self.start()
@@ -209,7 +210,8 @@ class PilotManager(rpu.Component):
         """
 
         ret = {
-            'uid': self.uid
+            'uid': self.uid, 
+            'cfg': self.cfg
         }
 
         return ret
@@ -296,6 +298,16 @@ class PilotManager(rpu.Component):
         Returns the unique id.
         """
         return self._uid
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def cfg(self):
+        """
+        Returns the config.
+        """
+        return copy.deepcopy(self._cfg)
 
 
     # --------------------------------------------------------------------------

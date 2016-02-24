@@ -93,6 +93,9 @@ class Heartbeat(rpu.Worker):
     def _check_commands(self):
 
         # Check if there's a command waiting
+        # FIXME: this pull should be done by the update worker, and commands
+        #        should then be communicated over the command pubsub
+        # FIXME: commands go to pmgr, umgr, session docs
         retdoc = self._session._dbs._c.find_and_modify(
                     query  = {"uid"  : self._owner},
                     update = {"$set" : {rpc.COMMAND_FIELD: []}}, # Wipe content of array
@@ -102,7 +105,12 @@ class Heartbeat(rpu.Worker):
         if not retdoc:
             return
 
-        for command in retdoc[rpc.COMMAND_FIELD]:
+        import pprint
+        self._log.debug('hb %s got %s: %s (%s)', 
+                self._owner, type(retdoc), pprint.pformat(retdoc),
+                str(retdoc['_id']))
+
+        for command in retdoc.get(rpc.COMMAND_FIELD, []):
 
             cmd = command[rpc.COMMAND_TYPE]
             arg = command[rpc.COMMAND_ARG]

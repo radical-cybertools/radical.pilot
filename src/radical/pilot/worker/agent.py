@@ -23,12 +23,12 @@ class Agent(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session=None):
+    def __init__(self, cfg, session):
 
         self.agent_name  = cfg['agent_name']
         self.final_cause = None
 
-        rpu.Worker.__init__(self, 'AgentWorker', cfg)
+        rpu.Worker.__init__(self, 'AgentWorker', cfg, session)
 
 
 

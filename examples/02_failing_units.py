@@ -104,10 +104,6 @@ if __name__ == '__main__':
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(cuds)
 
-        import time
-        time.sleep(3)
-        sys.exit(0)
-
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units(timeout=3.0)
