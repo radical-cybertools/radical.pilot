@@ -103,8 +103,8 @@ class Yarn(LaunchMethod):
             lines = yarn_site_file.readlines()
             yarn_site_file.close()
 
-            free_mem_str=subprocess.check_output(['grep','MemTotal','/proc/meminfo'])
-            total_free_mem=int(free_mem_str.split()[1])/1048
+            total_mem_str=subprocess.check_output(['grep','MemTotal','/proc/meminfo'])
+            total_free_mem=int(total_mem_str.split()[1])/1048
 
             if nodelist.__len__() == 1:
                 cores_used = cores/2
@@ -113,6 +113,8 @@ class Yarn(LaunchMethod):
                 cores_used = cores*(nodelist.__len__()-1)
                 total_mem = total_free_mem*(nodelist.__len__()-1)
 
+            max_app_mem = total_mem/cores_used
+
             prop_str  = ' <property>\n'
             prop_str += '  <name>yarn.nodemanager.aux-services</name>\n'
             prop_str += '    <value>mapreduce_shuffle</value>\n'
@@ -120,7 +122,7 @@ class Yarn(LaunchMethod):
 
             prop_str += ' <property>\n'
             prop_str += '  <name>yarn.scheduler.maximum-allocation-mb</name>\n'
-            prop_str += '   <value>2048</value>\n'
+            prop_str += '   <value>%d</value>\n'%max_app_mem
             prop_str += ' </property>\n'
 
             prop_str += ' <property>\n'
