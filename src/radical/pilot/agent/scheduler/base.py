@@ -50,15 +50,11 @@ class AgentSchedulingComponent(rpu.Component):
         # we need unschedule updates to learn about units which free their
         # allocated cores.  Those updates need to be issued after execution, ie.
         # by the AgentExecutionComponent.
-        self.declare_publisher ('state',      rpc.STATE_PUBSUB)
         self.declare_subscriber('unschedule', rpc.AGENT_UNSCHEDULE_PUBSUB, self.unschedule_cb)
 
         # we create a pubsub pair for reschedule trigger
         self.declare_publisher ('reschedule', rpc.AGENT_RESCHEDULE_PUBSUB)
         self.declare_subscriber('reschedule', rpc.AGENT_RESCHEDULE_PUBSUB, self.reschedule_cb)
-
-        # all components use the command channel for control messages
-        self.declare_publisher ('command',    rpc.COMMAND_PUBSUB)
 
         # we declare a clone and a drop callback, so that cores can be assigned
         # to clones, and can also be freed again.

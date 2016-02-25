@@ -61,9 +61,6 @@ class Update(rpu.Worker):
         self.declare_subscriber('state', 'state_pubsub', self.state_cb)
         self.declare_idle_cb(self.idle_cb, timeout=self._cfg.get('bulk_collection_time'))
 
-        # all components use the command channel for control messages
-        self.declare_publisher('command', rpc.COMMAND_PUBSUB)
-
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',
                                  'arg' : self.cname})
@@ -98,30 +95,32 @@ class Update(rpu.Worker):
                 - no:  only update state history
         """
         # FIXME: this is specific to agent side updates, but needs to be
-        #        generalized for the full state model
+        #        generalized for the full state model.  It should disappear once
+        #        we introduce a tailing cursor for state notifications -- then
+        #        notifications can again be out of order, and the DB docs only
+        #        contain time-stamped state histories.
 
-        s2i = {rps.NEW                          :  0,
+        s2i = {rps.NEW                          :  1,
 
-               rps.PENDING                      :  1,
-               rps.PENDING_LAUNCH               :  2,
-               rps.LAUNCHING                    :  3,
-               rps.PENDING_ACTIVE               :  4,
-               rps.ACTIVE                       :  5,
+               rps.PMGR_LAUNCHING_PENDING       :  2,
+               rps.PMGR_LAUNCHING               :  3,
+               rps.PMGR_ACTIVE_PENDING          :  4,
+               rps.PMGR_ACTIVE                  :  5,
 
-               rps.UNSCHEDULED                  :  6,
-               rps.SCHEDULING                   :  7,
-               rps.PENDING_INPUT_STAGING        :  8,
-               rps.STAGING_INPUT                :  9,
+               rps.UMGR_SCHEDULING_PENDING      :  6,
+               rps.UMGR_SCHEDULING              :  7,
+               rps.UMGR_STAGING_INPUT_PENDING   :  8,
+               rps.UMGR_STAGING_INPUT           :  9,
                rps.AGENT_STAGING_INPUT_PENDING  : 10,
                rps.AGENT_STAGING_INPUT          : 11,
-               rps.ALLOCATING_PENDING           : 12,
-               rps.ALLOCATING                   : 13,
-               rps.EXECUTING_PENDING            : 14,
-               rps.EXECUTING                    : 15,
+               rps.AGENT_SCHEDULING_PENDING     : 12,
+               rps.AGENT_SCHEDULING             : 13,
+               rps.AGENT_EXECUTING_PENDING      : 14,
+               rps.AGENT_EXECUTING              : 15,
                rps.AGENT_STAGING_OUTPUT_PENDING : 16,
                rps.AGENT_STAGING_OUTPUT         : 17,
-               rps.PENDING_OUTPUT_STAGING       : 18,
-               rps.STAGING_OUTPUT               : 19,
+               rps.UMGR_STAGING_OUTPUT_PENDING  : 18,
+               rps.UMGR_STAGING_OUTPUT          : 19,
 
                rps.DONE                         : 20,
                rps.CANCELING                    : 21,

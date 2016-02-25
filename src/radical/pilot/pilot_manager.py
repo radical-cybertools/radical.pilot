@@ -98,58 +98,51 @@ class PilotManager(rpu.Component):
 
         session.prof.prof('create pmgr', uid=self._uid)
 
+        cfg = ru.read_json("%s/configs/pmgr_%s.json" \
+                % (os.path.dirname(__file__),
+                   os.environ.get('RADICAL_PILOT_PMGR_CONFIG', 'default')))
+
+        cfg['session_id']  = session.uid
+        cfg['owner']       = self.uid
+        cfg['mongodb_url'] = str(session.dburl)
+
+        components = cfg.get('components', [])
+
+        from .. import pilot as rp
+        
+        # we also need a map from component names to class types
+        typemap = {
+            rpc.PMGR_LAUNCHING_COMPONENT : rp.pmgr.Launching
+            }
+
+        # get addresses from the bridges, and append them to the
+        # config, so that we can pass those addresses to the components
+        cfg['bridge_addresses'] = copy.deepcopy(session._bridge_addresses)
+
+        # the bridges are known, we can start to connect the components to them
+        self._components = rpu.Component.start_components(components,
+                           typemap, cfg, session=session)
+
+        # initialize the base class
+        # FIXME: unique ID
+        cfg['owner'] = session.uid
+        rpu.Component.__init__(self, self.uid, cfg, session)
+
+        # only now we have a logger... :/
         self._log.report.info('<<create pilot manager')
 
-        try:
-            cfg = ru.read_json("%s/configs/pmgr_%s.json" \
-                    % (os.path.dirname(__file__),
-                       os.environ.get('RADICAL_PILOT_PMGR_CONFIG', 'default')))
+        # The output queue is used to forward submitted pilots to the
+        # launching component.
+        self.declare_output(rps.PMGR_LAUNCHING_PENDING, rpc.PMGR_LAUNCHING_QUEUE)
 
-            cfg['session_id']  = session.uid
-            cfg['owner']       = self.uid
-            cfg['mongodb_url'] = str(session.dburl)
+        # register the state notification pull cb
+        # FIXME: we may want to have the frequency configurable
+        # FIXME: this should be a tailing cursor in the update worker
+        self.declare_idle_cb(self._state_pull_cb, timeout=1.0)
 
-            components = cfg.get('components', [])
+        # also listen to the state pubsub for pilot state changes
+        self.declare_subscriber('state', 'state_pubsub', self._state_sub_cb)
 
-            from .. import pilot as rp
-        
-            # we also need a map from component names to class types
-            typemap = {
-                rpc.PMGR_LAUNCHING_COMPONENT : rp.pmgr.Launching
-                }
-
-            # get addresses from the bridges, and append them to the
-            # config, so that we can pass those addresses to the components
-            cfg['bridge_addresses'] = copy.deepcopy(session._bridge_addresses)
-
-            # the bridges are known, we can start to connect the components to them
-            self._components = rpu.Component.start_components(components,
-                               typemap, cfg, session=session)
-
-            # initialize the base class
-            # FIXME: unique ID
-            cfg['owner'] = session.uid
-            rpu.Component.__init__(self, self.uid, cfg, session)
-
-            # The command pubsub is always used
-            self.declare_publisher('command', rpc.COMMAND_PUBSUB)
-
-            # The output queue is used to forward submitted pilots to the
-            # launching component.
-            self.declare_output(rps.PMGR_LAUNCHING_PENDING, rpc.PMGR_LAUNCHING_QUEUE)
-
-            # register the state notification pull cb
-            # FIXME: we may want to have the frequency configurable
-            # FIXME: this should be a tailing cursor in the update worker
-            self.declare_idle_cb(self._state_pull_cb, timeout=1.0)
-
-            # also listen to the state pubsub for pilot state changes
-            self.declare_subscriber('state', 'state_pubsub', self._state_sub_cb)
-
-
-        except Exception as e:
-            self._log.exception("PMGR setup error: %s" % e)
-            raise
 
         self._session._dbs.insert_pilot_manager(self.as_dict())
 
@@ -307,24 +300,6 @@ class PilotManager(rpu.Component):
             ret = self._pilots.keys()
 
         return ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_pilots(self):
-        """
-        Get the pilots instances currently associated with the pilot manager.
-
-        **Returns:**
-              * A list of :class:`radical.pilot.ComputePilot` instances.
-        """
-        if self._closed:
-            raise RuntimeError("instance is already closed")
-
-        with self._pilots_lock:
-            return self._pilots.values()
-
-
 
 
     # --------------------------------------------------------------------------

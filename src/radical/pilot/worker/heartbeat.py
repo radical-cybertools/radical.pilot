@@ -44,9 +44,6 @@ class Heartbeat(rpu.Worker):
     #
     def initialize_child(self):
 
-        # all components use the command channel for control messages
-        self.declare_publisher ('command', rpc.COMMAND_PUBSUB)
-
         self._owner         = self._cfg['owner']
         self._session_id    = self._cfg['session_id']
         self._mongodb_url   = self._cfg['mongodb_url']

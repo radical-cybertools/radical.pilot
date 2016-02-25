@@ -57,50 +57,61 @@ class State(object):
         return self.state
 
 # -----------------------------------------------------------------------------
-# Common States
-NEW                          = 'New'
-DONE                         = 'Done'
-CANCELING                    = 'Canceling'
-CANCELED                     = 'Canceled'
-FAILED                       = 'Failed'
-PENDING                      = 'Pending'
+# common states
+NEW                          = 'NEW'
+DONE                         = 'DONE'
+FAILED                       = 'FAILED'
+CANCELED                     = 'CANCELED'
 
+# shortcut
 FINAL                        = [DONE, FAILED, CANCELED]
 
-# -----------------------------------------------------------------------------
-# ComputePilot States
-PENDING_LAUNCH               = 'PendingLaunch'
-LAUNCHING                    = 'Launching'
-PENDING_ACTIVE               = 'PendingActive'
-ACTIVE                       = 'Active'
+# pilot states
+PMGR_LAUNCHING_PENDING       = 'LAUNCHING_PENDING'
+PMGR_LAUNCHING               = 'LAUNCHING'
+PMGR_ACTIVE_PENDING          = 'ACTIVE_PENDING'
+PMGR_ACTIVE                  = 'ACTIVE'
+
+# unit states
+UMGR_SCHEDULING_PENDING      = 'UMGR_SCHEDULING_PENDING'
+UMGR_SCHEDULING              = 'UMGR_SCHEDULING'
+UMGR_STAGING_INPUT_PENDING   = 'UMGR_STAGING_INPUT_PENDING'
+UMGR_STAGING_INPUT           = 'UMGR_STAGING_INPUT'
+AGENT_STAGING_INPUT_PENDING  = 'AGENT_STAGING_INPUT_PENDING'
+AGENT_STAGING_INPUT          = 'AGENT_STAGING_INPUT'
+AGENT_SCHEDULING_PENDING     = 'AGENT_SCHEDULING_PENDING'
+AGENT_SCHEDULING             = 'AGENT_SCHEDULING'
+AGENT_EXECUTING_PENDING      = 'AGENT_EXECUTING_PENDING'
+AGENT_EXECUTING              = 'AGENT_EXECUTING'
+AGENT_STAGING_OUTPUT_PENDING = 'AGENT_STAGING_OUTPUT_PENDING'
+AGENT_STAGING_OUTPUT         = 'AGENT_STAGING_OUTPUT'
+UMGR_STAGING_OUTPUT_PENDING  = 'UMGR_STAGING_OUTPUT_PENDING'
+UMGR_STAGING_OUTPUT          = 'UMGR_STAGING_OUTPUT'
+
 
 # -----------------------------------------------------------------------------
-# ComputeUnit States
-UNSCHEDULED                  = 'Unscheduled'
-PENDING_INPUT_STAGING        = 'PendingInputStaging'
-STAGING_INPUT                = 'StagingInput'
-AGENT_STAGING_INPUT_PENDING  = 'AgentStagingInputPending'
-AGENT_STAGING_INPUT          = 'AgentStagingInput'
-PENDING_EXECUTION            = 'PendingExecution'
-SCHEDULING                   = 'Scheduling'
-ALLOCATING_PENDING           = 'AllocatingPending'
-ALLOCATING                   = 'Allocating'
-EXECUTING_PENDING            = 'ExecutingPending'
-EXECUTING                    = 'Executing'
-AGENT_STAGING_OUTPUT_PENDING = 'AgentStagingOutputPending'
-AGENT_STAGING_OUTPUT         = 'AgentStagingOutput'
-PENDING_OUTPUT_STAGING       = 'PendingOutputStaging'
-STAGING_OUTPUT               = 'StagingOutput'
+# backward compatibility
+#
+# pilot states
+CANCELING                    = CANCELED
+PENDING                      = PMGR_LAUNCHING_PENDING
+PENDING_LAUNCH               = PMGR_LAUNCHING_PENDING
+LAUNCHING                    = PMGR_LAUNCHING
+PENDING_ACTIVE               = PMGR_ACTIVE_PENDING
+ACTIVE                       = PMGR_ACTIVE
 
-# new
-UMGR_SCHEDULING_PENDING      = 'UMGRSchedulingPending'
-UMGR_SCHEDULING              = SCHEDULING
-UMGR_STAGING_INPUT_PENDING   = PENDING_INPUT_STAGING
-UMGR_STAGING_INPUT           = STAGING_INPUT
-UMGR_STAGING_OUTPUT_PENDING  = PENDING_OUTPUT_STAGING
-UMGR_STAGING_OUTPUT          = STAGING_OUTPUT
+# compute unit states
+UNSCHEDULED                  = UMGR_SCHEDULING_PENDING
+SCHEDULING                   = UMGR_SCHEDULING
+PENDING_INPUT_STAGING        = UMGR_STAGING_INPUT_PENDING
+STAGING_INPUT                = UMGR_STAGING_INPUT
+ALLOCATING_PENDING           = AGENT_SCHEDULING_PENDING
+ALLOCATING                   = AGENT_SCHEDULING
+PENDING_EXECUTION            = AGENT_EXECUTING_PENDING
+EXECUTING_PENDING            = AGENT_EXECUTING_PENDING
+EXECUTING                    = AGENT_EXECUTING
+PENDING_OUTPUT_STAGING       = UMGR_STAGING_OUTPUT_PENDING
+STAGING_OUTPUT               = UMGR_STAGING_OUTPUT
 
-PMGR_LAUNCHING_PENDING       = PENDING_LAUNCH
-PMGR_LAUNCHING               = LAUNCHING
-PMGR_ACTIVE_PENDING          = PENDING_ACTIVE
-PMGR_ACTIVE                  = ACTIVE
+# -----------------------------------------------------------------------------
+

@@ -12,19 +12,22 @@ import radical.utils   as ru
 from ..states    import *
 
 from .prof_utils import Profiler, clone_units, drop_units
-from .prof_utils import timestamp     as util_timestamp
+from .prof_utils import timestamp      as util_timestamp
 
-from .queue      import Queue         as rpu_Queue
-from .queue      import QUEUE_ZMQ     as rpu_QUEUE_ZMQ
-from .queue      import QUEUE_OUTPUT  as rpu_QUEUE_OUTPUT
-from .queue      import QUEUE_INPUT   as rpu_QUEUE_INPUT
-from .queue      import QUEUE_BRIDGE  as rpu_QUEUE_BRIDGE
+from .queue      import Queue          as rpu_Queue
+from .queue      import QUEUE_ZMQ      as rpu_QUEUE_ZMQ
+from .queue      import QUEUE_OUTPUT   as rpu_QUEUE_OUTPUT
+from .queue      import QUEUE_INPUT    as rpu_QUEUE_INPUT
+from .queue      import QUEUE_BRIDGE   as rpu_QUEUE_BRIDGE
 
-from .pubsub     import Pubsub        as rpu_Pubsub
-from .pubsub     import PUBSUB_ZMQ    as rpu_PUBSUB_ZMQ
-from .pubsub     import PUBSUB_PUB    as rpu_PUBSUB_PUB
-from .pubsub     import PUBSUB_SUB    as rpu_PUBSUB_SUB
-from .pubsub     import PUBSUB_BRIDGE as rpu_PUBSUB_BRIDGE
+from .pubsub     import Pubsub         as rpu_Pubsub
+from .pubsub     import PUBSUB_ZMQ     as rpu_PUBSUB_ZMQ
+from .pubsub     import PUBSUB_PUB     as rpu_PUBSUB_PUB
+from .pubsub     import PUBSUB_SUB     as rpu_PUBSUB_SUB
+from .pubsub     import PUBSUB_BRIDGE  as rpu_PUBSUB_BRIDGE
+
+from ..constants import STATE_PUBSUB   as rpc_STATE_PUBSUB
+from ..constants import COMMAND_PUBSUB as rpc_COMMAND_PUBSUB
 
 # TODO:
 #   - add PENDING states
@@ -171,6 +174,10 @@ class Component(mp.Process):
         self._log.info('creating %s', self._cname)
 
         self._prof = Profiler(self._cname)
+
+        # components can always publissh state updates, and commands
+        self.declare_publisher('state',   rpc_STATE_PUBSUB)
+        self.declare_publisher('command', rpc_COMMAND_PUBSUB)
 
         # start the main event loop in a separate process.  At that point, the
         # component will basically detach itself from the parent process, and
@@ -684,7 +691,7 @@ class Component(mp.Process):
         # FIXME: I am not exactly sure why this is 'needed', but declaring
         #        a published as above and then immediately publishing on that
         #        channel seems to sometimes lead to a loss of messages.
-        time.sleep(1)
+      # time.sleep(1)
 
 
     # --------------------------------------------------------------------------
@@ -839,6 +846,10 @@ class Component(mp.Process):
             self._log = ru.get_logger(log_name, log_tgt, self._debug)
             self._log.info('running %s' % self._cname)
 
+            # components can always publissh state updates, and commands
+            self.declare_publisher('state',   rpc_STATE_PUBSUB)
+            self.declare_publisher('command', rpc_COMMAND_PUBSUB)
+
             # initialize_child() should declare all input and output channels, and all
             # workers and notification callbacks
             self._prof.prof('initialize')
@@ -848,8 +859,8 @@ class Component(mp.Process):
             # register own idle callbacks to 
             #  - watch the subscriber threads (1/sec)
             #  - flush profiles to the FS (1/sec)
-            self.declare_idle_cb(self._subscriber_check_cb, timeout=1.0)
-            self.declare_idle_cb(self._profile_flush_cb, timeout=60.0)
+            self.declare_idle_cb(self._subscriber_check_cb, timeout= 1.0)
+            self.declare_idle_cb(self._profile_flush_cb,    timeout=60.0)
 
             # perform a sanity check: for each declared input state, we expect
             # a corresponding work method to be declared, too.
@@ -1064,13 +1075,11 @@ class Component(mp.Process):
             msg = [msg]
 
         if topic not in self._publishers:
-            self._log.error("%s can't route notification '%s:%s' (%s)" \
-                    % (self._cname, topic, msg, self._publishers.keys()))
+            self._log.error("can't route '%s' notification: %s" % (topic, msg))
             return
 
         if not self._publishers[topic]:
-            self._log.error("%s no route for notification '%s:%s' (%s)" \
-                    % (self._cname, topic, msg, self._publishers.keys()))
+            self._log.error("no route for '%s' notification: %s" % (topic, msg))
             return
 
         for p in self._publishers[topic]:

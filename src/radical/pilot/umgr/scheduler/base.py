@@ -14,12 +14,12 @@ from ... import constants as rpc
 
 # ------------------------------------------------------------------------------
 # 'enum' for RPs's umgr scheduler types
-SCHEDULER_NAME_DIRECT       = "direct"
-SCHEDULER_NAME_ROUND_ROBIN  = "round_robin"
-SCHEDULER_NAME_BACKFILLING  = "backfilling"
+SCHEDULER_DIRECT       = "direct"
+SCHEDULER_ROUND_ROBIN  = "round_robin"
+SCHEDULER_BACKFILLING  = "backfilling"
 
 # default:
-SCHEDULER_NAME_DEFAULT      = SCHEDULER_NAME_ROUND_ROBIN
+SCHEDULER_DEFAULT      = SCHEDULER_ROUND_ROBIN
 
 # internally used enums for pilot roles
 ROLE    = '_scheduler_role'
@@ -61,13 +61,10 @@ class UMGRSchedulingComponent(rpu.Component):
 
         # Some schedulers care about states (of pilots and/or units), some
         # don't.  Either way, we here subscribe to state updates.
-        self.declare_publisher ('state', rpc.STATE_PUBSUB)
         self.declare_subscriber('state', rpc.STATE_PUBSUB, self.base_state_cb)
 
-        # All components use the command channel for control messages.
-        # Schedulers also use that command channel to get information about
+        # Schedulers use that command channel to get information about
         # pilots being added or removed.
-        self.declare_publisher ('command', rpc.COMMAND_PUBSUB)
         self.declare_subscriber('command', rpc.COMMAND_PUBSUB, self.base_command_cb)
 
         # communicate successful startup
@@ -103,9 +100,9 @@ class UMGRSchedulingComponent(rpu.Component):
 
         try:
             impl = {
-                SCHEDULER_NAME_DIRECT      : Direct,
-                SCHEDULER_NAME_ROUND_ROBIN : RoundRobin,
-                SCHEDULER_NAME_BACKFILLING : Backfilling
+                SCHEDULER_DIRECT      : Direct,
+                SCHEDULER_ROUND_ROBIN : RoundRobin,
+                SCHEDULER_BACKFILLING : Backfilling
             }[name]
 
             impl = impl(cfg, session)

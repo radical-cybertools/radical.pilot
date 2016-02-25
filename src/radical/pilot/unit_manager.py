@@ -15,6 +15,8 @@ from .  import states    as rps
 from .  import constants as rpc
 from .  import types     as rpt
 
+from .umgr import scheduler as rpus
+
 
 # ------------------------------------------------------------------------------
 #
@@ -51,7 +53,7 @@ class UnitManager(rpu.Component):
         # Combine the two pilots, the workload and a scheduler via
         # a UnitManager.
         um = radical.pilot.UnitManager(session=session,
-                                       scheduler=radical.pilot.SCHED_ROUND_ROBIN)
+                                       scheduler=radical.pilot.SCHEDULER_ROUND_ROBIN)
         um.add_pilot(p1)
         um.submit_units(compute_units)
 
@@ -102,70 +104,61 @@ class UnitManager(rpu.Component):
 
         session.prof.prof('create umgr', uid=self._uid)
 
+        cfg = ru.read_json("%s/configs/umgr_%s.json" \
+                % (os.path.dirname(__file__),
+                    os.environ.get('RADICAL_PILOT_UMGR_CONFIG', 'default')))
+
+        cfg['session_id']  = session.uid
+        cfg['owner']       = self.uid
+        cfg['mongodb_url'] = str(session.dburl)
+
+        if scheduler:
+            # overwrite the scheduler from the config file
+            cfg['scheduler'] = scheduler
+
+        if not cfg.get('scheduler'):
+            # set default scheduler if needed
+            cfg['scheduler'] = rpus.SCHEDULER_DEFAULT
+
+        components = cfg.get('components', [])
+
+        from .. import pilot as rp
+        
+        # we also need a map from component names to class types
+        typemap = {
+            rpc.UMGR_STAGING_INPUT_COMPONENT  : rp.umgr.Input,
+            rpc.UMGR_SCHEDULING_COMPONENT     : rp.umgr.Scheduler,
+            rpc.UMGR_STAGING_OUTPUT_COMPONENT : rp.umgr.Output
+            }
+
+        # get addresses from the bridges, and append them to the
+        # config, so that we can pass those addresses to the components
+        cfg['bridge_addresses'] = copy.deepcopy(session._bridge_addresses)
+
+        # the bridges are known, we can start to connect the components to them
+        self._components = rpu.Component.start_components(components, 
+                typemap, cfg, session)
+
+        # initialize the base class
+        # FIXME: unique ID
+        cfg['owner'] = session.uid
+        rpu.Component.__init__(self, self.uid, cfg, session)
+
+        # only now we have a logger... :/
         self._log.report.info('<<create unit manager')
 
-        try:
-            cfg = ru.read_json("%s/configs/umgr_%s.json" \
-                    % (os.path.dirname(__file__),
-                        os.environ.get('RADICAL_PILOT_UMGR_CONFIG', 'default')))
+        # The output queue is used to forward submitted units to the
+        # scheduling component.
+        self.declare_output(rps.UMGR_SCHEDULING_PENDING, rpc.UMGR_SCHEDULING_QUEUE)
 
-            cfg['session_id']  = session.uid
-            cfg['owner']       = self.uid
-            cfg['mongodb_url'] = str(session._dburl)
+        # register the state notification pull cb
+        # FIXME: we may want to have the frequency configurable
+        # FIXME: this should be a tailing cursor in the update worker
+        self.declare_idle_cb(self._state_pull_cb, timeout=1.0)
 
-            if scheduler:
-                # overwrite the scheduler from the config file
-                cfg['scheduler'] = scheduler
+        # also listen to the state pubsub for unit state changes
+        self.declare_subscriber('state', 'state_pubsub', self._state_sub_cb)
 
-            if not cfg.get('scheduler'):
-                # set default scheduler if needed
-                cfg['scheduler'] = SCHED_DEFAULT
-
-            components = cfg.get('components', [])
-
-            from .. import pilot as rp
-        
-            # we also need a map from component names to class types
-            typemap = {
-                rpc.UMGR_STAGING_INPUT_COMPONENT  : rp.umgr.Input,
-                rpc.UMGR_SCHEDULING_COMPONENT     : rp.umgr.Scheduler,
-                rpc.UMGR_STAGING_OUTPUT_COMPONENT : rp.umgr.Output
-                }
-
-            # get addresses from the bridges, and append them to the
-            # config, so that we can pass those addresses to the components
-            cfg['bridge_addresses'] = copy.deepcopy(session._bridge_addresses)
-
-            # the bridges are known, we can start to connect the components to them
-            self._components = rpu.Component.start_components(components, 
-                    typemap, cfg, session)
-
-            # initialize the base class
-            # FIXME: unique ID
-            cfg['owner'] = session.uid
-            rpu.Component.__init__(self, self.uid, cfg, session)
-
-            # The command pubsub is always used
-            self.declare_publisher('command', rpc.COMMAND_PUBSUB)
-
-            # The output queue is used to forward submitted units to the
-            # scheduling component.
-            self.declare_output(rps.UMGR_SCHEDULING_PENDING, rpc.UMGR_SCHEDULING_QUEUE)
-
-            # register the state notification pull cb
-            # FIXME: we may want to have the frequency configurable
-            # FIXME: this should be a tailing cursor in the update worker
-            self.declare_idle_cb(self._state_pull_cb, timeout=1.0)
-
-            # also listen to the state pubsub for unit state changes
-            self.declare_subscriber('state', 'state_pubsub', self._state_sub_cb)
-
-
-
-
-        except Exception as e:
-            self._log.exception("UMGR setup error: %s" % e)
-            raise
 
         self._session._dbs.insert_unit_manager(self.as_dict())
 
@@ -453,24 +446,6 @@ class UnitManager(rpu.Component):
 
         with self._pilots_lock:
             return self._units.keys()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_units(self):
-        """
-        Returns :class:`radical.pilot.ComputeUnit`s managed by
-        this unit manager.
-
-        **Returns:**
-              * A list of :class:`radical.pilot.ComputeUnit` instances
-        """
-
-        if self._closed:
-            raise RuntimeError("instance is already closed")
-
-        with self._pilots_lock:
-            return self._units.values()
 
 
     # --------------------------------------------------------------------------

@@ -62,7 +62,8 @@ class ComputeUnit(object):
         self._session       = self._umgr.session
         self._uid           = ru.generate_id('unit.%(counter)06d', ru.ID_CUSTOM)
         self._state         = rps.NEW
-        self._state_hist    = [[rps.NEW, rpu.timestamp()]]
+        self._state_hist    = [{'state'     : rps.NEW, 
+                                'timestamp' : rpu.timestamp()}]
         self._log           = umgr._log
         self._log_msgs      = []
         self._exit_code     = None

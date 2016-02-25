@@ -52,12 +52,7 @@ class Default(PMGRLaunchingComponent):
                            rpc.PMGR_LAUNCHING_QUEUE, self.work)
 
         # we don't really have an output queue, as we pass control over the
-        # pilot jobs to the resource management system (RM).  We still publish
-        # state updates though, of course!
-        self.declare_publisher('state', rpc.STATE_PUBSUB)
-
-        # all components use the command channel for control messages
-        self.declare_publisher ('command', rpc.COMMAND_PUBSUB)
+        # pilot jobs to the resource management system (RM).
 
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',

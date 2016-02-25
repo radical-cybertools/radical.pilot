@@ -75,7 +75,7 @@ if __name__ == '__main__':
             print 'cb: pilot %s: %s [%s]' % (pilot.uid, pilot.state, state)
         pilot.register_callback(pilot_cb)
        
-        pilot.wait(state=rp.ACTIVE)
+      # pilot.wait(state=rp.ACTIVE)
         print "pilot state: %s" % pilot.state
 
         report.header('submit units')

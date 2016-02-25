@@ -182,7 +182,6 @@ class Agent(rpu.Worker):
 
         # make sure we collect commands, specifically to implement the startup
         # barrier on bootstrap_4
-        self.declare_publisher ('command', rpc.COMMAND_PUBSUB)
         self.declare_subscriber('command', rpc.COMMAND_PUBSUB, self.barrier_cb)
 
         # Now instantiate all communication and notification channels, and all
@@ -250,7 +249,6 @@ class Agent(rpu.Worker):
         if self._pull_units:
 
             self.declare_output(rps.AGENT_STAGING_INPUT_PENDING, rpc.AGENT_STAGING_INPUT_QUEUE)
-            self.declare_publisher('state', rpc.STATE_PUBSUB)
 
             # register idle callback, to pull for units -- which is the only action
             # we have to perform, really

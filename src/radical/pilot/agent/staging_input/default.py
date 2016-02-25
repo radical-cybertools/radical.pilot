@@ -43,11 +43,6 @@ class Default(AgentStagingInputComponent):
 
         self.declare_output(rps.ALLOCATING_PENDING, rpc.AGENT_SCHEDULING_QUEUE)
 
-        self.declare_publisher('state', rpc.STATE_PUBSUB)
-
-        # all components use the command channel for control messages
-        self.declare_publisher ('command', rpc.COMMAND_PUBSUB)
-
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',
                                  'arg' : self.cname})

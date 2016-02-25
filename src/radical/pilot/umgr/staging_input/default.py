@@ -34,12 +34,9 @@ class Default(UMGRStagingInputComponent):
         self.declare_input(rps.UMGR_STAGING_INPUT_PENDING,
                            rpc.UMGR_STAGING_INPUT_QUEUE, self.work)
 
-        self.declare_output(rps.ALLOCATING_PENDING, rpc.UMGR_SCHEDULING_QUEUE)
-
-        self.declare_publisher('state', rpc.STATE_PUBSUB)
-
-        # all components use the command channel for control messages
-        self.declare_publisher ('command', rpc.COMMAND_PUBSUB)
+        # FIXME: this queue is inaccessible, needs routing via mongodb
+      # self.declare_output(rps.AGENT_STAGING_INPUT_PENDING,
+      #                     rpc.AGENT_STAGING_INPUT_QUEUE)
 
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',
@@ -137,8 +134,7 @@ class Default(UMGRStagingInputComponent):
 
         # UMGR input staging is done (or failed)
         if staging_ok:
-          # self.advance(cu, rps.UMGR_SCHEDULING_PENDING, publish=True, push=True)
-            self.advance(cu, rps.ALLOCATING_PENDING, publish=True, push=True)
+            self.advance(cu, rps.AGENT_STAGING_INPUT, publish=True, push=True)
         else:
             self.advance(cu, rps.FAILED, publish=True, push=False)
 

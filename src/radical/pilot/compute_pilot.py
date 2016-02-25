@@ -65,7 +65,8 @@ class ComputePilot(object):
         self._session       = self._pmgr.session
         self._uid           = ru.generate_id('pilot.%(counter)04d', ru.ID_CUSTOM)
         self._state         = rps.NEW
-        self._state_hist    = [[rps.NEW, rpu.timestamp()]]
+        self._state_hist    = [{'state'     : rps.NEW, 
+                                'timestamp' : rpu.timestamp()}]
         self._log           = pmgr._log
         self._log_msgs      = list()
         self._stdout        = None
