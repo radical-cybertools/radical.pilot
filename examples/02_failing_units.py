@@ -52,6 +52,9 @@ if __name__ == '__main__':
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = rp.PilotManager(session=session)
        
+        # Register the ComputePilot in a UnitManager object.
+        umgr = rp.UnitManager(session=session)
+
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pd_init = {
@@ -67,20 +70,22 @@ if __name__ == '__main__':
        
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
+
+        def pilot_cb(pilot, state):
+            print 'cb: pilot %s: %s [%s]' % (pilot.uid, pilot.state, state)
+        pilot.register_callback(pilot_cb)
        
         pilot.wait(state=rp.ACTIVE)
-        print "state: %s" % pilot.state
+        print "pilot state: %s" % pilot.state
 
         report.header('submit units')
 
-        # Register the ComputePilot in a UnitManager object.
-        umgr = rp.UnitManager(session=session)
       # umgr.add_pilots(pilot)
 
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 128   # number of units to run
+        n = 2   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -106,12 +111,11 @@ if __name__ == '__main__':
 
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
-        umgr.wait_units(timeout=3.0)
-        sys.exit()
+        umgr.wait_units()
     
         report.info('\n')
         for unit in units:
-            if unit.state == rp.FAILED:
+            if unit.state in [rp.FAILED, rp.CANCELED]:
                 report.plain('  * %s: %s, exit: %3s, err: %s' \
                         % (unit.uid, unit.state[:4], 
                            unit.exit_code, unit.stderr.strip()[-35:]))
@@ -125,6 +129,7 @@ if __name__ == '__main__':
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
+        session._log.exception('oops')
         report.error('caught Exception: %s\n' % e)
         raise
 

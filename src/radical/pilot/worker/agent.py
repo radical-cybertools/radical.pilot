@@ -59,6 +59,8 @@ class Agent(rpu.Worker):
         # current process context.  At the moment that requires a call to
         # self._finalize() in the main process.
 
+        self._log.debug('command_cb [%s]: %s', topic, msg)
+
         cmd = msg['cmd']
         arg = msg['arg']
 
@@ -83,6 +85,7 @@ class Agent(rpu.Worker):
 
         # This callback is invoked in the process context of the run loop, and
         # will be cleaned up automatically.
+        self._log.debug('barrier_cb [%s]: %s', topic, msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -90,8 +93,9 @@ class Agent(rpu.Worker):
         if cmd == 'alive':
 
             name = arg
-            self._log.debug('waiting alive: \n%s\n%s\n%s'
-                    % (self._components.keys(), self._workers.keys(),
+
+            self._log.debug('waiting alive [%s]: \n%s\n%s\n%s'
+                    % (name, self._components.keys(), self._workers.keys(),
                         self._sub_agents.keys()))
 
             # we only look at ALIVE messages which come from *this* agent, and
@@ -148,14 +152,8 @@ class Agent(rpu.Worker):
         self._sub_cfg    = self._cfg['agent_layout'][self.agent_name]
         self._pull_units = self._sub_cfg.get('pull_units', False)
 
-        # reconnect to session
-        # only for the master agent and for the agent
-        # which pulls units (which might be the same), we connect to MongoDB
-        if self.agent_name == 'agent_0' or self._pull_units:
-            self._log.debug('connecting to mongodb at %s for unit pull')
-            self._session = rp.Session(uid=self._session_id, _connect=True)
-        else:
-            self._session = rp.Session(uid=self._session_id, _connect=False)
+        # configure the agent logger
+        self._log.setLevel(self._cfg['debug'])
 
         # this better be on a shared FS!
         self._cfg['workdir'] = os.getcwd()
@@ -165,25 +163,18 @@ class Agent(rpu.Worker):
             if self._sub_cfg.get('target', 'local') != 'local':
                 raise ValueError("agent_0 must run on target 'local'")
 
-        # configure the agent logger
-        self._log.setLevel(self._cfg['debug'])
-
-        # set up db connection -- only for the master agent and for the agent
-        # which pulls units (which might be the same)
-        if self.agent_name == 'agent_0' or self._pull_units:
-            self._log.debug('connecting to mongodb at %s for unit pull')
-            self._log.debug('connected to mongodb')
-
         # first order of business: set the start time and state of the pilot
         # Only the master agent performs this action
+        self._log.debug('### agent name: %s', self.agent_name)
         if self.agent_name == 'agent_0':
+            self._log.debug('### agent db update: %s', self._session._dbs._c)
             now = rpu.timestamp()
             ret = self._session._dbs._c.update(
                     {'type' : 'pilot',
                      "uid"  : self._pilot_id},
                     {"$set" : {"state"        : rps.ACTIVE,
                                "started"      : now},
-                     "$push": {"statehistory" : {"state"    : rps.ACTIVE,
+                     "$push": {"state_history": {"state"    : rps.ACTIVE,
                                                  "timestamp": now}}
                     })
             # TODO: Check for return value, update should be true!

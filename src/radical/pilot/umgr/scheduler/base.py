@@ -37,16 +37,22 @@ class UMGRSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
         self._umgr = cfg.get('owner')
 
-        rpu.Component.__init__(self, rpc.UMGR_SCHEDULING_COMPONENT, cfg)
+        rpu.Component.__init__(self, rpc.UMGR_SCHEDULING_COMPONENT, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
     def initialize_child(self):
+
+        self._pilots      = dict()             # set of pilots to schedule over
+        self._pilots_lock = threading.RLock()  # lock on the above set
+
+        # configure the scheduler instance
+        self._configure()
 
         self.declare_input(rps.UMGR_SCHEDULING_PENDING,
                            rpc.UMGR_SCHEDULING_QUEUE, self.work)
@@ -63,12 +69,6 @@ class UMGRSchedulingComponent(rpu.Component):
         # pilots being added or removed.
         self.declare_publisher ('command', rpc.COMMAND_PUBSUB)
         self.declare_subscriber('command', rpc.COMMAND_PUBSUB, self.base_command_cb)
-
-        self._pilots      = dict()             # set of pilots to schedule over
-        self._pilots_lock = threading.RLock()  # lock on the above set
-
-        # configure the scheduler instance
-        self._configure()
 
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',
@@ -123,19 +123,20 @@ class UMGRSchedulingComponent(rpu.Component):
         # self._pilots accordingly.  Unit state changes will be ignored -- if
         # a scheduler needs to keep track of those, it will need to add its own
         # callback.
-
-        cmd = msg['cmd']
-        arg = msg['arg']
+        
+        cmd   = msg['cmd']
+        arg   = msg['arg']
+        ttype = arg.get('type')
 
         self._log.info('scheduler state_cb: %s: %s' % (cmd, arg))
 
-        ttype = arg.get('ttype')
 
-        if cmd == 'state_update' and ttype == 'pilot':
+        # FIXME: get cmd string consistent throughout the code
+        if cmd in ['update', 'state_update'] and ttype == 'pilot':
 
             with self._pilots_lock:
         
-                pilot = arg.get('thing')
+                pilot = arg
                 state = pilot['state']
                 pid   = pilot['uid']
 
@@ -213,6 +214,7 @@ class UMGRSchedulingComponent(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
+
         raise NotImplementedError("_configure() not implemented for Scheduler '%s'." \
                 % self._cname)
 

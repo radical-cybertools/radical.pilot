@@ -36,7 +36,7 @@ class DBSession(object):
 
     #--------------------------------------------------------------------------
     #
-    def __init__(self, sid, dburl, cfg, connect=True):
+    def __init__(self, sid, dburl, cfg, logger, connect=True):
         """ Creates a new session
 
             A session is a MongoDB collection which contains documents of
@@ -50,6 +50,7 @@ class DBSession(object):
         """
 
         self._dburl      = ru.Url(dburl)
+        self._log        = logger
         self._client     = None
         self._db         = None
         self._created    = None
@@ -66,7 +67,6 @@ class DBSession(object):
         if not mongo or not db:
             raise RuntimeError("Could not connect to database at %s" % dburl)
 
-        self._client     = mongo
         self._db         = db
         self._connected  = timestamp()
 
@@ -259,7 +259,7 @@ class DBSession(object):
 
         if state:
             set_query["state"] = state
-            push_query["statehistory"] = [{'state': state, 'timestamp': timestamp()}]
+            push_query["state_history"] = [{'state': state, 'timestamp': timestamp()}]
 
         if logs: 
             push_query["log"] = logs
@@ -281,54 +281,27 @@ class DBSession(object):
 
     #--------------------------------------------------------------------------
     #
-    def insert_pilot(self, pilot_uid, pmgr_uid, pilot_description,
-                     pilot_sandbox, global_sandbox):
+    def insert_pilots(self, pilot_docs):
         """
-        Adds a new pilot document to the database.
+        Adds new pilot documents to the database.
         """
+
+        # FIXME: explicit bulk vs. insert(multi=True)
 
         if not self._c:
             raise Exception("No active session.")
 
-        ts = timestamp()
+        bulk = self._c.initialize_ordered_bulk_op()
 
-        # the SAGA attribute interface does not expose private attribs in
-        # as_dict().  That semantics may change in the future, for now we copy
-        # private elems directly.
-        # FIXME: check if fixed
-        #
-        pd_dict = dict()
-        for k in pilot_description._attributes_i_list(priv=True):
-            pd_dict[k] = pilot_description[k]
+        for doc in pilot_docs:
+            doc['_id']      = doc['uid']
+            doc['type']     = 'pilot'
+            doc["commands"] = list()
+            bulk.insert(doc)
 
-        pilot_doc = {
-            "uid":            pilot_uid,
-            "type":           'pilot',
-            "description":    pd_dict,
-            "submitted":      ts,
-            "input_transfer_started": None,   # FIXME
-            "input_transfer_finished": None,  # FIXME
-            "started":        None,
-            "finished":       None,
-            "heartbeat":      None,
-            "output_transfer_started": None,   # FIXME
-            "output_transfer_finished": None,  # FIXME
-            "nodes":          None,
-            "cores_per_node": None,
-            "sagajobid":      None,
-            "sandbox":        pilot_sandbox,
-            "global_sandbox": global_sandbox,
-            "state":          PENDING_LAUNCH,
-            "statehistory":   [{"state": PENDING_LAUNCH, "timestamp": ts}],
-            "log":            [],
-            "pmgr":           pmgr_uid,
-            "umgr":           None,
-            "commands":       []
-        }
-
-        self._c.insert(pilot_doc)
-
-        return [pilot_uid, pilot_doc]
+        res = bulk.execute()
+        self._log.debug("bulk pilot insert result: %s", res)
+        # FIXME: evaluate res
 
 
     #--------------------------------------------------------------------------
@@ -439,7 +412,7 @@ class DBSession(object):
 
     #--------------------------------------------------------------------------
     #
-    def get_compute_units(self, umgr_uid, unit_ids=None):
+    def get_units(self, umgr_uid, unit_ids=None):
         """
         Get yerself a bunch of compute units.
 
@@ -466,7 +439,7 @@ class DBSession(object):
 
     #--------------------------------------------------------------------------
     #
-    def change_compute_units(self, filter_dict, set_dict, push_dict):
+    def change_units(self, filter_dict, set_dict, push_dict):
         """
         Update the state and the log of all compute units belonging to
         a specific pilot.
@@ -516,14 +489,14 @@ class DBSession(object):
                              "uid"   : uid, 
                              "state" : {"$in"  : src_states} }) \
                     .update({"$set"  : {"state": state},
-                             "$push" : {"statehistory": {"state":   state, "timestamp": ts}},
-                             "$push" : {"log"         : {"message": log,   "timestamp": ts}}})
+                             "$push" : {"state_history": {"state":   state, "timestamp": ts}},
+                             "$push" : {"log"          : {"message": log,   "timestamp": ts}}})
             else:
                 bulk.find  ({"type"  : 'unit', 
                              "uid"   : uid}) \
                     .update({"$set"  : {"state": state},
-                             "$push" : {"statehistory": {"state"  : state, "timestamp": ts}},
-                             "$push" : {"log"         : {"message": log,   "timestamp": ts}}})
+                             "$push" : {"state_history": {"state"  : state, "timestamp": ts}},
+                             "$push" : {"log"          : {"message": log,   "timestamp": ts}}})
 
         result = bulk.execute()
 
@@ -757,52 +730,29 @@ class DBSession(object):
 
     #--------------------------------------------------------------------------
     #
-    def insert_compute_units(self, umgr_uid, units, unit_log):
-        """ 
-        Adds one or more compute units to the database.
+    def insert_units(self, unit_docs):
         """
+        Adds new unit documents to the database.
+        """
+
+        # FIXME: explicit bulk vs. insert(multi=True)
+
         if not self._c:
-            raise RuntimeError("No active session.")
+            raise Exception("No active session.")
 
-        # Make sure we work on a list.
-        if not isinstance(units, list):
-            units = [units]
+        bulk = self._c.initialize_ordered_bulk_op()
 
-        unit_docs = list()
-        results   = dict()
+        for doc in unit_docs:
+            doc['_id']      = doc['uid']
+            doc['type']     = 'unit'
+            doc["commands"] = list()
+            bulk.insert(doc)
 
-        for unit in units:
+        res = bulk.execute()
+        self._log.debug("bulk unit insert result: %s", res)
+        # FIXME: evaluate res
 
-            ts = timestamp()
 
-            unit_json = {
-                "uid":                     unit.uid,
-                "type":                    'unit',
-                "description":             unit.description.as_dict(),
-                "restartable":             unit.description.restartable,
-                "umgr":                    umgr_uid,
-                "pilot":                   None,
-                "pilot_sandbox":           None,
-                "state":                   unit.state,
-                "statehistory":            [{"state": unit.state, "timestamp": ts}],
-                "submitted":               ts,
-                "started":                 None,
-                "finished":                None,
-                "exit_code":               None,
-                "sandbox":                 None,
-                "stdout":                  None,
-                "stderr":                  None,
-                "log":                     unit_log
-            }
-            unit_docs.append(unit_json)
-            results[unit.uid] = unit_json
-
-        unit_uids = self._c.insert(unit_docs)
-
-        assert len(unit_docs) == len(unit_uids)
-        assert len(results)   == len(unit_uids)
-
-        return results
 
 
 # ------------------------------------------------------------------------------

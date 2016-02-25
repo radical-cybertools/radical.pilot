@@ -197,53 +197,53 @@ class BackfillingScheduler(Scheduler):
                     # FIXME: handle state races
                     ts = timestamp()
                     self.session._dbs.change_compute_units(
-                        filter_dict = {"pilot"       : pid, 
-                                       "state"       : {"$in": [UNSCHEDULED,
+                        filter_dict = {"pilot"        : pid, 
+                                       "state"        : {"$in": [UNSCHEDULED,
                                                                 SCHEDULING,
-                                                                PENDING_INPUT_STAGING,
-                                                                STAGING_INPUT,
-                                                                AGENT_STAGING_INPUT_PENDING,
-                                                                AGENT_STAGING_INPUT,
-                                                                ALLOCATING_PENDING,
-                                                                ALLOCATING,
-                                                                EXECUTING_PENDING]}},
-                        set_dict    = {"state"       : UNSCHEDULED, 
-                                       "pilot"       : None},
-                        push_dict   = {"statehistory": {"state"     : UNSCHEDULED, 
-                                                        "timestamp" : ts}, 
-                                       "log"         : {"message"   :  "reschedule unit", 
-                                                        "timestamp" : ts}
+                                                                 PENDING_INPUT_STAGING,
+                                                                 STAGING_INPUT,
+                                                                 AGENT_STAGING_INPUT_PENDING,
+                                                                 AGENT_STAGING_INPUT,
+                                                                 ALLOCATING_PENDING,
+                                                                 ALLOCATING,
+                                                                 EXECUTING_PENDING]}},
+                        set_dict    = {"state"        : UNSCHEDULED, 
+                                       "pilot"        : None},
+                        push_dict   = {"state_history": {"state"     : UNSCHEDULED, 
+                                                         "timestamp" : ts}, 
+                                       "log"          : {"message"   :  "reschedule unit", 
+                                                         "timestamp" : ts}
                                       })
 
                     self.session._dbs.change_compute_units (
-                        filter_dict = {"pilot"       : pid, 
-                                       "restartable" : True, 
-                                       "state"       : {"$in": [EXECUTING, 
-                                                                AGENT_STAGING_OUTPUT_PENDING,
-                                                                AGENT_STAGING_OUTPUT,
-                                                                PENDING_OUTPUT_STAGING,
-                                                                STAGING_OUTPUT]}},
-                        set_dict    = {"state"       : UNSCHEDULED,
-                                       "pilot"       : None},
-                        push_dict   = {"statehistory": {"state"     : UNSCHEDULED,
-                                                        "timestamp" : ts}, 
-                                       "log"         : {"message"   :  "reschedule unit", 
-                                                        "timestamp" : ts}
+                        filter_dict = {"pilot"        : pid, 
+                                       "restartable"  : True, 
+                                       "state"        : {"$in": [EXECUTING, 
+                                                                 AGENT_STAGING_OUTPUT_PENDING,
+                                                                 AGENT_STAGING_OUTPUT,
+                                                                 PENDING_OUTPUT_STAGING,
+                                                                 STAGING_OUTPUT]}},
+                        set_dict    = {"state"        : UNSCHEDULED,
+                                       "pilot"        : None},
+                        push_dict   = {"state_history": {"state"     : UNSCHEDULED,
+                                                         "timestamp" : ts}, 
+                                       "log"          : {"message"   :  "reschedule unit", 
+                                                         "timestamp" : ts}
                                       })
 
                     self.session._dbs.change_compute_units (
-                        filter_dict = {"pilot"       : pid, 
-                                       "restartable" : False, 
-                                       "state"       : {"$in": [EXECUTING, 
-                                                                AGENT_STAGING_OUTPUT_PENDING,
-                                                                AGENT_STAGING_OUTPUT,
-                                                                PENDING_OUTPUT_STAGING, 
-                                                                STAGING_OUTPUT]}},
-                        set_dict    = {"state"       : FAILED},
-                        push_dict   = {"statehistory": {"state"     : FAILED, 
-                                                        "timestamp" : ts}, 
-                                       "log"         : {"message"   :  "reschedule unit", 
-                                                        "timestamp" : ts}
+                        filter_dict = {"pilot"        : pid, 
+                                       "restartable"  : False, 
+                                       "state"        : {"$in": [EXECUTING, 
+                                                                 AGENT_STAGING_OUTPUT_PENDING,
+                                                                 AGENT_STAGING_OUTPUT,
+                                                                 PENDING_OUTPUT_STAGING, 
+                                                                 STAGING_OUTPUT]}},
+                        set_dict    = {"state"        : FAILED},
+                        push_dict   = {"state_history": {"state"     : FAILED, 
+                                                         "timestamp" : ts}, 
+                                       "log"          : {"message"   :  "reschedule unit", 
+                                                         "timestamp" : ts}
                                       })
 
                         # make sure that restartable units got back into the

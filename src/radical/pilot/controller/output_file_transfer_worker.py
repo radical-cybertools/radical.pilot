@@ -85,7 +85,7 @@ class OutputFileTransferWorker(threading.Thread):
                            "control"    : 'agent'},
                     update={"$set" : {"state"   : STAGING_OUTPUT,
                                       "control" : 'umgr'},
-                            "$push": {"statehistory" : 
+                            "$push": {"state_history": 
                                          {"state"    : STAGING_OUTPUT, 
                                           "timestamp": ts}
                                      }
@@ -169,7 +169,7 @@ class OutputFileTransferWorker(threading.Thread):
                         um_col.update({'uid': compute_unit_id}, {
                             '$set': {'state': DONE},
                             '$push': {
-                                'statehistory': {'state': DONE, 'timestamp': ts},
+                                'state_history': {'state': DONE, 'timestamp': ts},
                                 'log': {'message': log_message, 'timestamp': ts}
                             }
                         })
@@ -183,7 +183,7 @@ class OutputFileTransferWorker(threading.Thread):
                         um_col.update({'uid': compute_unit_id}, {
                             '$set': {'state': FAILED},
                             '$push': {
-                                'statehistory': {'state': FAILED, 'timestamp': ts},
+                                'state_history': {'state': FAILED, 'timestamp': ts},
                                 'log': {'message': log_message, 'timestamp': ts}
                             }})
                         logger.exception(log_message)

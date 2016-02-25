@@ -140,11 +140,11 @@ class Component(mp.Process):
         """
 
         self._ctype         = ctype
-        self._cfg           = cfg
+        self._cfg           = copy.deepcopy(cfg)
         self._session       = session
         self._debug         = cfg.get('debug', 'DEBUG') # FIXME
         self._module_name   = cfg.get('name', self._ctype)
-        self._cname         = "%s.%s.%d" % (self._module_name, self._ctype, cfg.get('number', 0))
+        self._cname         = "%s.%s.%d" % (cfg.get('owner','rp'), self._ctype, cfg.get('number', 0))
         self._childname     = "%s.child" % self._cname
         self._addr_map      = cfg['bridge_addresses']
         self._parent        = os.getpid() # pid of spawning process
@@ -176,6 +176,23 @@ class Component(mp.Process):
         # component will basically detach itself from the parent process, and
         # will only maintain a handle to be used for shutdown
         mp.Process.__init__(self, name=self._cname)
+
+        self._log.debug('### session init with: %s (%s)', session._dbs._c,
+                cfg.get('owner'))
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def cfg(self):
+        return copy.deepcopy(self._cfg)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def session(self):
+        return self._session
 
 
     # --------------------------------------------------------------------------
@@ -695,11 +712,14 @@ class Component(mp.Process):
                 while not self._terminate.is_set():
                     topic, msg = q.get_nowait(1000) # timout in ms
                     if topic and msg:
-                        with self._cb_lock:
-                            if callback_data:
-                                callback (topic=topic, msg=msg, cb_data=callback_data)
-                            else:
-                                callback (topic=topic, msg=msg)
+                        if not isinstance(msg,list):
+                            msg = [msg]
+                        for m in msg:
+                            with self._cb_lock:
+                                if callback_data:
+                                    callback (topic=topic, msg=m, cb_data=callback_data)
+                                else:
+                                    callback (topic=topic, msg=m)
             except Exception as e:
                 self._log.exception("subscriber failed %s" % name)
                 if self._exit_on_error:
@@ -964,8 +984,6 @@ class Component(mp.Process):
         optionally 'type' set.
         """
 
-        # FIXME: this needs to be usable by pilots, too
-
         if not timestamp:
             timestamp = util_timestamp()
 
@@ -997,7 +1015,7 @@ class Component(mp.Process):
 
             if publish:
                 # send state notifications
-                self.publish('state', ['update', thing])
+                self.publish('state', {'cmd': 'update', 'arg': thing})
                 self._prof.prof('publish', uid=thing['uid'], state=thing['state'])
 
             if push:
@@ -1011,7 +1029,6 @@ class Component(mp.Process):
                     # empty output -- drop thing
                     self._log.debug('%s %s ===| %s' % ('state', thing['id'], thing['state']))
                     continue
-
 
                 output = self._outputs[state]
 

@@ -89,7 +89,7 @@ class InputFileTransferWorker(threading.Thread):
                            "state"      : PENDING_INPUT_STAGING,
                            },
                     update={"$set" : {"state": STAGING_INPUT},
-                            "$push": {"statehistory": {"state": STAGING_INPUT, "timestamp": ts}}}
+                            "$push": {"state_history": {"state": STAGING_INPUT, "timestamp": ts}}}
                 )
 
                 if compute_unit is None:
@@ -204,7 +204,7 @@ class InputFileTransferWorker(threading.Thread):
                                       {'$set': {'state'  : AGENT_STAGING_INPUT_PENDING, 
                                                 'control': 'umgr'},
                                        '$push': {
-                                           'statehistory': {
+                                           'state_history': {
                                                'state': AGENT_STAGING_INPUT_PENDING,
                                                'timestamp': ts},
                                            'log': {
@@ -225,7 +225,7 @@ class InputFileTransferWorker(threading.Thread):
                         um_col.update({'uid': compute_unit_id},
                                       {'$set': {'state': FAILED},
                                        '$push': {
-                                           'statehistory': {'state': FAILED, 'timestamp': ts},
+                                           'state_history': {'state': FAILED, 'timestamp': ts},
                                            'log': logentry
                                        }})
                         self._session.prof.prof('advance', uid=compute_unit_id, 

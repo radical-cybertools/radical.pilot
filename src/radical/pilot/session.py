@@ -202,6 +202,23 @@ class Session (rs.Session):
                 self._log.info("recording session in %s" % self._rec)
 
 
+        # create/connect database handle
+        try:
+            self._dbs = DBSession(sid=self.uid, dburl=self.dburl,
+                                  cfg=self.cfg, logger=self._log, 
+                                  connect=_connect)
+
+            # from here on we should be able to close the session again
+            self._valid = True
+            self._log.info("New Session created: %s." % str(self))
+
+        except Exception, ex:
+            self._log.report.error(">>err\n")
+            self._log.exception('session create failed')
+            raise RuntimeError("Couldn't create new session (database URL '%s' incorrect?): %s" \
+                            % (self._dburl, ex))  
+
+
         # create communication bridges for umgr and pmgr instances to use
         # NOTE:  sessions can be reconnected in a different host context,
         #        specifically in the agent.  In that case the bridge
@@ -294,22 +311,6 @@ class Session (rs.Session):
             self._log.report.error(">>err\n")
             self._log.exception('session create failed')
             raise RuntimeError("Couldn't create worker components): %s" % e)  
-
-
-        # create/connect database handle
-        try:
-            self._dbs = DBSession(sid=self.uid, dburl=self.dburl,
-                                  cfg=self.cfg, connect=_connect)
-
-            # from here on we should be able to close the session again
-            self._valid = True
-            self._log.info("New Session created: %s." % str(self))
-
-        except Exception, ex:
-            self._log.report.error(">>err\n")
-            self._log.exception('session create failed')
-            raise RuntimeError("Couldn't create new session (database URL '%s' incorrect?): %s" \
-                            % (self._dburl, ex))  
 
 
         # FIXME: make sure the above code results in a usable session on

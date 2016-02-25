@@ -96,6 +96,8 @@ class Heartbeat(rpu.Worker):
         # FIXME: this pull should be done by the update worker, and commands
         #        should then be communicated over the command pubsub
         # FIXME: commands go to pmgr, umgr, session docs
+        # FIXME: this is disabled right now
+        return
         retdoc = self._session._dbs._c.find_and_modify(
                     query  = {"uid"  : self._owner},
                     update = {"$set" : {rpc.COMMAND_FIELD: []}}, # Wipe content of array

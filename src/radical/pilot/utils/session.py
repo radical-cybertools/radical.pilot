@@ -251,7 +251,7 @@ def get_session_frames (sids, db=None, cachedir=None) :
                 CANCELED       : None
             }
 
-            for entry in pilot.get('statehistory', list()):
+            for entry in pilot.get('state_history', list()):
                 state = entry['state']
                 timer = entry['timestamp'] - session_start
                 pilot_dict[state] = timer
@@ -301,7 +301,7 @@ def get_session_frames (sids, db=None, cachedir=None) :
                 CANCELED               : None
             }
 
-            for entry in unit.get('statehistory', list()):
+            for entry in unit.get('state_history', list()):
                 state = entry['state']
                 timer = entry['timestamp'] - session_start
                 unit_dict[state] = timer
@@ -325,7 +325,7 @@ def get_session_frames (sids, db=None, cachedir=None) :
             rec_hist = dict()
             cb_hist  = dict()
 
-            for e in unit.get('statehistory', list()):
+            for e in unit.get('state_history', list()):
                 state = e['state']
                 timer = e['timestamp'] - session_start
                 if state not in rec_hist:

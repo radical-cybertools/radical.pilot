@@ -4,7 +4,6 @@ __license__   = "MIT"
 
 
 import os
-import sys
 import copy
 import time
 import threading
@@ -57,14 +56,9 @@ class PilotManager(rpu.Component):
         um.submit_units(compute_units)
 
 
-    The pilot manager can issue notification on pilot state changes.  It has two
-    sources for state information notifications itself:
-
-      * the pmgr pulls mongodb for state changes writte by the agent
-      * the pmgr listens to the state pubsub for pilot state changes
-
-    Whenever state notification arrives, any callback registered for that
-    notification is fired.  
+    The pilot manager can issue notification on pilot state changes.  Whenever
+    state notification arrives, any callback registered for that notification is
+    fired.  
     
     NOTE: State notifications can arrive out of order wrt the pilot state model!
     """
@@ -83,7 +77,6 @@ class PilotManager(rpu.Component):
             * A new `PilotManager` object [:class:`radical.pilot.PilotManager`].
         """
 
-        self._cfg         = None
         self._components  = None
         self._pilots      = dict()
         self._pilots_lock = threading.RLock()
@@ -108,15 +101,15 @@ class PilotManager(rpu.Component):
         self._log.report.info('<<create pilot manager')
 
         try:
-            self._cfg = ru.read_json("%s/configs/pmgr_%s.json" \
+            cfg = ru.read_json("%s/configs/pmgr_%s.json" \
                     % (os.path.dirname(__file__),
                        os.environ.get('RADICAL_PILOT_PMGR_CONFIG', 'default')))
 
-            self._cfg['session_id']  = session.uid
-            self._cfg['mongodb_url'] = str(session.dburl)
-            self._cfg['owner']       = self.uid
+            cfg['session_id']  = session.uid
+            cfg['owner']       = self.uid
+            cfg['mongodb_url'] = str(session.dburl)
 
-            components = self._cfg.get('components', [])
+            components = cfg.get('components', [])
 
             from .. import pilot as rp
         
@@ -127,16 +120,16 @@ class PilotManager(rpu.Component):
 
             # get addresses from the bridges, and append them to the
             # config, so that we can pass those addresses to the components
-            self._cfg['bridge_addresses'] = copy.deepcopy(session._bridge_addresses)
+            cfg['bridge_addresses'] = copy.deepcopy(session._bridge_addresses)
 
             # the bridges are known, we can start to connect the components to them
             self._components = rpu.Component.start_components(components,
-                    typemap, self._cfg, session=session)
+                               typemap, cfg, session=session)
 
             # initialize the base class
-            # FIXME: why so late?
             # FIXME: unique ID
-            rpu.Component.__init__(self, 'PilotManager', self._cfg, session)
+            cfg['owner'] = session.uid
+            rpu.Component.__init__(self, self.uid, cfg, session)
 
             # The command pubsub is always used
             self.declare_publisher('command', rpc.COMMAND_PUBSUB)
@@ -145,9 +138,9 @@ class PilotManager(rpu.Component):
             # launching component.
             self.declare_output(rps.PMGR_LAUNCHING_PENDING, rpc.PMGR_LAUNCHING_QUEUE)
 
-            # FIXME: idle callbacks need to be in the component child to get activated.
             # register the state notification pull cb
             # FIXME: we may want to have the frequency configurable
+            # FIXME: this should be a tailing cursor in the update worker
             self.declare_idle_cb(self._state_pull_cb, timeout=1.0)
 
             # also listen to the state pubsub for pilot state changes
@@ -162,8 +155,6 @@ class PilotManager(rpu.Component):
 
         self._prof.prof('PMGR setup done', logger=self._log.debug)
         self._log.report.ok('>>ok\n')
-
-        self.start()
 
 
     #--------------------------------------------------------------------------
@@ -192,7 +183,7 @@ class PilotManager(rpu.Component):
      ##     self._worker.stop()
      ## TODO: kill components
 
-        # kill child process
+        # kill child process, threads
         self.stop()
 
         self._session.prof.prof('closed pmgr', uid=self._uid)
@@ -210,7 +201,7 @@ class PilotManager(rpu.Component):
         """
 
         ret = {
-            'uid': self.uid, 
+            'uid': self.uid,
             'cfg': self.cfg
         }
 
@@ -236,20 +227,14 @@ class PilotManager(rpu.Component):
         # about.  If any state changed, update the pilot instance and issue
         # notification callbacks as needed
         # FIXME: we also pull for dead pilots.  That is not efficient...
-        # FIXME: this needs to be converted into a tailed cursor, or better
-        #        a ZMQ pubsub.
-        print "state pull cb"
-
+        # FIXME: this needs to be converted into a tailed cursor in the update
+        #        worker
         pilots = self._session._dbs.get_pilots(pmgr_uid=self.uid)
-        import pprint
-        pprint.pprint(pilots)
         action = False
 
         for pilot in pilots:
-            if self._update_pilot(pilot.uid, pilot):
+            if self._update_pilot(pilot['uid'], pilot):
                 action = True
-
-        print action
 
         return action
 
@@ -277,7 +262,11 @@ class PilotManager(rpu.Component):
             if pid not in self._pilots:
                 return False
 
-            return self._pilots[pid]._update(pilot)
+            # only update on state changes
+            if self._pilots[pid].state != pilot['state']:
+                return self._pilots[pid]._update(pilot)
+            else:
+                return False
 
 
     # --------------------------------------------------------------------------
@@ -302,28 +291,6 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    @property
-    def cfg(self):
-        """
-        Returns the config.
-        """
-        return copy.deepcopy(self._cfg)
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def session(self):
-        """
-        Returns the session object
-        """
-        return self._session
-
-
-
-
-    # --------------------------------------------------------------------------
-    #
     def list_pilots(self):
         """
         Returns the UIDs of the :class:`radical.pilot.ComputePilots` managed by
@@ -340,6 +307,24 @@ class PilotManager(rpu.Component):
             ret = self._pilots.keys()
 
         return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_pilots(self):
+        """
+        Get the pilots instances currently associated with the pilot manager.
+
+        **Returns:**
+              * A list of :class:`radical.pilot.ComputePilot` instances.
+        """
+        if self._closed:
+            raise RuntimeError("instance is already closed")
+
+        with self._pilots_lock:
+            return self._pilots.values()
+
+
 
 
     # --------------------------------------------------------------------------
@@ -374,12 +359,13 @@ class PilotManager(rpu.Component):
 
         self._log.report.info('<<submit %d pilot(s)\n\t' % len(descriptions))
 
-        # we return a list of compute pilots
-        ret = list()
+        # create the pilot instance
+        pilots     = list()
+        pilot_docs = list()
         for descr in descriptions :
-
             pilot = ComputePilot.create(pmgr=self, descr=descr)
-            ret.append(pilot)
+            pilots.append(pilot)
+            pilot_docs.append(pilot.as_dict())
 
             # keep pilots around
             with self._pilots_lock:
@@ -391,16 +377,22 @@ class PilotManager(rpu.Component):
                         % (self._session._rec, pilot.uid, self._rec_id))
             self._log.report.progress()
 
-            self.advance(pilot.as_dict(), rps.PMGR_LAUNCHING_PENDING, 
-                         publish=True, push=True)
-
         if self._session._rec:
             self._rec_id += 1
 
+        # insert pilots into the database, as a bulk.
+        self._session._dbs.insert_pilots(pilot_docs)
+
+        # Only after the insert can we hand the pilots over to the next
+        # components (ie. advance state).
+        # FIXME: advance as bulk
+        for doc in pilot_docs:
+            self.advance(doc, rps.PMGR_LAUNCHING_PENDING, publish=True, push=True)
+
         self._log.report.ok('>>ok\n')
 
-        if ret_list: return ret
-        else       : return ret[0]
+        if ret_list: return pilots
+        else       : return pilots[0]
 
 
     # --------------------------------------------------------------------------

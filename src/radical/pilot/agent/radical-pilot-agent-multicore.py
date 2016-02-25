@@ -213,8 +213,8 @@ def pilot_FAILED(mongo_c=None, pilot_uid=None, logger=None, msg=None):
         mongo_c.update({'type' : 'pilot', 
                         "uid"  : pilot_uid},
             {"$pushAll": {"log"         : msg},
-             "$push"   : {"statehistory": {"state"     : rp.FAILED,
-                                           "timestamp" : now}},
+             "$push"   : {"state_history": {"state"     : rp.FAILED,
+                                            "timestamp" : now}},
              "$set"    : {"state"       : rp.FAILED,
                           "stdout"      : rpu.tail(out),
                           "stderr"      : rpu.tail(err),
@@ -258,8 +258,8 @@ def pilot_CANCELED(mongo_c=None, pilot_uid=None, logger=None, msg=None):
         mongo_c.update({'type' : 'pilot', 
                         "uid": pilot_uid},
             {"$pushAll": {"log"         : msg},
-             "$push"   : {"statehistory": {"state"     : rp.CANCELED,
-                                           "timestamp" : now}},
+             "$push"   : {"state_history": {"state"     : rp.CANCELED,
+                                            "timestamp" : now}},
              "$set"    : {"state"       : rp.CANCELED,
                           "stdout"      : rpu.tail(out),
                           "stderr"      : rpu.tail(err),
@@ -298,8 +298,8 @@ def pilot_DONE(mongo_c=None, pilot_uid=None, logger=None, msg=None):
         mongo_c.update({'type' : 'pilot', 
                         "uid": pilot_uid},
             {"$pushAll": {"log"         : msg},
-             "$push"   : {"statehistory": {"state"    : rp.DONE,
-                                           "timestamp": now}},
+             "$push"   : {"state_history": {"state"    : rp.DONE,
+                                            "timestamp": now}},
              "$set"    : {"state"       : rp.DONE,
                           "stdout"      : rpu.tail(out),
                           "stderr"      : rpu.tail(err),
@@ -353,6 +353,7 @@ def write_sub_configs(cfg, bridges, nodeip, log):
         if sa != 'agent_0':
             sa_cfg = copy.deepcopy(cfg)
             sa_cfg['agent_name'] = sa
+            sa_cfg['owner']      = cfg['agent_name']
             ru.write_json(sa_cfg, './%s.cfg' % sa)
 
 
@@ -399,10 +400,8 @@ def bootstrap_3():
     cfg      = ru.read_json_str(agent_cfg)
     sid      = cfg['session_id']
     pilot_id = cfg['pilot_id']
-    cfg['owner']      = pilot_id
+    cfg['owner']      = agent_name
     cfg['agent_name'] = agent_name
-
-    session  = rp.Session(uid=sid) 
 
     # set up a logger and profiler
     prof = rpu.Profiler ('%s.bootstrap_3'     % agent_name)
@@ -422,8 +421,7 @@ def bootstrap_3():
 
     print "Agent config (%s):\n%s\n\n" % (agent_cfg, pprint.pformat(cfg))
 
-    # quickly set up a mongodb handle so that we can report errors.
-    # FIXME: signal handlers need mongo_c, but we won't have that until later
+    # quickly set up a mongodb handle so that we can report state and errors.
     if agent_name == 'agent_0':
 
         # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold the
@@ -435,11 +433,20 @@ def bootstrap_3():
             dburl.host, dburl.port = hostport.split(':')
             cfg['mongodb_url'] = str(dburl)
 
-        _, mongo_db, _, _, _  = ru.mongodb_connect(cfg['mongodb_url'])
-        mongo_c = mongo_db["%s" % session.uid]
+        session = rp.Session(uid=sid, dburl=cfg['mongodb_url']) 
+
+        # this script stores a couple of things directly in the DB, in
+        # particular failure states on irrgular shutdown.  This is somewhat ugly
+        # at the moment... :/
+        mongo_c = session._dbs._c
 
         if not mongo_c:
-            raise RuntimeError('could not get a mongodb handle')
+            raise RuntimeError('agent_0 could not connect to mongodb')
+
+    # other sub agents also need a session, but no connection to mongodb
+    else:
+        session = rp.Session(uid=sid, _connect=False)
+        mongo_c = None
 
 
     # set up signal and exit handlers

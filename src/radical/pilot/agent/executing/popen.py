@@ -108,6 +108,8 @@ class Popen(AgentExecutingComponent) :
     #
     def command_cb(self, topic, msg):
 
+        self._log.info('command_cb [%s]: %s', topic, msg)
+
         cmd = msg['cmd']
         arg = msg['arg']
 

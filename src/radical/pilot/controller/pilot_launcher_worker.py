@@ -108,7 +108,7 @@ class PilotLauncherWorker(threading.Thread):
         launched = False
         pilot    = pilot_col.find ({"uid": pilot_id})[0]
 
-        for entry in pilot['statehistory'] :
+        for entry in pilot['state_history'] :
             if entry['state'] == LAUNCHING :
                 launched = True
                 break
@@ -218,7 +218,7 @@ class PilotLauncherWorker(threading.Thread):
                         "logfile"        : log
                         },
                      "$push": {
-                         "statehistory"  : {
+                         "state_history" : {
                              "state"     : FAILED,
                              "timestamp" : ts
                              },
@@ -247,7 +247,7 @@ class PilotLauncherWorker(threading.Thread):
                         "stderr"         : err,
                         "logfile"        : log},
                      "$push": {
-                         "statehistory"  : {
+                         "state_history" : {
                              "state"     : DONE,
                              "timestamp" : ts
                              },
@@ -318,7 +318,7 @@ class PilotLauncherWorker(threading.Thread):
                         query={"pilotmanager": self.pilot_manager_id,
                                "state" : PENDING_LAUNCH},
                         update={"$set" : {"state": CANCELED},
-                                "$push": {"statehistory": {"state": CANCELED, "timestamp": ts}}}
+                                "$push": {"state_history": {"state": CANCELED, "timestamp": ts}}}
                     )
 
                     # run state checks more frequently.
@@ -339,7 +339,7 @@ class PilotLauncherWorker(threading.Thread):
                     query={"pilotmanager": self.pilot_manager_id,
                            "state" : PENDING_LAUNCH},
                     update={"$set" : {"state": LAUNCHING},
-                            "$push": {"statehistory": {"state": LAUNCHING, "timestamp": ts}}}
+                            "$push": {"state_history": {"state": LAUNCHING, "timestamp": ts}}}
                 )
 
                 if  not compute_pilot :
@@ -810,7 +810,7 @@ class PilotLauncherWorker(threading.Thread):
                                        "_saga_job_id": saga_job_id,
                                        "health_check_enabled": health_check,
                                        "agent_config": agent_cfg_dict},
-                             "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
+                             "$push": {"state_history": {"state": PENDING_ACTIVE, "timestamp": ts}},
                              "$pushAll": {"log": log_dicts}
                             }
                         )
@@ -824,7 +824,7 @@ class PilotLauncherWorker(threading.Thread):
                                 {"uid"  : pilot_id},
                                 {"$set" : {"_saga_job_id": saga_job_id,
                                            "health_check_enabled": health_check},
-                                 "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
+                                 "$push": {"state_history": {"state": PENDING_ACTIVE, "timestamp": ts}},
                                  "$pushAll": {"log": log_dicts}}
                             )
 
@@ -855,8 +855,8 @@ class PilotLauncherWorker(threading.Thread):
                                 "stdout"  : out,
                                 "stderr"  : err,
                                 "logfile" : log},
-                             "$push": {"statehistory": {"state"    : FAILED,
-                                                        "timestamp": ts}},
+                             "$push": {"state_history": {"state"    : FAILED,
+                                                         "timestamp": ts}},
                              "$pushAll": {"log": log_dicts}}
                         )
                         logger.exception ('\n'.join (log_messages))

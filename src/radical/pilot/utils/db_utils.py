@@ -158,7 +158,7 @@ def get_session_slothist(db, sid, cache=None, cachedir=None) :
 
                 started  = None
                 finished = None
-                for event in sorted (unit_doc['statehistory'], 
+                for event in sorted (unit_doc['state_history'], 
                                      key=lambda x: x['timestamp']) :
                     if started :
                         finished = event['timestamp']
@@ -231,7 +231,7 @@ def get_session_events(db, sid, cache=None, cachedir=None) :
             else : 
                 ret.append (['state', otype, oid, oid, None,       event, odoc])
 
-        for event in doc['statehistory'] :
+        for event in doc['state_history'] :
             ret.append (['state',     otype, oid, oid, event['timestamp'], event['state'], odoc])
 
         if  'callbackhistory' in doc :
@@ -255,7 +255,7 @@ def get_session_events(db, sid, cache=None, cachedir=None) :
             else :                                
                 ret.append (['state', otype, oid, pid, None,       event, doc])
 
-        for event in doc['statehistory'] :
+        for event in doc['state_history'] :
             ret.append (['state',     otype, oid, pid, event['timestamp'], event['state'], doc])
 
         # TODO: this probably needs to be "doc"

@@ -113,14 +113,12 @@ class ComputePilot(object):
     def _default_state_cb(self, pilot, state):
 
         self._log.info("[Callback]: pilot %s state: %s.", self.uid, self.state)
-        print self.uid, self.state
 
 
     # --------------------------------------------------------------------------
     #
     def _default_error_cb(self):
 
-        # FIXME: use when 'exit_on_error' is set
         if self.state == rps.FAILED and self._exit_on_error:
             self._log.error("[Callback]: pilot '%s' failed -- exit", self.uid)
             sys.exit(1)
@@ -156,7 +154,7 @@ class ComputePilot(object):
                 # it has registered globally
                 self._pmgr._call_pilot_callbacks(self, self.state)
 
-                # this should be the ast cb invoked on state changes
+                # this should be the last cb invoked on state changes
                 if self.state == rps.FAILED and self._exit_on_error:
                     self._default_error_cb()
 
@@ -183,7 +181,7 @@ class ComputePilot(object):
             'stderr':          self.stderr,
             'resource':        self.resource,
             'sandbox':         self.sandbox,
-            'description':     copy.deepcopy(self.description)
+            'description':     self.description  # this is a deep copy
         }
         return ret
 

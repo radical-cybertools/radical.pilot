@@ -54,6 +54,13 @@ class UnitManager(rpu.Component):
                                        scheduler=radical.pilot.SCHED_ROUND_ROBIN)
         um.add_pilot(p1)
         um.submit_units(compute_units)
+
+
+    The unit manager can issue notification on unit state changes.  Whenever
+    state notification arrives, any callback registered for that notification is
+    fired.  
+    
+    NOTE: State notifications can arrive out of order wrt the unit state model!
     """
 
     # --------------------------------------------------------------------------
@@ -72,15 +79,18 @@ class UnitManager(rpu.Component):
             * A new `UnitManager` object [:class:`radical.pilot.UnitManager`].
         """
 
-        self._session    = session
-        self._cfg        = None
-        self._components = None
-        self._pilots     = dict()
-        self._units      = dict()
-        self._callbacks  = dict()
-        self._cb_lock    = threading.RLock()
-        self._closed     = False
-        self._rec_id     = 0       # used for session recording
+        self._components  = None
+        self._pilots      = dict()
+        self._pilots_lock = threading.RLock()
+        self._units       = dict()
+        self._units_lock  = threading.RLock()
+        self._callbacks   = dict()
+        self._cb_lock     = threading.RLock()
+        self._closed      = False
+        self._rec_id      = 0       # used for session recording
+
+        for m in rpt.UMGR_METRICS:
+            self._callbacks[m] = list()
 
         # get an ID and initialize logging and profiling
         # FIXME: log and prof are already provided by the base class -- but it
@@ -90,28 +100,28 @@ class UnitManager(rpu.Component):
         self._log  = ru.get_logger(self.uid, "%s.%s.log" % (session.uid, self._uid))
         self._prof = rpu.Profiler("%s.%s" % (session.uid, self._uid))
 
-        self._session.prof.prof('create umgr', uid=self._uid)
+        session.prof.prof('create umgr', uid=self._uid)
 
         self._log.report.info('<<create unit manager')
 
         try:
-            self._cfg = ru.read_json("%s/configs/umgr_%s.json" \
+            cfg = ru.read_json("%s/configs/umgr_%s.json" \
                     % (os.path.dirname(__file__),
-                       os.environ.get('RADICAL_PILOT_UMGR_CONFIG', 'default')))
+                        os.environ.get('RADICAL_PILOT_UMGR_CONFIG', 'default')))
 
-            self._cfg['session_id']  = self._session.uid
-            self._cfg['mongodb_url'] = self._session._dburl
-            self._cfg['owner']       = self._uid
+            cfg['session_id']  = session.uid
+            cfg['owner']       = self.uid
+            cfg['mongodb_url'] = str(session._dburl)
 
             if scheduler:
                 # overwrite the scheduler from the config file
-                self._cfg['scheduler'] = scheduler
+                cfg['scheduler'] = scheduler
 
-            if not self._cfg.get('scheduler'):
+            if not cfg.get('scheduler'):
                 # set default scheduler if needed
-                self._cfg['scheduler'] = SCHED_DEFAULT
+                cfg['scheduler'] = SCHED_DEFAULT
 
-            components = self._cfg.get('components', [])
+            components = cfg.get('components', [])
 
             from .. import pilot as rp
         
@@ -124,15 +134,16 @@ class UnitManager(rpu.Component):
 
             # get addresses from the bridges, and append them to the
             # config, so that we can pass those addresses to the components
-            self._cfg['bridge_addresses'] = copy.deepcopy(self._session._bridge_addresses)
+            cfg['bridge_addresses'] = copy.deepcopy(session._bridge_addresses)
 
             # the bridges are known, we can start to connect the components to them
             self._components = rpu.Component.start_components(components, 
-                    typemap, self._cfg, self.session)
+                    typemap, cfg, session)
 
             # initialize the base class
             # FIXME: unique ID
-            rpu.Component.__init__(self, 'UnitManager', self._cfg)
+            cfg['owner'] = session.uid
+            rpu.Component.__init__(self, self.uid, cfg, session)
 
             # The command pubsub is always used
             self.declare_publisher('command', rpc.COMMAND_PUBSUB)
@@ -140,6 +151,16 @@ class UnitManager(rpu.Component):
             # The output queue is used to forward submitted units to the
             # scheduling component.
             self.declare_output(rps.UMGR_SCHEDULING_PENDING, rpc.UMGR_SCHEDULING_QUEUE)
+
+            # register the state notification pull cb
+            # FIXME: we may want to have the frequency configurable
+            # FIXME: this should be a tailing cursor in the update worker
+            self.declare_idle_cb(self._state_pull_cb, timeout=1.0)
+
+            # also listen to the state pubsub for unit state changes
+            self.declare_subscriber('state', 'state_pubsub', self._state_sub_cb)
+
+
 
 
         except Exception as e:
@@ -169,6 +190,9 @@ class UnitManager(rpu.Component):
      ##     self._worker.stop()
      ## TODO: kill components
 
+        # kill child process, threads
+        self.stop()
+
         self._session.prof.prof('closed umgr', uid=self._uid)
         self._log.info("Closed UnitManager %s." % str(self._uid))
 
@@ -185,7 +209,7 @@ class UnitManager(rpu.Component):
 
         ret = {
             'uid': self.uid,
-            'cfg': self.cfg,
+            'cfg': self.cfg
         }
 
         return ret
@@ -202,16 +226,69 @@ class UnitManager(rpu.Component):
         return str(self.as_dict())
 
 
+    #---------------------------------------------------------------------------
+    #
+    def _state_pull_cb(self):
+
+        # pull all unit states from the DB, and compare to the states we know
+        # about.  If any state changed, update the unit instance and issue
+        # notification callbacks as needed
+        # FIXME: we also pull for dead units.  That is not efficient...
+        # FIXME: this needs to be converted into a tailed cursor in the update
+        #        worker
+        units  = self._session._dbs.get_units(umgr_uid=self.uid)
+        action = False
+
+        for unit in units:
+            if self._update_unit(unit['uid'], unit):
+                action = True
+
+        return action
+
+
     # --------------------------------------------------------------------------
     #
-    def _default_unit_state_cb (self, unit, state):
+    def _state_sub_cb(self, topic, msg):
 
-        self._log.info("[Callback]: unit %s state on pilot %s: %s.", 
-                       unit.uid, unit.pilot_id, state)
+        if 'type' in msg and msg['type'] == 'unit':
+
+            uid   = msg["uid"]
+            state = msg["state"]
+
+            self._update_unit(uid, {'state' : state})
 
 
     # --------------------------------------------------------------------------
     #
+    def _update_unit(self, uid, unit):
+
+        # we don't care about units we don't know
+        # otherwise get old state
+        with self._units_lock:
+
+            if uid not in self._units:
+                return False
+
+            # only update on state changes
+            if self._units[uid].state != unit['state']:
+                return self._units[uid]._update(unit)
+            else:
+                return False
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _call_unit_callbacks(self, unit, state):
+
+        for cb_func, cb_data in self._callbacks[rpt.UNIT_STATE]:
+
+            if cb_data: cb_func(unit, state, cb_data)
+            else      : cb_func(unit, state)
+
+
+    # --------------------------------------------------------------------------
+    #
+    # FIXME: this needs to go to the scheduler
     def _default_wait_queue_size_cb(self, umgr, wait_queue_size):
         # FIXME: this needs to come from the scheduler?
 
@@ -226,23 +303,6 @@ class UnitManager(rpu.Component):
         Returns the unique id.
         """
         return self._uid
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def cfg(self):
-        return copy.deepcopy(self._cfg)
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def session(self):
-        """
-        Returns the session object
-        """
-        return self._session
 
 
     # --------------------------------------------------------------------------
@@ -281,21 +341,23 @@ class UnitManager(rpu.Component):
 
         self._log.report.info('<<add %d pilot(s)' % len(pilots))
 
-        for pilot in pilot:
+        with self._pilots_lock:
 
-            pid = pilot.uid
+            for pilot in pilot:
 
-            # sanity check
-            if pid in self._pilots:
-                raise ValueError('pilot %s already added' % pid)
+                pid = pilot.uid
 
-            # publish to the command channel for the scheduler to pick up
-            self.publish('command', {'cmd' : 'add_pilot', 
-                                     'arg' : {'pid'  : pid, 
-                                              'umgr' : self.uid}})
+                # sanity check
+                if pid in self._pilots:
+                    raise ValueError('pilot %s already added' % pid)
 
-            # also keep pilots around for inspection
-            self._pilots[pid] = pilot
+                # publish to the command channel for the scheduler to pick up
+                self.publish('command', {'cmd' : 'add_pilot', 
+                                         'arg' : {'pid'  : pid, 
+                                                  'umgr' : self.uid}})
+
+                # also keep pilots around for inspection
+                self._pilots[pid] = pilot
 
         self._log.report.ok('>>ok\n')
 
@@ -313,7 +375,8 @@ class UnitManager(rpu.Component):
         if self._closed:
             raise RuntimeError("instance is already closed")
 
-        return self._pilots.keys()
+        with self._pilots_lock:
+            return self._pilots.keys()
 
 
     # --------------------------------------------------------------------------
@@ -328,7 +391,8 @@ class UnitManager(rpu.Component):
         if self._closed:
             raise RuntimeError("instance is already closed")
 
-        return self._pilots.values()
+        with self._pilots_lock:
+            return self._pilots.values()
 
 
     # --------------------------------------------------------------------------
@@ -360,16 +424,17 @@ class UnitManager(rpu.Component):
         if not isinstance(pilot_ids, list):
             pilot_ids = [pilot_ids]
 
-        for pid in pilot_ids:
+        with self._pilots_lock:
+            for pid in pilot_ids:
 
-            if pid not in self._pilots:
-                raise ValueError('pilot %s not added' % pid)
+                if pid not in self._pilots:
+                    raise ValueError('pilot %s not added' % pid)
 
-            del(self._pilots[pid])
+                del(self._pilots[pid])
 
-            # publish to the command channel for the scheduler to pick up
-            self.publish('command', {'cmd' : 'remove_pilot', 
-                                     'arg' : pid})
+                # publish to the command channel for the scheduler to pick up
+                self.publish('command', {'cmd' : 'remove_pilot', 
+                                         'arg' : pid})
 
 
     # --------------------------------------------------------------------------
@@ -386,7 +451,26 @@ class UnitManager(rpu.Component):
         if self._closed:
             raise RuntimeError("instance is already closed")
 
-        return self._units.keys()
+        with self._pilots_lock:
+            return self._units.keys()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_units(self):
+        """
+        Returns :class:`radical.pilot.ComputeUnit`s managed by
+        this unit manager.
+
+        **Returns:**
+              * A list of :class:`radical.pilot.ComputeUnit` instances
+        """
+
+        if self._closed:
+            raise RuntimeError("instance is already closed")
+
+        with self._pilots_lock:
+            return self._units.values()
 
 
     # --------------------------------------------------------------------------
@@ -422,31 +506,39 @@ class UnitManager(rpu.Component):
         self._log.report.info('<<submit %d unit(s)\n\t' % len(descriptions))
 
         # we return a list of compute units
-        ret = list()
+        units     = list()
+        unit_docs = list()
         for descr in descriptions :
-
-            cu = ComputeUnit.create(umgr=self, descr=descr)
-            ret.append(cu)
+            unit = ComputeUnit.create(umgr=self, descr=descr)
+            units.append(unit)
+            unit_docs.append(unit.as_dict())
 
             # keep units around
-            self._units[cu.uid] = cu
+            with self._units_lock:
+                self._units[unit.uid] = unit
 
             if self._session._rec:
                 import radical.utils as ru
                 ru.write_json(descr.as_dict(), "%s/%s.batch.%03d.json" \
-                        % (self._session._rec, cu.uid, self._rec_id))
+                        % (self._session._rec, unit.uid, self._rec_id))
             self._log.report.progress()
-
-            self.advance(cu.as_dict(), rps.UMGR_SCHEDULING_PENDING, 
-                         publish=True, push=True)
 
         if self._session._rec:
             self._rec_id += 1
 
+        # insert units into the database, as a bulk.
+        self._session._dbs.insert_units(unit_docs)
+
+        # Only after the insert can we hand the units over to the next
+        # components (ie. advance state).
+        # FIXME: advance as bulk
+        for doc in unit_docs:
+            self.advance(doc, rps.UMGR_SCHEDULING_PENDING, publish=True, push=True)
+
         self._log.report.ok('>>ok\n')
 
-        if ret_list: return ret
-        else       : return ret[0]
+        if ret_list: return units
+        else       : return units[0]
 
 
     # --------------------------------------------------------------------------
@@ -466,7 +558,9 @@ class UnitManager(rpu.Component):
             raise RuntimeError("instance is already closed")
 
         if not uids:
-            return self._units.values()
+            with self._units_lock:
+                ret = self._units.values()
+            return ret
 
 
         ret_list = True
@@ -475,10 +569,11 @@ class UnitManager(rpu.Component):
             uids = [uids]
 
         ret = list()
-        for uid in uids:
-            if uid not in self._units:
-                raise ValueError('unit %s not known' % uid)
-            ret.append(self._units[uid])
+        with self._units_lock:
+            for uid in uids:
+                if uid not in self._units:
+                    raise ValueError('unit %s not known' % uid)
+                ret.append(self._units[uid])
 
         if ret_list: return ret
         else       : return ret[0]
@@ -526,10 +621,11 @@ class UnitManager(rpu.Component):
             raise RuntimeError("instance is already closed")
 
         if not uids:
-            uids = list()
-            for uid,cu in self._units.iteritems():
-                if cu.state not in rps.FINAL:
-                    uids.append(uid)
+            with self._units_lock:
+                uids = list()
+                for uid,unit in self._units.iteritems():
+                    if unit.state not in rps.FINAL:
+                        uids.append(uid)
 
         if not state:
             states = rps.FINAL
@@ -546,7 +642,10 @@ class UnitManager(rpu.Component):
         self._log.report.info('<<wait for %d unit(s)\n\t' % len(uids))
 
         start    = time.time()
-        to_check = [self._units[uid] for uid in uids]
+        to_check = None
+
+        with self._units_lock:
+            to_check = [self._units[uid] for uid in uids]
 
         # We don't want to iterate over all units again and again, as that would
         # duplicate checks on units which were found in matching states.  So we
@@ -557,9 +656,9 @@ class UnitManager(rpu.Component):
 
             self._log.report.idle()
 
-            to_check = [cu for cu in to_check \
-                            if cu.state not in states and \
-                               cu.state not in rps.FINAL]
+            to_check = [unit for unit in to_check \
+                              if unit.state not in states and \
+                                 unit.state not in rps.FINAL]
             # check timeout
             if to_check:
                 if timeout and (timeout <= (time.time() - start)):
@@ -574,7 +673,9 @@ class UnitManager(rpu.Component):
         else       : self._log.report.ok(  '>>ok\n')
 
         # grab the current states to return
-        states = [self._units[uid].state for uid in uids]
+        state = None
+        with self._units_lock:
+            states = [self._units[uid].state for uid in uids]
 
         # done waiting
         if ret_list: return states
@@ -595,14 +696,15 @@ class UnitManager(rpu.Component):
             raise RuntimeError("instance is already closed")
 
         if not uids:
-            uids = self._units.keys()
+            with self._units_lock:
+                uids = self._units.keys()
 
         if not isinstance(uids, list):
             uids = [uids]
 
-        cus = self.get_units(uids)
-        for cu in cus:
-            cu.cancel()
+        units = self.get_units(uids)
+        for unit in units:
+            unit.cancel()
 
 
     # --------------------------------------------------------------------------

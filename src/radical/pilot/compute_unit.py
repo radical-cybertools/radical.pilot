@@ -59,17 +59,21 @@ class ComputeUnit(object):
         self._umgr  = umgr
 
         # initialize state
-        self._session    = self._umgr.session
-        self._uid        = ru.generate_id('unit.%(counter)06d', ru.ID_CUSTOM)
-        self._state      = rps.NEW
-        self._state_hist = [[rps.NEW, rpu.timestamp()]]
-        self._log        = umgr._log
-        self._log_msgs   = []
-        self._exit_code  = None
-        self._stdout     = None
-        self._stderr     = None
-        self._pilot      = None
-        self._sandbox    = None
+        self._session       = self._umgr.session
+        self._uid           = ru.generate_id('unit.%(counter)06d', ru.ID_CUSTOM)
+        self._state         = rps.NEW
+        self._state_hist    = [[rps.NEW, rpu.timestamp()]]
+        self._log           = umgr._log
+        self._log_msgs      = []
+        self._exit_code     = None
+        self._stdout        = None
+        self._stderr        = None
+        self._pilot         = None
+        self._sandbox       = None
+        self._callbacks     = list()
+
+        # we always invke the default state cb
+        self._callbacks.append([self._default_state_cb, None])
 
         # sanity checks on description
         for check in ['cores']:
@@ -111,6 +115,49 @@ class ComputeUnit(object):
 
     # --------------------------------------------------------------------------
     #
+    def _default_state_cb(self, unit, state):
+
+        self._log.info("[Callback]: unit %s state: %s.", self.uid, self.state)
+        print 'cb: %s: %s' % (self.uid, self.state)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _update(self, unit_dict):
+        """
+        This will update the facade object after state changes etc, and is
+        invoked by whatever component receiving that updated information.
+
+        Return True if state changed, False otherwise
+        """
+
+        # _update() calls can happen out of order -- it is up to *this* method
+        # to make sure that the update results in a consistent state.
+        #
+        # FIXME: add sanity checks
+
+        if 'state' in unit_dict: 
+            old_state   = self.state
+            new_state   = unit_dict['state']
+            self._state = new_state
+
+            if old_state != new_state:
+
+                for cb_func, cb_data in self._callbacks:
+                    if cb_data: cb_func(self, self.state, cb_data)
+                    else      : cb_func(self, self.state)
+
+                # also inform pmgr about state change, to collect any callbacks
+                # it has registered globally
+                self._umgr._call_unit_callbacks(self, self.state)
+
+                return True
+
+        return False
+
+
+    # --------------------------------------------------------------------------
+    #
     def as_dict(self):
         """
         Returns a Python dictionary representation of the object.
@@ -130,7 +177,7 @@ class ComputeUnit(object):
             'stderr':          self.stderr,
             'pilot':           self.pilot,
             'sandbox':         self.sandbox,
-            'description':     copy.deepcopy(self.description.as_dict())
+            'description':     self.description   # this is a deep copy
         }
 
         return ret

@@ -62,7 +62,7 @@ class Update(rpu.Worker):
         self.declare_idle_cb(self.idle_cb, timeout=self._cfg.get('bulk_collection_time'))
 
         # all components use the command channel for control messages
-        self.declare_publisher ('command', rpc.COMMAND_PUBSUB)
+        self.declare_publisher('command', rpc.COMMAND_PUBSUB)
 
         # communicate successful startup
         self.publish('command', {'cmd' : 'alive',
@@ -136,7 +136,7 @@ class Update(rpu.Worker):
 
         # we always push state history
         update_dict = {'$push': {
-                           'statehistory': {
+                           'state_history': {
                                'state'    : state,
                                'timestamp': timestamp}}}
         uid = unit['uid']
@@ -246,6 +246,9 @@ class Update(rpu.Worker):
     #
     def state_cb(self, topic, msg):
         """
+
+        # FIXME: this documentation is not final, nor does it reflect reality!
+
         'msg' is expected to be of the form ['cmd', 'thing'], where 'thing' is
         an entity to update in the DB, and 'cmd' specifies the mode of update.
 
@@ -267,11 +270,12 @@ class Update(rpu.Worker):
           - update      : update can be delayed until bulk is collected/flushed
           - state       : update can be delayed until bulk is collected/flushed
                           only state and state history are updated
-          - insert_flush: insert is send immediately (possibly in a bulk)
-          - delete_flush: delete is send immediately (possibly in a bulk)
-          - update_flush: update is send immediately (possibly in a bulk)
-          - state_flush : update is send immediately (possibly in a bulk)
+          - insert_flush: insert is sent immediately (possibly in a bulk)
+          - delete_flush: delete is sent immediately (possibly in a bulk)
+          - update_flush: update is sent immediately (possibly in a bulk)
+          - state_flush : update is sent immediately (possibly in a bulk)
                           only state and state history are updated
+          - flush       : flush pending bulk
 
         The 'thing' can contains '$set' and '$push' fields, which will then be
         used as given.  For all other fields, we use the following convention:
@@ -288,11 +292,16 @@ class Update(rpu.Worker):
         does not exist, an exception is raised.
         """
 
-        try:
-            cmd, thing = msg
-        except Exception as e:
-            import pprint
-            raise RuntimeError('protocol error %s: \n%s\n' % (type(msg), pprint.pformat(msg)))
+        cmd   = msg['cmd']
+        thing = msg['arg']
+
+      # cmds = ['insert',       'delete',       'update',       'state',
+      #         'insert_flush', 'delete_flush', 'update_flush', 'state_flush',
+      #         'flush']
+        if cmd not in ['update']:
+            self._log.info('ignore cmd %s', cmd)
+            return
+
 
         # FIXME: we don't have any error recovery -- any failure to update unit
         #        state in the DB will thus result in an exception here and tear
