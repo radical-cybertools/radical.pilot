@@ -31,7 +31,7 @@ from ..constants import COMMAND_PUBSUB as rpc_COMMAND_PUBSUB
 
 # TODO:
 #   - add PENDING states
-#   - for notifications, change msg from [topic, unit] to [topic, msg]
+#   - for notifications, change msg from [topic, thing] to [topic, msg]
 #   - components should not need to declare the state publisher?
 
 
@@ -40,18 +40,18 @@ from ..constants import COMMAND_PUBSUB as rpc_COMMAND_PUBSUB
 class Component(mp.Process):
     """
     This class provides the basic structure for any RP component which operates
-    on stateful units.  It provides means to:
+    on stateful things.  It provides means to:
 
-      - define input channels on which to receive new units in certain states
-      - define work methods which operate on the units to advance their state
-      - define output channels to which to send the units after working on them
+      - define input channels on which to receive new things in certain states
+      - define work methods which operate on the things to advance their state
+      - define output channels to which to send the things after working on them
       - define notification channels over which messages with other components
         can be exchanged (publish/subscriber channels)
 
     All low level communication is handled by the base class -- deriving classes
     need only to declare the respective channels, valid state transitions, and
-    work methods.  When a unit is received, the component is assumed to have
-    full ownership over it, and that no other unit will change the unit state
+    work methods.  When a thing is received, the component is assumed to have
+    full ownership over it, and that no other thing will change the thing state
     during that time.
 
     The main event loop of the component -- run() -- is executed as a separate
@@ -63,10 +63,10 @@ class Component(mp.Process):
 
     This approach should ensure that
 
-      - units are always in a well defined state;
-      - components are simple and focus on the semantics of unit state
+      - thing are always in a well defined state;
+      - components are simple and focus on the semantics of thing state
         progression;
-      - no state races can occur on unit state progression;
+      - no state races can occur on thing state progression;
       - only valid state transitions can be enacted (given correct declaration
         of the component's semantics);
       - the overall system is performant and scalable.
@@ -94,28 +94,28 @@ class Component(mp.Process):
     Further, the class must implement the declared work methods, with
     a signature of:
 
-        work(self, unit)
+        work(self, thing)
 
-    The method is expected to change the unit state.  Units will not be pushed
+    The method is expected to change the thing state.  Things will not be pushed
     to outgoing channels automatically -- to do so, the work method has to call
 
-        self.advance(unit)
+        self.advance(thing)
 
     Until that method is called, the component is considered the sole owner of
-    the unit.  After that method is called, the unit is considered disowned by
+    the thing.  After that method is called, the thing is considered disowned by
     the component.  It is the component's responsibility to call that method
-    exactly once per unit.
+    exactly once per thing.
 
     Having said that, components can return from the work methods without
     calling advance, for two reasons.
 
-      - the unit may be in a final state, and is dropping out of the system (it
+      - the thing may be in a final state, and is dropping out of the system (it
         will never again advance in the state model)
-      - the component keeps ownership of the unit to advance it asynchronously
+      - the component keeps ownership of the thing to advance it asynchronously
         at a later point in time.
 
     That implies that a component can collect ownership over an arbitrary number
-    of units over time.  Either way, at most one work method instance will ever
+    of things over time.  Either way, at most one work method instance will ever
     be active at any point in time.
     """
 
@@ -151,18 +151,18 @@ class Component(mp.Process):
         self._childname     = "%s.child" % self._cname
         self._addr_map      = cfg['bridge_addresses']
         self._parent        = os.getpid() # pid of spawning process
-        self._inputs        = list()      # queues to get units from
-        self._outputs       = dict()      # queues to send units to
+        self._inputs        = list()      # queues to get things from
+        self._outputs       = dict()      # queues to send things to
         self._publishers    = dict()      # channels to send notifications to
         self._subscribers   = list()      # callbacks for received notifications
-        self._workers       = dict()      # where units get worked upon
+        self._workers       = dict()      # where things get worked upon
         self._idlers        = list()      # idle_callback registry
         self._terminate     = mt.Event()  # signal for thread termination
         self._finalized     = False       # finalization guard
         self._is_parent     = True        # guard initialize/initialize_child
         self._exit_on_error = True        # FIXME: make configurable
         self._cb_lock       = mt.Lock()   # guard threaded callback invokations
-        self._clone_cb      = None        # allocate resources on cloning units
+        self._clone_cb      = None        # allocate resources on cloning things
         self._drop_cb       = None        # free resources on dropping clones
         self._dh            = ru.DebugHelper(name=self.cname)
 
@@ -335,7 +335,7 @@ class Component(mp.Process):
         """
         This method may be overloaded by the components.  It is called *once* in
         the context of the parent process, upon start(), and should be used to
-        set up component state before units arrive.
+        set up component state before things arrive.
         """
         self._log.debug('base initialize (NOOP)')
 
@@ -346,7 +346,7 @@ class Component(mp.Process):
         """
         This method may be overloaded by the components.  It is called *once* in
         the context of the child process, upon start(), and should be used to
-        set up component state before units arrive.
+        set up component state before things arrive.
         """
         self._log.debug('base initialize_child (NOOP)')
 
@@ -357,9 +357,11 @@ class Component(mp.Process):
         """
         This method may be overloaded by the components.  It is called *once* in
         the context of the parent process, upon stop(), and should be used to
-        tear down component state after units have been processed.
+        tear down component state after things have been processed.
         """
         self._log.debug('base finalize (NOOP)')
+
+        # FIXME: finaliers should unrergister all callbacks/idlers/subscribers
 
 
     # --------------------------------------------------------------------------
@@ -368,7 +370,7 @@ class Component(mp.Process):
         """
         This method may be overloaded by the components.  It is called *once* in
         the context of the child process, upon stop(), and should be used to
-        tear down component state after units have been processed.
+        tear down component state after things have been processed.
         """
         self._log.debug('base finalize_child (NOOP)')
 
@@ -532,20 +534,20 @@ class Component(mp.Process):
     def declare_input(self, states, input, worker):
         """
         Using this method, the component can be connected to a queue on which
-        units are received to be worked upon.  The given set of states (which
+        things are received to be worked upon.  The given set of states (which
         can be a single state or a list of states) will trigger an assert check
-        upon unit arrival.
+        upon thing arrival.
 
-        This method will further associate a unit state with a specific worker.  
-        Upon unit arrival, the unit state will be used to lookup the respective
-        worker, and the unit will be handed over.  Workers should call
-        self.advance(unit), in order to push the unit toward the next component.
+        This method will further associate a thing state with a specific worker.  
+        Upon thing arrival, the thing state will be used to lookup the respective
+        worker, and the thing will be handed over.  Workers should call
+        self.advance(thing), in order to push the thing toward the next component.
         If, for some reason, that is not possible before the worker returns, the
-        component will retain ownership of the unit, and should call advance()
+        component will retain ownership of the thing, and should call advance()
         asynchronously at a later point in time.
 
         Worker invocation is synchronous, ie. the main event loop will only
-        check for the next unit once the worker method returns.
+        check for the next thing once the worker method returns.
         """
 
         if not isinstance(states, list):
@@ -579,16 +581,16 @@ class Component(mp.Process):
     def declare_output(self, states, output=None):
         """
         Using this method, the component can be connected to a queue to which
-        units are sent after being worked upon.  The given set of states (which
+        things are sent after being worked upon.  The given set of states (which
         can be a single state or a list of states) will trigger an assert check
-        upon unit departure.
+        upon thing departure.
 
         If a state but no output is specified, we assume that the state is
-        final, and the unit is then considered 'dropped' on calling advance() on
+        final, and the thing is then considered 'dropped' on calling advance() on
         it.  The advance() will trigger a state notification though, and then
         mark the drop in the log.  No other component should ever again work on
-        such a final unit.  It is the responsibility of the component to make
-        sure that the unit is in fact in a final state.
+        such a final thing.  It is the responsibility of the component to make
+        sure that the thing is in fact in a final state.
         """
 
         if not isinstance(states, list):
@@ -753,9 +755,9 @@ class Component(mp.Process):
     #
     def declare_clone_cb(self, clone_cb):
         """
-        The clone callback will be invoked whenever a unit is cloned after
+        The clone callback will be invoked whenever a thing is cloned after
         passing this component.  So, whenever the component allocates some
-        resources for a unit which would conflict when being cloned, this
+        resources for a thing which would conflict when being cloned, this
         callback allows to perform the required correction (hi scheduler!).
         """
         self._log.debug('declare clone_cb %s (%s)', clone_cb, os.getpid())
@@ -766,10 +768,10 @@ class Component(mp.Process):
     #
     def declare_drop_cb(self, drop_cb):
         """
-        The drop callback will be invoked whenever a unit is dropped after
+        The drop callback will be invoked whenever a thing is dropped after
         passing this component.  So, whenever the component allocates some
-        resources for a cloned unit which could otherwise not be reaped anymore,
-        because the unit would not pass some reaping state or something, this
+        resources for a cloned thing which could otherwise not be reaped anymore,
+        because the thing would not pass some reaping state or something, this
         callback allows to perform the required action (hi scheduler!).
         """
         self._log.debug('declare drop_cb %s (%s)', drop_cb, os.getpid())
@@ -800,10 +802,10 @@ class Component(mp.Process):
         """
         This is the main routine of the component, as it runs in the component
         process.  It will first initialize the component in the process context.
-        Then it will attempt to get new units from all input queues
-        (round-robin).  For each unit received, it will route that unit to the
-        respective worker method.  Once the unit is worked upon, the next
-        attempt ar getting a unit is up.
+        Then it will attempt to get new things from all input queues
+        (round-robin).  For each thing received, it will route that thing to the
+        respective worker method.  Once the thing is worked upon, the next
+        attempt on getting a thing is up.
         """
 
         # set some child-provate state
@@ -812,13 +814,13 @@ class Component(mp.Process):
         self._dh        = ru.DebugHelper(name=self.cname)
 
         # other state we don't want to carry over the fork:
-        self._inputs        = list()      # queues to get units from
-        self._outputs       = dict()      # queues to send units to
+        self._inputs        = list()      # queues to get things from
+        self._outputs       = dict()      # queues to send things to
         self._publishers    = dict()      # channels to send notifications to
         self._subscribers   = list()      # callbacks for received notifications
-        self._workers       = dict()      # where units get worked upon
+        self._workers       = dict()      # where things get worked upon
         self._idlers        = list()      # idle_callback registry
-        self._clone_cb      = None        # allocate resources on cloning units
+        self._clone_cb      = None        # allocate resources on cloning things
         self._drop_cb       = None        # free resources on dropping clones
 
         # parent can call terminate, which we translate here into sys.exit(),
@@ -880,46 +882,51 @@ class Component(mp.Process):
 
                 # FIXME: for the default case where we have only one input
                 #        channel, we can probably use a more efficient method to
-                #        pull for units -- such as blocking recv() (with some
+                #        pull for things -- such as blocking recv() (with some
                 #        timeout for eventual shutdown)
-                # FIXME: a simple, 1-unit caching mechanism would likely remove
+                # FIXME: a simple, 1-thing caching mechanism would likely remove
                 #        the req/res overhead completely (for any non-trivial
                 #        worker).
                 for input, states in self._inputs:
 
                     # FIXME: the timeouts have a large effect on throughput, but
                     #        I am not yet sure how best to set them...
-                    unit = input.get_nowait(1000) # timeout in microseconds
-                    if not unit:
+                    thing = input.get_nowait(1000) # timeout in microseconds
+                    if not thing:
                         continue
 
-                    self._log.debug('got %s (%s)', type(unit), unit)
+                    self._log.debug('got %s (%s)', thing['type'], thing)
 
-                    state = unit['state']
-                    uid   = unit['uid']
+                    uid   = thing['uid']
+                    ttype = thing['type']
+                    state = thing['state']
 
-                    # assert that the unit is in an expected state
+                    # assert that the thing is in an expected state
                     if state not in states:
-                        self.advance(unit, FAILED, publish=True, push=False)
-                        self._prof.prof(event='failed', msg="unexpected state %s" % state,
-                                uid=unit['uid'], state=unit['state'], logger=self._log.error)
+                        self.advance(thing, FAILED, publish=True, push=False)
+                        self._prof.prof(event='failed', 
+                                msg="unexpected state %s" % state,
+                                uid=uid, state=state, logger=self._log.error)
                         continue
 
-                    # depending on the queue we got the unit from, we can either
+                    # depending on the queue we got the thing from, we can either
                     # drop units or clone them to inject new ones
-                    unit = drop_units(self._cfg, unit, self.ctype, 'input',
-                                      drop_cb=self._drop_cb, logger=self._log)
-                    if not unit:
-                        self._prof.prof(event='drop', state=state,
-                                uid=uid, msg=input.name)
-                        continue
+                    if ttype == 'unit':
+                        thing = drop_units(self._cfg, thing, self.ctype, 'input',
+                                          drop_cb=self._drop_cb, logger=self._log)
+                        if not thing:
+                            self._prof.prof(event='drop', state=state,
+                                    uid=uid, msg=input.name)
+                            continue
 
-                    units = clone_units(self._cfg, unit, self.ctype, 'input',
-                                        clone_cb=self._clone_cb, logger=self._log)
+                        things = clone_units(self._cfg, thing, self.ctype, 'input',
+                                            clone_cb=self._clone_cb, logger=self._log)
+                    else:
+                        things = [thing]
 
-                    for _unit in units:
+                    for _thing in things:
 
-                        uid = _unit['uid']
+                        uid = _thing['uid']
                         active = True
                         self._prof.prof(event='get', state=state, uid=uid, msg=input.name)
 
@@ -929,22 +936,22 @@ class Component(mp.Process):
                         # main loop.  But, hey... :P
                         if not state in self._workers:
                             self._log.error("%s cannot handle state %s: %s" \
-                                    % (self._cname, state, _unit))
+                                    % (self._cname, state, _thing))
                             continue
 
                         # we have an acceptable state and a matching worker -- hand
                         # it over, wait for completion, and then pull for the next
-                        # unit
+                        # thing
                         try:
                             self._prof.prof(event='work start', state=state, uid=uid)
                             with self._cb_lock:
-                                self._workers[state](_unit)
+                                self._workers[state](_thing)
                             self._prof.prof(event='work done ', state=state, uid=uid)
 
                         except Exception as e:
-                            self.advance(_unit, FAILED, publish=True, push=False)
+                            self.advance(_thing, FAILED, publish=True, push=False)
                             self._prof.prof(event='failed', msg=str(e), uid=uid, state=state)
-                            self._log.exception("unit %s failed" % uid)
+                            self._log.exception("%s failed" % uid)
 
                             if self._exit_on_error:
                                 raise
@@ -958,7 +965,7 @@ class Component(mp.Process):
             # We should see that exception only on process termination -- and of
             # course on incorrect implementations of component workers.  We
             # could in principle detect the latter within the loop -- - but
-            # since we don't know what to do with the units it operated on, we
+            # since we don't know what to do with the things it operated on, we
             # don't bother...
             self._log.exception('loop exception')
 
@@ -976,13 +983,13 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def advance(self, things, state=None, publish=True, push=False, prof=True,
+    def advance(self, things, state=None, publish=True, push=False, 
                 timestamp=None):
         """
-        Things (units or pilots) which have been operated upon are pushed down 
-        into the queues again, only to be picked up by the next component, 
-        according to their state model.  This method will update the unit state,
-        and push it into the output queue declared as target for that state.
+        Things which have been operated upon are pushed down into the queues
+        again, only to be picked up by the next component, according to their
+        state model.  This method will update the thing state, and push it into
+        the output queue declared as target for that state.
 
         things:  list of things to advance
         state:   new state to set for the things
@@ -1004,25 +1011,23 @@ class Component(mp.Process):
         for thing in things:
 
             uid   = thing['uid']
-            ttype = thing.get('type')
-
-            if not ttype:
-                if   'unit'  in uid: ttype = 'unit'
-                elif 'pilot' in uid: ttype = 'pilot'
-
-                thing['ttype'] = ttype
+            ttype = thing['type']
 
             if ttype not in ['unit', 'pilot']:
                 raise TypeError("thing has unknown type (%s)" % uid)
 
-            if state:
+            if not state:
+                # no state advance
+                state = thing['state']
+
+            else:
+                # state advance
                 thing['state']          = state
                 thing['state_timstamp'] = timestamp
-                if prof:
-                    self._prof.prof('advance', uid=thing['uid'], state=state,
-                            timestamp=timestamp)
-            else:
-                state = thing['state']
+                thing['state_history'].append({'state'     : state, 
+                                               'timestamp' : timestamp})
+
+            self._prof.prof('advance', uid=uid, state=state, timestamp=timestamp)
 
             if publish:
                 # send state notifications
@@ -1092,7 +1097,7 @@ class Component(mp.Process):
 #
 class Worker(Component):
     """
-    A Worker is a Component which cannot change the state of the unit it
+    A Worker is a Component which cannot change the state of the thing it
     handles.  Workers are emplyed as helper classes to mediate between
     components, between components and database, and between components and
     notification channels.
@@ -1110,13 +1115,13 @@ class Worker(Component):
     # we overload state changing methods from component and assert neutrality
     # FIXME: we should insert hooks around callback invocations, too
     #
-    def advance(self, units, state=None, publish=True, push=False, prof=True):
+    def advance(self, things, state=None, publish=True, push=False, prof=True):
 
         if state:
             raise RuntimeError("worker %s cannot advance state (%s)"
                     % (self.cname, state))
 
-        Component.advance(self, units, state, publish, push, prof)
+        Component.advance(self, things, state, publish, push, prof)
 
 
 

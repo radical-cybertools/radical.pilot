@@ -104,6 +104,12 @@ class Default(AgentStagingOutputComponent):
                 except Exception as e:
                     self._log.error("Pre/Post profiling file read failed: `%s`" % e)
 
+
+        # at this point, the next unit state update should push *all* unit
+        # details, not only state.
+        cu['$all'] = True
+
+
         # NOTE: all units get here after execution, even those which did not
         #       finish successfully.  We do that so that we can make
         #       stdout/stderr available for failed units.  But at this point we

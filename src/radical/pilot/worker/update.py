@@ -77,15 +77,15 @@ class Update(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _ordered_unit_update(self, unit, state, timestamp=None):
+    def _ordered_state_update(self, thing, state, timestamp=None):
         """
-        The update worker can receive states for a specific unit in any order.
-        If states are pushed straight to theh DB, the state attribute of a unit
+        The update worker can receive states for a specific thing in any order.
+        If states are pushed straight to theh DB, the state attribute of a thing
         may not reflect the actual state.  This should be avoided by re-ordering
         on the client side DB consumption -- but until that is implemented we
         enforce ordered state pushes to MongoDB.  We do it like this:
 
-          - for each unit arriving in the update worker
+          - for each thing arriving in the update worker
             - check if new state is final
               - yes: push update, but never push any update again (only update
                 hist)
@@ -133,64 +133,69 @@ class Update(rpu.Worker):
         if not timestamp:
             timestamp = rpu.timestamp()
 
-        # we always push state history
-        update_dict = {'$push': {
-                           'state_history': {
-                               'state'    : state,
-                               'timestamp': timestamp}}}
-        uid = unit['uid']
+        uid   = thing['uid']
+        ttype = thing['type']
 
       # self._log.debug(" === inp %s: %s" % (uid, state))
 
         if uid not in self._state_cache:
+            if ttype == 'unit':
+                if 'agent' in self._owner:
+                    # the agent gets the units in this state
+                    init_state = rps.AGENT_STAGING_INPUT_PENDING
+                else:
+                    # this is the umgr then
+                    init_state = rps.NEW
+            else:
+                # pilot starts in NEW for the pmgr
+                init_state = rps.NEW
+
+            # populate state cache
             self._state_cache[uid] = {'unsent' : list(),
                                       'final'  : False,
-                                      'last'   : rps.AGENT_STAGING_INPUT_PENDING}
-                                      # we get the unit in this state
+                                      'last'   : rps.NEW}
+        # check state cache
         cache = self._state_cache[uid]
 
-        # if unit is already final, we don't push state
+        # if thing is already final, we don't push state
         if cache['final']:
           # self._log.debug(" === fin %s: %s" % (uid, state))
-            return update_dict
+            return None
 
-        # if unit becomes final, push state and remember it
-        if state in [rps.DONE, rps.FAILED, rps.CANCELED]:
-            cache['final'] = True
-            cache['last']  = state
-            update_dict['$set'] = {'state': state}
-          # self._log.debug(" === Fin %s: %s" % (uid, state))
-            return update_dict
+        # if thing becomes final, push state and remember it
+        if state not in [rps.DONE, rps.FAILED, rps.CANCELED]:
 
-        # check if we have any consecutive list beyond 'last' in unsent
-        cache['unsent'].append(state)
-      # self._log.debug(" === lst %s: %s %s" % (uid, cache['last'], cache['unsent']))
-        new_state = None
-        for i in range(s2i[cache['last']]+1, s2i[s_max]):
-          # self._log.debug(" === chk %s: %s in %s" % (uid, i2s[i], cache['unsent']))
-            if i2s[i] in cache['unsent']:
-                new_state = i2s[i]
-                cache['unsent'].remove(i2s[i])
-              # self._log.debug(" === uns %s: %s" % (uid, new_state))
-            else:
-              # self._log.debug(" === brk %s: %s" % (uid, new_state))
-                break
+            # check if we have any consecutive list beyond 'last' in unsent
+            cache['unsent'].append(state)
+          # self._log.debug(" === lst %s: %s %s" % (uid, cache['last'], cache['unsent']))
+            new_state = None
+            for i in range(s2i[cache['last']]+1, s2i[s_max]):
+              # self._log.debug(" === chk %s: %s in %s" % (uid, i2s[i], cache['unsent']))
+                if i2s[i] in cache['unsent']:
+                    new_state = i2s[i]
+                    cache['unsent'].remove(i2s[i])
+                  # self._log.debug(" === uns %s: %s" % (uid, new_state))
+                else:
+                  # self._log.debug(" === brk %s: %s" % (uid, new_state))
+                    break
+    
+            if new_state:
+              # self._log.debug(" === new %s: %s" % (uid, new_state))
+                state = new_state
 
-        if new_state:
-          # self._log.debug(" === new %s: %s" % (uid, new_state))
-            state = new_state
+        if not state:
+            # all for nothing
+            return None
 
-        # the max of the consecutive list is set in te update dict...
-        if state:
-          # self._log.debug(" === set %s: %s" % (uid, state))
-            cache['last'] = state
-            update_dict['$set'] = {'state': state}
-
-        # record if final state is sent
         if state in [rps.DONE, rps.FAILED, rps.CANCELED]:
           # self._log.debug(" === FIN %s: %s" % (uid, state))
             cache['final'] = True
+            cache['last']  = state
 
+        # ok, we actually have something to update
+      # self._log.debug(" === set %s: %s" % (uid, state))
+        cache['last'] = state
+        update_dict = {'$set' : {'state' : state}}
         return update_dict
 
 
@@ -212,15 +217,18 @@ class Update(rpu.Worker):
         res = cinfo['bulk'].execute()
         self._log.debug("bulk update result: %s", res)
 
-        self._prof.prof('unit update bulk pushed (%d)' % len(cinfo['uids']),
+        self._prof.prof('update bulk pushed (%d)' % (len(cinfo['uids'])),
                         uid=self._owner)
         for entry in cinfo['uids']:
             uid   = entry[0]
-            state = entry[1]
+            ttype = entry[1]
+            state = entry[2]
             if state:
-                self._prof.prof('update', msg='unit update pushed (%s)' % state, uid=uid)
+                self._prof.prof('update', msg='%s update pushed (%s)' \
+                                % (ttype, state), uid=uid)
             else:
-                self._prof.prof('update', msg='unit update pushed', uid=uid)
+                self._prof.prof('update', msg='%s update pushed' % ttype, 
+                                uid=uid)
 
         cinfo['last'] = now
         cinfo['bulk'] = None
@@ -256,20 +264,15 @@ class Update(rpu.Worker):
 
         Supported types are:
 
-          - session
-          - umgr
           - unit
-          - pmgr
           - pilot
 
         supported 'cmds':
 
-          - insert      : insert can be delayed until bulk is collected/flushed
           - delete      : delete can be delayed until bulk is collected/flushed
           - update      : update can be delayed until bulk is collected/flushed
           - state       : update can be delayed until bulk is collected/flushed
                           only state and state history are updated
-          - insert_flush: insert is sent immediately (possibly in a bulk)
           - delete_flush: delete is sent immediately (possibly in a bulk)
           - update_flush: update is sent immediately (possibly in a bulk)
           - state_flush : update is sent immediately (possibly in a bulk)
@@ -294,50 +297,74 @@ class Update(rpu.Worker):
         cmd   = msg['cmd']
         thing = msg['arg']
 
-      # cmds = ['insert',       'delete',       'update',       'state',
-      #         'insert_flush', 'delete_flush', 'update_flush', 'state_flush',
-      #         'flush']
+      # cmds = ['delete',       'update',       'state',
+      #         'delete_flush', 'update_flush', 'state_flush', 'flush']
         if cmd not in ['update']:
             self._log.info('ignore cmd %s', cmd)
             return
 
 
-        # FIXME: we don't have any error recovery -- any failure to update unit
+        # FIXME: we don't have any error recovery -- any failure to update 
         #        state in the DB will thus result in an exception here and tear
-        #        down the pilot.
-        #
-        # FIXME: at the moment, the update worker only operates on units.
-        #        it should also accept other updates, eg. for pilot states.
+        #        down the module.
         #
         # got a new request.  Add to bulk (create as needed),
         # and push bulk if time is up.
         uid       = thing['uid']
-        state     = thing.get('state')
+        ttype     = thing['type']
+        state     = thing['state']
         timestamp = thing.get('state_timestamp', rpu.timestamp())
 
         if 'clone' in uid:
+            # we don't push clone states to DB
             return
 
-        self._prof.prof('get', msg="update unit state to %s" % state, uid=uid)
+        self._prof.prof('get', msg="update %s state to %s" % (ttype, state), 
+                        uid=uid)
 
         query_dict  = thing.get('query')
         update_dict = thing.get('update')
 
         if not query_dict:
-            query_dict  = {'uid' : uid} # make sure unit is not final?
-        if not update_dict:
-            update_dict = self._ordered_unit_update (thing, state, timestamp)
+            query_dict  = {'uid' : uid}
 
-        # when the unit is about to leave the agent, we also update stdout,
-        # stderr exit code etc
-        # FIXME: this probably should be a parameter ('FULL') on 'msg'
-        # FIXME: this should only be done by the agent, not the UMGR
-        if state in [rps.DONE, rps.FAILED, rps.CANCELED, rps.PENDING_OUTPUT_STAGING]:
-            if not '$set' in update_dict:
-                update_dict['$set'] = dict()
-            update_dict['$set']['stdout'   ] = thing.get('stdout')
-            update_dict['$set']['stderr'   ] = thing.get('stderr')
-            update_dict['$set']['exit_code'] = thing.get('exit_code')
+        if not update_dict:
+            update_dict = self._ordered_state_update(thing, state, timestamp)
+
+        if not update_dict:
+            # nothing to push
+            self._prof.prof('get', msg="update %s state ignored" % ttype, uid=uid)
+            return
+
+        if not '$set'     in update_dict: update_dict['$set'    ] = dict()
+        if not '$push'    in update_dict: update_dict['$push'   ] = dict()
+        if not '$pushAll' in update_dict: update_dict['$pushAll'] = dict()
+
+        if '$all' in thing:
+            # if the thing is to be pushed completely, then
+            #   - use '$pushAll' for all list  typed values
+            #   - use '$set'     for all other typed values
+            #
+            for key,val in thing.iteritems():
+                if isinstance(val, list):
+                    if key not in update_dict['$pushAll']:
+                        update_dict['$pushAll'][key] = val
+                else:
+                    if key not in update_dict['$set']:
+                        update_dict['$set'][key] = val
+
+        elif '$set' in thing:
+            # if the thing has keys specified which are specifically to be set
+            # in the database, then do so
+            #
+            if not '$set' in update_dict: update_dict['$set']  = dict()
+
+            for key in thing.get('$set', []):
+                update_dict['$set'][key] = thing[key]
+
+            # don't carry over '$set'
+            del(thing['$set'])
+
 
         # check if we handled the collection before.  If not, initialize
         cname = self._session_id
@@ -361,7 +388,7 @@ class Update(rpu.Worker):
 
 
             # push the update request onto the bulk
-            cinfo['uids'].append([uid, state])
+            cinfo['uids'].append([uid, ttype, state])
             cinfo['bulk'].find  (query_dict) \
                          .update(update_dict)
             self._prof.prof('bulk', msg='bulked (%s)' % state, uid=uid)

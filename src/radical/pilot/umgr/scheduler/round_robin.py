@@ -56,6 +56,8 @@ class RoundRobin(UMGRSchedulingComponent):
     #
     def work(self, cu):
 
+        self.advance(cu, rps.UMGR_SCHEDULING, publish=True, push=False)
+
         with self._pilots_lock:
             pids = self._pilots.keys()
 
@@ -74,7 +76,10 @@ class RoundRobin(UMGRSchedulingComponent):
             # this is what we consider scheduling :P
             cu['pilot'] = pids[self._idx]
 
-            self.advance(cu, rps.UMGR_STAGING_INPUT_PENDING, publish=True, push=False)
+            # we need to push 'pilot' to the db, otherwise the agent will never
+            # pick up the unit
+            cu['$set'] = ['pilot']
+            self.advance(cu, rps.UMGR_STAGING_INPUT_PENDING, publish=True, push=True)
         
 
     # --------------------------------------------------------------------------
