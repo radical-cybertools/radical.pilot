@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import copy
 import threading
 
 import radical.utils as ru
@@ -141,11 +142,14 @@ class UMGRSchedulingComponent(rpu.Component):
 
                     self._pilots[pid] = {
                             ROLE    : None,
-                            'state' : None
+                            'state' : None,
+                            'thing' : None
                             }
 
                 # FIXME: enforce state model order!
                 self._pilots[pid]['state'] = state
+                self._pilots[pid]['thing'] = copy.deepcopy(arg)
+
                 self._log.debug('update pilot: %s' % self._pilots[pid])
 
 
@@ -183,7 +187,8 @@ class UMGRSchedulingComponent(rpu.Component):
 
                     self._pilots[pid] = {
                             ROLE    : None,
-                            'state' : None
+                            'state' : None,
+                            'thing' : None
                             }
 
                 if self._pilots[pid][ROLE] == ADDED:

@@ -6,6 +6,7 @@ __license__   = "MIT"
 import os
 import shutil
 
+import saga          as rs
 import radical.utils as ru
 
 from .... import pilot     as rp
@@ -31,6 +32,9 @@ class Default(UMGRStagingInputComponent):
     #
     def initialize_child(self):
 
+        # we keep a cache of SAGA dir handles
+        self._cache = dict()
+
         self.declare_input(rps.UMGR_STAGING_INPUT_PENDING,
                            rpc.UMGR_STAGING_INPUT_QUEUE, self.work)
 
@@ -52,91 +56,76 @@ class Default(UMGRStagingInputComponent):
                                  'arg' : self.cname})
 
 
-
     # --------------------------------------------------------------------------
     #
-    def work(self, cu):
+    def work(self, unit):
 
-        self.advance(cu, rps.UMGR_STAGING_INPUT, publish=True, push=False)
-        self._log.info('handle %s' % cu['uid'])
+        self.advance(unit, rps.UMGR_STAGING_INPUT, publish=True, push=False)
 
-        workdir      = os.path.join(self._cfg['workdir'], '%s' % cu['uid'])
-        gtod         = os.path.join(self._cfg['workdir'], 'gtod')
-        staging_area = os.path.join(self._cfg['workdir'], self._cfg['staging_area'])
-        staging_ok   = True
+        uid     = unit['uid']
+        sandbox = rs.Url(unit["sandbox"])
 
-        cu['workdir']     = workdir
-        cu['stdout']      = ''
-        cu['stderr']      = ''
-        cu['opaque_clot'] = None
-        # TODO: See if there is a more central place to put this
-        cu['gtod']        = gtod
+        # check if we have any staging directives to be enacted in this
+        # component
+        actionables = list()
+        for entry in unit.get('input_staging', []):
 
-        stdout_file       = cu['description'].get('stdout')
-        stdout_file       = stdout_file if stdout_file else 'STDOUT'
-        stderr_file       = cu['description'].get('stderr')
-        stderr_file       = stderr_file if stderr_file else 'STDERR'
+            action = entry['action']
+            flags  = entry['flags']
+            src    = ru.Url(entry['source'])
+            tgt    = ru.Url(entry['target'])
 
-        cu['stdout_file'] = os.path.join(workdir, stdout_file)
-        cu['stderr_file'] = os.path.join(workdir, stderr_file)
+            if action in [TRANSFER] and src.scheme in ['file']:
+                actionables.append([src, tgt, flags])
 
-        # create unit workdir
-        rpu.rec_makedir(workdir)
-        self._prof.prof('unit mkdir', uid=cu['uid'])
+        if actionables:
 
-        try:
-            for directive in cu['UMGR_Input_Directives']:
+            # we have actionable staging directives, and thus we need a unit
+            # sandbox.
+            self._prof.prof("create sandbox", msg=str(sandbox), uid=uid,
+                            logger=self._log.debug)
 
-                self._prof.prof('UMGR input_staging queue', uid=cu['uid'],
-                         msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
+            # url used for cache (sandbox url w/o path)
+            tmp = saga.Url(sandbox)
+            tmp.path = '/'
+            key = str(tmp)
 
-                # Perform input staging
-                self._log.info("unit input staging directives %s for cu: %s to %s",
-                               directive, cu['uid'], workdir)
+            if key not in self._cache:
+                self._cache[key] = rs.filesystem.Directory(tmp, 
+                        session=self._session)
 
-                # Convert the source_url into a SAGA Url object
-                source_url = rs.Url(directive['source'])
+            saga_dir = self._cache[key]
+            saga_dir.make_dir(sandbox, flags=saga.filesystem.CREATE_PARENTS)
 
-                # Handle special 'staging' scheme
-                if source_url.scheme == self._cfg['staging_scheme']:
-                    self._log.info('Operating from staging')
-                    # Remove the leading slash to get a relative path from the staging area
-                    rel2staging = source_url.path.split('/',1)[1]
-                    source = os.path.join(staging_area, rel2staging)
+            self._prof.prof("created sandbox", uid=uid, logger=self._log.debug)
+
+
+            # Loop over all transfer directives and execute them.
+            for src, tgt, flags in actionables:
+
+                self._prof.prof('umgr staging in', msg=src, uid=uid)
+
+                # if no tgt is set, we reuse the src file name, and put it 
+                # relative to the sandbox
+                if tgt: target = "%s/%s" % (sandbox, tgt.path)
+                else  : target = '%s/%s' % (sandbox, os.path.basename(src.path))
+
+                if CREATE_PARENTS in flags:
+                    copy_flags = saga.filesystem.CREATE_PARENTS
                 else:
-                    self._log.info('Operating from absolute path')
-                    source = source_url.path
+                    copy_flags = 0
 
-                # Get the target from the directive and convert it to the location
-                # in the workdir
-                target = directive['target']
-                abs_target = os.path.join(workdir, target)
+                saga_dir.copy(src, target, flags=copy_flags)
 
-                # Create output directory in case it doesn't exist yet
-                rpu.rec_makedir(os.path.dirname(abs_target))
-
-                self._log.info("Going to '%s' %s to %s", directive['action'], source, abs_target)
-
-                if   directive['action'] == LINK: os.symlink     (source, abs_target)
-                elif directive['action'] == COPY: shutil.copyfile(source, abs_target)
-                elif directive['action'] == MOVE: shutil.move    (source, abs_target)
-                else:
-                    # FIXME: implement TRANSFER mode
-                    raise NotImplementedError('Action %s not supported' % directive['action'])
-
-                log_message = "%s'ed %s to %s - success" % (directive['action'], source, abs_target)
-                self._log.info(log_message)
-
-        except Exception as e:
-            self._log.exception("staging input failed -> unit failed")
-            staging_ok = False
+                self._prof.prof('umgr staged  in', msg=src, uid=uid)
 
 
-        # UMGR input staging is done (or failed)
-        if staging_ok:
-            self.advance(cu, rps.AGENT_STAGING_INPUT, publish=True, push=True)
-        else:
-            self.advance(cu, rps.FAILED, publish=True, push=False)
+        # all staging is done -- pass on to the agent
+        # At this point, the unit will leave the umgr, we thus dump it
+        # completely into the DB
+        unit['$all'] = True
+        self.advance(unit, rps.AGENT_STAGING_INPUT_PENDING, 
+                     publish=True, push=True)
 
 
 # ------------------------------------------------------------------------------

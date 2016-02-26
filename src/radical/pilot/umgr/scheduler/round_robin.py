@@ -44,9 +44,10 @@ class RoundRobin(UMGRSchedulingComponent):
         # have units in the wait queue waiting -- now is a good time to take
         # care of those!
         with self._wait_lock:
-            for cu in self._wait_pool:
-                cu['pilot'] = pid
-                self.advance(cu, rps.UMGR_STAGING_INPUT_PENDING, publish=True, push=False)
+            for unit in self._wait_pool:
+                unit['pilot'] = pid
+                self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING, 
+                        publish=True, push=False)
 
             # all units are scheduled -- empty the wait pool
             self._wait_pool = list()
@@ -54,32 +55,51 @@ class RoundRobin(UMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def work(self, cu):
+    def work(self, unit):
 
-        self.advance(cu, rps.UMGR_SCHEDULING, publish=True, push=False)
+        self.advance(unit, rps.UMGR_SCHEDULING, publish=True, push=False)
+
+        uid = unit['uid']
 
         with self._pilots_lock:
-            pids = self._pilots.keys()
 
-        if not len(pids):
+            # collect all pilots we know about
+            pids = list()
+            for pid in self._pilots.keys():
 
-            # no pilot is active, yet -- we add to the wait queue
-            with self._wait_lock:
-                self._wait_pool.append(cu)
+                # we need not only an added pilot, we also need one which we 
+                # can inspect
+                if self._pilots[pid]['thing']:
+                    pids.append(pid)
 
-        else:
-            # we have active pilots: use them!
+            if not len(pids):
 
-            if  self._idx >= len(pids) : 
-                self._idx = 0
+                # no pilot is active, yet -- we add to the wait queue
+                with self._wait_lock:
+                    self._prof.prof('wait', uid=uid)
+                    self._wait_pool.append(unit)
 
-            # this is what we consider scheduling :P
-            cu['pilot'] = pids[self._idx]
+            else:
+                # we have active pilots: use them!
+
+                if  self._idx >= len(pids) : 
+                    self._idx = 0
+
+                pid = pids[self._idx]
+
+                # we assign the unit to the pilot.
+                # Its a good opportunity to also dig out the pilot sandbox and
+                # attach it to the unit -- even though this is semantically not
+                # relevant here.
+                unit['pilot']         = pid
+                unit['pilot_sandbox'] = self._pilots[pid]['thing']['sandbox']
+                unit['sandbox']       = "%s/%s" % (unit['pilot_sandbox'], uid)
 
             # we need to push 'pilot' to the db, otherwise the agent will never
             # pick up the unit
-            cu['$set'] = ['pilot']
-            self.advance(cu, rps.UMGR_STAGING_INPUT_PENDING, publish=True, push=True)
+            unit['$set'] = ['pilot']
+            self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING, 
+                    publish=True, push=True)
         
 
     # --------------------------------------------------------------------------

@@ -195,8 +195,7 @@ class Update(rpu.Worker):
         # ok, we actually have something to update
       # self._log.debug(" === set %s: %s" % (uid, state))
         cache['last'] = state
-        update_dict = {'$set' : {'state' : state}}
-        return update_dict
+        return state
 
 
     # --------------------------------------------------------------------------
@@ -322,48 +321,44 @@ class Update(rpu.Worker):
         self._prof.prof('get', msg="update %s state to %s" % (ttype, state), 
                         uid=uid)
 
-        query_dict  = thing.get('query')
-        update_dict = thing.get('update')
-
-        if not query_dict:
-            query_dict  = {'uid' : uid}
-
-        if not update_dict:
-            update_dict = self._ordered_state_update(thing, state, timestamp)
-
-        if not update_dict:
+        if not state:
             # nothing to push
             self._prof.prof('get', msg="update %s state ignored" % ttype, uid=uid)
             return
 
-        if not '$set'     in update_dict: update_dict['$set'    ] = dict()
-        if not '$push'    in update_dict: update_dict['$push'   ] = dict()
-        if not '$pushAll' in update_dict: update_dict['$pushAll'] = dict()
+        # we need to update something -- prepafe update doc
+        update_dict         = dict()
+        update_dict['$set'] = dict()
 
-        if '$all' in thing:
-            # if the thing is to be pushed completely, then
-            #   - use '$pushAll' for all list  typed values
-            #   - use '$set'     for all other typed values
-            #
+        # if the thing is scheduled to be pushed completely, then do so.
+        if thing.get('$all'):
+            
+            # get rid of the marker
+            # we can also savely ignore the '$set' marker
+            del(thing['$all'])
+            del(thing['$set'])
+
             for key,val in thing.iteritems():
-                if isinstance(val, list):
-                    if key not in update_dict['$pushAll']:
-                        update_dict['$pushAll'][key] = val
-                else:
-                    if key not in update_dict['$set']:
-                        update_dict['$set'][key] = val
+                update_dict['$set'][key] = val
 
-        elif '$set' in thing:
-            # if the thing has keys specified which are specifically to be set
-            # in the database, then do so
-            #
-            if not '$set' in update_dict: update_dict['$set']  = dict()
+        # if the thing has keys specified which are specifically to be set
+        # in the database, then do so
+        elif thing.get('$set'):
+
+            # get rid of the marker
+            update_dict = {'$set' : {}}
 
             for key in thing.get('$set', []):
                 update_dict['$set'][key] = thing[key]
 
-            # don't carry over '$set'
-            del(thing['$set'])
+
+        # make sure our state transitions adhere to the state models
+        state = self._ordered_state_update(thing, state, timestamp)
+        update_dict['$set']['state'] = state
+
+        # we never set _id
+        if '_id' in update_dict['$set']:
+            del(update_dict['$set']['_id'])
 
 
         # check if we handled the collection before.  If not, initialize
@@ -388,8 +383,12 @@ class Update(rpu.Worker):
 
 
             # push the update request onto the bulk
+            import pprint
+            print '--> %s: %s' % (uid, pprint.pformat(update_dict))
+
             cinfo['uids'].append([uid, ttype, state])
-            cinfo['bulk'].find  (query_dict) \
+            cinfo['bulk'].find  ({'uid'  : uid, 
+                                  'type' : ttype}) \
                          .update(update_dict)
             self._prof.prof('bulk', msg='bulked (%s)' % state, uid=uid)
 

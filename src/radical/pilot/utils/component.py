@@ -949,9 +949,9 @@ class Component(mp.Process):
                             self._prof.prof(event='work done ', state=state, uid=uid)
 
                         except Exception as e:
+                            self._log.exception("%s failed" % uid)
                             self.advance(_thing, FAILED, publish=True, push=False)
                             self._prof.prof(event='failed', msg=str(e), uid=uid, state=state)
-                            self._log.exception("%s failed" % uid)
 
                             if self._exit_on_error:
                                 raise
