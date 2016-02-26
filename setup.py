@@ -12,7 +12,9 @@ import re
 import os
 import sys
 import shutil
+import tempfile
 import subprocess as sp
+from   distutils.ccompiler import new_compiler
 
 try:
     from setuptools import setup, Command, find_packages
@@ -50,7 +52,7 @@ def get_version (mod_root):
         version_detail = None
 
         # get version from './VERSION'
-        src_root = os.path.dirname (__file__)
+        src_root = os.path.dirname(__file__)
         if  not src_root :
             src_root = '.'
 
@@ -229,6 +231,34 @@ def isgood(name):
 
 
 # -------------------------------------------------------------------------------
+
+def make_gtod():
+
+    tmpdir = tempfile.mkdtemp(prefix='rp_gtod.')
+    fname  = os.path.join(tmpdir, 'gtod.c')
+    file   = open(fname, 'w')
+    file.write('\n')
+    file.write('#include <stdio.h>\n')
+    file.write('#include <sys/time.h>\n')
+    file.write('\n')
+    file.write('int main ()\n')
+    file.write('{\n')
+    file.write('    struct timeval tv;\n')
+    file.write('    (void) gettimeofday (&tv, NULL);\n')
+    file.write('    fprintf (stdout, "%d.%06d\\n", tv.tv_sec, tv.tv_usec);\n')
+    file.write('    return (0);\n')
+    file.write('}\n')
+    file.write('\n')
+    file.close()
+    cc   = new_compiler() 
+    objs = cc.compile([fname], output_dir=tmpdir)
+    tgt  = "%s/bin/gtod" % os.getcwd()
+    cc.link_executable(objs, tgt)
+    shutil.rmtree(tmpdir)
+
+make_gtod()
+
+# -------------------------------------------------------------------------------
 setup_args = {
     'name'               : name,
     'version'            : version,
@@ -260,7 +290,8 @@ setup_args = {
     'namespace_packages' : ['radical'],
     'packages'           : find_packages('src'),
     'package_dir'        : {'': 'src'},
-    'scripts'            : ['bin/radicalpilot-bson2json',
+    'scripts'            : ['bin/gtod',
+                            'bin/radicalpilot-bson2json',
                             'bin/radicalpilot-fetch-profiles',
                             'bin/radicalpilot-inspect',
                             'bin/radicalpilot-version',
