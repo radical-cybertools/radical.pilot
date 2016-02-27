@@ -112,6 +112,13 @@ class Yarn(LaunchMethod):
             else:
                 cores_used = cores*(nodelist.__len__()-1)
                 total_mem = total_free_mem*(nodelist.__len__()-1)
+                slaves = open(os.getcwd()+'/hadoop/etc/hadoop/slaves','w')
+                for node in nodelist[1:]:
+                    slaves.write('%s\n'%(node+hostname))
+                slaves.close()
+                master = open(os.getcwd()+'/hadoop/etc/hadoop/masters','w')
+                master.write('%s\n'%(nodelist[0]+hostname))
+                master.close()
 
             max_app_mem = total_mem/cores_used
 
@@ -139,15 +146,6 @@ class Yarn(LaunchMethod):
             prop_str += '  <name>yarn.nodemanager.resource.memory-mb</name>\n'
             prop_str += '   <value>%d</value>\n'%total_mem
             prop_str += ' </property>\n'
-
-            if nodelist.__len__()!=1:
-                slaves = open(os.getcwd()+'/hadoop/etc/hadoop/slaves','w')
-                for node in nodelist[1:]:
-                    slaves.write('%s\n'%(node+hostname))
-                slaves.close()
-                master = open(os.getcwd()+'/hadoop/etc/hadoop/masters','w')
-                master.write('%s\n'%(nodelist[0]+hostname))
-                master.close()
 
             lines.insert(-1,prop_str)
 
@@ -215,11 +213,11 @@ class Yarn(LaunchMethod):
             # Solution to find Java's home folder:
             # http://stackoverflow.com/questions/1117398/java-home-directory
 
-            java = subprocess.check_output(['which','java'])
+            java = cls._which('java')
             if java != '/usr/bin/java':
                 jpos=java.split('bin')
             else:
-                jpos = subprocess.check_output(['readlink','-f', '/usr/bin/java']).split('bin')
+                jpos = os.path.realpath('/usr/bin/java').split('bin')
 
             if jpos[0].find('jre') != -1:
                 java_home = jpos[0][:jpos[0].find('jre')]
@@ -234,7 +232,6 @@ class Yarn(LaunchMethod):
             for line in hadoop_env_file_lines:
                 hadoop_env_file.write(line)
             hadoop_env_file.close()
-
             host=node_name.split(lrms.node_list[0])[1]
 
             config_core_site(node_name)
@@ -245,9 +242,9 @@ class Yarn(LaunchMethod):
             logger.info('Start Formatting DFS')
             namenode_format = os.system(hadoop_home + '/bin/hdfs namenode -format -force')
             logger.info('DFS Formatted. Starting DFS.')
-            hadoop_start = os.system(hadoop_home + '/sbin/start-dfs.sh')
             logger.info('Starting YARN')
-            yarn_start = os.system(hadoop_home + '/sbin/start-yarn.sh')
+            yarn_start = os.system(hadoop_home + '/sbin/start-all.sh')
+            logger.info('Started YARN')
 
             #-------------------------------------------------------------------
             # Creating user's HDFS home folder
