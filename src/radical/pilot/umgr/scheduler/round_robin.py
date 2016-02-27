@@ -97,7 +97,7 @@ class RoundRobin(UMGRSchedulingComponent):
 
             # we need to push 'pilot' to the db, otherwise the agent will never
             # pick up the unit
-            unit['$set'] = ['pilot']
+            unit['$set'] = ['pilot', 'pilot_sandbox', 'sandbox']
             self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING, 
                     publish=True, push=True)
         

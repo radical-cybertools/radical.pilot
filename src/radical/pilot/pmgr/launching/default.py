@@ -377,8 +377,9 @@ class Default(PMGRLaunchingComponent):
             rcfg = self._session.get_resource_config(resource_key, schema)
 
             # derive pilot and global sandbox from the resource config
-            global_sandbox  = self._get_global_sandbox(pilot, rcfg)
-            pilot_sandbox   = self._get_pilot_sandbox(pilot, rcfg)
+            global_sandbox   = self._get_global_sandbox(pilot, rcfg)
+            pilot_sandbox    = self._get_pilot_sandbox(pilot, rcfg)
+            pilot['sandbox'] = pilot_sandbox
 
 
             # ------------------------------------------------------
@@ -796,8 +797,10 @@ class Default(PMGRLaunchingComponent):
             # ------------------------------------------------------
 
             # Update the Pilot's state to 'PMGR_ACTIVE_PENDING' if SAGA job
-            # submission was successful.
-            pilot['cfg'] = agent_cfg
+            # submission was successful.  Since the pilot leaves the scope of
+            # the PMGR for the time being, we update the complete DB document
+            pilot['cfg']  = agent_cfg
+            pilot['$all'] = True
             self.advance(pilot, rps.PMGR_ACTIVE_PENDING, push=False, publish=True)
 
             # make sure we watch that pilot

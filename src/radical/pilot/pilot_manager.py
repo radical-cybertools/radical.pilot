@@ -304,6 +304,94 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def _get_pilot_sandbox(self, pilot):
+
+        resource_key = pilot['description']['resource']
+        schema       = pilot['description']['access_schema']
+
+        rcfg = self._session.get_resource_config(resource_key, schema)
+
+        global_sandbox   = self._get_global_sandbox(pilot, rcfg)
+        pilot_sandbox    = self._get_pilot_sandbox (pilot, rcfg)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_global_sandbox(self, pilot, rcfg):
+
+        # create a new UID for the pilot
+        pid   = pilot['uid']
+        descr = pilot['description']
+        res   = descr['resource']
+
+        # the global sandbox will be the same for all pilots on any resource, so
+        # we cache it
+        with self._cache_lock:
+            if res in self._sandbox_cache:
+                return rs.Url(self._sandbox_cache[res])
+
+        # not found in cache - get it fresh
+        # switch endpoint type
+        fs_url = rs.Url(rcfg['filesystem_endpoint'])
+
+        # Get the sandbox from either the pilot_desc or resource conf
+        workdir_raw = descr.get('sandbox')
+        if not workdir_raw:
+            workdir_raw = rcfg.get('default_remote_workdir', "$PWD")
+
+        # If the sandbox contains expandables, we need to resolve those remotely.
+        # NOTE: Note that this will only work for (gsi)ssh or shell based access mechanisms
+        if '$' in workdir_raw or '`' in workdir_raw:
+            js_url = rs.Url(rcfg['job_manager_endpoint'])
+
+            if 'ssh' in js_url.scheme.split('+'):
+                js_url.scheme = 'ssh'
+            elif 'gsissh' in js_url.scheme.split('+'):
+                js_url.scheme = 'gsissh'
+            elif 'fork' in js_url.scheme.split('+'):
+                js_url.scheme = 'fork'
+            elif '+' not in js_url.scheme:
+                # For local access to queueing systems use fork
+                js_url.scheme = 'fork'
+            else:
+                raise Exception("Are there more flavours we need to support?! (%s)" % js_url.scheme)
+
+            # FIXME: Why is this 'translation' required?
+            if js_url.port is not None:
+                url = "%s://%s:%d/" % (js_url.schema, js_url.host, js_url.port)
+            else:
+                url = "%s://%s/" % (js_url.schema, js_url.host)
+
+            self._log.debug("rsup.PTYShell ('%s')" % url)
+            shell = rsup.PTYShell(url, self._session)
+
+            ret, out, err = shell.run_sync(' echo "WORKDIR: %s"' % workdir_raw)
+            if ret == 0 and 'WORKDIR:' in out :
+                workdir_expanded = out.split(":")[1].strip()
+                self._log.debug("remote working dir for %s: '%s'" % (url, workdir_expanded))
+            else :
+                raise RuntimeError("Couldn't determine remote working directory.")
+        else:
+            workdir_expanded = workdir_raw
+
+        # at this point we have determined the remote 'pwd' - the global sandbox
+        # is relative to it.
+        fs_url.path = "%s/radical.pilot.sandbox" % workdir_expanded
+
+        # before returning, keep the URL in cache for the potential next pilot
+        with self._cache_lock:
+            # we keep a string as means of a deep copy, really - we have no idea
+            # what the consumer of this call will do to the URL instance...
+            self._sandbox_cache[res] = str(fs_url)
+
+        return fs_url
+
+
+
+
+
+    # --------------------------------------------------------------------------
+    #
     def submit_pilots(self, descriptions):
         """
         Submits on or more :class:`radical.pilot.ComputePilot` instances to the
@@ -362,6 +450,13 @@ class PilotManager(rpu.Component):
         # components (ie. advance state).
         # FIXME: advance as bulk
         for doc in pilot_docs:
+            # as soon as this call returns, the application can submit units.  When
+            # those arrive in the input staging component, the units need a sanbox,
+            # which is relative to the pilot sandbox.  This mean we need to
+            # determine the pilot sandbox already here, as the launcher is too late
+            # in the game for quick unit submission
+            doc['sandbox'] = self._get_pilot_sandbox(doc)
+            doc['$set']    = ['sandbox']   # record sandbox
             self.advance(doc, rps.PMGR_LAUNCHING_PENDING, publish=True, push=True)
 
         self._log.report.ok('>>ok\n')

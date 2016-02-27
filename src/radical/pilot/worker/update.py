@@ -334,9 +334,11 @@ class Update(rpu.Worker):
         if thing.get('$all'):
             
             # get rid of the marker
-            # we can also savely ignore the '$set' marker
             del(thing['$all'])
-            del(thing['$set'])
+
+            # we can also savely ignore the '$set' marker
+            if '$set' in thing:
+                del(thing['$set'])
 
             for key,val in thing.iteritems():
                 update_dict['$set'][key] = val
