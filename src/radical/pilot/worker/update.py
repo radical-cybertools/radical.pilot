@@ -385,8 +385,8 @@ class Update(rpu.Worker):
 
 
             # push the update request onto the bulk
-            import pprint
-            print '--> %s: %s' % (uid, pprint.pformat(update_dict))
+          # import pprint
+          # print '--> %s: %s' % (uid, pprint.pformat(update_dict))
 
             cinfo['uids'].append([uid, ttype, state])
             cinfo['bulk'].find  ({'uid'  : uid, 
