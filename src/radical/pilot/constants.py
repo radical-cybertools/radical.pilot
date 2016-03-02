@@ -34,7 +34,7 @@ UMGR_RESCHEDULE_PUBSUB         = 'umgr_reschedule_pubsub'
 AGENT_UNSCHEDULE_PUBSUB        = 'agent_unschedule_pubsub'
 AGENT_RESCHEDULE_PUBSUB        = 'agent_reschedule_pubsub'
 
-COMMAND_PUBSUB                 = 'command_pubsub'
+CONTROL_PUBSUB                 = 'control_pubsub'
 STATE_PUBSUB                   = 'state_pubsub'
 
 

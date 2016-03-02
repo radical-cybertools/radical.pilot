@@ -3,15 +3,18 @@ import os
 import sys
 import copy
 import time
+import pprint
 import signal
 
 import threading       as mt
 import multiprocessing as mp
 import radical.utils   as ru
 
-from ..states    import *
+from ..          import constants      as rpc
+from ..          import states         as rps
 
-from .prof_utils import Profiler, clone_units, drop_units
+from .misc       import hostip
+from .prof_utils import Profiler
 from .prof_utils import timestamp      as util_timestamp
 
 from .queue      import Queue          as rpu_Queue
@@ -26,8 +29,6 @@ from .pubsub     import PUBSUB_PUB     as rpu_PUBSUB_PUB
 from .pubsub     import PUBSUB_SUB     as rpu_PUBSUB_SUB
 from .pubsub     import PUBSUB_BRIDGE  as rpu_PUBSUB_BRIDGE
 
-from ..constants import STATE_PUBSUB   as rpc_STATE_PUBSUB
-from ..constants import COMMAND_PUBSUB as rpc_COMMAND_PUBSUB
 
 # TODO:
 #   - add PENDING states
@@ -128,7 +129,7 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, ctype, cfg, session):
+    def __init__(self, cfg, session):
         """
         This constructor MUST be called by inheriting classes.
 
@@ -142,15 +143,13 @@ class Component(mp.Process):
         process context.
         """
 
-        self._ctype         = ctype
         self._cfg           = copy.deepcopy(cfg)
         self._session       = session
         self._debug         = cfg.get('debug', 'DEBUG') # FIXME
-        self._module_name   = cfg.get('name', self._ctype)
-        self._cname         = "%s.%s.%d" % (cfg.get('owner','rp'), self._ctype, cfg.get('number', 0))
-        self._childname     = "%s.child" % self._cname
-        self._addr_map      = cfg['bridge_addresses']
-        self._parent        = os.getpid() # pid of spawning process
+        self._owner         = cfg.get('owner')
+        self._name          = cfg.get('name')
+        self._ctype         = "%s.%s" % (self.__class__.__module__, 
+                                         self.__class__.__name__)
         self._inputs        = list()      # queues to get things from
         self._outputs       = dict()      # queues to send things to
         self._publishers    = dict()      # channels to send notifications to
@@ -162,36 +161,122 @@ class Component(mp.Process):
         self._is_parent     = True        # guard initialize/initialize_child
         self._exit_on_error = True        # FIXME: make configurable
         self._cb_lock       = mt.Lock()   # guard threaded callback invokations
-        self._clone_cb      = None        # allocate resources on cloning things
-        self._drop_cb       = None        # free resources on dropping clones
-        self._dh            = ru.DebugHelper(name=self.cname)
+
+        # we always need an UID
+        if not hasattr(self, 'uid'):
+            raise ValueError('class which inherits Component needs a uid')
+
+        # helper for sub component startup and management
+        self._barrier       = mt.Event()  # signal when sub-components are up
+        self._barrier_seen  = None        # list of components seen alive
+        self._barrier_lock  = mt.Lock()   # lock on barrier_data
+        self._components    = list()      # set of sub components started
+        self._bridges       = list()      # set of bridges started
+        self._addr_map      = dict()      # address map for bridges
+
+        # initialize the Process base class for later fork.  We do that here
+        # before we populate any further member vars.
+        mp.Process.__init__(self, name=self.uid)
+
+        # get debugging, logging, profiling set up
+        self._dh            = ru.DebugHelper(name=self.uid)
+        self._log           = ru.get_logger(self.uid, self.uid + '.log', self._debug)
+        self._prof          = Profiler(self.uid)
+
+        self._log.info('creating %s', self.uid)
+
+        # all components need at least be able to talk to a control pubsub and
+        # to a state pubsub -- but other bridges may be required, too.  We check
+        # our config if an address map exists.  If not we check the session.
+        # After this, we we check the config for a set of defined bridges.  If
+        # that exist, we start them, and add the addresses to out address map.
+        # After that we check that map -- if the 'control' or 'state' pubsub is
+        # still missing, we give up.
+        #
+        # NOTE: This implies that we always start bridges in the parent process.
+
+        # check for bridge addresses in the cfg
+        self._addr_map = self._cfg.get('bridge_addresses', {})
+
+        # check for bridge addresses in the session
+        if not self._addr_map:
+            self._addr_map = self._session.cfg.get('bridge_addresses', {})
+
+        # check for bridges to start in the cfg
+        bridges = self._cfg.get('bridges', [])
+        self.start_bridges(bridges)
+
+        # sanity check on the address map
+        if not self._addr_map:
+            self._log.debug('bridges: %s', bridges)
+            raise RuntimeError('no bridges defined - abort')
+        if rpc.CONTROL_PUBSUB not in self._addr_map:
+            raise RuntimeError('no control bridge defined - abort')
+        if rpc.STATE_PUBSUB not in self._addr_map:
+            raise RuntimeError('no state bridge defined - abort')
+
+        self._log.info('addr_map: %s', pprint.pformat(self._addr_map))
+
+        # components can always publish state updates, and send control messages
+        self.declare_publisher('state',   rpc.STATE_PUBSUB)
+        self.declare_publisher('control', rpc.CONTROL_PUBSUB)
+
+        # we also subscribe to control messages
+        self.declare_subscriber('control', rpc.CONTROL_PUBSUB, self._control_cb)
+
+        # We keep a static typemap for worker, component and bridge startup. If
+        # we ever want to become reeeealy fancy, we can derive that typemap from
+        # rp module inspection.
+        # NOTE: I'd rather have this as class data than as instance data, but
+        #       python stumbles over circular imports at that point :/
+
+        from .. import worker as rpw
+        from .. import pmgr   as rppm
+        from .. import umgr   as rpum
+        from .. import agent  as rpa
+
+        self._typemap = {rpc.UPDATE_WORKER                  : rpw.Update,
+                         rpc.HEARTBEAT_WORKER               : rpw.Heartbeat,
+
+                         rpc.PMGR_LAUNCHING_COMPONENT       : rppm.Launching,
+
+                         rpc.UMGR_STAGING_INPUT_COMPONENT   : rpum.Input,
+                         rpc.UMGR_SCHEDULING_COMPONENT      : rpum.Scheduler,
+                         rpc.UMGR_STAGING_OUTPUT_COMPONENT  : rpum.Output,
+
+                         rpc.AGENT_STAGING_INPUT_COMPONENT  : rpa.Input,
+                         rpc.AGENT_SCHEDULING_COMPONENT     : rpa.Scheduler,
+                         rpc.AGENT_EXECUTING_COMPONENT      : rpa.Executing,
+                         rpc.AGENT_STAGING_OUTPUT_COMPONENT : rpa.Output
+                         }
 
 
-        # use 'name' for one log per 'name', 'cname' for one log per component instance
-        log_name  = self._cname
-        log_tgt   = self._cname + ".log"
-        self._log = ru.get_logger(log_name, log_tgt, self._debug)
-        self._log.info('creating %s', self._cname)
+    # --------------------------------------------------------------------------
+    #
+    def _control_cb(self, topic, msg):
 
-        self._prof = Profiler(self._cname)
+        # wait for 'terminate' commands, but only accept those where 'src' is
+        # either myself, my session, or my owner
 
-        # components can always publissh state updates, and commands
-        self.declare_publisher('state',   rpc_STATE_PUBSUB)
-        self.declare_publisher('command', rpc_COMMAND_PUBSUB)
+        cmd = msg['cmd']
+        arg = msg['arg']
 
-        # start the main event loop in a separate process.  At that point, the
-        # component will basically detach itself from the parent process, and
-        # will only maintain a handle to be used for shutdown
-        mp.Process.__init__(self, name=self._cname)
+        if cmd == 'shutdown':
+            src = arg['sender']
+            if src in [self.uid, self._session.uid, self._owner]:
+                self._log.info('received shutdown command from %s', src)
+                self.stop()
 
-        self._log.debug('### session init with: %s (%s)', session._dbs._c,
-                cfg.get('owner'))
 
 
     # --------------------------------------------------------------------------
     #
     @property
     def cfg(self):
+
+        # make sure the config contains all current bridge addresses
+        self._cfg['bridge_addresses'] = copy.deepcopy(self._addr_map)
+
         return copy.deepcopy(self._cfg)
 
 
@@ -205,128 +290,22 @@ class Component(mp.Process):
     # --------------------------------------------------------------------------
     #
     @property
+    def uid(self):
+        return self._uid
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def name(self):
+        return self._name
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
     def ctype(self):
         return self._ctype
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def cname(self):
-        return self._cname
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def childname(self):
-        return self._childname
-
-
-    # --------------------------------------------------------------------------
-    #
-    @staticmethod
-    def start_bridges(bridges, session):
-        """
-        Helper method to start a given list of bridge names.  The type of bridge
-        (queue or pubsub) is derived from the name.  
-        
-        The call returns a dict with entries for each requested bridge, of the
-        form:
-
-          'handle' : bridge handle which can be close()'d
-          'in'     : 'in'  address of bridge to connect to
-          'out'    : 'out' address of bridge to connect to
-          'alive'  : boolean flag (always True at this point)
-        """
-
-        log = session._log
-
-        log.debug('start_bridges')
-
-        # FIXME: in, out, alive should be exposed via the handle, which would
-        #        reduce this to a list.
-        ret = dict()
-        for b in bridges:
-
-            log.info('create bridge %s', b)
-            if b.endswith('queue'):
-                bridge = rpu_Queue.create(rpu_QUEUE_ZMQ, b, rpu_QUEUE_BRIDGE)
-
-            elif b.endswith('pubsub'):
-                bridge = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, b, rpu_PUBSUB_BRIDGE)
-
-            else:
-                raise ValueError('unknown bridge type for %s' % b)
-
-            bridge_in  = bridge.bridge_in
-            bridge_out = bridge.bridge_out
-            ret[b] = {'handle' : bridge,
-                      'in'     : bridge_in,
-                      'out'    : bridge_out,
-                      'alive'  : True}  # no alive check done for bridges, yet
-            log.info('created bridge %s: %s', b, bridge.name)
-
-        log.debug('start_bridges done')
-
-        return ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    @staticmethod
-    def start_components(components, typemap, cfg, session):
-        """
-        This method expects a 'components' dict of the form:
-          {
-            'component_name' : <number>
-          }
-        where <number> specifies how many instances are to be created for each
-        type.  The 'typemap' is also expected to be a dict which maps the
-        component names from the 'components' dict to class types -- as an
-        example:
-          {
-            'agent_update_worker : AgentUpdateWorker
-          }
-        Components will be passed the 'cfg', but a deepcopy of that config is
-        created first, and a 'number' key is set to the index of the component
-        instance, so that the components can be uniquely identified.
-
-        The call returns a dictionary which contains an entry for each started
-        component (indexed by component.childname, which is unique).  The dict
-        entries are:
-
-          'handle' : a handle to the component instance
-          'alive'  : a boolean flag 
-
-        Note that this method can also create Workers, which are a specific type
-        of components.
-        """
-
-        log = session._log
-
-        log.debug("start_components")
-      # log.debug('config: %s', pprint.pformat(cfg))
-      # pprint.pprint(cfg)
-      # pprint.pprint(typemap)
-
-        # FIXME: alive should be in the component, which reduces this dict to
-        #        a list of handles
-        ret = dict()
-        for cname, cnum in components.iteritems():
-            for i in range(cnum):
-                # each component gets its own copy of the config
-                log.info('create component %s (%s)', cname, cnum)
-                ccfg = copy.deepcopy(cfg)
-                ccfg['number'] = i
-                comp = typemap[cname].create(ccfg, session)
-                comp.start()
-                ret[comp.childname] = {'handle' : comp,
-                                       'alive'  : False}
-
-        log.debug("start_components done")
-
-        return ret
 
 
     # --------------------------------------------------------------------------
@@ -449,8 +428,17 @@ class Component(mp.Process):
         self._prof.prof("closing")
         self._log.info("closing (%d subscriber threads)" % (len(self._subscribers)))
 
-        # tear down all subscriber threads
+        # tear down components, workers and bridges
+        for component in self._components: component.stop()
+        for bridge    in self._bridges   : bridge.stop()
+
+        for component in self._components: component.join()
+        for bridge    in self._bridges   : bridge.join()
+
+        # let everybody know we are about to go away
         self._terminate.set()
+
+        # tear down all subscriber threads
         self_thread = mt.current_thread()
         for t in self._subscribers:
             if t != self_thread:
@@ -494,6 +482,10 @@ class Component(mp.Process):
                 sys.exit()
 
         else:
+            # communicate finalization
+            self.publish('control', {'cmd' : 'final',
+                                     'arg' : self.uid})
+
             # we only finalize in the child's main thread.
             # NOTE: this relies on us not to change the name of MainThread
             if self_thread.name == 'MainThread':
@@ -554,7 +546,7 @@ class Component(mp.Process):
             states = [states]
 
         # get address for the queue
-        addr = self._addr_map[input]['source']
+        addr = self._addr_map[input]['out']
         self._log.debug("using addr %s for input %s" % (addr, input))
 
         q = rpu_Queue.create(rpu_QUEUE_ZMQ, input, rpu_QUEUE_OUTPUT, addr)
@@ -569,7 +561,7 @@ class Component(mp.Process):
         for state in states:
             if state in self._workers:
                 self._log.warn("%s replaces worker for %s (%s)" \
-                        % (self._cname, state, self._workers[state]))
+                        % (self.uid, state, self._workers[state]))
             self._workers[state] = worker
 
             self._log.debug('declared worker    : %s : %s' \
@@ -601,14 +593,14 @@ class Component(mp.Process):
             # we want a *unique* output queue for each state.
             if state in self._outputs:
                 self._log.warn("%s replaces output for %s : %s -> %s" \
-                        % (self._cname, state, self._outputs[state], output))
+                        % (self.uid, state, self._outputs[state], output))
 
             if not output:
                 # this indicates a final state
                 self._outputs[state] = None
             else:
                 # get address for the queue
-                addr = self._addr_map[output]['sink']
+                addr = self._addr_map[output]['in']
                 self._log.debug("using addr %s for output %s" % (addr, output))
 
                 # non-final state, ie. we want a queue to push to
@@ -640,12 +632,13 @@ class Component(mp.Process):
         # create a separate thread per idle cb
         # ------------------------------------------------------------------
         def _idler(callback, callback_data, to):
-            name = "[%s : %s : %s : %s]" % (self.cname, mt.currentThread().name, 
+            name = "[%s : %s : %s : %s]" % (self.uid, mt.currentThread().name, 
                     callback, mt.currentThread().ident)
             try:
                 while not self._terminate.is_set():
                     with self._cb_lock:
                         if callback_data != None:
+                            print callback_data
                             callback(cb_data=callback_data)
                         else:
                             callback()
@@ -658,7 +651,7 @@ class Component(mp.Process):
 
         # create a idler thread
         t = mt.Thread(target=_idler, args=[cb,cb_data,timeout], 
-                      name="%s.idler" % self.cname)
+                      name="%s.idler" % self.uid)
         t.start()
         self._idlers.append(t)
 
@@ -681,7 +674,11 @@ class Component(mp.Process):
             self._publishers[topic] = list()
 
         # get address for pubsub
-        addr = self._addr_map[pubsub]['sink']
+        if not pubsub in self._addr_map:
+            self._log.error('no addr: %s' % pprint.pformat(self._addr_map))
+            raise ValueError('no bridge known for pubsub channel %s' % pubsub)
+
+        addr = self._addr_map[pubsub]['in']
         self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
 
         q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_PUB, addr)
@@ -715,7 +712,7 @@ class Component(mp.Process):
 
         # ----------------------------------------------------------------------
         def _subscriber(q, callback, callback_data):
-            name = "[%s : %s : %s : %s]" % (self.cname, mt.currentThread().name, 
+            name = "[%s : %s : %s : %s]" % (self.uid, mt.currentThread().name, 
                     callback, mt.currentThread().ident)
             try:
                 while not self._terminate.is_set():
@@ -726,9 +723,9 @@ class Component(mp.Process):
                         for m in msg:
                             with self._cb_lock:
                                 if callback_data:
-                                    callback (topic=topic, msg=m, cb_data=callback_data)
+                                    callback(topic=topic, msg=m, cb_data=callback_data)
                                 else:
-                                    callback (topic=topic, msg=m)
+                                    callback(topic=topic, msg=m)
             except Exception as e:
                 self._log.exception("subscriber failed %s" % name)
                 if self._exit_on_error:
@@ -736,7 +733,10 @@ class Component(mp.Process):
         # ----------------------------------------------------------------------
 
         # get address for pubsub
-        addr = self._addr_map[pubsub]['source']
+        if not pubsub in self._addr_map:
+            raise ValueError('no bridge known for pubsub channel %s' % pubsub)
+
+        addr = self._addr_map[pubsub]['out']
         self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
 
         # create a pubsub subscriber, and subscribe to the given topic
@@ -744,38 +744,12 @@ class Component(mp.Process):
         q.subscribe(topic)
 
         t = mt.Thread(target=_subscriber, args=[q,cb,cb_data],
-                      name="%s.subscriber" % self.cname)
+                      name="%s.subscriber" % self.uid)
         t.start()
         self._subscribers.append(t)
 
         self._log.debug('%s declared subscriber: %s : %s : %s(%s) : %s' \
-                % (self._cname, topic, pubsub, cb, str(cb_data), t.name))
-
-    # --------------------------------------------------------------------------
-    #
-    def declare_clone_cb(self, clone_cb):
-        """
-        The clone callback will be invoked whenever a thing is cloned after
-        passing this component.  So, whenever the component allocates some
-        resources for a thing which would conflict when being cloned, this
-        callback allows to perform the required correction (hi scheduler!).
-        """
-        self._log.debug('declare clone_cb %s (%s)', clone_cb, os.getpid())
-        self._clone_cb = clone_cb
-
-
-    # --------------------------------------------------------------------------
-    #
-    def declare_drop_cb(self, drop_cb):
-        """
-        The drop callback will be invoked whenever a thing is dropped after
-        passing this component.  So, whenever the component allocates some
-        resources for a cloned thing which could otherwise not be reaped anymore,
-        because the thing would not pass some reaping state or something, this
-        callback allows to perform the required action (hi scheduler!).
-        """
-        self._log.debug('declare drop_cb %s (%s)', drop_cb, os.getpid())
-        self._drop_cb = drop_cb
+                % (self.uid, topic, pubsub, cb, str(cb_data), t.name))
 
 
     # --------------------------------------------------------------------------
@@ -810,8 +784,8 @@ class Component(mp.Process):
 
         # set some child-provate state
         self._is_parent = False
-        self._cname     = self.childname
-        self._dh        = ru.DebugHelper(name=self.cname)
+        self._uid       = self._uid + '.child'
+        self._dh        = ru.DebugHelper(name=self.uid)
 
         # other state we don't want to carry over the fork:
         self._inputs        = list()      # queues to get things from
@@ -820,8 +794,6 @@ class Component(mp.Process):
         self._subscribers   = list()      # callbacks for received notifications
         self._workers       = dict()      # where things get worked upon
         self._idlers        = list()      # idle_callback registry
-        self._clone_cb      = None        # allocate resources on cloning things
-        self._drop_cb       = None        # free resources on dropping clones
 
         # parent can call terminate, which we translate here into sys.exit(),
         # which is then excepted in the run loop below for an orderly shutdown.
@@ -836,21 +808,19 @@ class Component(mp.Process):
         # set process name
         try:
             import setproctitle as spt
-            spt.setproctitle('radical.pilot %s' % self._cname)
+            spt.setproctitle('radical.pilot %s' % self.uid)
         except Exception as e:
             pass
 
 
         try:
             # configure the component's logger
-            log_name  = self._cname
-            log_tgt   = self._cname + ".log"
-            self._log = ru.get_logger(log_name, log_tgt, self._debug)
-            self._log.info('running %s' % self._cname)
+            self._log = ru.get_logger(self.uid, self.uid + '.log', self._debug)
+            self._log.info('running %s' % self.uid)
 
             # components can always publissh state updates, and commands
-            self.declare_publisher('state',   rpc_STATE_PUBSUB)
-            self.declare_publisher('command', rpc_COMMAND_PUBSUB)
+            self.declare_publisher('state',   rpc.STATE_PUBSUB)
+            self.declare_publisher('control', rpc.CONTROL_PUBSUB)
 
             # initialize_child() should declare all input and output channels, and all
             # workers and notification callbacks
@@ -870,8 +840,11 @@ class Component(mp.Process):
                 for state in states:
                     if not state in self._workers:
                         raise RuntimeError("%s: no worker declared for input state %s" \
-                                        % self._cname, state)
+                                        % self.uid, state)
 
+            # setup is done, child initialization is done -- we are alive!
+            self.publish('control', {'cmd' : 'alive',
+                                     'arg' : self.uid})
 
             # The main event loop will repeatedly iterate over all input
             # channels, probing
@@ -891,52 +864,39 @@ class Component(mp.Process):
 
                     # FIXME: the timeouts have a large effect on throughput, but
                     #        I am not yet sure how best to set them...
-                    thing = input.get_nowait(1000) # timeout in microseconds
-                    if not thing:
+                    things = input.get_nowait(1000) # timeout in microseconds
+
+                    if not things:
                         continue
 
-                    self._log.debug('got %s (%s)', thing['type'], thing)
+                    if not isinstance(things, list):
+                        things = [things]
 
-                    uid   = thing['uid']
-                    ttype = thing['type']
-                    state = thing['state']
+                    active = True
 
-                    # assert that the thing is in an expected state
-                    if state not in states:
-                        self.advance(thing, FAILED, publish=True, push=False)
-                        self._prof.prof(event='failed', 
-                                msg="unexpected state %s" % state,
-                                uid=uid, state=state, logger=self._log.error)
-                        continue
+                    for thing in things:
 
-                    # depending on the queue we got the thing from, we can either
-                    # drop units or clone them to inject new ones
-                    if ttype == 'unit':
-                        thing = drop_units(self._cfg, thing, self.ctype, 'input',
-                                          drop_cb=self._drop_cb, logger=self._log)
-                        if not thing:
-                            self._prof.prof(event='drop', state=state,
-                                    uid=uid, msg=input.name)
-                            continue
+                        uid    = thing['uid']
+                        ttype  = thing['type']
+                        state  = thing['state']
 
-                        things = clone_units(self._cfg, thing, self.ctype, 'input',
-                                            clone_cb=self._clone_cb, logger=self._log)
-                    else:
-                        things = [thing]
-
-                    for _thing in things:
-
-                        uid = _thing['uid']
-                        active = True
+                        self._log.debug('got %s (%s)', ttype, thing)
                         self._prof.prof(event='get', state=state, uid=uid, msg=input.name)
 
+                        # assert that the thing is in an expected state
+                        if state not in states:
+                            self.advance(thing, rps.FAILED, publish=True, push=False)
+                            self._prof.prof(event='failed', 
+                                    msg="unexpected state %s" % state,
+                                    uid=uid, state=state, logger=self._log.error)
+                            continue
 
                         # check if we have a suitable worker (this should always be
                         # the case, as per the assertion done before we started the
                         # main loop.  But, hey... :P
                         if not state in self._workers:
                             self._log.error("%s cannot handle state %s: %s" \
-                                    % (self._cname, state, _thing))
+                                    % (self.uid, state, thing))
                             continue
 
                         # we have an acceptable state and a matching worker -- hand
@@ -945,12 +905,12 @@ class Component(mp.Process):
                         try:
                             self._prof.prof(event='work start', state=state, uid=uid)
                             with self._cb_lock:
-                                self._workers[state](_thing)
+                                self._workers[state](thing)
                             self._prof.prof(event='work done ', state=state, uid=uid)
 
                         except Exception as e:
                             self._log.exception("%s failed" % uid)
-                            self.advance(_thing, FAILED, publish=True, push=False)
+                            self.advance(thing, rps.FAILED, publish=True, push=False)
                             self._prof.prof(event='failed', msg=str(e), uid=uid, state=state)
 
                             if self._exit_on_error:
@@ -996,7 +956,7 @@ class Component(mp.Process):
         publish: determine if state update notifications should be issued
         push:    determine if things should be pushed to outputs
         prof:    determine if state advance creates a profile event
-                 (publish, push, and drop are always profiled)
+                 (publish, and push are always profiled)
 
         'Things' are expected to be a dictionary, and to have 'state', 'uid' and
         optionally 'type' set.
@@ -1038,7 +998,7 @@ class Component(mp.Process):
                 if state not in self._outputs:
                     # unknown target state -- error
                     self._log.error("%s can't route state %s (%s)" \
-                            % (self._cname, state, self._outputs.keys()))
+                            % (self.uid, state, self._outputs.keys()))
                     continue
 
                 if not self._outputs[state]:
@@ -1048,25 +1008,12 @@ class Component(mp.Process):
 
                 output = self._outputs[state]
 
-                # depending on the queue we got the thing from, we can now either
-                # drop things or clone them to inject new ones
-                thing = drop_units(self._cfg, thing, self.ctype, 'output',
-                                  drop_cb=self._drop_cb, logger=self._log)
-                if not thing:
-                    self._prof.prof(event='drop', state=state, uid=uid, msg=output.name)
-                    continue
-
-                _things = clone_units(self._cfg, thing, self.ctype, 'output',
-                                    clone_cb=self._clone_cb, logger=self._log)
-
-                for _thing in _things:
-                    # FIXME: we should assert that the thing is in a PENDING state.
-                    #        Better yet, enact the *_PENDING transition right here...
-                    #
-                    # push the thing down the drain
-                    self._log.debug('### 1 put %s', _thing)
-                    output.put(_thing)
-                    self._prof.prof('put', uid=_thing['uid'], state=state, msg=output.name)
+                # FIXME: we should assert that the thing is in a PENDING state.
+                #        Better yet, enact the *_PENDING transition right here...
+                #
+                # push the thing down the drain
+                output.put(thing)
+                self._prof.prof('put', uid=thing['uid'], state=state, msg=output.name)
 
 
     # --------------------------------------------------------------------------
@@ -1092,6 +1039,236 @@ class Component(mp.Process):
             p.put (topic, msg)
 
 
+    # --------------------------------------------------------------------------
+    #
+    def start_bridges(self, bridges):
+        """
+        Helper method to start a given list of bridge names.  The type of bridge
+        (queue or pubsub) is derived from the name.  The bridge handles are
+        stored in self._bridges, the bridge addresses are in self._addr_map.  If
+        new components are started via self.start_components, then the address
+        map is passed on as part of the component config (unless an address map
+        already is on the config).
+        """
+
+        self._log.debug('start_bridges: %s', bridges)
+
+        # we start bridges on localhost -- but since components may be running
+        # on other hosts / nodes, we'll try to use a public IP address for the
+        # bridge address.
+        ip_address = hostip()
+
+        ret = dict()
+        for b in bridges:
+
+            if b in self._addr_map:
+                self._log.debug('bridge %s already exists', b)
+                continue
+
+            print '%s starts bridge %s' % (self.uid, b)
+
+            self._log.info('create bridge %s', b)
+            if b.endswith('queue'):
+                bridge = rpu_Queue.create(rpu_QUEUE_ZMQ, b, rpu_QUEUE_BRIDGE)
+
+            elif b.endswith('pubsub'):
+                bridge = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, b, rpu_PUBSUB_BRIDGE)
+
+            else:
+                raise ValueError('unknown bridge type for %s' % b)
+
+            # FIXME: check if bridge is up and running
+
+            self._bridges.append(bridge)
+
+            addr_in  = ru.Url(bridge.bridge_in)
+            addr_out = ru.Url(bridge.bridge_out)
+
+            addr_in.host  = ip_address
+            addr_out.host = ip_address
+
+            self._addr_map[b] = {'in'  : str(addr_in ),
+                                 'out' : str(addr_out)}
+
+            self._log.info('created bridge %s: %s', b, bridge.name)
+
+        self._log.debug('start_bridges done')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _barrier_cb(self, topic, msg):
+
+        # register 'alive' messages.  Whenever an 'alive' message arrives, we
+        # check if a subcomponent spawned by us is the origin.  If that is the
+        # case, we record the component as 'alive'.  Whenever we see all current
+        # components as 'alive', we unlock the barrier.
+        
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        if cmd not in ['alive']:
+            # nothing to do
+            return
+
+        if arg.endswith('.child'):
+            arg = arg[:-6]
+
+        # the first cb invication will stall here until all component start
+        # requests are issued, and self._components is filled.
+        with self._barrier_lock:
+
+            # record msg only once
+            if arg in self._barrier_seen:
+                self._log.error('duplicated alive msg for %s' % arg)
+                return
+
+
+            self._barrier_seen.append(arg)
+
+            if len(self._barrier_seen) < len(self._components):
+                self._log.debug('barrier %s / %s', len(self._barrier_seen),
+                        len(self._components))
+                return
+
+            # sanity check if we indeed saw all components as alive
+            uids = [c.uid for c in self._components]
+            for uid in uids:
+                if not uid in self._barrier_seen:
+                    raise RuntimeError('bookkeeping error: %s != %s'
+                            % (sorted(self._barrier_seen), 
+                               sorted(uids)))
+
+            # all components have been seen as alive by now - lift barrier
+            self._barrier.set()
+
+            # FIXME: this callback can now be unregistered
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _component_watcher_cb(self):
+        """
+        we do a poll() on all our bridges, components, and workers and sub-agent,
+        to check if they are still alive.  If any goes AWOL, we will begin to
+        tear down this agent.
+        """
+
+        to_watch = self._components
+
+      # self._log.debug('watch: %s' % pprint.pformat(to_watch))
+
+        self._log.debug('checking %s things' % len(to_watch))
+        for thing in to_watch:
+            state = thing.poll()
+            if state == None:
+                self._log.debug('%-40s: ok' % thing.name)
+            else:
+                raise RuntimeError ('%s died - shutting down' % thing.name)
+
+        return True # always idle
+
+
+    # --------------------------------------------------------------------------
+    #
+    def start_components(self, components=None, owner=None, timeout=None):
+        """
+        This method expects a 'components' dict in self._cfg, of the form:
+
+          {
+            'component_name' : <number>
+          }
+
+        where <number> specifies how many instances are to be created for each
+        component.  The 'component_name' is translated into a component class
+        type based on self._ctypes.  Components will be passed a deep copy of
+        self._cfg, where 'owner' is set to self.uid (unless overwritten by the
+        'owner' parameter, and 'number' is set to the index for this component
+        type.
+        
+        On startup, components always connect to the command channel, and will
+        send an 'alive' message there.  The starting component will register
+        a 'control' subscriber to wait for those 'alive' messages, thus creating
+        a startup barrier.  If that barrier is not passed after 'timeout'
+        seconds (default: 60), the startup is considered to have failed.
+
+        An idle callback is also created which waches all spawned components.
+        If any of the components is detected as 'failed', stop() is called and
+        the component terminates with an error.
+
+        On self.stop(), a shutdown command will be sent to all components ever
+        spawned by self.  
+
+        Note that this method can also create Workers, which are a specific type
+        of components.
+        """
+
+        import pprint
+        self._log.debug('start components: cfg: %s' % pprint.pformat(self._cfg))
+
+        if not owner  : owner   = self.uid 
+        if not timeout: timeout = 60
+
+        # make sure we get called only once
+        if self._barrier_seen != None:
+            raise RuntimeError('start_component can only be called once')
+
+        # use the barrier lock during component startup, so that the barrier cb
+        # does not start checking before we have anything up...
+        with self._barrier_lock:
+
+            # initialize data and start barrier, so that no alive messages get lost
+            self._barrier.clear()
+            self._barrier_seen = list()
+            self.declare_subscriber('control', rpc.CONTROL_PUBSUB, self._barrier_cb)
+
+            start = time.time()
+            self._log.debug("start_components")
+
+            if not components:
+                components = self._cfg.get('components', {})
+
+            if not components:
+                raise RuntimeError('No components to start')
+
+            for ctype,cnum in components.iteritems():
+
+                ctype = self._typemap.get(ctype)
+                if not ctype:
+                    raise ValueError('unknown component type %s' % ctype)
+
+                for i in range(cnum):
+
+                    self._log.info('create component %s [%s]', ctype, cnum)
+
+                    ccfg = copy.deepcopy(self._cfg)
+                    ccfg['components'] = dict()  # avoid recursion
+                    ccfg['number']     = i
+                    ccfg['owner']      = owner
+
+                    comp = ctype.create(ccfg, self._session)
+                    comp.start()
+
+                    self._components.append(comp)
+
+        # at this point, the barrier lock will be released, and the barrier cb
+        # can start to collect alive messages from the components we just
+        # started.
+        import pprint
+        self._log.debug("wait for barrier (%s)" % self.uid)
+        self._log.debug("%s" % pprint.pformat(self._components))
+
+        if not self._barrier.wait(timeout):
+            raise RuntimeError('component startup barrier failed (timeout)')
+
+        # once components are up, we start a watcher callback
+        # FIXME: make timeout configurable?
+        self.declare_idle_cb(self._component_watcher_cb, timeout=10.0)
+
+        # FIXME: barrier_cb can now be unregistered
+        self._log.debug("start_components done")
+
+
 
 # ==============================================================================
 #
@@ -1105,9 +1282,9 @@ class Worker(Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, ctype, cfg, session=None):
+    def __init__(self, cfg, session=None):
 
-        Component.__init__(self, ctype=ctype, cfg=cfg, session=session)
+        Component.__init__(self, cfg=cfg, session=session)
 
 
     # --------------------------------------------------------------------------
@@ -1119,10 +1296,9 @@ class Worker(Component):
 
         if state:
             raise RuntimeError("worker %s cannot advance state (%s)"
-                    % (self.cname, state))
+                    % (self.uid, state))
 
         Component.advance(self, things, state, publish, push, prof)
-
 
 
 # ------------------------------------------------------------------------------

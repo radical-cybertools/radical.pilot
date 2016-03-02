@@ -31,15 +31,17 @@ class Update(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session=None):
+    def __init__(self, cfg, session):
 
-        rpu.Worker.__init__(self, 'UpdateWorker', cfg, session)
+        self._uid = ru.generate_id('update.%(counter)s', ru.ID_CUSTOM)
+
+        rpu.Worker.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def create(cls, cfg, session=None):
+    def create(cls, cfg, session):
 
         return cls(cfg, session)
 
@@ -60,19 +62,6 @@ class Update(rpu.Worker):
 
         self.declare_subscriber('state', 'state_pubsub', self.state_cb)
         self.declare_idle_cb(self.idle_cb, timeout=self._cfg.get('bulk_collection_time'))
-
-        # communicate successful startup
-        self.publish('command', {'cmd' : 'alive',
-                                 'arg' : self.cname})
-
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize_child(self):
-
-        # communicate finalization
-        self.publish('command', {'cmd' : 'final',
-                                 'arg' : self.cname})
 
 
     # --------------------------------------------------------------------------

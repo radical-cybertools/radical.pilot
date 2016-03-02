@@ -75,17 +75,13 @@ if __name__ == '__main__':
             print 'cb: pilot %s: %s [%s]' % (pilot.uid, pilot.state, state)
         pilot.register_callback(pilot_cb)
        
-      # pilot.wait(state=rp.ACTIVE)
-        print "pilot state: %s" % pilot.state
-
         report.header('submit units')
 
-      # umgr.add_pilots(pilot)
 
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 20   # number of units to run
+        n = 1  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -108,6 +104,10 @@ if __name__ == '__main__':
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(cuds)
+
+      # import time
+      # time.sleep(2)
+        umgr.add_pilots(pilot)
 
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
@@ -132,14 +132,14 @@ if __name__ == '__main__':
         session._log.exception('oops')
         report.error('caught Exception: %s\n' % e)
         raise
-
+    
     except (KeyboardInterrupt, SystemExit) as e:
         # the callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
         report.warn('exit requested\n')
-
+    
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.

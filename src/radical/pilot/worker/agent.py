@@ -25,26 +25,33 @@ class Agent(rpu.Worker):
     #
     def __init__(self, cfg, session):
 
-        self.agent_name  = cfg['agent_name']
-        self.final_cause = None
+        self.final_cause  = None
+        self._lrms        = None
 
-        rpu.Worker.__init__(self, 'AgentWorker', cfg, session)
+        self._agent_name  = cfg['agent_name']
+        self._session_id  = cfg['session_id']
+        self._pilot_id    = cfg['pilot_id']
 
+        self._uid  = self._agent_name
+
+        rpu.Worker.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
     def initialize(self):
 
-        self._log.debug('starting AgentWorker for %s' % self.agent_name)
-
-        # everything which comes after the worker init is limited in scope to
-        # the current process, and will not be available in the worker process.
-        self._pilot_id    = self._cfg['pilot_id']
-        self._session_id  = self._cfg['session_id']
+        self._log.debug('starting AgentWorker for %s' % self.uid)
 
         # all components use the command channel for control messages
-        self.declare_subscriber('command', rpc.COMMAND_PUBSUB, self.command_cb)
+        self.declare_subscriber('control', rpc.CONTROL_PUBSUB, self.command_cb)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def agent_name(self):
+        return self._agent_name
 
 
     # --------------------------------------------------------------------------
@@ -81,43 +88,45 @@ class Agent(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def barrier_cb(self, topic, msg):
+    def _agent_barrier_cb(self, topic, msg):
+        """
+        bar until we have seen all agents coming live
+        """
 
-        # This callback is invoked in the process context of the run loop, and
-        # will be cleaned up automatically.
-        self._log.debug('barrier_cb [%s]: %s', topic, msg)
+        # FIXME: use same barrier logic as Component
+
+        self._log.debug('agent_barrier_cb [%s]: %s', topic, msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
 
         if cmd == 'alive':
 
-            name = arg
-
-            self._log.debug('waiting alive [%s]: \n%s\n%s\n%s'
-                    % (name, self._components.keys(), self._workers.keys(),
-                        self._sub_agents.keys()))
-
-            # we only look at ALIVE messages which come from *this* agent, and
-            # simply ignore all others (this is a shared medium after all)
-            if name.startswith (self.agent_name):
-
-                if name in self._components:
-                    self._log.debug("component ALIVE (%s)" % name)
-                    self._components[name]['alive'] = True
-
-                elif name in self._workers:
-                    self._log.debug("worker    ALIVE (%s)" % name)
-                    self._workers[name]['alive'] = True
-
-                else:
-                    self._log.error("unknown   ALIVE (%s)" % name)
-
-            elif name in self._sub_agents:
-                self._log.debug("sub-agent ALIVE (%s)" % name)
-                self._sub_agents[name]['alive'] = True
+            if arg in self._sub_agents:
+                self._log.debug("sub-agent ALIVE (%s)" % sa)
+                self._sub_agents[sa]['alive'] = True
 
 
+    # --------------------------------------------------------------------------
+    #
+    def _write_sub_configs(self):
+        """
+        create a sub_config for each sub-agent we intent to spawn
+        """
+
+        if self._agent_name != 'agent_0':
+            raise RuntimeError('only agent_0 writes config files')
+    
+        # write deep-copies of the config (with the corrected agent_name) for each
+        # sub-agent (apart from agent_0)
+        for sa in self.cfg.get('agent_layout', []):
+            if sa != 'agent_0':
+                sa_cfg = copy.deepcopy(self.cfg)
+                sa_cfg['agent_name'] = sa
+                sa_cfg['owner']      = self._pilot_id
+                ru.write_json(sa_cfg, './%s.cfg' % sa)
+    
+    
     # --------------------------------------------------------------------------
     #
     def initialize_child(self):
@@ -126,12 +135,8 @@ class Agent(rpu.Worker):
         This prepares the stage for the component setup (self._setup()).
         """
 
-        from ... import pilot as rp
-
-        # keep track of objects we need to stop in the finally clause
+        # keep track of sub-agents we want to possibly spawn
         self._sub_agents = dict()
-        self._components = dict()
-        self._workers    = dict()
 
         # sanity check on config settings
         if not 'cores'               in self._cfg: raise ValueError("Missing number of cores")
@@ -146,86 +151,65 @@ class Agent(rpu.Worker):
         if not 'task_launch_method'  in self._cfg: raise ValueError("Missing unit launch method")
         if not 'agent_layout'        in self._cfg: raise ValueError("Missing agent layout")
 
-        self._pilot_id   = self._cfg['pilot_id']
-        self._session_id = self._cfg['session_id']
         self._runtime    = self._cfg['runtime']
-        self._sub_cfg    = self._cfg['agent_layout'][self.agent_name]
-        self._pull_units = self._sub_cfg.get('pull_units', False)
-
-        # configure the agent logger
-        self._log.setLevel(self._cfg['debug'])
+        self._layout     = self._cfg['agent_layout'][self._agent_name]
+        self._pull_units = self._layout.get('pull_units', False)
 
         # this better be on a shared FS!
         self._cfg['workdir'] = os.getcwd()
 
-        # another sanity check
+        # another sanity check for agent_0
         if self.agent_name == 'agent_0':
-            if self._sub_cfg.get('target', 'local') != 'local':
+            if self._layout.get('target', 'local') != 'local':
                 raise ValueError("agent_0 must run on target 'local'")
 
-        # first order of business: set the start time and state of the pilot
-        # Only the master agent performs this action
-        self._log.debug('### agent name: %s', self.agent_name)
+        # the master agent has a couple of additional tasks
         if self.agent_name == 'agent_0':
-            self._log.debug('### agent db update: %s', self._session._dbs._c)
-            now = rpu.timestamp()
-            ret = self._session._dbs._c.update(
-                    {'type' : 'pilot',
-                     "uid"  : self._pilot_id},
-                    {"$set" : {"state"        : rps.ACTIVE,
-                               "started"      : now},
-                     "$push": {"state_history": {"state"    : rps.ACTIVE,
-                                                 "timestamp": now}}
-                    })
-            # TODO: Check for return value, update should be true!
-            self._log.info("Database updated: %s", ret)
+
+            from ... import pilot as rp
+
+            # only the master agent creates LRMS and sub-agent config files.
+            # The LRMS which will give us the set of agent_nodes to use for
+            # sub-agent startup.  Add the remaining LRMS information to the
+            # config, for the benefit of the scheduler).
+            self._lrms = rp.agent.RM.create(name    = self._cfg['lrms'],
+                                            cfg     = self._cfg,
+                                            session = self._session)
+            self._cfg['lrms_info'] = self._lrms.lrms_info
+
+            # we now have correct bridge addresses added to the agent_0.cfg, and all
+            # other agents will have picked that up from their config files -- we
+            # can start the agent and all its components!
+
+            # the master agent also is the only one which starts bridges.  This
+            # will store the bridge addresses in self._cfg, so that we can use
+            # them for starting components.
+            bridge_list = self._cfg['agent_layout']['agent_0'].get('bridges', [])
+            self.start_bridges(bridge_list)
+
+            # we have all information needed by the subagents -- write the
+            # sub-agent config files.
+            self._write_sub_configs()
 
         # make sure we collect commands, specifically to implement the startup
         # barrier on bootstrap_4
-        self.declare_subscriber('command', rpc.COMMAND_PUBSUB, self.barrier_cb)
+        self.declare_subscriber('control', rpc.CONTROL_PUBSUB, 
+                self._agent_barrier_cb)
 
         # Now instantiate all communication and notification channels, and all
         # components and workers.  It will then feed a set of units to the
         # lead-in queue (staging_input).  A state notification callback will
         # then register all units which reached a final state (DONE).  Once all
         # units are accounted for, it will tear down all created objects.
-
-        # we pick the layout according to our role (name)
-        # NOTE: we don't do sanity checks on the agent layout (too lazy) -- but
-        #       we would hiccup badly over ill-formatted or incomplete layouts...
-        if not self.agent_name in self._cfg['agent_layout']:
-            raise RuntimeError("no agent layout section for %s" % self.agent_name)
-
         try:
             self.start_sub_agents()
 
             # create the required number of agent components and workers,
             # according to the config
-            clist = self._sub_cfg.get('components',{})
-            cmap  = {
-                rpc.AGENT_STAGING_INPUT_COMPONENT  : rp.agent.Input,
-                rpc.AGENT_SCHEDULING_COMPONENT     : rp.agent.Scheduler,
-                rpc.AGENT_EXECUTING_COMPONENT      : rp.agent.Executing,
-                rpc.AGENT_STAGING_OUTPUT_COMPONENT : rp.agent.Output,
-                rpc.UPDATE_WORKER                  : rp.worker.Update,
-                rpc.HEARTBEAT_WORKER               : rp.worker.Heartbeat
-                }
-            # we also create *one* instance of every 'worker' type -- which are the
-            # heartbeat and update worker.  To ensure this, we only create workers
-            # in agent_0.
-            # FIXME: make this configurable, both number and placement
-            if self.agent_name == 'agent_0':
-                clist[rpc.UPDATE_WORKER   ] = 1
-                clist[rpc.HEARTBEAT_WORKER] = 1
-
-            self._components = self.start_components(clist, cmap, self._cfg, self._session)
-
-            # before we declare bootstrapping-success, the we wait for all
-            # components, workers and sub_agents to complete startup.  For that,
-            # all sub-agents will wait ALIVE messages on the COMMAND pubsub for
-            # all entities it spawned.  Only when all are alive, we will
-            # continue here.
-            self.alive_barrier()
+            clist = self._layout.get('components',{})
+            import pprint
+            self._log.debug(pprint.pformat(self._cfg))
+            self.start_components(components=clist, owner=self.uid)
 
         except Exception as e:
             self._log.exception("Agent setup error: %s" % e)
@@ -233,14 +217,34 @@ class Agent(rpu.Worker):
 
         self._prof.prof('Agent setup done', logger=self._log.debug, uid=self._pilot_id)
 
-        # also watch all components (once per second)
-        self.declare_idle_cb(self.watcher_cb, timeout=10.0)
-
         # once bootstrap_4 is done, we signal success to the parent agent
         # -- if we have any parent...
         if self.agent_name != 'agent_0':
-            self.publish('command', {'cmd' : 'alive',
+            self.publish('control', {'cmd' : 'alive',
                                      'arg' : self.agent_name})
+
+        # sub-agents are started, components are started, bridges are up -- we
+        # are ready to roll!
+        # FIXME: this should be a state advance!
+        if self.agent_name == 'agent_0':
+            self._log.debug('### agent db update: %s', self._session._dbs._c)
+            now = rpu.timestamp()
+            ver = self._lrms.lm_info.get('version_info')
+            ret = self._session._dbs._c.update(
+                    {'type' : 'pilot',
+                     "uid"  : self._pilot_id},
+                    {"$set" : {"state"        : rps.ACTIVE,
+                               "started"      : now,
+                               "lm_info"      : ver},
+                     "$push": {"state_history": {"state"    : rps.ACTIVE,
+                                                 "timestamp": now}}
+                    })
+
+
+            # TODO: Check for return value, update should be true!
+            self._log.info("Database updated: %s", ret)
+
+
 
         # the pulling agent registers the staging_input_queue as this is what we want to push to
         # FIXME: do a sanity check on the config that only one agent pulls, as
@@ -248,65 +252,44 @@ class Agent(rpu.Worker):
         self._log.debug('agent will pull units: %s' % bool(self._pull_units))
         if self._pull_units:
 
-            self.declare_output(rps.AGENT_STAGING_INPUT_PENDING, rpc.AGENT_STAGING_INPUT_QUEUE)
+            self.declare_output(rps.AGENT_STAGING_INPUT_PENDING,
+                                rpc.AGENT_STAGING_INPUT_QUEUE)
 
             # register idle callback, to pull for units -- which is the only action
             # we have to perform, really
-            self.declare_idle_cb(self.idle_cb, timeout=self._cfg['db_poll_sleeptime'])
+            self.declare_idle_cb(self._idle_cb, timeout=self._cfg['db_poll_sleeptime'])
 
 
     # --------------------------------------------------------------------------
     #
-    def alive_barrier(self):
+    def finalize_child(self):
 
-        # FIXME: wait for bridges, too?  But we need pubsub for counting... Duh!
-        total = len(self._components) + \
-                len(self._workers   ) + \
-                len(self._sub_agents)
-        start   = time.time()
-        timeout = 300
+        self._log.info("Agent finalizes")
+        self._prof.prof('stop', uid=self._pilot_id)
 
-        while True:
-            # check the procs for all components which are not yet alive
-            to_check  = self._components.items() \
-                      + self._workers.items() \
-                      + self._sub_agents.items()
+        # burn the bridges, burn EVERYTHING
+        for name,sa in self._sub_agents.items():
+            try:
+                self._log.info("closing sub-agent %s", sa)
+                sa['handle'].stop()
+            except Exception as e:
+                self._log.exception('ignore failing sub-agent terminate')
 
-            alive_cnt = 0
-            total_cnt = len(to_check)
-            for name,c in to_check:
-                if c['alive']:
-                    alive_cnt += 1
-                else:
-                    self._log.debug('checking %s: %s', name, c)
-                    if None != c['handle'].poll():
-                        # process is dead and has never been alive.  Oops
-                        raise RuntimeError('component %s did not come up' % name)
+        if self._lrms:
+            self._lrms.stop()
 
-            self._log.debug('found alive: %2d / %2d' % (alive_cnt, total_cnt))
-
-            if alive_cnt == total_cnt:
-                self._log.debug('bootstrap barrier success')
-                break
-
-            if time.time() - timeout > start:
-                raise RuntimeError('component barrier failed (timeout)')
-
-            time.sleep(1)
+        self._log.info("Agent finalized")
 
 
     # --------------------------------------------------------------------------
     #
-    def watcher_cb(self):
+    def _sa_watcher_cb(self):
         """
-        we do a poll() on all our bridges, components, workers and sub-agent,
-        to check if they are still alive.  If any goes AWOL, we will begin to
-        tear down this agent.
+        we do a poll() on all sub-agent, to check if they are still alive.  
+        If any goes AWOL, we will begin to tear down this agent.
         """
 
-        to_watch = list(self._components.iteritems()) \
-                 + list(self._workers.iteritems())    \
-                 + list(self._sub_agents.iteritems())
+        to_watch = list(self._sub_agents.iteritems())
 
       # self._log.debug('watch: %s' % pprint.pformat(to_watch))
 
@@ -323,48 +306,6 @@ class Agent(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
-
-        self._log.info("Agent finalizes")
-        self._prof.prof('stop', uid=self._pilot_id)
-
-        # tell other sub-agents get lost
-        self.publish('command', {'cmd' : 'shutdown',
-                                 'arg' : '%s finalization' % self.agent_name})
-
-        # burn the bridges, burn EVERYTHING
-        for name,sa in self._sub_agents.items():
-            try:
-                self._log.info("closing sub-agent %s", sa)
-                sa['handle'].stop()
-            except Exception as e:
-                self._log.exception('ignore failing sub-agent terminate')
-
-        for name,c in self._components.items():
-            try:
-                self._log.info("closing component %s", c)
-                c['handle'].stop()
-            except Exception as e:
-                self._log.exception('ignore failing component terminate')
-
-        for name,w in self._workers.items():
-            try:
-                self._log.info("closing worker %s", w)
-                w['handle'].stop()
-            except Exception as e:
-                self._log.exception('ignore failing worker terminate')
-
-        # communicate finalization to parent agent
-        # -- if we have any parent...
-        if self.agent_name != 'agent_0':
-            self.publish('command', {'cmd' : 'final',
-                                     'arg' : self.agent_name})
-
-        self._log.info("Agent finalized")
-
-
-    # --------------------------------------------------------------------------
-    #
     def start_sub_agents(self):
         """
         For the list of sub_agents, get a launch command and launch that
@@ -372,11 +313,13 @@ class Agent(rpu.Worker):
         bootstrap level, there is no need to pass the first one again.
         """
 
+        # FIXME: we need a watcher cb to watch sub-agent state
+
         from ... import pilot as rp
 
         self._log.debug('start_sub_agents')
 
-        sa_list = self._sub_cfg.get('sub_agents', [])
+        sa_list = self._layout.get('sub_agents', [])
 
         if not sa_list:
             self._log.debug('start_sub_agents noop')
@@ -462,11 +405,16 @@ class Agent(rpu.Worker):
                                     'alive' : False}
             self._prof.prof("created", msg=sa, uid=self._pilot_id)
 
+        # the agents are up - register an idle callback to watch them
+        # FIXME: make timeout configurable?
+        self.declare_idle_cb(self._sa_watcher_cb, timeout=10.0)
+
         self._log.debug('start_sub_agents done')
+
 
     # --------------------------------------------------------------------------
     #
-    def idle_cb(self):
+    def _idle_cb(self):
         """
         This method will be driving all other agent components, in the sense
         that it will manage the connection to MongoDB to retrieve units, and
@@ -480,7 +428,7 @@ class Agent(rpu.Worker):
 
         try:
             # check for new units
-            return self.check_units()
+            return self._check_units()
 
         except Exception as e:
             # exception in the main loop is fatal
@@ -490,7 +438,7 @@ class Agent(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def check_units(self):
+    def _check_units(self):
 
         # Check if there are compute units waiting for input staging
         # and log that we pulled it.

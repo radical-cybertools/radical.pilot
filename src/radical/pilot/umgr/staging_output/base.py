@@ -21,9 +21,11 @@ class UMGRStagingOutputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        rpu.Component.__init__(self, rpc.UMGR_STAGING_OUTPUT_COMPONENT, cfg)
+        self._uid = ru.generate_id('umgr.staging.output.%(counter)s', ru.ID_CUSTOM)
+
+        rpu.Component.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------

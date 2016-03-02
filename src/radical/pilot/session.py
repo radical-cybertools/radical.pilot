@@ -9,8 +9,9 @@ import time
 import glob
 import copy
 import threading
-import radical.utils as ru
-import saga          as rs
+import radical.utils        as ru
+import saga                 as rs
+import saga.utils.pty_shell as rsup
 
 from .  import utils     as rpu
 from .  import states    as rps
@@ -25,7 +26,7 @@ from .db              import DBSession
 
 # ------------------------------------------------------------------------------
 #
-class Session (rs.Session):
+class Session (rs.Session, rpu.Worker):
     """
     A Session encapsulates a RADICAL-Pilot instance and is the *root* object
     for all other RADICAL-Pilot objects. 
@@ -38,7 +39,7 @@ class Session (rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, dburl=None, uid=None, database_url=None, _connect=True):
+    def __init__(self, dburl=None, uid=None, database_url=None, cfg=None, _connect=True):
         """
         Creates a new session.  A new Session instance is created and 
         stored in the database.
@@ -61,8 +62,6 @@ class Session (rs.Session):
 
         self._log = ru.get_logger('radical.pilot')
 
-        # init the base class inits
-        rs.Session.__init__ (self)
         self._dh        = ru.DebugHelper()
         self._valid     = False
         self._terminate = threading.Event()
@@ -74,11 +73,12 @@ class Session (rs.Session):
         self._dburl       = None
         self._reconnected = False
 
-        # the session manages the communication bridges
-        self._cfg              = None
-        self._components       = None
-        self._bridges          = None
-        self._bridge_addresses = dict()
+        self._cache       = dict()  # cache sandboxes etc.
+        self._cache_lock  = threading.RLock()
+
+        self._cache['global_sandbox'] = dict()
+        self._cache['pilot_sandbox']  = dict()
+
         # before doing anything else, set up the debug helper for the lifetime
         # of the session.
         self._debug_helper = ru.DebugHelper ()
@@ -90,6 +90,20 @@ class Session (rs.Session):
         # The resource configuration dictionary associated with the session.
         self._resource_configs = {}
 
+        # if a config is given, us its values:
+        if cfg:
+            cfg = copy.deepcopy(cfg)
+        else:
+            # otherwise we need a config
+            cfg = ru.read_json("%s/configs/session_%s.json" \
+                    % (os.path.dirname(__file__),
+                       os.environ.get('RADICAL_PILOT_SESSION_CONFIG', 'default')))
+
+        # fall back to config data where possible
+        if not dburl: dburl = cfg.get('mongodb_url')
+        if not uid  : uid   = cfg.get('uid')
+
+        # sanity check on parameters
         if database_url and not dburl:
             self._log.warning('"database_url" for session is deprectaed, use dburl')
             dburl = database_url
@@ -97,11 +111,11 @@ class Session (rs.Session):
         if not dburl:
             dburl = os.getenv ("RADICAL_PILOT_DBURL", None)
 
-        if not dburl and not uid:
+        if not dburl and _connect:
             # we forgive missing dburl on reconnect, but not otherwise
             raise RuntimeError("no database URL (set RADICAL_PILOT_DBURL)")  
 
-        if dburl:
+        if _connect:
             self._dburl = ru.Url(dburl)
 
             # if the database url contains a path element, we interpret that as
@@ -125,6 +139,13 @@ class Session (rs.Session):
             self._uid = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
             ru.reset_id_counters(prefix=['pmgr', 'umgr', 'pilot', 'unit', 'unit.%(counter)06d'])
 
+
+        # make sure the session cfg has all information we need
+        cfg['uid']         = self.uid
+        cfg['session_id']  = self.uid
+        cfg['mongodb_url'] = str(self.dburl)
+
+
         # initialize profiling
         self.prof = rpu.Profiler('%s' % self._uid)
 
@@ -137,6 +158,100 @@ class Session (rs.Session):
             self._log.report.plain('[%s]' % self._uid)
             self._log.report.info ('<<database   : ')
             self._log.report.plain('[%s]' % self._dburl)
+
+        self._load_resource_configs()
+
+        self._rec = os.environ.get('RADICAL_PILOT_RECORD_SESSION')
+        if self._rec:
+            # NOTE: Session recording cannot handle reconnected sessions, yet.
+            #       We thus turn it off here with a warning
+            if self._reconnected:
+                self._log.warn("no session recording on reconnected session")
+
+            else:
+                # append session ID to recording path
+                self._rec = "%s/%s" % (self._rec, self._uid)
+
+                # create recording path and record session
+                os.system('mkdir -p %s' % self._rec)
+                ru.write_json({'dburl': str(self.dburl)}, 
+                              "%s/session.json" % self._rec)
+                self._log.info("recording session in %s" % self._rec)
+
+
+
+        # once the config stuff is complete, we can initialize the base classes.
+        # The Worker init will start communication bridges if needed.
+        rs.Session.__init__(self)
+        rpu.Worker.__init__(self, cfg, session=self)
+
+        import pprint
+        pprint.pprint(self.cfg)
+
+        # create/connect database handle
+        try:
+            self._dbs = DBSession(sid=self.uid, dburl=self.dburl,
+                                  cfg=self.cfg, logger=self._log, 
+                                  connect=_connect)
+
+            # from here on we should be able to close the session again
+            self._valid = True
+            self._log.info("New Session created: %s." % str(self))
+
+        except Exception, ex:
+            self._log.report.error(">>err\n")
+            self._log.exception('session create failed')
+            raise RuntimeError("Couldn't create new session (database URL '%s' incorrect?): %s" \
+                            % (self._dburl, ex))  
+
+
+
+        # create update and heartbeat worker components
+        # NOTE: reconnected sessions will not start components
+        if not self._reconnected:
+            components = self._cfg.get('components', [])
+
+            if _connect: owner = 'client'
+            else       : owner = None  # raise where owners are needed
+
+            # the bridges are known, we can start to connect the components to them
+            self.start_components(components, owner=owner)
+
+
+        # FIXME: make sure the above code results in a usable session on
+        #        reconnect
+        self._log.report.ok('>>ok\n')
+
+
+    #---------------------------------------------------------------------------
+    # Allow Session to function as a context manager in a `with` clause
+    def __enter__ (self):
+        return self
+
+
+    #---------------------------------------------------------------------------
+    # Allow Session to function as a context manager in a `with` clause
+    def __exit__ (self, type, value, traceback) :
+        self.close()
+
+
+    #---------------------------------------------------------------------------
+    #
+    def __del__ (self) :
+        pass
+      # self.close ()
+
+
+    #---------------------------------------------------------------------------
+    #
+    def _is_valid(self):
+        if not self._valid:
+            raise RuntimeError("instance was closed")
+
+
+    #---------------------------------------------------------------------------
+    #
+    def _load_resource_configs(self):
 
         # Loading all "default" resource configurations
         module_path  = os.path.dirname(os.path.abspath(__file__))
@@ -183,189 +298,6 @@ class Session (rs.Session):
         self._resource_aliases = ru.read_json_str(default_aliases)['aliases']
 
         self.prof.prof('configs parsed', uid=self._uid)
-
-        self._rec = os.environ.get('RADICAL_PILOT_RECORD_SESSION')
-        if self._rec:
-            # NOTE: Session recording cannot handle reconnected sessions, yet.
-            #       We thus turn it off here with a warning
-            if self._reconnected:
-                self._log.warn("no session recording on reconnected session")
-
-            else:
-                # append session ID to recording path
-                self._rec = "%s/%s" % (self._rec, self._uid)
-
-                # create recording path and record session
-                os.system('mkdir -p %s' % self._rec)
-                ru.write_json({'dburl': str(self._dburl)}, 
-                              "%s/session.json" % self._rec)
-                self._log.info("recording session in %s" % self._rec)
-
-
-        # create/connect database handle
-        try:
-            self._dbs = DBSession(sid=self.uid, dburl=self.dburl,
-                                  cfg=self.cfg, logger=self._log, 
-                                  connect=_connect)
-
-            # from here on we should be able to close the session again
-            self._valid = True
-            self._log.info("New Session created: %s." % str(self))
-
-        except Exception, ex:
-            self._log.report.error(">>err\n")
-            self._log.exception('session create failed')
-            raise RuntimeError("Couldn't create new session (database URL '%s' incorrect?): %s" \
-                            % (self._dburl, ex))  
-
-
-        # create communication bridges for umgr and pmgr instances to use
-        # NOTE:  sessions can be reconnected in a different host context,
-        #        specifically in the agent.  In that case the bridge
-        #        addresses would be useless.  We thus record the bridge
-        #        addresses in a kind of namespace, refering to 'client' as
-        #        the original session (which lives in the client module), 
-        #        and to pilot level bridges via the pilot uid.  
-        # FIXME: For now, we don't use the DB, but only create bridges in
-        #        new sessions.
-        try:
-            # load the session config
-            self._cfg = ru.read_json("%s/configs/session_%s.json" \
-                    % (os.path.dirname(__file__),
-                       os.environ.get('RADICAL_PILOT_SESSION_CONFIG', 'default')))
-            bridges = self._cfg.get('bridges', [])
-
-            # new session start bridges, reconnected sessions get bridge
-            # addresses from the DB
-            if not self._reconnected:
-                self._bridges = rpu.Component.start_bridges(bridges, session=self)
-
-                # get bridge addresses from our bridges, and append them to the
-                # config, so that we can pass those addresses to the umgr and pmgr 
-                # components
-                self._bridge_addresses = dict()
-
-                for b in self._bridges:
-
-                    # to avoid confusion with component input and output, we call bridge
-                    # input a 'sink', and a bridge output a 'source' (from the component
-                    # perspective)
-                    sink   = ru.Url(self._bridges[b]['in'])
-                    source = ru.Url(self._bridges[b]['out'])
-
-                    # for the unit manager, we assume all bridges to be local, so we
-                    # really are only interested in the ports for now...
-                    sink.host   = '127.0.0.1'
-                    source.host = '127.0.0.1'
-
-                    # keep the resultin URLs as strings, to be used as addresses
-                    self._bridge_addresses[b] = dict()
-                    self._bridge_addresses[b]['sink']   = str(sink)
-                    self._bridge_addresses[b]['source'] = str(source)
-
-                # FIXME: make sure all communication channels are in place.  This could
-                # be replaced with a proper barrier, but not sure if that is worth it...
-                time.sleep(1)
-
-        except Exception as e:
-            self._log.report.error(">>err\n")
-            self._log.exception('session create failed')
-            raise RuntimeError("Couldn't create bridges): %s" % e)  
-
-
-        # create update and heartbeat worker components
-        #
-        # NOTE: reconnected sessions will not start components
-        try:
-
-            if not self._reconnected:
-                components = self._cfg.get('components', [])
-
-                from .. import pilot as rp
-
-                # we also need a map from component names to class types
-                typemap = {
-                    rpc.UPDATE_WORKER    : rp.worker.Update,
-                    rpc.HEARTBEAT_WORKER : rp.worker.Heartbeat
-                    }
-
-                # get addresses from the bridges, and append them to the
-                # config, so that we can pass those addresses to the components
-                self._cfg['bridge_addresses'] = copy.deepcopy(self._bridge_addresses)
-
-                # give some more information to the workers
-                self._cfg['session_id']  = self._uid
-                self._cfg['mongodb_url'] = str(self._dburl)
-
-                if _connect:
-                    # connect but not reconnect: this is a fresh client session
-                    self._cfg['owner'] = 'client'
-                else:
-                    self._cfg['owner'] = None  # raise where owners are needed
-
-                # the bridges are known, we can start to connect the components to them
-                self._components = rpu.Component.start_components(components,
-                        typemap, cfg=self._cfg, session=self)
-
-        except Exception as e:
-            self._log.report.error(">>err\n")
-            self._log.exception('session create failed')
-            raise RuntimeError("Couldn't create worker components): %s" % e)  
-
-
-        # FIXME: make sure the above code results in a usable session on
-        #        reconnect
-        self._log.report.ok('>>ok\n')
-
-
-    #---------------------------------------------------------------------------
-    # Allow Session to function as a context manager in a `with` clause
-    def __enter__ (self):
-        return self
-
-
-    #---------------------------------------------------------------------------
-    # Allow Session to function as a context manager in a `with` clause
-    def __exit__ (self, type, value, traceback) :
-        self.close()
-
-
-    #---------------------------------------------------------------------------
-    #
-    def __del__ (self) :
-        pass
-      # self.close ()
-
-
-    #---------------------------------------------------------------------------
-    #
-    def _is_valid(self):
-        if not self._valid:
-            raise RuntimeError("instance was closed")
-
-
-    #---------------------------------------------------------------------------
-    #
-    def start_bridges(self):
-
-        raise NotImplementedError('not implemented')
-
-
-    #---------------------------------------------------------------------------
-    #
-    def use_bridges(self):
-
-        raise NotImplementedError('not implemented')
-
-
-    #---------------------------------------------------------------------------
-    #
-    def start_components(self):
-
-        if not self._bridge_addresses:
-            raise RuntimeError("can't start components w/o bridges")
-
-        raise NotImplementedError('not implemented')
 
 
     #---------------------------------------------------------------------------
@@ -481,13 +413,6 @@ class Session (rs.Session):
     #---------------------------------------------------------------------------
     #
     @property
-    def cfg(self):
-        return copy.deepcopy(self._cfg)
-
-
-    #---------------------------------------------------------------------------
-    #
-    @property
     def dburl(self):
         return self._dburl
 
@@ -520,6 +445,14 @@ class Session (rs.Session):
         """
         if self._dbs: return self._dbs.connected
         else        : return None
+
+
+    #--------------------------------------------------------------------------
+    #
+    @property
+    def is_connected(self):
+
+        return self._dbs.is_connected
 
 
     #---------------------------------------------------------------------------
@@ -726,19 +659,20 @@ class Session (rs.Session):
 
     # -------------------------------------------------------------------------
     #
-    def get_resource_config (self, resource_key, schema=None):
-        """Returns a dictionary of the requested resource config
+    def get_resource_config (self, resource, schema=None):
+        """
+        Returns a dictionary of the requested resource config
         """
 
-        if  resource_key in self._resource_aliases :
+        if  resource in self._resource_aliases :
             self._log.warning ("using alias '%s' for deprecated resource key '%s'" \
-                         % (self._resource_aliases[resource_key], resource_key))
-            resource_key = self._resource_aliases[resource_key]
+                         % (self._resource_aliases[resource], resource))
+            resource = self._resource_aliases[resource]
 
-        if  resource_key not in self._resource_configs:
-            raise RuntimeError("Resource '%s' is not known." % resource_key)
+        if  resource not in self._resource_configs:
+            raise RuntimeError("Resource '%s' is not known." % resource)
 
-        resource_cfg = copy.deepcopy (self._resource_configs[resource_key])
+        resource_cfg = copy.deepcopy (self._resource_configs[resource])
 
         if  not schema :
             if 'schemas' in resource_cfg :
@@ -747,7 +681,7 @@ class Session (rs.Session):
         if  schema:
             if  schema not in resource_cfg :
                 raise RuntimeError("schema %s unknown for resource %s" \
-                                  % (schema, resource_key))
+                                  % (schema, resource))
 
             for key in resource_cfg[schema] :
                 # merge schema specific resource keys into the
@@ -768,4 +702,106 @@ class Session (rs.Session):
     def fetch_json (self, tgt=None):
         return rpu.fetch_json (self._uid, dburl=self.dburl, tgt=tgt)
 
+
+    # -------------------------------------------------------------------------
+    #
+    def _get_global_sandbox(self, pilot):
+        """
+        for a given pilot dict, determine the global RP sandbox, based on the
+        pilot's 'resource' attribute.
+        """
+
+        resource = pilot['description'].get('resource')
+        schema   = pilot['description'].get('access_schema')
+
+        if not resource:
+            raise ValueError('Cannot get pilot sandbox w/o resource target')
+
+        # the global sandbox will be the same for all pilots on any resource, so
+        # we cache it
+        with self._cache_lock:
+            if resource in self._cache['global_sandbox']:
+                return self._cache['global_sandbox'][resource]
+
+        # cache miss -- determine sandbox and fill cache
+        rcfg   = self.get_resource_config(resource, schema)
+        fs_url = rs.Url(rcfg['filesystem_endpoint'])
+
+        # Get the sandbox from either the pilot_desc or resource conf
+        sandbox_raw = pilot['description'].get('sandbox')
+        if not sandbox_raw:
+            sandbox_raw = rcfg.get('default_remote_workdir', "$PWD")
+
+        # If the sandbox contains expandables, we need to resolve those remotely.
+        # NOTE: Note that this will only work for (gsi)ssh or shell based access mechanisms
+        if '$' not in sandbox_raw and '`' not in sandbox_raw:
+            # no need to expand further
+            sandbox_base = sandbox_raw
+
+        else:
+            js_url = rs.Url(rcfg['job_manager_endpoint'])
+
+            if 'ssh' in js_url.schema.split('+'):
+                js_url.schema = 'ssh'
+            elif 'gsissh' in js_url.schema.split('+'):
+                js_url.schema = 'gsissh'
+            elif 'fork' in js_url.schema.split('+'):
+                js_url.schema = 'fork'
+            elif '+' not in js_url.schema:
+                # For local access to queueing systems use fork
+                js_url.schema = 'fork'
+            else:
+                raise Exception("unsupported access schema: %s" % js_url.schema)
+
+            self._log.debug("rsup.PTYShell ('%s')" % js_url)
+            shell = rsup.PTYShell(js_url, self)
+
+            ret, out, err = shell.run_sync(' echo "WORKDIR: %s"' % sandbox_raw)
+            if ret == 0 and 'WORKDIR:' in out :
+                sandbox_base = out.split(":")[1].strip()
+                self._log.debug("sandbox base %s: '%s'" % (js_url, sandbox_base))
+            else :
+                raise RuntimeError("Couldn't get remote working directory.")
+
+        # at this point we have determined the remote 'pwd' - the global sandbox
+        # is relative to it.
+        fs_url.path = "%s/radical.pilot.sandbox" % sandbox_base
+
+        # before returning, keep the URL string in cache
+        with self._cache_lock:
+            self._cache['global_sandbox'][resource] = str(fs_url)
+
+        return str(fs_url)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_pilot_sandbox(self, pilot):
+
+
+        pid = pilot['uid']
+        with self._cache_lock:
+            if  pid in self._cache['pilot_sandbox']:
+                return self._cache['pilot_sandbox'][pid]
+
+        # cache miss
+        global_sandbox = self._get_global_sandbox(pilot)
+        pilot_sandbox  = "%s/%s-%s/" % (str(global_sandbox), self.uid, pilot['uid'])
+
+        with self._cache_lock:
+            self._cache['pilot_sandbox'][pid] = pilot_sandbox
+
+        return pilot_sandbox
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_unit_sandbox(self, unit, pilot):
+
+        # we don't cache unit sandboxes, they are just a string concat.
+        pilot_sandbox = self._get_pilot_sandbox(pilot)
+        return "%s/%s/" % (pilot_sandbox, unit['uid'])
+
+
+# -----------------------------------------------------------------------------
 

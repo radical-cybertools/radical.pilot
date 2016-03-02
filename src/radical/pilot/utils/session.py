@@ -86,7 +86,7 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
         sandbox_url = saga.Url(pilot['sandbox'])
 
         if access:
-            # Allow to use a different access scheme than used for the the run.
+            # Allow to use a different access schema than used for the the run.
             # Useful if you ran from the headnode, but would like to retrieve
             # the profiles to your desktop (Hello Titan).
             access_url = saga.Url(access)

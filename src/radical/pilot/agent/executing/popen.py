@@ -49,7 +49,7 @@ class Popen(AgentExecutingComponent) :
         self.declare_output(rps.AGENT_STAGING_OUTPUT_PENDING, rpc.AGENT_STAGING_OUTPUT_QUEUE)
 
         self.declare_publisher ('unschedule', rpc.AGENT_UNSCHEDULE_PUBSUB)
-        self.declare_subscriber('command',    rpc.COMMAND_PUBSUB, self.command_cb)
+        self.declare_subscriber('control',    rpc.CONTROL_PUBSUB, self.command_cb)
 
         self._cancel_lock    = threading.RLock()
         self._cus_to_cancel  = list()
@@ -77,27 +77,9 @@ class Popen(AgentExecutingComponent) :
                 cfg     = self._cfg,
                 session = self._session)
 
-        # communicate successful startup
-        self.publish('command', {'cmd' : 'alive',
-                                 'arg' : self.cname})
-
         self._cu_environment = self._populate_cu_environment()
 
         self.tmpdir = tempfile.gettempdir()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize_child(self):
-
-        # terminate watcher thread
-        self._terminate.set()
-        if self._watcher:
-            self._watcher.join()
-
-        # communicate finalization
-        self.publish('command', {'cmd' : 'final',
-                                 'arg' : self.cname})
 
 
     # --------------------------------------------------------------------------
@@ -242,7 +224,7 @@ class Popen(AgentExecutingComponent) :
             env_string += " RP_SESSION_ID=%s" % self._cfg['session_id']
             env_string += " RP_PILOT_ID=%s"   % self._cfg['pilot_id']
             env_string += " RP_AGENT_ID=%s"   % self._cfg['agent_name']
-            env_string += " RP_SPAWNER_ID=%s" % self.cname
+            env_string += " RP_SPAWNER_ID=%s" % self.uid
             env_string += " RP_UNIT_ID=%s"    % cu['uid']
             launch_script.write('# Environment variables\n%s\n' % env_string)
 
@@ -285,11 +267,11 @@ class Popen(AgentExecutingComponent) :
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
-        self._prof.prof('command', msg='launch script constructed', uid=cu['uid'])
+        self._prof.prof('control', msg='launch script constructed', uid=cu['uid'])
 
         _stdout_file_h = open(cu['stdout_file'], "w")
         _stderr_file_h = open(cu['stderr_file'], "w")
-        self._prof.prof('command', msg='stdout and stderr files created', uid=cu['uid'])
+        self._prof.prof('control', msg='stdout and stderr files created', uid=cu['uid'])
 
         self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, cu_tmpdir)
 

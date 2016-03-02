@@ -21,13 +21,10 @@ import radical.utils as ru
 from radical.pilot.utils  import timestamp
 from radical.pilot.states import *
 
-COMMAND_CANCEL_PILOT        = "Cancel_Pilot"
-COMMAND_CANCEL_COMPUTE_UNIT = "Cancel_Compute_Unit"
-COMMAND_KEEP_ALIVE          = "Keep_Alive"
-COMMAND_FIELD               = "commands"
-COMMAND_TYPE                = "type"
-COMMAND_ARG                 = "arg"
-COMMAND_TIME                = "time"
+COMMAND_FIELD = "commands"
+COMMAND_TYPE  = "type"
+COMMAND_ARG   = "arg"
+COMMAND_TIME  = "time"
 
 
 #-----------------------------------------------------------------------------
@@ -146,6 +143,15 @@ class DBSession(object):
         """ Returns the connection time
         """
         return self._closed
+
+
+    #--------------------------------------------------------------------------
+    #
+    @property
+    def is_connected(self):
+
+        if self._c: return True
+        else      : return False
 
 
     #--------------------------------------------------------------------------
@@ -745,7 +751,8 @@ class DBSession(object):
         for doc in unit_docs:
             doc['_id']      = doc['uid']
             doc['type']     = 'unit'
-            doc["commands"] = list()
+            doc['control']  = 'umgr'
+            doc['commands'] = list()
             bulk.insert(doc)
 
         res = bulk.execute()

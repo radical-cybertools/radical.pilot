@@ -40,9 +40,11 @@ class UMGRSchedulingComponent(rpu.Component):
     #
     def __init__(self, cfg, session):
 
-        self._umgr = cfg.get('owner')
+        self._uid = ru.generate_id('umgr.scheduling.%(counter)s', ru.ID_CUSTOM)
 
-        rpu.Component.__init__(self, rpc.UMGR_SCHEDULING_COMPONENT, cfg, session)
+        rpu.Component.__init__(self, cfg, session)
+
+        self._umgr = self._owner
 
 
     # --------------------------------------------------------------------------
@@ -66,20 +68,7 @@ class UMGRSchedulingComponent(rpu.Component):
 
         # Schedulers use that command channel to get information about
         # pilots being added or removed.
-        self.declare_subscriber('command', rpc.COMMAND_PUBSUB, self.base_command_cb)
-
-        # communicate successful startup
-        self.publish('command', {'cmd' : 'alive',
-                                 'arg' : self.cname})
-
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize_child(self):
-
-        # communicate finalization
-        self.publish('command', {'cmd' : 'final',
-                                 'arg' : self.cname})
+        self.declare_subscriber('control', rpc.CONTROL_PUBSUB, self.base_command_cb)
 
 
     # --------------------------------------------------------------------------
@@ -166,21 +155,26 @@ class UMGRSchedulingComponent(rpu.Component):
         cmd = msg['cmd']
 
         if cmd not in ['add_pilot', 'remove_pilot']:
+            print 'scheduler base: %s' % cmd
             return
 
-        arg  = msg['arg']
-        umgr = arg.get('from')
-        pid  = arg.get('uid')
+        arg   = msg['arg']
+        pid   = arg.get('pid')
+        thing = arg.get('thing')
+        umgr  = arg.get('umgr')
 
+        print 'scheduler command: %s: %s\n' % (cmd, arg)
         self._log.info('scheduler command: %s: %s' % (cmd, arg))
 
         if umgr != self._umgr:
+            print 'umgr %s / %s' % (self._umgr, umgr)
             # this is not the command we are looking for
             return
 
 
         if cmd == 'add_pilot':
 
+            print 'here: %s, %s' % (cmd, pid)
             with self._pilots_lock:
 
                 if pid not in self._pilots:
@@ -188,7 +182,7 @@ class UMGRSchedulingComponent(rpu.Component):
                     self._pilots[pid] = {
                             ROLE    : None,
                             'state' : None,
-                            'thing' : None
+                            'thing' : thing
                             }
 
                 if self._pilots[pid][ROLE] == ADDED:
@@ -196,6 +190,9 @@ class UMGRSchedulingComponent(rpu.Component):
 
                 self._pilots[pid][ROLE] = ADDED
                 self._log.debug('added pilot: %s' % self._pilots[pid])
+
+            # let the scheduler know
+            self.add_pilot(pid)
 
 
         elif cmd == 'remove_pilot':
@@ -211,21 +208,34 @@ class UMGRSchedulingComponent(rpu.Component):
                 self._pilots[pid][ROLE] = REMOVED
                 self._log.debug('removed pilot: %s' % self._pilots[pid])
 
+            # let the scheduler know
+            self.remove_pilot(pid)
+
 
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
 
-        raise NotImplementedError("_configure() not implemented for Scheduler '%s'." \
-                % self._cname)
+        raise NotImplementedError("_configure() missing for '%s'" % self.uid)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def add_pilot(self, pid):
+        raise NotImplementedError("add_pilot() missing for '%s'" % self.uid)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def remove_pilot(self, pid):
+        raise NotImplementedError("remove_pilot() missing for '%s'" % self.uid)
 
 
     # --------------------------------------------------------------------------
     #
     def work(self):
-        raise NotImplementedError("work() not implemented for Scheduler '%s'." \
-                % self._cname)
+        raise NotImplementedError("work() missing for '%s'" % self.uid)
 
 
 # ------------------------------------------------------------------------------

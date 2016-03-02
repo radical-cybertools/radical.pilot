@@ -120,29 +120,13 @@ class UnitManager(rpu.Component):
             # set default scheduler if needed
             cfg['scheduler'] = rpus.SCHEDULER_DEFAULT
 
-        components = cfg.get('components', [])
-
-        from .. import pilot as rp
-        
-        # we also need a map from component names to class types
-        typemap = {
-            rpc.UMGR_STAGING_INPUT_COMPONENT  : rp.umgr.Input,
-            rpc.UMGR_SCHEDULING_COMPONENT     : rp.umgr.Scheduler,
-            rpc.UMGR_STAGING_OUTPUT_COMPONENT : rp.umgr.Output
-            }
-
-        # get addresses from the bridges, and append them to the
-        # config, so that we can pass those addresses to the components
-        cfg['bridge_addresses'] = copy.deepcopy(session._bridge_addresses)
-
-        # the bridges are known, we can start to connect the components to them
-        self._components = rpu.Component.start_components(components, 
-                typemap, cfg, session)
-
         # initialize the base class
         # FIXME: unique ID
         cfg['owner'] = session.uid
-        rpu.Component.__init__(self, self.uid, cfg, session)
+        rpu.Component.__init__(self, cfg, session)
+
+        # we can start components
+        self.start_components(self.cfg['components'], owner=self.uid)
 
         # only now we have a logger... :/
         self._log.report.info('<<create unit manager')
@@ -336,7 +320,8 @@ class UnitManager(rpu.Component):
 
         with self._pilots_lock:
 
-            for pilot in pilot:
+            # FIXME: double-bookkeepeing between here and the scheduler :/
+            for pilot in pilots:
 
                 pid = pilot.uid
 
@@ -345,8 +330,9 @@ class UnitManager(rpu.Component):
                     raise ValueError('pilot %s already added' % pid)
 
                 # publish to the command channel for the scheduler to pick up
-                self.publish('command', {'cmd' : 'add_pilot', 
+                self.publish('control', {'cmd' : 'add_pilot', 
                                          'arg' : {'pid'  : pid, 
+                                                  'thing': pilot.as_dict(),
                                                   'umgr' : self.uid}})
 
                 # also keep pilots around for inspection
@@ -426,7 +412,7 @@ class UnitManager(rpu.Component):
                 del(self._pilots[pid])
 
                 # publish to the command channel for the scheduler to pick up
-                self.publish('command', {'cmd' : 'remove_pilot', 
+                self.publish('control', {'cmd' : 'remove_pilot', 
                                          'arg' : pid})
 
 

@@ -24,7 +24,7 @@ class Default(UMGRStagingOutputComponent):
     #
     def __init__(self, cfg, session):
 
-        rpu.Component.__init__(self, 'UMGRStagingOutputComponent', cfg, session)
+        UMGRStagingOutputComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -36,19 +36,6 @@ class Default(UMGRStagingOutputComponent):
 
         # we don't need an output queue -- units are picked up via mongodb
         self.declare_output(rps.PENDING_OUTPUT_STAGING, None) # drop units
-
-        # communicate successful startup
-        self.publish('command', {'cmd' : 'alive',
-                                 'arg' : self.cname})
-
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize_child(self):
-
-        # communicate finalization
-        self.publish('command', {'cmd' : 'final',
-                                 'arg' : self.cname})
 
 
     # --------------------------------------------------------------------------
@@ -117,8 +104,8 @@ class Default(UMGRStagingOutputComponent):
                 # Convert the target_url into a SAGA Url object
                 target_url = rs.Url(directive['target'])
 
-                # Handle special 'staging' scheme
-                if target_url.scheme == self._cfg['staging_scheme']:
+                # Handle special 'staging' schema
+                if target_url.schema == self._cfg['staging_schema']:
                     self._log.info('Operating from staging')
                     # Remove the leading slash to get a relative path from
                     # the staging area

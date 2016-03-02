@@ -8,7 +8,6 @@ __license__   = "MIT"
 from .types      import *
 from .states     import *
 from .logentry   import * 
-from .scheduler  import *
 from .constants  import *
 from .exceptions import *
 

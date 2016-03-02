@@ -4,7 +4,6 @@ __license__   = "MIT"
 
 
 import os
-import netifaces
 
 import radical.utils as ru
 
@@ -46,11 +45,6 @@ class LRMS(object):
     Those nodes will be listed in LRMS.agent_node_list. Schedulers MUST NOT use
     the agent_node_list to place compute units -- CUs are limited to the nodes
     in LRMS.node_list.
-
-    Additionally, the LRMS can inform the agent about the current hostname
-    (LRMS.hostname()) and ip (LRMS.hostip()).  Once we start to spread the agent
-    over some compute nodes, we may want to block the respective nodes on LRMS
-    level, so that is only reports the remaining nodes to the scheduler.
     """
 
     # TODO: Core counts dont have to be the same number for all hosts.
@@ -253,67 +247,8 @@ class LRMS(object):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        raise NotImplementedError("_Configure not implemented for LRMS type: %s." % self.name)
+        raise NotImplementedError("_Configure missing for %s" % self.name)
 
 
-    # --------------------------------------------------------------------------
-    #
-    @staticmethod
-    def hostip(req=None, logger=None):
-        """
-        Look up the ip number for a given requested interface name.
-        If interface is not given, do some magic.
-        """
-
-        # List of interfaces that we probably dont want to bind to by default
-        black_list = ['lo', 'sit0']
-
-        # Known intefaces in preferred order
-        sorted_preferred = [
-            'ipogif0', # Cray's
-            'br0', # SuperMIC
-            'eth0'
-        ]
-
-        # Get a list of all network interfaces
-        all = netifaces.interfaces()
-
-        logger.debug("Network interfaces detected: %s", all)
-
-        pref = None
-        # If we got a request, see if it is in the list that we detected
-        if req and req in all:
-            # Requested is available, set it
-            pref = req
-        else:
-            # No requested or request not found, create preference list
-            potentials = [iface for iface in all if iface not in black_list]
-
-        # If we didn't select an interface already
-        if not pref:
-            # Go through the sorted list and see if it is available
-            for iface in sorted_preferred:
-                if iface in all:
-                    # Found something, get out of here
-                    pref = iface
-                    break
-
-        # If we still didn't find something, grab the first one from the
-        # potentials if it has entries
-        if not pref and potentials:
-            pref = potentials[0]
-
-        # If there were no potentials, see if we can find one in the blacklist
-        if not pref:
-            for iface in black_list:
-                if iface in all:
-                    pref = iface
-
-        # Use IPv4, because, we can ...
-        af = netifaces.AF_INET
-        ip = netifaces.ifaddresses(pref)[af][0]['addr']
-
-        return ip
-
-
+# ------------------------------------------------------------------------------
 

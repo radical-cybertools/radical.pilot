@@ -10,7 +10,7 @@ from ... import utils     as rpu
 from ... import states    as rps
 from ... import constants as rpc
 
-from .base import UMGRSchedulingComponent
+from .base import UMGRSchedulingComponent, ROLE, ADDED
 
 
 # ==============================================================================
@@ -40,14 +40,19 @@ class RoundRobin(UMGRSchedulingComponent):
     #
     def add_pilot(self, pid):
 
+        print 'add_pilot called (%s)' % pid
+
         # a pilot just got added.  If we did not have any pilot before, we might
         # have units in the wait queue waiting -- now is a good time to take
         # care of those!
         with self._wait_lock:
+
             for unit in self._wait_pool:
-                unit['pilot'] = pid
-                self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING, 
-                        publish=True, push=False)
+
+                # FIXME: we know the pilot is 'ADDED', but are we shure we have
+                #        the 'thing' dict?
+                print 'unwait %s' % unit['uid']
+                self._schedule_unit(unit, pid)
 
             # all units are scheduled -- empty the wait pool
             self._wait_pool = list()
@@ -69,35 +74,46 @@ class RoundRobin(UMGRSchedulingComponent):
 
                 # we need not only an added pilot, we also need one which we 
                 # can inspect
-                if self._pilots[pid]['thing']:
+                if self._pilots[pid]['thing'] and \
+                   self._pilots[pid][ROLE] == ADDED:
                     pids.append(pid)
 
             if not len(pids):
 
                 # no pilot is active, yet -- we add to the wait queue
                 with self._wait_lock:
+                    print '  wait %s' % uid
                     self._prof.prof('wait', uid=uid)
                     self._wait_pool.append(unit)
+                    return
 
-            else:
-                # we have active pilots: use them!
+            # we have active pilots: use them!
 
-                if  self._idx >= len(pids) : 
-                    self._idx = 0
+            if  self._idx >= len(pids) : 
+                self._idx = 0
 
-                pid = pids[self._idx]
+            self._schedule_unit(unit, pids[self._idx])
 
-                # we assign the unit to the pilot.
-                # Its a good opportunity to also dig out the pilot sandbox and
-                # attach it to the unit -- even though this is semantically not
-                # relevant here.
-                unit['pilot']         = pid
-                unit['pilot_sandbox'] = self._pilots[pid]['thing']['sandbox']
-                unit['sandbox']       = "%s/%s" % (unit['pilot_sandbox'], uid)
+
+    # --------------------------------------------------------------------------
+    #
+    def _schedule_unit(self, unit, pid):
+
+        with self._pilots_lock:
+
+            pilot = self._pilots[pid]
+
+            # we assign the unit to the pilot.
+            print 'unit %s --> %s' %(unit['uid'], pid)
+            unit['pilot'] = pid
+
+            # this is also a good opportunity to determine the unit sndboxes
+            unit['pilot_sandbox'] = self._session._get_pilot_sandbox(pilot['thing'])
+            unit['sandbox']       = self._session._get_unit_sandbox(unit, pilot['thing'])
 
             # we need to push 'pilot' to the db, otherwise the agent will never
             # pick up the unit
-            unit['$set'] = ['pilot', 'pilot_sandbox', 'sandbox']
+            unit['$set'] = ['pilot', 'sandbox', 'pilot_sandbox']
             self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING, 
                     publish=True, push=True)
         

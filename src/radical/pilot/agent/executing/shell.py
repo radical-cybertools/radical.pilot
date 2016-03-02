@@ -42,7 +42,7 @@ class Shell(AgentExecutingComponent):
         self.declare_output(rps.AGENT_STAGING_OUTPUT_PENDING, rpc.AGENT_STAGING_OUTPUT_QUEUE)
 
         self.declare_publisher ('unschedule', rpc.AGENT_UNSCHEDULE_PUBSUB)
-        self.declare_subscriber('command',    rpc.COMMAND_PUBSUB, self.command_cb)
+        self.declare_subscriber('control',    rpc.CONTROL_PUBSUB, self.command_cb)
 
         # Mimic what virtualenv's "deactivate" would do
         self._deactivate = "# deactivate pilot virtualenv\n"
@@ -133,7 +133,7 @@ class Shell(AgentExecutingComponent):
         # as this breaks launch methods with a hop, e.g. ssh.
         tmp = os.getcwd() # FIXME: see #658
         self._pilot_id    = self._cfg['pilot_id']
-        self._spawner_tmp = "/%s/%s-%s" % (tmp, self._pilot_id, self._cname)
+        self._spawner_tmp = "/%s/%s-%s" % (tmp, self._pilot_id, self.uid)
 
         ret, out, _  = self.launcher_shell.run_sync \
                            ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
@@ -154,21 +154,6 @@ class Shell(AgentExecutingComponent):
         self._watcher.start ()
 
         self._prof.prof('run setup done', uid=self._pilot_id)
-
-        # communicate successful startup
-        self.publish('command', {'cmd' : 'alive',
-                                 'arg' : self.cname})
-
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize_child(self):
-
-        # communicate finalization
-        self.publish('command', {'cmd' : 'final',
-                                 'arg' : self.cname})
-
-
     # --------------------------------------------------------------------------
     #
     def command_cb(self, topic, msg):
@@ -322,7 +307,7 @@ class Shell(AgentExecutingComponent):
         env  += "export RP_SESSION_ID=%s\n" % self._cfg['session_id']
         env  += "export RP_PILOT_ID=%s\n"   % self._cfg['pilot_id']
         env  += "export RP_AGENT_ID=%s\n"   % self._cfg['agent_name']
-        env  += "export RP_SPAWNER_ID=%s\n" % self.cname
+        env  += "export RP_SPAWNER_ID=%s\n" % self.uid
         env  += "export RP_UNIT_ID=%s\n"    % cu['uid']
         env  += "\n"
 
@@ -407,7 +392,7 @@ class Shell(AgentExecutingComponent):
         cmd       = self._cu_to_cmd (cu, launcher)
         run_cmd   = "BULK\nLRUN\n%s\nLRUN_EOT\nBULK_RUN\n" % cmd
 
-        self._prof.prof('command', msg='launch script constructed', uid=cu['uid'])
+        self._prof.prof('control', msg='launch script constructed', uid=cu['uid'])
 
       # TODO: Remove this commented out block?
       # if  self.lrms.target_is_macos :

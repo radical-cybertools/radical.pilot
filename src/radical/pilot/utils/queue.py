@@ -150,7 +150,6 @@ class Queue(object):
         self._qname  = qname
         self._role   = role
         self._addr   = address
-        self._debug  = False
         self._name   = "queue.%s.%s" % (self._qname, self._role)
         self._log    = ru.get_logger('rp.bridges', target="%s.log" % self._name)
 
@@ -483,6 +482,22 @@ class QueueZMQ(Queue):
         """
         if self._p and not self._p.is_alive():
             return 0
+
+
+    # --------------------------------------------------------------------------
+    #
+    def join(self, timeout=None):
+        """
+        poll until we die...
+        """
+        start = time.time()
+        while True:
+            if not self._p.is_alive():
+                return
+            if timeout != None:
+                if (time.time()-start) > timeout:
+                    raise RuntimeError('wait timed out')
+                time.sleep(0.1)
 
 
     # --------------------------------------------------------------------------

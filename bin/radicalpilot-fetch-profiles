@@ -17,7 +17,7 @@ def usage(msg=None, noexit=False):
         print "\n      Error: %s" % msg
 
     print """
-      usage   : %s <sid> [-t target] [-d dburl] [-c client] [-a scheme://host] [-s] [-h]
+      usage   : %s <sid> [-t target] [-d dburl] [-c client] [-a schema://host] [-s] [-h]
       example : %s $SID -d mongodb://localhost/rp -t /tmp/
 
       options :
@@ -25,7 +25,7 @@ def usage(msg=None, noexit=False):
           sid : session ID for which to fetch profiles
           -c  : location from where to fetch the client profiles
                 This defaults to $PWD
-          -a  : alternative agent sandbox access method (scheme://host)
+          -a  : alternative agent sandbox access method (schema://host)
           -t  : target dir to fetch profiles to
                 A sub-dir <sid>/ will be created there.
                 This defaults to $PWD/profiles/

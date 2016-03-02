@@ -2,8 +2,8 @@
     # directory for staging files inside the agent sandbox
     "staging_area"         : "staging_area",
 
-    # url scheme to indicate the use of staging_area
-    "staging_scheme"       : "staging",
+    # url schema to indicate the use of staging_area
+    "staging_schema"       : "staging",
 
     # max number of cu out/err chars to push to db
     "max_io_loglength"     : 1024,
@@ -35,11 +35,13 @@
                 "agent_unschedule_pubsub",
                 "agent_reschedule_pubsub",
 
-                "command_pubsub",
+                "control_pubsub",
                 "state_pubsub"
             ],
             "components" : {
                 # how many instances of the respective components should be started
+                "UpdateWorker"                : 1,
+                "HeartbeatWorker"             : 1,
                 "AgentStagingInputComponent"  : 1,
                 "AgentSchedulingComponent"    : 1,
                 "AgentExecutingComponent"     : 1,

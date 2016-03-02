@@ -74,7 +74,6 @@ class Pubsub(object):
         self._channel    = channel
         self._role       = role
         self._addr       = address
-        self._debug      = False
         self._name       = "pubsub.%s.%s" % (self._channel, self._role)
         self._log        = ru.get_logger('rp.bridges', target="%s.log" % self._name)
         self._bridge_in  = None           # bridge input  addr
@@ -323,6 +322,22 @@ class PubsubZMQ(Pubsub):
         """
         if self._p and not self._p.is_alive():
             return 0
+
+
+    # --------------------------------------------------------------------------
+    #
+    def join(self, timeout=None):
+        """
+        poll until we die...
+        """
+        start = time.time()
+        while True:
+            if not self._p.is_alive():
+                return
+            if timeout != None:
+                if (time.time()-start) > timeout:
+                    raise RuntimeError('wait timed out')
+                time.sleep(0.1)
 
 
     # --------------------------------------------------------------------------

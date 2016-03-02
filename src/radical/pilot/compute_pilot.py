@@ -481,13 +481,13 @@ class ComputePilot(object):
                 tgt_filename = os.path.basename(tgt_dir_url.path)
                 tgt_dir_url.path = os.path.dirname(tgt_dir_url.path)
 
-            # Handle special 'staging' scheme
-            if tgt_dir_url.scheme == 'staging':
+            # Handle special 'staging' schema
+            if tgt_dir_url.schema == 'staging':
 
                 # We expect a staging:///relative/path/file.txt URI,
                 # as hostname would have unclear semantics currently.
                 if tgt_dir_url.host:
-                    raise Exception("hostname not supported with staging:// scheme")
+                    raise Exception("hostname not supported with staging:// schema")
 
                 # Remove the leading slash to get a relative path from the staging area
                 rel_path = os.path.relpath(tgt_dir_url.path, '/')

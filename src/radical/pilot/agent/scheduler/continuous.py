@@ -138,7 +138,7 @@ class Continuous(AgentSchedulingComponent):
 
         if not 'task_slots' in opaque_slots:
             raise RuntimeError('insufficient information to release slots via %s: %s' \
-                    % (self.name, opaque_slots))
+                    % (self.uid, opaque_slots))
 
         self._change_slot_states(opaque_slots['task_slots'], rpc.FREE)
 

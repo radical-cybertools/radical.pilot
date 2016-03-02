@@ -106,27 +106,13 @@ class PilotManager(rpu.Component):
         cfg['owner']       = self.uid
         cfg['mongodb_url'] = str(session.dburl)
 
-        components = cfg.get('components', [])
-
-        from .. import pilot as rp
-        
-        # we also need a map from component names to class types
-        typemap = {
-            rpc.PMGR_LAUNCHING_COMPONENT : rp.pmgr.Launching
-            }
-
-        # get addresses from the bridges, and append them to the
-        # config, so that we can pass those addresses to the components
-        cfg['bridge_addresses'] = copy.deepcopy(session._bridge_addresses)
-
-        # the bridges are known, we can start to connect the components to them
-        self._components = rpu.Component.start_components(components,
-                           typemap, cfg, session=session)
-
         # initialize the base class
         # FIXME: unique ID
         cfg['owner'] = session.uid
-        rpu.Component.__init__(self, self.uid, cfg, session)
+        rpu.Component.__init__(self, cfg, session)
+
+        # we can start components
+        self.start_components(self.cfg['components'], owner=self.uid)
 
         # only now we have a logger... :/
         self._log.report.info('<<create pilot manager')
@@ -302,15 +288,6 @@ class PilotManager(rpu.Component):
         return ret
 
 
-    # --------------------------------------------------------------------------
-    #
-    def _get_pilot_sandbox(self, pilot):
-
-        rcfg = self._session.get_resource_config(resource_key, schema)
-
-        # derive pilot and global sandbox from the resource config
-        global_sandbox   = self._get_global_sandbox(pilot, rcfg)
-        pilot_sandbox    = self._get_pilot_sandbox(pilot, rcfg)
     # --------------------------------------------------------------------------
     #
     def submit_pilots(self, descriptions):

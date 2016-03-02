@@ -54,10 +54,6 @@ class Default(PMGRLaunchingComponent):
         # we don't really have an output queue, as we pass control over the
         # pilot jobs to the resource management system (RM).
 
-        # communicate successful startup
-        self.publish('command', {'cmd' : 'alive',
-                                 'arg' : self.cname})
-
         self._saga_js       = dict()             # cache of saga.job.Services
         self._pilots        = dict()             # dict for all known pilots
         self._tocheck       = list()             # pilots run state checks on
@@ -67,22 +63,15 @@ class Default(PMGRLaunchingComponent):
         self._sandbox_cache = dict()             # cache of global sandbox URLs
         self._cache_lock    = threading.RLock()  # lock for cache
 
-
         self._mod_dir       = os.path.dirname(os.path.abspath(__file__))
         self._root_dir      = "%s/../../"   % self._mod_dir  
         self._conf_dir      = "%s/configs/" % self._root_dir 
         
+        # FIXME: make interval configurable
+        self.declare_idle_cb(self._pilot_watcher_cb, timeout=10.0)
+
         _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
                 ru.get_version([self._root_dir, self._mod_dir])
-
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize_child(self):
-
-        # communicate finalization
-        self.publish('command', {'cmd' : 'final',
-                                 'arg' : self.cname})
 
 
     # --------------------------------------------------------------------------
@@ -129,141 +118,22 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _get_resource_config(self, pilot):
-
-        pid   = pilot['uid']
-        descr = pilot['description']
-        res   = pilot['resource']
-        rcfg  = self._session.get_resource_config(res)
-
-        # Check resource-specific mandatory attributes
-        for ma in rcfg.get("mandatory_args", []):
-            if ma not in descr:
-                raise ValueError("%s@%s description needs %s." % (pid, res, ma))
-
-        # we expand and exchange keys in the resource config, depending on
-        # the selected schema, so we better use a deep copy...
-        import copy
-        rcfg   = copy.deepcopy(rcfg)
-        schema = descr.get['access_schema']
-
-        if not  schema:
-            if 'schemas' in rcfg:
-                schema = rcfg['schemas'][0]
-
-        if not schema:
-            ValueError('no access schema for %s@%s' % (pid, res))
-
-        if schema not in rcfg :
-            ValueError('unknown schema %s for %s@%s' % (schema, pid, res))
-
-        for key in rcfg[schema] :
-            # merge schema specific resource keys into the
-            # resource config
-            rcfg[key] = rcfg[schema][key]
-
-        # if 'default_sandbox' is defined, set it
-        if descr['sandbox']:
-            if rcfg.get("valid_roots"):
-                is_valid = False
-                for vr in rcfg["valid_roots"]:
-                    if descr['sandbox'].startswith(vr):
-                        is_valid = True
-                if not is_valid:
-                    raise ValueError("Working directory for resource '%s'" \
-                           " defined as '%s' but needs to be rooted in %s " \
-                            % (res, descr['sandbox'], rcfg["valid_roots"]))
-        return rcfg
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_pilot_sandbox(self, pilot, rcfg):
-
-        pid       = pilot['uid']
-        glob_pwd  = self._get_global_sandbox(pilot, rcfg)
-        pilot_pwd = "%s/%s-%s/" % (str(glob_pwd), self._session.uid, pid)
-
-        return rs.Url(pilot_pwd)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_global_sandbox(self, pilot, rcfg):
-
-        # create a new UID for the pilot
-        pid   = pilot['uid']
-        descr = pilot['description']
-        res   = descr['resource']
-
-        # the global sandbox will be the same for all pilots on any resource, so
-        # we cache it
-        with self._cache_lock:
-            if res in self._sandbox_cache:
-                return rs.Url(self._sandbox_cache[res])
-
-        # not found in cache - get it fresh
-        # switch endpoint type
-        fs_url = rs.Url(rcfg['filesystem_endpoint'])
-
-        # Get the sandbox from either the pilot_desc or resource conf
-        workdir_raw = descr.get('sandbox')
-        if not workdir_raw:
-            workdir_raw = rcfg.get('default_remote_workdir', "$PWD")
-
-        # If the sandbox contains expandables, we need to resolve those remotely.
-        # NOTE: Note that this will only work for (gsi)ssh or shell based access mechanisms
-        if '$' in workdir_raw or '`' in workdir_raw:
-            js_url = rs.Url(rcfg['job_manager_endpoint'])
-
-            if 'ssh' in js_url.scheme.split('+'):
-                js_url.scheme = 'ssh'
-            elif 'gsissh' in js_url.scheme.split('+'):
-                js_url.scheme = 'gsissh'
-            elif 'fork' in js_url.scheme.split('+'):
-                js_url.scheme = 'fork'
-            elif '+' not in js_url.scheme:
-                # For local access to queueing systems use fork
-                js_url.scheme = 'fork'
-            else:
-                raise Exception("Are there more flavours we need to support?! (%s)" % js_url.scheme)
-
-            # FIXME: Why is this 'translation' required?
-            if js_url.port is not None:
-                url = "%s://%s:%d/" % (js_url.schema, js_url.host, js_url.port)
-            else:
-                url = "%s://%s/" % (js_url.schema, js_url.host)
-
-            self._log.debug("rsup.PTYShell ('%s')" % url)
-            shell = rsup.PTYShell(url, self._session)
-
-            ret, out, err = shell.run_sync(' echo "WORKDIR: %s"' % workdir_raw)
-            if ret == 0 and 'WORKDIR:' in out :
-                workdir_expanded = out.split(":")[1].strip()
-                self._log.debug("remote working dir for %s: '%s'" % (url, workdir_expanded))
-            else :
-                raise RuntimeError("Couldn't determine remote working directory.")
-        else:
-            workdir_expanded = workdir_raw
-
-        # at this point we have determined the remote 'pwd' - the global sandbox
-        # is relative to it.
-        fs_url.path = "%s/radical.pilot.sandbox" % workdir_expanded
-
-        # before returning, keep the URL in cache for the potential next pilot
-        with self._cache_lock:
-            # we keep a string as means of a deep copy, really - we have no idea
-            # what the consumer of this call will do to the URL instance...
-            self._sandbox_cache[res] = str(fs_url)
-
-        return fs_url
-
-
-    # --------------------------------------------------------------------------
-    #
-    def check_pilot_states (self):
+    def _pilot_watcher_cb(self):
 
         # FIXME: we should actually use SAGA job state notifications!
+        # FIXME: check how race conditions are handles: we may detect
+        #        a finalized SAGA job and change the pilot state -- but that
+        #        pilot may have transitioned into final state via the normal
+        #        notification mechanism already.  That probably should be sorted
+        #        out by the pilot manager, which will receive notifications for
+        #        both transitions.  As long as the final state is the same,
+        #        there should be no problem anyway.  If it differs, the
+        #        'cleaner' final state should prevail, in this ordering:
+        #          cancel
+        #          timeout
+        #          error
+        #          disappeared
+        #       This implies that we need to communicate 'final_cause'
         
         # we don't want to lock our members all the time.  For that reason we
         # use a copy of the pilots_tocheck list and iterate over that, and only
@@ -272,17 +142,11 @@ class Default(PMGRLaunchingComponent):
         with self._pilots_lock:
             checklist = self._tocheck[:]  # deep copy
 
-        for pid in checklist:
-
-            # We assume that all pilots in the check and missing list are known.
-            # NOTE: Since 'pilot' now points into the self._pilots dict, we need
-            #       to lock it whenever we change it!
-            pilot = self._pilots[pid]
+        for pid,saga_pid in checklist:
 
             pilot_failed = False
             pilot_done   = False
             log_message  = ""
-            saga_pid     = pilot["_saga_pid"]
 
             self._log.info("health check for %s [%s]", pid, saga_pid)
 
@@ -318,6 +182,7 @@ class Default(PMGRLaunchingComponent):
 
             if  pilot_failed:
                 with self._pilots_lock:
+                    pilot = self._pilots[pid]
                     out, err, log = self._get_pilot_logs(pilot)
                     pilot['out'] = out
                     pilot['err'] = err
@@ -337,7 +202,7 @@ class Default(PMGRLaunchingComponent):
             # no need to watch final pilots anymore...
             if pilot_done or pilot_failed:
                 with self._pilots_lock:
-                    self._tocheck.remove(pid)
+                    self._tocheck.remove([pid,saga_pid])
 
 
     # --------------------------------------------------------------------------
@@ -354,36 +219,32 @@ class Default(PMGRLaunchingComponent):
 
             self._log.info("Launching ComputePilot %s" % pid)
 
-            # ------------------------------------------------------
+            # ------------------------------------------------------------------
             # Database connection parameters
             session_id    = self._session.uid
             database_url  = self._session.dburl
 
-            # ------------------------------------------------------
+            # ------------------------------------------------------------------
             # pilot description and resource configuration
             number_cores    = pilot['description']['cores']
             runtime         = pilot['description']['runtime']
             queue           = pilot['description']['queue']
             project         = pilot['description']['project']
             cleanup         = pilot['description']['cleanup']
-            resource_key    = pilot['description']['resource']
+            resource        = pilot['description']['resource']
             schema          = pilot['description']['access_schema']
             memory          = pilot['description']['memory']
             candidate_hosts = pilot['description']['candidate_hosts']
 
-            # we expand and exchange keys in the resource config,
-            # depending on the selected schema so better use a deep
-            # copy..
-            rcfg = self._session.get_resource_config(resource_key, schema)
-
-            # derive pilot and global sandbox from the resource config
-            global_sandbox   = self._get_global_sandbox(pilot, rcfg)
-            pilot_sandbox    = self._get_pilot_sandbox(pilot, rcfg)
+            # get pilot and global sandbox
+            global_sandbox   = self._session._get_global_sandbox(pilot)
+            pilot_sandbox    = self._session._get_pilot_sandbox(pilot)
             pilot['sandbox'] = pilot_sandbox
 
+            # ------------------------------------------------------------------
+            # get parameters from resource cfg, set defaults where needed
+            rcfg = self._session.get_resource_config(resource, schema)
 
-            # ------------------------------------------------------
-            # get parameters from cfg, set defaults where needed
             agent_launch_method     = rcfg.get ('agent_launch_method')
             agent_dburl             = rcfg.get ('agent_mongodb_endpoint', database_url)
             agent_spawner           = rcfg.get ('agent_spawner',       DEFAULT_AGENT_SPAWNER)
@@ -476,7 +337,7 @@ class Default(PMGRLaunchingComponent):
                                                   flags=rs.filesystem.CREATE_PARENTS)
             LOCAL_SCHEME = 'file'
 
-            # ------------------------------------------------------
+            # ------------------------------------------------------------------
             # Copy the bootstrap shell script.
             # This also creates the sandbox.
             BOOTSTRAPPER_SCRIPT = "bootstrap_1.sh"
@@ -491,7 +352,7 @@ class Default(PMGRLaunchingComponent):
             if shared_filesystem:
                 sandbox_tgt.copy(bs_script_url, BOOTSTRAPPER_SCRIPT)
 
-            # ------------------------------------------------------
+            # ------------------------------------------------------------------
             # the version of the agent is derived from
             # rp_version, which has the following format
             # and interpretation:
@@ -566,7 +427,7 @@ class Default(PMGRLaunchingComponent):
                 rp_version  = rp_version[1:]  # strip '@'
 
 
-            # ------------------------------------------------------
+            # ------------------------------------------------------------------
             # Copy the rp sdist if needed.  We actually also stage
             # the sdists for radical.utils and radical.saga, so that
             # we have the complete stack to install...
@@ -580,7 +441,7 @@ class Default(PMGRLaunchingComponent):
                         sandbox_tgt.copy(sdist_url, os.path.basename(str(sdist_url)))
 
 
-            # ------------------------------------------------------
+            # ------------------------------------------------------------------
             # Some machines cannot run pip due to outdated CA certs.
             # For those, we also stage an updated certificate bundle
             if stage_cacerts:
@@ -593,7 +454,7 @@ class Default(PMGRLaunchingComponent):
                     sandbox_tgt.copy(cc_url, os.path.basename(str(cc_url)))
 
 
-            # ------------------------------------------------------
+            # ------------------------------------------------------------------
             # sanity checks
             if not agent_spawner      : raise RuntimeError("missing agent spawner")
             if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
@@ -666,7 +527,7 @@ class Default(PMGRLaunchingComponent):
             if cores_per_node:
                 agent_cfg['cores_per_node'] = cores_per_node
 
-            # ------------------------------------------------------
+            # ------------------------------------------------------------------
             # Write agent config dict to a json file in pilot sandbox.
 
             cfg_tmp_dir = tempfile.mkdtemp(prefix='rp_agent_cfg_dir')
@@ -686,11 +547,11 @@ class Default(PMGRLaunchingComponent):
             # Close agent config file
             os.close(cfg_tmp_handle)
 
-            # ------------------------------------------------------
+            # ------------------------------------------------------------------
             # Done with all transfers to pilot sandbox, close handle
             sandbox_tgt.close()
 
-            # ------------------------------------------------------
+            # ------------------------------------------------------------------
             # now that the scripts are in place and configured, 
             # we can launch the agent
             js_url = rs.Url(js_endpoint)
@@ -703,7 +564,7 @@ class Default(PMGRLaunchingComponent):
                     self._saga_js_cache[js_url] = js
 
 
-            # ------------------------------------------------------
+            # ------------------------------------------------------------------
             # Create SAGA Job description and submit the pilot job
 
             jd = rs.job.Description()
@@ -794,7 +655,7 @@ class Default(PMGRLaunchingComponent):
             self._log.debug("SAGA job id: %s", saga_pid)
 
             #
-            # ------------------------------------------------------
+            # ------------------------------------------------------------------
 
             # Update the Pilot's state to 'PMGR_ACTIVE_PENDING' if SAGA job
             # submission was successful.  Since the pilot leaves the scope of
@@ -806,7 +667,7 @@ class Default(PMGRLaunchingComponent):
             # make sure we watch that pilot
             with self._pilots_lock:
                 self._pilots[pid] = pilot
-                self._tocheck.append(pid)
+                self._tocheck.append([pid, saga_pid])
 
 
         except Exception as e:

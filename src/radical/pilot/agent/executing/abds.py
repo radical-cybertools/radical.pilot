@@ -50,7 +50,7 @@ class ABDS(AgentExecutingComponent):
         self.declare_output(rps.AGENT_STAGING_OUTPUT_PENDING, rpc.AGENT_STAGING_OUTPUT_QUEUE)
 
         self.declare_publisher ('unschedule', rpc.AGENT_UNSCHEDULE_PUBSUB)
-        self.declare_subscriber('command',    rpc.COMMAND_PUBSUB, self.command_cb)
+        self.declare_subscriber('control',    rpc.CONTROL_PUBSUB, self.command_cb)
 
         self._cancel_lock    = threading.RLock()
         self._cus_to_cancel  = list()
@@ -77,10 +77,6 @@ class ABDS(AgentExecutingComponent):
                 cfg     = self._cfg,
                 session = self._session)
 
-        # communicate successful startup
-        self.publish('command', {'cmd' : 'alive',
-                                 'arg' : self.cname})
-
         self._cu_environment = self._populate_cu_environment()
 
         self.tmpdir = tempfile.gettempdir()
@@ -92,11 +88,8 @@ class ABDS(AgentExecutingComponent):
 
         # terminate watcher thread
         self._terminate.set()
-        self._watcher.join()
-
-        # communicate finalization
-        self.publish('command', {'cmd' : 'final',
-                                 'arg' : self.cname})
+        if self._watcher:
+            self._watcher.join()
 
 
     # --------------------------------------------------------------------------
@@ -248,7 +241,7 @@ class ABDS(AgentExecutingComponent):
             env_string += " RP_SESSION_ID=%s" % self._cfg['session_id']
             env_string += " RP_PILOT_ID=%s"   % self._cfg['pilot_id']
             env_string += " RP_AGENT_ID=%s"   % self._cfg['agent_name']
-            env_string += " RP_SPAWNER_ID=%s" % self.cname
+            env_string += " RP_SPAWNER_ID=%s" % self.uid
             env_string += " RP_UNIT_ID=%s"    % cu['uid']
             launch_script.write('# Environment variables\n%s\n' % env_string)
 
@@ -297,11 +290,11 @@ class ABDS(AgentExecutingComponent):
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
-        self._prof.prof('command', msg='launch script constructed', uid=cu['uid'])
+        self._prof.prof('control', msg='launch script constructed', uid=cu['uid'])
 
         _stdout_file_h = open(cu['stdout_file'], "w")
         _stderr_file_h = open(cu['stderr_file'], "w")
-        self._prof.prof('command', msg='stdout and stderr files created', uid=cu['uid'])
+        self._prof.prof('control', msg='stdout and stderr files created', uid=cu['uid'])
 
         self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, cu_tmpdir)
 
@@ -332,11 +325,11 @@ class ABDS(AgentExecutingComponent):
     #
     def _watch(self):
 
-        cname = self.name.replace('Component', 'Watcher')
-        self._prof = rpu.Profiler(cname)
+        cuid = self.uid.replace('Component', 'Watcher')
+        self._prof = rpu.Profiler(cuid)
         self._prof.prof('run', uid=self._pilot_id)
         try:
-            self._log = ru.get_logger(cname, target="%s.log" % cname,
+            self._log = ru.get_logger(cuid, target="%s.log" % cuid,
                                       level='DEBUG') # FIXME?
 
             while not self._terminate.is_set():

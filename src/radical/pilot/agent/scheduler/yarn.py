@@ -39,7 +39,7 @@ class Yarn(AgentSchedulingComponent):
 
         #if 'rm_ip' not in self._cfg['lrms_info']:
         #    raise RuntimeError('rm_ip not in lm_info for %s' \
-        #            % (self.name))
+        #            % (self.uid))
 
         self._log.info('Checking rm_ip %s' % self._cfg['lrms_info']['lm_info']['rm_ip'])
         self._rm_ip = self._cfg['lrms_info']['lm_info']['rm_ip']

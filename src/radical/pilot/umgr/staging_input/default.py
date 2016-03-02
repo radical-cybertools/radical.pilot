@@ -25,7 +25,7 @@ class Default(UMGRStagingInputComponent):
     #
     def __init__(self, cfg, session):
 
-        rpu.Component.__init__(self, rpc.UMGR_STAGING_INPUT_COMPONENT, cfg, session)
+        UMGRStagingInputComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -42,19 +42,6 @@ class Default(UMGRStagingInputComponent):
       # self.declare_output(rps.AGENT_STAGING_INPUT_PENDING,
       #                     rpc.AGENT_STAGING_INPUT_QUEUE)
 
-        # communicate successful startup
-        self.publish('command', {'cmd' : 'alive',
-                                 'arg' : self.cname})
-
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize_child(self):
-
-        # communicate finalization
-        self.publish('command', {'cmd' : 'final',
-                                 'arg' : self.cname})
-
 
     # --------------------------------------------------------------------------
     #
@@ -62,8 +49,7 @@ class Default(UMGRStagingInputComponent):
 
         self.advance(unit, rps.UMGR_STAGING_INPUT, publish=True, push=False)
 
-        uid     = unit['uid']
-        sandbox = rs.Url(unit["sandbox"])
+        uid = unit['uid']
 
         # check if we have any staging directives to be enacted in this
         # component
@@ -75,18 +61,19 @@ class Default(UMGRStagingInputComponent):
             src    = ru.Url(entry['source'])
             tgt    = ru.Url(entry['target'])
 
-            if action in [TRANSFER] and src.scheme in ['file']:
+            if action in [rpc.TRANSFER] and src.schema in ['file']:
                 actionables.append([src, tgt, flags])
 
         if actionables:
 
             # we have actionable staging directives, and thus we need a unit
             # sandbox.
+            sandbox = rs.Url(unit["sandbox"])
             self._prof.prof("create sandbox", msg=str(sandbox), uid=uid,
                             logger=self._log.debug)
 
             # url used for cache (sandbox url w/o path)
-            tmp = saga.Url(sandbox)
+            tmp = rs.Url(sandbox)
             tmp.path = '/'
             key = str(tmp)
 
@@ -95,7 +82,7 @@ class Default(UMGRStagingInputComponent):
                         session=self._session)
 
             saga_dir = self._cache[key]
-            saga_dir.make_dir(sandbox, flags=saga.filesystem.CREATE_PARENTS)
+            saga_dir.make_dir(sandbox, flags=rs.filesystem.CREATE_PARENTS)
 
             self._prof.prof("created sandbox", uid=uid, logger=self._log.debug)
 
@@ -110,8 +97,8 @@ class Default(UMGRStagingInputComponent):
                 if tgt: target = "%s/%s" % (sandbox, tgt.path)
                 else  : target = '%s/%s' % (sandbox, os.path.basename(src.path))
 
-                if CREATE_PARENTS in flags:
-                    copy_flags = saga.filesystem.CREATE_PARENTS
+                if rpc.CREATE_PARENTS in flags:
+                    copy_flags = rs.filesystem.CREATE_PARENTS
                 else:
                     copy_flags = 0
 

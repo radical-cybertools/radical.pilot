@@ -4,16 +4,17 @@
 {
     "bridges" : [
         # which bridges are to be started by this session
+        # NOTE: some of those could also go to the UMGR or PMGR.
         "umgr_staging_input_queue",
         "umgr_scheduling_queue",
         "umgr_staging_output_queue",
 
-        "pmgr_launching_queue",
-
         "umgr_unschedule_pubsub",
         "umgr_reschedule_pubsub",
 
-        "command_pubsub",
+        "pmgr_launching_queue",
+
+        "control_pubsub", 
         "state_pubsub"
     ],
     "components" : {
