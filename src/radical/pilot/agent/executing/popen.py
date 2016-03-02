@@ -79,6 +79,7 @@ class Popen(AgentExecutingComponent) :
 
         self._cu_environment = self._populate_cu_environment()
 
+        self.gtod   = "%s/gtod" % ru.Url(self._cfg['pilot_sandbox']).path
         self.tmpdir = tempfile.gettempdir()
 
 
@@ -185,7 +186,14 @@ class Popen(AgentExecutingComponent) :
         if False:
             cu_tmpdir = '%s/%s' % (self.tmpdir, cu['uid'])
         else:
-            cu_tmpdir = cu['workdir']
+            cu_tmpdir = ru.Url(cu['sandbox']).path
+
+        # make sure the sandbox exists
+        rpu.rec_makedir(cu_tmpdir)
+
+        # prep stdout/err so that we can append w/o checking for None
+        cu['stdout'] = ''
+        cu['stderr'] = ''
 
         rpu.rec_makedir(cu_tmpdir)
         launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu_tmpdir
@@ -195,10 +203,10 @@ class Popen(AgentExecutingComponent) :
             launch_script.write('#!/bin/sh\n\n')
 
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                launch_script.write("echo script start_script `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+                launch_script.write("echo script start_script `%s` >> %s/PROF\n" % (self.gtod, cu_tmpdir))
             launch_script.write('\n# Change to working directory for unit\ncd %s\n' % cu_tmpdir)
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                launch_script.write("echo script after_cd `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+                launch_script.write("echo script after_cd `%s` >> %s/PROF\n" % (self.gtod, cu_tmpdir))
 
             # Before the Big Bang there was nothing
             if cu['description']['pre_exec']:
@@ -211,10 +219,10 @@ class Popen(AgentExecutingComponent) :
                 # Note: extra spaces below are for visual alignment
                 launch_script.write("# Pre-exec commands\n")
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write("echo pre  start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+                    launch_script.write("echo pre  start `%s` >> %s/PROF\n" % (self.gtod, cu_tmpdir))
                 launch_script.write(pre_exec_string)
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+                    launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (self.gtod, cu_tmpdir))
 
             # Create string for environment variable setting
             env_string = 'export'
@@ -244,7 +252,7 @@ class Popen(AgentExecutingComponent) :
             launch_script.write("%s\n" % launch_command)
             launch_script.write("RETVAL=$?\n")
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                launch_script.write("echo script after_exec `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+                launch_script.write("echo script after_exec `%s` >> %s/PROF\n" % (self.gtod, cu_tmpdir))
 
             # After the universe dies the infrared death, there will be nothing
             if cu['description']['post_exec']:
@@ -256,10 +264,10 @@ class Popen(AgentExecutingComponent) :
                     post_exec_string += "%s\n" % cu['description']['post_exec']
                 launch_script.write("# Post-exec commands\n")
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write("echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+                    launch_script.write("echo post start `%s` >> %s/PROF\n" % (self.gtod, cu_tmpdir))
                 launch_script.write('%s\n' % post_exec_string)
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+                    launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (self.gtod, cu_tmpdir))
 
             launch_script.write("# Exit the script with the return code from the command\n")
             launch_script.write("exit $RETVAL\n")
@@ -269,8 +277,8 @@ class Popen(AgentExecutingComponent) :
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
         self._prof.prof('control', msg='launch script constructed', uid=cu['uid'])
 
-        _stdout_file_h = open(cu['stdout_file'], "w")
-        _stderr_file_h = open(cu['stderr_file'], "w")
+        _stdout_file_h = open(cu['stdout_file'], "w+")
+        _stderr_file_h = open(cu['stderr_file'], "w+")
         self._prof.prof('control', msg='stdout and stderr files created', uid=cu['uid'])
 
         self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, cu_tmpdir)

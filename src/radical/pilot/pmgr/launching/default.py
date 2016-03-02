@@ -520,6 +520,8 @@ class Default(PMGRLaunchingComponent):
             agent_cfg['runtime']            = runtime
             agent_cfg['pilot_id']           = pid
             agent_cfg['session_id']         = session_id
+            agent_cfg['pilot_sandbox']      = pilot_sandbox
+            agent_cfg['global_sandbox']     = global_sandbox
             agent_cfg['agent_launch_method']= agent_launch_method
             agent_cfg['task_launch_method'] = task_launch_method
             if mpi_launch_method:

@@ -60,8 +60,8 @@ class Update(rpu.Worker):
         self._lock          = threading.RLock() # protect _cinfo
         self._state_cache   = dict()            # used to preserve state ordering
 
-        self.declare_subscriber('state', 'state_pubsub', self.state_cb)
-        self.declare_idle_cb(self.idle_cb, timeout=self._cfg.get('bulk_collection_time'))
+        self.declare_subscriber('state', 'state_pubsub', self._state_cb)
+        self.declare_idle_cb(self._idle_cb, timeout=self._cfg.get('bulk_collection_time'))
 
 
     # --------------------------------------------------------------------------
@@ -227,7 +227,7 @@ class Update(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def idle_cb(self):
+    def _idle_cb(self):
 
         action = 0
         with self._lock:
@@ -239,7 +239,7 @@ class Update(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def state_cb(self, topic, msg):
+    def _state_cb(self, topic, msg):
         """
 
         # FIXME: this documentation is not final, nor does it reflect reality!

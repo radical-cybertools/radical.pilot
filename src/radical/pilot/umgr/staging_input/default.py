@@ -39,8 +39,7 @@ class Default(UMGRStagingInputComponent):
                            rpc.UMGR_STAGING_INPUT_QUEUE, self.work)
 
         # FIXME: this queue is inaccessible, needs routing via mongodb
-      # self.declare_output(rps.AGENT_STAGING_INPUT_PENDING,
-      #                     rpc.AGENT_STAGING_INPUT_QUEUE)
+        self.declare_output(rps.AGENT_STAGING_INPUT_PENDING, None)
 
 
     # --------------------------------------------------------------------------
@@ -69,8 +68,7 @@ class Default(UMGRStagingInputComponent):
             # we have actionable staging directives, and thus we need a unit
             # sandbox.
             sandbox = rs.Url(unit["sandbox"])
-            self._prof.prof("create sandbox", msg=str(sandbox), uid=uid,
-                            logger=self._log.debug)
+            self._prof.prof("create sandbox", msg=str(sandbox))
 
             # url used for cache (sandbox url w/o path)
             tmp = rs.Url(sandbox)
@@ -84,18 +82,13 @@ class Default(UMGRStagingInputComponent):
             saga_dir = self._cache[key]
             saga_dir.make_dir(sandbox, flags=rs.filesystem.CREATE_PARENTS)
 
-            self._prof.prof("created sandbox", uid=uid, logger=self._log.debug)
+            self._prof.prof("created sandbox", uid=uid)
 
 
             # Loop over all transfer directives and execute them.
             for src, tgt, flags in actionables:
 
                 self._prof.prof('umgr staging in', msg=src, uid=uid)
-
-                # if no tgt is set, we reuse the src file name, and put it 
-                # relative to the sandbox
-                if tgt: target = "%s/%s" % (sandbox, tgt.path)
-                else  : target = '%s/%s' % (sandbox, os.path.basename(src.path))
 
                 if rpc.CREATE_PARENTS in flags:
                     copy_flags = rs.filesystem.CREATE_PARENTS
@@ -111,8 +104,7 @@ class Default(UMGRStagingInputComponent):
         # At this point, the unit will leave the umgr, we thus dump it
         # completely into the DB
         unit['$all'] = True
-        self.advance(unit, rps.AGENT_STAGING_INPUT_PENDING, 
-                     publish=True, push=True)
+        self.advance(unit, rps.AGENT_STAGING_INPUT_PENDING, publish=True, push=True)
 
 
 # ------------------------------------------------------------------------------

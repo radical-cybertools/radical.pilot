@@ -133,12 +133,23 @@ class UnitManager(rpu.Component):
 
         # The output queue is used to forward submitted units to the
         # scheduling component.
-        self.declare_output(rps.UMGR_SCHEDULING_PENDING, rpc.UMGR_SCHEDULING_QUEUE)
+        self.declare_output(rps.UMGR_SCHEDULING_PENDING, 
+                            rpc.UMGR_SCHEDULING_QUEUE)
+
+        # the umgr will also collect units from the agent again, for output
+        # staging and finalization
+        self.declare_output(rps.UMGR_STAGING_OUTPUT_PENDING, 
+                            rpc.UMGR_STAGING_OUTPUT_QUEUE)
 
         # register the state notification pull cb
         # FIXME: we may want to have the frequency configurable
         # FIXME: this should be a tailing cursor in the update worker
         self.declare_idle_cb(self._state_pull_cb, timeout=1.0)
+
+        # register callback which pulls units back from agent
+        # FIXME: this should be a tailing cursor in the update worker
+        # FIXME: make frequency configurable
+        self.declare_idle_cb(self._unit_pull_cb, timeout=0.1)
 
         # also listen to the state pubsub for unit state changes
         self.declare_subscriber('state', 'state_pubsub', self._state_sub_cb)
@@ -221,6 +232,55 @@ class UnitManager(rpu.Component):
                 action = True
 
         return action
+
+
+    #---------------------------------------------------------------------------
+    #
+    def _unit_pull_cb(self):
+
+        # pull units those units from the agent which are about to get back
+        # under umgr control, and push them into the respective queues
+        # FIXME: this should also be based on a tailed cursor
+        # FIXME: Unfortunately, 'find_and_modify' is not bulkable, so we have
+        #        to use 'find'.  To avoid finding the same units over and over 
+        #        again, we update the 'control' field *before* running the next
+        #        find -- so we do it right here.
+        tgt_states  = rps.FINAL + [rps.UMGR_STAGING_OUTPUT_PENDING]
+        unit_cursor = self.session._dbs._c.find(spec={
+            'type'    : 'unit',
+            'umgr'    : self.uid,
+            'state'   : {'$in' : tgt_states},
+            'control' : 'agent'})
+
+        if not unit_cursor.count():
+            # no units whatsoever...
+            self._log.info("units pulled:    0")
+            return False
+
+        # update the units to avoid pulling them again next time.
+        units = list(unit_cursor)
+        uids  = [unit['uid'] for unit in units]
+
+        self._session._dbs._c.update(multi    = True,
+                        spec     = {'type'  : 'unit',
+                                    'uid'   : {'$in'     : uids}},
+                        document = {'$set'  : {'control' : 'umgr'}})
+
+        self._log.info("units pulled: %4d"   % len(units))
+        self._prof.prof('get', msg="bulk size: %d" % len(units), uid=self.uid)
+        for unit in units:
+            unit['control'] = 'umgr'
+            self._prof.prof('get', msg="bulk size: %d" % len(units), uid=unit['uid'])
+
+        # now we really own the CUs, and can start working on them (ie. push
+        # them into the pipeline).  We don't publish the advance, since that
+        # happened already on the agent side when the state was set.
+        self.advance(units, publish=False, push=True)
+
+        # make sure the unit instance is updated
+        self._update_unit(unit['uid'], unit)
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -467,12 +527,10 @@ class UnitManager(rpu.Component):
         self._log.report.info('<<submit %d unit(s)\n\t' % len(descriptions))
 
         # we return a list of compute units
-        units     = list()
-        unit_docs = list()
+        units = list()
         for descr in descriptions :
             unit = ComputeUnit.create(umgr=self, descr=descr)
             units.append(unit)
-            unit_docs.append(unit.as_dict())
 
             # keep units around
             with self._units_lock:
@@ -482,19 +540,19 @@ class UnitManager(rpu.Component):
                 import radical.utils as ru
                 ru.write_json(descr.as_dict(), "%s/%s.batch.%03d.json" \
                         % (self._session._rec, unit.uid, self._rec_id))
+
             self._log.report.progress()
 
         if self._session._rec:
             self._rec_id += 1
 
         # insert units into the database, as a bulk.
+        unit_docs = [unit.as_dict() for unit in units]
         self._session._dbs.insert_units(unit_docs)
 
         # Only after the insert can we hand the units over to the next
         # components (ie. advance state).
-        # FIXME: advance as bulk
-        for doc in unit_docs:
-            self.advance(doc, rps.UMGR_SCHEDULING_PENDING, publish=True, push=True)
+        self.advance(unit_docs, rps.UMGR_SCHEDULING_PENDING, publish=True, push=True)
 
         self._log.report.ok('>>ok\n')
 
@@ -547,7 +605,7 @@ class UnitManager(rpu.Component):
         Returns when one or more :class:`radical.pilot.ComputeUnits` reach a
         specific state.
 
-        If `unit_uids` is `None`, `wait_units` returns when **all**
+        If `uids` is `None`, `wait_units` returns when **all**
         ComputeUnits reach the state defined in `state`.  This may include
         units which have previously terminated or waited upon.
 
@@ -557,9 +615,9 @@ class UnitManager(rpu.Component):
 
         **Arguments:**
 
-            * **unit_uids** [`string` or `list of strings`]
-              If unit_uids is set, only the ComputeUnits with the specified
-              uids are considered. If unit_uids is `None` (default), all
+            * **uids** [`string` or `list of strings`]
+              If uids is set, only the ComputeUnits with the specified
+              uids are considered. If uids is `None` (default), all
               ComputeUnits are considered.
 
             * **state** [`string`]

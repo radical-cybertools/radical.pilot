@@ -444,38 +444,41 @@ class Agent(rpu.Worker):
         # and log that we pulled it.
         #
         # FIXME: Unfortunately, 'find_and_modify' is not bulkable, so we have
-        # to use 'find'.  To avoid finding the same units over and over again,
-        # we update the state *before* running the next find -- so we do it
-        # right here...  No idea how to avoid that roundtrip...
-        # This also blocks us from using multiple ingest threads, or from doing
-        # late binding by unit pull :/
-        cu_cursor = self._session._dbs._c.find(spec  = {'type'    : 'unit',
-                                           "pilot"   : self._pilot_id,
-                                           'state'   : rps.AGENT_STAGING_INPUT_PENDING,
-                                           'control' : 'umgr'})
-        if not cu_cursor.count():
+        #        to use 'find'.  To avoid finding the same units over and over 
+        #        again, we update the 'control' field *before* running the next
+        #        find -- so we do it right here.
+        #        This also blocks us from using multiple ingest threads, or from
+        #        doing late binding by unit pull :/
+        unit_cursor = self._session._dbs._c.find(spec  = {
+            'type'    : 'unit',
+            'pilot'   : self._pilot_id,
+            'state'   : rps.AGENT_STAGING_INPUT_PENDING,
+            'control' : 'umgr'})
+
+        if not unit_cursor.count():
             # no units whatsoever...
             self._log.info("units pulled:    0")
             return False
 
-        # update the unit states to avoid pulling them again next time.
-        cu_list = list(cu_cursor)
-        cu_uids = [cu['uid'] for cu in cu_list]
+        # update the units to avoid pulling them again next time.
+        unit_list = list(unit_cursor)
+        unit_uids = [unit['uid'] for unit in unit_list]
 
         self._session._dbs._c.update(multi    = True,
                         spec     = {'type'  : 'unit',
-                                    "uid"   : {"$in"     : cu_uids}},
-                        document = {"$set"  : {"control" : 'agent'}})
+                                    'uid'   : {'$in'     : unit_uids}},
+                        document = {'$set'  : {'control' : 'agent'}})
 
-        self._log.info("units pulled: %4d"   % len(cu_list))
-        self._prof.prof('get', msg="bulk size: %d" % len(cu_list), uid=self._pilot_id)
-        for cu in cu_list:
-            self._prof.prof('get', msg="bulk size: %d" % len(cu_list), uid=cu['uid'])
+        self._log.info("units pulled: %4d"   % len(unit_list))
+        self._prof.prof('get', msg="bulk size: %d" % len(unit_list), uid=self._pilot_id)
+        for unit in unit_list:
+            unit['control'] = 'agent'
+            self._prof.prof('get', msg="bulk size: %d" % len(unit_list), uid=unit['uid'])
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline).  We don't publish nor profile as advance,
         # since that happened already on the module side when the state was set.
-        self.advance(cu_list, publish=False, push=True, prof=False)
+        self.advance(unit_list, publish=False, push=True, prof=False)
 
         # indicate that we did some work (if we did...)
         return True

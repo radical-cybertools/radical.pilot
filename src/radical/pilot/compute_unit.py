@@ -118,8 +118,9 @@ class ComputeUnit(object):
     #
     def _default_state_cb(self, unit, state):
 
-        self._log.info("[Callback]: unit %s state: %s.", self.uid, self.state)
+      # self._log.info("[Callback]: unit %s state: %s.", self.uid, self.state)
         print 'cb: %s: %s' % (self.uid, self.state)
+        pass
 
 
     # --------------------------------------------------------------------------
@@ -137,22 +138,28 @@ class ComputeUnit(object):
         #
         # FIXME: add sanity checks
 
-        if 'state' in unit_dict: 
-            old_state   = self.state
-            new_state   = unit_dict['state']
-            self._state = new_state
+        old_state = self.state
+        new_state = unit_dict.get('state', old_state)
 
-            if old_state != new_state:
+        # we update all fields
+        for key,val in unit_dict.iteritems():
+            # FIXME: well, this is ugly...  we should maintain all state in
+            #        a dict.
+            if key in ['state', 'stdout', 'stderr', 'exit_code', 'pilot', 
+                       'sandbox', 'pilot_sandbox', 'session', 'state_history']:
+                setattr(self, "_%s" % key, val)
 
-                for cb_func, cb_data in self._callbacks:
-                    if cb_data: cb_func(self, self.state, cb_data)
-                    else      : cb_func(self, self.state)
+        if old_state != new_state:
 
-                # also inform pmgr about state change, to collect any callbacks
-                # it has registered globally
-                self._umgr._call_unit_callbacks(self, self.state)
+            for cb_func, cb_data in self._callbacks:
+                if cb_data: cb_func(self, self.state, cb_data)
+                else      : cb_func(self, self.state)
 
-                return True
+            # also inform pmgr about state change, to collect any callbacks
+            # it has registered globally
+            self._umgr._call_unit_callbacks(self, self.state)
+
+            return True
 
         return False
 

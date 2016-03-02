@@ -262,11 +262,10 @@ class Component(mp.Process):
         arg = msg['arg']
 
         if cmd == 'shutdown':
-            src = arg['sender']
-            if src in [self.uid, self._session.uid, self._owner]:
-                self._log.info('received shutdown command from %s', src)
-                self.stop()
-
+          # src = arg['sender']
+          # if src in [self.uid, self._session.uid, self._owner]:
+            self._log.info('received shutdown command (%s)', arg)
+            self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -990,28 +989,36 @@ class Component(mp.Process):
             self._prof.prof('advance', uid=uid, state=state, timestamp=timestamp)
 
             if publish:
-                # send state notifications
+                # Things in final state are published in full
+                if state in rps.FINAL:
+                    thing['$all'] = True
+                # send state notifications.  
                 self.publish('state', {'cmd': 'update', 'arg': thing})
                 self._prof.prof('publish', uid=thing['uid'], state=thing['state'])
 
             if push:
+                
+                if state in rps.FINAL:
+                    # things in final state are dropped
+                    self._log.debug('%s %s ===| %s' % ('state', thing['uid'], thing['state']))
+                    continue
+
+                if not self._outputs[state]:
+                    # empty output -- drop thing
+                    self._log.debug('%s %s ~~~| %s' % ('state', thing['uid'], thing['state']))
+                    continue
+
                 if state not in self._outputs:
                     # unknown target state -- error
                     self._log.error("%s can't route state %s (%s)" \
                             % (self.uid, state, self._outputs.keys()))
                     continue
 
-                if not self._outputs[state]:
-                    # empty output -- drop thing
-                    self._log.debug('%s %s ===| %s' % ('state', thing['id'], thing['state']))
-                    continue
-
                 output = self._outputs[state]
 
+                # push the thing down the drain
                 # FIXME: we should assert that the thing is in a PENDING state.
                 #        Better yet, enact the *_PENDING transition right here...
-                #
-                # push the thing down the drain
                 output.put(thing)
                 self._prof.prof('put', uid=thing['uid'], state=state, msg=output.name)
 

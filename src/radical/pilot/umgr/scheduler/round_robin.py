@@ -40,8 +40,6 @@ class RoundRobin(UMGRSchedulingComponent):
     #
     def add_pilot(self, pid):
 
-        print 'add_pilot called (%s)' % pid
-
         # a pilot just got added.  If we did not have any pilot before, we might
         # have units in the wait queue waiting -- now is a good time to take
         # care of those!
@@ -51,7 +49,6 @@ class RoundRobin(UMGRSchedulingComponent):
 
                 # FIXME: we know the pilot is 'ADDED', but are we shure we have
                 #        the 'thing' dict?
-                print 'unwait %s' % unit['uid']
                 self._schedule_unit(unit, pid)
 
             # all units are scheduled -- empty the wait pool
@@ -82,7 +79,6 @@ class RoundRobin(UMGRSchedulingComponent):
 
                 # no pilot is active, yet -- we add to the wait queue
                 with self._wait_lock:
-                    print '  wait %s' % uid
                     self._prof.prof('wait', uid=uid)
                     self._wait_pool.append(unit)
                     return
@@ -104,7 +100,6 @@ class RoundRobin(UMGRSchedulingComponent):
             pilot = self._pilots[pid]
 
             # we assign the unit to the pilot.
-            print 'unit %s --> %s' %(unit['uid'], pid)
             unit['pilot'] = pid
 
             # this is also a good opportunity to determine the unit sndboxes

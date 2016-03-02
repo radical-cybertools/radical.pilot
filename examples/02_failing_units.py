@@ -59,8 +59,8 @@ if __name__ == '__main__':
         # Here we use a dict to initialize the description object
         pd_init = {
                 'resource'      : resource,
-                'cores'         : 64,  # pilot size
-                'runtime'       : 15,  # pilot runtime (min)
+                'cores'         : 256,  # pilot size
+                'runtime'       : 10,    # pilot runtime (min)
                 'exit_on_error' : True,
                 'project'       : config[resource]['project'],
                 'queue'         : config[resource]['queue'],
@@ -81,7 +81,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 1  # number of units to run
+        n = 100  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -91,10 +91,10 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             # trigger an error now and then
-            if not i % 10: cud.executable = '/bin/data' # does not exist
-            else         : cud.executable = '/bin/sleep'
+            if i % 2: cud.executable = '/bin/data' # does not exist
+            else    : cud.executable = '/bin/data'
 
-            cud.arguments = ['10']
+            cud.arguments = ['3']
 
             cuds.append(cud)
             report.progress()

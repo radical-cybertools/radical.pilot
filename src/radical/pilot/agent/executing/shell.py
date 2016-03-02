@@ -153,7 +153,11 @@ class Shell(AgentExecutingComponent):
         self._watcher.daemon = True
         self._watcher.start ()
 
+        self.gtod = "%s/gtod" % ru.Url(self._cfg['pilot_sandbox']).path
+
         self._prof.prof('run setup done', uid=self._pilot_id)
+
+
     # --------------------------------------------------------------------------
     #
     def command_cb(self, topic, msg):
@@ -291,13 +295,13 @@ class Shell(AgentExecutingComponent):
         cmd   = ""
         descr = cu['description']
 
-        if  cu['workdir'] :
-            cwd  += "# CU workdir\n"
-            cwd  += "mkdir -p %s\n" % cu['workdir']
+        if  cu['sandbox'] :
+            cwd  += "# CU sandbox\n"
+            cwd  += "mkdir -p %s\n" % ru.Url(cu['sandbox']).path
             # TODO: how do we align this timing with the mkdir with POPEN? (do we at all?)
-            cwd  += "cd       %s\n" % cu['workdir']
+            cwd  += "cd       %s\n" % cu['sandbox']
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                cwd  += "echo script after_cd `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+                cwd  += "echo script after_cd `%s` >> %s/PROF\n" % (self.gtod, cu['sandbox'])
             cwd  += "\n"
 
         env  += "# CU environment\n"
@@ -314,21 +318,21 @@ class Shell(AgentExecutingComponent):
         if  descr['pre_exec'] :
             pre  += "# CU pre-exec\n"
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                pre  += "echo pre  start `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+                pre  += "echo pre  start `%s` >> %s/PROF\n" % (self.gtod, cu['sandbox'])
             pre  += '\n'.join(descr['pre_exec' ])
             pre  += "\n"
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                pre  += "echo pre  stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+                pre  += "echo pre  stop  `%s` >> %s/PROF\n" % (self.gtod, cu['sandbox'])
             pre  += "\n"
 
         if  descr['post_exec'] :
             post += "# CU post-exec\n"
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                post += "echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+                post += "echo post start `%s` >> %s/PROF\n" % (self.gtod, cu['sandbox'])
             post += '\n'.join(descr['post_exec' ])
             post += "\n"
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                post += "echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+                post += "echo post stop  `%s` >> %s/PROF\n" % (self.gtod, cu['sandbox'])
             post += "\n"
 
         if  descr['arguments']  :
@@ -345,7 +349,7 @@ class Shell(AgentExecutingComponent):
 
         script = ''
         if 'RADICAL_PILOT_PROFILE' in os.environ:
-            script += "echo script start_script `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+            script += "echo script start_script `%s` >> %s/PROF\n" % (self.gtod, cu['sandbox'])
 
         if hop_cmd :
             # the script will itself contain a remote callout which calls again
@@ -369,7 +373,7 @@ class Shell(AgentExecutingComponent):
         script += "%s %s\n\n" % (cmd, io)
         script += "RETVAL=$?\n"
         if 'RADICAL_PILOT_PROFILE' in os.environ:
-            script += "echo script after_exec `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+            script += "echo script after_exec `%s` >> %s/PROF\n" % (self.gtod, cu['sandbox'])
         script += "%s"        %  post
         script += "exit $RETVAL\n"
         script += "# ------------------------------------------------------\n\n"
@@ -386,6 +390,10 @@ class Shell(AgentExecutingComponent):
         uid = cu['uid']
 
         self._prof.prof('spawn', msg='unit spawn', uid=uid)
+
+        # prep stdout/err so that we can append w/o checking for None
+        cu['stdout'] = ''
+        cu['stderr'] = ''
 
         # we got an allocation: go off and launch the process.  we get
         # a multiline command, so use the wrapper's BULK/LRUN mode.
@@ -428,10 +436,10 @@ class Shell(AgentExecutingComponent):
 
         self._prof.prof('spawn', msg='spawning passed to pty', uid=uid)
 
-        # for convenience, we link the ExecWorker job-cwd to the unit workdir
+        # for convenience, we link the ExecWorker job-cwd to the unit sandbox
         try:
             os.symlink("%s/%s" % (self._spawner_tmp, cu['pid']),
-                       "%s/%s" % (cu['workdir'], 'SHELL_SPAWNER_TMP'))
+                       "%s/%s" % (cu['sandbox'], 'SHELL_SPAWNER_TMP'))
         except Exception as e:
             self._log.exception('shell cwd symlink failed: %s' % e)
 
