@@ -15,7 +15,12 @@
         "agent_launch_method"         : "APRUN",
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
-        "pre_bootstrap_1"             : ["module load bw-python"],
+        "pre_bootstrap_1"             : [
+            "module switch PrgEnv-cray PrgEnv-gnu",
+            "module load bwpy",
+            "module use --append /projects/sciteam/gkd/modules",
+            "module load openmpi/rhc_static"
+        ],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
@@ -57,7 +62,7 @@
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_bwlib",
+        "virtenv"                     : "%(global_sandbox)s/ve_bw",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : "True",
         "python_dist"                 : "default"
@@ -118,7 +123,7 @@
         "mpi_launch_method"           : "MPIRUN",
         "pre_bootstrap_1"             :
         [
-          "module load bw-python",
+          "module load bw-py",
           "module load ccm"
         ],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
