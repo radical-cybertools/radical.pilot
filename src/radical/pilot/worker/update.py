@@ -158,16 +158,20 @@ class Update(rpu.Worker):
         # check if we have any consecutive list beyond 'last' in unsent
         cache['unsent'].append(state)
       # self._log.debug(" === lst %s: %s %s" % (uid, cache['last'], cache['unsent']))
-        state = None
+        new_state = None
         for i in range(s2i[cache['last']]+1, s2i[s_max]):
           # self._log.debug(" === chk %s: %s in %s" % (uid, i2s[i], cache['unsent']))
             if i2s[i] in cache['unsent']:
-                state = i2s[i]
+                new_state = i2s[i]
                 cache['unsent'].remove(i2s[i])
-              # self._log.debug(" === uns %s: %s" % (uid, state))
+              # self._log.debug(" === uns %s: %s" % (uid, new_state))
             else:
-              # self._log.debug(" === brk %s: %s" % (uid, state))
+              # self._log.debug(" === brk %s: %s" % (uid, new_state))
                 break
+
+        if new_state:
+          # self._log.debug(" === new %s: %s" % (uid, new_state))
+            state = new_state
 
         # the max of the consecutive list is set in te update dict...
         if state:
