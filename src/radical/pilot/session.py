@@ -63,9 +63,7 @@ class Session (rs.Session, rpu.Worker):
         self._log = ru.get_logger('radical.pilot')
 
         self._dh        = ru.DebugHelper()
-        self._valid     = False
-        self._terminate = threading.Event()
-        self._terminate.clear()
+        self._valid     = True
 
         # class state
         self._dbs         = None
@@ -84,8 +82,8 @@ class Session (rs.Session, rpu.Worker):
         self._debug_helper = ru.DebugHelper ()
 
         # Dictionaries holding all manager objects created during the session.
-        self._pilot_manager_objects = dict()
-        self._unit_manager_objects  = dict()
+        self._pmgrs = dict()
+        self._umgrs = dict()
 
         # The resource configuration dictionary associated with the session.
         self._resource_configs = {}
@@ -185,9 +183,6 @@ class Session (rs.Session, rpu.Worker):
         rs.Session.__init__(self)
         rpu.Worker.__init__(self, cfg, session=self)
 
-        import pprint
-        pprint.pprint(self.cfg)
-
         # create/connect database handle
         try:
             self._dbs = DBSession(sid=self.uid, dburl=self.dburl,
@@ -195,15 +190,13 @@ class Session (rs.Session, rpu.Worker):
                                   connect=_connect)
 
             # from here on we should be able to close the session again
-            self._valid = True
-            self._log.info("New Session created: %s." % str(self))
+            self._log.info("New Session created: %s." % self.uid)
 
         except Exception, ex:
             self._log.report.error(">>err\n")
             self._log.exception('session create failed')
             raise RuntimeError("Couldn't create new session (database URL '%s' incorrect?): %s" \
                             % (self._dburl, ex))  
-
 
 
         # create update and heartbeat worker components
@@ -333,7 +326,6 @@ class Session (rs.Session, rpu.Worker):
         # will supercede them.  Delete is considered deprecated though, and
         # we'll thus issue a warning.
         if delete != None:
-
             if  cleanup == True and terminate == True :
                 cleanup   = delete
                 terminate = delete
@@ -344,18 +336,25 @@ class Session (rs.Session, rpu.Worker):
             # cleanup implies terminate
             terminate = True
 
-        if terminate:
-            self._terminate.set()
+        print "\n----\n"
 
-        for pmgr_uid, pmgr in self._pilot_manager_objects.iteritems():
-            self._log.debug("session %s closes   pmgr   %s" % (str(self._uid), pmgr_uid))
-            pmgr.close (terminate=terminate)
-            self._log.debug("session %s closed   pmgr   %s" % (str(self._uid), pmgr_uid))
-
-        for umgr_uid, umgr in self._unit_manager_objects.iteritems():
+        for umgr_uid, umgr in self._umgrs.iteritems():
             self._log.debug("session %s closes   umgr   %s" % (str(self._uid), umgr._uid))
             umgr.close()
             self._log.debug("session %s closed   umgr   %s" % (str(self._uid), umgr._uid))
+
+        print "\n----\n"
+        for pmgr_uid, pmgr in self._pmgrs.iteritems():
+            self._log.debug("session %s closes   pmgr   %s" % (str(self._uid), pmgr_uid))
+            print 1, pmgr_uid
+            pmgr.close(terminate=terminate)
+            print 2
+            self._log.debug("session %s closed   pmgr   %s" % (str(self._uid), pmgr_uid))
+
+        print "\n----\n"
+
+        # stop the component
+        self.stop()  
 
         if  cleanup :
             self.prof.prof("cleaning", uid=self._uid)
@@ -491,134 +490,107 @@ class Session (rs.Session, rpu.Worker):
 
     #---------------------------------------------------------------------------
     #
+    def _register_pmgr(self, pmgr):
+
+        self._dbs.insert_pmgr(pmgr.as_dict())
+        self._pmgrs[pmgr.uid] = pmgr
+
+
+    #---------------------------------------------------------------------------
+    #
     def list_pilot_managers(self):
         """
         Lists the unique identifiers of all :class:`radical.pilot.PilotManager` 
         instances associated with this session.
 
-        **Example**::
-
-            s = radical.pilot.Session(dburl=DBURL)
-            for pm_uid in s.list_pilot_managers():
-                pm = radical.pilot.PilotManager(session=s, pilot_manager_uid=pm_uid) 
-
         **Returns:**
-            * A list of :class:`radical.pilot.PilotManager` uids (`list` of strings`).
-
-        **Raises:**
-            * :class:`radical.pilot.IncorrectState` if the session is closed
-              or doesn't exist. 
+            * A list of :class:`radical.pilot.PilotManager` uids (`list` of `strings`).
         """
+
         self._is_valid()
-        return self._pilot_manager_objects.keys()
+        return self._pmgrs.keys()
 
 
     # --------------------------------------------------------------------------
     #
-    def get_pilot_managers(self, pilot_manager_ids=None) :
-        """ Re-connects to and returns one or more existing PilotManager(s).
+    def get_pilot_managers(self, pmgr_uids=None) :
+        """ 
+        returns known PilotManager(s).
 
         **Arguments:**
 
-            * **session** [:class:`radical.pilot.Session`]: 
-              The session instance to use.
-
-            * **pilot_manager_uid** [`string`]: 
-              The unique identifier of the PilotManager we want 
-              to re-connect to.
+            * **pmgr_uids** [`string`]: 
+              unique identifier of the PilotManager we want
 
         **Returns:**
-
-            * One or more new [:class:`radical.pilot.PilotManager`] objects.
-
-        **Raises:**
-
-            * :class:`radical.pilot.pilotException` if a PilotManager with 
-              `pilot_manager_uid` doesn't exist in the database.
+            * One or more [:class:`radical.pilot.PilotManager`] objects.
         """
+
         self._is_valid()
 
         return_scalar = False
-
-        if pilot_manager_ids is None:
-            pilot_manager_ids = self.list_pilot_managers()
-
-        elif not isinstance(pilot_manager_ids, list):
-            pilot_manager_ids = [pilot_manager_ids]
+        if not isinstance(pmgr_uids, list):
+            pmgr_uids     = [pmgr_uids]
             return_scalar = True
 
-        pilot_manager_objects = list()
-        for pid in pilot_manager_ids:
-            pilot_manager_objects.append (self._pilot_manager_objects[pid])
+        if pmgr_uids: pmgrs = [self._pmgrs[uid] for uid in pmgr_uids]
+        else        : pmgrs =  self._pmgrs.values()
 
-        if return_scalar is True:
-            pilot_manager_objects = pilot_manager_objects[0]
+        if return_scalar: return pmgrs[0]
+        else            : return pmgrs
 
-        return pilot_manager_objects
+
+    #---------------------------------------------------------------------------
+    #
+    def _register_umgr(self, umgr):
+
+        self._dbs.insert_umgr(umgr.as_dict())
+        self._umgrs[umgr.uid] = umgr
+
 
     #---------------------------------------------------------------------------
     #
     def list_unit_managers(self):
-        """Lists the unique identifiers of all :class:`radical.pilot.UnitManager` 
+        """
+        Lists the unique identifiers of all :class:`radical.pilot.UnitManager` 
         instances associated with this session.
-
-        **Example**::
-
-            s = radical.pilot.Session(dburl=DBURL)
-            for pm_uid in s.list_unit_managers():
-                pm = radical.pilot.PilotManager(session=s, pilot_manager_uid=pm_uid) 
 
         **Returns:**
             * A list of :class:`radical.pilot.UnitManager` uids (`list` of `strings`).
-
-        **Raises:**
-            * :class:`radical.pilot.IncorrectState` if the session is closed
-              or doesn't exist. 
         """
+
         self._is_valid()
-        return self._unit_manager_objects.keys()
+        return self._umgrs.keys()
+
 
     # --------------------------------------------------------------------------
     #
-    def get_unit_managers(self, unit_manager_ids=None) :
-        """ Re-connects to and returns one or more existing UnitManager(s).
+    def get_unit_managers(self, umgr_uids=None) :
+        """ 
+        returns known UnitManager(s).
 
         **Arguments:**
 
-            * **session** [:class:`radical.pilot.Session`]: 
-              The session instance to use.
-
-            * **pilot_manager_uid** [`string`]: 
-              The unique identifier of the PilotManager we want 
-              to re-connect to.
+            * **umgr_uids** [`string`]: 
+              unique identifier of the UnitManager we want
 
         **Returns:**
-
-            * One or more new [:class:`radical.pilot.PilotManager`] objects.
-
-        **Raises:**
-
-            * :class:`radical.pilot.pilotException` if a PilotManager with 
-              `pilot_manager_uid` doesn't exist in the database.
+            * One or more [:class:`radical.pilot.UnitManager`] objects.
         """
+
         self._is_valid()
 
         return_scalar = False
-        if unit_manager_ids is None:
-            unit_manager_ids = self.list_unit_managers()
-
-        elif not isinstance(unit_manager_ids, list):
-            unit_manager_ids = [unit_manager_ids]
+        if not isinstance(umgr_uids, list):
+            umgr_uids     = [umgr_uids]
             return_scalar = True
 
-        unit_manager_objects = list()
-        for uid in unit_manager_ids:
-            unit_manager_objects.append (self._unit_manager_objects[uid])
+        if umgr_uids: umgrs = [self._umgrs[uid] for uid in umgr_uids]
+        else        : umgrs =  self._umgrs.values()
 
-        if return_scalar is True:
-            unit_manager_objects = unit_manager_objects[0]
+        if return_scalar: return umgrs[0]
+        else            : return umgrs
 
-        return unit_manager_objects
 
     # -------------------------------------------------------------------------
     #

@@ -183,7 +183,7 @@ class DBSession(object):
 
     #--------------------------------------------------------------------------
     #
-    def insert_pilot_manager(self, pmgr_doc):
+    def insert_pmgr(self, pmgr_doc):
         """ 
         Adds a pilot managers doc
         """
@@ -537,7 +537,7 @@ class DBSession(object):
 
     #--------------------------------------------------------------------------
     #
-    def insert_unit_manager(self, umgr_doc):
+    def insert_umgr(self, umgr_doc):
         """ 
         Adds a unit managers document
         """

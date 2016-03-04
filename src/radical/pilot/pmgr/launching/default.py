@@ -5,6 +5,7 @@ __license__   = "MIT"
 
 import os
 import math
+import pprint
 import tempfile
 import threading
 
@@ -69,9 +70,68 @@ class Default(PMGRLaunchingComponent):
         
         # FIXME: make interval configurable
         self.declare_idle_cb(self._pilot_watcher_cb, timeout=10.0)
+        
+        # we listen for pilot cancel commands
+        self.declare_subscriber('control', rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
 
         _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
                 ru.get_version([self._root_dir, self._mod_dir])
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _pmgr_control_cb(self, topic, msg):
+
+        # wait for 'terminate' commands, but only accept those where 'src' is
+        # either myself, my session, or my owner
+
+        print 'pmgr_control got     %s' % msg
+
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        if cmd == 'cancel_pilots':
+            uids = arg['uids']
+
+            print 'pmgr_control handles %s' % msg
+            with self._pilots_lock:
+
+                print 'pmgr_control handles %s now' % msg
+                pprint.pprint(self._pilots)
+
+                if not isinstance(uids, list):
+                    uids = [uids]
+
+                self._log.info('received pilot_cancel command (%s)', uids)
+
+                saga_jobs = list()
+                for uid in uids:
+                    if uid not in self._pilots:
+                        raise 'cannot cancel pilot %s: unknown' % uid
+
+                    saga_pid  = self._pilots[uid]['_saga_pid']   
+                    js_url    = rs.Url(self._pilots[uid]['_saga_js_url'])
+
+                    with self._cache_lock:
+                        if js_url in self._saga_js_cache:
+                            js = self._saga_js_cache[js_url]
+                        else :
+                            js = rs.job.Service(js_url, session=self._session)
+                            self._saga_js_cache[js_url] = js
+
+                    saga_job = js.get_job(saga_pid)
+                    saga_job.cancel()
+                    saga_jobs.append(saga_job)
+                    print 'canceled %s [%s]' % (uid, saga_pid)
+                    
+                for saga_job in saga_jobs:
+                    saga_job.wait()
+                    print 'final    %s [%s]' % (uid, saga_pid)
+
+        else:
+            print 'pmgr_control ignores %s' % msg
+
+            
 
 
     # --------------------------------------------------------------------------
@@ -148,6 +208,7 @@ class Default(PMGRLaunchingComponent):
             pilot_done   = False
             log_message  = ""
 
+            print "health check for %s [%s]" % (pid, saga_pid)
             self._log.info("health check for %s [%s]", pid, saga_pid)
 
             try:
@@ -159,6 +220,7 @@ class Default(PMGRLaunchingComponent):
                     self._saga_js[js_url] = js
 
                 saga_job = js.get_job(saga_pid)
+                print "SAGA job state for %s: %s." % (pid, saga_job.state)
                 self._log.debug("SAGA job state for %s: %s.", pid, saga_job.state)
 
                 if  saga_job.state in [rs.job.FAILED, rs.job.CANCELED]:
@@ -181,6 +243,7 @@ class Default(PMGRLaunchingComponent):
 
 
             if  pilot_failed:
+                print 'failed'
                 with self._pilots_lock:
                     pilot = self._pilots[pid]
                     out, err, log = self._get_pilot_logs(pilot)
@@ -191,6 +254,7 @@ class Default(PMGRLaunchingComponent):
                     self.advance(pilot, rps.FAILED, push=False, publish=True)
 
             elif pilot_done:
+                print 'done'
                 with self._pilots_lock:
                     out, err, log = self._get_pilot_logs(pilot)
                     pilot['out'] = out
@@ -212,9 +276,12 @@ class Default(PMGRLaunchingComponent):
         self.advance(pilot, rps.PMGR_LAUNCHING, publish=True, push=False)
         self._log.info('handle %s' % pilot['uid'])
 
-        self._dh.fs_block(pilot)
-        
-        try:
+        # NOTE: we use a rather conservative grained lock here which may apply
+        #       for quite some time.  The upside is is the self._pilots dict
+        #       always contains pilots which have a saga_pid, so that they can
+        #       be canceled.
+        with self._pilots_lock:
+
             pid = pilot["uid"]
 
             self._log.info("Launching ComputePilot %s" % pid)
@@ -651,13 +718,17 @@ class Default(PMGRLaunchingComponent):
                 raise RuntimeError ("SAGA Job state is FAILED.")
 
             saga_pid = saga_job.id
-            self._pilots[pid] = dict()
+            self._pilots[pid] = pilot
             self._pilots[pid]['_saga_pid']    = saga_pid
-            self._pilots[pid]['_saga_js_url'] = js_url
+            self._pilots[pid]['_saga_js_url'] = str(js_url)
             self._log.debug("SAGA job id: %s", saga_pid)
 
             #
             # ------------------------------------------------------------------
+
+            # make sure we watch that pilot
+            self._tocheck.append([pid, saga_pid])
+
 
             # Update the Pilot's state to 'PMGR_ACTIVE_PENDING' if SAGA job
             # submission was successful.  Since the pilot leaves the scope of
@@ -665,16 +736,6 @@ class Default(PMGRLaunchingComponent):
             pilot['cfg']  = agent_cfg
             pilot['$all'] = True
             self.advance(pilot, rps.PMGR_ACTIVE_PENDING, push=False, publish=True)
-
-            # make sure we watch that pilot
-            with self._pilots_lock:
-                self._pilots[pid] = pilot
-                self._tocheck.append([pid, saga_pid])
-
-
-        except Exception as e:
-            self.advance(pilot, rps.FAILED, push=False, publish=True)
-            self._log.exception('pilot launching failed')
 
         self._log.debug("work done")
 

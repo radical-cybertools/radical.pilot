@@ -154,8 +154,8 @@ class UnitManager(rpu.Component):
         # also listen to the state pubsub for unit state changes
         self.declare_subscriber('state', 'state_pubsub', self._state_sub_cb)
 
-
-        self._session._dbs.insert_unit_manager(self.as_dict())
+        # let session know we exist
+        self._session._register_umgr(self)
 
         self._prof.prof('UMGR setup done', logger=self._log.debug)
         self._log.report.ok('>>ok\n')
@@ -167,25 +167,23 @@ class UnitManager(rpu.Component):
         """
         Shuts down the UnitManager.  This will cancel all units.
         """
+
         if self._closed:
             raise RuntimeError("instance is already closed")
 
         self._log.debug("closing %s", self.uid)
         self._log.report.info('<<close unit manager')
 
-
-     ## if self._worker:
-     ##     self._worker.stop()
-     ## TODO: kill components
-
         # kill child process, threads
         self.stop()
 
         self._session.prof.prof('closed umgr', uid=self._uid)
-        self._log.info("Closed UnitManager %s." % str(self._uid))
+        self._log.info("Closed UnitManager %s." % self._uid)
 
         self._closed = True
         self._log.report.ok('>>ok\n')
+
+        print 'closed umgr %s' % self.uid
 
 
     # --------------------------------------------------------------------------

@@ -253,6 +253,12 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
+    def __str__(self):
+        return "%s <%s> [%s]" % (self.uid, self.ctype, self._owner)
+
+
+    # --------------------------------------------------------------------------
+    #
     def _control_cb(self, topic, msg):
 
         # wait for 'terminate' commands, but only accept those where 'src' is
@@ -420,12 +426,17 @@ class Component(mp.Process):
                 sys.exit()
         """
 
+        print 'stop %s' % self.uid
+
         if self._finalized:
             # only die once
             return
 
         self._prof.prof("closing")
-        self._log.info("closing (%d subscriber threads)" % (len(self._subscribers)))
+        self._log.info("stopping %s"      % self.uid)
+        self._log.info("  subscribers %s" % self._subscribers)
+        self._log.info("  components  %s" % self._components)
+        self._log.info("  bridges     %s" % self._bridges)
 
         # tear down components, workers and bridges
         for component in self._components: component.stop()
@@ -459,13 +470,14 @@ class Component(mp.Process):
                 self._prof.prof("not_yet_finalized")
 
             # Signal the child
-            self._log.debug('signalling child')
-            self.terminate()
+            if self.is_alive():
+                self._log.debug('signalling child')
+                self.terminate()
 
-            # Wait for the child process
-            self._log.debug('waiting for child')
-            self.join()
-            self._log.debug('child done')
+                # Wait for the child process
+                self._log.debug('waiting for child')
+                self.join()
+                self._log.debug('child done')
 
             self._prof.prof("stopped")
             self._prof.close()
@@ -629,19 +641,27 @@ class Component(mp.Process):
         timeout = float(timeout)
 
         # create a separate thread per idle cb
-        # ------------------------------------------------------------------
+        # NOTE: idle timing is a tricky beast: if we sleep for too long, then we
+        #       have to wait that long on stop() for the thread to get active
+        #       again and terminate/join.  So we always sleep for 1sec, and
+        #       manually check if timeout has passed before activating the
+        #       callback.
+        # ----------------------------------------------------------------------
         def _idler(callback, callback_data, to):
             name = "[%s : %s : %s : %s]" % (self.uid, mt.currentThread().name, 
                     callback, mt.currentThread().ident)
             try:
+                last = 0.0  # never been called
                 while not self._terminate.is_set():
-                    with self._cb_lock:
-                        if callback_data != None:
-                            print callback_data
-                            callback(cb_data=callback_data)
-                        else:
-                            callback()
-                    time.sleep(to)
+                    now = time.time()
+                    if (now-last) > to:
+                        with self._cb_lock:
+                            if callback_data != None:
+                                callback(cb_data=callback_data)
+                            else:
+                                callback()
+                        last = now
+                    time.sleep(1.0)
             except Exception as e:
                 self._log.exception("idler failed %s" % name)
                 if self._exit_on_error:
@@ -711,8 +731,7 @@ class Component(mp.Process):
 
         # ----------------------------------------------------------------------
         def _subscriber(q, callback, callback_data):
-            name = "[%s : %s : %s : %s]" % (self.uid, mt.currentThread().name, 
-                    callback, mt.currentThread().ident)
+            name = mt.currentThread().name,
             try:
                 while not self._terminate.is_set():
                     topic, msg = q.get_nowait(1000) # timout in ms
@@ -721,7 +740,7 @@ class Component(mp.Process):
                             msg = [msg]
                         for m in msg:
                             with self._cb_lock:
-                                if callback_data:
+                                if callback_data != None:
                                     callback(topic=topic, msg=m, cb_data=callback_data)
                                 else:
                                     callback(topic=topic, msg=m)
@@ -766,6 +785,7 @@ class Component(mp.Process):
     #
     def _profile_flush_cb(self):
 
+        self._log.handlers[0].flush()
         self._prof.flush()
 
 
@@ -994,6 +1014,7 @@ class Component(mp.Process):
                     thing['$all'] = True
                 # send state notifications.  
                 self.publish('state', {'cmd': 'update', 'arg': thing})
+              # print 'publish %s -> %s' % (thing['state'], thing['uid'])
                 self._prof.prof('publish', uid=thing['uid'], state=thing['state'])
 
             if push:
@@ -1111,10 +1132,13 @@ class Component(mp.Process):
         # case, we record the component as 'alive'.  Whenever we see all current
         # components as 'alive', we unlock the barrier.
         
+        print 'barrier msg: %s' % msg
+
         cmd = msg['cmd']
         arg = msg['arg']
 
         if cmd not in ['alive']:
+            print 'barrier msg: ignored'
             # nothing to do
             return
 
@@ -1127,13 +1151,16 @@ class Component(mp.Process):
 
             # record msg only once
             if arg in self._barrier_seen:
+                print 'barrier msg: duplicated'
                 self._log.error('duplicated alive msg for %s' % arg)
                 return
 
 
+            print 'barrier msg: append'
             self._barrier_seen.append(arg)
 
             if len(self._barrier_seen) < len(self._components):
+                print 'barrier msg: eagain (%s) (%s)' % (self._barrier_seen, self._components)
                 self._log.debug('barrier %s / %s', len(self._barrier_seen),
                         len(self._components))
                 return
@@ -1145,6 +1172,8 @@ class Component(mp.Process):
                     raise RuntimeError('bookkeeping error: %s != %s'
                             % (sorted(self._barrier_seen), 
                                sorted(uids)))
+                print 'barrier msg: ok %s' % uid
+            print 'barrier msg: lift'
 
             # all components have been seen as alive by now - lift barrier
             self._barrier.set()
@@ -1211,6 +1240,7 @@ class Component(mp.Process):
         """
 
         import pprint
+        print 'start components: %s' % components
         self._log.debug('start components: cfg: %s' % pprint.pformat(self._cfg))
 
         if not owner  : owner   = self.uid 

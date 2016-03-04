@@ -65,7 +65,7 @@ class ComputePilot(object):
         self._session       = self._pmgr.session
         self._uid           = ru.generate_id('pilot.%(counter)04d', ru.ID_CUSTOM)
         self._state         = rps.NEW
-        self._state_hist    = [{'state'     : rps.NEW, 
+        self._state_history = [{'state'     : rps.NEW, 
                                 'timestamp' : rpu.timestamp()}]
         self._log           = pmgr._log
         self._log_msgs      = list()
@@ -99,7 +99,7 @@ class ComputePilot(object):
     #
     def __repr__(self):
 
-        return self.as_dict()
+        return str(self.as_dict())
 
 
     # --------------------------------------------------------------------------
@@ -113,6 +113,7 @@ class ComputePilot(object):
     #
     def _default_state_cb(self, pilot, state):
 
+        print 'default cb: %s' % state
         self._log.info("[Callback]: pilot %s state: %s.", self.uid, self.state)
 
 
@@ -140,16 +141,31 @@ class ComputePilot(object):
         #
         # FIXME: add sanity checks
 
+        print 'UPDATE pilot %s' % pilot_dict['uid']
+
+        old_state   = self.state
+        new_state   = pilot_dict['state']
+
+        print 'state: %s -> %s' % (old_state, new_state)
+
+        # we update all fields
+        for key,val in pilot_dict.iteritems():
+            # FIXME: well, this is ugly...  we should maintain all state in
+            #        a dict.
+            if key in ['state', 'sandbox', 'state_history', 
+                       'stdout', 'stderr']:
+                setattr(self, "_%s" % key, val)
+
         if 'state' in pilot_dict: 
-            old_state   = self.state
-            new_state   = pilot_dict['state']
-            self._state = new_state
 
             if old_state != new_state:
 
-                for cb_func, cb_data in self._callbacks:
-                    if cb_data: cb_func(self, self.state, cb_data)
-                    else      : cb_func(self, self.state)
+                print 'call callbacks'
+
+                for cb, cb_data in self._callbacks:
+                    print cb
+                    if cb_data: cb(self, self.state, cb_data)
+                    else      : cb(self, self.state)
 
                 # also inform pmgr about state change, to collect any callbacks
                 # it has registered globally
@@ -255,7 +271,7 @@ class ComputePilot(object):
             * list of tuples [[state, timestamp]]
         """
 
-        return copy.deepcopy(self._state_hist)
+        return copy.deepcopy(self._state_history)
 
 
     # --------------------------------------------------------------------------
@@ -359,25 +375,25 @@ class ComputePilot(object):
 
     # --------------------------------------------------------------------------
     #
-    def register_callback(self, cb_func, cb_data=None):
+    def register_callback(self, cb, cb_data=None):
         """
         Registers a callback function that is triggered every time the
         pilot's state changes.
 
         All callback functions need to have the same signature::
 
-            def cb_func(obj, state)
+            def cb(obj, state)
 
         where ``object`` is a handle to the object that triggered the callback
         and ``state`` is the new state of that object.  If 'cb_data' is given,
-        then the 'cb_func' signature changes to 
+        then the 'cb' signature changes to 
 
-            def cb_func(obj, state, cb_data)
+            def cb(obj, state, cb_data)
 
         and 'cb_data' are passed along.
 
         """
-        self._callbacks.append([cb_func, cb_data])
+        self._callbacks.append([cb, cb_data])
 
 
     # --------------------------------------------------------------------------
@@ -407,7 +423,7 @@ class ComputePilot(object):
 
         if not state:
             states = rps.FINAL
-        if not isinstance(state, list):
+        elif not isinstance(state, list):
             states = [state]
         else:
             states = state
@@ -426,6 +442,7 @@ class ComputePilot(object):
 
         start_wait = time.time()
         while self.state not in states:
+            print 'wait state: %s' % states
 
             time.sleep(0.1)
 
@@ -442,7 +459,7 @@ class ComputePilot(object):
         Cancel the pilot.
         """
         
-        self._pmgr.cancel_pilot(self.uid)
+        self._pmgr.cancel_pilots(self.uid)
 
 
     # --------------------------------------------------------------------------

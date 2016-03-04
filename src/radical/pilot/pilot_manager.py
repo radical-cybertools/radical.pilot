@@ -129,8 +129,8 @@ class PilotManager(rpu.Component):
         # also listen to the state pubsub for pilot state changes
         self.declare_subscriber('state', 'state_pubsub', self._state_sub_cb)
 
-
-        self._session._dbs.insert_pilot_manager(self.as_dict())
+        # let session know we exist
+        self._session._register_pmgr(self)
 
         self._prof.prof('PMGR setup done', logger=self._log.debug)
         self._log.report.ok('>>ok\n')
@@ -143,10 +143,9 @@ class PilotManager(rpu.Component):
         Shuts down the PilotManager.
 
         **Arguments:**
-            * **terminate** [`bool`]: If set to True, all active pilots will 
-              get canceled (default: False).
-
+            * **terminate** [`bool`]: cancel non-final pilots if True (default)
         """
+
         if self._closed:
             raise RuntimeError("instance is already closed")
 
@@ -158,18 +157,16 @@ class PilotManager(rpu.Component):
             self.cancel_pilots()
             self.wait_pilots()
 
-     ## if self._worker:
-     ##     self._worker.stop()
-     ## TODO: kill components
-
         # kill child process, threads
         self.stop()
 
         self._session.prof.prof('closed pmgr', uid=self._uid)
-        self._log.info("Closed PilotManager %s." % str(self._uid))
+        self._log.info("Closed PilotManager %s." % self._uid)
 
         self._closed = True
         self._log.report.ok('>>ok\n')
+
+        print 'closed pmgr %s' % self.uid
 
 
     # --------------------------------------------------------------------------
@@ -227,7 +224,7 @@ class PilotManager(rpu.Component):
             pid   = msg["uid"]
             state = msg["state"]
 
-            self._update_pilot(pid, {'state' : state})
+            self._update_pilot(pid, msg)
 
 
     # --------------------------------------------------------------------------
@@ -243,6 +240,7 @@ class PilotManager(rpu.Component):
 
             # only update on state changes
             if self._pilots[pid].state != pilot['state']:
+                print 'update pilot %s' % pid
                 return self._pilots[pid]._update(pilot)
             else:
                 return False
@@ -517,9 +515,12 @@ class PilotManager(rpu.Component):
         if not isinstance(uids, list):
             uids = [uids]
 
+        self.publish('control', {'cmd' : 'cancel_pilots', 
+                                 'arg' : {'uids' : uids}})
+
         pilots = self.get_pilots(uids)
         for pilot in pilots:
-            pilot.cancel()
+            pilot.wait()
 
 
     # --------------------------------------------------------------------------

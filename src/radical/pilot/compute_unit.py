@@ -104,7 +104,7 @@ class ComputeUnit(object):
     #
     def __repr__(self):
 
-        return self.as_dict()
+        return str(self.as_dict())
 
 
     # --------------------------------------------------------------------------
@@ -145,8 +145,8 @@ class ComputeUnit(object):
         for key,val in unit_dict.iteritems():
             # FIXME: well, this is ugly...  we should maintain all state in
             #        a dict.
-            if key in ['state', 'stdout', 'stderr', 'exit_code', 'pilot', 
-                       'sandbox', 'pilot_sandbox', 'session', 'state_history']:
+            if key in ['state', 'state_history', 'stdout', 'stderr', 
+                       'exit_code', 'pilot', 'sandbox', 'pilot_sandbox']:
                 setattr(self, "_%s" % key, val)
 
         if old_state != new_state:
