@@ -151,6 +151,12 @@ class ORTE(AgentExecutingComponent):
         if old_path:
             new_env['PATH'] = old_path
 
+        # TODO: verify this snippet from:
+        # https://github.com/radical-cybertools/radical.pilot/pull/973/files
+        # old_ppath = new_env.pop('_OLD_VIRTUAL_PYTHONPATH', None)
+        # if old_ppath:
+        #     new_env['PYTHONPATH'] = old_ppath
+
         old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
         if old_home:
             new_env['PYTHON_HOME'] = old_home
