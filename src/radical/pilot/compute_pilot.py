@@ -163,7 +163,6 @@ class ComputePilot(object):
                 print 'call callbacks'
 
                 for cb, cb_data in self._callbacks:
-                    print cb
                     if cb_data: cb(self, self.state, cb_data)
                     else      : cb(self, self.state)
 
@@ -442,9 +441,9 @@ class ComputePilot(object):
 
         start_wait = time.time()
         while self.state not in states:
-            print 'wait state: %s' % states
+            print 'wait state: %s %s' % (self.state, states)
 
-            time.sleep(0.1)
+            time.sleep(0.3)
 
             if timeout and (timeout <= (time.time() - start_wait)):
                 break

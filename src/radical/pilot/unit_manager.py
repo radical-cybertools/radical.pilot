@@ -133,26 +133,26 @@ class UnitManager(rpu.Component):
 
         # The output queue is used to forward submitted units to the
         # scheduling component.
-        self.declare_output(rps.UMGR_SCHEDULING_PENDING, 
-                            rpc.UMGR_SCHEDULING_QUEUE)
+        self.register_output(rps.UMGR_SCHEDULING_PENDING, 
+                             rpc.UMGR_SCHEDULING_QUEUE)
 
         # the umgr will also collect units from the agent again, for output
         # staging and finalization
-        self.declare_output(rps.UMGR_STAGING_OUTPUT_PENDING, 
-                            rpc.UMGR_STAGING_OUTPUT_QUEUE)
+        self.register_output(rps.UMGR_STAGING_OUTPUT_PENDING, 
+                             rpc.UMGR_STAGING_OUTPUT_QUEUE)
 
         # register the state notification pull cb
         # FIXME: we may want to have the frequency configurable
         # FIXME: this should be a tailing cursor in the update worker
-        self.declare_idle_cb(self._state_pull_cb, timeout=1.0)
+        self.register_idle_cb(self._state_pull_cb, timeout=1.0)
 
         # register callback which pulls units back from agent
         # FIXME: this should be a tailing cursor in the update worker
         # FIXME: make frequency configurable
-        self.declare_idle_cb(self._unit_pull_cb, timeout=0.1)
+        self.register_idle_cb(self._unit_pull_cb, timeout=0.1)
 
         # also listen to the state pubsub for unit state changes
-        self.declare_subscriber('state', 'state_pubsub', self._state_sub_cb)
+        self.register_subscriber(rpc.STATE_PUBSUB, self._state_sub_cb)
 
         # let session know we exist
         self._session._register_umgr(self)
@@ -388,10 +388,10 @@ class UnitManager(rpu.Component):
                     raise ValueError('pilot %s already added' % pid)
 
                 # publish to the command channel for the scheduler to pick up
-                self.publish('control', {'cmd' : 'add_pilot', 
-                                         'arg' : {'pid'  : pid, 
-                                                  'thing': pilot.as_dict(),
-                                                  'umgr' : self.uid}})
+                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'add_pilot', 
+                                                  'arg' : {'pid'  : pid, 
+                                                           'thing': pilot.as_dict(),
+                                                           'umgr' : self.uid}})
 
                 # also keep pilots around for inspection
                 self._pilots[pid] = pilot
@@ -470,8 +470,8 @@ class UnitManager(rpu.Component):
                 del(self._pilots[pid])
 
                 # publish to the command channel for the scheduler to pick up
-                self.publish('control', {'cmd' : 'remove_pilot', 
-                                         'arg' : pid})
+                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'remove_pilot', 
+                                                  'arg' : pid})
 
 
     # --------------------------------------------------------------------------

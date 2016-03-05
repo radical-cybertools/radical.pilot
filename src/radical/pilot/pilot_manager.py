@@ -119,15 +119,16 @@ class PilotManager(rpu.Component):
 
         # The output queue is used to forward submitted pilots to the
         # launching component.
-        self.declare_output(rps.PMGR_LAUNCHING_PENDING, rpc.PMGR_LAUNCHING_QUEUE)
+        self.register_output(rps.PMGR_LAUNCHING_PENDING,
+                             rpc.PMGR_LAUNCHING_QUEUE)
 
         # register the state notification pull cb
         # FIXME: we may want to have the frequency configurable
         # FIXME: this should be a tailing cursor in the update worker
-        self.declare_idle_cb(self._state_pull_cb, timeout=1.0)
+        self.register_idle_cb(self._state_pull_cb, timeout=1.0)
 
         # also listen to the state pubsub for pilot state changes
-        self.declare_subscriber('state', 'state_pubsub', self._state_sub_cb)
+        self.register_subscriber(rpc.STATE_PUBSUB, self._state_sub_cb)
 
         # let session know we exist
         self._session._register_pmgr(self)
@@ -515,8 +516,8 @@ class PilotManager(rpu.Component):
         if not isinstance(uids, list):
             uids = [uids]
 
-        self.publish('control', {'cmd' : 'cancel_pilots', 
-                                 'arg' : {'uids' : uids}})
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots', 
+                                          'arg' : {'uids' : uids}})
 
         pilots = self.get_pilots(uids)
         for pilot in pilots:

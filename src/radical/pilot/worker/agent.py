@@ -44,7 +44,7 @@ class Agent(rpu.Worker):
         self._log.debug('starting AgentWorker for %s' % self.uid)
 
         # all components use the command channel for control messages
-        self.declare_subscriber('control', rpc.CONTROL_PUBSUB, self.command_cb)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
 
     # --------------------------------------------------------------------------
@@ -193,8 +193,7 @@ class Agent(rpu.Worker):
 
         # make sure we collect commands, specifically to implement the startup
         # barrier on bootstrap_4
-        self.declare_subscriber('control', rpc.CONTROL_PUBSUB, 
-                self._agent_barrier_cb)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._agent_barrier_cb)
 
         # Now instantiate all communication and notification channels, and all
         # components and workers.  It will then feed a set of units to the
@@ -220,8 +219,8 @@ class Agent(rpu.Worker):
         # once bootstrap_4 is done, we signal success to the parent agent
         # -- if we have any parent...
         if self.agent_name != 'agent_0':
-            self.publish('control', {'cmd' : 'alive',
-                                     'arg' : self.agent_name})
+            self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
+                                              'arg' : self.agent_name})
 
         # sub-agents are started, components are started, bridges are up -- we
         # are ready to roll!
@@ -252,12 +251,13 @@ class Agent(rpu.Worker):
         self._log.debug('agent will pull units: %s' % bool(self._pull_units))
         if self._pull_units:
 
-            self.declare_output(rps.AGENT_STAGING_INPUT_PENDING,
-                                rpc.AGENT_STAGING_INPUT_QUEUE)
+            self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
+                                 rpc.AGENT_STAGING_INPUT_QUEUE)
 
             # register idle callback, to pull for units -- which is the only action
             # we have to perform, really
-            self.declare_idle_cb(self._idle_cb, timeout=self._cfg['db_poll_sleeptime'])
+            self.register_idle_cb(self._idle_cb, 
+                                  timeout=self._cfg.get('db_poll_sleeptime', 1.0))
 
 
     # --------------------------------------------------------------------------
@@ -407,7 +407,7 @@ class Agent(rpu.Worker):
 
         # the agents are up - register an idle callback to watch them
         # FIXME: make timeout configurable?
-        self.declare_idle_cb(self._sa_watcher_cb, timeout=10.0)
+        self.register_idle_cb(self._sa_watcher_cb, timeout=10.0)
 
         self._log.debug('start_sub_agents done')
 

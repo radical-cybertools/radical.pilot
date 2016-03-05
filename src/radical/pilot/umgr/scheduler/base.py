@@ -57,18 +57,19 @@ class UMGRSchedulingComponent(rpu.Component):
         # configure the scheduler instance
         self._configure()
 
-        self.declare_input(rps.UMGR_SCHEDULING_PENDING,
-                           rpc.UMGR_SCHEDULING_QUEUE, self.work)
+        self.register_input(rps.UMGR_SCHEDULING_PENDING,
+                            rpc.UMGR_SCHEDULING_QUEUE, self.work)
 
-        self.declare_output(rps.UMGR_STAGING_INPUT_PENDING, rpc.UMGR_STAGING_INPUT_QUEUE)
+        self.register_output(rps.UMGR_STAGING_INPUT_PENDING,
+                             rpc.UMGR_STAGING_INPUT_QUEUE)
 
         # Some schedulers care about states (of pilots and/or units), some
         # don't.  Either way, we here subscribe to state updates.
-        self.declare_subscriber('state', rpc.STATE_PUBSUB, self.base_state_cb)
+        self.register_subscriber(rpc.STATE_PUBSUB, self.base_state_cb)
 
         # Schedulers use that command channel to get information about
         # pilots being added or removed.
-        self.declare_subscriber('control', rpc.CONTROL_PUBSUB, self.base_command_cb)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self.base_command_cb)
 
 
     # --------------------------------------------------------------------------

@@ -32,7 +32,7 @@ from .pubsub     import PUBSUB_BRIDGE  as rpu_PUBSUB_BRIDGE
 
 # TODO:
 #   - add PENDING states
-#   - for notifications, change msg from [topic, thing] to [topic, msg]
+#   - for notifications, change msg from [pubsub, thing] to [pubsub, msg]
 #   - components should not need to declare the state publisher?
 
 
@@ -146,21 +146,23 @@ class Component(mp.Process):
         self._cfg           = copy.deepcopy(cfg)
         self._session       = session
         self._debug         = cfg.get('debug', 'DEBUG') # FIXME
-        self._owner         = cfg.get('owner')
         self._name          = cfg.get('name')
         self._ctype         = "%s.%s" % (self.__class__.__module__, 
                                          self.__class__.__name__)
-        self._inputs        = list()      # queues to get things from
-        self._outputs       = dict()      # queues to send things to
-        self._publishers    = dict()      # channels to send notifications to
-        self._subscribers   = list()      # callbacks for received notifications
-        self._workers       = dict()      # where things get worked upon
-        self._idlers        = list()      # idle_callback registry
-        self._terminate     = mt.Event()  # signal for thread termination
-        self._finalized     = False       # finalization guard
-        self._is_parent     = True        # guard initialize/initialize_child
-        self._exit_on_error = True        # FIXME: make configurable
-        self._cb_lock       = mt.Lock()   # guard threaded callback invokations
+        self._owner         = cfg.get('owner')
+                                           # we need owner for alive messages
+        self._inputs        = list()       # queues to get things from
+        self._outputs       = dict()       # queues to send things to
+        self._publishers    = dict()       # channels to send notifications to
+        self._subscribers   = list()       # callbacks for recv'ed notifications
+        self._workers       = dict()       # where things get worked upon
+        self._idlers        = list()       # idle_callback registry
+        self._terminate     = mt.Event()   # signal for thread termination
+        self._finalized     = False        # finalization guard
+        self._is_parent     = True         # guard initialize/initialize_child
+        self._started       = False        # if start() was called
+        self._cb_lock       = mt.Lock()    # guard threaded callback invokations
+        self._exit_on_error = True         # FIXME: make configurable
 
         # we always need an UID
         if not hasattr(self, 'uid'):
@@ -190,8 +192,8 @@ class Component(mp.Process):
         # our config if an address map exists.  If not we check the session.
         # After this, we we check the config for a set of defined bridges.  If
         # that exist, we start them, and add the addresses to out address map.
-        # After that we check that map -- if the 'control' or 'state' pubsub is
-        # still missing, we give up.
+        # After that we check that map -- if the rpc.CONTROL_PUBSUB or 'state'
+        # pubsub is still missing, we give up.
         #
         # NOTE: This implies that we always start bridges in the parent process.
 
@@ -218,11 +220,10 @@ class Component(mp.Process):
         self._log.info('addr_map: %s', pprint.pformat(self._addr_map))
 
         # components can always publish state updates, and send control messages
-        self.declare_publisher('state',   rpc.STATE_PUBSUB)
-        self.declare_publisher('control', rpc.CONTROL_PUBSUB)
-
         # we also subscribe to control messages
-        self.declare_subscriber('control', rpc.CONTROL_PUBSUB, self._control_cb)
+        self.register_publisher (rpc.STATE_PUBSUB)
+        self.register_publisher (rpc.CONTROL_PUBSUB)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
 
         # We keep a static typemap for worker, component and bridge startup. If
         # we ever want to become reeeealy fancy, we can derive that typemap from
@@ -269,7 +270,7 @@ class Component(mp.Process):
 
         if cmd == 'shutdown':
           # src = arg['sender']
-          # if src in [self.uid, self._session.uid, self._owner]:
+          # if src in [self.uid, self._session.uid, self._owner, None]:
             self._log.info('received shutdown command (%s)', arg)
             self.stop()
 
@@ -297,6 +298,13 @@ class Component(mp.Process):
     @property
     def uid(self):
         return self._uid
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def owner(self):
+        return self._owner
 
 
     # --------------------------------------------------------------------------
@@ -389,13 +397,12 @@ class Component(mp.Process):
 
         try:
             # this is now the parent process context
+            self._started = True
             self.initialize()
         except Exception as e:
             self._log.exception ('initialize failed')
             self.stop()
             raise
-
-
 
 
     # --------------------------------------------------------------------------
@@ -442,9 +449,6 @@ class Component(mp.Process):
         for component in self._components: component.stop()
         for bridge    in self._bridges   : bridge.stop()
 
-        for component in self._components: component.join()
-        for bridge    in self._bridges   : bridge.join()
-
         # let everybody know we are about to go away
         self._terminate.set()
 
@@ -470,7 +474,7 @@ class Component(mp.Process):
                 self._prof.prof("not_yet_finalized")
 
             # Signal the child
-            if self.is_alive():
+            if self._started and self.is_alive():
                 self._log.debug('signalling child')
                 self.terminate()
 
@@ -494,8 +498,8 @@ class Component(mp.Process):
 
         else:
             # communicate finalization
-            self.publish('control', {'cmd' : 'final',
-                                     'arg' : self.uid})
+            self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'final',
+                                              'arg' : self.uid})
 
             # we only finalize in the child's main thread.
             # NOTE: this relies on us not to change the name of MainThread
@@ -534,7 +538,7 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def declare_input(self, states, input, worker):
+    def register_input(self, states, input, worker):
         """
         Using this method, the component can be connected to a queue on which
         things are received to be worked upon.  The given set of states (which
@@ -581,7 +585,7 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def declare_output(self, states, output=None):
+    def register_output(self, states, output=None):
         """
         Using this method, the component can be connected to a queue to which
         things are sent after being worked upon.  The given set of states (which
@@ -624,7 +628,7 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def declare_idle_cb(self, cb, cb_data=None, timeout=None):
+    def register_idle_cb(self, cb, cb_data=None, timeout=None):
         """
         Idle callbacks are invoked at regular intervals from the child's main
         loop.  They are guaranteed to *not* be called more frequently than
@@ -679,18 +683,14 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def declare_publisher(self, topic, pubsub):
+    def register_publisher(self, pubsub):
         """
-        Using this method, the compinent can declare certain notification topics
-        (where topic is a string).  For each topic, a pub/sub network will be
-        used to distribute the notifications to subscribers of that topic.
-
-        The same topic can be sent to multiple channels -- but that is
-        considered bad practice, and may trigger an error in later versions.
+        Using this method, the component can declare itself to be a publisher of
+        notifications on the given pubsub channel.
         """
 
-        if topic not in self._publishers:
-            self._publishers[topic] = list()
+        if pubsub not in self._publishers:
+            self._publishers[pubsub] = list()
 
         # get address for pubsub
         if not pubsub in self._addr_map:
@@ -701,10 +701,9 @@ class Component(mp.Process):
         self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
 
         q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_PUB, addr)
-        self._publishers[topic].append(q)
+        self._publishers[pubsub].append(q)
 
-        self._log.debug('declared publisher : %s : %s : %s' \
-                % (topic, pubsub, q.name))
+        self._log.debug('declared publisher : %s : %s' % (pubsub, q.name))
 
         # FIXME: I am not exactly sure why this is 'needed', but declaring
         #        a published as above and then immediately publishing on that
@@ -714,14 +713,17 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def declare_subscriber(self, topic, pubsub, cb, cb_data=None):
+    def register_subscriber(self, pubsub, cb, cb_data=None):
         """
-        This method is complementary to the declare_publisher() above: it
+        This method is complementary to the register_publisher() above: it
         declares a subscription to a pubsub channel.  If a notification
-        with matching topic is received, the registered callback will be
-        invoked.  The callback MUST have the signature:
+        is received on thag channel, the registered callback will be
+        invoked.  The callback MUST have one of the signatures:
 
           callback(topic, msg)
+          callback(topic, msg, cb_data)
+
+        where 'topic' is set to the name of the pubsub channel. 
 
         The subscription will be handled in a separate thread, which implies
         that the callback invocation will also happen in that thread.  It is the
@@ -757,17 +759,17 @@ class Component(mp.Process):
         addr = self._addr_map[pubsub]['out']
         self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
 
-        # create a pubsub subscriber, and subscribe to the given topic
+        # create a pubsub subscriber (the pubsub name doubles as topic)
         q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB, addr)
-        q.subscribe(topic)
+        q.subscribe(pubsub)
 
         t = mt.Thread(target=_subscriber, args=[q,cb,cb_data],
                       name="%s.subscriber" % self.uid)
         t.start()
         self._subscribers.append(t)
 
-        self._log.debug('%s declared subscriber: %s : %s : %s(%s) : %s' \
-                % (self.uid, topic, pubsub, cb, str(cb_data), t.name))
+        self._log.debug('%s declared subscriber: %s : %s(%s) : %s' \
+                % (self.uid, pubsub, cb, str(cb_data), t.name))
 
 
     # --------------------------------------------------------------------------
@@ -824,6 +826,14 @@ class Component(mp.Process):
         signal.signal(signal.SIGINT,  signal.SIG_DFL)
         signal.signal(signal.SIGALRM, signal.SIG_DFL)
 
+      # def sigalrm_handler(signum, frame): sys.exit()
+      # def sigterm_handler(signum, frame): sys.exit()
+      # def sigint_handler (signum, frame): sys.exit()
+      #
+      # signal.signal(signal.SIGALRM, sigalrm_handler)
+      # signal.signal(signal.SIGTERM, sigterm_handler)
+      # signal.signal(signal.SIGINT,  sigint_handler)
+
         # set process name
         try:
             import setproctitle as spt
@@ -838,8 +848,8 @@ class Component(mp.Process):
             self._log.info('running %s' % self.uid)
 
             # components can always publissh state updates, and commands
-            self.declare_publisher('state',   rpc.STATE_PUBSUB)
-            self.declare_publisher('control', rpc.CONTROL_PUBSUB)
+            self.register_publisher(rpc.STATE_PUBSUB)
+            self.register_publisher(rpc.CONTROL_PUBSUB)
 
             # initialize_child() should declare all input and output channels, and all
             # workers and notification callbacks
@@ -850,8 +860,8 @@ class Component(mp.Process):
             # register own idle callbacks to 
             #  - watch the subscriber threads (1/sec)
             #  - flush profiles to the FS (1/sec)
-            self.declare_idle_cb(self._subscriber_check_cb, timeout= 1.0)
-            self.declare_idle_cb(self._profile_flush_cb,    timeout=60.0)
+            self.register_idle_cb(self._subscriber_check_cb, timeout= 1.0)
+            self.register_idle_cb(self._profile_flush_cb,    timeout=60.0)
 
             # perform a sanity check: for each declared input state, we expect
             # a corresponding work method to be declared, too.
@@ -862,8 +872,11 @@ class Component(mp.Process):
                                         % self.uid, state)
 
             # setup is done, child initialization is done -- we are alive!
-            self.publish('control', {'cmd' : 'alive',
-                                     'arg' : self.uid})
+            # if we have an owner, we send an alive message to it
+            if self._owner:
+                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
+                                                  'arg' : {'sender' : self.uid, 
+                                                           'owner'  : self.owner}})
 
             # The main event loop will repeatedly iterate over all input
             # channels, probing
@@ -939,6 +952,7 @@ class Component(mp.Process):
                     # FIXME: make configurable
                     time.sleep(0.1)
 
+            self._log.info('loop termination')
 
         except Exception as e:
             # We should see that exception only on process termination -- and of
@@ -949,7 +963,7 @@ class Component(mp.Process):
             self._log.exception('loop exception')
 
         except SystemExit:
-            self._log.debug("Caught exit")
+            self._log.debug("loop exit")
 
         except:
             # Can be any other signal or interrupt.
@@ -1013,7 +1027,7 @@ class Component(mp.Process):
                 if state in rps.FINAL:
                     thing['$all'] = True
                 # send state notifications.  
-                self.publish('state', {'cmd': 'update', 'arg': thing})
+                self.publish(rpc.STATE_PUBSUB, {'cmd': 'update', 'arg': thing})
               # print 'publish %s -> %s' % (thing['state'], thing['uid'])
                 self._prof.prof('publish', uid=thing['uid'], state=thing['state'])
 
@@ -1046,7 +1060,7 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def publish(self, topic, msg):
+    def publish(self, pubsub, msg):
         """
         push information into a publication channel
         """
@@ -1054,17 +1068,17 @@ class Component(mp.Process):
         if not isinstance(msg, list):
             msg = [msg]
 
-        if topic not in self._publishers:
-            self._log.error("can't route '%s' notification: %s" % (topic, msg))
+        if pubsub not in self._publishers:
+            self._log.error("can't route '%s' notification: %s" % (pubsub, msg))
             return
 
-        if not self._publishers[topic]:
-            self._log.error("no route for '%s' notification: %s" % (topic, msg))
+        if not self._publishers[pubsub]:
+            self._log.error("no route for '%s' notification: %s" % (pubsub, msg))
             return
 
-        for p in self._publishers[topic]:
-            self._log.debug('### 2 put %s, %s', topic, msg)
-            p.put (topic, msg)
+        for p in self._publishers[pubsub]:
+            self._log.debug('### 2 put %s, %s', pubsub, msg)
+            p.put (pubsub, msg)
 
 
     # --------------------------------------------------------------------------
@@ -1132,37 +1146,48 @@ class Component(mp.Process):
         # case, we record the component as 'alive'.  Whenever we see all current
         # components as 'alive', we unlock the barrier.
         
-        print 'barrier msg: %s' % msg
+        print 'barrier %s: %s' % (self.uid, msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
 
+        # only look at alive messages
         if cmd not in ['alive']:
-            print 'barrier msg: ignored'
+            print 'barrier %s: ignored' % self.uid
             # nothing to do
             return
 
-        if arg.endswith('.child'):
-            arg = arg[:-6]
+        sender = arg['sender']  # this may be the component we wait for
+        owner  = arg['owner']   # only our own components are interesting
 
+        # alive messages usually come from child processes
+        if sender.endswith('.child'): 
+            sender = sender[:-6]
+
+        # only look at messages from our own children
+        if not owner == self.uid:
+            print 'barrier %s: foreign (%s)' % (self.uid, owner)
+            return
+
+        # now we are sure to have an 'interesting' alive message
+        #
         # the first cb invication will stall here until all component start
         # requests are issued, and self._components is filled.
         with self._barrier_lock:
 
-            # record msg only once
-            if arg in self._barrier_seen:
-                print 'barrier msg: duplicated'
-                self._log.error('duplicated alive msg for %s' % arg)
+            # record component only once
+            if sender in self._barrier_seen:
+                print 'barrier %s: duplicated' % self.uid
+                self._log.error('duplicated alive msg for %s' % sender)
                 return
 
 
-            print 'barrier msg: append'
-            self._barrier_seen.append(arg)
+            print 'barrier %s: append' % sender
+            self._barrier_seen.append(sender)
 
             if len(self._barrier_seen) < len(self._components):
-                print 'barrier msg: eagain (%s) (%s)' % (self._barrier_seen, self._components)
-                self._log.debug('barrier %s / %s', len(self._barrier_seen),
-                        len(self._components))
+                print 'barrier %s: incomplete (%s)' % (self.uid, len(self._barrier_seen))
+                self._log.debug( 'barrier %s: incomplete (%s)', self.uid, len(self._barrier_seen))
                 return
 
             # sanity check if we indeed saw all components as alive
@@ -1172,10 +1197,9 @@ class Component(mp.Process):
                     raise RuntimeError('bookkeeping error: %s != %s'
                             % (sorted(self._barrier_seen), 
                                sorted(uids)))
-                print 'barrier msg: ok %s' % uid
-            print 'barrier msg: lift'
 
             # all components have been seen as alive by now - lift barrier
+            print 'barrier %s: lift (%s)' % (self.uid, self._barrier_seen)
             self._barrier.set()
 
             # FIXME: this callback can now be unregistered
@@ -1224,9 +1248,10 @@ class Component(mp.Process):
         
         On startup, components always connect to the command channel, and will
         send an 'alive' message there.  The starting component will register
-        a 'control' subscriber to wait for those 'alive' messages, thus creating
-        a startup barrier.  If that barrier is not passed after 'timeout'
-        seconds (default: 60), the startup is considered to have failed.
+        a rpc.CONTROL_PUBSUB subscriber to wait for those 'alive' messages, thus
+        creating a startup barrier.  If that barrier is not passed after
+        'timeout' seconds (default: 60), the startup is considered to have
+        failed.
 
         An idle callback is also created which waches all spawned components.
         If any of the components is detected as 'failed', stop() is called and
@@ -1239,7 +1264,6 @@ class Component(mp.Process):
         of components.
         """
 
-        import pprint
         print 'start components: %s' % components
         self._log.debug('start components: cfg: %s' % pprint.pformat(self._cfg))
 
@@ -1257,7 +1281,7 @@ class Component(mp.Process):
             # initialize data and start barrier, so that no alive messages get lost
             self._barrier.clear()
             self._barrier_seen = list()
-            self.declare_subscriber('control', rpc.CONTROL_PUBSUB, self._barrier_cb)
+            self.register_subscriber(rpc.CONTROL_PUBSUB, self._barrier_cb)
 
             start = time.time()
             self._log.debug("start_components")
@@ -1288,19 +1312,19 @@ class Component(mp.Process):
 
                     self._components.append(comp)
 
+            print "barrier %s: wait %s" % (self.uid, self._components)
+
+
         # at this point, the barrier lock will be released, and the barrier cb
         # can start to collect alive messages from the components we just
         # started.
-        import pprint
-        self._log.debug("wait for barrier (%s)" % self.uid)
-        self._log.debug("%s" % pprint.pformat(self._components))
 
         if not self._barrier.wait(timeout):
             raise RuntimeError('component startup barrier failed (timeout)')
 
         # once components are up, we start a watcher callback
         # FIXME: make timeout configurable?
-        self.declare_idle_cb(self._component_watcher_cb, timeout=10.0)
+        self.register_idle_cb(self._component_watcher_cb, timeout=10.0)
 
         # FIXME: barrier_cb can now be unregistered
         self._log.debug("start_components done")

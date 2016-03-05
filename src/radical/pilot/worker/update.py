@@ -60,8 +60,9 @@ class Update(rpu.Worker):
         self._lock          = threading.RLock() # protect _cinfo
         self._state_cache   = dict()            # used to preserve state ordering
 
-        self.declare_subscriber('state', 'state_pubsub', self._state_cb)
-        self.declare_idle_cb(self._idle_cb, timeout=self._cfg.get('bulk_collection_time'))
+        self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
+        self.register_idle_cb(self._idle_cb, 
+                              timeout=self._cfg.get('bulk_collection_time', 1.0))
 
 
     # --------------------------------------------------------------------------

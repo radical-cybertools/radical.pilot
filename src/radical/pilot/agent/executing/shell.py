@@ -36,13 +36,14 @@ class Shell(AgentExecutingComponent):
 
         from .... import pilot as rp
 
-        self.declare_input(rps.EXECUTING_PENDING, 
-                           rpc.AGENT_EXECUTING_QUEUE, self.work)
+        self.register_input(rps.EXECUTING_PENDING, 
+                            rpc.AGENT_EXECUTING_QUEUE, self.work)
 
-        self.declare_output(rps.AGENT_STAGING_OUTPUT_PENDING, rpc.AGENT_STAGING_OUTPUT_QUEUE)
+        self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
+                             rpc.AGENT_STAGING_OUTPUT_QUEUE)
 
-        self.declare_publisher ('unschedule', rpc.AGENT_UNSCHEDULE_PUBSUB)
-        self.declare_subscriber('control',    rpc.CONTROL_PUBSUB, self.command_cb)
+        self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
         # Mimic what virtualenv's "deactivate" would do
         self._deactivate = "# deactivate pilot virtualenv\n"
@@ -182,7 +183,7 @@ class Shell(AgentExecutingComponent):
             with self._cancel_lock:
                 self._cus_to_cancel.remove(cu['uid'])
 
-            self.publish('unschedule', cu)
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
             self.advance(cu, rps.CANCELED, publish=True, push=False)
             return True
 
@@ -249,7 +250,7 @@ class Shell(AgentExecutingComponent):
 
             # Free the Slots, Flee the Flots, Ree the Frots!
             if cu['opaque_slots']:
-                self.publish('unschedule', cu)
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
 
@@ -576,7 +577,7 @@ class Shell(AgentExecutingComponent):
         self._prof.prof('exec', msg='execution complete', uid=cu['uid'])
 
         # for final states, we can free the slots.
-        self.publish('unschedule', cu)
+        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
         # record timestamp, exit code on final states
         cu['finished'] = rpu.timestamp()

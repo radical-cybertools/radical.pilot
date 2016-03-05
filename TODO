@@ -55,3 +55,9 @@
   - shutdown command propagation is broken
 
 
+  - cancelation is best done on component level
+    - subscribe to control to get cancel requests
+    - for each cancel request
+      - add to self._cancel_requested
+    - whenver we see an advance or work request:
+      - if uid in self._cancel_requested: advance(CANCEL) + drop   

@@ -35,11 +35,11 @@ class Default(UMGRStagingInputComponent):
         # we keep a cache of SAGA dir handles
         self._cache = dict()
 
-        self.declare_input(rps.UMGR_STAGING_INPUT_PENDING,
-                           rpc.UMGR_STAGING_INPUT_QUEUE, self.work)
+        self.register_input(rps.UMGR_STAGING_INPUT_PENDING,
+                            rpc.UMGR_STAGING_INPUT_QUEUE, self.work)
 
         # FIXME: this queue is inaccessible, needs routing via mongodb
-        self.declare_output(rps.AGENT_STAGING_INPUT_PENDING, None)
+        self.register_output(rps.AGENT_STAGING_INPUT_PENDING, None)
 
 
     # --------------------------------------------------------------------------

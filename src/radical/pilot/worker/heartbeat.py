@@ -53,8 +53,8 @@ class Heartbeat(Worker):
 
         # register work routine (this component is lazy, and only registers an
         # idle callback)
-        self.declare_idle_cb(self.idle_cb, timeout=self._cfg.get('heartbeat_interval',
-                                                                 DEFAULT_HEARTBEAT_INTERVAL))
+        self.register_idle_cb(self.idle_cb, 
+                timeout=self._cfg.get('heartbeat_interval', DEFAULT_HEARTBEAT_INTERVAL))
 
 
     # --------------------------------------------------------------------------
@@ -70,8 +70,8 @@ class Heartbeat(Worker):
 
         except Exception as e:
             self._log.exception('heartbeat died - cancel')
-            self.publish('control', {'cmd' : 'shutdown',
-                                     'arg' : 'exception'})
+            self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'shutdown',
+                                              'arg' : 'exception'})
 
     # --------------------------------------------------------------------------
     #
@@ -92,10 +92,7 @@ class Heartbeat(Worker):
         if not retdoc:
             return
 
-        import pprint
-        self._log.debug('hb %s got %s: %s (%s)', 
-                self._owner, type(retdoc), pprint.pformat(retdoc),
-                str(retdoc['_id']))
+        self._log.debug('hb %s got %s', self._owner, retdoc['_id'])
 
         for command in retdoc.get(rpc.COMMAND_FIELD, []):
 
@@ -107,18 +104,18 @@ class Heartbeat(Worker):
 
             if cmd == rpc.COMMAND_CANCEL_PILOT:
                 self._log.info('cancel pilot cmd')
-                self.publish('control', {'cmd' : 'shutdown',
-                                         'arg' : 'cancel'})
+                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'shutdown',
+                                                  'arg' : 'cancel'})
 
             elif cmd == rpc.COMMAND_CANCEL_COMPUTE_UNIT:
                 self._log.info('cancel unit cmd')
-                self.publish('control', {'cmd' : 'cancel_unit',
-                                         'arg' : command})
+                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_unit',
+                                                  'arg' : command})
 
             elif cmd == rpc.COMMAND_KEEP_ALIVE:
                 self._log.info('keepalive pilot cmd')
-                self.publish('control', {'cmd' : 'heartbeat',
-                                         'arg' : 'keepalive'})
+                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'heartbeat',
+                                                  'arg' : 'keepalive'})
 
 
     # --------------------------------------------------------------------------
@@ -130,8 +127,8 @@ class Heartbeat(Worker):
         if self._runtime:
             if time.time() >= self._starttime + (int(self._runtime) * 60):
                 self._log.info("reached runtime limit (%ss).", self._runtime*60)
-                self.publish('control', {'cmd' : 'shutdown',
-                                         'arg' : 'timeout'})
+                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'shutdown',
+                                                  'arg' : 'timeout'})
 
 
 # ------------------------------------------------------------------------------

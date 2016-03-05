@@ -49,8 +49,8 @@ class Default(PMGRLaunchingComponent):
     #
     def initialize_child(self):
 
-        self.declare_input(rps.PMGR_LAUNCHING_PENDING, 
-                           rpc.PMGR_LAUNCHING_QUEUE, self.work)
+        self.register_input(rps.PMGR_LAUNCHING_PENDING, 
+                            rpc.PMGR_LAUNCHING_QUEUE, self.work)
 
         # we don't really have an output queue, as we pass control over the
         # pilot jobs to the resource management system (RM).
@@ -69,10 +69,10 @@ class Default(PMGRLaunchingComponent):
         self._conf_dir      = "%s/configs/" % self._root_dir 
         
         # FIXME: make interval configurable
-        self.declare_idle_cb(self._pilot_watcher_cb, timeout=10.0)
+        self.register_idle_cb(self._pilot_watcher_cb, timeout=10.0)
         
         # we listen for pilot cancel commands
-        self.declare_subscriber('control', rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
 
         _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
                 ru.get_version([self._root_dir, self._mod_dir])
@@ -97,7 +97,6 @@ class Default(PMGRLaunchingComponent):
             with self._pilots_lock:
 
                 print 'pmgr_control handles %s now' % msg
-                pprint.pprint(self._pilots)
 
                 if not isinstance(uids, list):
                     uids = [uids]
@@ -128,10 +127,23 @@ class Default(PMGRLaunchingComponent):
                     saga_job.wait()
                     print 'final    %s [%s]' % (uid, saga_pid)
 
+                # move pilots into final state
+                for uid in uids:
+                    
+                    pilot = self._pilots[uid]
+
+                    # we don't want the watcher checking for this pilot anymore
+                    self._tocheck.remove([uid,saga_pid])
+
+                    out, err, log  = self._get_pilot_logs(pilot)
+                    pilot['out']   = out
+                    pilot['err']   = err
+                    pilot['log']   = log
+                    self._log.info('pilot %s canceled', uid)
+                    self.advance(pilot, rps.CANCELED, push=False, publish=True)
+
         else:
             print 'pmgr_control ignores %s' % msg
-
-            
 
 
     # --------------------------------------------------------------------------

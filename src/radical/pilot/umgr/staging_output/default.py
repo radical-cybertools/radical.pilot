@@ -35,8 +35,8 @@ class Default(UMGRStagingOutputComponent):
         # we keep a cache of SAGA dir handles
         self._cache = dict()
 
-        self.declare_input(rps.UMGR_STAGING_OUTPUT_PENDING, 
-                           rpc.UMGR_STAGING_OUTPUT_QUEUE, self.work)
+        self.register_input(rps.UMGR_STAGING_OUTPUT_PENDING, 
+                            rpc.UMGR_STAGING_OUTPUT_QUEUE, self.work)
 
         # we don't need an output queue -- units will be final
 

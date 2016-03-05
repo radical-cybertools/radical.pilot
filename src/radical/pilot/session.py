@@ -143,7 +143,6 @@ class Session (rs.Session, rpu.Worker):
         cfg['session_id']  = self.uid
         cfg['mongodb_url'] = str(self.dburl)
 
-
         # initialize profiling
         self.prof = rpu.Profiler('%s' % self._uid)
 
@@ -204,11 +203,8 @@ class Session (rs.Session, rpu.Worker):
         if not self._reconnected:
             components = self._cfg.get('components', [])
 
-            if _connect: owner = 'client'
-            else       : owner = None  # raise where owners are needed
-
             # the bridges are known, we can start to connect the components to them
-            self.start_components(components, owner=owner)
+            self.start_components(components)
 
 
         # FIXME: make sure the above code results in a usable session on
@@ -336,22 +332,16 @@ class Session (rs.Session, rpu.Worker):
             # cleanup implies terminate
             terminate = True
 
-        print "\n----\n"
-
         for umgr_uid, umgr in self._umgrs.iteritems():
             self._log.debug("session %s closes   umgr   %s" % (str(self._uid), umgr._uid))
             umgr.close()
             self._log.debug("session %s closed   umgr   %s" % (str(self._uid), umgr._uid))
 
-        print "\n----\n"
         for pmgr_uid, pmgr in self._pmgrs.iteritems():
             self._log.debug("session %s closes   pmgr   %s" % (str(self._uid), pmgr_uid))
-            print 1, pmgr_uid
             pmgr.close(terminate=terminate)
-            print 2
             self._log.debug("session %s closed   pmgr   %s" % (str(self._uid), pmgr_uid))
 
-        print "\n----\n"
 
         # stop the component
         self.stop()  

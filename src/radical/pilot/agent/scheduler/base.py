@@ -42,21 +42,20 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def initialize_child(self):
 
-      # self.declare_input(rps.AGENT_SCHEDULING_PENDING, 
-      #                    rpc.AGENT_SCHEDULING_QUEUE, self.work)
-        self.declare_input(rps.ALLOCATING_PENDING, 
-                           rpc.AGENT_SCHEDULING_QUEUE, self.work)
+        self.register_input(rps.AGENT_SCHEDULING_PENDING, 
+                            rpc.AGENT_SCHEDULING_QUEUE, self.work)
 
-        self.declare_output(rps.EXECUTING_PENDING,  rpc.AGENT_EXECUTING_QUEUE)
+        self.register_output(rps.EXECUTING_PENDING,  
+                             rpc.AGENT_EXECUTING_QUEUE)
 
         # we need unschedule updates to learn about units which free their
         # allocated cores.  Those updates need to be issued after execution, ie.
         # by the AgentExecutionComponent.
-        self.declare_subscriber('unschedule', rpc.AGENT_UNSCHEDULE_PUBSUB, self.unschedule_cb)
+        self.register_subscriber(rpc.AGENT_UNSCHEDULE_PUBSUB, self.unschedule_cb)
 
         # we create a pubsub pair for reschedule trigger
-        self.declare_publisher ('reschedule', rpc.AGENT_RESCHEDULE_PUBSUB)
-        self.declare_subscriber('reschedule', rpc.AGENT_RESCHEDULE_PUBSUB, self.reschedule_cb)
+        self.register_publisher (rpc.AGENT_RESCHEDULE_PUBSUB)
+        self.register_subscriber(rpc.AGENT_RESCHEDULE_PUBSUB, self.reschedule_cb)
 
         # The scheduler needs the LRMS information which have been collected
         # during agent startup.  We dig them out of the config at this point.
@@ -220,7 +219,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # notify the scheduling thread, ie. trigger a reschedule to utilize
         # the freed slots
-        self.publish('reschedule', cu)
+        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
         # Note: The extra space below is for visual alignment
         self._log.info("slot status after  unschedule: %s" % self.slot_status ())

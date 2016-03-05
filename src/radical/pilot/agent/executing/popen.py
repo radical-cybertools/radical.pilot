@@ -41,15 +41,14 @@ class Popen(AgentExecutingComponent) :
     #
     def initialize_child(self):
 
-      # self.declare_input(rps.AGENT_EXECUTING_PENDING,
-      #                    rpc.AGENT_EXECUTING_QUEUE, self.work)
-        self.declare_input(rps.EXECUTING_PENDING, 
-                           rpc.AGENT_EXECUTING_QUEUE, self.work)
+        self.register_input(rps.AGENT_EXECUTING_PENDING,
+                            rpc.AGENT_EXECUTING_QUEUE, self.work)
 
-        self.declare_output(rps.AGENT_STAGING_OUTPUT_PENDING, rpc.AGENT_STAGING_OUTPUT_QUEUE)
+        self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
+                             rpc.AGENT_STAGING_OUTPUT_QUEUE)
 
-        self.declare_publisher ('unschedule', rpc.AGENT_UNSCHEDULE_PUBSUB)
-        self.declare_subscriber('control',    rpc.CONTROL_PUBSUB, self.command_cb)
+        self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
         self._cancel_lock    = threading.RLock()
         self._cus_to_cancel  = list()
@@ -172,7 +171,7 @@ class Popen(AgentExecutingComponent) :
 
             # Free the Slots, Flee the Flots, Ree the Frots!
             if cu['opaque_slots']:
-                self.publish('unschedule', cu)
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
 
@@ -385,7 +384,7 @@ class Popen(AgentExecutingComponent) :
                     self._prof.prof('final', msg="execution canceled", uid=cu['uid'])
 
                     del(cu['proc'])  # proc is not json serializable
-                    self.publish('unschedule', cu)
+                    self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
                     self.advance(cu, rps.CANCELED, publish=True, push=False)
 
                     # we don't need to watch canceled CUs
@@ -407,7 +406,7 @@ class Popen(AgentExecutingComponent) :
                 # Free the Slots, Flee the Flots, Ree the Frots!
                 self._cus_to_watch.remove(cu)
                 del(cu['proc'])  # proc is not json serializable
-                self.publish('unschedule', cu)
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
                 if exit_code != 0:
                     # The unit failed - fail after staging output
