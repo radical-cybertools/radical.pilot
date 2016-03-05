@@ -186,6 +186,7 @@ class ORTELib(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
+        task_mpi     = cud.get('mpi') or False
         task_args    = cud.get('arguments') or []
         task_argstr  = " ".join(task_args)
 
@@ -217,7 +218,7 @@ class ORTELib(LaunchMethod):
             #'--mca oob_base_verbose 100',
             #'--mca rml_base_verbose 100'
         ]
-        orte_command = '%s %s %s -np %s -host %s' % (
-            self.launch_command, ' '.join(debug_strings), export_vars, task_cores, hosts_string)
+        orte_command = '%s %s %s -np %d -host %s' % (
+            self.launch_command, ' '.join(debug_strings), export_vars, task_cores if task_mpi else 1, hosts_string)
 
         return orte_command, task_command
