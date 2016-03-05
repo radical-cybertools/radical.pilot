@@ -78,6 +78,12 @@
             "schema"   : null
         },
 
+        "xsede.wrangler" : {
+            "project"  : "TG-MCB090174",
+            "queue"    : "debug",
+            "schema"   : null
+        },
+
         "xsede.comet"  : {
             "project"  : "unc100",
             "queue"    : "",
