@@ -83,7 +83,7 @@ class Profiler (object):
 
     # ------------------------------------------------------------------------------
     #
-    def prof(self, event, uid=None, state=None, msg=None, timestamp=None, logger=None):
+    def prof(self, event, uid=None, state=None, msg=None, timestamp=None, logger=None, name=None):
 
         if not self._enabled:
             return
@@ -103,6 +103,8 @@ class Profiler (object):
             # no timestamp provided -- use 'now'
             timestamp = self._timestamp_now()
 
+        if not name:
+            name = self._name
         tid = threading.current_thread().name
 
         if not uid  : uid   = ''
@@ -113,7 +115,7 @@ class Profiler (object):
         # NOTE: Don't forget to sync any format changes in the bootstrapper
         #       and downstream analysis tools too!
         self._handle.write("%.4f,%s:%s,%s,%s,%s,%s\n" \
-                % (timestamp, self._name, tid, uid, state, event, msg))
+                % (timestamp, name, tid, uid, state, event, msg))
 
 
     # --------------------------------------------------------------------------
