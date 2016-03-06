@@ -82,9 +82,9 @@ _info_entries = [
     ('aec_end',         'AgentExecuting',         'final',     ''),
 
     ('aec_pickup',      'AgentExecuting',         'passed',    'ExecWatcher picked up unit'),
-    ('aec_start_script','AgentStagingOutputComponent','script','start_script'),
-    ('aec_after_cd',    'AgentStagingOutputComponent','script','after_cd'),
-    ('aec_after_exec',  'AgentStagingOutputComponent','script','after_exec'),
+    ('aec_start_script','AgentStagingOutput',     'script',    'start_script'),
+    ('aec_after_cd',    'AgentStagingOutput',     'script',    'after_cd'),
+    ('aec_after_exec',  'AgentStagingOutput',     'script',    'after_exec'),
     ('aec_complete',    'AgentExecuting',         'exec',      'execution complete'),
 ]
 
