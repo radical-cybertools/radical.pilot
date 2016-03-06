@@ -105,10 +105,6 @@ class ABDS(AgentExecutingComponent):
             with self._cancel_lock:
                 self._cus_to_cancel.append(arg)
 
-        elif cmd == 'shutdown':
-            self._log.info('received shutdown command')
-            self.stop()
-
 
     # --------------------------------------------------------------------------
     #

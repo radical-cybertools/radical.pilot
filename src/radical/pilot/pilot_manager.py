@@ -93,10 +93,6 @@ class PilotManager(rpu.Component):
         #        will take a while until we can initialize that, and meanwhile
         #        we use these...
         self._uid  = ru.generate_id('pmgr')
-        self._log  = ru.get_logger(self.uid, "%s.%s.log" % (session.uid, self._uid))
-        self._prof = rpu.Profiler("%s.%s" % (session.uid, self._uid))
-
-        session.prof.prof('create pmgr', uid=self._uid)
 
         cfg = ru.read_json("%s/configs/pmgr_%s.json" \
                 % (os.path.dirname(__file__),
@@ -111,11 +107,12 @@ class PilotManager(rpu.Component):
         cfg['owner'] = session.uid
         rpu.Component.__init__(self, cfg, session)
 
-        # we can start components
-        self.start_components(self.cfg['components'], owner=self.uid)
-
         # only now we have a logger... :/
         self._log.report.info('<<create pilot manager')
+        self._prof.prof('create pmgr', uid=self._uid)
+
+        # we can start components
+        self.start_components(self.cfg['components'], owner=self.uid)
 
         # The output queue is used to forward submitted pilots to the
         # launching component.
@@ -154,9 +151,11 @@ class PilotManager(rpu.Component):
         self._log.report.info('<<close pilot manager')
 
         # If terminate is set, we cancel all pilots. 
-        if  terminate :
+        if terminate:
             self.cancel_pilots()
             self.wait_pilots()
+
+      # print ' ---- pmgr waiting done'
 
         # kill child process, threads
         self.stop()
@@ -166,8 +165,6 @@ class PilotManager(rpu.Component):
 
         self._closed = True
         self._log.report.ok('>>ok\n')
-
-        print 'closed pmgr %s' % self.uid
 
 
     # --------------------------------------------------------------------------
@@ -207,13 +204,9 @@ class PilotManager(rpu.Component):
         # FIXME: this needs to be converted into a tailed cursor in the update
         #        worker
         pilots = self._session._dbs.get_pilots(pmgr_uid=self.uid)
-        action = False
 
         for pilot in pilots:
-            if self._update_pilot(pilot['uid'], pilot):
-                action = True
-
-        return action
+            self._update_pilot(pilot['uid'], pilot)
 
 
     # --------------------------------------------------------------------------
@@ -241,10 +234,7 @@ class PilotManager(rpu.Component):
 
             # only update on state changes
             if self._pilots[pid].state != pilot['state']:
-                print 'update pilot %s' % pid
-                return self._pilots[pid]._update(pilot)
-            else:
-                return False
+                self._pilots[pid]._update(pilot)
 
 
     # --------------------------------------------------------------------------
@@ -479,7 +469,7 @@ class PilotManager(rpu.Component):
                     self._log.debug ("wait timed out")
                     break
 
-                time.sleep (0.5)
+                time.sleep (0.1)
 
         self._log.report.idle(mode='stop')
 
@@ -516,6 +506,7 @@ class PilotManager(rpu.Component):
         if not isinstance(uids, list):
             uids = [uids]
 
+      # print 'pmgr: send cancel to %s' % uids
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots', 
                                           'arg' : {'uids' : uids}})
 

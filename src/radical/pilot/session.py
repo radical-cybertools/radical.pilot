@@ -342,11 +342,10 @@ class Session (rs.Session, rpu.Worker):
             pmgr.close(terminate=terminate)
             self._log.debug("session %s closed   pmgr   %s" % (str(self._uid), pmgr_uid))
 
-
         # stop the component
         self.stop()  
 
-        if  cleanup :
+        if cleanup:
             self.prof.prof("cleaning", uid=self._uid)
             if self._dbs:
                 self._dbs.delete()

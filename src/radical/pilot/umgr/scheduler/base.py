@@ -156,7 +156,6 @@ class UMGRSchedulingComponent(rpu.Component):
         cmd = msg['cmd']
 
         if cmd not in ['add_pilot', 'remove_pilot']:
-            print 'scheduler base: %s' % cmd
             return
 
         arg   = msg['arg']
@@ -164,27 +163,21 @@ class UMGRSchedulingComponent(rpu.Component):
         thing = arg.get('thing')
         umgr  = arg.get('umgr')
 
-        print 'scheduler command: %s: %s\n' % (cmd, arg)
         self._log.info('scheduler command: %s: %s' % (cmd, arg))
 
         if umgr != self._umgr:
-            print 'umgr %s / %s' % (self._umgr, umgr)
             # this is not the command we are looking for
             return
 
 
         if cmd == 'add_pilot':
 
-            print 'here: %s, %s' % (cmd, pid)
             with self._pilots_lock:
 
                 if pid not in self._pilots:
-
-                    self._pilots[pid] = {
-                            ROLE    : None,
-                            'state' : None,
-                            'thing' : thing
-                            }
+                    self._pilots[pid] = {ROLE    : None,
+                                         'state' : None,
+                                         'thing' : thing}
 
                 if self._pilots[pid][ROLE] == ADDED:
                     raise ValueError('pilot already added (%s)' % pid)
@@ -211,7 +204,6 @@ class UMGRSchedulingComponent(rpu.Component):
 
             # let the scheduler know
             self.remove_pilot(pid)
-
 
 
     # --------------------------------------------------------------------------

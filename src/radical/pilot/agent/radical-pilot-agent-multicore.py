@@ -311,35 +311,24 @@ def bootstrap_3(agent_name):
 
         # set up signal and exit handlers
         def exit_handler():
-            global agent
-            print 'atexit'
-            if agent:
-                agent.stop()
-                agent = None
             sys.exit(1)
 
         def sigint_handler(signum, frame):
-            if agent_name == 'agent_0':
-                pilot_FAILED(msg='Caught SIGINT. EXITING (%s)' % frame)
-            print 'sigint'
-            prof.prof('stop', msg='sigint_handler', uid=pilot_id)
-            prof.close()
+            global agent
+            if agent:
+                agent.final_cause = 'sigint'
             sys.exit(2)
 
         def sigterm_handler(signum, frame):
-            if agent_name == 'agent_0':
-                pilot_FAILED(msg='Caught SIGTERM. EXITING (%s)' % frame)
-            print 'sigterm'
-            prof.prof('stop', msg='sigterm_handler %s' % os.getpid(), uid=pilot_id)
-            prof.close()
+            global agent
+            if agent:
+                agent.final_cause = 'sigterm'
             sys.exit(3)
 
         def sigalarm_handler(signum, frame):
-            if agent_name == 'agent_0':
-                pilot_FAILED(msg='Caught SIGALRM (Walltime limit?). EXITING (%s)' % frame)
-            print 'sigalrm'
-            prof.prof('stop', msg='sigalarm_handler', uid=pilot_id)
-            prof.close()
+            global agent
+            if agent:
+                agent.final_cause = 'sigalarm'
             sys.exit(4)
 
         import atexit
@@ -386,13 +375,15 @@ def bootstrap_3(agent_name):
         # agent_0 will also report final pilot state to the DB
         if agent_name == 'agent_0':
 
+            # FIXME: make sure that final_cause is not set multiple times
+
             if agent: final_cause = agent.final_cause
             else    : final_cause = 'failed startup'
 
-            if   final_cause == 'timeout' : state = rps.DONE 
-            elif final_cause == 'cancel'  : state = rps.CANCELED
-            elif final_cause == 'sys.exit': state = rps.CANCELED
-            else                          : state = rps.FAILED
+            if   final_cause == 'timeout'  : state = rps.DONE 
+            elif final_cause == 'cancel'   : state = rps.CANCELED
+            elif final_cause == 'sys.exit' : state = rps.CANCELED
+            else                           : state = rps.FAILED
 
             update_db(state, session, pilot_id, log, final_cause)
 

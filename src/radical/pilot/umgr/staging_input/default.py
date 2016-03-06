@@ -95,7 +95,7 @@ class Default(UMGRStagingInputComponent):
                 else:
                     copy_flags = 0
 
-                saga_dir.copy(src, target, flags=copy_flags)
+                saga_dir.copy(src, tgt, flags=copy_flags)
 
                 self._prof.prof('umgr staged  in', msg=src, uid=uid)
 

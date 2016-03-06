@@ -4,7 +4,6 @@
 # global constants
 #
 UPDATE_WORKER                  = 'UpdateWorker'
-HEARTBEAT_WORKER               = 'HeartbeatWorker'
 
 PMGR_LAUNCHING_QUEUE           = 'pmgr_launching_queue'
 PMGR_LAUNCHING_COMPONENT       = 'PMGRLaunchingComponent'

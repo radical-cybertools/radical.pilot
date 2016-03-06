@@ -48,7 +48,7 @@ class DBSession(object):
 
         self._dburl      = ru.Url(dburl)
         self._log        = logger
-        self._client     = None
+        self._mongo      = None
         self._db         = None
         self._created    = None
         self._connected  = None
@@ -59,13 +59,12 @@ class DBSession(object):
             return
 
         # mpongodb_connect wants a string at the moment
-        mongo, db, _, _, _ = ru.mongodb_connect(str(dburl))
+        self._mongo, self._db, _, _, _ = ru.mongodb_connect(str(dburl))
 
-        if not mongo or not db:
+        if not self._mongo or not self._db:
             raise RuntimeError("Could not connect to database at %s" % dburl)
 
-        self._db         = db
-        self._connected  = timestamp()
+        self._connected = timestamp()
 
         self._c = self._db[sid] # creates collection (lazily)
 
@@ -163,6 +162,7 @@ class DBSession(object):
         if not self._c:
             raise RuntimeError("No active session.")
 
+        self._mongo.close()
         self._closed = timestamp()
         self._c = None
 

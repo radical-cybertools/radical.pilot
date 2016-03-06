@@ -116,7 +116,7 @@ class Default(AgentStagingOutputComponent):
             src    = ru.Url(entry['source'])
             tgt    = ru.Url(entry['target'])
 
-            if action in [rpc.LINK, rps.COPY, rpc.MOVE]:
+            if action in [rpc.LINK, rpc.COPY, rpc.MOVE]:
                 actionables.append([src, tgt, flags])
 
         if actionables:
@@ -124,7 +124,7 @@ class Default(AgentStagingOutputComponent):
             # we have actionables, thus we need staging area
             # TODO: optimization: staging_area might already exist
             pilot_sandbox = ru.Url(self._cfg['pilot_sandbox']).path
-            staging_area  = os.path.join(pilot_sandbox, cfg['staging_area'])
+            staging_area  = os.path.join(pilot_sandbox, self._cfg['staging_area'])
 
             self._prof.prof("create  staging_area", uid=uid, msg=staging_area)
             rpu.rec_makedir(staging_area)

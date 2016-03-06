@@ -118,9 +118,8 @@ class ComputeUnit(object):
     #
     def _default_state_cb(self, unit, state):
 
-      # self._log.info("[Callback]: unit %s state: %s.", self.uid, self.state)
-        print 'cb: %s: %s' % (self.uid, self.state)
-        pass
+      # print 'cb: %s: %s' % (self.uid, state)
+        self._log.info("[Callback]: unit %s state: %s.", self.uid, self.state)
 
 
     # --------------------------------------------------------------------------
@@ -475,7 +474,7 @@ class ComputeUnit(object):
             return self.state
 
         start_wait = time.time()
-        while self.state not in states:
+        while self.state not in states and not self._umgr._terminate.is_set():
 
             time.sleep(0.1)
 

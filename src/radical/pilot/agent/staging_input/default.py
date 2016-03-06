@@ -71,7 +71,7 @@ class Default(AgentStagingInputComponent):
             src    = ru.Url(entry['source'])
             tgt    = ru.Url(entry['target'])
 
-            if action in [rpc.LINK, rps.COPY, rpc.MOVE]:
+            if action in [rpc.LINK, rpc.COPY, rpc.MOVE]:
                 actionables.append([src, tgt, flags])
 
         if actionables:
@@ -79,7 +79,7 @@ class Default(AgentStagingInputComponent):
             # we have actionables, thus we need sandbox and staging area
             # TODO: optimization: sandbox,staging_area might already exist
             pilot_sandbox = ru.Url(self._cfg['pilot_sandbox']).path
-            staging_area  = os.path.join(pilot_sandbox, cfg['staging_area'])
+            staging_area  = os.path.join(pilot_sandbox, self._cfg['staging_area'])
 
             self._prof.prof("create  sandbox", uid=uid, msg=sandbox)
             rpu.rec_makedir(sandbox)

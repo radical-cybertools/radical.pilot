@@ -7,6 +7,7 @@ import errno
 import pprint
 import signal
 import Queue           as pyq
+import setproctitle    as spt
 import multiprocessing as mp
 import radical.utils   as ru
 
@@ -23,6 +24,7 @@ PUBSUB_TYPES  = [PUBSUB_ZMQ]
 
 _USE_MULTIPART  = False # send [topic, data] as multipart message
 _BRIDGE_TIMEOUT = 5.0   # how long to wait for bridge startup
+_LINGER_TIMEOUT = 250   # ms to linger after close
 
 
 # --------------------------------------------------------------------------
@@ -46,7 +48,6 @@ def _uninterruptible(f, *args, **kwargs):
                 if cnt > 10:
                     raise
                 # interrupted, try again
-                print 'interrupted! [%s] [%s] [%s]' % (f, args, kwargs)
                 continue
             else:
                 # real error, raise it
@@ -75,7 +76,7 @@ class Pubsub(object):
         self._role       = role
         self._addr       = address
         self._name       = "pubsub.%s.%s" % (self._channel, self._role)
-        self._log        = ru.get_logger('rp.bridges', target="%s.log" % self._name)
+        self._log        = ru.get_logger('rp.bridge.%s' % self._name, '.')
         self._bridge_in  = None           # bridge input  addr
         self._bridge_out = None           # bridge output addr
 
@@ -209,6 +210,7 @@ class PubsubZMQ(Pubsub):
 
             ctx = zmq.Context()
             self._q = ctx.socket(zmq.PUB)
+            self._q.linger = _LINGER_TIMEOUT
             self._q.connect(str(self._addr))
 
 
@@ -226,12 +228,15 @@ class PubsubZMQ(Pubsub):
             def _bridge(addr, pqueue):
 
                 try:
-                    import setproctitle as spt
-                    spt.setproctitle('radical.pilot %s' % self._name)
-                except Exception as e:
-                    pass
 
-                try:
+                    def exit_handler():
+                        print 'exiting %s' % self._name
+                        self._log.debug("exiting %s", msg)
+                    import atexit
+                    atexit.register(exit_handler)
+
+                    spt.setproctitle('radical.pilot %s' % self._name)
+
                     # reset signal handlers to their default
                     signal.signal(signal.SIGINT,  signal.SIG_DFL)
                     signal.signal(signal.SIGTERM, signal.SIG_DFL)
@@ -300,6 +305,7 @@ class PubsubZMQ(Pubsub):
 
             ctx = zmq.Context()
             self._q = ctx.socket(zmq.SUB)
+            self._q.linger = _LINGER_TIMEOUT
             self._q.connect(self._addr)
 
         # ----------------------------------------------------------------------
@@ -330,14 +336,8 @@ class PubsubZMQ(Pubsub):
         """
         poll until we die...
         """
-        start = time.time()
-        while True:
-            if not self._p.is_alive():
-                return
-            if timeout != None:
-                if (time.time()-start) > timeout:
-                    raise RuntimeError('wait timed out')
-                time.sleep(0.1)
+        if self._p:
+            self._p.join(timeout)
 
 
     # --------------------------------------------------------------------------

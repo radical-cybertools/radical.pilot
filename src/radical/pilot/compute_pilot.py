@@ -113,7 +113,6 @@ class ComputePilot(object):
     #
     def _default_state_cb(self, pilot, state):
 
-        print 'default cb: %s' % state
         self._log.info("[Callback]: pilot %s state: %s.", self.uid, self.state)
 
 
@@ -141,12 +140,8 @@ class ComputePilot(object):
         #
         # FIXME: add sanity checks
 
-        print 'UPDATE pilot %s' % pilot_dict['uid']
-
         old_state   = self.state
         new_state   = pilot_dict['state']
-
-        print 'state: %s -> %s' % (old_state, new_state)
 
         # we update all fields
         for key,val in pilot_dict.iteritems():
@@ -156,27 +151,22 @@ class ComputePilot(object):
                        'stdout', 'stderr']:
                 setattr(self, "_%s" % key, val)
 
-        if 'state' in pilot_dict: 
 
-            if old_state != new_state:
+        if old_state != new_state:
 
-                print 'call callbacks'
+            for cb, cb_data in self._callbacks:
+                if cb_data: cb(self, self.state, cb_data)
+                else      : cb(self, self.state)
 
-                for cb, cb_data in self._callbacks:
-                    if cb_data: cb(self, self.state, cb_data)
-                    else      : cb(self, self.state)
+            # also inform pmgr about state change, to collect any callbacks
+            # it has registered globally
+            self._pmgr._call_pilot_callbacks(self, self.state)
 
-                # also inform pmgr about state change, to collect any callbacks
-                # it has registered globally
-                self._pmgr._call_pilot_callbacks(self, self.state)
+            # this should be the last cb invoked on state changes
+            if self.state == rps.FAILED and self._exit_on_error:
+                self._default_error_cb()
 
-                # this should be the last cb invoked on state changes
-                if self.state == rps.FAILED and self._exit_on_error:
-                    self._default_error_cb()
-
-                return True
-
-        return False
+      # print 'pilot: update %s -> %s [%s]' % (old_state, new_state, self.state)
 
 
     # --------------------------------------------------------------------------
@@ -440,11 +430,11 @@ class ComputePilot(object):
             return self.state
 
         start_wait = time.time()
-        while self.state not in states:
-            print 'wait state: %s %s' % (self.state, states)
+        while self.state not in states and not self._pmgr._terminate.is_set():
 
-            time.sleep(0.3)
+          # print 'pilot: %s %s' % (self.state, states)
 
+            time.sleep(0.1)
             if timeout and (timeout <= (time.time() - start_wait)):
                 break
 
@@ -458,6 +448,7 @@ class ComputePilot(object):
         Cancel the pilot.
         """
         
+      # print 'pilot: cancel'
         self._pmgr.cancel_pilots(self.uid)
 
 

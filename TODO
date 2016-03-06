@@ -61,3 +61,10 @@
       - add to self._cancel_requested
     - whenver we see an advance or work request:
       - if uid in self._cancel_requested: advance(CANCEL) + drop   
+
+  - use heartbeat mechanism also for bridges
+  - define _cfg['heart'] and use that for heartbeat src instead of owner,
+    limiting traffic and noise
+  - Component.stop() should *first* unregister component_checker_cb 
+    (and probably all other callbacks)
+

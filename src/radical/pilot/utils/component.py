@@ -146,6 +146,7 @@ class Component(mp.Process):
         self._cfg           = copy.deepcopy(cfg)
         self._session       = session
         self._debug         = cfg.get('debug', 'DEBUG') # FIXME
+        self._debug         = 'DEBUG'
         self._name          = cfg.get('name')
         self._ctype         = "%s.%s" % (self.__class__.__module__, 
                                          self.__class__.__name__)
@@ -160,8 +161,7 @@ class Component(mp.Process):
         self._terminate     = mt.Event()   # signal for thread termination
         self._finalized     = False        # finalization guard
         self._is_parent     = True         # guard initialize/initialize_child
-        self._started       = False        # if start() was called
-        self._cb_lock       = mt.Lock()    # guard threaded callback invokations
+        self._cb_lock       = ru.RLock()   # guard threaded callback invokations
         self._exit_on_error = True         # FIXME: make configurable
 
         # we always need an UID
@@ -182,7 +182,7 @@ class Component(mp.Process):
 
         # get debugging, logging, profiling set up
         self._dh            = ru.DebugHelper(name=self.uid)
-        self._log           = ru.get_logger(self.uid, self.uid + '.log', self._debug)
+        self._log           = ru.get_logger(self.uid, '.', self._debug)
         self._prof          = Profiler(self.uid)
 
         self._log.info('creating %s', self.uid)
@@ -223,7 +223,48 @@ class Component(mp.Process):
         # we also subscribe to control messages
         self.register_publisher (rpc.STATE_PUBSUB)
         self.register_publisher (rpc.CONTROL_PUBSUB)
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
+      # self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
+
+        # Components are designed to be ephemeral: by default they die unless
+        # they are kept alive by a parent's heartbeat signal.  That only holds
+        # for components which have been start()ed though -- unstarted
+        # components (mostly Workers or Managers) require an explicit call to
+        # stop() to disappear.
+        # The heartbeat monotoring is performed in the parent, which is
+        # registering two callbacks:
+        #   - an CONTROL_PUBSUB _heartbeat_monitor_cb which listens for 
+        #     heartbeats with 'src == self.owner', and records the time of 
+        #     heartbeat in self._heartbeat
+        #   - an idle _heartbeat_checker_cb which checks the timer in frequent
+        #     intervals, and which will call self.stop() if the last heartbeat
+        #     is longer that self._heartbeat_timeout seconds ago
+        #     # FIXME: make that time configurable or adjustable
+        # We already registered publication on the CONTROL_PUBSUB above, so
+        # don't need to do that again at this point.
+        # 
+        # NOTE: The use of the control pubsub for heartbeat messages between all
+        #       components may ultimately result in too much traffic, and
+        #       importantly in too many (useless) callback invokations. That can
+        #       be regulated by the self._heartbeat_interval setting, which sets
+        #       the frequency of heartbeat messages sent by the owner.  If that
+        #       turns out to be insufficient, we can introduce component
+        #       specific topics on the pubsub channel, to filter messages before
+        #       callbacks are getting invoked (at the moment, topic is always
+        #       the same as pubsub channel name).
+        #
+        # So, in total we register two callbacks: 
+        #   - sending heartbeat to sub-components
+        #   - receiving heartbeat from owner components
+        #   - checking heartbeat timestamp and stop() if heartbeat is missing
+
+        self._heartbeat          = time.time() # time of last heartbeat
+        self._heartbeat_interval = 10.0        # frequency of heartbeats
+        self._heartbeat_timeout  = 30.0        # die after missing 3 heartbeats
+
+        hi = self._heartbeat_interval
+        self.register_idle_cb(self._heartbeat_cb,         timeout=hi)
+        self.register_idle_cb(self._heartbeat_checker_cb, timeout=hi)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._heartbeat_monitor_cb)
 
         # We keep a static typemap for worker, component and bridge startup. If
         # we ever want to become reeeealy fancy, we can derive that typemap from
@@ -237,7 +278,6 @@ class Component(mp.Process):
         from .. import agent  as rpa
 
         self._typemap = {rpc.UPDATE_WORKER                  : rpw.Update,
-                         rpc.HEARTBEAT_WORKER               : rpw.Heartbeat,
 
                          rpc.PMGR_LAUNCHING_COMPONENT       : rppm.Launching,
 
@@ -255,24 +295,63 @@ class Component(mp.Process):
     # --------------------------------------------------------------------------
     #
     def __str__(self):
-        return "%s <%s> [%s]" % (self.uid, self.ctype, self._owner)
+        return "%s <%s> [%s]" % (self.uid, self.__class__.__name__, self._owner)
 
 
     # --------------------------------------------------------------------------
     #
     def _control_cb(self, topic, msg):
 
+        pass
+
         # wait for 'terminate' commands, but only accept those where 'src' is
         # either myself, my session, or my owner
+
+      # cmd = msg['cmd']
+      # arg = msg['arg']
+      #
+      # if cmd == 'shutdown':
+      #     src = arg['sender']
+      #     if src in [self.uid, self._session.uid, self._owner, None]:
+      #         print '%s called shutdown on me (%s)' % (src, self.uid)
+      #         self._log.info('received shutdown command (%s)', arg)
+      #         self.stop()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _heartbeat_cb(self):
+
+        # we only send heartbeat if we have anybody listening
+        if self._components:
+            self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'heartbeat', 
+                                              'arg' : { 'sender' : self.uid}})
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _heartbeat_checker_cb(self):
+
+        if (self._heartbeat + self._heartbeat_timeout) < time.time():
+            self._log.debug('heartbeat check failed')
+            self.stop()
+
+        else:
+            self._log.debug('heartbeat check ok')
+
+        return False # always sleep
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _heartbeat_monitor_cb(self, topic, msg):
 
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'shutdown':
-          # src = arg['sender']
-          # if src in [self.uid, self._session.uid, self._owner, None]:
-            self._log.info('received shutdown command (%s)', arg)
-            self.stop()
+        if cmd == 'heartbeat':
+            if arg['sender'] == self.owner:
+                self._heartbeat = time.time()
 
 
     # --------------------------------------------------------------------------
@@ -397,12 +476,21 @@ class Component(mp.Process):
 
         try:
             # this is now the parent process context
-            self._started = True
             self.initialize()
         except Exception as e:
             self._log.exception ('initialize failed')
             self.stop()
             raise
+
+
+    # --------------------------------------------------------------------------
+    #
+    def join(self, timeout=None):
+        # we only really join when the comoinent child pricess has been started
+        if self.pid:
+            print '%s join   (%s)' % (self.uid, self.pid)
+            mp.Process.join(self, timeout)
+            print '%s joined (%s)' % (self.uid, self.pid)
 
 
     # --------------------------------------------------------------------------
@@ -433,88 +521,103 @@ class Component(mp.Process):
                 sys.exit()
         """
 
-        print 'stop %s' % self.uid
-
         if self._finalized:
-            # only die once
+            # this should not happeN
+            print 'double close on %s' % self.uid
             return
+          # raise RuntimeError('double stop for %s' % self.uid)
 
-        self._prof.prof("closing")
+        # no matter what happens below, we attempt finalization only once
+        self._finalized = True
+
+        # parent and child finalization will have all comoonents and bridges
+        # available
+        if self._is_parent:
+            self._prof.prof("finalize")
+            self.finalize()
+            self._prof.prof("finalized")
+        else:
+            self._prof.prof("finalize_child")
+            self.finalize_child()
+            self._prof.prof("finalized_child")
+
+        print '------ %s stop (%s: %s)' % (self.uid, os.getpid(), self.pid)
+      # if 'session' in self.uid.lower():
+      #     ru.print_stacktrace()
+
+        self._prof.prof("stopping")
         self._log.info("stopping %s"      % self.uid)
-        self._log.info("  subscribers %s" % self._subscribers)
         self._log.info("  components  %s" % self._components)
         self._log.info("  bridges     %s" % self._bridges)
+        self._log.info("  subscribers %s" % self._subscribers)
+        self._log.info("  idlers      %s" % self._idlers)
 
-        # tear down components, workers and bridges
-        for component in self._components: component.stop()
-        for bridge    in self._bridges   : bridge.stop()
-
-        # let everybody know we are about to go away
+        # now let everybody know we are about to go away
         self._terminate.set()
 
-        # tear down all subscriber threads
+        # once terminate is set, we unlock the cb locks -- othewise we'll never
+        # be able to join all threads
+        self._cb_lock.release()
+
+        # tear down all subscriber threads -- skip current thread
         self_thread = mt.current_thread()
         for t in self._subscribers:
             if t != self_thread:
-                self._log.debug('joining  subscriber thread %s' % t)
-                t.join()
-            else:
-                self._log.debug('skipping subscriber thread %s' % t)
+                print '%s -> stop %s' % (self.uid, t.name)
+                self._log.debug('subscriber thread  joined  %s' % t)
+                t.join()                                     
 
-        self._log.debug('subscriber threads joined')
+        # tear down all idler threads -- skip current thread
+        for t in self._idlers:
+            if t != self_thread:
+                print '%s -> stop %s' % (self.uid, t.name)
+                self._log.debug('idler thread  joined  %s' % t)
+                t.join()                               
 
+
+        # tear down components, workers and bridges
+        for component in self._components: 
+            print '%s -> stop %s' % (self.uid, component)
+            component.stop()
+        for bridge in self._bridges: 
+            print '%s -> stop %s' % (self.uid, bridge)
+            bridge.stop()
+
+        for component in self._components: 
+            print '%s -> join %s' % (self.uid, component)
+            component.join()
+        for bridge in self._bridges: 
+            print '%s -> join %s' % (self.uid, bridge)
+            bridge.join()
+
+        # Signal the child -- if one exists
         if self._is_parent:
-            self._log.info("terminating")
-            self._prof.prof("finalize")
-            if not self._finalized:
-                self._finalized = True
-                self.finalize()
-                self._prof.prof("finalized")
-            else:
-                self._prof.prof("not_yet_finalized")
-
-            # Signal the child
-            if self._started and self.is_alive():
-                self._log.debug('signalling child')
+            self._log.info("terminating %s" % self.pid)
+            try:
                 self.terminate()
+            except:
+                # no problem: child is gone or never existed
+                pass
 
-                # Wait for the child process
-                self._log.debug('waiting for child')
-                self.join()
-                self._log.debug('child done')
+        # If we are called from within a callback, that means we will
+        # have skipped one thread for joining above, so we exit it now.
+        #
+        # Note that the thread is *not* joined at this point -- but the
+        # parent should not block on shutdown anymore, as the thread is
+        # at least gone.
+        if self_thread in self._subscribers:
+            self._log.debug('release subscriber thread %s' % self_thread)
+            sys.exit()
+        if self_thread in self._idlers:
+            self._log.debug('release idler thread %s' % self_thread)
+            sys.exit()
 
+        # NOTE: this relies on us not to change the name of MainThread
+        if self_thread.name == 'MainThread':
             self._prof.prof("stopped")
             self._prof.close()
 
-            # If we are called from within a callback, that (means?) we will
-            # have skipped one thread for joining above.
-            #
-            # Note that the thread is *not* joined at this point -- but the
-            # parent should not block on shutdown anymore, as the thread is
-            # at least gone.
-            if self_thread in self._subscribers and self._cb_lock.locked():
-                self._log.debug('release subscriber thread %s' % self_thread)
-                sys.exit()
-
-        else:
-            # communicate finalization
-            self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'final',
-                                              'arg' : self.uid})
-
-            # we only finalize in the child's main thread.
-            # NOTE: this relies on us not to change the name of MainThread
-            if self_thread.name == 'MainThread':
-                if not self._finalized:
-                    self._prof.prof("not_yet_finalized")
-                    self._finalized = True
-                    self._prof.prof("finalize")
-                    self.finalize_child()
-                    self._prof.prof("finalized")
-                    self._prof.prof("stopped")
-                    self._prof.close()
-                else:
-                    self._prof.prof("already_finalized - ERROR")
-
+        if not self._is_parent:
             # The child exits here.  If this call happens in a subscriber
             # thread, then it will be caught in the run loop of the main thread,
             # leading to the main thread's demize, which ends up here again...
@@ -652,8 +755,7 @@ class Component(mp.Process):
         #       callback.
         # ----------------------------------------------------------------------
         def _idler(callback, callback_data, to):
-            name = "[%s : %s : %s : %s]" % (self.uid, mt.currentThread().name, 
-                    callback, mt.currentThread().ident)
+          # print 'thread %10s : %s' % (ru.gettid(), mt.currentThread().name)
             try:
                 last = 0.0  # never been called
                 while not self._terminate.is_set():
@@ -665,20 +767,20 @@ class Component(mp.Process):
                             else:
                                 callback()
                         last = now
-                    time.sleep(1.0)
+                    time.sleep(0.1)
             except Exception as e:
-                self._log.exception("idler failed %s" % name)
+                self._log.exception("idler failed %s" % mt.currentThread().name)
                 if self._exit_on_error:
                     raise
         # ----------------------------------------------------------------------
 
         # create a idler thread
         t = mt.Thread(target=_idler, args=[cb,cb_data,timeout], 
-                      name="%s.idler" % self.uid)
+                      name="%s.idler.%s" % (self.uid, cb.__name__))
         t.start()
         self._idlers.append(t)
 
-        self._log.debug('declared idler     : %s : %s' % (cb.__name__, timeout))
+        self._log.debug('%s declared idler %s' % (self.uid, t.name))
 
 
     # --------------------------------------------------------------------------
@@ -705,11 +807,6 @@ class Component(mp.Process):
 
         self._log.debug('declared publisher : %s : %s' % (pubsub, q.name))
 
-        # FIXME: I am not exactly sure why this is 'needed', but declaring
-        #        a published as above and then immediately publishing on that
-        #        channel seems to sometimes lead to a loss of messages.
-      # time.sleep(1)
-
 
     # --------------------------------------------------------------------------
     #
@@ -733,7 +830,7 @@ class Component(mp.Process):
 
         # ----------------------------------------------------------------------
         def _subscriber(q, callback, callback_data):
-            name = mt.currentThread().name,
+          # print 'thread %10s : %s' % (ru.gettid(), mt.currentThread().name)
             try:
                 while not self._terminate.is_set():
                     topic, msg = q.get_nowait(1000) # timout in ms
@@ -747,7 +844,7 @@ class Component(mp.Process):
                                 else:
                                     callback(topic=topic, msg=m)
             except Exception as e:
-                self._log.exception("subscriber failed %s" % name)
+                self._log.exception("subscriber failed %s" % mt.currentThread().name)
                 if self._exit_on_error:
                     raise
         # ----------------------------------------------------------------------
@@ -764,23 +861,28 @@ class Component(mp.Process):
         q.subscribe(pubsub)
 
         t = mt.Thread(target=_subscriber, args=[q,cb,cb_data],
-                      name="%s.subscriber" % self.uid)
+                      name="%s.subscriber.%s" % (self.uid, cb.__name__))
         t.start()
         self._subscribers.append(t)
 
-        self._log.debug('%s declared subscriber: %s : %s(%s) : %s' \
-                % (self.uid, pubsub, cb, str(cb_data), t.name))
+        self._log.debug('%s declared %s subscriber %s' % (self.uid, pubsub, t.name))
 
 
     # --------------------------------------------------------------------------
     #
-    def _subscriber_check_cb(self):
+    def _thread_check_cb(self):
 
         for t in self._subscribers:
             if not t.is_alive():
                 self._log.error('subscriber %s died', t.name)
                 if self._exit_on_error:
                     raise RuntimeError('subscriber %s died' % t.name)
+
+        for t in self._idlers:
+            if not t.is_alive():
+                self._log.error('idler %s died', t.name)
+                if self._exit_on_error:
+                    raise RuntimeError('idler %s died' % t.name)
 
 
     # --------------------------------------------------------------------------
@@ -811,6 +913,8 @@ class Component(mp.Process):
         # other state we don't want to carry over the fork:
         self._inputs        = list()      # queues to get things from
         self._outputs       = dict()      # queues to send things to
+        self._components    = list()      # sub-components
+        self._bridges       = list()      # started bridges
         self._publishers    = dict()      # channels to send notifications to
         self._subscribers   = list()      # callbacks for received notifications
         self._workers       = dict()      # where things get worked upon
@@ -858,10 +962,10 @@ class Component(mp.Process):
             self._prof.prof('initialized')
 
             # register own idle callbacks to 
-            #  - watch the subscriber threads (1/sec)
+            #  - watch the subscriber and idler threads (1/sec)
             #  - flush profiles to the FS (1/sec)
-            self.register_idle_cb(self._subscriber_check_cb, timeout= 1.0)
-            self.register_idle_cb(self._profile_flush_cb,    timeout=60.0)
+            self.register_idle_cb(self._thread_check_cb,  timeout= 1.0)
+            self.register_idle_cb(self._profile_flush_cb, timeout=60.0)
 
             # perform a sanity check: for each declared input state, we expect
             # a corresponding work method to be declared, too.
@@ -971,6 +1075,7 @@ class Component(mp.Process):
 
         finally:
             # call stop (which calls the finalizers)
+            self._log.exception('loop stops')
             self.stop()
 
 
@@ -1107,8 +1212,6 @@ class Component(mp.Process):
                 self._log.debug('bridge %s already exists', b)
                 continue
 
-            print '%s starts bridge %s' % (self.uid, b)
-
             self._log.info('create bridge %s', b)
             if b.endswith('queue'):
                 bridge = rpu_Queue.create(rpu_QUEUE_ZMQ, b, rpu_QUEUE_BRIDGE)
@@ -1146,14 +1249,11 @@ class Component(mp.Process):
         # case, we record the component as 'alive'.  Whenever we see all current
         # components as 'alive', we unlock the barrier.
         
-        print 'barrier %s: %s' % (self.uid, msg)
-
         cmd = msg['cmd']
         arg = msg['arg']
 
         # only look at alive messages
         if cmd not in ['alive']:
-            print 'barrier %s: ignored' % self.uid
             # nothing to do
             return
 
@@ -1166,7 +1266,6 @@ class Component(mp.Process):
 
         # only look at messages from our own children
         if not owner == self.uid:
-            print 'barrier %s: foreign (%s)' % (self.uid, owner)
             return
 
         # now we are sure to have an 'interesting' alive message
@@ -1177,16 +1276,12 @@ class Component(mp.Process):
 
             # record component only once
             if sender in self._barrier_seen:
-                print 'barrier %s: duplicated' % self.uid
                 self._log.error('duplicated alive msg for %s' % sender)
                 return
 
-
-            print 'barrier %s: append' % sender
             self._barrier_seen.append(sender)
 
             if len(self._barrier_seen) < len(self._components):
-                print 'barrier %s: incomplete (%s)' % (self.uid, len(self._barrier_seen))
                 self._log.debug( 'barrier %s: incomplete (%s)', self.uid, len(self._barrier_seen))
                 return
 
@@ -1199,7 +1294,6 @@ class Component(mp.Process):
                                sorted(uids)))
 
             # all components have been seen as alive by now - lift barrier
-            print 'barrier %s: lift (%s)' % (self.uid, self._barrier_seen)
             self._barrier.set()
 
             # FIXME: this callback can now be unregistered
@@ -1216,15 +1310,17 @@ class Component(mp.Process):
 
         to_watch = self._components
 
-      # self._log.debug('watch: %s' % pprint.pformat(to_watch))
+        self._log.debug('watching %s things' % len(to_watch))
+      # self._log.debug('watching %s' % pprint.pformat(to_watch))
 
-        self._log.debug('checking %s things' % len(to_watch))
         for thing in to_watch:
             state = thing.poll()
             if state == None:
                 self._log.debug('%-40s: ok' % thing.name)
             else:
-                raise RuntimeError ('%s died - shutting down' % thing.name)
+              # print '%s died? - shutting down' % thing.name
+                self._log.error('%s died - shutting down' % thing.name)
+                self.stop()
 
         return True # always idle
 
@@ -1257,14 +1353,13 @@ class Component(mp.Process):
         If any of the components is detected as 'failed', stop() is called and
         the component terminates with an error.
 
-        On self.stop(), a shutdown command will be sent to all components ever
-        spawned by self.  
+        On self.stop(), all components and bridges ever spawned by self will be
+        stopped, too.
 
         Note that this method can also create Workers, which are a specific type
         of components.
         """
 
-        print 'start components: %s' % components
         self._log.debug('start components: cfg: %s' % pprint.pformat(self._cfg))
 
         if not owner  : owner   = self.uid 
@@ -1284,35 +1379,35 @@ class Component(mp.Process):
             self.register_subscriber(rpc.CONTROL_PUBSUB, self._barrier_cb)
 
             start = time.time()
-            self._log.debug("start_components")
 
             if not components:
                 components = self._cfg.get('components', {})
 
+            self._log.debug("start_components: %s" % components)
+
             if not components:
-                raise RuntimeError('No components to start')
+                self._log.warn('No components to start')
+                return
 
             for ctype,cnum in components.iteritems():
 
-                ctype = self._typemap.get(ctype)
-                if not ctype:
-                    raise ValueError('unknown component type %s' % ctype)
+                maptype = self._typemap.get(ctype)
+                if not maptype:
+                    raise ValueError('unknown component type (%s)' % ctype)
 
                 for i in range(cnum):
 
-                    self._log.info('create component %s [%s]', ctype, cnum)
+                    self._log.info('create component %s [%s]', maptype, cnum)
 
                     ccfg = copy.deepcopy(self._cfg)
                     ccfg['components'] = dict()  # avoid recursion
                     ccfg['number']     = i
                     ccfg['owner']      = owner
 
-                    comp = ctype.create(ccfg, self._session)
+                    comp = maptype.create(ccfg, self._session)
                     comp.start()
 
                     self._components.append(comp)
-
-            print "barrier %s: wait %s" % (self.uid, self._components)
 
 
         # at this point, the barrier lock will be released, and the barrier cb
@@ -1324,7 +1419,7 @@ class Component(mp.Process):
 
         # once components are up, we start a watcher callback
         # FIXME: make timeout configurable?
-        self.register_idle_cb(self._component_watcher_cb, timeout=10.0)
+        self.register_idle_cb(self._component_watcher_cb, timeout=1.0)
 
         # FIXME: barrier_cb can now be unregistered
         self._log.debug("start_components done")

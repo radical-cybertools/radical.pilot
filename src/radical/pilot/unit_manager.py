@@ -99,10 +99,7 @@ class UnitManager(rpu.Component):
         #        will take a while until we can initialize that, and meanwhile
         #        we use these...
         self._uid  = ru.generate_id('umgr')
-        self._log  = ru.get_logger(self.uid, "%s.%s.log" % (session.uid, self._uid))
-        self._prof = rpu.Profiler("%s.%s" % (session.uid, self._uid))
 
-        session.prof.prof('create umgr', uid=self._uid)
 
         cfg = ru.read_json("%s/configs/umgr_%s.json" \
                 % (os.path.dirname(__file__),
@@ -125,11 +122,12 @@ class UnitManager(rpu.Component):
         cfg['owner'] = session.uid
         rpu.Component.__init__(self, cfg, session)
 
-        # we can start components
-        self.start_components(self.cfg['components'], owner=self.uid)
-
         # only now we have a logger... :/
         self._log.report.info('<<create unit manager')
+        self._prof.prof('create umgr', uid=self._uid)
+
+        # we can start components
+        self.start_components(self.cfg['components'], owner=self.uid)
 
         # The output queue is used to forward submitted units to the
         # scheduling component.
@@ -182,8 +180,6 @@ class UnitManager(rpu.Component):
 
         self._closed = True
         self._log.report.ok('>>ok\n')
-
-        print 'closed umgr %s' % self.uid
 
 
     # --------------------------------------------------------------------------
@@ -669,7 +665,7 @@ class UnitManager(rpu.Component):
         # create a list from which we drop the units as we find them in
         # a matching state
         self._log.report.idle(mode='start')
-        while to_check and not self._session._terminate.is_set():
+        while to_check and not self._terminate.is_set():
 
             self._log.report.idle()
 
@@ -682,7 +678,7 @@ class UnitManager(rpu.Component):
                     self._log.debug ("wait timed out")
                     break
 
-                time.sleep (0.5)
+                time.sleep (0.1)
 
         self._log.report.idle(mode='stop')
 

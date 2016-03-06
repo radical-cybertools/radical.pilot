@@ -23,7 +23,8 @@ QUEUE_PROCESS = 'process'
 QUEUE_ZMQ     = 'zmq'
 QUEUE_TYPES   = [QUEUE_THREAD, QUEUE_PROCESS, QUEUE_ZMQ]
 
-_BRIDGE_TIMEOUT = 5.0  # how long to wait for bridge startup
+_BRIDGE_TIMEOUT = 5.0   # how long to wait for bridge startup
+_LINGER_TIMEOUT = 250   # ms to linger after close
 
 # --------------------------------------------------------------------------
 #
@@ -46,7 +47,6 @@ def _uninterruptible(f, *args, **kwargs):
                 if cnt > 10:
                     raise
                 # interrupted, try again
-                print 'interrupted! [%s] [%s] [%s]' % (f, args, kwargs)
                 continue
             else:
                 # real error, raise it
@@ -92,7 +92,6 @@ def _uninterruptible(f, *args, **kwargs):
 #   put_nowait
 #   get(block, timeout)
 #   task_done
-#   join
 #
 # Our Queue additionally takes 'name', 'role' and 'address' parameter on the
 # constructor.  'role' can be 'input', 'bridge' or 'output', where 'input' is
@@ -151,7 +150,7 @@ class Queue(object):
         self._role   = role
         self._addr   = address
         self._name   = "queue.%s.%s" % (self._qname, self._role)
-        self._log    = ru.get_logger('rp.bridges', target="%s.log" % self._name)
+        self._log    = ru.get_logger('rp.bridge.%s' % self._name, '.')
 
         if not self._addr:
             self._addr = 'tcp://*:*'
@@ -365,6 +364,7 @@ class QueueZMQ(Queue):
         if self._role == QUEUE_INPUT:
             ctx = zmq.Context()
             self._q = ctx.socket(zmq.PUSH)
+            self._q.linger = _LINGER_TIMEOUT
             self._q.connect(self._addr)
 
 
@@ -442,6 +442,7 @@ class QueueZMQ(Queue):
         elif self._role == QUEUE_OUTPUT:
             ctx = zmq.Context()
             self._q = ctx.socket(zmq.REQ)
+            self._q.linger = _LINGER_TIMEOUT
             self._q.connect(self._addr)
 
         # ----------------------------------------------------------------------
@@ -490,14 +491,8 @@ class QueueZMQ(Queue):
         """
         poll until we die...
         """
-        start = time.time()
-        while True:
-            if not self._p.is_alive():
-                return
-            if timeout != None:
-                if (time.time()-start) > timeout:
-                    raise RuntimeError('wait timed out')
-                time.sleep(0.1)
+        if self._p:
+            self._p.join(timeout)
 
 
     # --------------------------------------------------------------------------

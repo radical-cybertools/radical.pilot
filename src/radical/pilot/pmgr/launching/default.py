@@ -85,18 +85,15 @@ class Default(PMGRLaunchingComponent):
         # wait for 'terminate' commands, but only accept those where 'src' is
         # either myself, my session, or my owner
 
-        print 'pmgr_control got     %s' % msg
-
         cmd = msg['cmd']
         arg = msg['arg']
+
+      # print 'launcher got %s' % msg
 
         if cmd == 'cancel_pilots':
             uids = arg['uids']
 
-            print 'pmgr_control handles %s' % msg
             with self._pilots_lock:
-
-                print 'pmgr_control handles %s now' % msg
 
                 if not isinstance(uids, list):
                     uids = [uids]
@@ -121,11 +118,12 @@ class Default(PMGRLaunchingComponent):
                     saga_job = js.get_job(saga_pid)
                     saga_job.cancel()
                     saga_jobs.append(saga_job)
-                    print 'canceled %s [%s]' % (uid, saga_pid)
+                  # print 'launcher: cancel %s' % saga_pid
                     
                 for saga_job in saga_jobs:
+                  # print 'launcher: wait %s' % saga_job.state
                     saga_job.wait()
-                    print 'final    %s [%s]' % (uid, saga_pid)
+                  # print 'launcher: waited %s' % saga_job.state
 
                 # move pilots into final state
                 for uid in uids:
@@ -140,10 +138,8 @@ class Default(PMGRLaunchingComponent):
                     pilot['err']   = err
                     pilot['log']   = log
                     self._log.info('pilot %s canceled', uid)
+                  # print 'launcher: advance to CANCELED'
                     self.advance(pilot, rps.CANCELED, push=False, publish=True)
-
-        else:
-            print 'pmgr_control ignores %s' % msg
 
 
     # --------------------------------------------------------------------------
@@ -220,7 +216,6 @@ class Default(PMGRLaunchingComponent):
             pilot_done   = False
             log_message  = ""
 
-            print "health check for %s [%s]" % (pid, saga_pid)
             self._log.info("health check for %s [%s]", pid, saga_pid)
 
             try:
@@ -232,7 +227,6 @@ class Default(PMGRLaunchingComponent):
                     self._saga_js[js_url] = js
 
                 saga_job = js.get_job(saga_pid)
-                print "SAGA job state for %s: %s." % (pid, saga_job.state)
                 self._log.debug("SAGA job state for %s: %s.", pid, saga_job.state)
 
                 if  saga_job.state in [rs.job.FAILED, rs.job.CANCELED]:
@@ -254,31 +248,31 @@ class Default(PMGRLaunchingComponent):
                     pilot_failed = True
 
 
-            if  pilot_failed:
-                print 'failed'
+            # no need to watch final pilots anymore...
+            if pilot_done or pilot_failed:
+
                 with self._pilots_lock:
-                    pilot = self._pilots[pid]
+                    self._tocheck.remove([pid,saga_pid])
+
+                pilot = self._pilots[pid]
+
+                if  pilot_failed:
                     out, err, log = self._get_pilot_logs(pilot)
                     pilot['out'] = out
                     pilot['err'] = err
                     pilot['log'] = log
                     self._log.warn('pilot %s is dead', pid)
+                  # print 'launcher: advance to FAILED'
                     self.advance(pilot, rps.FAILED, push=False, publish=True)
 
-            elif pilot_done:
-                print 'done'
-                with self._pilots_lock:
+                elif pilot_done:
                     out, err, log = self._get_pilot_logs(pilot)
                     pilot['out'] = out
                     pilot['err'] = err
                     pilot['log'] = log
                     self._log.info('pilot %s is done', pid)
+                  # print 'launcher: advance to DONE'
                     self.advance(pilot, rps.DONE, push=False, publish=True)
-
-            # no need to watch final pilots anymore...
-            if pilot_done or pilot_failed:
-                with self._pilots_lock:
-                    self._tocheck.remove([pid,saga_pid])
 
 
     # --------------------------------------------------------------------------
@@ -400,7 +394,7 @@ class Default(PMGRLaunchingComponent):
 
             # Check for deprecated global_virtenv
             if 'global_virtenv' in rcfg:
-                raise RuntimeError("'global_virtenv' is deprecated (%s)" % res)
+                raise RuntimeError("'global_virtenv' is deprecated (%s)" % resource)
 
             # Create a host:port string for use by the bootstrap_1.
             db_url = rs.Url(agent_dburl)

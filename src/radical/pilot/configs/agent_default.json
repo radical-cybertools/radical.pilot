@@ -29,7 +29,6 @@
             "components" : {
                 # how many instances of the respective components should be started
                 "UpdateWorker"                : 1,
-                "HeartbeatWorker"             : 1,
                 "AgentStagingInputComponent"  : 1,
                 "AgentSchedulingComponent"    : 1,
                 "AgentExecutingComponent"     : 1,

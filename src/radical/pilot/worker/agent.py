@@ -18,6 +18,11 @@ from ..  import constants as rpc
 
 
 # ==============================================================================
+# defaults
+DEFAULT_HEARTBEAT_INTERVAL = 10.0   # seconds
+
+
+# ==============================================================================
 #
 class Agent(rpu.Worker):
 
@@ -43,47 +48,12 @@ class Agent(rpu.Worker):
 
         self._log.debug('starting AgentWorker for %s' % self.uid)
 
-        # all components use the command channel for control messages
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
-
 
     # --------------------------------------------------------------------------
     #
     @property
     def agent_name(self):
         return self._agent_name
-
-
-    # --------------------------------------------------------------------------
-    #
-    def command_cb(self, topic, msg):
-
-        # This callback is invoked as a thread in the process context of the
-        # main agent (parent process) class.
-        #
-        # NOTE: That means it is *not* joined in the finalization of the run
-        # loop (child), and the subscriber thread needs to be joined specifically in the
-        # current process context.  At the moment that requires a call to
-        # self._finalize() in the main process.
-
-        self._log.debug('command_cb [%s]: %s', topic, msg)
-
-        cmd = msg['cmd']
-        arg = msg['arg']
-
-        self._log.info('agent command: %s %s' % (cmd, arg))
-
-        if cmd == 'shutdown':
-
-            # let agent know what caused the termination (first cause)
-            if not self.final_cause:
-                self.final_cause = arg
-
-                self._log.info("shutdown command (%s)" % arg)
-                self.stop()
-
-            else:
-                self._log.info("shutdown command (%s) - ignore" % arg)
 
 
     # --------------------------------------------------------------------------
@@ -103,8 +73,8 @@ class Agent(rpu.Worker):
         if cmd == 'alive':
 
             if arg in self._sub_agents:
-                self._log.debug("sub-agent ALIVE (%s)" % sa)
-                self._sub_agents[sa]['alive'] = True
+                self._log.debug("sub-agent ALIVE (%s)" % arg)
+                self._sub_agents[arg]['alive'] = True
 
 
     # --------------------------------------------------------------------------
@@ -136,8 +106,6 @@ class Agent(rpu.Worker):
         """
 
         # keep track of sub-agents we want to possibly spawn
-        self._sub_agents = dict()
-
         # sanity check on config settings
         if not 'cores'               in self._cfg: raise ValueError("Missing number of cores")
         if not 'debug'               in self._cfg: raise ValueError("Missing DEBUG level")
@@ -152,6 +120,8 @@ class Agent(rpu.Worker):
         if not 'agent_layout'        in self._cfg: raise ValueError("Missing agent layout")
 
         self._runtime    = self._cfg['runtime']
+        self._starttime  = time.time()
+        self._sub_agents = dict()
         self._layout     = self._cfg['agent_layout'][self._agent_name]
         self._pull_units = self._layout.get('pull_units', False)
 
@@ -194,6 +164,13 @@ class Agent(rpu.Worker):
         # make sure we collect commands, specifically to implement the startup
         # barrier on bootstrap_4
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._agent_barrier_cb)
+
+
+        # register the heartbeat callback which pulls the DBfor command and
+        # idle callback)
+        self.register_idle_cb(self._heartbeat_cb, 
+                              timeout=self._cfg.get('heartbeat_interval', 
+                                                      DEFAULT_HEARTBEAT_INTERVAL))
 
         # Now instantiate all communication and notification channels, and all
         # components and workers.  It will then feed a set of units to the
@@ -482,6 +459,73 @@ class Agent(rpu.Worker):
 
         # indicate that we did some work (if we did...)
         return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _heartbeat_cb(self):
+
+        self._prof.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!',
+                        uid=self._owner)
+        self._check_commands()
+        self._check_state   ()
+        return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _check_commands(self):
+
+        # Check if there's a command waiting
+        # FIXME: this pull should be done by the update worker, and commands
+        #        should then be communicated over the command pubsub
+        # FIXME: commands go to pmgr, umgr, session docs
+        # FIXME: this is disabled right now
+        return
+        retdoc = self._session._dbs._c.find_and_modify(
+                    query  = {"uid"  : self._owner},
+                    update = {"$set" : {rpc.COMMAND_FIELD: []}}, # Wipe content of array
+                    fields = [rpc.COMMAND_FIELD]
+                    )
+
+        if not retdoc:
+            return
+
+        self._log.debug('hb %s got %s', self._owner, retdoc['_id'])
+
+        for command in retdoc.get(rpc.COMMAND_FIELD, []):
+
+            cmd = command[rpc.COMMAND_TYPE]
+            arg = command[rpc.COMMAND_ARG]
+
+            self._prof.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" \
+                            % (cmd, arg), uid=self._owner)
+
+            if cmd == rpc.COMMAND_CANCEL_PILOT:
+                self._log.info('cancel pilot cmd')
+                self.final_cause = 'cancel'
+                self._cb_lock.release()
+                self.stop()
+
+            elif cmd == rpc.COMMAND_CANCEL_COMPUTE_UNIT:
+                self._log.info('cancel unit cmd')
+                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_unit',
+                                                  'arg' : command})
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _check_state(self):
+
+        # Make sure that we haven't exceeded the runtime (if one is set). If
+        # we have, terminate.
+        if self._runtime:
+            if time.time() >= self._starttime + (int(self._runtime) * 60):
+                self._log.info("reached runtime limit (%ss).", self._runtime*60)
+                self._final_cause = 'timeout'
+                self._cb_lock.release()
+                self.stop()
+
 
 
 # ------------------------------------------------------------------------------
