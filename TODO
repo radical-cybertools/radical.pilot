@@ -67,4 +67,5 @@
     limiting traffic and noise
   - Component.stop() should *first* unregister component_checker_cb 
     (and probably all other callbacks)
+  - pilot default error cb calls sys.exit -> no shutdown.
 

@@ -230,7 +230,6 @@ class PubsubZMQ(Pubsub):
                 try:
 
                     def exit_handler():
-                        print 'exiting %s' % self._name
                         self._log.debug("exiting %s", msg)
                     import atexit
                     atexit.register(exit_handler)

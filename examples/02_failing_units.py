@@ -60,7 +60,7 @@ if __name__ == '__main__':
         # Here we use a dict to initialize the description object
         pd_init = {
                 'resource'      : resource,
-                'cores'         : 2,  # pilot size
+                'cores'         : 64,   # pilot size
                 'runtime'       : 10,    # pilot runtime (min)
                 'exit_on_error' : True,
                 'project'       : config[resource]['project'],
@@ -82,7 +82,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 1  # number of units to run
+        n = 1024  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -92,10 +92,10 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             # trigger an error now and then
-            if i % 2: cud.executable = '/bin/data' # does not exist
-            else    : cud.executable = '/bin/data'
+            if i % 10: cud.executable = '/bin/data' # does not exist
+            else     : cud.executable = '/bin/sleep'
 
-            cud.arguments = ['3']
+            cud.arguments = ['0']
 
             cuds.append(cud)
             report.progress()
@@ -117,14 +117,14 @@ if __name__ == '__main__':
         report.info('\n')
         for unit in units:
             if unit.state in [rp.FAILED, rp.CANCELED]:
-                report.plain('  * %s: %s, exit: %3s, err: %s' \
+                report.plain('  * %s: %s, exit: %3s, err: %35s' \
                         % (unit.uid, unit.state[:4], 
-                           unit.exit_code, unit.stderr.strip()[-35:]))
+                           unit.exit_code, unit.stderr))
                 report.error('>>err\n')
             else:
-                report.plain('  * %s: %s, exit: %3s, out: %s' \
+                report.plain('  * %s: %s, exit: %3s, out: %35s' \
                         % (unit.uid, unit.state[:4], 
-                            unit.exit_code, unit.stdout.strip()[:35]))
+                            unit.exit_code, unit.stdout))
                 report.ok('>>ok\n')
     
 
@@ -146,6 +146,7 @@ if __name__ == '__main__':
         # not.  This will kill all remaining pilots.
         report.header('finalize')
         if session:
+            print "CALLING SESSION CLOSE"
             session.close(cleanup=False)
 
     report.header()

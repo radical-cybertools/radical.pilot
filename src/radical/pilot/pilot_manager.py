@@ -241,10 +241,10 @@ class PilotManager(rpu.Component):
     #
     def _call_pilot_callbacks(self, pilot, state):
 
-        for cb_func, cb_data in self._callbacks[rpt.PILOT_STATE]:
+        for cb, cb_data in self._callbacks[rpt.PILOT_STATE]:
 
-            if cb_data: cb_func(pilot, state, cb_data)
-            else      : cb_func(pilot, state)
+            if cb_data: cb(pilot, state, cb_data)
+            else      : cb(pilot, state)
 
 
     # --------------------------------------------------------------------------
@@ -517,7 +517,7 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def register_callback(self, cb_func, metric=rpt.PILOT_STATE, cb_data=None):
+    def register_callback(self, cb, metric=rpt.PILOT_STATE, cb_data=None):
         """
         Registers a new callback function with the PilotManager.  Manager-level
         callbacks get called if the specified metric changes.  The default
@@ -526,7 +526,7 @@ class PilotManager(rpu.Component):
 
         All callback functions need to have the same signature::
 
-            def cb_func(obj, value, cb_data)
+            def cb(obj, value, cb_data)
 
         where ``object`` is a handle to the object that triggered the callback,
         ``value`` is the metric, and ``data`` is the data provided on
@@ -547,7 +547,7 @@ class PilotManager(rpu.Component):
             raise ValueError ("Metric '%s' is not available on the unit manager" % metric)
 
         with self._cb_lock:
-            self._callbacks[metric].append([cb_func, cb_data])
+            self._callbacks[metric].append([cb, cb_data])
 
 
 # ------------------------------------------------------------------------------

@@ -41,7 +41,7 @@ def get_session_ids(db) :
 
     # this is not bein cashed, as the session list can and will change freqently
 
-    return db.collection_names()
+    return db.collection_names(include_system_collections=False)
 
 
 # ------------------------------------------------------------------------------
@@ -68,7 +68,7 @@ def get_session_docs(db, sid, cache=None, cachedir=None) :
 
     try :
         if  os.path.isfile (cache) :
-            print cache
+            print 'using cache: %s' % cache
             return ru.read_json (cache)
     except Exception as e :
         # continue w/o cache

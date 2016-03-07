@@ -345,16 +345,10 @@ class Session (rs.Session, rpu.Worker):
         # stop the component
         self.stop()  
 
-        if cleanup:
-            self.prof.prof("cleaning", uid=self._uid)
-            if self._dbs:
-                self._dbs.delete()
-            self.prof.prof("cleaned", uid=self._uid)
-        else:
-            if self._dbs:
-                self._dbs.close()
-
-        self._log.debug("session %s closed" % (str(self._uid)))
+        self.prof.prof("closing", msg=cleanup, uid=self._uid)
+        if self._dbs:
+            self._dbs.close(delete=cleanup)
+        self._log.debug("session %s closed (delete=%s)", str(self._uid), cleanup)
         self.prof.prof("closed", uid=self._uid)
         self.prof.close()
 

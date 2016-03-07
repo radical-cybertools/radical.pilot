@@ -70,7 +70,7 @@ class Agent(rpu.Worker):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'alive':
+        if cmd == 'agent_alive':
 
             if arg in self._sub_agents:
                 self._log.debug("sub-agent ALIVE (%s)" % arg)
@@ -168,7 +168,7 @@ class Agent(rpu.Worker):
 
         # register the heartbeat callback which pulls the DBfor command and
         # idle callback)
-        self.register_idle_cb(self._heartbeat_cb, 
+        self.register_idle_cb(self._agent_heartbeat_cb, 
                               timeout=self._cfg.get('heartbeat_interval', 
                                                       DEFAULT_HEARTBEAT_INTERVAL))
 
@@ -185,7 +185,7 @@ class Agent(rpu.Worker):
             clist = self._layout.get('components',{})
             import pprint
             self._log.debug(pprint.pformat(self._cfg))
-            self.start_components(components=clist, owner=self.uid)
+            self.start_components(components=clist)
 
         except Exception as e:
             self._log.exception("Agent setup error: %s" % e)
@@ -196,7 +196,7 @@ class Agent(rpu.Worker):
         # once bootstrap_4 is done, we signal success to the parent agent
         # -- if we have any parent...
         if self.agent_name != 'agent_0':
-            self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
+            self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'agent_alive',
                                               'arg' : self.agent_name})
 
         # sub-agents are started, components are started, bridges are up -- we
@@ -245,10 +245,11 @@ class Agent(rpu.Worker):
         self._prof.prof('stop', uid=self._pilot_id)
 
         # burn the bridges, burn EVERYTHING
-        for name,sa in self._sub_agents.items():
+        for sa in self._sub_agents:
+            thing = self._sub_agents[sa]
             try:
                 self._log.info("closing sub-agent %s", sa)
-                sa['handle'].stop()
+                thing['handle'].stop()
             except Exception as e:
                 self._log.exception('ignore failing sub-agent terminate')
 
@@ -266,17 +267,14 @@ class Agent(rpu.Worker):
         If any goes AWOL, we will begin to tear down this agent.
         """
 
-        to_watch = list(self._sub_agents.iteritems())
-
-      # self._log.debug('watch: %s' % pprint.pformat(to_watch))
-
-        self._log.debug('checking %s things' % len(to_watch))
-        for name, thing in to_watch:
+        self._log.debug('checking %s things' % len(self._sub_agents))
+        for sa in self._sub_agents:
+            thing = self._sub_agents[sa]
             state = thing['handle'].poll()
             if state == None:
-                self._log.debug('%-40s: ok' % name)
+                self._log.debug('%-40s: ok' % sa)
             else:
-                raise RuntimeError ('%s died - shutting down' % name)
+                raise RuntimeError ('%s died - shutting down' % sa)
 
         return True # always idle
 
@@ -311,6 +309,7 @@ class Agent(rpu.Worker):
         # non-local sub_agents.
         agent_lm = None
         for sa in sa_list:
+
             target = self._cfg['agent_layout'][sa]['target']
 
             if target == 'local':
@@ -384,7 +383,7 @@ class Agent(rpu.Worker):
 
         # the agents are up - register an idle callback to watch them
         # FIXME: make timeout configurable?
-        self.register_idle_cb(self._sa_watcher_cb, timeout=10.0)
+        self.register_idle_cb(self._sa_watcher_cb, timeout=1.0)
 
         self._log.debug('start_sub_agents done')
 
@@ -463,7 +462,7 @@ class Agent(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _heartbeat_cb(self):
+    def _agent_heartbeat_cb(self):
 
         self._prof.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!',
                         uid=self._owner)

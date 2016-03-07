@@ -219,7 +219,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # notify the scheduling thread, ie. trigger a reschedule to utilize
         # the freed slots
-        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+        self.publish(rpc.AGENT_RESCHEDULE_PUBSUB, cu)
 
         # Note: The extra space below is for visual alignment
         self._log.info("slot status after  unschedule: %s" % self.slot_status ())

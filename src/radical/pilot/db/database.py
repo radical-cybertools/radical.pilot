@@ -80,7 +80,8 @@ class DBSession(object):
             self._c.create_index([('state', pymongo.ASCENDING)], unique=False, sparse=False)
 
             # insert the session doc
-            self._created = timestamp()
+            self._can_delete = True
+            self._created    = timestamp()
             self._c.insert({"type"      : 'session',
                             "_id"       : sid,
                             "uid"       : sid,
@@ -94,8 +95,9 @@ class DBSession(object):
                 raise ValueError('cannot reconnect to session %s' % sid)
 
             doc = docs[0]
-            self._created   = doc['created']
-            self._connected = timestamp()
+            self._can_delete = False
+            self._created    = doc['created']
+            self._connected  = timestamp()
 
             # FIXME: get bridge addresses from DB?  If not, from where?
 
@@ -139,7 +141,8 @@ class DBSession(object):
     #
     @property
     def closed(self):
-        """ Returns the connection time
+        """
+        Returns the connection time
         """
         return self._closed
 
@@ -149,35 +152,27 @@ class DBSession(object):
     @property
     def is_connected(self):
 
-        if self._c: return True
-        else      : return False
+        return not self.closed
 
 
     #--------------------------------------------------------------------------
     #
-    def close(self):
+    def close(self, delete=True):
         """ 
         close the session
         """
-        if not self._c:
+        if self.closed:
             raise RuntimeError("No active session.")
+
+        self._closed = timestamp()
+
+        # only the Session which created the collection can delete it!
+        if delete and self._can_remove:
+            self._log.error('delete session')
+            self._c.drop()
 
         self._mongo.close()
         self._closed = timestamp()
-        self._c = None
-
-
-    #--------------------------------------------------------------------------
-    #
-    def delete(self):
-        """ 
-        Removes a session and all associated collections from the DB.
-        """
-        if not self._c:
-            raise RuntimeError("No active session.")
-
-        self._closed = timestamp()
-        self._c.drop()
         self._c = None
 
 
@@ -187,7 +182,7 @@ class DBSession(object):
         """ 
         Adds a pilot managers doc
         """
-        if not self._c:
+        if self.closed:
             raise Exception("No active session.")
 
         pmgr_doc['_id']  = pmgr_doc['uid']
@@ -203,7 +198,7 @@ class DBSession(object):
     def list_pilot_manager_uids(self):
         """ Lists all pilot managers.
         """
-        if not self._c:
+        if self.closed:
             raise Exception("No active session.")
 
         pilot_manager_uids = []
@@ -219,7 +214,7 @@ class DBSession(object):
         Returns the ComputeUnit's unit's stdout.
         """
         # FIXME: cache
-        if not self._c:
+        if self.closed:
             raise Exception("No active session.")
 
         cursor = self._c.find({'type' : 'unit', 
@@ -235,7 +230,7 @@ class DBSession(object):
         Returns the ComputeUnit's unit's stderr.
         """
         # FIXME: cache
-        if not self._c:
+        if self.closed:
             raise Exception("No active session.")
 
         cursor = self._c.find({'type' : 'unit', 
@@ -256,7 +251,7 @@ class DBSession(object):
         """
         # FIXME: push the doc?
 
-        if not self._c:
+        if self.closed:
             raise Exception("No active session.")
 
         # construct the update query
@@ -294,7 +289,7 @@ class DBSession(object):
 
         # FIXME: explicit bulk vs. insert(multi=True)
 
-        if not self._c:
+        if self.closed:
             raise Exception("No active session.")
 
         bulk = self._c.initialize_ordered_bulk_op()
@@ -319,7 +314,7 @@ class DBSession(object):
         Return a list of UIDs
         """
 
-        if not self._c:
+        if self.closed:
             raise Exception("No active session.")
 
         pilot_ids = []
@@ -338,7 +333,7 @@ class DBSession(object):
     def get_pilots(self, pmgr_uid=None, pilot_ids=None):
         """ Get a pilot
         """
-        if not self._c:
+        if self.closed:
             raise Exception("No active session.")
 
         if not pmgr_uid and not pilot_ids:
@@ -370,7 +365,7 @@ class DBSession(object):
         Send a command to one or more pilots.
         """
         
-        if not self._c:
+        if self.closed:
             raise Exception("No active session.")
 
         if not pmgr_uid and not pilot_ids:
@@ -408,7 +403,7 @@ class DBSession(object):
 
         # FIXME
 
-        if not self._c:
+        if self.closed:
             raise Exception("No active session.")
 
         self._c.update({'type' : 'pilot', 
@@ -424,7 +419,7 @@ class DBSession(object):
 
         return dict {uid:unit}
         """
-        if not self._c:
+        if self.closed:
             raise Exception("No active session.")
 
         if not unit_ids:
@@ -438,7 +433,7 @@ class DBSession(object):
 
         # make sure we return every unit doc only once
         # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
-        ret = { doc['uid'] : doc for doc in cursor}
+        ret = {doc['uid'] : doc for doc in cursor}
 
         return ret.values()
 
@@ -451,7 +446,7 @@ class DBSession(object):
         a specific pilot.
         """
 
-        if not self._c:
+        if self.closed:
             raise Exception("No active session.")
 
         # make sure we only operate on units
@@ -476,7 +471,7 @@ class DBSession(object):
         if not unit_ids:
             return
 
-        if not self._c:
+        if self.closed:
             raise Exception("No active session.")
 
         # Make sure we work on a list.
@@ -517,7 +512,7 @@ class DBSession(object):
         Get yerself a bunch of compute units.
         """
         
-        if not self._c:
+        if self.closed:
             raise Exception("No active session.")
 
         if not unit_ids:
@@ -541,7 +536,7 @@ class DBSession(object):
         """ 
         Adds a unit managers document
         """
-        if not self._c:
+        if self.closed:
             raise Exception("No active session.")
 
         umgr_doc['_id']  = umgr_doc['uid']
@@ -557,7 +552,7 @@ class DBSession(object):
     def get_unit_manager(self, umgr_uid):
         """ Get a unit manager.
         """
-        if not self._c:
+        if self.closed:
             raise RuntimeError("No active session.")
 
         cursor = self._c.find({'type' : 'umgr', 
@@ -573,7 +568,7 @@ class DBSession(object):
     def get_pilot_manager(self, pmgr_uid):
         """ Get a unit manager.
         """
-        if not self._c:
+        if self.closed:
             raise RuntimeError("No active session.")
 
         cursor = self._c.find({'type' : 'pmgr', 
@@ -591,7 +586,7 @@ class DBSession(object):
         Lists all pilot managers.
         """
 
-        if not self._c:
+        if self.closed:
             raise RuntimeError("No active session.")
 
         cursor = self._c.find({'type' : 'umgr'})
@@ -606,7 +601,7 @@ class DBSession(object):
         Adds a pilot from a unit manager.
         """
 
-        if not self._c:
+        if self.closed:
             raise RuntimeError("No active session.")
 
         for pilot_uid in pilot_ids:
@@ -623,7 +618,7 @@ class DBSession(object):
         Removes one or more pilots from a unit manager.
         """
 
-        if not self._c:
+        if self.closed:
             raise RuntimeError("No active session.")
 
         # Add the ids to the pilot's queue
@@ -642,7 +637,7 @@ class DBSession(object):
 
         Return a list of umgr uids
         """
-        if not self._c:
+        if self.closed:
             raise RuntimeError("No active session.")
 
         cursor = self._c.find({'type' : 'pilot',
@@ -657,7 +652,7 @@ class DBSession(object):
         """ Lists all compute units associated with a unit manager.
         """
         # FIXME: why is this call not updating local unit state?
-        if not self._c:
+        if self.closed:
             raise RuntimeError("No active session.")
 
         if pilot_uid:
@@ -677,7 +672,7 @@ class DBSession(object):
         """ Lists all compute units associated with a unit manager.
         """
         # FIXME: why is this call not updating local unit state?
-        if not self._c:
+        if self.closed:
             raise RuntimeError("No active session.")
 
         cursor = self._c.find({'type'  : 'unit', 
@@ -695,7 +690,7 @@ class DBSession(object):
         if not units:
             return
 
-        if not self._c:
+        if self.closed:
             raise RuntimeError("No active session.")
 
         # Make sure we work on a list.
@@ -726,7 +721,7 @@ class DBSession(object):
 
         # FIXME
 
-        if not self._c:
+        if self.closed:
             raise RuntimeError("No active session.")
 
         self._c.update({'type' : 'unit', 
@@ -743,7 +738,7 @@ class DBSession(object):
 
         # FIXME: explicit bulk vs. insert(multi=True)
 
-        if not self._c:
+        if self.closed:
             raise Exception("No active session.")
 
         bulk = self._c.initialize_ordered_bulk_op()

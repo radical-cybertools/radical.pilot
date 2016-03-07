@@ -120,8 +120,11 @@ class ComputePilot(object):
     #
     def _default_error_cb(self):
 
+        print 'def err cb'
         if self.state == rps.FAILED and self._exit_on_error:
+            print 'exit!'
             self._log.error("[Callback]: pilot '%s' failed -- exit", self.uid)
+            self._pmgr._session.stop()
             sys.exit(1)
 
 
@@ -151,15 +154,14 @@ class ComputePilot(object):
                        'stdout', 'stderr']:
                 setattr(self, "_%s" % key, val)
 
-
         if old_state != new_state:
 
+            # call callbacks registered specifically for the pilot
             for cb, cb_data in self._callbacks:
                 if cb_data: cb(self, self.state, cb_data)
                 else      : cb(self, self.state)
 
-            # also inform pmgr about state change, to collect any callbacks
-            # it has registered globally
+            # call callbacks registered on the pilot manager
             self._pmgr._call_pilot_callbacks(self, self.state)
 
             # this should be the last cb invoked on state changes

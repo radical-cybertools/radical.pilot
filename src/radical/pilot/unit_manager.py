@@ -667,7 +667,9 @@ class UnitManager(rpu.Component):
         self._log.report.idle(mode='start')
         while to_check and not self._terminate.is_set():
 
+            # FIXME: print percentage...
             self._log.report.idle()
+          # print 'wait units: %s' % [[u.uid, u.state] for u in to_check]
 
             to_check = [unit for unit in to_check \
                               if unit.state not in states and \
@@ -678,7 +680,8 @@ class UnitManager(rpu.Component):
                     self._log.debug ("wait timed out")
                     break
 
-                time.sleep (0.1)
+              # time.sleep (0.1)
+                time.sleep (3.0)
 
         self._log.report.idle(mode='stop')
 

@@ -129,7 +129,7 @@ def list_sessions(db, dbname, age, session):
     if session:
         sids.append(session)
     else:
-        sids = rpu.get_session_ids(db[dbname])
+        sids = rpu.get_session_ids(db)
 
     if not sids:
         print 'no matching session in database at %s' % url
@@ -173,11 +173,7 @@ def purge_sessions(db, dbname, age, session):
     database    = db[dbname]
 
     for sid in session_ids:
-        database.drop_collection("%s"    % sid)
-        database.drop_collection("%s.p"  % sid)
-        database.drop_collection("%s.pm" % sid)
-        database.drop_collection("%s.um" % sid)
-        database.drop_collection("%s.cu" % sid)
+        database.drop_collection(sid)
         print 'purged session %s' % sid
 
 

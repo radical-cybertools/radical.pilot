@@ -33,7 +33,7 @@ from .pubsub     import PUBSUB_BRIDGE  as rpu_PUBSUB_BRIDGE
 # TODO:
 #   - add PENDING states
 #   - for notifications, change msg from [pubsub, thing] to [pubsub, msg]
-#   - components should not need to declare the state publisher?
+#   - components should not need to registered the state publisher?
 
 
 # ==============================================================================
@@ -50,7 +50,7 @@ class Component(mp.Process):
         can be exchanged (publish/subscriber channels)
 
     All low level communication is handled by the base class -- deriving classes
-    need only to declare the respective channels, valid state transitions, and
+    need only to register the respective channels, valid state transitions, and
     work methods.  When a thing is received, the component is assumed to have
     full ownership over it, and that no other thing will change the thing state
     during that time.
@@ -81,9 +81,9 @@ class Component(mp.Process):
 
     These method should be used to
       - set up the component state for operation
-      - declare input/output/notification channels
-      - declare work methods
-      - declare callbacks to be invoked on state notification
+      - register input/output/notification channels
+      - register work methods
+      - register callbacks to be invoked on state notification
       - tear down the same on closing
 
     Inheriting classes MUST call the constructor:
@@ -92,7 +92,7 @@ class Component(mp.Process):
             def __init__(self, args):
                 ComponentBase.__init__(self)
 
-    Further, the class must implement the declared work methods, with
+    Further, the class must implement the registered work methods, with
     a signature of:
 
         work(self, thing)
@@ -152,12 +152,12 @@ class Component(mp.Process):
                                          self.__class__.__name__)
         self._owner         = cfg.get('owner')
                                            # we need owner for alive messages
-        self._inputs        = list()       # queues to get things from
+        self._inputs        = dict()       # queues to get things from
         self._outputs       = dict()       # queues to send things to
         self._publishers    = dict()       # channels to send notifications to
-        self._subscribers   = list()       # callbacks for recv'ed notifications
+        self._subscribers   = dict()       # callbacks for recv'ed notifications
         self._workers       = dict()       # where things get worked upon
-        self._idlers        = list()       # idle_callback registry
+        self._idlers        = dict()       # idle_callback registry
         self._terminate     = mt.Event()   # signal for thread termination
         self._finalized     = False        # finalization guard
         self._is_parent     = True         # guard initialize/initialize_child
@@ -262,9 +262,13 @@ class Component(mp.Process):
         self._heartbeat_timeout  = 30.0        # die after missing 3 heartbeats
 
         hi = self._heartbeat_interval
-        self.register_idle_cb(self._heartbeat_cb,         timeout=hi)
-        self.register_idle_cb(self._heartbeat_checker_cb, timeout=hi)
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._heartbeat_monitor_cb)
+        self.register_idle_cb(self._heartbeat_cb, timeout=hi)
+
+        # heartbeat checks ony make sense if we get heartbeats, ie. if we have
+        # an owner
+        if self.owner:
+            self.register_idle_cb(self._heartbeat_checker_cb, timeout=hi)
+            self.register_subscriber(rpc.CONTROL_PUBSUB, self._heartbeat_monitor_cb)
 
         # We keep a static typemap for worker, component and bridge startup. If
         # we ever want to become reeeealy fancy, we can derive that typemap from
@@ -313,7 +317,7 @@ class Component(mp.Process):
       # if cmd == 'shutdown':
       #     src = arg['sender']
       #     if src in [self.uid, self._session.uid, self._owner, None]:
-      #         print '%s called shutdown on me (%s)' % (src, self.uid)
+      #       # print '%s called shutdown on me (%s)' % (src, self.uid)
       #         self._log.info('received shutdown command (%s)', arg)
       #         self.stop()
 
@@ -330,20 +334,6 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def _heartbeat_checker_cb(self):
-
-        if (self._heartbeat + self._heartbeat_timeout) < time.time():
-            self._log.debug('heartbeat check failed')
-            self.stop()
-
-        else:
-            self._log.debug('heartbeat check ok')
-
-        return False # always sleep
-
-
-    # --------------------------------------------------------------------------
-    #
     def _heartbeat_monitor_cb(self, topic, msg):
 
         cmd = msg['cmd']
@@ -351,7 +341,24 @@ class Component(mp.Process):
 
         if cmd == 'heartbeat':
             if arg['sender'] == self.owner:
+              # print " >>> %s heartbeat %s" % (self.uid, arg['sender'])
                 self._heartbeat = time.time()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _heartbeat_checker_cb(self):
+
+        if (self._heartbeat + self._heartbeat_timeout) < time.time():
+          # print " ### %s heartbeat FAIL (self.owner)" % self.uid
+            self._log.debug('heartbeat check failed')
+            self.stop()
+
+        else:
+          # print " --- %s heartbeat OK" % self.uid
+            self._log.debug('heartbeat check ok')
+
+        return False # always sleep
 
 
     # --------------------------------------------------------------------------
@@ -521,11 +528,17 @@ class Component(mp.Process):
                 sys.exit()
         """
 
+        self_thread = mt.current_thread()
+
+        print ' === %s stop (%s: %s) [%s]' % (self.uid, os.getpid(), self.pid,
+                ru.get_caller_name())
+
         if self._finalized:
             # this should not happeN
             print 'double close on %s' % self.uid
             return
-          # raise RuntimeError('double stop for %s' % self.uid)
+          # sys.exit()
+            raise RuntimeError('double stop for %s' % self.uid)
 
         # no matter what happens below, we attempt finalization only once
         self._finalized = True
@@ -541,7 +554,6 @@ class Component(mp.Process):
             self.finalize_child()
             self._prof.prof("finalized_child")
 
-        print '------ %s stop (%s: %s)' % (self.uid, os.getpid(), self.pid)
       # if 'session' in self.uid.lower():
       #     ru.print_stacktrace()
 
@@ -549,8 +561,8 @@ class Component(mp.Process):
         self._log.info("stopping %s"      % self.uid)
         self._log.info("  components  %s" % self._components)
         self._log.info("  bridges     %s" % self._bridges)
-        self._log.info("  subscribers %s" % self._subscribers)
-        self._log.info("  idlers      %s" % self._idlers)
+        self._log.info("  subscribers %s" % self._subscribers.keys())
+        self._log.info("  idlers      %s" % self._idlers.keys())
 
         # now let everybody know we are about to go away
         self._terminate.set()
@@ -559,20 +571,29 @@ class Component(mp.Process):
         # be able to join all threads
         self._cb_lock.release()
 
+        # signal all threads to terminate
+        for s in self._subscribers:
+            print '%s -> term %s' % (self.uid, s)
+            self._subscribers[s]['term'].set()
+        for i in self._idlers:
+            print '%s -> term %s' % (self.uid, i)
+            self._idlers[i]['term'].set()
+
         # tear down all subscriber threads -- skip current thread
-        self_thread = mt.current_thread()
-        for t in self._subscribers:
+        for s in self._subscribers:
+            t = self._subscribers[s]['thread']
             if t != self_thread:
-                print '%s -> stop %s' % (self.uid, t.name)
-                self._log.debug('subscriber thread  joined  %s' % t)
+                print '%s -> join %s' % (self.uid, s)
                 t.join()                                     
+                self._log.debug('subscriber thread  joined  %s' % s)
 
         # tear down all idler threads -- skip current thread
-        for t in self._idlers:
+        for i in self._idlers:
+            t = self._idlers[i]['thread']
             if t != self_thread:
-                print '%s -> stop %s' % (self.uid, t.name)
-                self._log.debug('idler thread  joined  %s' % t)
+                print '%s -> join %s' % (self.uid, i)
                 t.join()                               
+                self._log.debug('idler thread  joined  %s' % i)
 
 
         # tear down components, workers and bridges
@@ -605,10 +626,10 @@ class Component(mp.Process):
         # Note that the thread is *not* joined at this point -- but the
         # parent should not block on shutdown anymore, as the thread is
         # at least gone.
-        if self_thread in self._subscribers:
+        if self_thread in [s['thread'] for k,s in self._subscribers.iteritems()]:
             self._log.debug('release subscriber thread %s' % self_thread)
             sys.exit()
-        if self_thread in self._idlers:
+        if self_thread in [i['thread'] for k,i in self._idlers.iteritems()]:
             self._log.debug('release idler thread %s' % self_thread)
             sys.exit()
 
@@ -663,27 +684,56 @@ class Component(mp.Process):
         if not isinstance(states, list):
             states = [states]
 
+
+        name = '%s.%s.%s' % (self.uid, worker.__name__, '_'.join(states))
+
+        if name in self._inputs:
+            raise ValueError('input %s already registered' % name)
+
         # get address for the queue
         addr = self._addr_map[input]['out']
         self._log.debug("using addr %s for input %s" % (addr, input))
 
         q = rpu_Queue.create(rpu_QUEUE_ZMQ, input, rpu_QUEUE_OUTPUT, addr)
-        self._inputs.append([q, states])
+        self._inputs['name'] = {'queue'  : q, 
+                                'states' : states}
 
-        for state in states:
-            self._log.debug('declared input     : %s : %s : %s' \
-                    % (state, input, q.name))
+        self._log.debug('registered input %s', name)
 
         # we want exactly one worker associated with a state -- but a worker can
         # be responsible for multiple states
         for state in states:
+
             if state in self._workers:
                 self._log.warn("%s replaces worker for %s (%s)" \
                         % (self.uid, state, self._workers[state]))
             self._workers[state] = worker
 
-            self._log.debug('declared worker    : %s : %s' \
-                    % (state, worker.__name__))
+            self._log.debug('registered worker %s [%s]', worker.__name__, state)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def unregister_input(self, states, input, worker):
+        """
+        This methods is the inverse to the 'register_input()' method.
+        """
+
+        if not isinstance(states, list):
+            states = [states]
+
+        name = '%s.%s.%s' % (self.uid, worker.__name__, '_'.join(states))
+
+        if name not in self._inputs:
+            raise ValueError('input %s not registered' % name)
+        del(self._inputs[name])
+        self._log.debug('unregistered input %s', name)
+
+        for state in states:
+            if state not in self._workers:
+                raise ValueError('worker %s not registered for %s' % worker.__name__, state)
+            del(self._workers[state])
+            self._log.debug('unregistered worker %s [%s]', worker.__name__, state)
 
 
     # --------------------------------------------------------------------------
@@ -725,8 +775,25 @@ class Component(mp.Process):
                 q = rpu_Queue.create(rpu_QUEUE_ZMQ, output, rpu_QUEUE_INPUT, addr)
                 self._outputs[state] = q
 
-                self._log.debug('declared output    : %s : %s : %s' \
+                self._log.debug('registered output    : %s : %s : %s' \
                      % (state, output, q.name))
+
+
+    # --------------------------------------------------------------------------
+    #
+    def unregister_output(self, states):
+        """
+        this removes any outputs registerd for the given states.
+        """
+
+        if not isinstance(states, list):
+            states = [states]
+
+        for state in states:
+            if not state in self._outputs:
+                raise ValueError('state %s hasno output to unregister' % state)
+            del(self._outputs[state])
+            self._log.debug('unregistered output for %s', name)
 
 
     # --------------------------------------------------------------------------
@@ -743,6 +810,11 @@ class Component(mp.Process):
         its own threading.
         """
 
+        name = "%s.idler.%s" % (self.uid, cb.__name__)
+
+        if name in self._idlers:
+            raise ValueError('cb %s already registered' % cb.__name__)
+
         if None == timeout:
             timeout = 0.1
         timeout = float(timeout)
@@ -754,11 +826,11 @@ class Component(mp.Process):
         #       manually check if timeout has passed before activating the
         #       callback.
         # ----------------------------------------------------------------------
-        def _idler(callback, callback_data, to):
+        def _idler(terminate, callback, callback_data, to):
           # print 'thread %10s : %s' % (ru.gettid(), mt.currentThread().name)
             try:
                 last = 0.0  # never been called
-                while not self._terminate.is_set():
+                while not terminate.is_set():
                     now = time.time()
                     if (now-last) > to:
                         with self._cb_lock:
@@ -775,24 +847,48 @@ class Component(mp.Process):
         # ----------------------------------------------------------------------
 
         # create a idler thread
-        t = mt.Thread(target=_idler, args=[cb,cb_data,timeout], 
-                      name="%s.idler.%s" % (self.uid, cb.__name__))
+        e = mt.Event()
+        t = mt.Thread(target=_idler, args=[e,cb,cb_data,timeout], name=name)
         t.start()
-        self._idlers.append(t)
 
-        self._log.debug('%s declared idler %s' % (self.uid, t.name))
+        self._idlers[name] = {'term'   : e,  # termination signal
+                              'thread' : t}  # thread handle
+
+        self._log.debug('%s registered idler %s' % (self.uid, t.name))
+
+
+    # --------------------------------------------------------------------------
+    #
+    def unregister_idle_cb(self, pubsub, cb):
+        """
+        This method is reverts the register_idle_cb() above: it
+        removes an idler from the component, and will terminate the
+        respective thread.
+        """
+
+        name = "%s.idler.%s" % (self.uid, cb.__name__)
+
+        if name not in self._idlers:
+            raise ValueError('%s is not registered' % name)
+
+        entry = self._idlers[name]
+        entry['term'].set()
+        entry['thread'].join()
+        del(self._idlers[name])
+
+        self._log.debug("unregistered idler %s", name)
 
 
     # --------------------------------------------------------------------------
     #
     def register_publisher(self, pubsub):
         """
-        Using this method, the component can declare itself to be a publisher of
-        notifications on the given pubsub channel.
+        Using this method, the component can registered itself to be a publisher 
+        of notifications on the given pubsub channel.
         """
 
-        if pubsub not in self._publishers:
-            self._publishers[pubsub] = list()
+        if pubsub in self._publishers:
+            raise ValueError('publisher for %s already regisgered' % pubsub)
 
         # get address for pubsub
         if not pubsub in self._addr_map:
@@ -803,9 +899,23 @@ class Component(mp.Process):
         self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
 
         q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_PUB, addr)
-        self._publishers[pubsub].append(q)
+        self._publishers[pubsub] = q
 
-        self._log.debug('declared publisher : %s : %s' % (pubsub, q.name))
+        self._log.debug('registered publisher : %s : %s' % (pubsub, q.name))
+
+
+    # --------------------------------------------------------------------------
+    #
+    def unregister_publisher(self, pubsub):
+        """
+        This removes the registration of a pubsub channel for publishing.
+        """
+
+        if pubsub not in self._publishers:
+            raise ValueError('publisher for %s is not registered' % pubsub)
+
+        del(self._publishers[pubsub])
+        self._log.debug('unregistered publisher %s', pubsub)
 
 
     # --------------------------------------------------------------------------
@@ -813,7 +923,7 @@ class Component(mp.Process):
     def register_subscriber(self, pubsub, cb, cb_data=None):
         """
         This method is complementary to the register_publisher() above: it
-        declares a subscription to a pubsub channel.  If a notification
+        registers a subscription to a pubsub channel.  If a notification
         is received on thag channel, the registered callback will be
         invoked.  The callback MUST have one of the signatures:
 
@@ -828,11 +938,26 @@ class Component(mp.Process):
         invocation.
         """
 
+        name = "%s.subscriber.%s" % (self.uid, cb.__name__)
+        if name in self._subscribers:
+            raise ValueError('cb %s already registered for %s' % (cb.__name__, pubsub))
+
+        # get address for pubsub
+        if not pubsub in self._addr_map:
+            raise ValueError('no bridge known for pubsub channel %s' % pubsub)
+
+        addr = self._addr_map[pubsub]['out']
+        self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
+
+        # create a pubsub subscriber (the pubsub name doubles as topic)
+        q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB, addr)
+        q.subscribe(pubsub)
+
         # ----------------------------------------------------------------------
-        def _subscriber(q, callback, callback_data):
+        def _subscriber(q, terminate, callback, callback_data):
           # print 'thread %10s : %s' % (ru.gettid(), mt.currentThread().name)
             try:
-                while not self._terminate.is_set():
+                while not terminate.is_set():
                     topic, msg = q.get_nowait(1000) # timout in ms
                     if topic and msg:
                         if not isinstance(msg,list):
@@ -848,41 +973,57 @@ class Component(mp.Process):
                 if self._exit_on_error:
                     raise
         # ----------------------------------------------------------------------
-
-        # get address for pubsub
-        if not pubsub in self._addr_map:
-            raise ValueError('no bridge known for pubsub channel %s' % pubsub)
-
-        addr = self._addr_map[pubsub]['out']
-        self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
-
-        # create a pubsub subscriber (the pubsub name doubles as topic)
-        q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB, addr)
-        q.subscribe(pubsub)
-
-        t = mt.Thread(target=_subscriber, args=[q,cb,cb_data],
-                      name="%s.subscriber.%s" % (self.uid, cb.__name__))
+        e = mt.Event()
+        t = mt.Thread(target=_subscriber, args=[q,e,cb,cb_data], name=name)
         t.start()
-        self._subscribers.append(t)
 
-        self._log.debug('%s declared %s subscriber %s' % (self.uid, pubsub, t.name))
+        self._subscribers[name] = {'term'   : e,  # termination signal
+                                   'thread' : t}  # thread handle
+
+        self._log.debug('%s registered %s subscriber %s' % (self.uid, pubsub, t.name))
+
+
+    # --------------------------------------------------------------------------
+    #
+    def unregister_subscriber(self, pubsub, cb):
+        """
+        This method is reverts the register_subscriber() above: it
+        removes a subscription from a pubsub channel, and will terminate the
+        respective thread.
+        """
+
+        name = "%s.subscriber.%s" % (self.uid, cb.__name__)
+
+        if name not in self._subscribers:
+            raise ValueError('%s is not subscribed to %s' % (cb.__name__, pubsub))
+
+        entry = self._subscribers[name]
+        entry['term'].set()
+        entry['thread'].join()
+        del(self._subscribers[name])
+
+        self._log.debug("unregistered %s", name)
 
 
     # --------------------------------------------------------------------------
     #
     def _thread_check_cb(self):
 
-        for t in self._subscribers:
+        for s in self._subscribers:
+            t = self._subscribers[s]['thread']
             if not t.is_alive():
+                print 'subscriber %s died' % t.name
                 self._log.error('subscriber %s died', t.name)
                 if self._exit_on_error:
-                    raise RuntimeError('subscriber %s died' % t.name)
+                    self.stop()
 
-        for t in self._idlers:
+        for i in self._idlers:
+            t = self._idlers[i]['thread']
             if not t.is_alive():
+                print 'idler %s died' % t.name
                 self._log.error('idler %s died', t.name)
                 if self._exit_on_error:
-                    raise RuntimeError('idler %s died' % t.name)
+                    self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -911,14 +1052,14 @@ class Component(mp.Process):
         self._dh        = ru.DebugHelper(name=self.uid)
 
         # other state we don't want to carry over the fork:
-        self._inputs        = list()      # queues to get things from
+        self._inputs        = dict()      # queues to get things from
         self._outputs       = dict()      # queues to send things to
         self._components    = list()      # sub-components
         self._bridges       = list()      # started bridges
         self._publishers    = dict()      # channels to send notifications to
-        self._subscribers   = list()      # callbacks for received notifications
+        self._subscribers   = dict()      # callbacks for received notifications
         self._workers       = dict()      # where things get worked upon
-        self._idlers        = list()      # idle_callback registry
+        self._idlers        = dict()      # idle_callback registry
 
         # parent can call terminate, which we translate here into sys.exit(),
         # which is then excepted in the run loop below for an orderly shutdown.
@@ -955,7 +1096,7 @@ class Component(mp.Process):
             self.register_publisher(rpc.STATE_PUBSUB)
             self.register_publisher(rpc.CONTROL_PUBSUB)
 
-            # initialize_child() should declare all input and output channels, and all
+            # initialize_child() should register all input and output channels, and all
             # workers and notification callbacks
             self._prof.prof('initialize')
             self.initialize_child()
@@ -967,13 +1108,15 @@ class Component(mp.Process):
             self.register_idle_cb(self._thread_check_cb,  timeout= 1.0)
             self.register_idle_cb(self._profile_flush_cb, timeout=60.0)
 
-            # perform a sanity check: for each declared input state, we expect
-            # a corresponding work method to be declared, too.
-            for input, states in self._inputs:
+            # perform a sanity check: for each registered input state, we expect
+            # a corresponding work method to be registered, too.
+            for name in self._inputs:
+                input  = self._inputs[name]['queue']
+                states = self._inputs[name]['states']
                 for state in states:
                     if not state in self._workers:
-                        raise RuntimeError("%s: no worker declared for input state %s" \
-                                        % self.uid, state)
+                        raise RuntimeError("%s: no worker registered for input state %s" \
+                                          % self.uid, state)
 
             # setup is done, child initialization is done -- we are alive!
             # if we have an owner, we send an alive message to it
@@ -996,7 +1139,9 @@ class Component(mp.Process):
                 # FIXME: a simple, 1-thing caching mechanism would likely remove
                 #        the req/res overhead completely (for any non-trivial
                 #        worker).
-                for input, states in self._inputs:
+                for name in self._inputs:
+                    input  = self._inputs[name]['queue']
+                    states = self._inputs[name]['states']
 
                     # FIXME: the timeouts have a large effect on throughput, but
                     #        I am not yet sure how best to set them...
@@ -1067,7 +1212,7 @@ class Component(mp.Process):
             self._log.exception('loop exception')
 
         except SystemExit:
-            self._log.debug("loop exit")
+            self._log.exception("loop exit")
 
         except:
             # Can be any other signal or interrupt.
@@ -1075,7 +1220,7 @@ class Component(mp.Process):
 
         finally:
             # call stop (which calls the finalizers)
-            self._log.exception('loop stops')
+            self._log.info('loop stops')
             self.stop()
 
 
@@ -1087,7 +1232,7 @@ class Component(mp.Process):
         Things which have been operated upon are pushed down into the queues
         again, only to be picked up by the next component, according to their
         state model.  This method will update the thing state, and push it into
-        the output queue declared as target for that state.
+        the output queue registered as target for that state.
 
         things:  list of things to advance
         state:   new state to set for the things
@@ -1181,9 +1326,7 @@ class Component(mp.Process):
             self._log.error("no route for '%s' notification: %s" % (pubsub, msg))
             return
 
-        for p in self._publishers[pubsub]:
-            self._log.debug('### 2 put %s, %s', pubsub, msg)
-            p.put (pubsub, msg)
+        self._publishers[pubsub].put(pubsub, msg)
 
 
     # --------------------------------------------------------------------------
@@ -1274,6 +1417,10 @@ class Component(mp.Process):
         # requests are issued, and self._components is filled.
         with self._barrier_lock:
 
+            if sender not in [c.uid for c in self._components]:
+                self._log.error('invalid alive msg for %s' % sender)
+                return
+
             # record component only once
             if sender in self._barrier_seen:
                 self._log.error('duplicated alive msg for %s' % sender)
@@ -1284,14 +1431,6 @@ class Component(mp.Process):
             if len(self._barrier_seen) < len(self._components):
                 self._log.debug( 'barrier %s: incomplete (%s)', self.uid, len(self._barrier_seen))
                 return
-
-            # sanity check if we indeed saw all components as alive
-            uids = [c.uid for c in self._components]
-            for uid in uids:
-                if not uid in self._barrier_seen:
-                    raise RuntimeError('bookkeeping error: %s != %s'
-                            % (sorted(self._barrier_seen), 
-                               sorted(uids)))
 
             # all components have been seen as alive by now - lift barrier
             self._barrier.set()
@@ -1417,11 +1556,13 @@ class Component(mp.Process):
         if not self._barrier.wait(timeout):
             raise RuntimeError('component startup barrier failed (timeout)')
 
+        # FIXME: barrier_cb can now be unregistered
+        self.unregister_subscriber(rpc.CONTROL_PUBSUB, self._barrier_cb)
+
         # once components are up, we start a watcher callback
         # FIXME: make timeout configurable?
         self.register_idle_cb(self._component_watcher_cb, timeout=1.0)
 
-        # FIXME: barrier_cb can now be unregistered
         self._log.debug("start_components done")
 
 
