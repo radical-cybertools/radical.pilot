@@ -188,7 +188,7 @@ git_ident = "$Id$"
 def update_db(state, session=None, pilot_uid=None, logger=None, msg=None):
 
     if logger:
-        logger.info('pilot state: %s', state)
+        logger.info('pilot state: %s [%s]', (state, msg))
         logger.info(msg)
         logger.info(ru.get_trace())
 

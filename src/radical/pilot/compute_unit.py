@@ -118,7 +118,6 @@ class ComputeUnit(object):
     #
     def _default_state_cb(self, unit, state):
 
-      # print 'cb: %s: %s' % (self.uid, state)
         self._log.info("[Callback]: unit %s state: %s.", self.uid, self.state)
 
 

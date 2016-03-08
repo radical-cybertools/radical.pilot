@@ -162,6 +162,7 @@ class Component(mp.Process):
         self._finalized     = False        # finalization guard
         self._is_parent     = True         # guard initialize/initialize_child
         self._cb_lock       = ru.RLock()   # guard threaded callback invokations
+        self._heartbeat_on  = False        # heartbeat_cb activation guard
         self._exit_on_error = True         # FIXME: make configurable
 
         # we always need an UID
@@ -243,31 +244,38 @@ class Component(mp.Process):
         # don't need to do that again at this point.
         # 
         # NOTE: The use of the control pubsub for heartbeat messages between all
-        #       components may ultimately result in too much traffic, and
+        #       components may ultimately result in quite so,e traffic, and
         #       importantly in too many (useless) callback invokations. That can
         #       be regulated by the self._heartbeat_interval setting, which sets
         #       the frequency of heartbeat messages sent by the owner.  If that
         #       turns out to be insufficient, we can introduce component
         #       specific topics on the pubsub channel, to filter messages before
         #       callbacks are getting invoked (at the moment, topic is always
-        #       the same as pubsub channel name).
+        #       the same as pubsub channel name), or of course use a separate
+        #       channel...
         #
-        # So, in total we register two callbacks: 
+        # So, in total we register three callbacks: 
         #   - sending heartbeat to sub-components
+        #     this only makes sense if we have anybody listening, so we do that
+        #     only once components are spawned, and in fact register the idle cb
+        #     in start_components.
+        #
         #   - receiving heartbeat from owner components
         #   - checking heartbeat timestamp and stop() if heartbeat is missing
+        #     heartbeat checks ony make sense if we get heartbeats, ie. if we 
+        #     have an owner, so we only start if an owner is defined.  Otherwise
+        #     we are considered the root of the component tree (ie. the client
+        #     side session, or agent_0).
+        #
+        # Note that heartbeats are also used to keep sub-agents alive.
 
         self._heartbeat          = time.time() # time of last heartbeat
         self._heartbeat_interval = 10.0        # frequency of heartbeats
         self._heartbeat_timeout  = 30.0        # die after missing 3 heartbeats
 
-        hi = self._heartbeat_interval
-        self.register_idle_cb(self._heartbeat_cb, timeout=hi)
-
-        # heartbeat checks ony make sense if we get heartbeats, ie. if we have
-        # an owner
         if self.owner:
-            self.register_idle_cb(self._heartbeat_checker_cb, timeout=hi)
+            self.register_idle_cb(self._heartbeat_checker_cb, 
+                                  timeout=self._heartbeat_interval)
             self.register_subscriber(rpc.CONTROL_PUBSUB, self._heartbeat_monitor_cb)
 
         # We keep a static typemap for worker, component and bridge startup. If
@@ -328,8 +336,11 @@ class Component(mp.Process):
 
         # we only send heartbeat if we have anybody listening
         if self._components:
+            self._log.debug('heartbeat sent (%s)' % self.uid)
             self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'heartbeat', 
                                               'arg' : { 'sender' : self.uid}})
+        else:
+            self._log.debug('heartbeat sent skipped (%s)' % self.uid)
 
 
     # --------------------------------------------------------------------------
@@ -340,9 +351,12 @@ class Component(mp.Process):
         arg = msg['arg']
 
         if cmd == 'heartbeat':
-            if arg['sender'] == self.owner:
-              # print " >>> %s heartbeat %s" % (self.uid, arg['sender'])
+            sender = arg['sender']
+            if sender == self.owner:
+                self._log.debug('heartbeat monitored (%s)' % sender)
                 self._heartbeat = time.time()
+            else:
+                self._log.debug('heartbeat ignored (%s)' % sender)
 
 
     # --------------------------------------------------------------------------
@@ -495,9 +509,9 @@ class Component(mp.Process):
     def join(self, timeout=None):
         # we only really join when the comoinent child pricess has been started
         if self.pid:
-            print '%s join   (%s)' % (self.uid, self.pid)
+            self._log.debug('%s join   (%s)' % (self.uid, self.pid))
             mp.Process.join(self, timeout)
-            print '%s joined (%s)' % (self.uid, self.pid)
+            self._log.debug('%s joined (%s)' % (self.uid, self.pid))
 
 
     # --------------------------------------------------------------------------
@@ -530,15 +544,13 @@ class Component(mp.Process):
 
         self_thread = mt.current_thread()
 
-        print ' === %s stop (%s: %s) [%s]' % (self.uid, os.getpid(), self.pid,
-                ru.get_caller_name())
+        self._log.debug('stop %s (%s: %s) [%s]' % (self.uid, os.getpid(),
+                        self.pid, ru.get_caller_name()))
 
         if self._finalized:
-            # this should not happeN
-            print 'double close on %s' % self.uid
+            # this should not happen
+            self._log.warning('double close on %s' % self.uid)
             return
-          # sys.exit()
-            raise RuntimeError('double stop for %s' % self.uid)
 
         # no matter what happens below, we attempt finalization only once
         self._finalized = True
@@ -573,17 +585,17 @@ class Component(mp.Process):
 
         # signal all threads to terminate
         for s in self._subscribers:
-            print '%s -> term %s' % (self.uid, s)
+            self._log.debug('%s -> term %s' % (self.uid, s))
             self._subscribers[s]['term'].set()
         for i in self._idlers:
-            print '%s -> term %s' % (self.uid, i)
+            self._log.debug('%s -> term %s' % (self.uid, i))
             self._idlers[i]['term'].set()
 
         # tear down all subscriber threads -- skip current thread
         for s in self._subscribers:
             t = self._subscribers[s]['thread']
             if t != self_thread:
-                print '%s -> join %s' % (self.uid, s)
+                self._log.debug('%s -> join %s' % (self.uid, s))
                 t.join()                                     
                 self._log.debug('subscriber thread  joined  %s' % s)
 
@@ -591,24 +603,24 @@ class Component(mp.Process):
         for i in self._idlers:
             t = self._idlers[i]['thread']
             if t != self_thread:
-                print '%s -> join %s' % (self.uid, i)
+                self._log.debug('%s -> join %s' % (self.uid, i))
                 t.join()                               
                 self._log.debug('idler thread  joined  %s' % i)
 
 
         # tear down components, workers and bridges
         for component in self._components: 
-            print '%s -> stop %s' % (self.uid, component)
+            self._log.debug('%s -> stop %s' % (self.uid, component))
             component.stop()
         for bridge in self._bridges: 
-            print '%s -> stop %s' % (self.uid, bridge)
+            self._log.debug('%s -> stop %s' % (self.uid, bridge))
             bridge.stop()
 
         for component in self._components: 
-            print '%s -> join %s' % (self.uid, component)
+            self._log.debug('%s -> join %s' % (self.uid, component))
             component.join()
         for bridge in self._bridges: 
-            print '%s -> join %s' % (self.uid, bridge)
+            self._log.debug('%s -> join %s' % (self.uid, bridge))
             bridge.join()
 
         # Signal the child -- if one exists
@@ -627,10 +639,10 @@ class Component(mp.Process):
         # parent should not block on shutdown anymore, as the thread is
         # at least gone.
         if self_thread in [s['thread'] for k,s in self._subscribers.iteritems()]:
-            self._log.debug('release subscriber thread %s' % self_thread)
+            self._log.debug('release subscriber thread %s (exit)' % self_thread)
             sys.exit()
         if self_thread in [i['thread'] for k,i in self._idlers.iteritems()]:
-            self._log.debug('release idler thread %s' % self_thread)
+            self._log.debug('release idler thread %s (exit)' % self_thread)
             sys.exit()
 
         # NOTE: this relies on us not to change the name of MainThread
@@ -642,6 +654,7 @@ class Component(mp.Process):
             # The child exits here.  If this call happens in a subscriber
             # thread, then it will be caught in the run loop of the main thread,
             # leading to the main thread's demize, which ends up here again...
+            self._log.debug('child exit after stop')
             sys.exit()
 
 
@@ -959,6 +972,7 @@ class Component(mp.Process):
             try:
                 while not terminate.is_set():
                     topic, msg = q.get_nowait(1000) # timout in ms
+                    self._log.debug("<= %s: %s" % (callback.__name__, [topic, msg]))
                     if topic and msg:
                         if not isinstance(msg,list):
                             msg = [msg]
@@ -1012,7 +1026,6 @@ class Component(mp.Process):
         for s in self._subscribers:
             t = self._subscribers[s]['thread']
             if not t.is_alive():
-                print 'subscriber %s died' % t.name
                 self._log.error('subscriber %s died', t.name)
                 if self._exit_on_error:
                     self.stop()
@@ -1020,7 +1033,6 @@ class Component(mp.Process):
         for i in self._idlers:
             t = self._idlers[i]['thread']
             if not t.is_alive():
-                print 'idler %s died' % t.name
                 self._log.error('idler %s died', t.name)
                 if self._exit_on_error:
                     self.stop()
@@ -1064,6 +1076,7 @@ class Component(mp.Process):
         # parent can call terminate, which we translate here into sys.exit(),
         # which is then excepted in the run loop below for an orderly shutdown.
         def sigterm_handler(signum, frame):
+            self._log.debug('child exit after sigterm')
             sys.exit()
         signal.signal(signal.SIGTERM, sigterm_handler)
 
@@ -1503,6 +1516,15 @@ class Component(mp.Process):
 
         if not owner  : owner   = self.uid 
         if not timeout: timeout = 60
+
+        # to be on the safe side, we start the heartbeat events before we start
+        # the components. It is likely they miss the first one, but that should
+        # not really matter.
+        if not self._heartbeat_on:
+            self._heartbeat_on = True
+            self.register_idle_cb(self._heartbeat_cb, 
+                                  timeout=self._heartbeat_interval)
+
 
         # make sure we get called only once
         if self._barrier_seen != None:

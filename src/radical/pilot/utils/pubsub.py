@@ -22,9 +22,10 @@ PUBSUB_ROLES  = [PUBSUB_PUB, PUBSUB_SUB, PUBSUB_BRIDGE]
 PUBSUB_ZMQ    = 'zmq'
 PUBSUB_TYPES  = [PUBSUB_ZMQ]
 
-_USE_MULTIPART  = False # send [topic, data] as multipart message
-_BRIDGE_TIMEOUT = 5.0   # how long to wait for bridge startup
-_LINGER_TIMEOUT = 250   # ms to linger after close
+_USE_MULTIPART   =  False  # send [topic, data] as multipart message
+_BRIDGE_TIMEOUT  =    1.0  # how long to wait for bridge startup
+_LINGER_TIMEOUT  =    250  # ms to linger after close
+_HIGH_WATER_MARK = 100000  # number of messages to buffer before dropping
 
 
 # --------------------------------------------------------------------------
@@ -115,7 +116,7 @@ class Pubsub(object):
 
         try:
             impl = {
-                PUBSUB_ZMQ     : PubsubZMQ,
+                PUBSUB_ZMQ : PubsubZMQ,
             }[flavor]
           # print 'instantiating %s' % impl
             return impl(flavor, channel, role, address)
@@ -211,6 +212,7 @@ class PubsubZMQ(Pubsub):
             ctx = zmq.Context()
             self._q = ctx.socket(zmq.PUB)
             self._q.linger = _LINGER_TIMEOUT
+            self._q.hwm    = _HIGH_WATER_MARK
             self._q.connect(str(self._addr))
 
 
@@ -234,20 +236,21 @@ class PubsubZMQ(Pubsub):
                     import atexit
                     atexit.register(exit_handler)
 
-                    spt.setproctitle('radical.pilot %s' % self._name)
-
                     # reset signal handlers to their default
                     signal.signal(signal.SIGINT,  signal.SIG_DFL)
                     signal.signal(signal.SIGTERM, signal.SIG_DFL)
                     signal.signal(signal.SIGALRM, signal.SIG_DFL)
 
+                    spt.setproctitle('radical.pilot %s' % self._name)
                     self._log.info('start bridge %s on %s', self._name, addr)
 
                     ctx = zmq.Context()
                     _in = ctx.socket(zmq.XSUB)
+                    _in.hwm = _HIGH_WATER_MARK
                     _in.bind(addr)
 
                     _out = ctx.socket(zmq.XPUB)
+                    _out.hwm = _HIGH_WATER_MARK
                     _out.bind(addr)
 
                     # communicate the bridge ports to the parent process
@@ -268,23 +271,31 @@ class PubsubZMQ(Pubsub):
                         _socks = dict(_uninterruptible(_poll.poll, timeout=1000)) # timeout in ms
 
                         if _in in _socks:
+                            
+                            # if any incoming socket signals a message, get the
+                            # message on the subscriber channel, and forward it
+                            # to the publishing channel, no questions asked.
                             if _USE_MULTIPART:
                                 msg = _uninterruptible(_in.recv_multipart, flags=zmq.NOBLOCK)
                                 _uninterruptible(_out.send_multipart, msg)
                             else:
                                 msg = _uninterruptible(_in.recv, flags=zmq.NOBLOCK)
                                 _uninterruptible(_out.send, msg)
-                          # self._log.debug("-> %s", msg)
+                            self._log.debug("-> %s", pprint.pformat(msg))
 
 
                         if _out in _socks:
+                            # if any outgoing socket signals a message, it's
+                            # likely a topic subscription.  We forward that on
+                            # the incoming channels to subscribe for the
+                            # respective messages.
                             if _USE_MULTIPART:
                                 msg = _uninterruptible(_out.recv_multipart)
                                 _uninterruptible(_in.send_multipart, msg)
                             else:
                                 msg = _uninterruptible(_out.recv)
                                 _uninterruptible(_in.send, msg)
-                          # self._log.debug("<- %s", msg)
+                            self._log.debug("<- %s", pprint.pformat(msg))
 
                 except Exception as e:
                     self._log.exception('bridge error: %s', e)
@@ -305,6 +316,7 @@ class PubsubZMQ(Pubsub):
             ctx = zmq.Context()
             self._q = ctx.socket(zmq.SUB)
             self._q.linger = _LINGER_TIMEOUT
+            self._q.hwm    = _HIGH_WATER_MARK
             self._q.connect(self._addr)
 
         # ----------------------------------------------------------------------
@@ -356,7 +368,7 @@ class PubsubZMQ(Pubsub):
 
         topic = topic.replace(' ', '_')
 
-      # self._log.debug("~~ %s", topic)
+        self._log.debug("~~ %s", topic)
         _uninterruptible(self._q.setsockopt, zmq.SUBSCRIBE, topic)
 
 
@@ -371,11 +383,11 @@ class PubsubZMQ(Pubsub):
         data = json.dumps(msg)
 
         if _USE_MULTIPART:
-          # self._log.debug("-> %s", str([topic, data]))
+            self._log.debug("-> %s", ([topic, pprint.pformat(data)]))
             _uninterruptible(self._q.send_multipart, [topic, data])
 
         else:
-          # self._log.debug("-> %s %s", topic, data)
+            self._log.debug("-> %s %s", topic, pprint.pformat(data))
             _uninterruptible(self._q.send, "%s %s" % (topic, data))
 
 
@@ -394,7 +406,7 @@ class PubsubZMQ(Pubsub):
             topic, data = raw.split(' ', 1)
 
         msg = json.loads(data)
-      # self._log.debug("<- %s", str([topic, pprint.pformat(msg)]))
+        self._log.debug("<- %s", ([topic, pprint.pformat(msg)]))
         return [topic, msg]
 
 
@@ -415,7 +427,7 @@ class PubsubZMQ(Pubsub):
                 topic, data = raw.split(' ', 1)
 
             msg = json.loads(data)
-            self._log.debug(">> %s", str([topic, pprint.pformat(msg)]))
+            self._log.debug("<< %s", ([topic, pprint.pformat(msg)]))
             return [topic, msg]
 
         else:

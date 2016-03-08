@@ -510,7 +510,7 @@ class QueueZMQ(Queue):
         if not self._role == QUEUE_INPUT:
             raise RuntimeError("queue %s (%s) can't put()" % (self._qname, self._role))
 
-        self._log.debug("### 4 -> %s", pprint.pformat(msg))
+        self._log.debug("-> %s", pprint.pformat(msg))
         _uninterruptible(self._q.send_json, msg)
 
 
@@ -524,8 +524,7 @@ class QueueZMQ(Queue):
         _uninterruptible(self._q.send, 'request')
 
         msg = _uninterruptible(self._q.recv_json)
-        self._log.debug("### 5 <- %s", pprint.pformat(msg))
-      # self._log.debug("<- %s", pprint.pformat(msg))
+        self._log.debug("<- %s", pprint.pformat(msg))
         return msg
 
 
@@ -555,7 +554,7 @@ class QueueZMQ(Queue):
             if _uninterruptible(self._q.poll, flags=zmq.POLLIN, timeout=timeout):
                 msg = _uninterruptible(self._q.recv_json)
                 self._requested = False
-              # self._log.debug("<< %s", pprint.pformat(msg))
+                self._log.debug("<< %s", pprint.pformat(msg))
                 return msg
 
             else:

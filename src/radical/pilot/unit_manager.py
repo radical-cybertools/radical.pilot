@@ -671,9 +671,22 @@ class UnitManager(rpu.Component):
             self._log.report.idle()
           # print 'wait units: %s' % [[u.uid, u.state] for u in to_check]
 
-            to_check = [unit for unit in to_check \
-                              if unit.state not in states and \
-                                 unit.state not in rps.FINAL]
+            check_again = list()
+            for unit in to_check:
+                if  unit.state not in states and \
+                    unit.state not in rps.FINAL:
+                    check_again.append(unit)
+                else:
+                    # stop watching this unit
+                    if unit.state in [rps.FAILED]:
+                        self._log.report.idle(color='error', c='-')
+                    elif unit.state in [rps.CANCELED]:
+                        self._log.report.idle(color='warn', c='*')
+                    else:
+                        self._log.report.idle(color='ok', c='+')
+
+            to_check = check_again
+
             # check timeout
             if to_check:
                 if timeout and (timeout <= (time.time() - start)):

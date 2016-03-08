@@ -138,7 +138,6 @@ class Default(PMGRLaunchingComponent):
                     pilot['err']   = err
                     pilot['log']   = log
                     self._log.info('pilot %s canceled', uid)
-                  # print 'launcher: advance to CANCELED'
                     self.advance(pilot, rps.CANCELED, push=False, publish=True)
 
 
