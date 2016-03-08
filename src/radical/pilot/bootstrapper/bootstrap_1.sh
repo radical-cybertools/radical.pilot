@@ -58,7 +58,7 @@ LOCK_TIMEOUT=180 # 3 min
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
 VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
-VIRTENV_RADICAL_DEPS=(pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces setproctitle orte_cffi)
+VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces setproctitle orte_cffi"
 
 
 # ------------------------------------------------------------------------------
@@ -838,7 +838,7 @@ virtenv_create()
 
     # now that the virtenv is set up, we install all dependencies
     # of the RADICAL stack
-    for dep in ${VIRTENV_RADICAL_DEPS[@]}
+    for dep in $VIRTENV_RADICAL_DEPS
     do
         run_cmd "install $dep" \
                 "$PIP install $dep" \
@@ -862,7 +862,7 @@ virtenv_update()
     # we upgrade all dependencies of the RADICAL stack, one by one.
     # NOTE: we only do pip upgrades -- that will ignore the easy_installed
     #       modules on india etc.
-    for dep in ${VIRTENV_RADICAL_DEPS[@]}
+    for dep in $VIRTENV_RADICAL_DEPS
     do
         run_cmd "install $dep" \
                 "$PIP install --upgrade $dep" \
