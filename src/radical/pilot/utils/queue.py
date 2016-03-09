@@ -25,7 +25,7 @@ QUEUE_TYPES   = [QUEUE_THREAD, QUEUE_PROCESS, QUEUE_ZMQ]
 
 _BRIDGE_TIMEOUT  =      1  # how long to wait for bridge startup
 _LINGER_TIMEOUT  =    250  # ms to linger after close
-_HIGH_WATER_MARK = 100000  # number of messages to buffer before dropping
+_HIGH_WATER_MARK =      0  # number of bytes to buffer before dropping
 
 # --------------------------------------------------------------------------
 #
