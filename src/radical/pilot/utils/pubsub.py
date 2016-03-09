@@ -21,8 +21,10 @@ PUBSUB_ROLES  = [PUBSUB_PUB, PUBSUB_SUB, PUBSUB_BRIDGE]
 PUBSUB_ZMQ    = 'zmq'
 PUBSUB_TYPES  = [PUBSUB_ZMQ]
 
-_USE_MULTIPART  = False # send [topic, data] as multipart message
-_BRIDGE_TIMEOUT = 5.0   # how long to wait for bridge startup
+_USE_MULTIPART   =  False  # send [topic, data] as multipart message
+_BRIDGE_TIMEOUT  =      1  # how long to wait for bridge startup
+_LINGER_TIMEOUT  =    250  # ms to linger after close
+_HIGH_WATER_MARK = 100000  # number of messages to buffer before dropping
 
 
 # --------------------------------------------------------------------------
@@ -46,7 +48,6 @@ def _uninterruptible(f, *args, **kwargs):
                 if cnt > 10:
                     raise
                 # interrupted, try again
-                print 'interrupted! [%s] [%s] [%s]' % (f, args, kwargs)
                 continue
             else:
                 # real error, raise it
@@ -210,6 +211,8 @@ class PubsubZMQ(Pubsub):
 
             ctx = zmq.Context()
             self._q = ctx.socket(zmq.PUB)
+            self._q.linger = _LINGER_TIMEOUT
+            self._q.hwm    = _HIGH_WATER_MARK
             self._q.connect(str(self._addr))
 
 
@@ -242,9 +245,13 @@ class PubsubZMQ(Pubsub):
 
                     ctx = zmq.Context()
                     _in = ctx.socket(zmq.XSUB)
+                    _in.linger = _LINGER_TIMEOUT
+                    _in.hwm    = _HIGH_WATER_MARK
                     _in.bind(addr)
 
                     _out = ctx.socket(zmq.XPUB)
+                    _out.linger = _LINGER_TIMEOUT
+                    _out.hwm    = _HIGH_WATER_MARK
                     _out.bind(addr)
 
                     # communicate the bridge ports to the parent process
@@ -301,6 +308,8 @@ class PubsubZMQ(Pubsub):
 
             ctx = zmq.Context()
             self._q = ctx.socket(zmq.SUB)
+            self._q.linger = _LINGER_TIMEOUT
+            self._q.hwm    = _HIGH_WATER_MARK
             self._q.connect(self._addr)
 
         # ----------------------------------------------------------------------
