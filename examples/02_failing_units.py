@@ -57,8 +57,8 @@ if __name__ == '__main__':
         umgr = rp.UnitManager(session=session)
         def unit_cb(unit, state):
             print 'cb: unit  %s: %s' % (unit.uid, state)
-          # if state in [rp.FAILED, rp.CANCELED]:
-          #     session.close()
+            if state in [rp.FAILED]:
+                session.close()
         umgr.register_callback(unit_cb)
 
         # Define an [n]-core local pilot that runs for [x] minutes
@@ -80,10 +80,10 @@ if __name__ == '__main__':
         umgr.add_pilots(pilot)
 
         def pilot_cb(pilot, state):
-          # print 'cb: pilot %s: %s' % (pilot.uid, state)
-            if state in [rp.FAILED, rp.CANCELED]:
+            print 'cb: pilot %s: %s' % (pilot.uid, state)
+            if state in [rp.FAILED]:
                 session.close()
-      # pilot.register_callback(pilot_cb)
+        pilot.register_callback(pilot_cb)
        
         report.header('submit units')
 

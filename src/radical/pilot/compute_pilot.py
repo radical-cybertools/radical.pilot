@@ -140,8 +140,8 @@ class ComputePilot(object):
         #
         # FIXME: add sanity checks
 
-        old_state   = self.state
-        new_state   = pilot_dict['state']
+        current = self.state
+        target  = pilot_dict['state']
 
         # we update all fields
         for key,val in pilot_dict.iteritems():
@@ -151,21 +151,31 @@ class ComputePilot(object):
                        'stdout', 'stderr']:
                 setattr(self, "_%s" % key, val)
 
-        if old_state != new_state:
+        new_state, passed = rps._pilot_state_progress(current, target)
 
-            # call callbacks registered specifically for the pilot
-            for cb, cb_data in self._callbacks:
-                if cb_data: cb(self, self.state, cb_data)
-                else      : cb(self, self.state)
+        # replay all state transitions
+        for state in passed:
 
-            # call callbacks registered on the pilot manager
-            self._pmgr._call_pilot_callbacks(self, self.state)
+            for cb_func, cb_data in self._callbacks:
+                self._state = state
+                if cb_data: cb_func(self, state, cb_data)
+                else      : cb_func(self, state)
 
-            # this should be the last cb invoked on state changes
-            if self.state == rps.FAILED and self._exit_on_error:
-                self._default_error_cb()
+            # also inform pmgr about state change, to collect any callbacks
+            # it has registered globally
+            self._pmgr._call_pilot_callbacks(self, state)
 
-      # print 'pilot: update %s -> %s [%s]' % (old_state, new_state, self.state)
+        # make sure we end up with the right state
+        self._state = new_state
+
+        # this should be the last cb invoked on state changes
+        if self.state == rps.FAILED and self._exit_on_error:
+            self._default_error_cb()
+
+        if passed: return True
+        else     : return False
+
+
 
 
     # --------------------------------------------------------------------------
