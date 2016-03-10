@@ -186,7 +186,7 @@ class AgentSchedulingComponent(rpu.Component):
         # got an allocation, go off and launch the process
         self._prof.prof('schedule', msg="try", uid=cu['_id'], timestamp=before_ts)
         self._prof.prof('schedule', msg="allocated", uid=cu['_id'])
-        self._log.info("slot status after allocated  : %s" % self.slot_status ())
+        self._log.info("slot status after allocated  : %s", self.slot_status())
 
         return True
 
@@ -202,7 +202,7 @@ class AgentSchedulingComponent(rpu.Component):
         cu = msg
 
         self._prof.prof('reschedule', uid=self._pilot_id)
-        self._log.info("slot status before reschedule: %s" % self.slot_status())
+        self._log.info("slot status before reschedule: %s", self.slot_status())
 
         # cycle through wait queue, and see if we get anything running now.  We
         # cycle over a copy of the list, so that we can modify the list on the
@@ -223,7 +223,7 @@ class AgentSchedulingComponent(rpu.Component):
                 break
 
         # Note: The extra space below is for visual alignment
-        self._log.info("slot status after  reschedule: %s" % self.slot_status ())
+        self._log.info("slot status after  reschedule: %s", self.slot_status())
         self._prof.prof('reschedule done')
 
 
@@ -242,7 +242,7 @@ class AgentSchedulingComponent(rpu.Component):
             self._log.warn("cannot unschedule: %s (no slots)" % cu)
             return
 
-        self._log.info("slot status before unschedule: %s" % self.slot_status ())
+        self._log.info("slot status before unschedule: %s", self.slot_status())
 
         # needs to be locked as we try to release slots, but slots are acquired
         # in a different thread....
@@ -255,7 +255,7 @@ class AgentSchedulingComponent(rpu.Component):
         self.publish('reschedule', cu)
 
         # Note: The extra space below is for visual alignment
-        self._log.info("slot status after  unschedule: %s" % self.slot_status ())
+        self._log.info("slot status after  unschedule: %s", self.slot_status())
 
 
     # --------------------------------------------------------------------------
