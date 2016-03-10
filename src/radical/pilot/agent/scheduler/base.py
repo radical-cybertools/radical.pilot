@@ -100,6 +100,8 @@ class AgentSchedulingComponent(rpu.Component):
         self.publish('command', {'cmd' : 'final',
                                  'arg' : self.cname})
 
+        self._dump_prof()
+
 
     # --------------------------------------------------------------------------
     #
