@@ -107,6 +107,9 @@ class PilotManager(rpu.Component):
         cfg['owner'] = session.uid
         rpu.Component.__init__(self, cfg, session)
 
+        # we do not intent to fork
+        self.no_start()
+
         # only now we have a logger... :/
         self._log.report.info('<<create pilot manager')
         self._prof.prof('create pmgr', uid=self._uid)

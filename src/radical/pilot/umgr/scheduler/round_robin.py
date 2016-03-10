@@ -21,8 +21,6 @@ class RoundRobin(UMGRSchedulingComponent):
     #
     def __init__(self, cfg, session):
 
-        self.pilots = None
-
         UMGRSchedulingComponent.__init__(self, cfg, session)
 
 
@@ -33,12 +31,15 @@ class RoundRobin(UMGRSchedulingComponent):
         self._wait_pool = list()             # set of unscheduled units
         self._wait_lock = threading.RLock()  # look on the above set
 
-        self._idx = 0
+        self._pids = list()
+        self._idx  = 0
 
 
     # --------------------------------------------------------------------------
     #
     def add_pilot(self, pid):
+
+        self._pids.append(pid)
 
         # a pilot just got added.  If we did not have any pilot before, we might
         # have units in the wait queue waiting -- now is a good time to take
@@ -47,12 +48,19 @@ class RoundRobin(UMGRSchedulingComponent):
 
             for unit in self._wait_pool:
 
-                # FIXME: we know the pilot is 'ADDED', but are we shure we have
-                #        the 'thing' dict?
                 self._schedule_unit(unit, pid)
 
             # all units are scheduled -- empty the wait pool
             self._wait_pool = list()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def remove_pilot(self, pid):
+
+        self._pids.remove(pid)
+
+        raise NotImplementedError('not yet implemented')
 
 
     # --------------------------------------------------------------------------
@@ -65,17 +73,7 @@ class RoundRobin(UMGRSchedulingComponent):
 
         with self._pilots_lock:
 
-            # collect all pilots we know about
-            pids = list()
-            for pid in self._pilots.keys():
-
-                # we need not only an added pilot, we also need one which we 
-                # can inspect
-                if self._pilots[pid]['thing'] and \
-                   self._pilots[pid][ROLE] == ADDED:
-                    pids.append(pid)
-
-            if not len(pids):
+            if not len(self._pids):
 
                 # no pilot is active, yet -- we add to the wait queue
                 with self._wait_lock:
@@ -85,10 +83,10 @@ class RoundRobin(UMGRSchedulingComponent):
 
             # we have active pilots: use them!
 
-            if  self._idx >= len(pids) : 
+            if  self._idx >= len(self._pids): 
                 self._idx = 0
 
-            self._schedule_unit(unit, pids[self._idx])
+            self._schedule_unit(unit, self._pids[self._idx])
 
 
     # --------------------------------------------------------------------------
@@ -97,18 +95,20 @@ class RoundRobin(UMGRSchedulingComponent):
 
         with self._pilots_lock:
 
+            if not pid in self._pilots:
+                # oops, race!  Leave unit unscheduled
+                self._log.debug('met pid race in _pilots (%s)', pid)
+                return
+
             pilot = self._pilots[pid]
 
             # we assign the unit to the pilot.
             unit['pilot'] = pid
 
             # this is also a good opportunity to determine the unit sndboxes
-            unit['pilot_sandbox'] = self._session._get_pilot_sandbox(pilot['thing'])
-            unit['sandbox']       = self._session._get_unit_sandbox(unit, pilot['thing'])
+            unit['pilot_sandbox'] = self._session._get_pilot_sandbox(pilot['pilot'])
+            unit['sandbox']       = self._session._get_unit_sandbox(unit, pilot['pilot'])
 
-            # we need to push 'pilot' to the db, otherwise the agent will never
-            # pick up the unit
-            unit['$set'] = ['pilot', 'sandbox', 'pilot_sandbox']
             self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING, 
                     publish=True, push=True)
         

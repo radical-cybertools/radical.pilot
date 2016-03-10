@@ -55,6 +55,11 @@ if __name__ == '__main__':
 
         # Register the ComputePilot in a UnitManager object.
         umgr = rp.UnitManager(session=session)
+      # def unit_cb(unit, state):
+      #   # print 'cb: unit  %s: %s' % (unit.uid, state)
+      #     if state in [rp.FAILED, rp.CANCELED]:
+      #         session.close()
+      # umgr.register_callback(unit_cb)
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
@@ -72,8 +77,12 @@ if __name__ == '__main__':
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-      # def pilot_cb(pilot, state):
-      #     print 'cb: pilot %s: %s [%s]' % (pilot.uid, pilot.state, state)
+        umgr.add_pilots(pilot)
+
+        def pilot_cb(pilot, state):
+          # print 'cb: pilot %s: %s' % (pilot.uid, state)
+            if state in [rp.FAILED, rp.CANCELED]:
+                session.close()
       # pilot.register_callback(pilot_cb)
        
         report.header('submit units')
@@ -109,7 +118,6 @@ if __name__ == '__main__':
 
       # import time
       # time.sleep(2)
-        umgr.add_pilots(pilot)
 
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')

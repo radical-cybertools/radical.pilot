@@ -23,8 +23,9 @@ QUEUE_PROCESS = 'process'
 QUEUE_ZMQ     = 'zmq'
 QUEUE_TYPES   = [QUEUE_THREAD, QUEUE_PROCESS, QUEUE_ZMQ]
 
-_BRIDGE_TIMEOUT = 5.0   # how long to wait for bridge startup
-_LINGER_TIMEOUT = 250   # ms to linger after close
+_BRIDGE_TIMEOUT  =      1  # how long to wait for bridge startup
+_LINGER_TIMEOUT  =    250  # ms to linger after close
+_HIGH_WATER_MARK =      0  # number of messages to buffer before dropping
 
 # --------------------------------------------------------------------------
 #
@@ -365,6 +366,7 @@ class QueueZMQ(Queue):
             ctx = zmq.Context()
             self._q = ctx.socket(zmq.PUSH)
             self._q.linger = _LINGER_TIMEOUT
+            self._q.hwm    = _HIGH_WATER_MARK
             self._q.connect(self._addr)
 
 
@@ -400,9 +402,13 @@ class QueueZMQ(Queue):
 
                     ctx = zmq.Context()
                     _in = ctx.socket(zmq.PULL)
+                    _in.linger = _LINGER_TIMEOUT
+                    _in.hwm    = _HIGH_WATER_MARK
                     _in.bind(addr)
 
                     _out = ctx.socket(zmq.REP)
+                    _out.linger = _LINGER_TIMEOUT
+                    _out.hwm    = _HIGH_WATER_MARK
                     _out.bind(addr)
 
                     # communicate the bridge ports to the parent process
@@ -443,6 +449,7 @@ class QueueZMQ(Queue):
             ctx = zmq.Context()
             self._q = ctx.socket(zmq.REQ)
             self._q.linger = _LINGER_TIMEOUT
+            self._q.hwm    = _HIGH_WATER_MARK
             self._q.connect(self._addr)
 
         # ----------------------------------------------------------------------

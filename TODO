@@ -40,32 +40,42 @@
   + default output staging component: __init__ calls Component __init__, but
     should call base __init__, which then calls Component __init__
     Same holds for other component implementations.
-  - The component base.create calls should pick up all component implmentations
+  - The component base.create calls should pick up all component implementations
     automatically, instead of having a static type map
-  - Bridges should be created by session, both on client and on agent side.
-    The bridge addresses should get stored in DB, and  retrieved from DB on session
-    reconnect (if not available otherwise: not all nodes will be able to connect
-               to the DB).
+  + Bridges should be created by session, both on client and on agent side.
   - on the component, add 'declare_thread' for actions which are needed more
     frequent than idle callbacks, and also need some guarantees on the
     frequency.  Prominent example: execution watcher threads.  Handle the
     'work()' loop as just one of those threads (the default one).
-  - component watcher needs to clean out component threads even for failed
+  + component watcher needs to clean out component threads even for failed
     components
-  - shutdown command propagation is broken
+  + shutdown command propagation is broken
 
-
-  - cancelation is best done on component level
+  - unit cancelation is best done on component level
     - subscribe to control to get cancel requests
     - for each cancel request
       - add to self._cancel_requested
     - whenver we see an advance or work request:
       - if uid in self._cancel_requested: advance(CANCEL) + drop   
 
-  - use heartbeat mechanism also for bridges
+  - use heartbeat mechanism also for bridges, sub_agents
   - define _cfg['heart'] and use that for heartbeat src instead of owner,
     limiting traffic and noise
   - Component.stop() should *first* unregister component_checker_cb 
     (and probably all other callbacks)
   - pilot default error cb calls sys.exit -> no shutdown.
+
+  - fix all schedulers
+  - state notifications should be obtained via a tailed cursor
+  - update worker should check if a unit has multiple state updates pending. If
+    so, only send the last one.  The client side cann still play callbacks for
+    all intermediate states
+  - update worker should not push state_host on state updates, only on full
+    udpdates.
+  - pilot failing during wait_units results in timeout.
+
+  - the update worker should have a list of keys which it needs to push to
+    MongoDB, and it should ignore other dict entries.  Alternatively, components
+    should use underscore-prefixed keys for things which don't need to be stored
+    in MongoDB.
 

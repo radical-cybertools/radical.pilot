@@ -8,7 +8,9 @@ import copy
 import time
 import glob
 import copy
+import pprint
 import threading
+
 import radical.utils        as ru
 import saga                 as rs
 import saga.utils.pty_shell as rsup
@@ -26,7 +28,7 @@ from .db              import DBSession
 
 # ------------------------------------------------------------------------------
 #
-class Session (rs.Session, rpu.Worker):
+class Session(rs.Session, rpu.Worker):
     """
     A Session encapsulates a RADICAL-Pilot instance and is the *root* object
     for all other RADICAL-Pilot objects. 
@@ -79,7 +81,7 @@ class Session (rs.Session, rpu.Worker):
 
         # before doing anything else, set up the debug helper for the lifetime
         # of the session.
-        self._debug_helper = ru.DebugHelper ()
+        self._debug_helper = ru.DebugHelper()
 
         # Dictionaries holding all manager objects created during the session.
         self._pmgrs = dict()
@@ -107,7 +109,7 @@ class Session (rs.Session, rpu.Worker):
             dburl = database_url
 
         if not dburl:
-            dburl = os.getenv ("RADICAL_PILOT_DBURL", None)
+            dburl = os.getenv("RADICAL_PILOT_DBURL", None)
 
         if not dburl and _connect:
             # we forgive missing dburl on reconnect, but not otherwise
@@ -134,7 +136,7 @@ class Session (rs.Session, rpu.Worker):
             self._reconnected = True
         else:
             # generate new uid
-            self._uid = ru.generate_id ('rp.session', mode=ru.ID_PRIVATE)
+            self._uid = ru.generate_id('rp.session', mode=ru.ID_PRIVATE)
             ru.reset_id_counters(prefix=['pmgr', 'umgr', 'pilot', 'unit', 'unit.%(counter)06d'])
 
 
@@ -214,21 +216,14 @@ class Session (rs.Session, rpu.Worker):
 
     #---------------------------------------------------------------------------
     # Allow Session to function as a context manager in a `with` clause
-    def __enter__ (self):
+    def __enter__(self):
         return self
 
 
     #---------------------------------------------------------------------------
     # Allow Session to function as a context manager in a `with` clause
-    def __exit__ (self, type, value, traceback) :
+    def __exit__(self, type, value, traceback):
         self.close()
-
-
-    #---------------------------------------------------------------------------
-    #
-    def __del__ (self) :
-        pass
-      # self.close ()
 
 
     #---------------------------------------------------------------------------
@@ -249,18 +244,18 @@ class Session (rs.Session, rpu.Worker):
 
         for config_file in config_files:
 
-            try :
+            try:
                 self._log.info("Load resource configurations from %s" % config_file)
                 rcs = ResourceConfig.from_file(config_file)
-            except Exception as e :
-                self._log.error ("skip config file %s: %s" % (config_file, e))
+            except Exception as e:
+                self._log.error("skip config file %s: %s" % (config_file, e))
                 continue
 
             for rc in rcs:
                 self._log.info("Load resource configurations for %s" % rc)
                 self._resource_configs[rc] = rcs[rc].as_dict() 
 
-        user_cfgs    = "%s/.radical/pilot/configs/resource_*.json" % os.environ.get ('HOME')
+        user_cfgs    = "%s/.radical/pilot/configs/resource_*.json" % os.environ.get('HOME')
         config_files = glob.glob(user_cfgs)
 
         for config_file in config_files:
@@ -268,7 +263,7 @@ class Session (rs.Session, rpu.Worker):
             try:
                 rcs = ResourceConfig.from_file(config_file)
             except Exception as e:
-                self._log.error ("skip config file %s: %s" % (config_file, e))
+                self._log.error("skip config file %s: %s" % (config_file, e))
                 continue
 
             for rc in rcs:
@@ -276,9 +271,9 @@ class Session (rs.Session, rpu.Worker):
 
                 if rc in self._resource_configs:
                     # config exists -- merge user config into it
-                    ru.dict_merge (self._resource_configs[rc],
-                                   rcs[rc].as_dict(),
-                                   policy='overwrite')
+                    ru.dict_merge(self._resource_configs[rc],
+                                  rcs[rc].as_dict(),
+                                  policy='overwrite')
                 else:
                     # new config -- add as is
                     self._resource_configs[rc] = rcs[rc].as_dict() 
@@ -322,25 +317,25 @@ class Session (rs.Session, rpu.Worker):
         # will supercede them.  Delete is considered deprecated though, and
         # we'll thus issue a warning.
         if delete != None:
-            if  cleanup == True and terminate == True :
+            if  cleanup == True and terminate == True:
                 cleanup   = delete
                 terminate = delete
                 self._log.warning("'delete' flag on session is deprecated. " \
                              "Please use 'cleanup' and 'terminate' instead!")
 
-        if  cleanup :
+        if  cleanup:
             # cleanup implies terminate
             terminate = True
 
         for umgr_uid, umgr in self._umgrs.iteritems():
-            self._log.debug("session %s closes   umgr   %s" % (str(self._uid), umgr._uid))
+            self._log.debug("session %s closes umgr   %s", self._uid, umgr_uid)
             umgr.close()
-            self._log.debug("session %s closed   umgr   %s" % (str(self._uid), umgr._uid))
+            self._log.debug("session %s closed umgr   %s", self._uid, umgr_uid)
 
         for pmgr_uid, pmgr in self._pmgrs.iteritems():
-            self._log.debug("session %s closes   pmgr   %s" % (str(self._uid), pmgr_uid))
+            self._log.debug("session %s closes pmgr   %s", self._uid, pmgr_uid)
             pmgr.close(terminate=terminate)
-            self._log.debug("session %s closed   pmgr   %s" % (str(self._uid), pmgr_uid))
+            self._log.debug("session %s closed pmgr   %s", self._uid, pmgr_uid)
 
         # stop the component
         self.stop()  
@@ -496,7 +491,7 @@ class Session (rs.Session, rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def get_pilot_managers(self, pmgr_uids=None) :
+    def get_pilot_managers(self, pmgr_uids=None):
         """ 
         returns known PilotManager(s).
 
@@ -548,7 +543,7 @@ class Session (rs.Session, rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def get_unit_managers(self, umgr_uids=None) :
+    def get_unit_managers(self, umgr_uids=None):
         """ 
         returns known UnitManager(s).
 
@@ -600,7 +595,7 @@ class Session (rs.Session, rpu.Worker):
 
                   pilot = pm.submit_pilots(pd)
         """
-        if  isinstance (resource_config, basestring) :
+        if isinstance(resource_config, basestring):
 
             # let exceptions fall through
             rcs = ResourceConfig.from_file(resource_config)
@@ -609,36 +604,36 @@ class Session (rs.Session, rpu.Worker):
                 self._log.info("Loaded resource configurations for %s" % rc)
                 self._resource_configs[rc] = rcs[rc].as_dict() 
 
-        else :
+        else:
             self._resource_configs[resource_config.label] = resource_config.as_dict()
 
     # -------------------------------------------------------------------------
     #
-    def get_resource_config (self, resource, schema=None):
+    def get_resource_config(self, resource, schema=None):
         """
         Returns a dictionary of the requested resource config
         """
 
-        if  resource in self._resource_aliases :
-            self._log.warning ("using alias '%s' for deprecated resource key '%s'" \
-                         % (self._resource_aliases[resource], resource))
+        if  resource in self._resource_aliases:
+            self._log.warning("using alias '%s' for deprecated resource key '%s'" \
+                              % (self._resource_aliases[resource], resource))
             resource = self._resource_aliases[resource]
 
         if  resource not in self._resource_configs:
             raise RuntimeError("Resource '%s' is not known." % resource)
 
-        resource_cfg = copy.deepcopy (self._resource_configs[resource])
+        resource_cfg = copy.deepcopy(self._resource_configs[resource])
 
-        if  not schema :
-            if 'schemas' in resource_cfg :
+        if  not schema:
+            if 'schemas' in resource_cfg:
                 schema = resource_cfg['schemas'][0]
 
         if  schema:
-            if  schema not in resource_cfg :
+            if  schema not in resource_cfg:
                 raise RuntimeError("schema %s unknown for resource %s" \
                                   % (schema, resource))
 
-            for key in resource_cfg[schema] :
+            for key in resource_cfg[schema]:
                 # merge schema specific resource keys into the
                 # resource config
                 resource_cfg[key] = resource_cfg[schema][key]
@@ -648,14 +643,14 @@ class Session (rs.Session, rpu.Worker):
 
     # -------------------------------------------------------------------------
     #
-    def fetch_profiles (self, tgt=None):
-        return rpu.fetch_profiles (self._uid, dburl=self.dburl, tgt=tgt, session=self)
+    def fetch_profiles(self, tgt=None):
+        return rpu.fetch_profiles(self._uid, dburl=self.dburl, tgt=tgt, session=self)
 
 
     # -------------------------------------------------------------------------
     #
-    def fetch_json (self, tgt=None):
-        return rpu.fetch_json (self._uid, dburl=self.dburl, tgt=tgt)
+    def fetch_json(self, tgt=None):
+        return rpu.fetch_json(self._uid, dburl=self.dburl, tgt=tgt)
 
 
     # -------------------------------------------------------------------------
@@ -665,6 +660,9 @@ class Session (rs.Session, rpu.Worker):
         for a given pilot dict, determine the global RP sandbox, based on the
         pilot's 'resource' attribute.
         """
+
+        if not 'description' in pilot:
+            self._log.error('=== pilot: %s', pprint.pformat(pilot))
 
         resource = pilot['description'].get('resource')
         schema   = pilot['description'].get('access_schema')
@@ -708,14 +706,14 @@ class Session (rs.Session, rpu.Worker):
             else:
                 raise Exception("unsupported access schema: %s" % js_url.schema)
 
-            self._log.debug("rsup.PTYShell ('%s')" % js_url)
+            self._log.debug("rsup.PTYShell('%s')" % js_url)
             shell = rsup.PTYShell(js_url, self)
 
             ret, out, err = shell.run_sync(' echo "WORKDIR: %s"' % sandbox_raw)
-            if ret == 0 and 'WORKDIR:' in out :
+            if ret == 0 and 'WORKDIR:' in out:
                 sandbox_base = out.split(":")[1].strip()
                 self._log.debug("sandbox base %s: '%s'" % (js_url, sandbox_base))
-            else :
+            else:
                 raise RuntimeError("Couldn't get remote working directory.")
 
         # at this point we have determined the remote 'pwd' - the global sandbox

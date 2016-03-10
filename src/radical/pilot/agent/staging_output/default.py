@@ -95,7 +95,8 @@ class Default(AgentStagingOutputComponent):
         # From here on, any state update will hand control over to the umgr
         # again.  The next unit update should thus push *all* unit details, not
         # only state.
-        unit['$all'] = True
+        unit['$all']    = True
+        unit['control'] = 'umgr_pending'
 
         # NOTE: all units get here after execution, even those which did not
         #       finish successfully.  We do that so that we can make

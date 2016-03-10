@@ -212,9 +212,7 @@ class Agent(rpu.Worker):
                     {"$set" : {"state"        : rps.ACTIVE,
                                "started"      : now,
                                "lm_info"      : ver},
-                     "$push": {"state_history": {"state"    : rps.ACTIVE,
-                                                 "timestamp": now}}
-                    })
+                     "$push": {"states"       : rps.ACTIVE}})
 
 
             # TODO: Check for return value, update should be true!
@@ -428,8 +426,7 @@ class Agent(rpu.Worker):
         unit_cursor = self._session._dbs._c.find(spec  = {
             'type'    : 'unit',
             'pilot'   : self._pilot_id,
-            'state'   : rps.AGENT_STAGING_INPUT_PENDING,
-            'control' : 'umgr'})
+            'control' : 'agent_pending'})
 
         if not unit_cursor.count():
             # no units whatsoever...

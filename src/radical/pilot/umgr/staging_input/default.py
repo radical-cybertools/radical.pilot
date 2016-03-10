@@ -50,6 +50,8 @@ class Default(UMGRStagingInputComponent):
 
         uid = unit['uid']
 
+        self._log.debug('=== staging %s to %s' % (uid, unit['pilot']))
+
         # check if we have any staging directives to be enacted in this
         # component
         actionables = list()
@@ -103,7 +105,8 @@ class Default(UMGRStagingInputComponent):
         # all staging is done -- pass on to the agent
         # At this point, the unit will leave the umgr, we thus dump it
         # completely into the DB
-        unit['$all'] = True
+        unit['$all']    = True
+        unit['control'] = 'agent_pending'
         self.advance(unit, rps.AGENT_STAGING_INPUT_PENDING, publish=True, push=True)
 
 

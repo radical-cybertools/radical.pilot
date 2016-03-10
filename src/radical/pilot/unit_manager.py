@@ -122,6 +122,9 @@ class UnitManager(rpu.Component):
         cfg['owner'] = session.uid
         rpu.Component.__init__(self, cfg, session)
 
+        # we do not intent to fork
+        self.no_start()
+
         # only now we have a logger... :/
         self._log.report.info('<<create unit manager')
         self._prof.prof('create umgr', uid=self._uid)
@@ -243,8 +246,7 @@ class UnitManager(rpu.Component):
         unit_cursor = self.session._dbs._c.find(spec={
             'type'    : 'unit',
             'umgr'    : self.uid,
-            'state'   : {'$in' : tgt_states},
-            'control' : 'agent'})
+            'control' : 'umgr_pending'})
 
         if not unit_cursor.count():
             # no units whatsoever...
@@ -386,7 +388,7 @@ class UnitManager(rpu.Component):
                 # publish to the command channel for the scheduler to pick up
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'add_pilot', 
                                                   'arg' : {'pid'  : pid, 
-                                                           'thing': pilot.as_dict(),
+                                                           'pilot': pilot.as_dict(),
                                                            'umgr' : self.uid}})
 
                 # also keep pilots around for inspection
@@ -467,7 +469,8 @@ class UnitManager(rpu.Component):
 
                 # publish to the command channel for the scheduler to pick up
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'remove_pilot', 
-                                                  'arg' : pid})
+                                                  'arg' : {'pid'  : pid, 
+                                                           'umgr' : self.uid}})
 
 
     # --------------------------------------------------------------------------
@@ -693,8 +696,8 @@ class UnitManager(rpu.Component):
                     self._log.debug ("wait timed out")
                     break
 
-              # time.sleep (0.1)
-                time.sleep (3.0)
+                time.sleep (0.1)
+              # time.sleep (3.0)
 
         self._log.report.idle(mode='stop')
 
@@ -772,7 +775,7 @@ class UnitManager(rpu.Component):
             raise ValueError ("Metric '%s' is not available on the unit manager" % metric)
 
         with self._cb_lock:
-            self._callbacks['umgr'][metric].append([cb_func, cb_data])
+            self._callbacks[metric].append([cb_func, cb_data])
 
 
 # ------------------------------------------------------------------------------

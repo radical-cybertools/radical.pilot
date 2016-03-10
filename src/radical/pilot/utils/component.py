@@ -423,6 +423,16 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
+    def _initialize_parent(self):
+        """
+        parent initialization of component base class goes here
+        """
+        self._log.debug('base parent initialize')
+        self.register_idle_cb(self._thread_watcher_cb, timeout= 1.0)
+
+
+    # --------------------------------------------------------------------------
+    #
     def initialize(self):
         """
         This method may be overloaded by the components.  It is called *once* in
@@ -497,6 +507,24 @@ class Component(mp.Process):
 
         try:
             # this is now the parent process context
+            self.initialize()
+        except Exception as e:
+            self._log.exception ('initialize failed')
+            self.stop()
+            raise
+
+
+    # --------------------------------------------------------------------------
+    #
+    def no_start(self):
+        """
+        Some components will actually not start processes -- but we still may
+        want to initialize the parent side of things -- for that we have
+        'no_start()'.
+        """
+
+        try:
+            self._initialize_parent()
             self.initialize()
         except Exception as e:
             self._log.exception ('initialize failed')
@@ -825,8 +853,9 @@ class Component(mp.Process):
 
         name = "%s.idler.%s" % (self.uid, cb.__name__)
 
-        if name in self._idlers:
-            raise ValueError('cb %s already registered' % cb.__name__)
+        with self._cb_lock:
+            if name in self._idlers:
+                raise ValueError('cb %s already registered' % cb.__name__)
 
         if None == timeout:
             timeout = 0.1
@@ -864,8 +893,9 @@ class Component(mp.Process):
         t = mt.Thread(target=_idler, args=[e,cb,cb_data,timeout], name=name)
         t.start()
 
-        self._idlers[name] = {'term'   : e,  # termination signal
-                              'thread' : t}  # thread handle
+        with self._cb_lock:
+            self._idlers[name] = {'term'   : e,  # termination signal
+                                  'thread' : t}  # thread handle
 
         self._log.debug('%s registered idler %s' % (self.uid, t.name))
 
@@ -881,13 +911,14 @@ class Component(mp.Process):
 
         name = "%s.idler.%s" % (self.uid, cb.__name__)
 
-        if name not in self._idlers:
-            raise ValueError('%s is not registered' % name)
+        with self._cb_lock:
+            if name not in self._idlers:
+                raise ValueError('%s is not registered' % name)
 
-        entry = self._idlers[name]
-        entry['term'].set()
-        entry['thread'].join()
-        del(self._idlers[name])
+            entry = self._idlers[name]
+            entry['term'].set()
+            entry['thread'].join()
+            del(self._idlers[name])
 
         self._log.debug("unregistered idler %s", name)
 
@@ -991,8 +1022,9 @@ class Component(mp.Process):
         t = mt.Thread(target=_subscriber, args=[q,e,cb,cb_data], name=name)
         t.start()
 
-        self._subscribers[name] = {'term'   : e,  # termination signal
-                                   'thread' : t}  # thread handle
+        with self._cb_lock:
+            self._subscribers[name] = {'term'   : e,  # termination signal
+                                       'thread' : t}  # thread handle
 
         self._log.debug('%s registered %s subscriber %s' % (self.uid, pubsub, t.name))
 
@@ -1008,34 +1040,36 @@ class Component(mp.Process):
 
         name = "%s.subscriber.%s" % (self.uid, cb.__name__)
 
-        if name not in self._subscribers:
-            raise ValueError('%s is not subscribed to %s' % (cb.__name__, pubsub))
+        with self._cb_lock:
+            if name not in self._subscribers:
+                raise ValueError('%s is not subscribed to %s' % (cb.__name__, pubsub))
 
-        entry = self._subscribers[name]
-        entry['term'].set()
-        entry['thread'].join()
-        del(self._subscribers[name])
+            entry = self._subscribers[name]
+            entry['term'].set()
+            entry['thread'].join()
+            del(self._subscribers[name])
 
         self._log.debug("unregistered %s", name)
 
 
     # --------------------------------------------------------------------------
     #
-    def _thread_check_cb(self):
+    def _thread_watcher_cb(self):
 
-        for s in self._subscribers:
-            t = self._subscribers[s]['thread']
-            if not t.is_alive():
-                self._log.error('subscriber %s died', t.name)
-                if self._exit_on_error:
-                    self.stop()
+        with self._cb_lock:
+            for s in self._subscribers:
+                t = self._subscribers[s]['thread']
+                if not t.is_alive():
+                    self._log.error('subscriber %s died', t.name)
+                    if self._exit_on_error:
+                        self.stop()
 
-        for i in self._idlers:
-            t = self._idlers[i]['thread']
-            if not t.is_alive():
-                self._log.error('idler %s died', t.name)
-                if self._exit_on_error:
-                    self.stop()
+            for i in self._idlers:
+                t = self._idlers[i]['thread']
+                if not t.is_alive():
+                    self._log.error('idler %s died', t.name)
+                    if self._exit_on_error:
+                        self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -1118,8 +1152,8 @@ class Component(mp.Process):
             # register own idle callbacks to 
             #  - watch the subscriber and idler threads (1/sec)
             #  - flush profiles to the FS (1/sec)
-            self.register_idle_cb(self._thread_check_cb,  timeout= 1.0)
-            self.register_idle_cb(self._profile_flush_cb, timeout=60.0)
+            self.register_idle_cb(self._thread_watcher_cb, timeout= 1.0)
+            self.register_idle_cb(self._profile_flush_cb,  timeout=60.0)
 
             # perform a sanity check: for each registered input state, we expect
             # a corresponding work method to be registered, too.
@@ -1256,6 +1290,11 @@ class Component(mp.Process):
 
         'Things' are expected to be a dictionary, and to have 'state', 'uid' and
         optionally 'type' set.
+
+        If 'thing' contains an '$all' key, the complete dict is published;
+        otherwise, *only the state* is published.
+
+        This is evaluated in self.publish.
         """
 
         if not timestamp:
@@ -1275,7 +1314,6 @@ class Component(mp.Process):
             if not state:
                 # no state advance
                 state = thing['state']
-
             else:
                 # state advance
                 thing['state']          = state
@@ -1285,25 +1323,39 @@ class Component(mp.Process):
 
             self._prof.prof('advance', uid=uid, state=state, timestamp=timestamp)
 
+
             if publish:
+
                 # Things in final state are published in full
                 if state in rps.FINAL:
                     thing['$all'] = True
-                # send state notifications.  
-                self.publish(rpc.STATE_PUBSUB, {'cmd': 'update', 'arg': thing})
-              # print 'publish %s -> %s' % (thing['state'], thing['uid'])
+
+                # is '$all' is set, we update the complete thing_dict.  In all
+                # other cases, we only send 'uid', 'type' and 'state'.
+                if '$all' in thing:
+
+                    del(thing['$all'])
+                    to_publish = thing
+
+                else:
+                    to_publish = {'uid'   : thing['uid'  ], 
+                                  'type'  : thing['type' ],
+                                  'state' : thing['state']}
+
+                self.publish(rpc.STATE_PUBSUB, {'cmd': 'update', 'arg': to_publish})
                 self._prof.prof('publish', uid=thing['uid'], state=thing['state'])
+
 
             if push:
                 
                 if state in rps.FINAL:
                     # things in final state are dropped
-                    self._log.debug('%s %s ===| %s' % ('state', thing['uid'], thing['state']))
+                    self._log.debug('%s %s ===| %s' % ('push', thing['uid'], thing['state']))
                     continue
 
                 if not self._outputs[state]:
                     # empty output -- drop thing
-                    self._log.debug('%s %s ~~~| %s' % ('state', thing['uid'], thing['state']))
+                    self._log.debug('%s %s ~~~| %s' % ('push', thing['uid'], thing['state']))
                     continue
 
                 if state not in self._outputs:
@@ -1317,6 +1369,7 @@ class Component(mp.Process):
                 # push the thing down the drain
                 # FIXME: we should assert that the thing is in a PENDING state.
                 #        Better yet, enact the *_PENDING transition right here...
+                self._log.debug('%s %s ---> %s' % ('push', thing['uid'], thing['state']))
                 output.put(thing)
                 self._prof.prof('put', uid=thing['uid'], state=state, msg=output.name)
 

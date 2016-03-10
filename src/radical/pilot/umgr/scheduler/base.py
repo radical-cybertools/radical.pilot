@@ -65,11 +65,11 @@ class UMGRSchedulingComponent(rpu.Component):
 
         # Some schedulers care about states (of pilots and/or units), some
         # don't.  Either way, we here subscribe to state updates.
-        self.register_subscriber(rpc.STATE_PUBSUB, self.base_state_cb)
+        self.register_subscriber(rpc.STATE_PUBSUB, self._base_state_cb)
 
         # Schedulers use that command channel to get information about
         # pilots being added or removed.
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self.base_command_cb)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._base_command_cb)
 
 
     # --------------------------------------------------------------------------
@@ -105,7 +105,7 @@ class UMGRSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def base_state_cb(self, topic, msg):
+    def _base_state_cb(self, topic, msg):
 
         # the base class will keep track of pilot state changes and updates
         # self._pilots accordingly.  Unit state changes will be ignored -- if
@@ -114,7 +114,7 @@ class UMGRSchedulingComponent(rpu.Component):
         
         cmd   = msg['cmd']
         arg   = msg['arg']
-        ttype = arg.get('type')
+        ttype = arg['type']
 
         self._log.info('scheduler state_cb: %s: %s' % (cmd, arg))
 
@@ -124,29 +124,39 @@ class UMGRSchedulingComponent(rpu.Component):
 
             with self._pilots_lock:
         
-                pilot = arg
-                state = pilot['state']
-                pid   = pilot['uid']
+                state = arg['state']
+                pid   = arg['uid']
 
+                # we also remember states for unknown pilots, in case they are
+                # getting added later
                 if pid not in self._pilots:
+                    self._pilots[pid] = {'role'  : None,
+                                         'state' : None,
+                                         'pilot' : None}
 
-                    self._pilots[pid] = {
-                            ROLE    : None,
-                            'state' : None,
-                            'thing' : None
-                            }
-
-                # FIXME: enforce state model order!
-                self._pilots[pid]['state'] = state
-                self._pilots[pid]['thing'] = copy.deepcopy(arg)
-
-                self._log.debug('update pilot: %s' % self._pilots[pid])
-
+                self._update_pilot_state(arg)
 
 
     # --------------------------------------------------------------------------
     #
-    def base_command_cb(self, topic, msg):
+    def _update_pilot_state(self, pilot):
+
+        with self._pilots_lock:
+
+            pid     = pilot['uid']
+            current = pilot['state']
+            target  = self._pilots[pid]['state']
+
+            # enforce state model order
+            target, passed_ = rps._pilot_state_progress(current, target) 
+            self._pilots[pid]['state'] = target
+
+            self._log.debug('update pilot state: %s -> %s', current, target)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _base_command_cb(self, topic, msg):
 
         # we'll wait for commands from the agent, to learn about pilots we can
         # use or we should stop using.
@@ -159,9 +169,8 @@ class UMGRSchedulingComponent(rpu.Component):
             return
 
         arg   = msg['arg']
-        pid   = arg.get('pid')
-        thing = arg.get('thing')
-        umgr  = arg.get('umgr')
+        pid   = arg['pid']
+        umgr  = arg['umgr']
 
         self._log.info('scheduler command: %s: %s' % (cmd, arg))
 
@@ -171,19 +180,23 @@ class UMGRSchedulingComponent(rpu.Component):
 
 
         if cmd == 'add_pilot':
-
+        
             with self._pilots_lock:
 
-                if pid not in self._pilots:
-                    self._pilots[pid] = {ROLE    : None,
+                if pid in self._pilots:
+                    if self._pilots[pid]['role'] == ADDED:
+                        raise ValueError('pilot already added (%s)' % pid)
+                else:
+                    self._pilots[pid] = {'role'  : None,
                                          'state' : None,
-                                         'thing' : thing}
+                                         'pilot' : None}
 
-                if self._pilots[pid][ROLE] == ADDED:
-                    raise ValueError('pilot already added (%s)' % pid)
+                self._pilots[pid]['role']  = ADDED
+                self._pilots[pid]['pilot'] = copy.deepcopy(arg['pilot'])
+                self._update_pilot_state(arg['pilot'])
 
-                self._pilots[pid][ROLE] = ADDED
-                self._log.debug('added pilot: %s' % self._pilots[pid])
+                self._log.debug('added pilot: %s', self._pilots[pid])
+
 
             # let the scheduler know
             self.add_pilot(pid)
@@ -196,10 +209,10 @@ class UMGRSchedulingComponent(rpu.Component):
                 if pid not in self._pilots:
                     raise ValueError('pilot not added (%s)' % pid)
 
-                if self._pilots[pid][ROLE] != ADDED:
+                if self._pilots[pid]['role'] != ADDED:
                     raise ValueError('pilot not added (%s)' % pid)
 
-                self._pilots[pid][ROLE] = REMOVED
+                self._pilots[pid]['role'] = REMOVED
                 self._log.debug('removed pilot: %s' % self._pilots[pid])
 
             # let the scheduler know

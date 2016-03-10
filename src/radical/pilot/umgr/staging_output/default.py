@@ -93,7 +93,8 @@ class Default(UMGRStagingOutputComponent):
 
 
         # all staging is done -- at this point the unit is final
-        unit['$all'] = True
+        unit['$all']    = True
+        unit['control'] = None
         self.advance(unit, unit['target_state'], publish=True, push=True)
 
 

@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import time
+import pprint
 import threading
 
 import radical.utils as ru
@@ -58,134 +59,10 @@ class Update(rpu.Worker):
         self._mongo_db      = db
         self._cinfo         = dict()            # collection cache
         self._lock          = threading.RLock() # protect _cinfo
-        self._state_cache   = dict()            # used to preserve state ordering
 
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
         self.register_idle_cb(self._idle_cb, 
                               timeout=self._cfg.get('bulk_collection_time', 1.0))
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _ordered_state_update(self, thing, state, timestamp=None):
-        """
-        The update worker can receive states for a specific thing in any order.
-        If states are pushed straight to theh DB, the state attribute of a thing
-        may not reflect the actual state.  This should be avoided by re-ordering
-        on the client side DB consumption -- but until that is implemented we
-        enforce ordered state pushes to MongoDB.  We do it like this:
-
-          - for each thing arriving in the update worker
-            - check if new state is final
-              - yes: push update, but never push any update again (only update
-                hist)
-              - no:
-                check if all expected earlier states are pushed already
-                - yes: push this state also
-                - no:  only update state history
-        """
-        # FIXME: this is specific to agent side updates, but needs to be
-        #        generalized for the full state model.  It should disappear once
-        #        we introduce a tailing cursor for state notifications -- then
-        #        notifications can again be out of order, and the DB docs only
-        #        contain time-stamped state histories.
-
-        s2i = {rps.NEW                          :  1,
-
-               rps.PMGR_LAUNCHING_PENDING       :  2,
-               rps.PMGR_LAUNCHING               :  3,
-               rps.PMGR_ACTIVE_PENDING          :  4,
-               rps.PMGR_ACTIVE                  :  5,
-
-               rps.UMGR_SCHEDULING_PENDING      :  6,
-               rps.UMGR_SCHEDULING              :  7,
-               rps.UMGR_STAGING_INPUT_PENDING   :  8,
-               rps.UMGR_STAGING_INPUT           :  9,
-               rps.AGENT_STAGING_INPUT_PENDING  : 10,
-               rps.AGENT_STAGING_INPUT          : 11,
-               rps.AGENT_SCHEDULING_PENDING     : 12,
-               rps.AGENT_SCHEDULING             : 13,
-               rps.AGENT_EXECUTING_PENDING      : 14,
-               rps.AGENT_EXECUTING              : 15,
-               rps.AGENT_STAGING_OUTPUT_PENDING : 16,
-               rps.AGENT_STAGING_OUTPUT         : 17,
-               rps.UMGR_STAGING_OUTPUT_PENDING  : 18,
-               rps.UMGR_STAGING_OUTPUT          : 19,
-
-               rps.DONE                         : 20,
-               rps.CANCELING                    : 21,
-               rps.CANCELED                     : 22,
-               rps.FAILED                       : 23
-               }
-        i2s = {v:k for k,v in s2i.items()}
-        s_max = rps.FAILED
-
-        if not timestamp:
-            timestamp = rpu.timestamp()
-
-        uid   = thing['uid']
-        ttype = thing['type']
-
-      # self._log.debug(" === inp %s: %s" % (uid, state))
-
-        if uid not in self._state_cache:
-            if ttype == 'unit':
-                if 'agent' in self._owner:
-                    # the agent gets the units in this state
-                    init_state = rps.AGENT_STAGING_INPUT_PENDING
-                else:
-                    # this is the umgr then
-                    init_state = rps.NEW
-            else:
-                # pilot starts in NEW for the pmgr
-                init_state = rps.NEW
-
-            # populate state cache
-            self._state_cache[uid] = {'unsent' : list(),
-                                      'final'  : False,
-                                      'last'   : rps.NEW}
-        # check state cache
-        cache = self._state_cache[uid]
-
-        # if thing is already final, we don't push state
-        if cache['final']:
-          # self._log.debug(" === fin %s: %s" % (uid, state))
-            return None
-
-        # if thing becomes final, push state and remember it
-        if state not in [rps.DONE, rps.FAILED, rps.CANCELED]:
-
-            # check if we have any consecutive list beyond 'last' in unsent
-            cache['unsent'].append(state)
-          # self._log.debug(" === lst %s: %s %s" % (uid, cache['last'], cache['unsent']))
-            new_state = None
-            for i in range(s2i[cache['last']]+1, s2i[s_max]):
-              # self._log.debug(" === chk %s: %s in %s" % (uid, i2s[i], cache['unsent']))
-                if i2s[i] in cache['unsent']:
-                    new_state = i2s[i]
-                    cache['unsent'].remove(i2s[i])
-                  # self._log.debug(" === uns %s: %s" % (uid, new_state))
-                else:
-                  # self._log.debug(" === brk %s: %s" % (uid, new_state))
-                    break
-    
-            if new_state:
-              # self._log.debug(" === new %s: %s" % (uid, new_state))
-                state = new_state
-
-        if not state:
-            # all for nothing
-            return None
-
-        if state in [rps.DONE, rps.FAILED, rps.CANCELED]:
-          # self._log.debug(" === FIN %s: %s" % (uid, state))
-            cache['final'] = True
-            cache['last']  = state
-
-        # ok, we actually have something to update
-      # self._log.debug(" === set %s: %s" % (uid, state))
-        cache['last'] = state
-        return state
 
 
     # --------------------------------------------------------------------------
@@ -203,7 +80,11 @@ class Update(rpu.Worker):
         if not age > self._cfg.get('bulk_collection_time', DEFAULT_BULK_COLLECTION_TIME):
             return False
 
-        res = cinfo['bulk'].execute()
+        try:
+            res = cinfo['bulk'].execute()
+        except Exception as e:
+            self._log.exception('mongodb error: %s', pprint.pformat(e.details))
+            raise
         self._log.debug("bulk update result: %s", res)
 
         self._prof.prof('update bulk pushed (%d)' % (len(cinfo['uids'])),
@@ -296,7 +177,7 @@ class Update(rpu.Worker):
         # FIXME: we don't have any error recovery -- any failure to update 
         #        state in the DB will thus result in an exception here and tear
         #        down the module.
-        #
+
         # got a new request.  Add to bulk (create as needed),
         # and push bulk if time is up.
         uid       = thing['uid']
@@ -316,44 +197,27 @@ class Update(rpu.Worker):
             self._prof.prof('get', msg="update %s state ignored" % ttype, uid=uid)
             return
 
-        # we need to update something -- prepafe update doc
-        update_dict         = dict()
-        update_dict['$set'] = dict()
+        # create an update document
+        update_dict          = dict()
+        update_dict['$set']  = dict()
+        update_dict['$push'] = dict()
 
-        # if the thing is scheduled to be pushed completely, then do so.
-        if thing.get('$all'):
-            
-            # get rid of the marker
-            del(thing['$all'])
+        for key,val in thing.iteritems():
+            update_dict['$set'][key] = val
 
-            # we can also savely ignore the '$set' marker
-            if '$set' in thing:
-                del(thing['$set'])
-
-            for key,val in thing.iteritems():
-                update_dict['$set'][key] = val
-
-        # if the thing has keys specified which are specifically to be set
-        # in the database, then do so
-        elif thing.get('$set'):
-
-            # get rid of the marker
-            update_dict = {'$set' : {}}
-
-            for key in thing.get('$set', []):
-                update_dict['$set'][key] = thing[key]
-
-
-        # make sure our state transitions adhere to the state models
-        state = self._ordered_state_update(thing, state, timestamp)
-        update_dict['$set']['state'] = state
-
-        # we never set _id
+        # we never set _id, states (to avoid index clash, duplicated ops)
         if '_id' in update_dict['$set']:
             del(update_dict['$set']['_id'])
+        if 'states' in update_dict['$set']:
+            del(update_dict['$set']['states'])
 
+        # we set state, put (more importantly) we push the state onto the
+        # 'states' list, so that we can later get state progression in sync with
+        # the state model, even if they have been pushed here out-of-order
+        update_dict['$push']['states'] = state
 
         # check if we handled the collection before.  If not, initialize
+        # FIXME: we only have one collection now -- simplify!
         cname = self._session_id
 
         with self._lock:
@@ -375,7 +239,6 @@ class Update(rpu.Worker):
 
 
             # push the update request onto the bulk
-          # import pprint
           # print '--> %s: %s' % (uid, pprint.pformat(update_dict))
 
             cinfo['uids'].append([uid, ttype, state])
