@@ -31,10 +31,10 @@
   + component: collapse declare_input and declare_worker
   + cu['_id'] -> cu['uid'] etc
 
-  - state pubsub now has [cmd, ttype, thing] tuples fed from advance.
+  + state pubsub now has [cmd, ttype, thing] tuples fed from advance.
   + self.advance(cu, FAILED, ...) will not find a suitable output channel.
     Handle gracefully!  
-  - Always push final things fully to DB!
+  + Always push final things fully to DB!
   - we mostly don't need create() methods -- in many cases we can just use
     constructors.
   + default output staging component: __init__ calls Component __init__, but
@@ -78,4 +78,9 @@
     MongoDB, and it should ignore other dict entries.  Alternatively, components
     should use underscore-prefixed keys for things which don't need to be stored
     in MongoDB.
+
+  - separate single-process components from multi-processed, in terms of
+    initialization
+  - make sure we don't carry locks across fork calls.  If that turns out to be
+    difficult (hi zmq), we have to execve after fork and start afresh.
 

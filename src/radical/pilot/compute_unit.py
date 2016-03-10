@@ -136,8 +136,8 @@ class ComputeUnit(object):
         #
         # FIXME: add sanity checks
 
-        old_state = self.state
-        new_state = unit_dict.get('state', old_state)
+        current = self.state
+        target  = unit_dict['state']
 
         # we update all fields
         for key,val in unit_dict.iteritems():
@@ -147,19 +147,25 @@ class ComputeUnit(object):
                        'exit_code', 'pilot', 'sandbox', 'pilot_sandbox']:
                 setattr(self, "_%s" % key, val)
 
-        if old_state != new_state:
+        new_state, passed = rps._unit_state_progress(current, target)
+
+        # replay all state transitions
+        for state in passed:
 
             for cb_func, cb_data in self._callbacks:
-                if cb_data: cb_func(self, self.state, cb_data)
-                else      : cb_func(self, self.state)
+                self._state = state
+                if cb_data: cb_func(self, state, cb_data)
+                else      : cb_func(self, state)
 
             # also inform pmgr about state change, to collect any callbacks
             # it has registered globally
-            self._umgr._call_unit_callbacks(self, self.state)
+            self._umgr._call_unit_callbacks(self, state)
 
-            return True
+        # make sure we end up with the right state
+        self._state = new_state
 
-        return False
+        if passed: return True
+        else     : return False
 
 
     # --------------------------------------------------------------------------

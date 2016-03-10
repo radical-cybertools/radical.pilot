@@ -55,11 +55,11 @@ if __name__ == '__main__':
 
         # Register the ComputePilot in a UnitManager object.
         umgr = rp.UnitManager(session=session)
-      # def unit_cb(unit, state):
-      #   # print 'cb: unit  %s: %s' % (unit.uid, state)
-      #     if state in [rp.FAILED, rp.CANCELED]:
-      #         session.close()
-      # umgr.register_callback(unit_cb)
+        def unit_cb(unit, state):
+            print 'cb: unit  %s: %s' % (unit.uid, state)
+          # if state in [rp.FAILED, rp.CANCELED]:
+          #     session.close()
+        umgr.register_callback(unit_cb)
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
@@ -91,7 +91,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 2048  # number of units to run
+        n = 2  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
