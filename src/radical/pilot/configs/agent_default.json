@@ -41,8 +41,7 @@
     #
     # Queue bridges can be configured to stall for a certain batch of messages,
     # releasing them then as bulks of a certain size.  Default for both
-    # stall_hwm and batch_size is one.  There will be an assert for ((stall_hwm
-    # % batch_size) == 0).
+    # stall_hwm and batch_size is one.  
     #
     # Pubsub bridges cannot stall.
     #

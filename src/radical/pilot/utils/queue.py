@@ -366,8 +366,6 @@ class QueueZMQ(Queue):
         self._stall_hwm  = cfg.get('stall_hwm', 1)
         self._bulk_size  = cfg.get('bulk_size', 1)
 
-        assert((self._stall_hwm % self._bulk_size) == 0)
-
         Queue.__init__(self, flavor, name, role, cfg, addr)
 
         # ----------------------------------------------------------------------
@@ -449,28 +447,38 @@ class QueueZMQ(Queue):
                     #        some (configurable) timeout?
                     # FIXME: is it worth introducing a 'flush' command or
                     #        message type?
+                    hwm  = self._stall_hwm
+                    bulk = self._bulk_size
                     while True:
 
                         msgs = list()
-                        for i in range(self._stall_hwm):
+                        while len(msgs) < hwm:
                             msg = _uninterruptible(_in.recv_json)
-                            msgs.append(msg)
-                            self._log.debug(' === stall %s/%s (%s)', i, self._stall_hwm, msg.get('uid', '?'))
+                            if isinstance(msg, list): 
+                                msgs.append += msg
+                            else: 
+                                msgs.append(msg)
+                            self._log.debug(' === stall %s/%s', len(msgs), hwm)
 
                         i = 0
-                        for msg in msgs:
+                        while msgs:
 
                             while True:
-                                events = dict(_uninterruptible(_poll.poll, 1000)) # timeout in ms
+                                # timeout in ms
+                                events = dict(_uninterruptible(_poll.poll, 1000))
 
-                                self._log.debug(' === send  %s/%s (%s)', i, self._stall_hwm, msg.get('uid', '?'))
                                 if _out in events:
+                                    out_bulk = list()
+                                    while msgs and len(out_bulk) < bulk:
+                                        out_bulk.append(msgs.pop(0))
+                                        i+=1
+
                                     req = _uninterruptible(_out.recv)
-                                    _uninterruptible(_out.send_json, msg)
-                                    # go to next message
-                                    self._log.debug(' === sent  %s/%s (%s)', i, self._stall_hwm, msg.get('uid', '?'))
+                                    _uninterruptible(_out.send_json, out_bulk)
+
+                                    # go to next message/bulk (break while loop)
+                                    self._log.debug(' === sent  %s/%s', i, hwm)
                                     break
-                            i += 1
 
                 except Exception as e:
                     self._log.exception('bridge error: %s', e)
