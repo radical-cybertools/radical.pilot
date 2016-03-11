@@ -241,7 +241,7 @@ class PubsubZMQ(Pubsub):
                     signal.signal(signal.SIGTERM, signal.SIG_DFL)
                     signal.signal(signal.SIGALRM, signal.SIG_DFL)
 
-                    spt.setproctitle('radical.pilot %s' % self._name)
+                    spt.setproctitle('rp.%s' % self._name)
                     self._log.info('start bridge %s on %s', self._name, addr)
 
                     ctx = zmq.Context()

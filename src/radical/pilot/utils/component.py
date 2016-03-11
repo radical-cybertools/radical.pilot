@@ -6,6 +6,7 @@ import time
 import pprint
 import signal
 
+import setproctitle    as spt
 import threading       as mt
 import multiprocessing as mp
 import radical.utils   as ru
@@ -177,6 +178,13 @@ class Component(mp.Process):
         self._bridges       = list()      # set of bridges started
         self._addr_map      = dict()      # address map for bridges
 
+        # set up for eventual heartbeat send/recv
+        self._heartbeat          = time.time() # time of last heartbeat
+        self._heartbeat_interval = 10.0        # frequency of heartbeats
+        self._heartbeat_timeout  = 30.0        # die after missing 3 heartbeats
+
+        assert(self._heartbeat_timeout > (2*self._heartbeat_interval))
+
         # initialize the Process base class for later fork.  We do that here
         # before we populate any further member vars.
         mp.Process.__init__(self, name=self.uid)
@@ -225,60 +233,6 @@ class Component(mp.Process):
         self.register_publisher (rpc.STATE_PUBSUB)
         self.register_publisher (rpc.CONTROL_PUBSUB)
       # self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
-
-        # Components are designed to be ephemeral: by default they die unless
-        # they are kept alive by a parent's heartbeat signal.  That only holds
-        # for components which have been start()ed though -- unstarted
-        # components (mostly Workers or Managers) require an explicit call to
-        # stop() to disappear.
-        # The heartbeat monotoring is performed in the parent, which is
-        # registering two callbacks:
-        #   - an CONTROL_PUBSUB _heartbeat_monitor_cb which listens for 
-        #     heartbeats with 'src == self.owner', and records the time of 
-        #     heartbeat in self._heartbeat
-        #   - an idle _heartbeat_checker_cb which checks the timer in frequent
-        #     intervals, and which will call self.stop() if the last heartbeat
-        #     is longer that self._heartbeat_timeout seconds ago
-        #     # FIXME: make that time configurable or adjustable
-        # We already registered publication on the CONTROL_PUBSUB above, so
-        # don't need to do that again at this point.
-        # 
-        # NOTE: The use of the control pubsub for heartbeat messages between all
-        #       components may ultimately result in quite so,e traffic, and
-        #       importantly in too many (useless) callback invokations. That can
-        #       be regulated by the self._heartbeat_interval setting, which sets
-        #       the frequency of heartbeat messages sent by the owner.  If that
-        #       turns out to be insufficient, we can introduce component
-        #       specific topics on the pubsub channel, to filter messages before
-        #       callbacks are getting invoked (at the moment, topic is always
-        #       the same as pubsub channel name), or of course use a separate
-        #       channel...
-        #
-        # So, in total we register three callbacks: 
-        #   - sending heartbeat to sub-components
-        #     this only makes sense if we have anybody listening, so we do that
-        #     only once components are spawned, and in fact register the idle cb
-        #     in start_components.
-        #
-        #   - receiving heartbeat from owner components
-        #   - checking heartbeat timestamp and stop() if heartbeat is missing
-        #     heartbeat checks ony make sense if we get heartbeats, ie. if we 
-        #     have an owner, so we only start if an owner is defined.  Otherwise
-        #     we are considered the root of the component tree (ie. the client
-        #     side session, or agent_0).
-        #
-        # Note that heartbeats are also used to keep sub-agents alive.
-
-        self._heartbeat          = time.time() # time of last heartbeat
-        self._heartbeat_interval = 10.0        # frequency of heartbeats
-        self._heartbeat_timeout  = 30.0        # die after missing 3 heartbeats
-
-        assert(self._heartbeat_timeout > (2*self._heartbeat_interval))
-
-        if self.owner:
-            self.register_idle_cb(self._heartbeat_checker_cb, 
-                                  timeout=self._heartbeat_interval)
-            self.register_subscriber(rpc.CONTROL_PUBSUB, self._heartbeat_monitor_cb)
 
         # We keep a static typemap for worker, component and bridge startup. If
         # we ever want to become reeeealy fancy, we can derive that typemap from
@@ -1136,11 +1090,57 @@ class Component(mp.Process):
       # signal.signal(signal.SIGINT,  sigint_handler)
 
         # set process name
-        try:
-            import setproctitle as spt
-            spt.setproctitle('radical.pilot %s' % self.uid)
-        except Exception as e:
-            pass
+        spt.setproctitle('rp.%s' % self.uid)
+
+
+        # Component child processes are designed to be ephemeral: by default
+        # they die unless they are kept alive by a parent's heartbeat signal.
+        # That only holds for components which have been start()ed though --
+        # unstarted components (mostly Workers or Managers) require an explicit
+        # call to stop() to disappear.
+        #
+        # The heartbeat monotoring is performed in the child, which is
+        # registering two callbacks:
+        #   - an CONTROL_PUBSUB _heartbeat_monitor_cb which listens for 
+        #     heartbeats with 'src == self.owner', and records the time of 
+        #     heartbeat in self._heartbeat
+        #   - an idle _heartbeat_checker_cb which checks the timer in frequent
+        #     intervals, and which will call self.stop() if the last heartbeat
+        #     is longer that self._heartbeat_timeout seconds ago
+        #     # FIXME: make that time configurable or adjustable
+        #
+        # NOTE: The use of the control pubsub for heartbeat messages between all
+        #       components may ultimately result in quite so,e traffic, and
+        #       importantly in too many (useless) callback invokations. That can
+        #       be regulated by the self._heartbeat_interval setting, which sets
+        #       the frequency of heartbeat messages sent by the owner.  If that
+        #       turns out to be insufficient, we can introduce component
+        #       specific topics on the pubsub channel, to filter messages before
+        #       callbacks are getting invoked (at the moment, topic is always
+        #       the same as pubsub channel name), or of course use a separate
+        #       channel...
+        #
+        # So, in total we register three callbacks: 
+        #   - sending heartbeat to sub-components
+        #     this only makes sense if we have anybody listening, so we do that
+        #     only once components are spawned, and in fact register the idle cb
+        #     in start_components (no matter if that is a parent or client
+        #     process).
+        #
+        #   - receiving heartbeat from owner components
+        #   - checking heartbeat timestamp and stop() if heartbeat is missing
+        #     heartbeat checks ony make sense if we get heartbeats, ie. if we 
+        #     have an owner, so we only start if an owner is defined.  Otherwise
+        #     we are considered the root of the component tree (ie. the client
+        #     side session, or agent_0).
+        #
+        # Note that heartbeats are also used to keep sub-agents alive.
+        # FIXME: this is not yet done
+
+        if self.owner:
+            self.register_idle_cb(self._heartbeat_checker_cb, 
+                                  timeout=self._heartbeat_interval)
+            self.register_subscriber(rpc.CONTROL_PUBSUB, self._heartbeat_monitor_cb)
 
 
         try:
@@ -1176,7 +1176,7 @@ class Component(mp.Process):
 
             # setup is done, child initialization is done -- we are alive!
             # if we have an owner, we send an alive message to it
-            if self._owner:
+            if self.owner:
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
                                                   'arg' : {'sender' : self.uid, 
                                                            'owner'  : self.owner}})

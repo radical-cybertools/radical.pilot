@@ -385,7 +385,7 @@ class QueueZMQ(Queue):
 
                 try:
                     import setproctitle as spt
-                    spt.setproctitle('radical.pilot %s' % self._name)
+                    spt.setproctitle('rp.%s' % self._name)
                 except Exception as e:
                     pass
 
