@@ -128,7 +128,8 @@ class Default(PMGRLaunchingComponent):
                 # move pilots into final state
                 for uid in uids:
                     
-                    pilot = self._pilots[uid]
+                    pilot    = self._pilots[uid]
+                    saga_pid = self._pilots[uid]['_saga_pid']   
 
                     # we don't want the watcher checking for this pilot anymore
                     self._tocheck.remove([uid,saga_pid])

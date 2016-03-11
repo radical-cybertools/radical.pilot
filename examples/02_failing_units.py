@@ -56,17 +56,18 @@ if __name__ == '__main__':
         # Register the ComputePilot in a UnitManager object.
         umgr = rp.UnitManager(session=session)
         def unit_cb(unit, state):
-            print 'cb: unit  %s: %s' % (unit.uid, state)
-            if state in [rp.FAILED]:
-                session.close()
+            pass
+          # print 'cb: unit  %s: %s' % (unit.uid, state)
+          # if state in [rp.FAILED]:
+          #     session.close()
         umgr.register_callback(unit_cb)
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pd_init = {
                 'resource'      : resource,
-                'cores'         : 1,   # pilot size
-                'runtime'       : 10,    # pilot runtime (min)
+                'cores'         : 128,   # pilot size
+                'runtime'       : 20,    # pilot runtime (min)
                 'exit_on_error' : True,
                 'project'       : config[resource]['project'],
                 'queue'         : config[resource]['queue'],
@@ -80,7 +81,7 @@ if __name__ == '__main__':
         umgr.add_pilots(pilot)
 
         def pilot_cb(pilot, state):
-            print 'cb: pilot %s: %s' % (pilot.uid, state)
+            print 'cb: pilot %s: %s : %s' % (pilot.uid, state, time.time())
             if state in [rp.FAILED]:
                 session.close()
         pilot.register_callback(pilot_cb)
@@ -91,7 +92,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 2  # number of units to run
+        n = 10  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -115,9 +116,6 @@ if __name__ == '__main__':
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(cuds)
-
-      # import time
-      # time.sleep(2)
 
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
@@ -155,7 +153,6 @@ if __name__ == '__main__':
         # not.  This will kill all remaining pilots.
         report.header('finalize')
         if session:
-            print "CALLING SESSION CLOSE"
             session.close(cleanup=False)
 
     report.header()

@@ -172,7 +172,7 @@ class Component(mp.Process):
         # helper for sub component startup and management
         self._barrier       = mt.Event()  # signal when sub-components are up
         self._barrier_seen  = None        # list of components seen alive
-        self._barrier_lock  = mt.Lock()   # lock on barrier_data
+        self._barrier_lock  = ru.RLock()  # lock on barrier_data
         self._components    = list()      # set of sub components started
         self._bridges       = list()      # set of bridges started
         self._addr_map      = dict()      # address map for bridges
@@ -272,6 +272,8 @@ class Component(mp.Process):
         self._heartbeat          = time.time() # time of last heartbeat
         self._heartbeat_interval = 10.0        # frequency of heartbeats
         self._heartbeat_timeout  = 30.0        # die after missing 3 heartbeats
+
+        assert(self._heartbeat_timeout > (2*self._heartbeat_interval))
 
         if self.owner:
             self.register_idle_cb(self._heartbeat_checker_cb, 
@@ -507,6 +509,7 @@ class Component(mp.Process):
 
         try:
             # this is now the parent process context
+            self._initialize_parent()
             self.initialize()
         except Exception as e:
             self._log.exception ('initialize failed')
@@ -1097,7 +1100,12 @@ class Component(mp.Process):
         self._uid       = self._uid + '.child'
         self._dh        = ru.DebugHelper(name=self.uid)
 
-        # other state we don't want to carry over the fork:
+        # the very first action after fork is to release all locks and handle
+        # we still may hold
+        self._cb_lock.release
+        self._barrier_lock.release
+
+        # handles and state we don't want to carry over the fork:
         self._inputs        = dict()      # queues to get things from
         self._outputs       = dict()      # queues to send things to
         self._components    = list()      # sub-components
@@ -1106,6 +1114,7 @@ class Component(mp.Process):
         self._subscribers   = dict()      # callbacks for received notifications
         self._workers       = dict()      # where things get worked upon
         self._idlers        = dict()      # idle_callback registry
+
 
         # parent can call terminate, which we translate here into sys.exit(),
         # which is then excepted in the run loop below for an orderly shutdown.
@@ -1316,10 +1325,7 @@ class Component(mp.Process):
                 state = thing['state']
             else:
                 # state advance
-                thing['state']          = state
-                thing['state_timstamp'] = timestamp
-                thing['state_history'].append({'state'     : state, 
-                                               'timestamp' : timestamp})
+                thing['state'] = state
 
             self._prof.prof('advance', uid=uid, state=state, timestamp=timestamp)
 
@@ -1629,7 +1635,8 @@ class Component(mp.Process):
         # started.
 
         if not self._barrier.wait(timeout):
-            raise RuntimeError('component startup barrier failed (timeout)')
+            raise RuntimeError('component startup barrier failed (timeout) (%s != %s' \
+                    % (self._barrier_seen, [c.uid for c in self._components]))
 
         # FIXME: barrier_cb can now be unregistered
         self.unregister_subscriber(rpc.CONTROL_PUBSUB, self._barrier_cb)

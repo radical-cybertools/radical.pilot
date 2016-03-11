@@ -15,10 +15,10 @@ import radical.utils        as ru
 import saga                 as rs
 import saga.utils.pty_shell as rsup
 
-from .  import utils     as rpu
-from .  import states    as rps
-from .  import constants as rpc
-from .  import types     as rpt
+from . import utils         as rpu
+from . import states        as rps
+from . import constants     as rpc
+from . import types         as rpt
 
 from .unit_manager    import UnitManager
 from .pilot_manager   import PilotManager
@@ -105,7 +105,7 @@ class Session(rs.Session, rpu.Worker):
 
         # sanity check on parameters
         if database_url and not dburl:
-            self._log.warning('"database_url" for session is deprectaed, use dburl')
+            self._log.warning('"database_url" for session is deprecated, use dburl')
             dburl = database_url
 
         if not dburl:

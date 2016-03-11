@@ -97,17 +97,15 @@ class RoundRobin(UMGRSchedulingComponent):
 
             if not pid in self._pilots:
                 # oops, race!  Leave unit unscheduled
-                self._log.debug('met pid race in _pilots (%s)', pid)
+                self._log.warn('met pid race in _pilots (%s)', pid)
                 return
 
             pilot = self._pilots[pid]
 
             # we assign the unit to the pilot.
-            unit['pilot'] = pid
-
-            # this is also a good opportunity to determine the unit sndboxes
-            unit['pilot_sandbox'] = self._session._get_pilot_sandbox(pilot['pilot'])
-            unit['sandbox']       = self._session._get_unit_sandbox(unit, pilot['pilot'])
+            # this is also a good opportunity to determine the unit sndbox
+            unit['pilot']   = pid
+            unit['sandbox'] = self._session._get_unit_sandbox(unit, pilot['pilot'])
 
             self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING, 
                     publish=True, push=True)

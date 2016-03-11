@@ -83,4 +83,9 @@
     initialization
   - make sure we don't carry locks across fork calls.  If that turns out to be
     difficult (hi zmq), we have to execve after fork and start afresh.
+  - idle_cb naming...
+  - kill pilots on finalize_child
+  + saga_pid in pmgr.launcher control_cb
+  + heartbeat interval assertion
+
 

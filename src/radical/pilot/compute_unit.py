@@ -62,10 +62,7 @@ class ComputeUnit(object):
         self._session       = self._umgr.session
         self._uid           = ru.generate_id('unit.%(counter)06d', ru.ID_CUSTOM)
         self._state         = rps.NEW
-        self._state_hist    = [{'state'     : rps.NEW, 
-                                'timestamp' : rpu.timestamp()}]
         self._log           = umgr._log
-        self._log_msgs      = []
         self._exit_code     = None
         self._stdout        = None
         self._stderr        = None
@@ -143,8 +140,7 @@ class ComputeUnit(object):
         for key,val in unit_dict.iteritems():
             # FIXME: well, this is ugly...  we should maintain all state in
             #        a dict.
-            if key in ['state', 'stdout', 'stderr', 
-                       'exit_code', 'pilot', 'sandbox', 'pilot_sandbox']:
+            if key in ['state', 'stdout', 'stderr', 'exit_code', 'pilot', 'sandbox']:
                 setattr(self, "_%s" % key, val)
 
         new_state, passed = rps._unit_state_progress(current, target)
@@ -176,20 +172,17 @@ class ComputeUnit(object):
         """
         
         ret = {
-            'session':         self.session.uid,
-            'umgr':            self.umgr.uid,
-            'uid':             self.uid,
-            'type':            'unit',
-            'name':            self.name,
-            'state':           self.state,
-            'state_history':   self.state_history,
-            'log':             self.log,
-            'exit_code':       self.exit_code,
-            'stdout':          self.stdout,
-            'stderr':          self.stderr,
-            'pilot':           self.pilot,
-            'sandbox':         self.sandbox,
-            'description':     self.description   # this is a deep copy
+            'type':        'unit',
+            'umgr':        self.umgr.uid,
+            'uid':         self.uid,
+            'name':        self.name,
+            'state':       self.state,
+            'exit_code':   self.exit_code,
+            'stdout':      self.stdout,
+            'stderr':      self.stderr,
+            'pilot':       self.pilot,
+            'sandbox':     self.sandbox,
+            'description': self.description   # this is a deep copy
         }
 
         return ret
@@ -263,36 +256,6 @@ class ComputeUnit(object):
         """
 
         return self._state
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def state_history(self):
-        """
-        Returns the complete state history of the unit.
-
-        **Returns:**
-            * list of tuples [[state, timestamp]]
-        """
-
-        return copy.deepcopy(self._state_hist)
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def log(self):
-        """
-        Returns a list of human readable [timestamp, string] tuples describing
-        various events during the unit's lifetime.  Those strings are not
-        normative, only informative!
-
-        **Returns:**
-            * log (list of [timestamp, string] tuples)
-        """
-
-        return copy.deepcopy(self._log_msgs)
 
 
     # --------------------------------------------------------------------------

@@ -147,8 +147,7 @@ class ComputePilot(object):
         for key,val in pilot_dict.iteritems():
             # FIXME: well, this is ugly...  we should maintain all state in
             #        a dict.
-            if key in ['state', 'sandbox', 'state_history', 
-                       'stdout', 'stderr']:
+            if key in ['state', 'sandbox', 'stdout', 'stderr']:
                 setattr(self, "_%s" % key, val)
 
         new_state, passed = rps._pilot_state_progress(current, target)

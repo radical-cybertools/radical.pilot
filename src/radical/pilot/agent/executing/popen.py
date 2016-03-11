@@ -282,26 +282,22 @@ class Popen(AgentExecutingComponent) :
 
         self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, cu_tmpdir)
 
-        proc = subprocess.Popen(args               = cmdline,
-                                bufsize            = 0,
-                                executable         = None,
-                                stdin              = None,
-                                stdout             = _stdout_file_h,
-                                stderr             = _stderr_file_h,
-                                preexec_fn         = None,
-                                close_fds          = True,
-                                shell              = True,
-                                cwd                = cu_tmpdir,
-                                env                = self._cu_environment,
-                                universal_newlines = False,
-                                startupinfo        = None,
-                                creationflags      = 0)
+        cu['proc'] = subprocess.Popen(args               = cmdline,
+                                      bufsize            = 0,
+                                      executable         = None,
+                                      stdin              = None,
+                                      stdout             = _stdout_file_h,
+                                      stderr             = _stderr_file_h,
+                                      preexec_fn         = None,
+                                      close_fds          = True,
+                                      shell              = True,
+                                      cwd                = cu_tmpdir,
+                                      env                = self._cu_environment,
+                                      universal_newlines = False,
+                                      startupinfo        = None,
+                                      creationflags      = 0)
 
         self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['uid'])
-
-        cu['started'] = rpu.timestamp()
-        cu['proc']    = proc
-
         self._watch_queue.put(cu)
 
 
@@ -401,7 +397,6 @@ class Popen(AgentExecutingComponent) :
                 self._log.info("Unit %s has return code %s.", cu['uid'], exit_code)
 
                 cu['exit_code'] = exit_code
-                cu['finished']  = now
 
                 # Free the Slots, Flee the Flots, Ree the Frots!
                 self._cus_to_watch.remove(cu)

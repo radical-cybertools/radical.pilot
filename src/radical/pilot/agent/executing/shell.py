@@ -424,9 +424,8 @@ class Shell(AgentExecutingComponent):
             raise RuntimeError ("Failed to run unit (%s)" % lines)
 
         # FIXME: verify format of returned pid (\d+)!
-        pid           = lines[-1].strip ()
-        cu['pid']     = pid
-        cu['started'] = rpu.timestamp()
+        pid       = lines[-1].strip ()
+        cu['pid'] = pid
 
         # before we return, we need to clean the
         # 'BULK COMPLETED message from lrun
@@ -578,9 +577,6 @@ class Shell(AgentExecutingComponent):
 
         # for final states, we can free the slots.
         self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
-
-        # record timestamp, exit code on final states
-        cu['finished'] = rpu.timestamp()
 
         if data : cu['exit_code'] = int(data)
         else    : cu['exit_code'] = None
