@@ -154,8 +154,8 @@ class Agent(rpu.Worker):
             # the master agent also is the only one which starts bridges.  This
             # will store the bridge addresses in self._cfg, so that we can use
             # them for starting components.
-            bridge_list = self._cfg['agent_layout']['agent_0'].get('bridges', [])
-            self.start_bridges(bridge_list)
+            bridges = self._cfg['agent_layout']['agent_0'].get('bridges', {})
+            self.start_bridges(bridges)
 
             # we have all information needed by the subagents -- write the
             # sub-agent config files.

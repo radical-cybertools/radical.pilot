@@ -87,5 +87,6 @@
   - kill pilots on finalize_child
   + saga_pid in pmgr.launcher control_cb
   + heartbeat interval assertion
+  - dying agent bridge causes agent shutdown to hang
 
 

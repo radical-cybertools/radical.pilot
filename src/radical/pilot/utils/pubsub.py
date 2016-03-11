@@ -1,6 +1,7 @@
 
 import os
 import zmq
+import copy
 import json
 import time
 import errno
@@ -65,7 +66,7 @@ class Pubsub(object):
     This is a factory for pubsub endpoints.
     """
 
-    def __init__(self, flavor, channel, role, address=None):
+    def __init__(self, flavor, channel, role, cfg, addr=None):
         """
         Addresses are of the form 'tcp://host:port'.  Both 'host' and 'port' can
         be wildcards for BRIDGE roles -- the bridge will report the in and out
@@ -75,11 +76,16 @@ class Pubsub(object):
         self._flavor     = flavor
         self._channel    = channel
         self._role       = role
-        self._addr       = address
+        self._cfg        = copy.deepcopy(cfg)
+        self._addr       = addr
+
         self._name       = "pubsub.%s.%s" % (self._channel, self._role)
-        self._log        = ru.get_logger('rp.bridge.%s' % self._name, '.')
-        self._bridge_in  = None           # bridge input  addr
-        self._bridge_out = None           # bridge output addr
+        self._log        = ru.get_logger('rp.%s' % self._name, 
+                                         self._cfg.get('log_target', '.'),
+                                         self._cfg.get('log_level'))
+
+        self._bridge_in  = None  # bridge input  addr
+        self._bridge_out = None  # bridge output addr
 
         if not self._addr:
             self._addr = 'tcp://*:*'
@@ -108,7 +114,7 @@ class Pubsub(object):
     # This class-method creates the appropriate sub-class for the Pubsub.
     #
     @classmethod
-    def create(cls, flavor, channel, role, address=None):
+    def create(cls, flavor, channel, role, cfg={}, addr=None):
 
         # Make sure that we are the base-class!
         if cls != Pubsub:
@@ -119,7 +125,7 @@ class Pubsub(object):
                 PUBSUB_ZMQ : PubsubZMQ,
             }[flavor]
           # print 'instantiating %s' % impl
-            return impl(flavor, channel, role, address)
+            return impl(flavor, channel, role, cfg, addr)
         except KeyError:
             raise RuntimeError("Pubsub type '%s' unknown!" % flavor)
 
@@ -194,7 +200,7 @@ class Pubsub(object):
 #
 class PubsubZMQ(Pubsub):
 
-    def __init__(self, flavor, channel, role, address=None):
+    def __init__(self, flavor, channel, role, cfg, addr=None):
         """
         This PubSub implementation is built upon, as you may have guessed
         already, the ZMQ pubsub communication pattern.
@@ -202,7 +208,7 @@ class PubsubZMQ(Pubsub):
 
         self._p = None  # the bridge process
 
-        Pubsub.__init__(self, flavor, channel, role, address)
+        Pubsub.__init__(self, flavor, channel, role, cfg, addr)
 
 
         # ----------------------------------------------------------------------

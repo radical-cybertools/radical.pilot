@@ -214,7 +214,7 @@ class Component(mp.Process):
             self._addr_map = self._session.cfg.get('bridge_addresses', {})
 
         # check for bridges to start in the cfg
-        bridges = self._cfg.get('bridges', [])
+        bridges = self._cfg.get('bridges', {})
         self.start_bridges(bridges)
 
         # sanity check on the address map
@@ -692,7 +692,7 @@ class Component(mp.Process):
         addr = self._addr_map[input]['out']
         self._log.debug("using addr %s for input %s" % (addr, input))
 
-        q = rpu_Queue.create(rpu_QUEUE_ZMQ, input, rpu_QUEUE_OUTPUT, addr)
+        q = rpu_Queue.create(rpu_QUEUE_ZMQ, input, rpu_QUEUE_OUTPUT, addr=addr)
         self._inputs['name'] = {'queue'  : q, 
                                 'states' : states}
 
@@ -770,7 +770,7 @@ class Component(mp.Process):
                 self._log.debug("using addr %s for output %s" % (addr, output))
 
                 # non-final state, ie. we want a queue to push to
-                q = rpu_Queue.create(rpu_QUEUE_ZMQ, output, rpu_QUEUE_INPUT, addr)
+                q = rpu_Queue.create(rpu_QUEUE_ZMQ, output, rpu_QUEUE_INPUT, addr=addr)
                 self._outputs[state] = q
 
                 self._log.debug('registered output    : %s : %s : %s' \
@@ -899,7 +899,7 @@ class Component(mp.Process):
         addr = self._addr_map[pubsub]['in']
         self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
 
-        q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_PUB, addr)
+        q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_PUB, addr=addr)
         self._publishers[pubsub] = q
 
         self._log.debug('registered publisher : %s : %s' % (pubsub, q.name))
@@ -951,7 +951,7 @@ class Component(mp.Process):
         self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
 
         # create a pubsub subscriber (the pubsub name doubles as topic)
-        q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB, addr)
+        q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB, addr=addr)
         q.subscribe(pubsub)
 
         # ----------------------------------------------------------------------
@@ -1423,16 +1423,18 @@ class Component(mp.Process):
         ret = dict()
         for b in bridges:
 
+            cfg = bridges[b]
+
             if b in self._addr_map:
                 self._log.debug('bridge %s already exists', b)
                 continue
 
             self._log.info('create bridge %s', b)
             if b.endswith('queue'):
-                bridge = rpu_Queue.create(rpu_QUEUE_ZMQ, b, rpu_QUEUE_BRIDGE)
+                bridge = rpu_Queue.create(rpu_QUEUE_ZMQ, b, rpu_QUEUE_BRIDGE, cfg)
 
             elif b.endswith('pubsub'):
-                bridge = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, b, rpu_PUBSUB_BRIDGE)
+                bridge = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, b, rpu_PUBSUB_BRIDGE, cfg)
 
             else:
                 raise ValueError('unknown bridge type for %s' % b)

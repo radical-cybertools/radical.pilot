@@ -1,6 +1,7 @@
 
 import os
 import zmq
+import copy
 import time
 import errno
 import pprint
@@ -144,20 +145,24 @@ class Queue(object):
     """
     This is really just the queue interface we want to implement
     """
-    def __init__(self, flavor, qname, role, address=None):
+    def __init__(self, flavor, qname, role, cfg, addr=None):
 
         self._flavor = flavor
         self._qname  = qname
         self._role   = role
-        self._addr   = address
+        self._cfg    = copy.deepcopy(cfg)
+        self._addr   = addr
+
         self._name   = "queue.%s.%s" % (self._qname, self._role)
-        self._log    = ru.get_logger('rp.bridge.%s' % self._name, '.')
+        self._log    = ru.get_logger('rp.%s' % self._name, 
+                                     self._cfg.get('log_target', '.'),
+                                     self._cfg.get('log_level',  'off'))
 
         if not self._addr:
             self._addr = 'tcp://*:*'
 
         if role in [QUEUE_INPUT, QUEUE_OUTPUT]:
-            self._log.info("create %s - %s - %s - %s", flavor, qname, role, address)
+            self._log.info("create %s - %s - %s - %s", flavor, qname, role, addr)
 
     @property
     def name(self):
@@ -185,7 +190,7 @@ class Queue(object):
     # This class-method creates the appropriate sub-class for the Queue.
     #
     @classmethod
-    def create(cls, flavor, name, role, address=None):
+    def create(cls, flavor, name, role, cfg={}, addr=None):
 
         # Make sure that we are the base-class!
         if cls != Queue:
@@ -198,7 +203,7 @@ class Queue(object):
                 QUEUE_ZMQ     : QueueZMQ,
             }[flavor]
           # print 'instantiating %s' % impl
-            return impl(flavor, name, role, address)
+            return impl(flavor, name, role, cfg, addr)
         except KeyError:
             raise RuntimeError("Queue type '%s' unknown!" % flavor)
 
@@ -243,9 +248,9 @@ class Queue(object):
 #
 class QueueThread(Queue):
 
-    def __init__(self, flavor, name, role, address=None):
+    def __init__(self, flavor, name, role, cfg, addr=None):
 
-        Queue.__init__(self, flavor, name, role, address)
+        Queue.__init__(self, flavor, name, role, cfg, addr)
         self._q = _registry.get(flavor, name, pyq.Queue)
 
 
@@ -286,9 +291,9 @@ class QueueThread(Queue):
 #
 class QueueProcess(Queue):
 
-    def __init__(self, flavor, name, role, address=None):
+    def __init__(self, flavor, name, role, cfg, addr=None):
 
-        Queue.__init__(self, flavor, name, role, address)
+        Queue.__init__(self, flavor, name, role, cfg, addr)
         self._q = _registry.get(flavor, name, mp.Queue)
 
 
@@ -330,7 +335,7 @@ class QueueProcess(Queue):
 class QueueZMQ(Queue):
 
 
-    def __init__(self, flavor, name, role, address=None):
+    def __init__(self, flavor, name, role, cfg, addr=None):
         """
         This Queue type sets up an zmq channel of this kind:
 
@@ -358,7 +363,12 @@ class QueueZMQ(Queue):
         self._bridge_in  = None           # bridge input  addr
         self._bridge_out = None           # bridge output addr
 
-        Queue.__init__(self, flavor, name, role, address)
+        self._stall_hwm  = cfg.get('stall_hwm', 1)
+        self._bulk_size  = cfg.get('bulk_size', 1)
+
+        assert((self._stall_hwm % self._bulk_size) == 0)
+
+        Queue.__init__(self, flavor, name, role, cfg, addr)
 
         # ----------------------------------------------------------------------
         # behavior depends on the role...
@@ -423,13 +433,44 @@ class QueueZMQ(Queue):
                     _poll = zmq.Poller()
                     _poll.register(_out, zmq.POLLIN)
 
+
+                    # We wait for an incoming message.  When one is received,
+                    # we'll poll all outgoing sockets for requests, and the
+                    # forward the message to whoever requested it.
+                    #
+                    # If so configured, we can stall messages until reaching
+                    # a certain high-water-mark, and upon reaching that will
+                    # release all messages at once.  When stalling for such set
+                    # of messages, we wait for self._stall_hwm messages, and
+                    # then forward those to whatever output channel requesting
+                    # them (individually),
+                    # FIXME: make hwm configurable
+                    # FIXME: we may want to release all stalled messages after
+                    #        some (configurable) timeout?
+                    # FIXME: is it worth introducing a 'flush' command or
+                    #        message type?
                     while True:
 
-                        events = dict(_uninterruptible(_poll.poll, 1000)) # timeout in ms
+                        msgs = list()
+                        for i in range(self._stall_hwm):
+                            msg = _uninterruptible(_in.recv_json)
+                            msgs.append(msg)
+                            self._log.debug(' === stall %s/%s (%s)', i, self._stall_hwm, msg.get('uid', '?'))
 
-                        if _out in events:
-                            req = _uninterruptible(_out.recv)
-                            _uninterruptible(_out.send_json, _uninterruptible(_in.recv_json))
+                        i = 0
+                        for msg in msgs:
+
+                            while True:
+                                events = dict(_uninterruptible(_poll.poll, 1000)) # timeout in ms
+
+                                self._log.debug(' === send  %s/%s (%s)', i, self._stall_hwm, msg.get('uid', '?'))
+                                if _out in events:
+                                    req = _uninterruptible(_out.recv)
+                                    _uninterruptible(_out.send_json, msg)
+                                    # go to next message
+                                    self._log.debug(' === sent  %s/%s (%s)', i, self._stall_hwm, msg.get('uid', '?'))
+                                    break
+                            i += 1
 
                 except Exception as e:
                     self._log.exception('bridge error: %s', e)

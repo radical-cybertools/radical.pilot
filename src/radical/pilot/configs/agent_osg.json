@@ -25,19 +25,27 @@
             "target"     : "local",
             "sub_agents" : [],
             "pull_units" : true,
-            "bridges" : [
-                # which bridges are to be started by this agent
-                "agent_staging_input_queue",
-                "agent_scheduling_queue",
-                "agent_executing_queue",
-                "agent_staging_output_queue",
+            "bridges" : {
+                "agent_staging_input_queue"  : { "log_level" : "off",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 1},
+                "agent_scheduling_queue"     : { "log_level" : "off",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 1},
+                "agent_executing_queue"      : { "log_level" : "off",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 1},
+                "agent_staging_output_queue" : { "log_level" : "off",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 1},
 
-                "agent_unschedule_pubsub",
-                "agent_reschedule_pubsub",
+                "agent_unschedule_pubsub"    : {"log_level" : "off"},
+                "agent_reschedule_pubsub"    : {"log_level" : "off"},
 
-                "control_pubsub",
-                "state_pubsub"
-            ],
+                "control_pubsub"             : {"log_level" : "off"},
+                "state_pubsub"               : {"log_level" : "off"}
+            },
+
             "components" : {
                 # how many instances of the respective components should be started
                 "UpdateWorker"                : 1,

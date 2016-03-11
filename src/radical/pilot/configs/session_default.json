@@ -2,21 +2,28 @@
 # specified.  It contains the minimal set of settings required for
 # a functional rp session.
 {
-    "bridges" : [
-        # which bridges are to be started by this session
-        # NOTE: some of those could also go to the UMGR or PMGR.
-        "umgr_staging_input_queue",
-        "umgr_scheduling_queue",
-        "umgr_staging_output_queue",
+    # NOTE: some of the bridges could also go to the UMGR or PMGR.
+    "bridges" : {
+        "umgr_staging_input_queue"  : { "log_level" : "off",
+                                        "stall_hwm" : 1,
+                                        "bulk_size" : 1},
+        "umgr_scheduling_queue"     : { "log_level" : "off",
+                                        "stall_hwm" : 1,
+                                        "bulk_size" : 1},
+        "umgr_staging_output_queue" : { "log_level" : "off",
+                                        "stall_hwm" : 1,
+                                        "bulk_size" : 1},
 
-        "umgr_unschedule_pubsub",
-        "umgr_reschedule_pubsub",
+        "umgr_unschedule_pubsub"    : {"log_level" : "off"},
+        "umgr_reschedule_pubsub"    : {"log_level" : "off"},
 
-        "pmgr_launching_queue",
+        "pmgr_launching_queue"      : { "log_level" : "off",
+                                        "stall_hwm" : 1,
+                                        "bulk_size" : 1},
 
-        "control_pubsub", 
-        "state_pubsub"
-    ],
+        "control_pubsub"             : {"log_level" : "off"},
+        "state_pubsub"               : {"log_level" : "off"}
+    },
     "components" : {
         # how many instances of the respective components should be started
         "UpdateWorker" : 1

@@ -124,12 +124,12 @@ if __name__ == '__main__':
         report.info('\n')
         for unit in units:
             if unit.state in [rp.FAILED, rp.CANCELED]:
-                report.plain('  * %s: %s, exit: %3s, err: %35s' \
+                report.plain('  * %s: %s, exit: %5s, err: %35s' \
                         % (unit.uid, unit.state[:4], 
                            unit.exit_code, unit.stderr))
                 report.error('>>err\n')
             else:
-                report.plain('  * %s: %s, exit: %3s, out: %35s' \
+                report.plain('  * %s: %s, exit: %5s, out: %35s' \
                         % (unit.uid, unit.state[:4], 
                             unit.exit_code, unit.stdout))
                 report.ok('>>ok\n')
