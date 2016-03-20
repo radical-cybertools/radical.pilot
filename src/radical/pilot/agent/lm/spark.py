@@ -38,7 +38,7 @@ class Spark(LaunchMethod):
         # the first node in the list and the port is the default one, else 
         # it is the one that the YARN LRMS returns
         spark_home = None   
-        if lrms.name == 'SPARKLRMS':
+        if lrms.name == 'SPARK':
             logger.info("Found SPARK ")
             logger.info('Hook called by SPARK LRMS')
             logger.info('NameNode: {0}'.format(lrms.namenode_url))
@@ -144,6 +144,8 @@ class Spark(LaunchMethod):
             spark_master_string = 'spark://%s:7077' % master_ip
             spark_default_file.write('spark.master  ' + spark_master_string + '\n')
             spark_default_file.close()
+
+            logger.info('Config : {0}'.format(cfg['resource_cfg']))
 
             spark_env_file = open(spark_home + "/conf/spark-env.sh",'w')
             if master_ip!='localhost':
