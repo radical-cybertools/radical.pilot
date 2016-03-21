@@ -209,6 +209,8 @@ class Agent_0(rpu.Worker):
         sa_cfg_0 = None
         for sa in self._cfg.get('agent_layout', []):
 
+            assert(sa != 'agent_0')
+
             tmp_cfg = copy.deepcopy(sa_cfg)
 
             # merge sub_agent layout into the confoig

@@ -13,17 +13,15 @@
     "max_io_loglength"     : 1024,
 
     # max time period to collect db notifications into bulks (seconds)
-    "bulk_collection_time" : 1.0,
+    "bulk_collection_time" : 0.5,
 
     # time to sleep between database polls (seconds)
-    "db_poll_sleeptime"    : 5.0,
+    "db_poll_sleeptime"    : 0.5,
 
     "agent_layout" : {
         "agent_1"   : {
             "target"     : "local",
-            "pull_units" : true,
             "components" : {
-                # how many instances of the respective components should be started
                 "AgentStagingInputComponent"  : 1,
                 "AgentSchedulingComponent"    : 1,
                 "AgentExecutingComponent"     : 1,

@@ -84,7 +84,7 @@ class Pubsub(object):
         self._name       = "%s.%s" % (self._channel, self._role)
         self._log        = ru.get_logger('rp.%s' % self._name, 
                                          self._cfg.get('log_target', '.'),
-                                         self._cfg.get('log_level'))
+                                         self._cfg.get('log_level', 'off'))
 
         self._bridge_in  = None  # bridge input  addr
         self._bridge_out = None  # bridge output addr
