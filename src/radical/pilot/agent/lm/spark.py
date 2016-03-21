@@ -5,8 +5,8 @@ __license__   = "MIT"
 
 import os
 import subprocess
-
 from .base import LaunchMethod
+
 
 
 # ==============================================================================
@@ -31,6 +31,7 @@ class Spark(LaunchMethod):
         FIXME: this config hook will inspect the LRMS nodelist and, if needed,
                will start the SPARK cluster on node[0].
         """
+        import radical.utils as ru
 
         logger.info('Hook called by SPARK LRMS with the name %s'%lrms.name)
 
@@ -45,7 +46,7 @@ class Spark(LaunchMethod):
             #service_url    = lrms.namenode_url ##deleteG
             rm_url         = "%s:%s" % (lrms.rm_ip, lrms.rm_port)
             rm_ip          = lrms.rm_ip
-            launch_command = cls._which('spark')
+            launch_command = ru.which('spark')
 
         else:
             # Here are the necessary commands to start the cluster.
@@ -73,7 +74,7 @@ class Spark(LaunchMethod):
             # http://stackoverflow.com/questions/1117398/java-home-directory
             platform_os = sys.platform
             if platform_os == "linux" or platform_os == "linux2":
-                java = cls._which('java')
+                java = ru.which('java')
                 if java != '/usr/bin/java':
                     jpos=java.split('bin')
                 else:
@@ -85,9 +86,8 @@ class Spark(LaunchMethod):
                     java_home = jpos[0]
             
             else:
-                if os.environ['JAVA_HOME']!='':
-                    java_home = os.environ['JAVA_HOME']
-                else:
+                java_home = os.environ['JAVA_HOME']
+                if not java_home:
                     try:
                         java_home = subprocess.check_output("/usr/libexec/java_home").split()[0]  
                     except Exception:
@@ -97,18 +97,14 @@ class Spark(LaunchMethod):
 
             # Check for existing scala installation    #256 means that no scala found
             # if no installation found install scala 2.10.4
-            if os.system('scala -version')!=256:
+            scala_home=ru.which('scala')
+            if not scala_home:
                 os.system('cd')
                 os.system('wget http://www.scala-lang.org/files/archive/scala-2.10.4.tgz')
                 os.system('tar -xvf scala-2.10.4.tgz ; cd scala-2.10.4 ; export PATH=`pwd`/bin:$PATH; export SCALA_HOME=`pwd`')
                 os.system('rm scala-2.10.4.tgz')
                 scala_home = os.getcwd() + '/scala-2.10.4'
                 os.system('cd')
-            else:
-                ### help from:  http://goo.gl/zcd6lg
-                p = subprocess.Popen(['which' ,'scala'],stdout=subprocess.PIPE,stderr=subprocess.PIPE) #return result
-                output, errors = p.communicate()
-                scala_home = output.strip()   #TODO: set scala?
 
 
             # Ips of the worker nodes ; TODO: Find out where these IPs are!!!
@@ -121,21 +117,20 @@ class Spark(LaunchMethod):
 
             spark_conf_slaves = open(spark_home+"/conf/slaves",'w')
 
-            if lrms.node_list.__len__()==1:
+            if len(lrms.node_list) == 1:
                 spark_conf_slaves.write(lrms.node_list[0]+hostname)
                 spark_conf_slaves.write('\n')
             else:
-                for nodename in lrms.node_list:
-                    if nodename!=lrms.node_list[0]:
-                        spark_conf_slaves.write(nodename+hostname)
-                        spark_conf_slaves.write('\n')
+                for nodename in lrms.node_list[1:]:
+                    spark_conf_slaves.write(nodename+hostname)
+                    spark_conf_slaves.write('\n')
 
             spark_conf_slaves.close()
 
             ## put Master Ip in spark-env.sh file - Almost all options can be configured using this file
 
             python_path = os.getenv('PYTHONPATH')
-            python = subprocess.check_output(['which','python'])
+            python = ru.which('python')
             logger.info('Python Executable: %s' % python)
             master_ip = lrms.node_list[0]+hostname
 
