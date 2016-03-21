@@ -30,6 +30,7 @@ class Yarn(LaunchMethod):
         FIXME: this config hook will inspect the LRMS nodelist and, if needed,
                will start the YARN cluster on node[0].
         """
+        import radical.utils as ru
 
         logger.info('Hook called by YARN LRMS with the name %s'%lrms.name)
 
@@ -182,7 +183,7 @@ class Yarn(LaunchMethod):
             service_url    = lrms.namenode_url
             rm_url         = "%s:%s" % (lrms.rm_ip, lrms.rm_port)
             rm_ip          = lrms.rm_ip
-            launch_command = cls._which('yarn')
+            launch_command = ru.which('yarn')
 
         else:
             # Here are the necessary commands to start the cluster.
@@ -213,7 +214,7 @@ class Yarn(LaunchMethod):
             # Solution to find Java's home folder:
             # http://stackoverflow.com/questions/1117398/java-home-directory
 
-            java = cls._which('java')
+            java = ru.which('java')
             if java != '/usr/bin/java':
                 jpos=java.split('bin')
             else:
