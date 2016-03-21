@@ -51,14 +51,14 @@ class Update(rpu.Worker):
     #
     def initialize_child(self):
 
-        self._session_id    = self._cfg['session_id']
-        self._mongodb_url   = self._cfg['mongodb_url']
-        self._owner         = self._cfg['owner']
+        self._session_id = self._cfg['session_id']
+        self._dburl      = self._cfg['dburl']
+        self._owner      = self._cfg['owner']
 
-        _, db, _, _, _      = ru.mongodb_connect(self._mongodb_url)
-        self._mongo_db      = db
-        self._cinfo         = dict()            # collection cache
-        self._lock          = threading.RLock() # protect _cinfo
+        _, db, _, _, _   = ru.mongodb_connect(self._dburl)
+        self._mongo_db   = db
+        self._cinfo      = dict()            # collection cache
+        self._lock       = threading.RLock() # protect _cinfo
 
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
         self.register_idle_cb(self._idle_cb, 
@@ -83,7 +83,7 @@ class Update(rpu.Worker):
         try:
             res = cinfo['bulk'].execute()
         except Exception as e:
-            self._log.exception('mongodb error: %s', pprint.pformat(e.details))
+            self._log.exception('mongodb error: %s', e)
             raise
         self._log.debug("bulk update result: %s", res)
 

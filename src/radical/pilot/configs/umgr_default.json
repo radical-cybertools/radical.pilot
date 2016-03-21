@@ -1,3 +1,4 @@
+
 # this is the default unit manager config which is used if no other config is
 # specified.  It contains the minimal set of settings required for
 # a functional unit manager.
@@ -5,34 +6,33 @@
     # default scheduler
     "scheduler" : "round_robin",
 
+    # time to sleep between database polls (seconds)
+    "db_poll_sleeptime" : 5.0,
+
+    "bridges" : {
+        "umgr_staging_input_queue"  : {"log_level" : "off",
+                                       "stall_hwm" : 1,
+                                       "bulk_size" : 1},
+        "umgr_scheduling_queue"     : {"log_level" : "off",
+                                       "stall_hwm" : 1,
+                                       "bulk_size" : 1},
+        "umgr_staging_output_queue" : {"log_level" : "off",
+                                       "stall_hwm" : 1,
+                                       "bulk_size" : 1},
+
+        "umgr_unschedule_pubsub"    : {"log_level" : "off",
+                                       "stall_hwm" : 1,
+                                       "bulk_size" : 1},
+        "umgr_reschedule_pubsub"    : {"log_level" : "off",
+                                       "stall_hwm" : 1,
+                                       "bulk_size" : 1}
+    },
+
     "components" : {
         # how many instances of the respective components should be started
         "UMGRStagingInputComponent"  : 1,
         "UMGRSchedulingComponent"    : 1,
         "UMGRStagingOutputComponent" : 1
-    },
-
-    # factor by which the number of units are increased at a certain step.  Value of
-    # "1" will leave the units unchanged.  Any blowup will leave on unit as the
-    # original, and will then create clones with an changed unit ID (see blowup()).
-    "clone" : {
-        "UMGRWorker"                 : {"input" : 1, "output" : 1},
-        "UMGRStagingInputComponent"  : {"input" : 1, "output" : 1},
-        "UMGRSchedulingComponent"    : {"input" : 1, "output" : 1},
-        "UMGRStagingOutputComponent" : {"input" : 1, "output" : 1}
-    },
-
-    # flag to drop all blown-up units at some point in the pipeline.  The units
-    # with the original IDs will again be left untouched, but all other units are
-    # silently discarded.
-    # 0: drop nothing
-    # 1: drop clones
-    # 2: drop everything
-    "drop" : {
-        "UMGRWorker"                 : {"input" : 1, "output" : 1},
-        "UMGRStagingInputComponent"  : {"input" : 1, "output" : 1},
-        "UMGRSchedulingComponent"    : {"input" : 1, "output" : 1},
-        "UMGRStagingOutputComponent" : {"input" : 1, "output" : 1}
     }
 }
 

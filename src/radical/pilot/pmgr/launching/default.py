@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import copy
 import math
 import pprint
 import tempfile
@@ -23,7 +24,6 @@ from .base import PMGRLaunchingComponent
 
 # ------------------------------------------------------------------------------
 # local constants
-DEFAULT_AGENT_TYPE    = 'multicore'
 DEFAULT_AGENT_SPAWNER = 'POPEN'
 DEFAULT_RP_VERSION    = 'local'
 DEFAULT_VIRTENV       = '%(global_sandbox)s/ve'
@@ -58,7 +58,7 @@ class Default(PMGRLaunchingComponent):
         self._saga_js       = dict()             # cache of saga.job.Services
         self._pilots        = dict()             # dict for all known pilots
         self._tocheck       = list()             # pilots run state checks on
-        self._missing       = list()             # for failed state checks
+        self._missing       = dict()             # for failed state checks
         self._pilots_lock   = threading.RLock()  # lock on maipulating the above
         self._saga_js_cache = dict()             # cache of saga job services
         self._sandbox_cache = dict()             # cache of global sandbox URLs
@@ -158,7 +158,7 @@ class Default(PMGRLaunchingComponent):
         MAX_IO_LOGLENGTH = 10240    # 10k should be enough for anybody...
 
         try:
-            n_out = "%s/%s" % (pilot['sandbox'], 'agent_0.out')
+            n_out = "%s/%s" % (pilot['sandbox'], 'agent.out')
             f_out = rs.filesystem.File(n_out, session=self._session)
             s_out = f_out.read()[-MAX_IO_LOGLENGTH:]
             f_out.close ()
@@ -166,7 +166,7 @@ class Default(PMGRLaunchingComponent):
             s_out = 'stdout is not available (%s)' % e
 
         try:
-            n_err = "%s/%s" % (pilot['sandbox'], 'agent_0.err')
+            n_err = "%s/%s" % (pilot['sandbox'], 'agent.err')
             f_err = rs.filesystem.File(n_err, session=self._session)
             s_err = f_err.read()[-MAX_IO_LOGLENGTH:]
             f_err.close ()
@@ -174,7 +174,7 @@ class Default(PMGRLaunchingComponent):
             s_err = 'stderr is not available (%s)' % e
 
         try:
-            n_log = "%s/%s" % (pilot['sandbox'], 'agent_0.log')
+            n_log = "%s/%s" % (pilot['sandbox'], 'agent.log')
             f_log = rs.filesystem.File(n_log, session=self._session)
             s_log = f_log.read()[-MAX_IO_LOGLENGTH:]
             f_log.close ()
@@ -321,7 +321,6 @@ class Default(PMGRLaunchingComponent):
             agent_launch_method     = rcfg.get ('agent_launch_method')
             agent_dburl             = rcfg.get ('agent_mongodb_endpoint', database_url)
             agent_spawner           = rcfg.get ('agent_spawner',       DEFAULT_AGENT_SPAWNER)
-            agent_type              = rcfg.get ('agent_type',          DEFAULT_AGENT_TYPE)
             rc_agent_config         = rcfg.get ('agent_config',        DEFAULT_AGENT_CONFIG)
             agent_scheduler         = rcfg.get ('agent_scheduler')
             tunnel_bind_device      = rcfg.get ('tunnel_bind_device')
@@ -414,7 +413,7 @@ class Default(PMGRLaunchingComponent):
             # Copy the bootstrap shell script.
             # This also creates the sandbox.
             BOOTSTRAPPER_SCRIPT = "bootstrap_1.sh"
-            bootstrapper_path   = os.path.abspath("%s/bootstrapper/%s" \
+            bootstrapper_path   = os.path.abspath("%s/agent/%s" \
                     % (self._root_dir, BOOTSTRAPPER_SCRIPT))
 
             bs_script_url = rs.Url("%s://localhost%s" % (LOCAL_SCHEME, bootstrapper_path))
@@ -518,7 +517,7 @@ class Default(PMGRLaunchingComponent):
             # Some machines cannot run pip due to outdated CA certs.
             # For those, we also stage an updated certificate bundle
             if stage_cacerts:
-                cc_path = os.path.abspath("%s/bootstrapper/%s" \
+                cc_path = os.path.abspath("%s/agent/%s" \
                         % (self._root_dir, 'cacert.pem.gz'))
 
                 cc_url= rs.Url("%s://localhost/%s" % (LOCAL_SCHEME, cc_path))
@@ -569,7 +568,6 @@ class Default(PMGRLaunchingComponent):
             bootstrap_args += " -b '%s'" % python_dist
 
             # set optional args
-            if agent_type:              bootstrap_args += " -a '%s'" % agent_type
             if lrms == "CCM":           bootstrap_args += " -c"
             if forward_tunnel_endpoint: bootstrap_args += " -f '%s'" % forward_tunnel_endpoint
             if forward_tunnel_endpoint: bootstrap_args += " -h '%s'" % db_hostport
@@ -582,17 +580,26 @@ class Default(PMGRLaunchingComponent):
             for arg in pre_bootstrap_2:
                 bootstrap_args += " -w '%s'" % arg
 
-            # set some agent configuration
+            # complete agent configuration
+            # NOTE: the agent config is really based on our own config, with 
+            #       agent specific settings merged in
+
+            agent_base_cfg = copy.deepcopy(self._cfg)
+            del(agent_base_cfg['bridges'])    # agent needs separate bridges
+            del(agent_base_cfg['components']) # agent needs separate components
+            del(agent_base_cfg['number'])     # agent counts differently
+            del(agent_base_cfg['heart'])      # agent needs separate heartbeat
+
+            ru.dict_merge(agent_cfg, agent_base_cfg, ru.PRESERVE)
+
             agent_cfg['cores']              = number_cores
             agent_cfg['debug']              = os.environ.get('RADICAL_PILOT_AGENT_VERBOSE', 
                                                              self._log.getEffectiveLevel())
-            agent_cfg['mongodb_url']        = str(agent_dburl)
             agent_cfg['lrms']               = lrms
             agent_cfg['spawner']            = agent_spawner
             agent_cfg['scheduler']          = agent_scheduler
             agent_cfg['runtime']            = runtime
             agent_cfg['pilot_id']           = pid
-            agent_cfg['session_id']         = session_id
             agent_cfg['pilot_sandbox']      = pilot_sandbox
             agent_cfg['global_sandbox']     = global_sandbox
             agent_cfg['agent_launch_method']= agent_launch_method
@@ -602,11 +609,12 @@ class Default(PMGRLaunchingComponent):
             if cores_per_node:
                 agent_cfg['cores_per_node'] = cores_per_node
 
+
             # ------------------------------------------------------------------
             # Write agent config dict to a json file in pilot sandbox.
 
             cfg_tmp_dir = tempfile.mkdtemp(prefix='rp_agent_cfg_dir')
-            agent_cfg_name = 'agent_0.cfg'
+            agent_cfg_name = 'agent.cfg'
             cfg_tmp_file = os.path.join(cfg_tmp_dir, agent_cfg_name)
             cfg_tmp_handle = os.open(cfg_tmp_file, os.O_WRONLY|os.O_CREAT)
 

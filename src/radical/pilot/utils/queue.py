@@ -8,8 +8,10 @@ import pprint
 import signal
 import Queue           as pyq
 import threading       as mt
+import setproctitle    as spt
 import multiprocessing as mp
 import radical.utils   as ru
+
 
 # --------------------------------------------------------------------------
 # defines for queue roles
@@ -153,7 +155,7 @@ class Queue(object):
         self._cfg    = copy.deepcopy(cfg)
         self._addr   = addr
 
-        self._name   = "queue.%s.%s" % (self._qname, self._role)
+        self._name   = "%s.%s" % (self._qname, self._role)
         self._log    = ru.get_logger('rp.%s' % self._name, 
                                      self._cfg.get('log_target', '.'),
                                      self._cfg.get('log_level',  'off'))
@@ -392,12 +394,9 @@ class QueueZMQ(Queue):
             def _bridge(addr, pqueue):
 
                 try:
-                    import setproctitle as spt
+                
                     spt.setproctitle('rp.%s' % self._name)
-                except Exception as e:
-                    pass
-
-                try:
+                    
                     # reset signal handlers to their default
                     signal.signal(signal.SIGINT,  signal.SIG_DFL)
                     signal.signal(signal.SIGTERM, signal.SIG_DFL)

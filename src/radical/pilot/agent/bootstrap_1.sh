@@ -35,12 +35,11 @@ SDISTS=
 VIRTENV=
 VIRTENV_MODE=
 CCM=
-PILOTID=
+PILOT_ID=
 RP_VERSION=
 PYTHON=
-SESSIONID=
+SESSION_ID=
 SANDBOX=`pwd`
-AGENT_TYPE='multicore'
 PREBOOTSTRAP2=""
 
 # flag which is set when a system level RP installation is found, triggers
@@ -117,7 +116,7 @@ profile_event()
     fi
 
     printf "%.4f,%s,%s,%s,%s,%s\n" \
-        "$NOW" "bootstrap_1" "$PILOTID" "ACTIVE" "$event" "$msg" \
+        "$NOW" "bootstrap_1" "$PILOT_ID" "ACTIVE" "$event" "$msg" \
         >> "$PROFILE"
 }
 
@@ -360,7 +359,6 @@ usage: $0 options
 This script launches a RADICAL-Pilot agent.
 
 OPTIONS:
-   -a   agent type (default: 'multicore')
    -b   python distribution (default, anaconda)
    -c   ccm mode of agent startup
    -d   distribution source tarballs for radical stack install
@@ -510,20 +508,9 @@ virtenv_setup()
             ;;
 
         installed)
-            if test -d "$VIRTENV/rp_install"
-            then
-                RP_INSTALL_SOURCES=''
-                RP_INSTALL_TARGET=''
-                RP_INSTALL_SDIST=''
-            else
-                echo "WARNING: 'rp_version' set to 'installed', "
-                echo "         but no installed rp found in '$VIRTENV' ($virtenv_mode)"
-                echo "         Setting 'rp_version' to 'release'"
-                RP_VERSION='release'
-                RP_INSTALL_SOURCES='radical.pilot'
-                RP_INSTALL_TARGET='VIRTENV'
-                RP_INSTALL_SDIST='FALSE'
-            fi
+            RP_INSTALL_SOURCES=''
+            RP_INSTALL_TARGET=''
+            RP_INSTALL_SDIST='FALSE'
             ;;
 
         *)
@@ -1195,9 +1182,8 @@ env | sort
 echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
-while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x" OPTION; do
+while getopts "b:cd:e:f:h:i:m:p:r:s:t:v:w:x" OPTION; do
     case $OPTION in
-        a)  AGENT_TYPE="$OPTARG"  ;;
         b)  PYTHON_DIST="$OPTARG"  ;;
         c)  CCM='TRUE'  ;;
         d)  SDISTS="$OPTARG"  ;;
@@ -1206,9 +1192,9 @@ while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x" OPTION; do
         h)  HOSTPORT="$OPTARG"  ;;
         i)  PYTHON="$OPTARG"  ;;
         m)  VIRTENV_MODE="$OPTARG"  ;;
-        p)  PILOTID="$OPTARG"  ;;
+        p)  PILOT_ID="$OPTARG"  ;;
         r)  RP_VERSION="$OPTARG"  ;;
-        s)  SESSIONID="$OPTARG"  ;;
+        s)  SESSION_ID="$OPTARG"  ;;
         t)  TUNNEL_BIND_DEVICE="$OPTARG" ;;
         v)  VIRTENV=$(eval echo "$OPTARG")  ;;
         w)  pre_bootstrap_2 "$OPTARG"  ;;
@@ -1219,7 +1205,7 @@ done
 
 # FIXME: By now the pre_process rules are already performed.
 #        We should split the parsing and the execution of those.
-#        "bootstrap start" is here so that $PILOTID is known.
+#        "bootstrap start" is here so that $PILOT_ID is known.
 # Create header for profile log
 if ! test -z "$RADICAL_PILOT_PROFILE"
 then
@@ -1239,8 +1225,8 @@ rmdir "$VIRTENV" 2>/dev/null
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
-if test -z "$PILOTID"     ; then  usage "missing PILOTID      ";  fi
-if test -z "$SESSIONID"   ; then  usage "missing SESSIONID    ";  fi
+if test -z "$PILOT_ID"    ; then  usage "missing PILOT_ID      ";  fi
+if test -z "$SESSION_ID"  ; then  usage "missing SESSION_ID    ";  fi
 if test -z "$RP_VERSION"  ; then  usage "missing RP_VERSION   ";  fi
 
 # If the host that will run the agent is not capable of communication
@@ -1292,7 +1278,7 @@ fi
 rehash "$PYTHON"
 
 # ready to setup the virtenv
-virtenv_setup    "$PILOTID" "$VIRTENV" "$VIRTENV_MODE" "$PYTHON_DIST"
+virtenv_setup    "$PILOT_ID" "$VIRTENV" "$VIRTENV_MODE" "$PYTHON_DIST"
 virtenv_activate "$VIRTENV" "$PYTHON_DIST"
 
 # Export the variables related to virtualenv,
@@ -1313,20 +1299,14 @@ export _OLD_VIRTUAL_PS1
 #       have re-implemented pip... :/
 # FIXME: the second option should use $RP_MOD_PATH, or should derive the path
 #       from the imported rp modules __file__.
-if test "$RP_INSTALL_TARGET" = 'SANDBOX'
-then
-    PILOT_SCRIPT="$SANDBOX/rp_install/bin/radical-pilot-agent-$AGENT_TYPE.py"
-    if ! test -e "$PILOT_SCRIPT"
-    then
-        PILOT_SCRIPT="$SANDBOX/rp_install/lib/python$PYTHON_VERSION/site-packages/radical/pilot/agent/radical-pilot-agent-$AGENT_TYPE.py"
-    fi
-else
-    PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent-$AGENT_TYPE.py"
-    if ! test -e "$PILOT_SCRIPT"
-    then
-        PILOT_SCRIPT="$VIRTENV/rp_install/lib/python$PYTHON_VERSION/site-packages/radical/pilot/agent/radical-pilot-agent-$AGENT_TYPE.py"
-    fi
-fi
+TMP_PREFIX=`radicalpilot-version -v | grep modpath | cut -f 2 -d :`
+PILOT_SCRIPT="$TMP_PREFIX/agent/agent_0.py"
+# if test "$RP_INSTALL_TARGET" = 'SANDBOX'
+# then
+#     PILOT_SCRIPT="$SANDBOX/rp_install/lib/python$PYTHON_VERSION/site-packages/radical/pilot/agent/agent_0.py"
+# else
+#     PILOT_SCRIPT="$VIRTENV/rp_install/lib/python$PYTHON_VERSION/site-packages/radical/pilot/agent/agent_0.py"
+# fi
 
 
 # TODO: Can this be generalized with our new split-agent now?
@@ -1334,7 +1314,7 @@ if test -z "$CCM"
 then
     AGENT_CMD="$PYTHON $PILOT_SCRIPT"
 else
-    AGENT_CMD="ccmrun $PYTHON $AGENT_CMD"
+    AGENT_CMD="ccmrun $PYTHON $PILOT_SCRIPT"
 fi
 
 verify_rp_install

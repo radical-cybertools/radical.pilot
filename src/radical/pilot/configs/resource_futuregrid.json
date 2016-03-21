@@ -10,7 +10,6 @@
             "filesystem_endpoint"     : "sftp://india.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -34,7 +33,6 @@
             "filesystem_endpoint"     : "sftp://bravo.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -62,7 +60,6 @@
             "filesystem_endpoint"     : "sftp://delta.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -86,7 +83,6 @@
             "filesystem_endpoint"     : "sftp://echo.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -109,7 +105,6 @@
             "filesystem_endpoint"     : "sftp://xray.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "APRUN",
@@ -132,7 +127,6 @@
             "filesystem_endpoint"     : "sftp://xray.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "CCMRUN",

@@ -18,7 +18,6 @@
       "filesystem_endpoint": "gsisftp://xd-login.opensciencegrid.org/"
     },
     "lrms": "FORK",
-    "agent_type": "multicore",
     "shared_filesystem": false,
     "health_check": false,
     "agent_scheduler": "CONTINUOUS",
@@ -54,7 +53,6 @@
       "filesystem_endpoint": "gsisftp://login.osgconnect.net/"
     },
     "lrms": "FORK",
-    "agent_type": "multicore",
     "shared_filesystem": false,
     "health_check": false,
     "agent_scheduler": "CONTINUOUS",

@@ -6,6 +6,12 @@
             "schema"   : null
         },
 
+        "local.devel" : {
+            "project"  : null,
+            "queue"    : null,
+            "schema"   : null
+        },
+
         "ncsa.bw" : {
             "project"  : "gkd",
             "queue"    : "debug",

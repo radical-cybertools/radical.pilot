@@ -1,32 +1,26 @@
+
 # this is the default session config which is used if no other config is
 # specified.  It contains the minimal set of settings required for
-# a functional rp session.
+# a functional rp session, both on the client and on the agent side.
 {
-    # NOTE: some of the bridges could also go to the UMGR or PMGR.
+    # time between consecutive heartbeats
+    "heartbeat_interval" : 10,
+
+    # time until death is declared on missing heartbeats
+    "heartbeat_timeout"  : 30,
+
     "bridges" : {
-        "umgr_staging_input_queue"  : { "log_level" : "off",
-                                        "stall_hwm" : 1,
-                                        "bulk_size" : 1},
-        "umgr_scheduling_queue"     : { "log_level" : "off",
-                                        "stall_hwm" : 1,
-                                        "bulk_size" : 1},
-        "umgr_staging_output_queue" : { "log_level" : "off",
-                                        "stall_hwm" : 1,
-                                        "bulk_size" : 1},
-
-        "umgr_unschedule_pubsub"    : {"log_level" : "off"},
-        "umgr_reschedule_pubsub"    : {"log_level" : "off"},
-
-        "pmgr_launching_queue"      : { "log_level" : "off",
-                                        "stall_hwm" : 1,
-                                        "bulk_size" : 1},
-
-        "control_pubsub"             : {"log_level" : "off"},
-        "state_pubsub"               : {"log_level" : "off"}
+        "control_pubsub" : {"log_level" : "off",
+                            "stall_hwm" : 1,
+                            "bulk_size" : 1},
+        "state_pubsub"   : {"log_level" : "off",
+                            "stall_hwm" : 1,
+                            "bulk_size" : 1}
     },
+
     "components" : {
         # how many instances of the respective components should be started
-        "UpdateWorker" : 1
+        "UpdateWorker"  : 1
     }
 }
 

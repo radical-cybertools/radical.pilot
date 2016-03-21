@@ -28,7 +28,7 @@ from .db              import DBSession
 
 # ------------------------------------------------------------------------------
 #
-class Session(rs.Session, rpu.Worker):
+class Session(rs.Session):
     """
     A Session encapsulates a RADICAL-Pilot instance and is the *root* object
     for all other RADICAL-Pilot objects. 
@@ -41,7 +41,7 @@ class Session(rs.Session, rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, dburl=None, uid=None, database_url=None, cfg=None, _connect=True):
+    def __init__(self, dburl=None, uid=None, cfg=None, _connect=True):
         """
         Creates a new session.  A new Session instance is created and 
         stored in the database.
@@ -71,6 +71,7 @@ class Session(rs.Session, rpu.Worker):
         self._dbs         = None
         self._uid         = None
         self._dburl       = None
+        self._controller  = None
         self._reconnected = False
 
         self._cache       = dict()  # cache sandboxes etc.
@@ -90,24 +91,23 @@ class Session(rs.Session, rpu.Worker):
         # The resource configuration dictionary associated with the session.
         self._resource_configs = {}
 
+        # initialize the base class (saga session)
+        rs.Session.__init__(self)
+
         # if a config is given, us its values:
         if cfg:
-            cfg = copy.deepcopy(cfg)
+            self._cfg = copy.deepcopy(cfg)
         else:
             # otherwise we need a config
-            cfg = ru.read_json("%s/configs/session_%s.json" \
+            self._cfg = ru.read_json("%s/configs/session_%s.json" \
                     % (os.path.dirname(__file__),
-                       os.environ.get('RADICAL_PILOT_SESSION_CONFIG', 'default')))
+                       os.environ.get('RADICAL_PILOT_SESSION_CFG', 'default')))
 
         # fall back to config data where possible
-        if not dburl: dburl = cfg.get('mongodb_url')
-        if not uid  : uid   = cfg.get('uid')
+        if not dburl: dburl = self._cfg.get('dburl')
+        if not uid  : uid   = self._cfg.get('session_id')
 
         # sanity check on parameters
-        if database_url and not dburl:
-            self._log.warning('"database_url" for session is deprecated, use dburl')
-            dburl = database_url
-
         if not dburl:
             dburl = os.getenv("RADICAL_PILOT_DBURL", None)
 
@@ -135,15 +135,11 @@ class Session(rs.Session, rpu.Worker):
             self._uid         = uid
             self._reconnected = True
         else:
-            # generate new uid
-            self._uid = ru.generate_id('rp.session', mode=ru.ID_PRIVATE)
-            ru.reset_id_counters(prefix=['pmgr', 'umgr', 'pilot', 'unit', 'unit.%(counter)06d'])
-
-
-        # make sure the session cfg has all information we need
-        cfg['uid']         = self.uid
-        cfg['session_id']  = self.uid
-        cfg['mongodb_url'] = str(self.dburl)
+            # generate new uid, reset all other ID counters
+            # FIXME: this will screw up counters for *concurrent* sessions, 
+            #        as the ID generation is managed in a process singleton.
+            self._uid = ru.generate_id('rp.session',  mode=ru.ID_PRIVATE)
+            ru.reset_id_counters(prefix='rp.session', reset_all_others=True)
 
         # initialize profiling
         self.prof = rpu.Profiler('%s' % self._uid)
@@ -178,16 +174,10 @@ class Session(rs.Session, rpu.Worker):
                 self._log.info("recording session in %s" % self._rec)
 
 
-
-        # once the config stuff is complete, we can initialize the base classes.
-        # The Worker init will start communication bridges if needed.
-        rs.Session.__init__(self)
-        rpu.Worker.__init__(self, cfg, session=self)
-
         # create/connect database handle
         try:
             self._dbs = DBSession(sid=self.uid, dburl=self.dburl,
-                                  cfg=self.cfg, logger=self._log, 
+                                  cfg=self._cfg, logger=self._log, 
                                   connect=_connect)
 
             # from here on we should be able to close the session again
@@ -199,41 +189,66 @@ class Session(rs.Session, rpu.Worker):
             raise RuntimeError("Couldn't create new session (database URL '%s' incorrect?): %s" \
                             % (self._dburl, ex))  
 
-
-        # create update and heartbeat worker components
-        # NOTE: reconnected sessions will not start components
-        if not self._reconnected:
-            components = self._cfg.get('components', [])
-
-            # the bridges are known, we can start to connect the components to them
-            self.start_components(components)
-
-
         # FIXME: make sure the above code results in a usable session on
         #        reconnect
         self._log.report.ok('>>ok\n')
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    @property
+    def ctrl_cfg(self):
+
+        if not self._controller:
+            self._create_controller()
+
+        cfg = self._controller.ctrl_cfg  # this is a deep copy
+        cfg['session_id'] = self._uid
+        cfg['dburl']      = str(self._dburl)
+
+        return cfg
+
+
+    # ---------------------------------------------------------------------------
+    #
+    def _create_controller(self):
+
+        # not all sessions need a controller for bridges and components.  Its
+        # really only required once we (i) create a unit manager, (ii) create
+        # a pilot manager, or (iii) create an agent instance.  All other
+        # sessions will not start any bridges etc.  Thus we make the startup of
+        # the controller explicit.  Once the controller is up, we merge the
+        # bridge addresses etc. into the session config.
+        #
+        if not self._controller:
+            self._cfg['owner']      = self._uid  # session is always root
+            self._cfg['session_id'] = self._uid
+            self._cfg['dburl']      = str(self._dburl)
+            self._controller = rpu.Controller(cfg=self._cfg, session=self)
+            ru.dict_merge(self._cfg, self._controller.ctrl_cfg, ru.PRESERVE)
+
+        # we pass session_id and db_url as part of the controller cfg
+
+
+    # --------------------------------------------------------------------------
     # Allow Session to function as a context manager in a `with` clause
     def __enter__(self):
         return self
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Allow Session to function as a context manager in a `with` clause
     def __exit__(self, type, value, traceback):
         self.close()
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def _is_valid(self):
         if not self._valid:
             raise RuntimeError("instance was closed")
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def _load_resource_configs(self):
 
@@ -284,7 +299,7 @@ class Session(rs.Session, rpu.Worker):
         self.prof.prof('configs parsed', uid=self._uid)
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def close(self, cleanup=None, terminate=None, delete=None):
         """Closes the session.
@@ -337,8 +352,9 @@ class Session(rs.Session, rpu.Worker):
             pmgr.close(terminate=terminate)
             self._log.debug("session %s closed pmgr   %s", self._uid, pmgr_uid)
 
-        # stop the component
-        self.stop()  
+        # stop the controller
+        if self._controller:
+            self._controller.stop()  
 
         self.prof.prof("closing", msg=cleanup, uid=self._uid)
         if self._dbs:
@@ -353,7 +369,7 @@ class Session(rs.Session, rpu.Worker):
         self._log.report.ok('>>ok\n')
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def as_dict(self):
         """Returns a Python dictionary representation of the object.
@@ -367,12 +383,13 @@ class Session(rs.Session, rpu.Worker):
             "connected" : self.connected,
             "closed"    : self.closed,
             "dburl"     : str(self.dburl),
-            "cfg"       : self.cfg     # this is a deep copy
+            "cfg"       : copy.deepcopy(self._cfg),
+            "ctrl_cfg"  : self.ctrl_cfg # this is a deep copy
         }
         return object_dict
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def __str__(self):
         """Returns a string representation of the object.
@@ -380,21 +397,21 @@ class Session(rs.Session, rpu.Worker):
         return str(self.as_dict())
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def uid(self):
         return self._uid
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def dburl(self):
         return self._dburl
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def get_db(self):
 
@@ -403,7 +420,7 @@ class Session(rs.Session, rpu.Worker):
 
 
     
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def created(self):
@@ -413,7 +430,7 @@ class Session(rs.Session, rpu.Worker):
         else        : return None
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def connected(self):
@@ -424,7 +441,7 @@ class Session(rs.Session, rpu.Worker):
         else        : return None
 
 
-    #--------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
     #
     @property
     def is_connected(self):
@@ -432,7 +449,7 @@ class Session(rs.Session, rpu.Worker):
         return self._dbs.is_connected
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def closed(self):
@@ -443,7 +460,7 @@ class Session(rs.Session, rpu.Worker):
         else        : return None
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def inject_metadata(self, metadata):
         """
@@ -466,7 +483,7 @@ class Session(rs.Session, rpu.Worker):
                                      {"$set" : {"metadata": metadata}})
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def _register_pmgr(self, pmgr):
 
@@ -474,7 +491,7 @@ class Session(rs.Session, rpu.Worker):
         self._pmgrs[pmgr.uid] = pmgr
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def list_pilot_managers(self):
         """
@@ -518,7 +535,7 @@ class Session(rs.Session, rpu.Worker):
         else            : return pmgrs
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def _register_umgr(self, umgr):
 
@@ -526,7 +543,7 @@ class Session(rs.Session, rpu.Worker):
         self._umgrs[umgr.uid] = umgr
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def list_unit_managers(self):
         """
@@ -660,9 +677,6 @@ class Session(rs.Session, rpu.Worker):
         for a given pilot dict, determine the global RP sandbox, based on the
         pilot's 'resource' attribute.
         """
-
-        if not 'description' in pilot:
-            self._log.error('=== pilot: %s', pprint.pformat(pilot))
 
         resource = pilot['description'].get('resource')
         schema   = pilot['description'].get('access_schema')

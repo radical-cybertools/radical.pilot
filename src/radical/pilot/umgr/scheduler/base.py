@@ -118,10 +118,10 @@ class UMGRSchedulingComponent(rpu.Component):
 
         self._log.info('scheduler state_cb: %s: %s' % (cmd, arg))
 
-
         # FIXME: get cmd string consistent throughout the code
         if cmd in ['update', 'state_update'] and ttype == 'pilot':
 
+            self._log.debug(' === try state update: %s', arg)
             with self._pilots_lock:
         
                 state = arg['state']
@@ -134,7 +134,11 @@ class UMGRSchedulingComponent(rpu.Component):
                                          'state' : None,
                                          'pilot' : None}
 
+                self._log.debug(' === run state update: %s, %s', pid, state)
                 self._update_pilot_state(arg)
+
+        else:
+            self._log.debug(' === ign state update: %s', cmd)
 
 
     # --------------------------------------------------------------------------
@@ -144,14 +148,17 @@ class UMGRSchedulingComponent(rpu.Component):
         with self._pilots_lock:
 
             pid     = pilot['uid']
-            current = pilot['state']
-            target  = self._pilots[pid]['state']
+            target  = pilot['state']
+            current = self._pilots[pid]['state']
 
             # enforce state model order
-            target, passed_ = rps._pilot_state_progress(current, target) 
-            self._pilots[pid]['state'] = target
+            target, passed = rps._pilot_state_progress(current, target) 
 
-            self._log.debug('update pilot state: %s -> %s', current, target)
+            if current != target:
+                self._pilots[pid]['state'] = target
+                self._log.debug('update pilot state: %s -> %s', current, passed)
+            else:
+                self._log.debug(' === no  state update: %s, %s', current, target)
 
 
     # --------------------------------------------------------------------------
@@ -196,7 +203,6 @@ class UMGRSchedulingComponent(rpu.Component):
                 self._update_pilot_state(arg['pilot'])
 
                 self._log.debug('added pilot: %s', self._pilots[pid])
-
 
             # let the scheduler know
             self.add_pilot(pid)

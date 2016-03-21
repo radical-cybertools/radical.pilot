@@ -7,7 +7,7 @@ import os
 import sys
 import time
 
-# os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
+os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -57,7 +57,7 @@ if __name__ == '__main__':
         umgr = rp.UnitManager(session=session)
         def unit_cb(unit, state):
             pass
-          # print 'cb: unit  %s: %s' % (unit.uid, state)
+            print 'cb: unit  %s: %s' % (unit.uid, state)
           # if state in [rp.FAILED]:
           #     session.close()
         umgr.register_callback(unit_cb)

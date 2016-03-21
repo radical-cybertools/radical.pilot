@@ -48,6 +48,7 @@ class DBSession(object):
         self._connected  = None
         self._closed     = None
         self._c          = None
+        self._can_remove = False
 
         if not connect:
             return
@@ -82,6 +83,7 @@ class DBSession(object):
                             'cfg'       : copy.deepcopy(cfg),
                             'created'   : self._created,
                             'connected' : self._connected})
+            self._can_remove = True
         else:
             docs = self._c.find({'type' : 'session', 
                                  'uid'  : sid})
@@ -137,11 +139,11 @@ class DBSession(object):
 
     #--------------------------------------------------------------------------
     #
-    @property
-    def closed(self):
-        """
-        Returns the connection time
-        """
+    @property 
+    def closed(self): 
+        """ 
+        Returns the close time 
+        """ 
         return self._closed
 
 

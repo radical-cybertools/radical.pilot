@@ -15,7 +15,6 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "FORK",

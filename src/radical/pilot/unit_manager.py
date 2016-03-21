@@ -6,6 +6,7 @@ __license__   = "MIT"
 import os
 import copy
 import time
+import pprint
 import threading
 
 import radical.utils as ru
@@ -88,26 +89,16 @@ class UnitManager(rpu.Component):
         self._units_lock  = threading.RLock()
         self._callbacks   = dict()
         self._cb_lock     = threading.RLock()
+        self._terminate   = threading.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
 
         for m in rpt.UMGR_METRICS:
             self._callbacks[m] = list()
 
-        # get an ID and initialize logging and profiling
-        # FIXME: log and prof are already provided by the base class -- but it
-        #        will take a while until we can initialize that, and meanwhile
-        #        we use these...
-        self._uid  = ru.generate_id('umgr')
-
-
         cfg = ru.read_json("%s/configs/umgr_%s.json" \
                 % (os.path.dirname(__file__),
-                    os.environ.get('RADICAL_PILOT_UMGR_CONFIG', 'default')))
-
-        cfg['session_id']  = session.uid
-        cfg['owner']       = self.uid
-        cfg['mongodb_url'] = str(session.dburl)
+                   os.environ.get('RADICAL_PILOT_UMGR_CFG', 'default')))
 
         if scheduler:
             # overwrite the scheduler from the config file
@@ -117,20 +108,27 @@ class UnitManager(rpu.Component):
             # set default scheduler if needed
             cfg['scheduler'] = rpus.SCHEDULER_DEFAULT
 
-        # initialize the base class
-        # FIXME: unique ID
-        cfg['owner'] = session.uid
-        rpu.Component.__init__(self, cfg, session)
+        assert(cfg['db_poll_sleeptime'])
 
-        # we do not intent to fork
-        self.no_start()
+        # before we do any further setup, we get the session's ctrl config with
+        # bridge addresses, dburl and stuff.
+        ru.dict_merge(cfg, session.ctrl_cfg, ru.PRESERVE)
+
+        # initialize the base class (with no intent to fork)
+        self._uid    = ru.generate_id('umgr')
+        cfg['owner'] = self.uid
+        rpu.Component.__init__(self, cfg, session, spawn=False)
+        self.start()
 
         # only now we have a logger... :/
         self._log.report.info('<<create unit manager')
         self._prof.prof('create umgr', uid=self._uid)
 
-        # we can start components
-        self.start_components(self.cfg['components'], owner=self.uid)
+        # we can start bridges and components, as needed
+        self._controller = rpu.Controller(cfg=self._cfg, session=self.session)
+
+        # merge controller config back into our own config
+        ru.dict_merge(self._cfg, self._controller.ctrl_cfg, ru.OVERWRITE)
 
         # The output queue is used to forward submitted units to the
         # scheduling component.
@@ -145,12 +143,14 @@ class UnitManager(rpu.Component):
         # register the state notification pull cb
         # FIXME: we may want to have the frequency configurable
         # FIXME: this should be a tailing cursor in the update worker
-        self.register_idle_cb(self._state_pull_cb, timeout=1.0)
+        self.register_idle_cb(self._state_pull_cb, 
+                              timeout=self._cfg['db_poll_sleeptime'])
 
         # register callback which pulls units back from agent
         # FIXME: this should be a tailing cursor in the update worker
         # FIXME: make frequency configurable
-        self.register_idle_cb(self._unit_pull_cb, timeout=0.1)
+        self.register_idle_cb(self._unit_pull_cb, 
+                              timeout=self._cfg['db_poll_sleeptime'])
 
         # also listen to the state pubsub for unit state changes
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_sub_cb)
@@ -175,7 +175,10 @@ class UnitManager(rpu.Component):
         self._log.debug("closing %s", self.uid)
         self._log.report.info('<<close unit manager')
 
+        self._terminate.set()
+
         # kill child process, threads
+        self._controller.stop()
         self.stop()
 
         self._session.prof.prof('closed umgr', uid=self._uid)
@@ -668,7 +671,7 @@ class UnitManager(rpu.Component):
         # create a list from which we drop the units as we find them in
         # a matching state
         self._log.report.idle(mode='start')
-        while to_check and not self._terminate.is_set():
+        while to_check:
 
             # FIXME: print percentage...
             self._log.report.idle()

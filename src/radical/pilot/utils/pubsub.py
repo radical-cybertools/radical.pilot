@@ -1,5 +1,6 @@
 
 import os
+import sys
 import zmq
 import copy
 import json
@@ -79,7 +80,8 @@ class Pubsub(object):
         self._cfg        = copy.deepcopy(cfg)
         self._addr       = addr
 
-        self._name       = "pubsub.%s.%s" % (self._channel, self._role)
+        sys.stdout.flush()
+        self._name       = "%s.%s" % (self._channel, self._role)
         self._log        = ru.get_logger('rp.%s' % self._name, 
                                          self._cfg.get('log_target', '.'),
                                          self._cfg.get('log_level'))
@@ -124,8 +126,8 @@ class Pubsub(object):
             impl = {
                 PUBSUB_ZMQ : PubsubZMQ,
             }[flavor]
-          # print 'instantiating %s' % impl
-            return impl(flavor, channel, role, cfg, addr)
+            i = impl(flavor, channel, role, cfg, addr)
+            return i
         except KeyError:
             raise RuntimeError("Pubsub type '%s' unknown!" % flavor)
 

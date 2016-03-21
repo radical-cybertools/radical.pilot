@@ -137,13 +137,13 @@ class Shell(AgentExecutingComponent):
         self._spawner_tmp = "/%s/%s-%s" % (tmp, self._pilot_id, self.uid)
 
         ret, out, _  = self.launcher_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
+                           ("/bin/sh %s/agent/executing/shell_spawner.sh %s" \
                            % (os.path.dirname (rp.__file__), self._spawner_tmp))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
 
         ret, out, _  = self.monitor_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
+                           ("/bin/sh %s/agent/executing/shell_spawner.sh %s" \
                            % (os.path.dirname (rp.__file__), self._spawner_tmp))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)

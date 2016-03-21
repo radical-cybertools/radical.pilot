@@ -139,7 +139,6 @@ class ComputePilot(object):
         # to make sure that the update results in a consistent state.
         #
         # FIXME: add sanity checks
-
         current = self.state
         target  = pilot_dict['state']
 
@@ -150,31 +149,23 @@ class ComputePilot(object):
             if key in ['state', 'sandbox', 'stdout', 'stderr']:
                 setattr(self, "_%s" % key, val)
 
-        new_state, passed = rps._pilot_state_progress(current, target)
-
-        # replay all state transitions
-        for state in passed:
+        if current != target:
 
             for cb_func, cb_data in self._callbacks:
-                self._state = state
-                if cb_data: cb_func(self, state, cb_data)
-                else      : cb_func(self, state)
+                self._state = target
+                if cb_data: cb_func(self, target, cb_data)
+                else      : cb_func(self, target)
 
             # also inform pmgr about state change, to collect any callbacks
             # it has registered globally
-            self._pmgr._call_pilot_callbacks(self, state)
+            self._pmgr._call_pilot_callbacks(self, target)
 
         # make sure we end up with the right state
-        self._state = new_state
+        self._state = target
 
         # this should be the last cb invoked on state changes
         if self.state == rps.FAILED and self._exit_on_error:
             self._default_error_cb()
-
-        if passed: return True
-        else     : return False
-
-
 
 
     # --------------------------------------------------------------------------

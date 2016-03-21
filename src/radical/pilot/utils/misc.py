@@ -69,11 +69,17 @@ def rec_makedir(target):
 
 # ------------------------------------------------------------------------------
 #
+_hostip = None
 def hostip(req=None, black_list=None, pref_list=None, logger=None):
     """
     Look up the ip number for a given requested interface name.
     If interface is not given, do some magic.
     """
+
+    # we only determine hostip once
+    global _hostip
+    if _hostip:
+        return _hostip
 
     # List of interfaces that we probably dont want to bind to by default
     if not black_list:
@@ -136,6 +142,8 @@ def hostip(req=None, black_list=None, pref_list=None, logger=None):
     if logger:
         logger.debug("Network ip address detected: %s", ip)
 
+    # cache for next invocation
+    _hostip = ip
     return ip
 
 

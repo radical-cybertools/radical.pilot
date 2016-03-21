@@ -88,5 +88,8 @@
   + saga_pid in pmgr.launcher control_cb
   + heartbeat interval assertion
   - dying agent bridge causes agent shutdown to hang
+  - lrms -> rm
+  + dead in pilot watcher cb remains undetected
+  - separation of controller.[uid,heart,owner] is unclean
 
 

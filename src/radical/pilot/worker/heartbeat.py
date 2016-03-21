@@ -47,7 +47,7 @@ class Heartbeat(Worker):
     def initialize_child(self):
 
         self._owner         = self._cfg['owner']
-        self._mongodb_url   = self._cfg['mongodb_url']
+        self._dburl         = self._cfg['dburl']
         self._runtime       = self._cfg.get('runtime')
         self._starttime     = time.time()
 

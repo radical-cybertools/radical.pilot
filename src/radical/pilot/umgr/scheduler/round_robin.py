@@ -74,7 +74,7 @@ class RoundRobin(UMGRSchedulingComponent):
         with self._pilots_lock:
 
             if not len(self._pids):
-
+        
                 # no pilot is active, yet -- we add to the wait queue
                 with self._wait_lock:
                     self._prof.prof('wait', uid=uid)
@@ -98,7 +98,11 @@ class RoundRobin(UMGRSchedulingComponent):
             if not pid in self._pilots:
                 # oops, race!  Leave unit unscheduled
                 self._log.warn('met pid race in _pilots (%s)', pid)
-                return
+
+                with self._wait_lock:
+                    self._prof.prof('wait', uid=uid)
+                    self._wait_pool.append(unit)
+                    return
 
             pilot = self._pilots[pid]
 
@@ -108,7 +112,7 @@ class RoundRobin(UMGRSchedulingComponent):
             unit['sandbox'] = self._session._get_unit_sandbox(unit, pilot['pilot'])
 
             self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING, 
-                    publish=True, push=True)
+                         publish=True, push=True)
         
 
     # --------------------------------------------------------------------------

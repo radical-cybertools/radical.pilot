@@ -12,7 +12,6 @@
         "default_queue"               : "all.q",
         "spmd_variation"              : "openmpi",
         "lrms"                        : "SGE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",

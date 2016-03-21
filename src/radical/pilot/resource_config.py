@@ -14,7 +14,6 @@ AGENT_LAUNCH_METHOD         = 'agent_launch_method'
 AGENT_MONGODB_ENDPOINT      = 'agent_mongodb_endpoint'
 AGENT_SCHEDULER             = 'agent_scheduler'
 AGENT_SPAWNER               = 'agent_spawner'
-AGENT_TYPE                  = 'agent_type'
 AGENT_CONFIG                = 'agent_config'
 CORES_PER_NODE              = 'cores_per_node'
 DEFAULT_QUEUE               = 'default_queue'
@@ -210,7 +209,6 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(AGENT_MONGODB_ENDPOINT ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_SCHEDULER        ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_SPAWNER          ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(AGENT_TYPE             ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_CONFIG           ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(CORES_PER_NODE         ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(DEFAULT_QUEUE          ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
