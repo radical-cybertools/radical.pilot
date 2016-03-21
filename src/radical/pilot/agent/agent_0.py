@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-
-"""
-
-This script is part of the pilot bootstrapping routing, representing the entry
-into Python.  It is started on the landing node of the pilot job.
-
-"""
 
 __copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -16,16 +8,16 @@ import copy
 import stat
 import time
 import pprint
-import signal
-import subprocess as sp
-import setproctitle
+import subprocess        as sp
+import radical.utils     as ru
 
-import saga                    as rs
-import radical.utils           as ru
-import radical.pilot           as rp
-import radical.pilot.utils     as rpu
-import radical.pilot.states    as rps
-import radical.pilot.constants as rpc
+from .. import states    as rps
+from .. import constants as rpc
+from .. import utils     as rpu
+from .. import Session   as rp_Session
+
+from .  import rm        as rpa_rm
+from .  import lm        as rpa_lm
 
 
 # this needs git attribute 'ident' set for this file
@@ -89,7 +81,7 @@ class Agent_0(rpu.Worker):
         # Create a session which connects to MongoDB.
         # This session will also create any communication channels and
         # components/workers specified in the config.
-        self._session = rp.Session(cfg=cfg, uid=self._session_id, _connect=True)
+        self._session = rp_Session(cfg=cfg, uid=self._session_id, _connect=True)
         ru.dict_merge(cfg, self._session.ctrl_cfg, ru.PRESERVE)
         pprint.pprint(cfg)
 
@@ -108,8 +100,8 @@ class Agent_0(rpu.Worker):
         # Create LRMS which will give us the set of agent_nodes to use for
         # sub-agent startup.  Add the remaining LRMS information to the
         # config, for the benefit of the scheduler).
-        self._lrms = rp.agent.RM.create(name=self._cfg['lrms'], cfg=self._cfg, 
-                                        session=self._session)
+        self._lrms = rpa_rm.RM.create(name=self._cfg['lrms'], cfg=self._cfg, 
+                                      session=self._session)
 
         # add the resource manager information to our own config
         self._cfg['lrms_info'] = self._lrms.lrms_info
@@ -173,7 +165,7 @@ class Agent_0(rpu.Worker):
         self._log.info('rusage: %s', rpu.get_rusage())
         self._log.info(msg)
 
-        if state == rp.FAILED:
+        if state == rps.FAILED:
             self._log.info(ru.get_trace())
     
         now = rpu.timestamp()
@@ -266,7 +258,7 @@ class Agent_0(rpu.Worker):
             elif target == 'node':
     
                 if not agent_lm:
-                    agent_lm = rp.agent.LM.create(
+                    agent_lm = rpa_lm.LM.create(
                         name    = self._cfg['agent_launch_method'],
                         cfg     = self._cfg,
                         session = self._session)
@@ -460,145 +452,5 @@ class Agent_0(rpu.Worker):
         return True
 
 
-# ------------------------------------------------------------------------------
-#
-def bootstrap_3():
-    """
-    This is only executed by agent
-    """
-
-    try:
-        setproctitle.setproctitle('rp.agent_0')
-
-        agent_0 = Agent_0()
-        agent_0.start()
-
-        # we never really quit this way, but instead the agent_0 command_cb may
-        # pick up a shutdown signal, the watcher_cb may detect a failing
-        # component or sub-agent, or we get a kill signal from the RM.  In all
-        # three cases, we'll end up in agent_0.stop()
-        while True:
-            time.sleep(1)
-
-    except SystemExit:
-        log.exception("Exit running agent_0")
-
-    except Exception as e:
-        log.exception("Error running agent_0")
-
-    finally:
-
-        # in all cases, make sure we perform an orderly shutdown.  I hope python
-        # does not mind doing all those things in a finally clause of
-        # (essentially) main...
-        agent_0.stop()
-
-
-# ==============================================================================
-#
-# Agent bootstrap stage 4
-#
-# ==============================================================================
-#
-# avoid undefined vars on finalization / signal handling
-def bootstrap_4(agent_name):
-    """
-    This method continues where the bootstrapper left off, but will soon pass
-    control to the Agent class which will spawn the functional components.
-    Before doing so, we will check if we happen to be agent instance zero.  If
-    that is the case, some additional python level bootstrap routines kick in,
-    to set the stage for component and sub-agent spawning.
-
-    The agent interprets a config file, which will specify in an agent_layout
-    section:
-      - what nodes should be used for sub-agent startup
-      - what bridges should be started
-      - what are the endpoints for bridges which are not started
-      - what components should be started
-    bootstrap_3 will create derived config files for all sub-agents.
-    """
-
-    try:
-        assert(agent_name != 'agent_0')
-
-        print "startup agent %s" % agent_name
-        setproctitle.setproctitle('rp.%s' % agent_name)
-
-        # load the agent config, and overload the config dicts
-        agent      = None
-        agent_cfg  = "%s/%s.cfg" % (os.getcwd(), agent_name)
-        cfg        = ru.read_json_str(agent_cfg)
-        pilot_id   = cfg['pilot_id']
-        session_id = cfg['session_id']
-
-        # set up a logger and profiler
-        prof = rpu.Profiler ('%s.bootstrap_3' % agent_name)
-        prof.prof('sync ref', msg='%s start' % agent_name, uid=pilot_id)
-
-        log = ru.get_logger('%s.bootstrap_3'     % agent_name,
-                            '%s.bootstrap_3.log' % agent_name, cfg.get('debug', 'INFO'))
-        log.info('start')
-
-        print "Agent config (%s):\n%s\n\n" % (agent_cfg, pprint.pformat(cfg))
-
-        # des Pudels Kern
-        agent = rp.worker.Agent(cfg)
-        agent.start()
-        agent.join()
-        log.debug('%s joined', agent_name)
-
-
-    except SystemExit:
-        log.exception("Exit running %s" % agent_name)
-
-    except Exception as e:
-        log.exception("Error running %s" % agent_name)
-
-    finally:
-
-        # in all cases, make sure we perform an orderly shutdown.  I hope python
-        # does not mind doing all those things in a finally clause of
-        # (essentially) main...
-        if agent:
-            agent.stop()
-
-        log.debug('%s finalized' % agent_name)
-        prof.prof('stop', msg='finally clause %s' % agent_name, uid=pilot_id)
-        prof.close()
-
-
-# ==============================================================================
-#
-if __name__ == "__main__":
-
-    print "---------------------------------------------------------------------"
-    print
-    print "PYTHONPATH: %s"  % sys.path
-    print "python: %s"      % sys.version
-    print "utils : %-5s : %s" % (ru.version_detail, ru.__file__)
-    print "saga  : %-5s : %s" % (rs.version_detail, rs.__file__)
-    print "pilot : %-5s : %s" % (rp.version_detail, rp.__file__)
-    print "        type  : multicore"
-    print "        gitid : %s" % git_ident
-    print
-    print "---------------------------------------------------------------------"
-    print
-
-    
-    agent_name=sys.argv[1]
-
-    if agent_name == 'agent_0':
-        # spawn sub agents
-        bootstrap_3()
-        print "bootstrap_3 done"
-
-    else:
-        # this is a sub agent - bootstrap it!
-        bootstrap_4(agent_name)
-        print "bootstrap_4 done (%s)" % agent_name
-
-
-
-#
 # ------------------------------------------------------------------------------
 

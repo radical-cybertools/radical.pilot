@@ -1299,13 +1299,12 @@ export _OLD_VIRTUAL_PS1
 #       have re-implemented pip... :/
 # FIXME: the second option should use $RP_MOD_PATH, or should derive the path
 #       from the imported rp modules __file__.
-TMP_PREFIX=`radicalpilot-version -v | grep modpath | cut -f 2 -d :`
-PILOT_SCRIPT="$TMP_PREFIX/agent/agent_0.py"
+PILOT_SCRIPT=`which radical-pilot-agent`
 # if test "$RP_INSTALL_TARGET" = 'SANDBOX'
 # then
-#     PILOT_SCRIPT="$SANDBOX/rp_install/lib/python$PYTHON_VERSION/site-packages/radical/pilot/agent/agent_0.py"
+#     PILOT_SCRIPT="$SANDBOX/rp_install/bin/radical-pilot-agent"
 # else
-#     PILOT_SCRIPT="$VIRTENV/rp_install/lib/python$PYTHON_VERSION/site-packages/radical/pilot/agent/agent_0.py"
+#     PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent"
 # fi
 
 

@@ -267,7 +267,8 @@ setup_args = {
                             'bin/radicalpilot-close-session',
                             'bin/radicalpilot-cleanup',
                             'bin/radicalpilot-stats',
-                            'bin/radicalpilot-stats.plot'
+                            'bin/radicalpilot-stats.plot',
+                            'bin/radical-pilot-agent'
                            ],
     'package_data'       : {'': ['*.sh', '*.json', '*.gz', 'VERSION', 'SDIST', sdist_name]},
     'cmdclass'           : {
