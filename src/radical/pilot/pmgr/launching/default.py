@@ -55,7 +55,6 @@ class Default(PMGRLaunchingComponent):
         # we don't really have an output queue, as we pass control over the
         # pilot jobs to the resource management system (RM).
 
-        self._saga_js       = dict()             # cache of saga.job.Services
         self._pilots        = dict()             # dict for all known pilots
         self._tocheck       = list()             # pilots run state checks on
         self._missing       = dict()             # for failed state checks
@@ -76,6 +75,16 @@ class Default(PMGRLaunchingComponent):
 
         _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
                 ru.get_version([self._root_dir, self._mod_dir])
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize_child(self):
+
+        with self._cache_lock:
+            for js_url,js in self._saga_js_cache.iteritems():
+                js.close()
+            self._saga_js_cache.clear()
 
 
     # --------------------------------------------------------------------------
@@ -118,12 +127,12 @@ class Default(PMGRLaunchingComponent):
                     saga_job = js.get_job(saga_pid)
                     saga_job.cancel()
                     saga_jobs.append(saga_job)
-                  # print 'launcher: cancel %s' % saga_pid
+                    self._log.debug('launcher: cancel %s', saga_pid)
                     
                 for saga_job in saga_jobs:
-                  # print 'launcher: wait %s' % saga_job.state
+                    self._log.debug('launcher: wait %s', saga_job.state)
                     saga_job.wait()
-                  # print 'launcher: waited %s' % saga_job.state
+                    self._log.debug('launcher: waited %s', saga_job.state)
 
                 # move pilots into final state
                 for uid in uids:
@@ -220,11 +229,13 @@ class Default(PMGRLaunchingComponent):
 
             try:
                 js_url = saga_pid.split("]-[")[0][1:]
-                js     = self._saga_js.get(js_url)
 
-                if not js:
-                    js = rs.job.Service(js_url, session=self._session)
-                    self._saga_js[js_url] = js
+                with self._cache_lock:
+                    if js_url in self._saga_js_cache:
+                        js = self._saga_js_cache.get(js_url)
+                    else:
+                        js = rs.job.Service(js_url, session=self._session)
+                        self._saga_js_cache[js_url] = js
 
                 saga_job = js.get_job(saga_pid)
                 self._log.debug("SAGA job state for %s: %s.", pid, saga_job.state)
