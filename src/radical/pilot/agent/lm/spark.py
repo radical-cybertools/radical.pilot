@@ -46,7 +46,6 @@ class Spark(LaunchMethod):
             logger.info("Found SPARK ")
             logger.info('Hook called by SPARK LRMS')
             logger.info('NameNode: {0}'.format(lrms.namenode_url))
-            #service_url    = lrms.namenode_url ##deleteG
             rm_url         = "%s:%s" % (lrms.rm_ip, lrms.rm_port)
             rm_ip          = lrms.rm_ip
             launch_command = ru.which('spark')
@@ -92,13 +91,11 @@ class Spark(LaunchMethod):
                 java_home = os.environ['JAVA_HOME']
                 if not java_home:
                     try:
-                        java_home = subprocess.check_output("/usr/libexec/java_home").split()[0]  
+                        java_home = subprocess.check_output("/usr/libexec/java_home").split()[0]
                     except Exception:
                         java_home = '/Library/Java/Home'
 
-            
 
-            # Check for existing scala installation    #256 means that no scala found
             # if no installation found install scala 2.10.4
             scala_home=ru.which('scala')
             if not scala_home:
@@ -153,7 +150,7 @@ class Spark(LaunchMethod):
                 spark_env_file.write('module load TACC\n')
                 spark_env_file.write('module load python/2.7.3-epd-7.3.2\n')
 
-            spark_env_file.write('export SPARK_MASTER_IP=' + master_ip +"\n")   # TODO: ?? I guess  this is master's ip
+            spark_env_file.write('export SPARK_MASTER_IP=' + master_ip +"\n")
             spark_env_file.write('export SCALA_HOME='+ scala_home+ "\n")
             spark_env_file.write('export JAVA_HOME=' + java_home + "\n")
             #spark_env_file.write('export PYTHONPATH='+'/opt/apps/python/2.7.3-epd-7.3.2/'+':$PYTHONPATH\n')
@@ -273,15 +270,9 @@ class Spark(LaunchMethod):
 
 
 
-        #supervise : If given, restarts the driver on failure.
-        #--deploy-mode cluster \ --supervise    
-        # spark_command = self.launch_command + '/spark-submit --master spark://%s:7077 \
-        #                 --total-executor-cores %d --executor-memory 512m \
-        #                 --driver-memory 32m --conf spark.ui.port=%d '%(master_ip,task_cores,ui_port) #TODO: add name of spark app? #george
-        
-        spark_command = self.launch_command + '/spark-submit ' + command
         spark_command = self.launch_command + '/' + task_exec + ' ' +  command
-        
+
+
         self._log.debug("Spark  Command %s"%spark_command)
 
         return spark_command, None
