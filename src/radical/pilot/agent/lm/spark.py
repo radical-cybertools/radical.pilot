@@ -5,6 +5,9 @@ __license__   = "MIT"
 
 import os
 import subprocess
+import urllib
+import sys
+
 from .base import LaunchMethod
 
 
@@ -139,7 +142,7 @@ class Spark(LaunchMethod):
             spark_master_string = 'spark://%s:7077' % master_ip
             spark_default_file.write('spark.master  ' + spark_master_string + '\n')
             spark_default_file.close()
-
+            logger.info("Let's print the config")
             logger.info('Config : {0}'.format(cfg['resource_cfg']))
 
             spark_env_file = open(spark_home + "/conf/spark-env.sh",'w')

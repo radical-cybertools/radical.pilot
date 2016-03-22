@@ -140,6 +140,7 @@ class LaunchMethod(object):
         from .fork           import Fork
         from .orte           import ORTE
         from .yarn           import Yarn
+        from .spark          import Spark
 
         impl = {
             LM_NAME_FORK          : Fork,
@@ -171,6 +172,7 @@ class LaunchMethod(object):
 
         from .orte           import ORTE
         from .yarn           import Yarn
+        from .spark          import Spark
 
         impl = {
             LM_NAME_ORTE          : ORTE,
