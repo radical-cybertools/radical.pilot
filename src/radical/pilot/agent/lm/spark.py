@@ -144,12 +144,17 @@ class Spark(LaunchMethod):
             logger.info('Config : {0}'.format(cfg['resource_cfg']))
 
             spark_env_file = open(spark_home + "/conf/spark-env.sh",'w')
+            #load in the spark enviroment of master and slaves the
+            configurations of the machine
             if master_ip!='localhost':
-                spark_env_file.write('module load intel/15.0.2\n')
-                spark_env_file.write('module load mvapich2/2.1\n')
-                spark_env_file.write('module load xalt/0.6\n')
-                spark_env_file.write('module load TACC\n')
-                spark_env_file.write('module load python/2.7.3-epd-7.3.2\n')
+                for config in config['pre_bootstrap_1']:
+                    spark_env_file.write(config + '\n')
+
+                #spark_env_file.write('module load intel/15.0.2\n')
+                #spark_env_file.write('module load mvapich2/2.1\n')
+                #spark_env_file.write('module load xalt/0.6\n')
+                #spark_env_file.write('module load TACC\n')
+                #spark_env_file.write('module load python/2.7.3-epd-7.3.2\n')
 
             spark_env_file.write('export SPARK_MASTER_IP=' + master_ip +"\n")
             spark_env_file.write('export SCALA_HOME='+ scala_home+ "\n")
