@@ -147,7 +147,7 @@ class Spark(LaunchMethod):
             #load in the spark enviroment of master and slaves the
             #configurations of the machine
             if master_ip!='localhost':
-                for config in config['pre_bootstrap_1']:
+                for config in cfg['resource_cfg']['pre_bootstrap_1']:
                     spark_env_file.write(config + '\n')
 
                 #spark_env_file.write('module load intel/15.0.2\n')
