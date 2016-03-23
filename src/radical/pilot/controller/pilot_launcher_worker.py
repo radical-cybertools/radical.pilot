@@ -660,7 +660,9 @@ class PilotLauncherWorker(threading.Thread):
 
                         # set some agent configuration
                         agent_cfg_dict['cores']              = number_cores
-                        agent_cfg_dict['debug']              = os.environ.get('RADICAL_PILOT_AGENT_VERBOSE', logger.getEffectiveLevel())
+                        agent_cfg_dict['resource_cfg']       = resource_cfg
+                        agent_cfg_dict['debug']              = os.environ.get('RADICAL_PILOT_AGENT_VERBOSE',
+                                                                              logger.getEffectiveLevel())
                         agent_cfg_dict['mongodb_url']        = str(agent_dburl)
                         agent_cfg_dict['lrms']               = lrms
                         agent_cfg_dict['spawner']            = agent_spawner
