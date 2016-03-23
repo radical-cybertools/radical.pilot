@@ -7,6 +7,7 @@ import os
 import subprocess
 import urllib
 import sys
+import socket
 
 from .base import LaunchMethod
 
