@@ -143,7 +143,7 @@ idle_checker () {
   do
     \sleep $TIMEOUT
 
-    if test -e "$BASE/quit.$ppid" 
+    if test -e "$BASE/quit.$ppid"
     then
       \rm   -f  "$BASE/quit.$ppid"
       EXIT_VAL=0
@@ -164,14 +164,14 @@ idle_checker () {
 
 # --------------------------------------------------------------------
 #
-# When sending command stdout and stderr back, we encode into 
-# hexadecimal via od, to keep the protocol simple.  This is done by 
-# the 'encode' function which sets 'ENCODED' to the result of that 
-# conversion for all given string parameters.  For completeness, we 
+# When sending command stdout and stderr back, we encode into
+# hexadecimal via od, to keep the protocol simple.  This is done by
+# the 'encode' function which sets 'ENCODED' to the result of that
+# conversion for all given string parameters.  For completeness, we
 # also give the matching 'decode' function, although we don't use it
-# in this shell wrapper script itself.  'decode' consumes the output 
-# of 'encode' and stores the resulting string in 'DECODED'.  Any 
-# elements for which decoding fails are complained about in 'RETVAL', 
+# in this shell wrapper script itself.  'decode' consumes the output
+# of 'encode' and stores the resulting string in 'DECODED'.  Any
+# elements for which decoding fails are complained about in 'RETVAL',
 # which remains otherwise empty on successful decoding.
 #
 encode () {
@@ -184,7 +184,7 @@ decode () {
   SKIPPED=""
   RETVAL=""
   for word in $*; do
-    case "$word" in 
+    case "$word" in
       [0-9a-f][0-9a-f] )
         CODE="$CODE\x$word"
         ;;
@@ -203,8 +203,8 @@ decode () {
 
 # --------------------------------------------------------------------
 #
-# it is suprisingly difficult to get seconds since epoch in POSIX -- 
-# 'date +%%s' is a GNU extension...  Anyway, awk to the rescue! 
+# it is suprisingly difficult to get seconds since epoch in POSIX --
+# 'date +%%s' is a GNU extension...  Anyway, awk to the rescue!
 #
 timestamp () {
   TIMESTAMP=`\awk 'BEGIN{srand(); print srand()}'`
@@ -307,7 +307,7 @@ create_monitor () {
   POST=0
   UPID="\$MPID.\$POST"
   DIR="$BASE/\$UPID"
-  
+
   while test -d "\$DIR"
   do
     POST=\$((\$POST+1))
@@ -318,12 +318,12 @@ create_monitor () {
   \\mkdir -p "\$DIR"
 
 # exec 2>"\$DIR/monitor.trace"
-# set -x 
+# set -x
 
 
   # FIXME: timestamp
   START=\`\\awk 'BEGIN{srand(); print srand()}'\`
-  \\printf "START : \$START\n"  > "\$DIR/stats"
+  \\printf "START  : \$START\n" > "\$DIR/stats"
   \\printf "NEW \n"            >> "\$DIR/state"
 
   # create represents the job.  The 'exec' call will replace
@@ -335,6 +335,7 @@ create_monitor () {
   \\chmod 0700            \$DIR/cmd
 
   (
+    trap - HUP
     export SAGA_PWD="\$DIR"
     export SAGA_UPID="\$UPID"
     \\printf  "`\date` : RUNNING \\n" >> "\$DIR/log"
@@ -450,10 +451,10 @@ cmd_monitor () {
 # jobs would be canceled as soon as this master script finishes...
 #
 # Note further that we perform a double fork, effectively turning the monitor
-# into a daemon.  That provides a speedup of ~300 percent, as the wait in 
-# cmd_run now will return very quickly (it just waits on the second fork).  
-# We can achieve near same performance be removing the wait, but that will 
-# result in one zombie per command, which sticks around as long as the wrapper 
+# into a daemon.  That provides a speedup of ~300 percent, as the wait in
+# cmd_run now will return very quickly (it just waits on the second fork).
+# We can achieve near same performance be removing the wait, but that will
+# result in one zombie per command, which sticks around as long as the wrapper
 # script itself lives.
 #
 # Note that the working directory is created on the fly.  As the name of the dir
@@ -483,8 +484,8 @@ cmd_run () {
   # do a double fork to avoid zombies.  Use 'set -m' to force a new process
   # group for the monitor
   (
-   ( set -m 
-     /bin/sh "$BASE/monitor.$GID.sh" "$@" 
+   ( set -m
+     /bin/sh "$BASE/monitor.$GID.sh" "$@"
    ) 1>/dev/null 2>/dev/null 3</dev/null & exit
   )
 
@@ -555,7 +556,7 @@ cmd_stats () {
   # for obvious reasons.  Oh heck, we always deliver it, that makes parsing
   # simpler -- but we deliver more on errors
   N=10
-  if test "$state" = "FAILED" 
+  if test "$state" = "FAILED"
   then
     N=100
   fi
@@ -589,7 +590,7 @@ cmd_wait () {
       SUSPENDED )        ;;
       UNKNOWN   )        ;;   # FIXME: should be an error?
       *         ) ERROR="NOK - invalid state '$RETVAL'"
-                  return ;;  
+                  return ;;
     esac
 
     \sleep 1
@@ -608,7 +609,7 @@ cmd_result () {
   state=`\grep -e ' $' "$DIR/state" | \tail -n 1 | \tr -d ' '`
 
   if test "$state" != "DONE" -a "$state" != "FAILED" -a "$state" != "CANCELED"
-  then 
+  then
     ERROR="job $1 in incorrect state ($state != DONE|FAILED|CANCELED)"
     return
   fi
@@ -791,7 +792,7 @@ cmd_list () {
 
 # --------------------------------------------------------------------
 #
-# purge working directories of given jobs 
+# purge working directories of given jobs
 # default (no job id given): purge all final jobs older than 1 day
 #
 cmd_purge () {
@@ -824,8 +825,8 @@ cmd_purge_tmps () {
   \rm -f "$BASE"/bulk.*
   \rm -f "$BASE"/idle.*
   \rm -f "$BASE"/quit.*
-  \find  "$BASE" -type d -mtime +30 -print | xargs -n 100 \rm -rf 
-  \find  "$BASE" -type f -mtime +30 -print | xargs -n 100 \rm -f 
+  \find  "$BASE" -type d -mtime +30 -print | xargs -n 100 \rm -rf
+  \find  "$BASE" -type f -mtime +30 -print | xargs -n 100 \rm -f
   RETVAL="purged tmp files"
 }
 
@@ -927,7 +928,7 @@ listen() {
     while \read -r CMD ARGS
     do
 
-      # reset err state for each command
+      # reset error state for each command
       ERROR="OK"
       RETVAL=""
 
@@ -947,6 +948,7 @@ listen() {
         STDIN     ) cmd_stdin   "$ARGS"  ;;
         STDOUT    ) cmd_stdout  "$ARGS"  ;;
         STDERR    ) cmd_stderr  "$ARGS"  ;;
+        LOG       ) cmd_log     "$ARGS"  ;;
         LIST      ) cmd_list    "$ARGS"  ;;
         PURGE     ) cmd_purge   "$ARGS"  ;;
         QUIT      ) cmd_quit    "$IDLE"  ;;

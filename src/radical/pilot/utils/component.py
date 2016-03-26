@@ -372,6 +372,15 @@ class Component(mp.Process):
         # the parent context
         self.initialize_parent()
 
+        # parent calls terminate on stop(), which we translate here into stop()
+        def sigterm_handler(signum, frame):
+            self._log.warn('caught sigterm')
+            self.stop()
+        signal.signal(signal.SIGTERM, sigterm_handler)
+        def sighup_handler(signum, frame):
+            self._log.warn('caught sighup')
+            self.stop()
+        signal.signal(signal.SIGHUP, sighup_handler)
 
     # --------------------------------------------------------------------------
     #
@@ -432,6 +441,10 @@ class Component(mp.Process):
             self._log.warn('caught sigterm')
             self.stop()
         signal.signal(signal.SIGTERM, sigterm_handler)
+        def sighup_handler(signum, frame):
+            self._log.warn('caught sighup')
+            self.stop()
+        signal.signal(signal.SIGHUP, sighup_handler)
 
 
     # --------------------------------------------------------------------------
@@ -451,7 +464,10 @@ class Component(mp.Process):
 
         self._log.debug('base _finalize_common')
 
-        assert(not self._finalized)
+        if self._finalized:
+            # some other thread is already taking care of finalization
+            return
+
         self._finalized = True
 
         self.finalize_common()
@@ -493,6 +509,7 @@ class Component(mp.Process):
             self._prof.close()
 
         self._log.debug('base _finalize_common done')
+
 
     # --------------------------------------------------------------------------
     #

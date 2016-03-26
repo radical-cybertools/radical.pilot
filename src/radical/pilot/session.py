@@ -354,6 +354,7 @@ class Session(rs.Session):
 
         # stop the controller
         if self._controller:
+            print 'close controller'
             self._controller.stop()  
 
         self.prof.prof("closing", msg=cleanup, uid=self._uid)
