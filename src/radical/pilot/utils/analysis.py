@@ -179,8 +179,8 @@ def add_concurrency (frame, tgt, spec):
     # --------------------------------------------------------------------------
     def _time (x):
         global tmp
-        if     x != tmp: tmp = x
-        else           : x   = np.NaN
+        if x != tmp: tmp = x
+        else: x = np.NaN
         return x
 
 
@@ -349,8 +349,8 @@ def create_plot():
     plot.spines['bottom'].set_position(('outward', 10))
     plot.spines['left'  ].set_position(('outward', 10))
 
-    plt.xticks(fontsize=14)
-    plt.yticks(fontsize=14)
+    plt.xticks(fontsize=24)
+    plt.yticks(fontsize=24)
 
     fig.tight_layout()
 
@@ -381,7 +381,7 @@ def frame_plot (frames, axis, title=None, logx=False, logy=False,
 
     # set plot title
     if title:
-        plot.set_title(title, y=1.05, fontsize=18)
+        plot.set_title(title, y=1.05, fontsize=24)
 
     # plot the data frames
     # NOTE: we need to set labels separately, because of
@@ -405,11 +405,20 @@ def frame_plot (frames, axis, title=None, logx=False, logy=False,
             print "skipping frame '%s': '%s'" % (label, e)
 
     if legend:
-        plot.legend(labels=labels, loc=legend_pos, fontsize=14, frameon=True)
+        plot.legend(labels     = labels, 
+                    prop       = {'family' : 'monospace', 
+                                  'size'   : 24
+                                 },
+                    fontsize   = 24, 
+                  # loc        = legend_pos, 
+                    loc        = 'best', 
+                    frameon    = True,
+                    fancybox   = True, 
+                    framealpha = 0.5)
 
     # set axis labels
-    plot.set_xlabel(axis[0][1], fontsize=14)
-    plot.set_ylabel(axis[1][1], fontsize=14)
+    plot.set_xlabel(axis[0][1], fontsize=24)
+    plot.set_ylabel(axis[1][1], fontsize=24)
     plot.set_frame_on(True)
 
     # save as png and pdf.  Use the title as base for names
