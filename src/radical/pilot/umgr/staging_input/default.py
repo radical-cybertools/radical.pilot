@@ -50,8 +50,6 @@ class Default(UMGRStagingInputComponent):
 
         uid = unit['uid']
 
-        self._log.debug('=== staging %s to %s' % (uid, unit['pilot']))
-
         # check if we have any staging directives to be enacted in this
         # component
         actionables = list()

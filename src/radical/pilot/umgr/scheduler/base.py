@@ -121,7 +121,6 @@ class UMGRSchedulingComponent(rpu.Component):
         # FIXME: get cmd string consistent throughout the code
         if cmd in ['update', 'state_update'] and ttype == 'pilot':
 
-            self._log.debug(' === try state update: %s', arg)
             with self._pilots_lock:
         
                 state = arg['state']
@@ -134,11 +133,7 @@ class UMGRSchedulingComponent(rpu.Component):
                                          'state' : None,
                                          'pilot' : None}
 
-                self._log.debug(' === run state update: %s, %s', pid, state)
                 self._update_pilot_state(arg)
-
-        else:
-            self._log.debug(' === ign state update: %s', cmd)
 
 
     # --------------------------------------------------------------------------
@@ -157,8 +152,6 @@ class UMGRSchedulingComponent(rpu.Component):
             if current != target:
                 self._pilots[pid]['state'] = target
                 self._log.debug('update pilot state: %s -> %s', current, passed)
-            else:
-                self._log.debug(' === no  state update: %s, %s', current, target)
 
 
     # --------------------------------------------------------------------------

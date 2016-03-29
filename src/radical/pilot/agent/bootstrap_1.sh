@@ -97,7 +97,7 @@ EOT
 #
 profile_event()
 {
-    PROFILE="bootstrap_1.prof"
+    PROFILE="$SESSION_ID/bootstrap_1.prof"
 
     if test -z "$RADICAL_PILOT_PROFILE"
     then
@@ -1229,6 +1229,9 @@ if test -z "$PILOT_ID"    ; then  usage "missing PILOT_ID      ";  fi
 if test -z "$SESSION_ID"  ; then  usage "missing SESSION_ID    ";  fi
 if test -z "$RP_VERSION"  ; then  usage "missing RP_VERSION   ";  fi
 
+#for log files etc
+mkdir $SESSION_ID
+
 # If the host that will run the agent is not capable of communication
 # with the outside world directly, we will setup a tunnel.
 if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
@@ -1398,7 +1401,7 @@ $PREBOOTSTRAP2_EXPANDED
 
 # start agent, forward arguments
 # NOTE: exec only makes sense in the last line of the script
-exec $AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
+exec $AGENT_CMD "\$1" 1>"$SESSION_ID/\$1.out" 2>"$SESSION_ID/\$1.err"
 
 EOT
 
@@ -1437,7 +1440,7 @@ profile_event 'agent start'
 
 # start the master agent instance (zero)
 profile_event 'sync rel' 'agent start'
-./bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
+./bootstrap_2.sh 'agent_0' 1>$SESSION_ID/agent_0.bootstrap_2.out 2>$SESSION_ID/agent_0.bootstrap_2.err
 
 AGENT_EXITCODE=$?
 

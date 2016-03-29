@@ -64,11 +64,6 @@ class Agent_0(rpu.Worker):
         if not 'task_launch_method'  in cfg: raise ValueError("Missing unit launch method")
         if not 'agent_layout'        in cfg: raise ValueError("Missing agent layout")
 
-        # set up a logger and profiler
-        self._prof = rpu.Profiler ('bootstrap_3')
-        self._log  = ru.get_logger('bootstrap_3', '.', cfg.get('debug', 'DEBUG'))
-        self._log.info('start')
-
         # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold
         # the address of the tunnelized DB endpoint. If it exists, we
         # overrule the agent config with it.
@@ -84,6 +79,13 @@ class Agent_0(rpu.Worker):
         self._session = rp_Session(cfg=cfg, uid=self._session_id, _connect=True)
         ru.dict_merge(cfg, self._session.ctrl_cfg, ru.PRESERVE)
         pprint.pprint(cfg)
+
+        # set up a logger and profiler
+        self._prof = self._session._get_profiler('bootstrap_3')
+        self._prof.prof('sync ref', msg='%s start' % self._uid, uid=self._pilot_id)
+
+        self._log  = self._session._get_logger('bootstrap_3', cfg.get('debug'))
+        self._log.info('start')
 
         if not self._session.is_connected:
             raise RuntimeError('agent could not connect to mongodb')
@@ -156,6 +158,8 @@ class Agent_0(rpu.Worker):
         if self._session:
             self._session.close()
 
+        self._prof.close()
+
 
     # --------------------------------------------------------------------------
     #
@@ -173,11 +177,11 @@ class Agent_0(rpu.Worker):
         err = None
         log = None
     
-        try    : out = open('./agent.out', 'r').read()
+        try    : out = open('./%s/agent.out' % self._session.uid, 'r').read()
         except : pass
-        try    : err = open('./agent.err', 'r').read()
+        try    : err = open('./%s/agent.err' % self._session.uid, 'r').read()
         except : pass
-        try    : log = open('./agent.log', 'r').read()
+        try    : log = open('./%s/agent.log' % self._session.uid, 'r').read()
         except : pass
     
         self._session.get_db()._c.update(
@@ -305,8 +309,8 @@ class Agent_0(rpu.Worker):
     
             # spawn the sub-agent
             self._log.info ("create sub-agent %s: %s" % (sa, cmdline))
-            sa_out = open("%s.out" % sa, "w")
-            sa_err = open("%s.err" % sa, "w")
+            sa_out = open("%s/%s.out" % (self._session.uid, sa), "w")
+            sa_err = open("%s/%s.err" % (self._session.uid, sa), "w")
             sa_proc = sp.Popen(args=cmdline.split(), stdout=sa_out, stderr=sa_err)
     
             # make sure we can stop the sa_proc

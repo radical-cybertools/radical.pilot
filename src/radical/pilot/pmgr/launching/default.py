@@ -167,7 +167,7 @@ class Default(PMGRLaunchingComponent):
         MAX_IO_LOGLENGTH = 10240    # 10k should be enough for anybody...
 
         try:
-            n_out = "%s/%s" % (pilot['sandbox'], 'agent.out')
+            n_out = "%s/%s/%s" % (pilot['sandbox'], self._session.uid, 'agent.out')
             f_out = rs.filesystem.File(n_out, session=self._session)
             s_out = f_out.read()[-MAX_IO_LOGLENGTH:]
             f_out.close ()
@@ -175,7 +175,7 @@ class Default(PMGRLaunchingComponent):
             s_out = 'stdout is not available (%s)' % e
 
         try:
-            n_err = "%s/%s" % (pilot['sandbox'], 'agent.err')
+            n_err = "%s/%s/%s" % (pilot['sandbox'], self._session.uid, 'agent.err')
             f_err = rs.filesystem.File(n_err, session=self._session)
             s_err = f_err.read()[-MAX_IO_LOGLENGTH:]
             f_err.close ()
@@ -183,7 +183,7 @@ class Default(PMGRLaunchingComponent):
             s_err = 'stderr is not available (%s)' % e
 
         try:
-            n_log = "%s/%s" % (pilot['sandbox'], 'agent.log')
+            n_log = "%s/%s/%s" % (pilot['sandbox'], self._session.uid, 'agent.log')
             f_log = rs.filesystem.File(n_log, session=self._session)
             s_log = f_log.read()[-MAX_IO_LOGLENGTH:]
             f_log.close ()
@@ -419,7 +419,11 @@ class Default(PMGRLaunchingComponent):
                                                   session=self._session,
                                                   flags=rs.filesystem.CREATE_PARENTS)
             LOCAL_SCHEME = 'file'
+            
+            # Also create the session_id dir for logs and profiles
+            sandbox_tgt.make_dir(self._session.uid)
 
+            
             # ------------------------------------------------------------------
             # Copy the bootstrap shell script.
             # This also creates the sandbox.
@@ -667,8 +671,8 @@ class Default(PMGRLaunchingComponent):
             jd.arguments             = ["-l %s" % BOOTSTRAPPER_SCRIPT, bootstrap_args]
             jd.working_directory     = rs.Url(pilot_sandbox).path
             jd.project               = project
-            jd.output                = "bootstrap_1.out"
-            jd.error                 = "bootstrap_1.err"
+            jd.output                = "%s/bootstrap_1.out" % self._session.uid
+            jd.error                 = "%s/bootstrap_1.err" % self._session.uid
             jd.total_cpu_count       = number_cores
             jd.processes_per_host    = cores_per_node
             jd.wall_time_limit       = runtime
@@ -685,13 +689,6 @@ class Default(PMGRLaunchingComponent):
                                  'input', os.path.basename(bootstrapper_path))),
                     '%s > %s' % (cfg_tmp_file, os.path.join(jd.working_directory, 
                                  'input', agent_cfg_name)),
-                  # '%s < %s' % ('agent.log', os.path.join(jd.working_directory, 'agent.log')),
-                  # '%s < %s' % (os.path.join(jd.working_directory, 'agent.log'), 'agent.log'),
-                  # '%s < %s' % ('agent.log', 'agent.log'),
-                  # '%s < %s' % (os.path.join(jd.working_directory, 'STDOUT'), 'unit.000000/STDOUT'),
-                  # '%s < %s' % (os.path.join(jd.working_directory, 'unit.000000/STDERR'), 'STDERR')
-                  # '%s < %s' % ('unit.000000/STDERR', 'unit.000000/STDERR')
-                    
                   #  TODO: This needs to go into a per session directory on the submit node
                     '%s < %s' % ('pilot.0000.log.tgz', 'pilot.0000.log.tgz')
                 ]

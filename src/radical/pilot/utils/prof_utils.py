@@ -24,7 +24,7 @@ class Profiler (object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, name):
+    def __init__ (self, name, path=None):
 
         # this init is only called once (globally).  We synchronize clocks and
         # set timestamp_zero
@@ -40,8 +40,18 @@ class Profiler (object):
 
         self._ts_zero, self._ts_abs, self._ts_mode = self._timestamp_init()
 
-        self._name  = name
-        self._handle = open("%s.prof"  % self._name, 'a')
+        if not path:
+            path = os.getcwd()
+
+        self._path = path
+        self._name = name
+
+        try:
+            os.makedirs(self._path)
+        except:
+            pass # already exists
+
+        self._handle = open("%s/%s.prof" % (self._path, self._name), 'a')
 
         # write header and time normalization info
         # NOTE: Don't forget to sync any format changes in the bootstrapper

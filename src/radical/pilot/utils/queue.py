@@ -147,18 +147,18 @@ class Queue(object):
     """
     This is really just the queue interface we want to implement
     """
-    def __init__(self, flavor, qname, role, cfg, addr=None):
+    def __init__(self, session, flavor, qname, role, cfg, addr=None):
 
-        self._flavor = flavor
-        self._qname  = qname
-        self._role   = role
-        self._cfg    = copy.deepcopy(cfg)
-        self._addr   = addr
+        self._session = session
+        self._flavor  = flavor
+        self._qname   = qname
+        self._role    = role
+        self._cfg     = copy.deepcopy(cfg)
+        self._addr    = addr
 
-        self._name   = "%s.%s" % (self._qname, self._role)
-        self._log    = ru.get_logger('rp.%s' % self._name, 
-                                     self._cfg.get('log_target', '.'),
-                                     self._cfg.get('log_level',  'off'))
+        self._name    = "%s.%s" % (self._qname, self._role)
+        self._log     = self._session._get_logger('rp.%s' % self._name, 
+                                                  self._cfg.get('log_level',  'off'))
 
         if not self._addr:
             self._addr = 'tcp://*:*'
@@ -192,7 +192,7 @@ class Queue(object):
     # This class-method creates the appropriate sub-class for the Queue.
     #
     @classmethod
-    def create(cls, flavor, name, role, cfg={}, addr=None):
+    def create(cls, session, flavor, name, role, cfg={}, addr=None):
 
         # Make sure that we are the base-class!
         if cls != Queue:
@@ -205,7 +205,7 @@ class Queue(object):
                 QUEUE_ZMQ     : QueueZMQ,
             }[flavor]
           # print 'instantiating %s' % impl
-            return impl(flavor, name, role, cfg, addr)
+            return impl(session, flavor, name, role, cfg, addr)
         except KeyError:
             raise RuntimeError("Queue type '%s' unknown!" % flavor)
 
@@ -250,9 +250,9 @@ class Queue(object):
 #
 class QueueThread(Queue):
 
-    def __init__(self, flavor, name, role, cfg, addr=None):
+    def __init__(self, session, flavor, name, role, cfg, addr=None):
 
-        Queue.__init__(self, flavor, name, role, cfg, addr)
+        Queue.__init__(self, session, flavor, name, role, cfg, addr)
         self._q = _registry.get(flavor, name, pyq.Queue)
 
 
@@ -293,9 +293,9 @@ class QueueThread(Queue):
 #
 class QueueProcess(Queue):
 
-    def __init__(self, flavor, name, role, cfg, addr=None):
+    def __init__(self, session, flavor, name, role, cfg, addr=None):
 
-        Queue.__init__(self, flavor, name, role, cfg, addr)
+        Queue.__init__(self, session, flavor, name, role, cfg, addr)
         self._q = _registry.get(flavor, name, mp.Queue)
 
 
@@ -337,7 +337,7 @@ class QueueProcess(Queue):
 class QueueZMQ(Queue):
 
 
-    def __init__(self, flavor, name, role, cfg, addr=None):
+    def __init__(self, session, flavor, name, role, cfg, addr=None):
         """
         This Queue type sets up an zmq channel of this kind:
 
@@ -368,7 +368,7 @@ class QueueZMQ(Queue):
         self._stall_hwm  = cfg.get('stall_hwm', 1)
         self._bulk_size  = cfg.get('bulk_size', 1)
 
-        Queue.__init__(self, flavor, name, role, cfg, addr)
+        Queue.__init__(self, session, flavor, name, role, cfg, addr)
 
         # ----------------------------------------------------------------------
         # behavior depends on the role...
@@ -457,7 +457,7 @@ class QueueZMQ(Queue):
                                 msgs.append += msg
                             else: 
                                 msgs.append(msg)
-                            self._log.debug(' === stall %s/%s', len(msgs), hwm)
+                            self._log.debug('stall %s/%s', len(msgs), hwm)
 
                         i = 0
                         while msgs:
@@ -476,7 +476,7 @@ class QueueZMQ(Queue):
                                     _uninterruptible(_out.send_json, out_bulk)
 
                                     # go to next message/bulk (break while loop)
-                                    self._log.debug(' === sent  %s/%s', i, hwm)
+                                    self._log.debug('sent  %s/%s', i, hwm)
                                     break
 
                 except Exception as e:

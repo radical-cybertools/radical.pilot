@@ -62,8 +62,6 @@ class Popen(AgentExecutingComponent) :
         self._watcher.daemon = True
         self._watcher.start ()
 
-        self._log.debug('=== watcher 1: %s - %s', self._watcher, type(self._watcher))
-
         # The AgentExecutingComponent needs the LaunchMethods to construct
         # commands.
         self._task_launcher = rp.agent.LM.create(

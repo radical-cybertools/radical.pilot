@@ -7,7 +7,7 @@ import os
 import sys
 import time
 
-os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
+# os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -92,7 +92,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 1000  # number of units to run
+        n = 10# number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()

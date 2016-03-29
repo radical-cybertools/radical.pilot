@@ -52,27 +52,19 @@ def bootstrap_4(agent_name):
         session_id = cfg['session_id']
 
         # set up a logger and profiler
-        prof = rpu.Profiler ('%s.bootstrap_3' % agent_name)
-        prof.prof('sync ref', msg='%s start' % agent_name, uid=pilot_id)
-
-        log = ru.get_logger('%s.bootstrap_3'     % agent_name,
-                            '%s.bootstrap_3.log' % agent_name, cfg.get('debug', 'INFO'))
-        log.info('start')
-
         print "Agent config (%s):\n%s\n\n" % (agent_cfg, pprint.pformat(cfg))
 
         # des Pudels Kern
         agent = rpw.Agent(cfg)
         agent.start()
         agent.join()
-        log.debug('%s joined', agent_name)
 
 
     except SystemExit:
-        log.exception("Exit running %s" % agent_name)
+        print "Exit running %s" % agent_name
 
     except Exception as e:
-        log.exception("Error running %s" % agent_name)
+        print "Error running %s" % agent_name
 
     finally:
 
@@ -82,9 +74,7 @@ def bootstrap_4(agent_name):
         if agent:
             agent.stop()
 
-        log.debug('%s finalized' % agent_name)
-        prof.prof('stop', msg='finally clause %s' % agent_name, uid=pilot_id)
-        prof.close()
+        print '%s finalized' % agent_name
 
 
 # ------------------------------------------------------------------------------

@@ -15,7 +15,6 @@ from ..          import constants      as rpc
 from ..          import states         as rps
 
 from .misc       import hostip
-from .prof_utils import Profiler
 from .prof_utils import timestamp      as rpu_timestamp
 
 from .queue      import Queue          as rpu_Queue
@@ -182,16 +181,20 @@ class Component(mp.Process):
     #
     def _heartbeat_monitor_cb(self, topic, msg):
 
+        self._log.debug('command incoming: %s', msg)
+
         cmd = msg['cmd']
         arg = msg['arg']
 
         if cmd == 'heartbeat':
             sender = arg['sender']
             if sender == self._cfg['heart']:
-                self._log.debug('heartbeat monitored (%s)' % sender)
+                self._log.debug('heartbeat monitored (%s)', sender)
                 self._heartbeat = time.time()
             else:
-                self._log.debug('heartbeat ignored (%s)' % sender)
+                self._log.debug('heartbeat ignored (%s)', sender)
+        else:
+            self._log.debug('command ignored: %s (%s)', cmd, arg)
 
 
     # --------------------------------------------------------------------------
@@ -309,8 +312,8 @@ class Component(mp.Process):
 
         # get debugging, logging, profiling set up
         self._dh   = ru.DebugHelper(name=self.uid)
-        self._log  = ru.get_logger(self.uid, '.', self._debug)
-        self._prof = Profiler(self.uid)
+        self._log  = self._session._get_logger(self.uid, self._debug)
+        self._prof = self._session._get_profiler(self.uid)
 
         self._prof.prof('initialize', uid=self.uid)
         self._log.info('initialize %s',   self.uid)
@@ -409,6 +412,8 @@ class Component(mp.Process):
 
         # initialize state
         self._initialize_common()
+
+        self._log.info('cfg: %s' % pprint.pformat(self._cfg))
 
         # give any derived class the opportunity to perform initialization in
         # the child context
@@ -615,13 +620,13 @@ class Component(mp.Process):
             self._child_uid  = None
 
 
-        try:
+      # try:
             # this is now the parent process context
-            self._initialize_parent()
-        except Exception as e:
-            self._log.exception ('initialization failed')
-            self.stop()
-            raise
+        self._initialize_parent()
+      # except Exception as e:
+      #     self._log.exception ('initialization failed')
+      #     self.stop()
+      #     raise
 
 
     # --------------------------------------------------------------------------
@@ -750,7 +755,7 @@ class Component(mp.Process):
         addr = self._cfg['bridges'][input]['addr_out']
         self._log.debug("using addr %s for input %s" % (addr, input))
 
-        q = rpu_Queue.create(rpu_QUEUE_ZMQ, input, rpu_QUEUE_OUTPUT, addr=addr)
+        q = rpu_Queue.create(self._session, rpu_QUEUE_ZMQ, input, rpu_QUEUE_OUTPUT, addr=addr)
         self._inputs['name'] = {'queue'  : q,
                                 'states' : states}
 
@@ -828,7 +833,7 @@ class Component(mp.Process):
                 self._log.debug("using addr %s for output %s" % (addr, output))
 
                 # non-final state, ie. we want a queue to push to
-                q = rpu_Queue.create(rpu_QUEUE_ZMQ, output, rpu_QUEUE_INPUT, addr=addr)
+                q = rpu_Queue.create(self._session, rpu_QUEUE_ZMQ, output, rpu_QUEUE_INPUT, addr=addr)
                 self._outputs[state] = q
 
                 self._log.debug('registered output    : %s : %s : %s' \
@@ -955,7 +960,7 @@ class Component(mp.Process):
         addr = self._cfg['bridges'][pubsub]['addr_in']
         self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
 
-        q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_PUB, addr=addr)
+        q = rpu_Pubsub.create(self._session, rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_PUB, addr=addr)
         self._publishers[pubsub] = q
 
         self._log.debug('registered publisher : %s : %s' % (pubsub, q.name))
@@ -1007,7 +1012,7 @@ class Component(mp.Process):
         self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
 
         # create a pubsub subscriber (the pubsub name doubles as topic)
-        q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB, addr=addr)
+        q = rpu_Pubsub.create(self._session, rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB, addr=addr)
         q.subscribe(pubsub)
 
         # subscription is racey for the *first* subscriber: the bridge gets the

@@ -14,7 +14,6 @@ from ..          import constants      as rpc
 from ..          import states         as rps
 
 from .misc       import hostip
-from .prof_utils import Profiler
 from .prof_utils import timestamp      as rpu_timestamp
 
 from .queue      import Queue          as rpu_Queue
@@ -160,8 +159,8 @@ class Controller(object):
         # get debugging, logging, profiling set up
         self._debug = cfg.get('debug')
         self._dh    = ru.DebugHelper(name=self.uid)
-        self._log   = ru.get_logger(self.uid, '.', self._debug)
-        self._prof  = Profiler(self.uid)
+        self._log   = self._session._get_logger(self.uid, self._debug)
+        self._prof  = self._session._get_profiler(self.uid)
 
         self._log.info('initialize %s', self.uid)
 
@@ -258,11 +257,11 @@ class Controller(object):
                 self._log.info('create bridge %s', bname)
             
                 if bname.endswith('queue'):
-                    bridge = rpu_Queue.create(rpu_QUEUE_ZMQ, bname,
-                                              rpu_QUEUE_BRIDGE, bcfg)
+                    bridge = rpu_Queue.create(self._session, rpu_QUEUE_ZMQ, 
+                                              bname, rpu_QUEUE_BRIDGE, bcfg)
                 elif bname.endswith('pubsub'):
-                    bridge = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, bname,
-                                               rpu_PUBSUB_BRIDGE, bcfg)
+                    bridge = rpu_Pubsub.create(self._session, rpu_PUBSUB_ZMQ, 
+                                               bname, rpu_PUBSUB_BRIDGE, bcfg)
                 else:
                     raise ValueError('unknown bridge type for %s' % bname)
 
@@ -301,8 +300,9 @@ class Controller(object):
         # before we go on to start components, we register for alive messages,
         # otherwise those messages can arrive before we are able to get them.
         addr = self._ctrl_cfg['bridges'][rpc.CONTROL_PUBSUB]['addr_out']
-        self._ctrl_sub = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, rpc.CONTROL_PUBSUB,
-                                           rpu_PUBSUB_SUB, addr=addr)
+        self._ctrl_sub = rpu_Pubsub.create(self._session, rpu_PUBSUB_ZMQ, 
+                                           rpc.CONTROL_PUBSUB, rpu_PUBSUB_SUB, 
+                                           addr=addr)
         self._ctrl_sub.subscribe(rpc.CONTROL_PUBSUB)
 
         self._log.debug('start_bridges done')
@@ -314,6 +314,9 @@ class Controller(object):
 
         # at this point we know that bridges have been started, and we can use
         # the control pubsub for heartbeats and alive messages.
+
+        self._log.debug('start comps: %s', self._comp_cfg)
+        print 'start comps: %s' % self._comp_cfg
 
         if not self._comp_cfg:
             return
@@ -389,6 +392,8 @@ class Controller(object):
 
         # if we did not do so before, start sending heartbeats to the things, to
         # keep them alive
+        self._log.debug('send heartbeat?: %s =? %s', self._owner, self._ctrl_cfg['heart'])
+        print 'send heartbeat?: %s =? %s' % (self._owner, self._ctrl_cfg['heart'])
         if self._owner == self._ctrl_cfg['heart']:
 
             if not self._heartbeat_thread:
@@ -396,9 +401,9 @@ class Controller(object):
                 # we need to issue heartbeats!
                 self._heartbeat_term   = mt.Event()
                 self._heartbeat_tname  = '%s.heartbeat' % self._uid
-                self._heartbeat_thread = mt.Thread(target=self._heartbeat_sender,
-                                                   args=[self._heartbeat_term],
-                                                   name=self._heartbeat_tname)
+                self._heartbeat_thread = mt.Thread(target = self._heartbeat_sender,
+                                                   args   =[self._heartbeat_term],
+                                                   name   = self._heartbeat_tname)
                 self._heartbeat_thread.start()
 
 
@@ -538,14 +543,16 @@ class Controller(object):
 
         heart = self._ctrl_cfg['heart']
         addr  = self._ctrl_cfg['bridges'][rpc.CONTROL_PUBSUB]['addr_in']
-        pub   = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, rpc.CONTROL_PUBSUB,
-                                  rpu_PUBSUB_PUB, addr=addr)
+        pub   = rpu_Pubsub.create(self._session, rpu_PUBSUB_ZMQ, 
+                                  rpc.CONTROL_PUBSUB, rpu_PUBSUB_PUB, addr=addr)
 
         last_heartbeat = 0.0  # we never sent a heartbeat before
         while not terminate.is_set():
 
             now = time.time()
             if last_heartbeat + self._heartbeat_interval < now:
+
+                print 'send heartbeat!!! %s' % heart
 
                 pub.put(rpc.CONTROL_PUBSUB, {'cmd' : 'heartbeat',
                                              'arg' : {'sender' : heart}})

@@ -6,10 +6,10 @@ import tarfile
 
 import radical.utils as ru
 from   radical.pilot.states import *
-from . import logger
 
 from db_utils import *
 
+logger = ru.get_logger('radical.pilot.utils')
 
 # ------------------------------------------------------------------------------
 #

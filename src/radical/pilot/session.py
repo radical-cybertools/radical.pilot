@@ -25,6 +25,8 @@ from .pilot_manager   import PilotManager
 from .resource_config import ResourceConfig
 from .db              import DBSession
 
+from .utils import version_detail as rp_version_detail
+
 
 # ------------------------------------------------------------------------------
 #
@@ -61,8 +63,6 @@ class Session(rs.Session):
             * :class:`radical.pilot.DatabaseError`
 
         """
-
-        self._log = ru.get_logger('radical.pilot')
 
         self._dh        = ru.DebugHelper()
         self._valid     = True
@@ -104,10 +104,22 @@ class Session(rs.Session):
                        os.environ.get('RADICAL_PILOT_SESSION_CFG', 'default')))
 
         # fall back to config data where possible
-        if not dburl: dburl = self._cfg.get('dburl')
-        if not uid  : uid   = self._cfg.get('session_id')
-
         # sanity check on parameters
+        if not uid : uid = self._cfg.get('session_id')
+        if uid:
+            self._uid         = uid
+            self._reconnected = True
+        else:
+            # generate new uid, reset all other ID counters
+            # FIXME: this will screw up counters for *concurrent* sessions, 
+            #        as the ID generation is managed in a process singleton.
+            self._uid = ru.generate_id('rp.session',  mode=ru.ID_PRIVATE)
+            ru.reset_id_counters(prefix='rp.session', reset_all_others=True)
+
+        self._log = self._get_logger('radical.pilot')
+
+
+        if not dburl: dburl = self._cfg.get('dburl')
         if not dburl:
             dburl = os.getenv("RADICAL_PILOT_DBURL", None)
 
@@ -128,21 +140,11 @@ class Session(rs.Session):
                     # really really need a db connection...
                     raise ValueError("incomplete DBURL '%s' no db name!" % self._dburl)
 
-            self._log.info("using database %s" % self._dburl)
 
-
-        if uid:
-            self._uid         = uid
-            self._reconnected = True
-        else:
-            # generate new uid, reset all other ID counters
-            # FIXME: this will screw up counters for *concurrent* sessions, 
-            #        as the ID generation is managed in a process singleton.
-            self._uid = ru.generate_id('rp.session',  mode=ru.ID_PRIVATE)
-            ru.reset_id_counters(prefix='rp.session', reset_all_others=True)
+        self._log.info("using database %s" % self._dburl)
 
         # initialize profiling
-        self.prof = rpu.Profiler('%s' % self._uid)
+        self.prof = self._get_profiler(self._uid)
 
         if self._reconnected:
             self.prof.prof('reconnect session', uid=self._uid)
@@ -218,13 +220,14 @@ class Session(rs.Session):
         # sessions will not start any bridges etc.  Thus we make the startup of
         # the controller explicit.  Once the controller is up, we merge the
         # bridge addresses etc. into the session config.
-        #
+
+        self._log.debug('=== create session controller')
         if not self._controller:
             self._cfg['owner']      = self._uid  # session is always root
             self._cfg['session_id'] = self._uid
             self._cfg['dburl']      = str(self._dburl)
             self._controller = rpu.Controller(cfg=self._cfg, session=self)
-            ru.dict_merge(self._cfg, self._controller.ctrl_cfg, ru.PRESERVE)
+          # ru.dict_merge(self._cfg, self._controller.ctrl_cfg, ru.PRESERVE)
 
         # we pass session_id and db_url as part of the controller cfg
 
@@ -463,6 +466,36 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
+    def _get_logger(self, name, level=None):
+        """
+        This is a thin wrapper around `ru.get_logger()` which makes sure that
+        log files end up in a separate directory with the name of `session.uid`.
+        """
+
+        target = "."
+        path   = "%s/%s/" % (os.getcwd(), self.uid)
+
+        log = ru.get_logger(name, target, path, level)
+        log.info('radical.pilot        version: %s' % rp_version_detail)
+
+        return log
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_profiler(self, name, level=None):
+        """
+        This is a thin wrapper around `rpu.Profiler()` which makes sure that
+        profiles end up in a separate directory with the name of `session.uid`.
+        """
+
+        prof = rpu.Profiler(name, path="%s/%s" % (os.getcwd(), self._uid))
+
+        return prof
+
+
+    # --------------------------------------------------------------------------
+    #
     def inject_metadata(self, metadata):
         """
         Insert (experiment) metadata into an active session
@@ -471,8 +504,6 @@ class Session(rs.Session):
 
         if not isinstance(metadata, dict):
             raise Exception("Session metadata should be a dict!")
-
-        from .utils import version_detail as rp_version_detail
 
         # Always record the radical software stack
         metadata['radical_stack'] = {'rp': rp_version_detail,
