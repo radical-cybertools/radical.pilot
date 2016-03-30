@@ -17,6 +17,7 @@ def bootstrap_3():
     This is only executed by agent_0
     """
 
+    agent_0 = None
     try:
         setproctitle.setproctitle('rp.agent_0')
 
@@ -30,18 +31,13 @@ def bootstrap_3():
         while True:
             time.sleep(1)
 
-    except SystemExit:
-        log.exception("Exit running agent_0")
-
-    except Exception as e:
-        log.exception("Error running agent_0")
-
     finally:
 
         # in all cases, make sure we perform an orderly shutdown.  I hope python
         # does not mind doing all those things in a finally clause of
         # (essentially) main...
-        agent_0.stop()
+        if agent_0:
+            agent_0.stop()
 
 
 # ------------------------------------------------------------------------------

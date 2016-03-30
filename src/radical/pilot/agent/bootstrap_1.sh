@@ -1230,7 +1230,7 @@ if test -z "$SESSION_ID"  ; then  usage "missing SESSION_ID    ";  fi
 if test -z "$RP_VERSION"  ; then  usage "missing RP_VERSION   ";  fi
 
 #for log files etc
-mkdir $SESSION_ID
+mkdir -p $SESSION_ID
 
 # If the host that will run the agent is not capable of communication
 # with the outside world directly, we will setup a tunnel.

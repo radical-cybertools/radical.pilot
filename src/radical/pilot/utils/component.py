@@ -1001,9 +1001,6 @@ class Component(mp.Process):
         """
 
         name = "%s.subscriber.%s" % (self.uid, cb.__name__)
-        if name in self._subscribers:
-            raise ValueError('cb %s already registered for %s' % (cb.__name__, pubsub))
-
         # get address for pubsub
         if not pubsub in self._cfg['bridges']:
             raise ValueError('no bridge known for pubsub channel %s' % pubsub)
@@ -1049,6 +1046,11 @@ class Component(mp.Process):
         t.start()
 
         with self._cb_lock:
+            if name in self._subscribers:
+                e.set()
+                t.join()
+                raise ValueError('cb %s already registered for %s' % (cb.__name__, pubsub))
+
             self._subscribers[name] = {'term'   : e,  # termination signal
                                        'thread' : t}  # thread handle
 
