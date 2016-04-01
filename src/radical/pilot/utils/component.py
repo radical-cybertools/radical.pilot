@@ -333,24 +333,6 @@ class Component(mp.Process):
         self.register_idle_cb(self._thread_watcher_cb, timeout= 0.1)
         self.register_idle_cb(self._profile_flush_cb,  timeout=60.0)
 
-        # parent *or* child will send an alive message.  child will send it if
-        # it exists, parent otherwise.
-        if self.is_parent and not self.has_child:
-            self._log.debug('parent sends alive')
-            assert(self._cfg['owner'])
-            self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
-                                              'arg' : {'sender' : self.uid,
-                                                       'owner'  : self._cfg['owner']}})
-        elif self.is_child:
-            self._log.debug('child sends alive')
-            assert(self._cfg['owner'])
-            self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
-                                              'arg' : {'sender' : self.uid,
-                                                       'owner'  : self._cfg['owner']}})
-        else:
-            self._log.debug('no alive sent (%s : %s : %s)', self.is_child,
-                    self.has_child, self.is_parent)
-
         # give any derived class the opportunity to perform initialization in
         # parent *and* child context
         self.initialize_common()
@@ -374,6 +356,12 @@ class Component(mp.Process):
         # give any derived class the opportunity to perform initialization in
         # the parent context
         self.initialize_parent()
+
+        # only *after* initialization can we send the 'alive' signal --
+        # otherwise we'd invite race conditions (only after init we have
+        # subscribed to channels, and only then any publishing on those channels
+        # should start, otherwise we'll loose messages.
+        self._signal_alive()
 
         # parent calls terminate on stop(), which we translate here into stop()
         def sigterm_handler(signum, frame):
@@ -451,6 +439,12 @@ class Component(mp.Process):
             self.stop()
         signal.signal(signal.SIGHUP, sighup_handler)
 
+        # only *after* initialization can we send the 'alive' signal --
+        # otherwise we'd invite race conditions (only after init we have
+        # subscribed to channels, and only then any publishing on those channels
+        # should start, otherwise we'll loose messages.
+        self._signal_alive()
+
 
     # --------------------------------------------------------------------------
     #
@@ -461,6 +455,29 @@ class Component(mp.Process):
         set up component state before things arrive.
         """
         self._log.debug('base initialize_child (NOOP)')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _signal_alive(self):
+
+        # parent *or* child will send an alive message.  child will send it if
+        # it exists, parent otherwise.
+        if self.is_parent and not self.has_child:
+            self._log.debug('parent sends alive')
+            assert(self._cfg['owner'])
+            self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
+                                              'arg' : {'sender' : self.uid,
+                                                       'owner'  : self._cfg['owner']}})
+        elif self.is_child:
+            self._log.debug('child sends alive')
+            assert(self._cfg['owner'])
+            self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
+                                              'arg' : {'sender' : self.uid,
+                                                       'owner'  : self._cfg['owner']}})
+        else:
+            self._log.debug('no alive sent (%s : %s : %s)', self.is_child,
+                    self.has_child, self.is_parent)
 
 
     # --------------------------------------------------------------------------
