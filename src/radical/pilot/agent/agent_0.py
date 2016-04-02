@@ -127,14 +127,14 @@ class Agent_0(rpu.Worker):
         # ready to roll!
         pilot = {'type'    : 'pilot',
                  'uid'     : self._pilot_id,
-                 'state'   : rps.ACTIVE,
+                 'state'   : rps.PMGR_ACTIVE,
                  'lm_info' : self._lrms.lm_info.get('version_info'),
                  '$set'    : 'lm_info'}
         self.advance(pilot, publish=True, push=False, prof=True)
 
         # register idle callback, to pull for units -- which is the only action
         # we have to perform, really
-        self.register_idle_cb(self._idle_cb, timeout=self._cfg['db_poll_sleeptime'])
+        self.register_idle_cb(self._check_units, timeout=self._cfg['db_poll_sleeptime'])
 
 
     # --------------------------------------------------------------------------
@@ -394,25 +394,6 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _idle_cb(self):
-        """
-        This method will be driving all other agent components, in the sense
-        that it will manage the connection to MongoDB to retrieve units, and
-        then feed them to the respective component queues.
-        """
-
-        try:
-            # check for new units
-            return self._check_units()
-
-        except Exception as e:
-            # exception in the main loop is fatal
-            self._log.exception("ERROR in agent main loop: %s" % e)
-            sys.exit(1)
-
-
-    # --------------------------------------------------------------------------
-    #
     def _check_units(self):
 
         # Check if there are compute units waiting for input staging
@@ -447,6 +428,9 @@ class Agent_0(rpu.Worker):
         self._prof.prof('get', msg="bulk size: %d" % len(unit_list), uid=self._pilot_id)
         for unit in unit_list:
             unit['control'] = 'agent'
+
+            # we need to make sure to have the correct state:
+            unit['state'] = rps._unit_state_collapse(unit['states'])
             self._prof.prof('get', msg="bulk size: %d" % len(unit_list), uid=unit['uid'])
 
         # now we really own the CUs, and can start working on them (ie. push
