@@ -6,6 +6,8 @@ import time
 import errno
 import pprint
 import signal
+import msgpack
+
 import Queue           as pyq
 import threading       as mt
 import setproctitle    as spt
@@ -452,7 +454,8 @@ class QueueZMQ(Queue):
 
                         msgs = list()
                         while len(msgs) < hwm:
-                            msg = _uninterruptible(_in.recv_json)
+                            data = _uninterruptible(_in.recv)
+                            msg  = msgpack.unpackb(data) 
                             if isinstance(msg, list): 
                                 msgs.append += msg
                             else: 
@@ -472,8 +475,9 @@ class QueueZMQ(Queue):
                                         out_bulk.append(msgs.pop(0))
                                         i+=1
 
-                                    req = _uninterruptible(_out.recv)
-                                    _uninterruptible(_out.send_json, out_bulk)
+                                    req  = _uninterruptible(_out.recv)
+                                    data = msgpack.packb(out_bulk) 
+                                    _uninterruptible(_out.send, data)
 
                                     # go to next message/bulk (break while loop)
                                     self._log.debug('sent  %s/%s', i, hwm)
@@ -565,8 +569,9 @@ class QueueZMQ(Queue):
         if not self._role == QUEUE_INPUT:
             raise RuntimeError("queue %s (%s) can't put()" % (self._qname, self._role))
 
-        self._log.debug("-> %s", pprint.pformat(msg))
-        _uninterruptible(self._q.send_json, msg)
+      # self._log.debug("-> %s", pprint.pformat(msg))
+        data = msgpack.packb(msg) 
+        _uninterruptible(self._q.send, data)
 
 
     # --------------------------------------------------------------------------
@@ -578,8 +583,9 @@ class QueueZMQ(Queue):
 
         _uninterruptible(self._q.send, 'request')
 
-        msg = _uninterruptible(self._q.recv_json)
-        self._log.debug("<- %s", pprint.pformat(msg))
+        data = _uninterruptible(self._q.recv)
+        msg  = msgpack.unpackb(data) 
+      # self._log.debug("<- %s", pprint.pformat(msg))
         return msg
 
 
@@ -607,7 +613,8 @@ class QueueZMQ(Queue):
           #     return None
 
             if _uninterruptible(self._q.poll, flags=zmq.POLLIN, timeout=timeout):
-                msg = _uninterruptible(self._q.recv_json)
+                data = _uninterruptible(self._q.recv)
+                msg  = msgpack.unpackb(data) 
                 self._requested = False
                 self._log.debug("<< %s", pprint.pformat(msg))
                 return msg

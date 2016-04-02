@@ -281,6 +281,7 @@ setup_args = {
                             'netifaces',
                             'setproctitle',
                             'ntplib',
+                            'msgpack-python',
                             'pyzmq'],
     'tests_require'      : [],
     'test_suite'         : 'radical.pilot.tests',

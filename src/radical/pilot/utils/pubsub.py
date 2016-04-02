@@ -8,6 +8,7 @@ import time
 import errno
 import pprint
 import signal
+import msgpack
 import Queue           as pyq
 import setproctitle    as spt
 import multiprocessing as mp
@@ -415,8 +416,8 @@ class PubsubZMQ(Pubsub):
             raw = _uninterruptible(self._q.recv)
             topic, data = raw.split(' ', 1)
 
-        msg = json.loads(data)
-        self._log.debug("<- %s", ([topic, pprint.pformat(msg)]))
+        msg = msgpack.unpackb(data) 
+      # self._log.debug("<- %s", ([topic, pprint.pformat(msg)]))
         return [topic, msg]
 
 
@@ -436,8 +437,8 @@ class PubsubZMQ(Pubsub):
                 raw = _uninterruptible(self._q.recv)
                 topic, data = raw.split(' ', 1)
 
-            msg = json.loads(data)
-            self._log.debug("<< %s", ([topic, pprint.pformat(msg)]))
+            msg = msgpack.unpackb(data) 
+          # self._log.debug("<< %s", ([topic, pprint.pformat(msg)]))
             return [topic, msg]
 
         else:
