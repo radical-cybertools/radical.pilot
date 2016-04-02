@@ -146,8 +146,11 @@ class ComputeUnit(object):
         new_state, passed = rps._unit_state_progress(current, target)
 
         # replay all state transitions
-        for state in passed:
+        if new_state in [rps.CANCELED, rps.FAILED]:
+            # don't replay intermediate states
+            passed = passed[-1:]
 
+        for state in passed:
             for cb_func, cb_data in self._callbacks:
                 self._state = state
                 if cb_data: cb_func(self, state, cb_data)

@@ -117,7 +117,6 @@ _unit_state_inv   = {v: k for k, v in _unit_state_values.iteritems()}
 
 def _unit_state_progress(current, target):
     """
-
     This method will ensure a unit state progression in sync with the state
     model defined above.  It will return a tuple: [new_state, passed_states]
     where 'new_state' is either 'target' or 'current', depending which comes

@@ -83,6 +83,7 @@ class RoundRobin(UMGRSchedulingComponent):
 
             # we have active pilots: use them!
 
+            self._idx += 1
             if  self._idx >= len(self._pids): 
                 self._idx = 0
 
