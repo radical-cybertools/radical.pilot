@@ -162,6 +162,12 @@ class Queue(object):
         self._log     = self._session._get_logger('rp.%s' % self._name, 
                                                   self._cfg.get('log_level',  'off'))
 
+        if self._log.getEffectiveLevel() == 10: # logging.DEBUG:
+            self._debug = True
+        else:
+            self._debug = False
+
+
         if not self._addr:
             self._addr = 'tcp://*:*'
 
@@ -569,7 +575,8 @@ class QueueZMQ(Queue):
         if not self._role == QUEUE_INPUT:
             raise RuntimeError("queue %s (%s) can't put()" % (self._qname, self._role))
 
-      # self._log.debug("-> %s", pprint.pformat(msg))
+        if self._debug:
+            self._log.debug("-> %s", pprint.pformat(msg))
         data = msgpack.packb(msg) 
         _uninterruptible(self._q.send, data)
 
@@ -585,7 +592,8 @@ class QueueZMQ(Queue):
 
         data = _uninterruptible(self._q.recv)
         msg  = msgpack.unpackb(data) 
-      # self._log.debug("<- %s", pprint.pformat(msg))
+        if self._debug:
+            self._log.debug("<- %s", pprint.pformat(msg))
         return msg
 
 
@@ -606,7 +614,8 @@ class QueueZMQ(Queue):
           # try:
           #     msg = self._q.recv_json(flags=zmq.NOBLOCK)
           #     self._requested = False
-          #     self._log.debug("<< %s", pprint.pformat(msg))
+          #     if self._debug:
+          #         self._log.debug("<< %s", pprint.pformat(msg))
           #     return msg
           #
           # except zmq.Again:
@@ -616,7 +625,8 @@ class QueueZMQ(Queue):
                 data = _uninterruptible(self._q.recv)
                 msg  = msgpack.unpackb(data) 
                 self._requested = False
-                self._log.debug("<< %s", pprint.pformat(msg))
+                if self._debug:
+                    self._log.debug("<< %s", pprint.pformat(msg))
                 return msg
 
             else:

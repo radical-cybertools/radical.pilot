@@ -25,10 +25,10 @@ PUBSUB_ROLES  = [PUBSUB_PUB, PUBSUB_SUB, PUBSUB_BRIDGE]
 PUBSUB_ZMQ    = 'zmq'
 PUBSUB_TYPES  = [PUBSUB_ZMQ]
 
-_USE_MULTIPART   =  False  # send [topic, data] as multipart message
-_BRIDGE_TIMEOUT  =      1  # how long to wait for bridge startup
-_LINGER_TIMEOUT  =    250  # ms to linger after close
-_HIGH_WATER_MARK =      0  # number of messages to buffer before dropping
+_USE_MULTIPART   = False  # send [topic, data] as multipart message
+_BRIDGE_TIMEOUT  =     1  # how long to wait for bridge startup
+_LINGER_TIMEOUT  =   250  # ms to linger after close
+_HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
 
 
 # --------------------------------------------------------------------------
@@ -85,7 +85,13 @@ class Pubsub(object):
         sys.stdout.flush()
         self._name       = "%s.%s" % (self._channel, self._role)
         self._log        = self._session._get_logger('rp.%s' % self._name, 
-                                                     self._cfg.get('log_level',  'off'))
+                                                     self._cfg.get('log_level', 'debug'))
+
+        if self._log.getEffectiveLevel() == 10: # logging.DEBUG:
+            self._debug = True
+        else:
+            self._debug = False
+
 
         self._bridge_in  = None  # bridge input  addr
         self._bridge_out = None  # bridge output addr
@@ -292,7 +298,8 @@ class PubsubZMQ(Pubsub):
                             else:
                                 msg = _uninterruptible(_in.recv, flags=zmq.NOBLOCK)
                                 _uninterruptible(_out.send, msg)
-                            self._log.debug("-> %s", pprint.pformat(msg))
+                            if self._debug:
+                                self._log.debug("-> %s", pprint.pformat(msg))
 
 
                         if _out in _socks:
@@ -306,7 +313,8 @@ class PubsubZMQ(Pubsub):
                             else:
                                 msg = _uninterruptible(_out.recv)
                                 _uninterruptible(_in.send, msg)
-                            self._log.debug("<- %s", pprint.pformat(msg))
+                            if self._debug:
+                                self._log.debug("<- %s", pprint.pformat(msg))
 
                 except Exception as e:
                     self._log.exception('bridge error: %s', e)
@@ -391,14 +399,16 @@ class PubsubZMQ(Pubsub):
             raise RuntimeError("channel %s (%s) can't put()" % (self._channel, self._role))
 
         topic = topic.replace(' ', '_')
-        data = json.dumps(msg)
+        data  = msgpack.packb(msg) 
 
         if _USE_MULTIPART:
-            self._log.debug("-> %s", ([topic, pprint.pformat(data)]))
+            if self._debug:
+                self._log.debug("-> %s", ([topic, pprint.pformat(data)]))
             _uninterruptible(self._q.send_multipart, [topic, data])
 
         else:
-            self._log.debug("-> %s %s", topic, pprint.pformat(data))
+            if self._debug:
+                self._log.debug("-> %s %s", topic, pprint.pformat(data))
             _uninterruptible(self._q.send, "%s %s" % (topic, data))
 
 
@@ -417,7 +427,8 @@ class PubsubZMQ(Pubsub):
             topic, data = raw.split(' ', 1)
 
         msg = msgpack.unpackb(data) 
-      # self._log.debug("<- %s", ([topic, pprint.pformat(msg)]))
+        if self._debug:
+            self._log.debug("<- %s", ([topic, pprint.pformat(msg)]))
         return [topic, msg]
 
 
@@ -438,7 +449,8 @@ class PubsubZMQ(Pubsub):
                 topic, data = raw.split(' ', 1)
 
             msg = msgpack.unpackb(data) 
-          # self._log.debug("<< %s", ([topic, pprint.pformat(msg)]))
+            if self._debug:
+                self._log.debug("<< %s", ([topic, pprint.pformat(msg)]))
             return [topic, msg]
 
         else:
