@@ -218,13 +218,18 @@ class PilotManager(rpu.Component):
     #
     def _state_sub_cb(self, topic, msg):
 
-        if 'type' in msg and msg['type'] == 'pilot':
+        if isinstance(msg, list): things =  msg
+        else                    : things = [msg]
 
-            pid   = msg["uid"]
-            state = msg["state"]
+        for thing in things:
 
-            # since we get this info from the pubsub, we don't publish it again
-            self._update_pilot(pid, msg, publish=False)
+            if 'type' in thing and thing['type'] == 'pilot':
+
+                pid   = thing["uid"]
+                state = thing["state"]
+
+                # since we get this info from the pubsub, we don't publish it again
+                self._update_pilot(pid, thing, publish=False)
 
 
     # --------------------------------------------------------------------------
@@ -347,9 +352,7 @@ class PilotManager(rpu.Component):
 
         # Only after the insert can we hand the pilots over to the next
         # components (ie. advance state).
-        # FIXME: advance as bulk
-        for doc in pilot_docs:
-            self.advance(doc, rps.PMGR_LAUNCHING_PENDING, publish=True, push=True)
+        self.advance(pilot_docs, rps.PMGR_LAUNCHING_PENDING, publish=True, push=True)
 
         self._log.report.ok('>>ok\n')
 

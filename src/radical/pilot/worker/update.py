@@ -59,8 +59,11 @@ class Update(rpu.Worker):
 
         _, db, _, _, _   = ru.mongodb_connect(self._dburl)
         self._mongo_db   = db
-        self._cinfo      = dict()            # collection cache
-        self._lock       = threading.RLock() # protect _cinfo
+        self._coll       = self._mongo_db[self._session_id]
+        self._bulk       = self._coll.initialize_ordered_bulk_op()
+        self._last       = time.time()       # time of last bulk push
+        self._uids       = list()            # list of collected uids
+        self._lock       = threading.RLock() # protect _bulk
 
         self._bct        = self._cfg.get('bulk_collection_time',
                                           DEFAULT_BULK_COLLECTION_TIME)
@@ -73,32 +76,32 @@ class Update(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _timed_bulk_execute(self, cinfo, flush=False):
+    def _timed_bulk_execute(self, flush=False):
 
-        # is there any bulk to look at?
-        if not cinfo['bulk']:
+        # is there anything to execute?
+        if not self._uids:
             return False
 
         now = time.time()
-        age = now - cinfo['last']
+        age = now - self._last
 
         # only push if collection time or size have been exceeded
-        if age < self._bct and len(cinfo['uids']) < self._bcs:
+        if not flush and age < self._bct and len(self._uids) < self._bcs:
             return False
 
         try:
-            res = cinfo['bulk'].execute()
+            res = self._bulk.execute()
+            self._log.debug("bulk update result: %s", res)
         except pymongo.OperationFailure as e:
             self._log.exception('bulk exec error: %s' % e.details)
             raise
         except Exception as e:
             self._log.exception('mongodb error: %s', e)
             raise
-        self._log.debug("bulk update result: %s", res)
 
-        self._prof.prof('update bulk pushed (%d)' % (len(cinfo['uids'])),
+        self._prof.prof('update bulk pushed (%d)' % len(self._uids),
                         uid=self._owner)
-        for entry in cinfo['uids']:
+        for entry in self._uids:
             uid   = entry[0]
             ttype = entry[1]
             state = entry[2]
@@ -109,9 +112,10 @@ class Update(rpu.Worker):
                 self._prof.prof('update', msg='%s update pushed' % ttype, 
                                 uid=uid)
 
-        cinfo['last'] = now
-        cinfo['bulk'] = None
-        cinfo['uids'] = list()
+        # empty bulk, refresh state
+        self._last = now
+        self._bulk = self._coll.initialize_ordered_bulk_op()
+        self._uids = list()
 
         return True
 
@@ -120,12 +124,8 @@ class Update(rpu.Worker):
     #
     def _idle_cb(self):
 
-        action = 0
         with self._lock:
-            for cname in self._cinfo:
-                action += self._timed_bulk_execute(self._cinfo[cname])
-
-        return bool(action)
+             return self._timed_bulk_execute()
 
 
     # --------------------------------------------------------------------------
@@ -173,8 +173,8 @@ class Update(rpu.Worker):
         does not exist, an exception is raised.
         """
 
-        cmd   = msg['cmd']
-        thing = msg['arg']
+        cmd    = msg['cmd']
+        things = msg['arg']
 
       # cmds = ['delete',       'update',       'state',
       #         'delete_flush', 'update_flush', 'state_flush', 'flush']
@@ -182,82 +182,66 @@ class Update(rpu.Worker):
             self._log.info('ignore cmd %s', cmd)
             return
 
+        if not isinstance(things, list):
+            things = [things]
+
 
         # FIXME: we don't have any error recovery -- any failure to update 
         #        state in the DB will thus result in an exception here and tear
         #        down the module.
 
-        # got a new request.  Add to bulk (create as needed),
-        # and push bulk if time is up.
-        uid       = thing['uid']
-        ttype     = thing['type']
-        state     = thing['state']
-        timestamp = thing.get('state_timestamp', rpu.timestamp())
+        for thing in things:
 
-        if 'clone' in uid:
-            # we don't push clone states to DB
-            return
+            # got a new request.  Add to bulk (create as needed),
+            # and push bulk if time is up.
+            uid       = thing['uid']
+            ttype     = thing['type']
+            state     = thing['state']
+            timestamp = thing.get('state_timestamp', rpu.timestamp())
 
-        self._prof.prof('get', msg="update %s state to %s" % (ttype, state), 
-                        uid=uid)
+            if 'clone' in uid:
+                # we don't push clone states to DB
+                return
 
-        if not state:
-            # nothing to push
-            self._prof.prof('get', msg="update %s state ignored" % ttype, uid=uid)
-            return
+            self._prof.prof('get', msg="update %s state to %s" % (ttype, state), 
+                            uid=uid)
 
-        # create an update document
-        update_dict          = dict()
-        update_dict['$set']  = dict()
-        update_dict['$push'] = dict()
+            if not state:
+                # nothing to push
+                self._prof.prof('get', msg="update %s state ignored" % ttype, uid=uid)
+                return
 
-        for key,val in thing.iteritems():
-            update_dict['$set'][key] = val
+            # create an update document
+            update_dict          = dict()
+            update_dict['$set']  = dict()
+            update_dict['$push'] = dict()
 
-        # we never set _id, states (to avoid index clash, duplicated ops)
-        if '_id' in update_dict['$set']:
-            del(update_dict['$set']['_id'])
-        if 'states' in update_dict['$set']:
-            del(update_dict['$set']['states'])
+            for key,val in thing.iteritems():
+                # we never set _id, states (to avoid index clash, duplicated ops)
+                if key not in ['_id', 'states']:
+                    update_dict['$set'][key] = val
 
-        # we set state, put (more importantly) we push the state onto the
-        # 'states' list, so that we can later get state progression in sync with
-        # the state model, even if they have been pushed here out-of-order
-        update_dict['$push']['states'] = state
+            # we set state, put (more importantly) we push the state onto the
+            # 'states' list, so that we can later get state progression in sync with
+            # the state model, even if they have been pushed here out-of-order
+            update_dict['$push']['states'] = state
 
-        # check if we handled the collection before.  If not, initialize
-        # FIXME: we only have one collection now -- simplify!
-        cname = self._session_id
+            # check if we handled the collection before.  If not, initialize
+            # FIXME: we only have one collection now -- simplify!
+            cname = self._session_id
+
+            with self._lock:
+
+                # push the update request onto the bulk
+                self._uids.append([uid, ttype, state])
+                self._bulk.find  ({'uid'  : uid, 
+                                   'type' : ttype}) \
+                          .update(update_dict)
+                self._prof.prof('bulk', msg='bulked (%s)' % state, uid=uid)
 
         with self._lock:
-            if not cname in self._cinfo:
-                self._cinfo[cname] = {
-                        'coll' : self._mongo_db[cname],
-                        'bulk' : None,
-                        'last' : time.time(),  # time of last push
-                        'uids' : list()
-                        }
-
-
-            # check if we have an active bulk for the collection.  If not,
-            # create one.
-            cinfo = self._cinfo[cname]
-
-            if not cinfo['bulk']:
-                cinfo['bulk'] = cinfo['coll'].initialize_ordered_bulk_op()
-
-
-            # push the update request onto the bulk
-          # print '--> %s: %s' % (uid, pprint.pformat(update_dict))
-
-            cinfo['uids'].append([uid, ttype, state])
-            cinfo['bulk'].find  ({'uid'  : uid, 
-                                  'type' : ttype}) \
-                         .update(update_dict)
-            self._prof.prof('bulk', msg='bulked (%s)' % state, uid=uid)
-
             # attempt a timed update
-            self._timed_bulk_execute(cinfo)
+            self._timed_bulk_execute()
 
 
 # ------------------------------------------------------------------------------

@@ -113,6 +113,11 @@ class ComputePilot(object):
 
         self._log.info("[Callback]: pilot %s state: %s.", self.uid, self.state)
 
+        # for final states, we fetch profiles and logs into the session tree
+        if state in rps.FINAL:
+            self._log.info("pilot is final [%s]: fetching profiles from %s", 
+                    state, pilot.sandbox)
+
 
     # --------------------------------------------------------------------------
     #

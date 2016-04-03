@@ -21,11 +21,13 @@ AGENT_STAGING_INPUT_QUEUE      = 'agent_staging_input_queue'
 AGENT_SCHEDULING_QUEUE         = 'agent_scheduling_queue'
 AGENT_EXECUTING_QUEUE          = 'agent_executing_queue'
 AGENT_STAGING_OUTPUT_QUEUE     = 'agent_staging_output_queue'
+# AGENT_UPDATE_QUEUE             = 'agent_update_queue'
 
 AGENT_STAGING_INPUT_COMPONENT  = 'AgentStagingInputComponent'
 AGENT_SCHEDULING_COMPONENT     = 'AgentSchedulingComponent'
 AGENT_EXECUTING_COMPONENT      = 'AgentExecutingComponent'
 AGENT_STAGING_OUTPUT_COMPONENT = 'AgentStagingOutputComponent'
+# AGENT_UPDATE_WORKER            = 'AgentUpdateWorker'
 
 UMGR_UNSCHEDULE_PUBSUB         = 'umgr_unschedule_pubsub'
 UMGR_RESCHEDULE_PUBSUB         = 'umgr_reschedule_pubsub'

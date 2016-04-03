@@ -1113,6 +1113,7 @@ class Component(mp.Process):
                 t = self._idlers[i]['thread']
                 if not t.is_alive():
                     self._log.error('idler %s died', t.name)
+                    time.sleep(3)
                     self.stop()
 
 
@@ -1247,6 +1248,8 @@ class Component(mp.Process):
         if not isinstance(things, list):
             things = [things]
 
+        self._log.debug('advance === bulk size: %s', len(things))
+
         for thing in things:
 
             uid   = thing['uid']
@@ -1265,38 +1268,61 @@ class Component(mp.Process):
             self._prof.prof('advance', uid=uid, state=state, timestamp=timestamp)
 
 
-            if publish:
+        # should we publish thing state information on the state pubsub?
+        if publish:
 
-                # Things in final state are published in full
-                if state in rps.FINAL:
+            to_publish = list()
+            # Things in final state are published in full
+            for thing in things:
+                if thing['state'] in rps.FINAL:
                     thing['$all'] = True
 
-                # is '$all' is set, we update the complete thing_dict.  In all
-                # other cases, we only send 'uid', 'type' and 'state'.
-                if '$all' in thing:
+            # is '$all' is set, we update the complete thing_dict.  In all
+            # other cases, we only send 'uid', 'type' and 'state'.
+            if '$all' in thing:
 
-                    del(thing['$all'])
-                    to_publish = thing
+                del(thing['$all'])
+                to_publish.append(thing)
 
-                else:
-                    to_publish = {'uid'   : thing['uid'  ],
-                                  'type'  : thing['type' ],
-                                  'state' : thing['state']}
+            else:
+                to_publish.append({'uid'   : thing['uid'  ],
+                                   'type'  : thing['type' ],
+                                   'state' : thing['state']})
 
-                self.publish(rpc.STATE_PUBSUB, {'cmd': 'update', 'arg': to_publish})
-                self._prof.prof('publish', uid=thing['uid'], state=thing['state'])
+            self.publish(rpc.STATE_PUBSUB, {'cmd': 'update', 'arg': to_publish})
+            ts = rpu_timestamp()
+            for thing in things:
+                self._prof.prof('publish', uid=thing['uid'], state=thing['state'], timestamp=ts)
 
 
-            if push:
+        # should we push things downstream, to the next component
+        if push:
+
+            # the push target depends on the state of things, so we need to sort
+            # the things into buckets by state before pushing them
+            buckets = dict()
+
+            for thing in things:
+
+                state = thing['state']
+                if not state in buckets:
+                    buckets[state] = list()
+                buckets[state].append(thing)
+
+
+            # now we can push the buckets as bulks
+            for state,things in buckets.iteritems():
 
                 if state in rps.FINAL:
                     # things in final state are dropped
-                    self._log.debug('%s %s ===| %s' % ('push', thing['uid'], thing['state']))
+                    for thing in things:
+                        self._log.debug('%s %s ===| %s' % ('push', thing['uid'], thing['state']))
                     continue
 
                 if not self._outputs[state]:
                     # empty output -- drop thing
-                    self._log.debug('%s %s ~~~| %s' % ('push', thing['uid'], thing['state']))
+                    for thing in things:
+                        self._log.debug('%s %s ~~~| %s' % ('push', thing['uid'], thing['state']))
                     continue
 
                 if state not in self._outputs:
@@ -1308,11 +1334,12 @@ class Component(mp.Process):
                 output = self._outputs[state]
 
                 # push the thing down the drain
-                # FIXME: we should assert that the thing is in a PENDING state.
+                # FIXME: we should assert that the things are in a PENDING state.
                 #        Better yet, enact the *_PENDING transition right here...
-                self._log.debug('%s %s ---> %s' % ('push', thing['uid'], thing['state']))
-                output.put(thing)
-                self._prof.prof('put', uid=thing['uid'], state=state, msg=output.name)
+                output.put(things)
+                for thing in things:
+                    self._log.debug('%s %s ---> %s' % ('push', thing['uid'], thing['state']))
+                    self._prof.prof('put', uid=thing['uid'], state=state, msg=output.name)
 
 
     # --------------------------------------------------------------------------

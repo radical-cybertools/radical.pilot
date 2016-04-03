@@ -287,12 +287,17 @@ class UnitManager(rpu.Component):
     #
     def _state_sub_cb(self, topic, msg):
 
-        if 'type' in msg and msg['type'] == 'unit':
+        if isinstance(msg, list): things =  msg
+        else                    : things = [msg]
 
-            uid   = msg["uid"]
-            state = msg["state"]
+        for thing in things:
 
-            self._update_unit(uid, {'state' : state})
+            if 'type' in thing and thing['type'] == 'unit':
+
+                uid   = thing["uid"]
+                state = thing["state"]
+
+                self._update_unit(uid, {'state' : state})
 
 
     # --------------------------------------------------------------------------

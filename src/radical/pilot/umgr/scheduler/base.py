@@ -112,28 +112,21 @@ class UMGRSchedulingComponent(rpu.Component):
         # a scheduler needs to keep track of those, it will need to add its own
         # callback.
         
-        cmd   = msg['cmd']
-        arg   = msg['arg']
-        ttype = arg['type']
+        cmd = msg['cmd']
+        arg = msg['arg']
 
         self._log.info('scheduler state_cb: %s: %s' % (cmd, arg))
 
         # FIXME: get cmd string consistent throughout the code
-        if cmd in ['update', 'state_update'] and ttype == 'pilot':
+        if cmd not in ['update', 'state_update']:
+            return
 
-            with self._pilots_lock:
-        
-                state = arg['state']
-                pid   = arg['uid']
+        if not isinstance(arg, list): things = [arg]
+        else                        : things =  arg
 
-                # we also remember states for unknown pilots, in case they are
-                # getting added later
-                if pid not in self._pilots:
-                    self._pilots[pid] = {'role'  : None,
-                                         'state' : None,
-                                         'pilot' : None}
-
-                self._update_pilot_state(arg)
+        for thing in things:
+            if thing['type'] == 'pilot':
+                self._update_pilot_state(thing)
 
 
     # --------------------------------------------------------------------------
@@ -142,7 +135,13 @@ class UMGRSchedulingComponent(rpu.Component):
 
         with self._pilots_lock:
 
-            pid     = pilot['uid']
+            pid = pilot['uid']
+
+            if pid not in self._pilots:
+                self._pilots[pid] = {'role'  : None,
+                                     'state' : None,
+                                     'pilot' : None}
+
             target  = pilot['state']
             current = self._pilots[pid]['state']
 
