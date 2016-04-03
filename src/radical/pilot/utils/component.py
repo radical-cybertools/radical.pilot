@@ -320,12 +320,15 @@ class Component(mp.Process):
 
         # all components need at least be able to talk to a control pubsub
         assert('bridges' in self._cfg)
+        assert(rpc.LOG_PUBSUB     in self._cfg['bridges'])
         assert(rpc.STATE_PUBSUB   in self._cfg['bridges'])
         assert(rpc.CONTROL_PUBSUB in self._cfg['bridges'])
+        assert(self._cfg['bridges'][rpc.LOG_PUBSUB    ]['addr_in'])
         assert(self._cfg['bridges'][rpc.STATE_PUBSUB  ]['addr_in'])
         assert(self._cfg['bridges'][rpc.CONTROL_PUBSUB]['addr_in'])
 
-        # components can always publish state updates and send control # messages
+        # components can always publish logs, state updates and send control messages
+        self.register_publisher(rpc.LOG_PUBSUB)
         self.register_publisher(rpc.STATE_PUBSUB)
         self.register_publisher(rpc.CONTROL_PUBSUB)
 

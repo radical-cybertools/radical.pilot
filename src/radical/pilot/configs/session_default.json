@@ -10,10 +10,13 @@
     "heartbeat_timeout"  : 30,
 
     "bridges" : {
-        "control_pubsub" : {"log_level" : "off",
+        "log_pubsub"     : {"log_level" : "off",
                             "stall_hwm" : 1,
                             "bulk_size" : 1},
         "state_pubsub"   : {"log_level" : "off",
+                            "stall_hwm" : 1,
+                            "bulk_size" : 1},
+        "control_pubsub" : {"log_level" : "off",
                             "stall_hwm" : 1,
                             "bulk_size" : 1}
     },

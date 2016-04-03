@@ -35,6 +35,7 @@ AGENT_RESCHEDULE_PUBSUB        = 'agent_reschedule_pubsub'
 
 CONTROL_PUBSUB                 = 'control_pubsub'
 STATE_PUBSUB                   = 'state_pubsub'
+LOG_PUBSUB                     = 'log_pubsub'
 
 
 # ------------------------------------------------------------------------------

@@ -225,9 +225,10 @@ class Controller(object):
         address map is passed on as part of the component config,
         """
 
-        # we *always* need bridges defined in the config, at lest the should be
-        # the addresses for the control bridge (or we start one)
+        # we *always* need bridges defined in the config, at least the should be
+        # the addresses for the control and log bridges (or we start them)
         assert(self._ctrl_cfg['bridges'])
+        assert(self._ctrl_cfg['bridges'][rpc.LOG_PUBSUB])
         assert(self._ctrl_cfg['bridges'][rpc.CONTROL_PUBSUB])
 
         # the control channel is special: whoever creates the control channel
@@ -324,6 +325,11 @@ class Controller(object):
         assert(self._ctrl_sub)
         assert('heart'   in self._ctrl_cfg)
         assert('bridges' in self._ctrl_cfg )
+
+        assert(rpc.LOG_PUBSUB     in self._ctrl_cfg['bridges'])
+        assert(self._ctrl_cfg['bridges'][rpc.LOG_PUBSUB].get('addr_in'))
+        assert(self._ctrl_cfg['bridges'][rpc.LOG_PUBSUB].get('addr_out'))
+
         assert(rpc.CONTROL_PUBSUB in self._ctrl_cfg['bridges'])
         assert(self._ctrl_cfg['bridges'][rpc.CONTROL_PUBSUB].get('addr_in'))
         assert(self._ctrl_cfg['bridges'][rpc.CONTROL_PUBSUB].get('addr_out'))
