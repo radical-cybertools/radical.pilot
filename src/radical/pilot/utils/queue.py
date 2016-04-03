@@ -160,7 +160,7 @@ class Queue(object):
 
         self._name    = "%s.%s" % (self._qname, self._role)
         self._log     = self._session._get_logger('rp.%s' % self._name, 
-                                                  self._cfg.get('log_level',  'off'))
+                                                  self._cfg.get('log_level', 'off'))
 
         if self._log.getEffectiveLevel() == 10: # logging.DEBUG:
             self._debug = True
@@ -463,7 +463,7 @@ class QueueZMQ(Queue):
                             data = _uninterruptible(_in.recv)
                             msg  = msgpack.unpackb(data) 
                             if isinstance(msg, list): 
-                                msgs.append += msg
+                                msgs += msg
                             else: 
                                 msgs.append(msg)
                             self._log.debug('stall %s/%s', len(msgs), hwm)
