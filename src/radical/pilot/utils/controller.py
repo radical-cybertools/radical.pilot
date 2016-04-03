@@ -298,8 +298,25 @@ class Controller(object):
         # make sure the bridges are watched:
         self._to_watch += bridges
 
-        # before we go on to start components, we register for alive messages,
-        # otherwise those messages can arrive before we are able to get them.
+        # if we are the root of a component tree, start sending heartbeats 
+        self._log.debug('send heartbeat?: %s =? %s', self._owner, self._ctrl_cfg['heart'])
+      # print 'send heartbeat?: %s =? %s' % (self._owner, self._ctrl_cfg['heart'])
+        if self._owner == self._ctrl_cfg['heart']:
+
+            if not self._heartbeat_thread:
+
+                # we need to issue heartbeats!
+                self._heartbeat_term   = mt.Event()
+                self._heartbeat_tname  = '%s.heartbeat' % self._uid
+                self._heartbeat_thread = mt.Thread(target = self._heartbeat_sender,
+                                                   args   =[self._heartbeat_term],
+                                                   name   = self._heartbeat_tname)
+                self._heartbeat_thread.start()
+
+
+        # before we go on to start components, we also register for alive
+        # messages, otherwise those messages can arrive before we are able to
+        # get them.
         addr = self._ctrl_cfg['bridges'][rpc.CONTROL_PUBSUB]['addr_out']
         self._ctrl_sub = rpu_Pubsub.create(self._session, rpu_PUBSUB_ZMQ, 
                                            rpc.CONTROL_PUBSUB, rpu_PUBSUB_SUB, 
