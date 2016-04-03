@@ -116,7 +116,7 @@ profile_event()
     fi
 
     printf "%.4f,%s,%s,%s,%s,%s\n" \
-        "$NOW" "bootstrap_1" "$PILOT_ID" "ACTIVE" "$event" "$msg" \
+        "$NOW" "bootstrap_1" "$PILOT_ID" "ACTIVE_PENDING" "$event" "$msg" \
         >> "$PROFILE"
 }
 
