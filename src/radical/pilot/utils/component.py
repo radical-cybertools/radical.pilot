@@ -1167,28 +1167,44 @@ class Component(mp.Process):
                     if not isinstance(things, list):
                         things = [things]
 
+                    # the worker target depends on the state of things, so we 
+                    # need to sort the things into buckets by state before 
+                    # pushing them
+                    buckets = dict()
                     for thing in things:
-                        uid   = thing['uid']
-                        ttype = thing['type']
                         state = thing['state']
+                        if not state in buckets:
+                            buckets[state] = list()
+                        buckets[state].append(thing)
 
-                        self._log.debug('got %s (%s)', ttype, thing)
-                        self._prof.prof(event='get', state=state, uid=uid, msg=input.name)
+                    # We now can push bulks of things to the workers
+
+                    for state,things in buckets.iteritems():
 
                         assert(state in states)
                         assert(state in self._workers)
 
-                        # we have an acceptable state and a matching worker
                         try:
-                            self._prof.prof(event='work start', state=state, uid=uid)
+                            for thing in things:
+                                uid   = thing['uid']
+                                ttype = thing['type']
+                                state = thing['state']
+
+                                self._log.debug('got %s (%s)', ttype, thing)
+                                self._prof.prof(event='get', state=state, uid=uid, msg=input.name)
+                                self._prof.prof(event='work start', state=state, uid=uid)
+
                             with self._cb_lock:
                                 self._workers[state](thing)
-                            self._prof.prof(event='work done ', state=state, uid=uid)
+
+                            for thing in things:
+                                self._prof.prof(event='work done ', state=state, uid=uid)
 
                         except Exception as e:
-                            self._log.exception("%s failed" % uid)
-                            self.advance(thing, rps.FAILED, publish=True, push=False)
-                            self._prof.prof(event='failed', msg=str(e), uid=uid, state=state)
+                            self._log.exception("worker failed", self._workers[state])
+                            for thing in things:
+                                self.advance(thing, rps.FAILED, publish=True, push=False)
+                                self._prof.prof(event='failed', msg=str(e), uid=uid, state=state)
 
                             # NOTE: for now, we consider this fatal.  We should
                             #       reconsider that in the context of system
@@ -1301,14 +1317,11 @@ class Component(mp.Process):
             # the push target depends on the state of things, so we need to sort
             # the things into buckets by state before pushing them
             buckets = dict()
-
             for thing in things:
-
                 state = thing['state']
                 if not state in buckets:
                     buckets[state] = list()
                 buckets[state].append(thing)
-
 
             # now we can push the buckets as bulks
             for state,things in buckets.iteritems():

@@ -16,20 +16,20 @@
     "db_poll_sleeptime" : 1.0,
 
     "bridges" : {
-        "umgr_staging_input_queue"  : {"log_level" : "off",
+        "umgr_staging_input_queue"  : {"log_level" : "debug",
                                        "stall_hwm" : 1,
                                        "bulk_size" : 1},
-        "umgr_scheduling_queue"     : {"log_level" : "off",
+        "umgr_scheduling_queue"     : {"log_level" : "debug",
                                        "stall_hwm" : 1,
                                        "bulk_size" : 1},
-        "umgr_staging_output_queue" : {"log_level" : "off",
+        "umgr_staging_output_queue" : {"log_level" : "debug",
                                        "stall_hwm" : 1,
                                        "bulk_size" : 1},
 
-        "umgr_unschedule_pubsub"    : {"log_level" : "off",
+        "umgr_unschedule_pubsub"    : {"log_level" : "debug",
                                        "stall_hwm" : 1,
                                        "bulk_size" : 1},
-        "umgr_reschedule_pubsub"    : {"log_level" : "off",
+        "umgr_reschedule_pubsub"    : {"log_level" : "debug",
                                        "stall_hwm" : 1,
                                        "bulk_size" : 1}
     },
