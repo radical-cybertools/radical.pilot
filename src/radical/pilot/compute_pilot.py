@@ -65,8 +65,6 @@ class ComputePilot(object):
         self._session       = self._pmgr.session
         self._uid           = ru.generate_id('pilot.%(counter)04d', ru.ID_CUSTOM)
         self._state         = rps.NEW
-        self._state_history = [{'state'     : rps.NEW, 
-                                'timestamp' : rpu.timestamp()}]
         self._log           = pmgr._log
         self._log_msgs      = list()
         self._stdout        = None
@@ -180,7 +178,6 @@ class ComputePilot(object):
             'uid':             self.uid,
             'type':            'pilot',
             'state':           self.state,
-            'state_history':   self.state_history,
             'log':             self.log,
             'stdout':          self.stdout,
             'stderr':          self.stderr,
@@ -246,20 +243,6 @@ class ComputePilot(object):
         """
 
         return self._state
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def state_history(self):
-        """
-        Returns the complete state history of the pilot.
-
-        **Returns:**
-            * list of tuples [[state, timestamp]]
-        """
-
-        return copy.deepcopy(self._state_history)
 
 
     # --------------------------------------------------------------------------

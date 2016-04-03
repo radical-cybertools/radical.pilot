@@ -12,11 +12,14 @@
     # max number of cu out/err chars to push to db
     "max_io_loglength"     : 1024,
 
+    # max number of updates to put into a db bulk
+    "bulk_collection_size" :  100,
+
     # max time period to collect db notifications into bulks (seconds)
-    "bulk_collection_time" : 0.5,
+    "bulk_collection_time" : 5.0,
 
     # time to sleep between database polls (seconds)
-    "db_poll_sleeptime"    : 0.5,
+    "db_poll_sleeptime"    : 1.0,
 
     "agent_layout" : {
         "agent_1"   : {

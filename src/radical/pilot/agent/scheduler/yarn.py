@@ -182,16 +182,15 @@ class Yarn(AgentSchedulingComponent):
     #
     def work(self, cu):
 
-      # self.advance(cu, rps.AGENT_SCHEDULING, publish=True, push=False)
         self._log.info("Overiding Parent's class method")
-        self.advance(cu, rps.ALLOCATING , publish=True, push=False)
+        self.advance(cu, rps.AGENT_SCHEDULING, publish=True, push=False)
 
         # we got a new unit to schedule.  Either we can place it
         # straight away and move it to execution, or we have to
         # put it on the wait queue.
         if self._try_allocation(cu):
             self._prof.prof('schedule', msg="allocation succeeded", uid=cu['uid'])
-            self.advance(cu, rps.EXECUTING_PENDING, publish=False, push=True)
+            self.advance(cu, rps.EXECUTING_PENDING, publish=True, push=True)
 
         else:
             # No resources available, put in wait queue

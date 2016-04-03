@@ -229,8 +229,7 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def work(self, cu):
 
-      # self.advance(cu, rps.AGENT_SCHEDULING, publish=True, push=False)
-        self.advance(cu, rps.ALLOCATING      , publish=True, push=False)
+        self.advance(cu, rps.AGENT_SCHEDULING, publish=True, push=False)
 
         # we got a new unit to schedule.  Either we can place it
         # straight away and move it to execution, or we have to

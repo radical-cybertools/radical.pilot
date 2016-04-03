@@ -6,6 +6,7 @@ __license__   = "MIT"
 import time
 import pprint
 import threading
+import pymongo
 
 import radical.utils as ru
 
@@ -16,7 +17,8 @@ from .. import constants as rpc
 
 # ==============================================================================
 #
-DEFAULT_BULK_COLLECTION_TIME = 1.0 # seconds
+DEFAULT_BULK_COLLECTION_TIME =  5.0 # seconds
+DEFAULT_BULK_COLLECTION_SIZE =  100 # seconds
 
 
 # ==============================================================================
@@ -26,8 +28,8 @@ class Update(rpu.Worker):
     An UpdateWorker pushes CU and Pilot state updates to mongodb.  Its instances
     compete for update requests on the update_queue.  Those requests will be
     triplets of collection name, query dict, and update dict.  Update requests
-    will be collected into bulks over some time (BULK_COLLECTION_TIME), to
-    reduce number of roundtrips.
+    will be collected into bulks over some time (BULK_COLLECTION_TIME) and
+    number (BULK_COLLECTION_SIZE) to reduce number of roundtrips.
     """
 
     # --------------------------------------------------------------------------
@@ -60,9 +62,13 @@ class Update(rpu.Worker):
         self._cinfo      = dict()            # collection cache
         self._lock       = threading.RLock() # protect _cinfo
 
+        self._bct        = self._cfg.get('bulk_collection_time',
+                                          DEFAULT_BULK_COLLECTION_TIME)
+        self._bcs        = self._cfg.get('bulk_collection_size',
+                                          DEFAULT_BULK_COLLECTION_SIZE)
+
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
-        self.register_idle_cb(self._idle_cb, 
-                              timeout=self._cfg.get('bulk_collection_time', 1.0))
+        self.register_idle_cb(self._idle_cb, timeout=self._bct)
 
 
     # --------------------------------------------------------------------------
@@ -76,12 +82,15 @@ class Update(rpu.Worker):
         now = time.time()
         age = now - cinfo['last']
 
-        # only push if collection time has been exceeded
-        if not age > self._cfg.get('bulk_collection_time', DEFAULT_BULK_COLLECTION_TIME):
+        # only push if collection time or size have been exceeded
+        if age < self._bct and len(cinfo['uids']) < self._bcs:
             return False
 
         try:
             res = cinfo['bulk'].execute()
+        except pymongo.OperationFailure as e:
+            self._log.exception('bulk exec error: %s' % e.details)
+            raise
         except Exception as e:
             self._log.exception('mongodb error: %s', e)
             raise

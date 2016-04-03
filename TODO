@@ -92,4 +92,3 @@
   + dead in pilot watcher cb remains undetected
   - separation of controller.[uid,heart,owner] is unclean
 
-

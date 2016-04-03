@@ -694,7 +694,6 @@ class Component(mp.Process):
         # To distinguish from any other uncoordinated thread exit, we leave
         # a message.
         if not isinstance(mt.current_thread(), mt._MainThread) :
-            print 'this is not the main thread (%s)' % mt.current_thread().name
             if not self._exit_cause:
                 self._exit_cause = 'stop'
             os.kill(os.getpid(), signal.SIGTERM)  # let the parent thread know
@@ -920,7 +919,7 @@ class Component(mp.Process):
                         last = now
                     time.sleep(0.1)
             except Exception as e:
-                self._log.exception("idler failed %s" % mt.current_thread().name)
+                self._log.exception("idler failed %s", mt.current_thread().name)
         # ----------------------------------------------------------------------
 
         # create a idler thread
@@ -1041,7 +1040,6 @@ class Component(mp.Process):
 
         # ----------------------------------------------------------------------
         def _subscriber(q, terminate, callback, callback_data):
-          # print 'thread %10s : %s' % (ru.gettid(), mt.current_thread().name)
             try:
                 while not terminate.is_set():
                     topic, msg = q.get_nowait(1000) # timout in ms

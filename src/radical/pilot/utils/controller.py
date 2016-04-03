@@ -316,7 +316,7 @@ class Controller(object):
         # the control pubsub for heartbeats and alive messages.
 
         self._log.debug('start comps: %s', self._comp_cfg)
-        print 'start comps: %s' % self._comp_cfg
+      # print 'start comps: %s' % self._comp_cfg
 
         if not self._comp_cfg:
             return
@@ -390,29 +390,12 @@ class Controller(object):
             assert(thing.poll)
             assert(thing.stop)
 
-        # if we did not do so before, start sending heartbeats to the things, to
-        # keep them alive
-        self._log.debug('send heartbeat?: %s =? %s', self._owner, self._ctrl_cfg['heart'])
-        print 'send heartbeat?: %s =? %s' % (self._owner, self._ctrl_cfg['heart'])
-        if self._owner == self._ctrl_cfg['heart']:
-
-            if not self._heartbeat_thread:
-
-                # we need to issue heartbeats!
-                self._heartbeat_term   = mt.Event()
-                self._heartbeat_tname  = '%s.heartbeat' % self._uid
-                self._heartbeat_thread = mt.Thread(target = self._heartbeat_sender,
-                                                   args   =[self._heartbeat_term],
-                                                   name   = self._heartbeat_tname)
-                self._heartbeat_thread.start()
-
-
         # the things are assumed started at this point -- we just want to
         # make sure that they are up and running, and thus wait for alive
         # messages on the control pubsub, for a certain time.  If we don't hear
         # back from them in time, we consider startup to have failed, and shut
         # down.
-        timeout = 10
+        timeout = 30
         start   = time.time()
 
         # we register 'alive' messages earlier.  Whenever an 'alive' message
@@ -552,7 +535,7 @@ class Controller(object):
             now = time.time()
             if last_heartbeat + self._heartbeat_interval < now:
 
-                print 'send heartbeat!!! %s' % heart
+              # print 'send heartbeat!!! %s' % heart
 
                 pub.put(rpc.CONTROL_PUBSUB, {'cmd' : 'heartbeat',
                                              'arg' : {'sender' : heart}})

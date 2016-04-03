@@ -165,7 +165,7 @@ class Default(AgentStagingOutputComponent):
 
 
         # all agent staging is done -- pass on to umgr output staging
-        self.advance(unit, rps.UMGR_STAGING_OUTPUT_PENDING, publish=True, push=True)
+        self.advance(unit, rps.UMGR_STAGING_OUTPUT_PENDING, publish=True, push=False)
 
 
 # ------------------------------------------------------------------------------

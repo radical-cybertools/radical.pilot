@@ -269,6 +269,7 @@ class UnitManager(rpu.Component):
         self._prof.prof('get', msg="bulk size: %d" % len(units), uid=self.uid)
         for unit in units:
             unit['control'] = 'umgr'
+            unit['state']   = rps._unit_state_collapse(unit['states'])
             self._prof.prof('get', msg="bulk size: %d" % len(units), uid=unit['uid'])
 
         # now we really own the CUs, and can start working on them (ie. push
@@ -448,7 +449,7 @@ class UnitManager(rpu.Component):
             * **drain** [`boolean`]: Drain determines what happens to the units
               which are managed by the removed pilot(s). If `True`, all units
               currently assigned to the pilot are allowed to finish execution.
-              If `False` (the default), then `ACTIVE` units will be canceled.
+              If `False` (the default), then non-final units will be canceled.
         """
 
         # TODO: Implement 'drain'.
@@ -553,7 +554,6 @@ class UnitManager(rpu.Component):
         # Only after the insert can we hand the units over to the next
         # components (ie. advance state).
         self.advance(unit_docs, rps.UMGR_SCHEDULING_PENDING, publish=True, push=True)
-
         self._log.report.ok('>>ok\n')
 
         if ret_list: return units
