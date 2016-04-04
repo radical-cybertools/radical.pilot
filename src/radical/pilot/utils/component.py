@@ -1195,13 +1195,14 @@ class Component(mp.Process):
                                 self._prof.prof(event='work start', state=state, uid=uid)
 
                             with self._cb_lock:
-                                self._workers[state](thing)
+                                self._log.debug('working on %s', len(things))
+                                self._workers[state](things)
 
                             for thing in things:
                                 self._prof.prof(event='work done ', state=state, uid=uid)
 
                         except Exception as e:
-                            self._log.exception("worker failed", self._workers[state])
+                            self._log.exception("worker %s failed", self._workers[state])
                             for thing in things:
                                 self.advance(thing, rps.FAILED, publish=True, push=False)
                                 self._prof.prof(event='failed', msg=str(e), uid=uid, state=state)

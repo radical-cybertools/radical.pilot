@@ -175,7 +175,21 @@ class Shell(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def work(self, cu):
+    def work(self, units):
+
+        if not isinstance(units, list):
+            units = [units]
+
+        self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
+
+        for unit in units:
+
+            self._handle_unit(unit)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _handle_unit(self, cu):
 
         # check that we don't start any units which need cancelling
         if cu['uid'] in self._cus_to_cancel:
@@ -217,10 +231,6 @@ class Shell(AgentExecutingComponent):
             # up the cancel notification.
             # FIXME: We could optimize a little by publishing the unschedule
             #        right here...
-
-
-      # self.advance(cu, rps.AGENT_EXECUTING, publish=True, push=False)
-        self.advance(cu, rps.EXECUTING, publish=True, push=False)
 
         try:
             if cu['description']['mpi']:

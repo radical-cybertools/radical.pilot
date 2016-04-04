@@ -43,9 +43,21 @@ class Default(UMGRStagingOutputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def work(self, unit):
+    def work(self, units):
 
-        self.advance(unit, rps.UMGR_STAGING_OUTPUT, publish=True, push=False)
+        if not isinstance(units, list):
+            units = [units]
+
+        self.advance(units, rps.UMGR_STAGING_OUTPUT, publish=True, push=False)
+
+        for unit in units:
+
+            self._handle_unit(unit)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _handle_unit(self, unit):
 
         uid = unit['uid']
 

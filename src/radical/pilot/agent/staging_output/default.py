@@ -51,13 +51,24 @@ class Default(AgentStagingOutputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def work(self, unit):
+    def work(self, units):
 
-        self.advance(unit, rps.AGENT_STAGING_OUTPUT, publish=True, push=False)
+        if not isinstance(units, list):
+            units = [units]
+
+        self.advance(units, rps.AGENT_STAGING_OUTPUT, publish=True, push=False)
+
+        for unit in units:
+
+            self._handle_unit(unit)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _handle_unit(self, unit):
 
         uid     = unit['uid']
         sandbox = ru.Url(unit["sandbox"]).path
-
 
         ## parked from unit state checker: unit postprocessing
         if os.path.isfile(unit['stdout_file']):

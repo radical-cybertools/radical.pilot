@@ -180,10 +180,21 @@ class Yarn(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def work(self, cu):
+    def work(self, units):
 
-        self._log.info("Overiding Parent's class method")
-        self.advance(cu, rps.AGENT_SCHEDULING, publish=True, push=False)
+        if not isinstance(units, list):
+            units = [units]
+
+        self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
+
+        for unit in units:
+
+            self._handle_unit(unit)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _handle_unit(self, cu):
 
         # we got a new unit to schedule.  Either we can place it
         # straight away and move it to execution, or we have to

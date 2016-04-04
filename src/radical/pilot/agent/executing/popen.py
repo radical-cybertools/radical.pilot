@@ -136,10 +136,21 @@ class Popen(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def work(self, cu):
+    def work(self, units):
 
-      # self.advance(cu, rps.AGENT_EXECUTING, publish=True, push=False)
-        self.advance(cu, rps.EXECUTING, publish=True, push=False)
+        if not isinstance(units, list):
+            units = [units]
+
+        self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
+
+        for unit in units:
+
+            self._handle_unit(unit)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _handle_unit(self, cu):
 
         try:
             if cu['description']['mpi']:
