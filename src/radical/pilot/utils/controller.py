@@ -435,7 +435,7 @@ class Controller(object):
                 # this will happen on timeout
                 msgs = []
 
-            if not isinstance(msgs,list):
+            if not isinstance(msgs, list):
                 msgs = [msgs]
 
             for msg in msgs:

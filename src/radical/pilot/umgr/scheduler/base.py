@@ -189,7 +189,6 @@ class UMGRSchedulingComponent(rpu.Component):
                     self._pilots[pid] = {'role'  : None,
                                          'state' : None,
                                          'pilot' : None}
-
                 self._pilots[pid]['role']  = ADDED
                 self._pilots[pid]['pilot'] = copy.deepcopy(arg['pilot'])
                 self._update_pilot_state(arg['pilot'])

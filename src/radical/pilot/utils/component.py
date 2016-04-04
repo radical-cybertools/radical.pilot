@@ -530,8 +530,11 @@ class Component(mp.Process):
         # NOTE: this relies on us not to change the name of MainThread
         if self_thread.name == 'MainThread':
             self._log.debug('%s close prof' % self.uid)
-            self._prof.prof("stopped", uid=self._uid)
-            self._prof.close()
+            try:
+                self._prof.prof("stopped", uid=self._uid)
+                self._prof.close()
+            except Exception:
+                pass
 
         self._log.debug('base _finalize_common done')
 
@@ -1167,6 +1170,8 @@ class Component(mp.Process):
                     if not isinstance(things, list):
                         things = [things]
 
+                    self._log.debug(' === input bulk %s things on %s' % (len(things), name))
+
                     # the worker target depends on the state of things, so we 
                     # need to sort the things into buckets by state before 
                     # pushing them
@@ -1195,7 +1200,7 @@ class Component(mp.Process):
                                 self._prof.prof(event='work start', state=state, uid=uid)
 
                             with self._cb_lock:
-                                self._log.debug('working on %s', len(things))
+                                self._log.debug(' === work on bulk [%s]', len(things))
                                 self._workers[state](things)
 
                             for thing in things:
@@ -1203,9 +1208,11 @@ class Component(mp.Process):
 
                         except Exception as e:
                             self._log.exception("worker %s failed", self._workers[state])
+                            self.advance(things, rps.FAILED, publish=True, push=False)
+
                             for thing in things:
-                                self.advance(thing, rps.FAILED, publish=True, push=False)
-                                self._prof.prof(event='failed', msg=str(e), uid=uid, state=state)
+                                self._prof.prof(event='failed', msg=str(e), 
+                                                uid=thing['uid'], state=state)
 
                             # NOTE: for now, we consider this fatal.  We should
                             #       reconsider that in the context of system
@@ -1265,8 +1272,10 @@ class Component(mp.Process):
         if not isinstance(things, list):
             things = [things]
 
-        self._log.debug('advance === bulk size: %s', len(things))
+        self._log.debug(' === advance bulk size: %s', len(things))
 
+        # assign state, sort things by state
+        buckets = dict()
         for thing in things:
 
             uid   = thing['uid']
@@ -1284,27 +1293,31 @@ class Component(mp.Process):
 
             self._prof.prof('advance', uid=uid, state=state, timestamp=timestamp)
 
+            if not state in buckets:
+                buckets[state] = list()
+            buckets[state].append(thing)
 
-        # should we publish thing state information on the state pubsub?
+        # should we publish state information on the state pubsub?
         if publish:
 
             to_publish = list()
+
             # Things in final state are published in full
-            for thing in things:
-                if thing['state'] in rps.FINAL:
-                    thing['$all'] = True
+            for state,things in buckets.iteritems():
+                if state in rps.FINAL:
+                    for thing in things:
+                        thing['$all'] = True
 
             # is '$all' is set, we update the complete thing_dict.  In all
             # other cases, we only send 'uid', 'type' and 'state'.
-            if '$all' in thing:
-
-                del(thing['$all'])
-                to_publish.append(thing)
-
-            else:
-                to_publish.append({'uid'   : thing['uid'  ],
-                                   'type'  : thing['type' ],
-                                   'state' : thing['state']})
+            for thing in things:
+                if '$all' in thing:
+                    del(thing['$all'])
+                    to_publish.append(thing)
+                else:
+                    to_publish.append({'uid'   : thing['uid'],
+                                       'type'  : thing['type'],
+                                       'state' : state})
 
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'update', 'arg': to_publish})
             ts = rpu_timestamp()
@@ -1317,13 +1330,6 @@ class Component(mp.Process):
 
             # the push target depends on the state of things, so we need to sort
             # the things into buckets by state before pushing them
-            buckets = dict()
-            for thing in things:
-                state = thing['state']
-                if not state in buckets:
-                    buckets[state] = list()
-                buckets[state].append(thing)
-
             # now we can push the buckets as bulks
             for state,things in buckets.iteritems():
 
@@ -1350,10 +1356,19 @@ class Component(mp.Process):
                 # push the thing down the drain
                 # FIXME: we should assert that the things are in a PENDING state.
                 #        Better yet, enact the *_PENDING transition right here...
+                self._log.debug(' === put bulk %s: %s', state, len(things))
                 output.put(things)
+
+                ts = rpu_timestamp()
                 for thing in things:
-                    self._log.debug('%s %s ---> %s' % ('push', thing['uid'], thing['state']))
-                    self._prof.prof('put', uid=thing['uid'], state=state, msg=output.name)
+                    
+                    # never carry $all across component boundaries!
+                    if '$all' in thing:
+                        del(thing['$all'])
+
+                    self._log.debug('%s %s ---> %s' % ('push', thing['uid'], state))
+                    self._prof.prof('put', uid=thing['uid'], state=state,
+                            msg=output.name, timestamp=ts)
 
 
     # --------------------------------------------------------------------------

@@ -218,7 +218,7 @@ class DBSession(object):
             res = bulk.execute()
             self._log.debug('bulk pilot insert result: %s', res)
             # FIXME: evaluate res
-        except pymongo.OperationFailure as e:
+        except pymongo.errors.OperationFailure as e:
             self._log.exception('pymongo error: %s' % e.details)
             raise RuntimeError('pymongo error: %s' % e.details)
 
@@ -334,7 +334,7 @@ class DBSession(object):
             res = bulk.execute()
             self._log.debug('bulk unit insert result: %s', res)
             # FIXME: evaluate res
-        except pymongo.OperationFailure as e:
+        except pymongo.errors.OperationFailure as e:
             self._log.exception('pymongo error: %s' % e.details)
             raise RuntimeError('pymongo error: %s' % e.details)
 

@@ -92,7 +92,7 @@ class Update(rpu.Worker):
         try:
             res = self._bulk.execute()
             self._log.debug("bulk update result: %s", res)
-        except pymongo.OperationFailure as e:
+        except pymongo.errors.OperationFailure as e:
             self._log.exception('bulk exec error: %s' % e.details)
             raise
         except Exception as e:
