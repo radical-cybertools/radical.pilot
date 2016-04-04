@@ -2,6 +2,7 @@
 import os
 import zmq
 import copy
+import math
 import time
 import errno
 import pprint
@@ -468,26 +469,28 @@ class QueueZMQ(Queue):
                                 msgs.append(msg)
                             self._log.debug('stall %s/%s', len(msgs), hwm)
 
-                        i = 0
-                        while msgs:
+                        # if 'bulk' is '0', we send all messages as
+                        # a single bulk.  Otherwise, we chop them up
+                        # into bulks of the given size
+                        if bulk <= 0:
+                            nbulks = 1
+                            bulks  = [msgs]
+                        else:
+                            nbulks = int(math.ceil(len(msgs) / float(bulk)))
+                            bulks  = ru.partition(msgs, nbulks)
 
-                            while True:
-                                # timeout in ms
-                                events = dict(_uninterruptible(_poll.poll, 1000))
+                        while bulks:
+                            # timeout in ms
+                            events = dict(_uninterruptible(_poll.poll, 1000))
 
-                                if _out in events:
-                                    out_bulk = list()
-                                    while msgs and len(out_bulk) < bulk:
-                                        out_bulk.append(msgs.pop(0))
-                                        i+=1
+                            if _out in events:
 
-                                    req  = _uninterruptible(_out.recv)
-                                    data = msgpack.packb(out_bulk) 
-                                    _uninterruptible(_out.send, data)
+                                req  = _uninterruptible(_out.recv)
+                                data = msgpack.packb(bulks.pop(0)) 
+                                _uninterruptible(_out.send, data)
 
-                                    # go to next message/bulk (break while loop)
-                                    self._log.debug('sent  %s/%s', i, hwm)
-                                    break
+                                # go to next message/bulk (break while loop)
+                                self._log.debug('sent  %s [hwm: %s]', (nbulks-len(bulks)), hwm)
 
                 except Exception as e:
                     self._log.exception('bridge error: %s', e)

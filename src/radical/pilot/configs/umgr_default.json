@@ -18,20 +18,20 @@
     "bridges" : {
         "umgr_staging_input_queue"  : {"log_level" : "debug",
                                        "stall_hwm" : 1,
-                                       "bulk_size" : 1},
+                                       "bulk_size" : 0},
         "umgr_scheduling_queue"     : {"log_level" : "debug",
                                        "stall_hwm" : 1,
-                                       "bulk_size" : 1},
+                                       "bulk_size" : 0},
         "umgr_staging_output_queue" : {"log_level" : "debug",
                                        "stall_hwm" : 1,
-                                       "bulk_size" : 1},
+                                       "bulk_size" : 0},
 
         "umgr_unschedule_pubsub"    : {"log_level" : "debug",
                                        "stall_hwm" : 1,
-                                       "bulk_size" : 1},
+                                       "bulk_size" : 0},
         "umgr_reschedule_pubsub"    : {"log_level" : "debug",
                                        "stall_hwm" : 1,
-                                       "bulk_size" : 1}
+                                       "bulk_size" : 0}
     },
 
     "components" : {
