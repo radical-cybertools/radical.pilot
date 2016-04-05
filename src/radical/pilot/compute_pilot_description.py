@@ -29,6 +29,7 @@ ERROR             = 'error'
 RUNTIME           = 'runtime'
 CLEANUP           = 'cleanup'
 PROJECT           = 'project'
+CANDIDATE_HOSTS   = 'candidate_hosts'
 EXIT_ON_ERROR     = 'exit_on_error'
 _CONFIG           = '_config'
 
@@ -113,6 +114,11 @@ class ComputePilotDescription(attributes.Attributes):
        configuration (:data:`resource`), defining `project` will
        override it explicitly.
 
+    .. data:: candidate_hosts
+
+       [Type: `list`] [optional] The list of names of hosts where this pilot
+       is allowed to start on.
+
     .. data:: cleanup
 
        [Type: `bool`] [optional] If cleanup is set to True, the pilot will 
@@ -145,6 +151,7 @@ class ComputePilotDescription(attributes.Attributes):
         self._attributes_register    (QUEUE,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (PROJECT,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (CLEANUP,          None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (CANDIDATE_HOSTS,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register    (EXIT_ON_ERROR,    None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
 
         # Attributes not part of the published API
@@ -160,6 +167,7 @@ class ComputePilotDescription(attributes.Attributes):
         self.set_attribute (QUEUE,            None)
         self.set_attribute (PROJECT,          None)
         self.set_attribute (CLEANUP,          None)
+        self.set_attribute (CANDIDATE_HOSTS,  None)
         self.set_attribute (EXIT_ON_ERROR,    False)
         self.set_attribute (_CONFIG,          None)
 
@@ -184,4 +192,3 @@ class ComputePilotDescription(attributes.Attributes):
 
 
 # -----------------------------------------------------------------------------
-

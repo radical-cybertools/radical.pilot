@@ -148,9 +148,11 @@ import shutil
 import hostlist
 import tempfile
 import netifaces
+import fractions
 import threading
 import traceback
 import subprocess
+import collections
 import multiprocessing
 import json
 import urllib2 as ul
@@ -608,6 +610,8 @@ class AgentSchedulingComponent(rpu.Component):
                 with self._wait_lock :
                     self._wait_pool.remove(cu)
                     self._prof.prof('unqueue', msg="re-allocation done", uid=cu['_id'])
+            else:
+                # Break out of this loop if we didn't manage to schedule a task
                 break
 
         # Note: The extra space below is for visual alignment
@@ -677,7 +681,8 @@ class AgentSchedulingComponent(rpu.Component):
 
             slot = self.slots[self._clone_slot_idx]
 
-            unit['opaque_slots']['task_slots'][0] = '%s:%d' % (slot['node'], self._clone_core_idx)
+            unit['opaque_slots']['task_slots'][0] = '%s:%d' \
+                    % (slot['node'], self._clone_core_idx)
           # self._log.debug(' === clone cb out : %s', unit['opaque_slots'])
 
             if (self._clone_core_idx +  1) < self._lrms_cores_per_node:
@@ -1466,6 +1471,10 @@ class LaunchMethod(object):
         if cls != LaunchMethod:
             raise TypeError("LaunchMethod factory only available to base class!")
 
+        # In case of undefined LM just return None
+        if not name:
+            return None
+
         try:
             impl = {
                 LAUNCH_METHOD_APRUN         : LaunchMethodAPRUN,
@@ -1605,6 +1614,70 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
+    @classmethod
+    def _create_hostfile(cls, all_hosts, separator=' ', impaired=False):
+
+        # Open appropriately named temporary file
+        handle, filename = tempfile.mkstemp(prefix='rp_hostfile', dir=os.getcwd())
+
+        if not impaired:
+            #
+            # Write "hostN x\nhostM y\n" entries
+            #
+
+            # Create a {'host1': x, 'host2': y} dict
+            counter = collections.Counter(all_hosts)
+            # Convert it into an ordered dict,
+            # which hopefully resembles the original ordering
+            count_dict = collections.OrderedDict(sorted(counter.items(), key=lambda t: t[0]))
+
+            for (host, count) in count_dict.iteritems():
+                os.write(handle, '%s%s%d\n' % (host, separator, count))
+
+        else:
+            #
+            # Write "hostN\nhostM\n" entries
+            #
+            for host in all_hosts:
+                os.write(handle, '%s\n' % host)
+
+        # No longer need to write
+        os.close(handle)
+
+        # Return the filename, caller is responsible for cleaning up
+        return filename
+
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def _compress_hostlist(cls, all_hosts):
+
+        # Return gcd of a list of numbers
+        def gcd_list(l):
+            return reduce(fractions.gcd, l)
+
+        # Create a {'host1': x, 'host2': y} dict
+        count_dict = dict(collections.Counter(all_hosts))
+        # Find the gcd of the host counts
+        host_gcd = gcd_list(set(count_dict.values()))
+
+        # Divide the host counts by the gcd
+        for host in count_dict:
+            count_dict[host] /= host_gcd
+
+        # Recreate a list of hosts based on the normalized dict
+        hosts = []
+        [hosts.extend([host] * count)
+                for (host, count) in count_dict.iteritems()]
+        # Esthetically sort the list, as we lost ordering by moving to a dict/set
+        hosts.sort()
+
+        return hosts
+
+
+    # --------------------------------------------------------------------------
+    #
     def _create_arg_string(self, args):
 
         # unit Arguments (if any)
@@ -1707,7 +1780,7 @@ class LaunchMethodMPIRUN(LaunchMethod):
 
         task_slots = opaque_slots['task_slots']
 
-        if task_arstr:
+        if task_argstr:
             task_command = "%s %s" % (task_exec, task_argstr)
         else:
             task_command = task_exec
@@ -1840,8 +1913,25 @@ class LaunchMethodMPIEXEC(LaunchMethod):
 
         task_slots = opaque_slots['task_slots']
 
-        # Construct the hosts_string
-        hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
+        # Extract all the hosts from the slots
+        all_hosts = [slot.split(':')[0] for slot in task_slots]
+
+        # Shorten the host list as much as possible
+        hosts = self._compress_hostlist(all_hosts)
+
+        # If we have a CU with many cores, and the compression didn't work
+        # out, we will create a hostfile and pass  that as an argument
+        # instead of the individual hosts
+        if len(hosts) > 42:
+
+            # Create a hostfile from the list of hosts
+            hostfile = self._create_hostfile(all_hosts, separator=':')
+            hosts_string = "-hostfile %s" % hostfile
+
+        else:
+
+            # Construct the hosts_string ('h1 h2 .. hN')
+            hosts_string = "-host "+ ",".join(hosts)
 
         # Construct the executable and arguments
         if task_argstr:
@@ -1849,7 +1939,7 @@ class LaunchMethodMPIEXEC(LaunchMethod):
         else:
             task_command = task_exec
 
-        mpiexec_command = "%s -n %s -host %s %s" % (
+        mpiexec_command = "%s -n %s %s %s" % (
             self.launch_command, task_cores, hosts_string, task_command)
 
         return mpiexec_command, None
@@ -1883,6 +1973,7 @@ class LaunchMethodAPRUN(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
+        task_mpi     = cud['mpi']
         task_args    = cud.get('arguments') or []
         task_argstr  = self._create_arg_string(task_args)
 
@@ -1891,7 +1982,11 @@ class LaunchMethodAPRUN(LaunchMethod):
         else:
             task_command = task_exec
 
-        aprun_command = "%s -n %d %s" % (self.launch_command, task_cores, task_command)
+        if task_mpi:
+            pes = task_cores
+        else:
+            pes = 1
+        aprun_command = "%s -n %d %s" % (self.launch_command, pes, task_command)
 
         return aprun_command, None
 
@@ -2170,12 +2265,25 @@ class LaunchMethodMPIRUNRSH(LaunchMethod):
         else:
             task_command = task_exec
 
-        # Construct the hosts_string ('h1 h2 .. hN')
-        hosts_string = " ".join([slot.split(':')[0] for slot in task_slots])
+        # Extract all the hosts from the slots
+        hosts = [slot.split(':')[0] for slot in task_slots]
+
+        # If we have a CU with many cores, we will create a hostfile and pass
+        # that as an argument instead of the individual hosts
+        if len(hosts) > 42:
+
+            # Create a hostfile from the list of hosts
+            hostfile = self._create_hostfile(hosts, impaired=True)
+            hosts_string = "-hostfile %s" % hostfile
+
+        else:
+
+            # Construct the hosts_string ('h1 h2 .. hN')
+            hosts_string = " ".join(hosts)
 
         export_vars = ' '.join([var+"=$"+var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
-        mpirun_rsh_command = "%s -np %s %s %s %s" % (
+        mpirun_rsh_command = "%s -np %d %s %s %s" % (
             self.launch_command, task_cores, hosts_string, export_vars, task_command)
 
         return mpirun_rsh_command, None
@@ -2792,8 +2900,7 @@ class LaunchMethodYARN(LaunchMethod):
     @classmethod
     def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
         if 'name' not in lm_info:
-            raise RuntimeError('rm_ip not in lm_info for %s' \
-                    % (self.name))
+            raise RuntimeError('name not in lm_info for %s' % name)
 
         if lm_info['name'] != 'YARNLRMS':
             logger.info('Stoping YARN')
@@ -3062,7 +3169,8 @@ class LRMS(object):
         # launch methods.  Those hooks may need to adjust the LRMS settings
         # (hello ORTE).  We only call LM hooks *once*
         launch_methods = set() # set keeps entries unique
-        launch_methods.add(self._cfg['mpi_launch_method'])
+        if 'mpi_launch_method' in self._cfg:
+            launch_methods.add(self._cfg['mpi_launch_method'])
         launch_methods.add(self._cfg['task_launch_method'])
         launch_methods.add(self._cfg['agent_launch_method'])
 
@@ -3141,7 +3249,8 @@ class LRMS(object):
         # During LRMS termination, we call any existing shutdown hooks on the
         # launch methods.  We only call LM shutdown hooks *once*
         launch_methods = set() # set keeps entries unique
-        launch_methods.add(self._cfg['mpi_launch_method'])
+        if 'mpi_launch_method' in self._cfg:
+            launch_methods.add(self._cfg['mpi_launch_method'])
         launch_methods.add(self._cfg['task_launch_method'])
         launch_methods.add(self._cfg['agent_launch_method'])
 
@@ -3172,7 +3281,7 @@ class LRMS(object):
         If interface is not given, do some magic.
         """
 
-        # List of interfaces that we probably dont want to bind to
+        # List of interfaces that we probably dont want to bind to by default
         black_list = ['lo', 'sit0']
 
         # Known intefaces in preferred order
@@ -3184,6 +3293,8 @@ class LRMS(object):
 
         # Get a list of all network interfaces
         all = netifaces.interfaces()
+
+        logger.debug("Network interfaces detected: %s", all)
 
         pref = None
         # If we got a request, see if it is in the list that we detected
@@ -4388,7 +4499,7 @@ class YARNLRMS(LRMS):
 
         # I will leave it for the moment because I have not found another way
         # to take the necessary value yet.
-        yarn_conf_output = subprocess.check_output(['yarn', 'node', '-list']).split('\n')
+        yarn_conf_output = subprocess.check_output(['yarn', 'node', '-list'], stderr=subprocess.STDOUT).split('\n')
         for line in yarn_conf_output:
             if 'ResourceManager' in line:
                 settings = line.split('at ')[1]
@@ -4506,12 +4617,12 @@ class AgentExecutingComponent_POPEN (AgentExecutingComponent) :
         # The AgentExecutingComponent needs the LaunchMethods to construct
         # commands.
         self._task_launcher = LaunchMethod.create(
-                name   = self._cfg['task_launch_method'],
+                name   = self._cfg.get('task_launch_method'),
                 cfg    = self._cfg,
                 logger = self._log)
 
         self._mpi_launcher = LaunchMethod.create(
-                name   = self._cfg['mpi_launch_method'],
+                name   = self._cfg.get('mpi_launch_method'),
                 cfg    = self._cfg,
                 logger = self._log)
 
@@ -6797,7 +6908,6 @@ class AgentWorker(rpu.Worker):
         if not 'scheduler'           in self._cfg: raise ValueError("Missing agent scheduler")
         if not 'session_id'          in self._cfg: raise ValueError("Missing session id")
         if not 'spawner'             in self._cfg: raise ValueError("Missing agent spawner")
-        if not 'mpi_launch_method'   in self._cfg: raise ValueError("Missing mpi launch method")
         if not 'task_launch_method'  in self._cfg: raise ValueError("Missing unit launch method")
         if not 'agent_layout'        in self._cfg: raise ValueError("Missing agent layout")
 
@@ -7486,7 +7596,7 @@ def bootstrap_3():
             #        which hosts the bridge, not the local IP.  Until this
             #        is fixed, bridges MUST run on agent_0 (which is what
             #        LRMS.hostip() below will point to).
-            nodeip = LRMS.hostip(cfg.get('network_interface'))
+            nodeip = LRMS.hostip(cfg.get('network_interface'), logger=log)
             write_sub_configs(cfg, bridges, nodeip, log)
 
             # Store some runtime information into the session
@@ -7581,4 +7691,3 @@ if __name__ == "__main__":
 
 #
 # ------------------------------------------------------------------------------
-

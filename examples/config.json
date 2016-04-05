@@ -94,6 +94,11 @@
             "project"  : null,
             "queue"    : "debug",
             "schema"   : "ssh"
+        },
+
+        "yale.grace"   : {
+            "project"  : null,
+            "queue"    : "shared",
+            "schema"   : "ssh"
         }
 }
-
