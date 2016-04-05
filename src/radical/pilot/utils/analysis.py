@@ -89,6 +89,16 @@ _info_entries = [
     ('aec_complete',    'AgentExecuting',         'exec',      'execution complete'),
 ]
 
+
+# _FONT = {'family' : 'monospace',
+#          'weight' : 'normal',
+#          'size'   :  24}
+
+_FONT = {'family' : 'serif',
+         'serif'  : ['Computer Modern'],
+         'weight' : 'normal',
+         'size'   :  24}
+
 # ------------------------------------------------------------------------------
 #
 tmp = None
@@ -337,20 +347,23 @@ def create_plot():
     import matplotlib
     matplotlib.use('cairo')
 
+    matplotlib.rc('font', **_FONT)
+    matplotlib.rc('text', usetex=True)
+
     import matplotlib.pyplot as plt
 
     fig, plot = plt.subplots(figsize=(12,6))
 
-    plot.xaxis.set_tick_params(width=1, length=7)
-    plot.yaxis.set_tick_params(width=1, length=7)
+    plot.xaxis.set_tick_params(width=1, length=7, pad=15)
+    plot.yaxis.set_tick_params(width=1, length=7, pad=15)
 
-    plot.spines['right' ].set_position(('outward', 10))
-    plot.spines['top'   ].set_position(('outward', 10))
-    plot.spines['bottom'].set_position(('outward', 10))
-    plot.spines['left'  ].set_position(('outward', 10))
+  # plot.spines['right' ].set_position(('outward', 10))
+  # plot.spines['top'   ].set_position(('outward', 10))
+  # plot.spines['bottom'].set_position(('outward', 10))
+  # plot.spines['left'  ].set_position(('outward', 10))
 
-    plt.xticks(fontsize=24)
-    plt.yticks(fontsize=24)
+  # plt.xticks(fontsize=24)
+  # plt.yticks(fontsize=24)
 
     fig.tight_layout()
 
@@ -379,37 +392,47 @@ def frame_plot (frames, axis, title=None, logx=False, logy=False,
     # create figure and layout
     fig, plot = create_plot()
 
+    import pandas as pd
+
     # set plot title
     if title:
-        plot.set_title(title, y=1.05, fontsize=24)
+        plot.set_title(title, y=1.05) # , fontsize=24)
 
     # plot the data frames
     # NOTE: we need to set labels separately, because of
     #       https://github.com/pydata/pandas/issues/9542
-    labels = list()
+    labels  = list()
+    handles = list()
     for frame, label in frames:
+        _legend = False
+        _label  = None
         try:
             color = None
             if cmap:
                 for k,v in cmap.iteritems():
                     if k in label:
                         color = v
-            import pandas as pd
+                        break
+                    else:
+                        color='yellow'
             subframe = frame[pd.notnull(frame[axis[1][0]])]
-            subframe.plot(ax=plot, logx=logx, logy=logy,
+            handle = subframe.plot(ax=plot, logx=logx, logy=logy,
                     x=axis[0][0], y=axis[1][0],
                     drawstyle='steps', # linestyle=':',
-                    label=label, legend=False, color=color)
-            labels.append(label)
+                    linewidth=1,
+                    label=label if label not in labels else "", 
+                    legend=False, color=color)
+            if label not in labels:
+                labels.append(label)
+                handles.append(handle)
         except Exception as e:
             print "skipping frame '%s': '%s'" % (label, e)
 
     if legend:
-        plot.legend(labels     = labels, 
-                    prop       = {'family' : 'monospace', 
-                                  'size'   : 24
-                                 },
-                    fontsize   = 24, 
+        plot.legend(handles    = handles,
+                    labels     = labels,
+                  # prop       = _FONT,
+                  # fontsize   = 24, 
                   # loc        = legend_pos, 
                     loc        = 'best', 
                     frameon    = True,
@@ -417,8 +440,8 @@ def frame_plot (frames, axis, title=None, logx=False, logy=False,
                     framealpha = 0.5)
 
     # set axis labels
-    plot.set_xlabel(axis[0][1], fontsize=24)
-    plot.set_ylabel(axis[1][1], fontsize=24)
+    plot.set_xlabel(axis[0][1]) # , fontsize=24)
+    plot.set_ylabel(axis[1][1]) # , fontsize=24)
     plot.set_frame_on(True)
 
     # save as png and pdf.  Use the title as base for names
@@ -436,8 +459,8 @@ def frame_plot (frames, axis, title=None, logx=False, logy=False,
     print 'saving %s/%s.png' % (figdir, base)
     fig.savefig('%s/%s.png'  % (figdir, base), bbox_inches='tight')
 
-    print 'saving %s/%s.pdf' % (figdir, base)
-    fig.savefig('%s/%s.pdf'  % (figdir, base), bbox_inches='tight')
+  # print 'saving %s/%s.pdf' % (figdir, base)
+  # fig.savefig('%s/%s.pdf'  % (figdir, base), bbox_inches='tight')
 
     return fig, plot
 

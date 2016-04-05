@@ -168,7 +168,11 @@ def prof2frame(prof):
     import pandas as pd
 
     # create data frame from profile dicts
-    frame = pd.DataFrame(prof)
+    limit = os.environ.get('RP_PLOT_LIMIT')
+    if limit:
+        frame = pd.DataFrame(prof[:int(limit)])
+    else:
+        frame = pd.DataFrame(prof)
     frame.set_index('time')
 
     # --------------------------------------------------------------------------
