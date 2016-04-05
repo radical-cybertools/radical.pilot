@@ -285,6 +285,15 @@ class Popen(AgentExecutingComponent) :
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
         self._prof.prof('control', msg='launch script constructed', uid=cu['uid'])
 
+        sandbox = ru.Url(cu["sandbox"]).path
+
+        # prepare stdout/stderr
+        stdout_file = cu['description'].get('stdout') or 'STDOUT'
+        stderr_file = cu['description'].get('stderr') or 'STDERR'
+
+        cu['stdout_file'] = os.path.join(sandbox, stdout_file)
+        cu['stderr_file'] = os.path.join(sandbox, stderr_file)
+
         _stdout_file_h = open(cu['stdout_file'], "w+")
         _stderr_file_h = open(cu['stderr_file'], "w+")
         self._prof.prof('control', msg='stdout and stderr files created', uid=cu['uid'])

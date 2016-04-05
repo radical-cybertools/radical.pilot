@@ -20,6 +20,13 @@ from .base import UMGRStagingInputComponent
 # ==============================================================================
 #
 class Default(UMGRStagingInputComponent):
+    """
+    This component performs all umgr side input staging directives for compute
+    units.  It gets units from the umgr_staging_input_queue, in
+    UMGR_STAGING_INPUT_PENDING state, will advance them to UMGR_STAGING_INPUT
+    state while performing the staging, and then moves then to the respective
+    final state.
+    """
 
     # --------------------------------------------------------------------------
     #
@@ -51,72 +58,88 @@ class Default(UMGRStagingInputComponent):
 
         self.advance(units, rps.UMGR_STAGING_INPUT, publish=True, push=False)
 
+        # we first filter out any units which don't need any input staging, and
+        # advance them again as a bulk.  We work over the others one by one, and
+        # advance them individually, to avoid stalling from slow staging ops.
+        
+        no_staging_units = list()
+        staging_units    = list()
+
         for unit in units:
 
-            self._handle_unit(unit)
+            # no matter if we perform any staging or not, we will push the full
+            # unit info to the DB on the next advance, and will pass control to
+            # the agent.
+            unit['$all']    = True
+            unit['control'] = 'agent_pending'
+
+            # check if we have any staging directives to be enacted in this
+            # component
+            actionables = list()
+            for entry in unit.get('input_staging', []):
+
+                action = entry['action']
+                flags  = entry['flags']
+                src    = ru.Url(entry['source'])
+                tgt    = ru.Url(entry['target'])
+
+                if action in [rpc.TRANSFER] and src.schema in ['file']:
+                    actionables.append([src, tgt, flags])
+
+            if actionables:
+                staging_units.append([unit, actionables])
+            else:
+                no_staging_units.append(unit)
+
+
+        if no_staging_units:
+            self.advance(no_staging_units, rps.AGENT_STAGING_INPUT_PENDING, 
+                         publish=True, push=True)
+
+        for unit,actionables in staging_units:
+            self._handle_unit(unit, actionables)
 
 
     # --------------------------------------------------------------------------
     #
-    def _handle_unit(self, unit):
+    def _handle_unit(self, unit, actionables):
 
         uid = unit['uid']
 
-        # check if we have any staging directives to be enacted in this
-        # component
-        actionables = list()
-        for entry in unit.get('input_staging', []):
+        # we have actionable staging directives, and thus we need a unit
+        # sandbox.
+        sandbox = rs.Url(unit["sandbox"])
+        self._prof.prof("create sandbox", msg=str(sandbox))
 
-            action = entry['action']
-            flags  = entry['flags']
-            src    = ru.Url(entry['source'])
-            tgt    = ru.Url(entry['target'])
+        # url used for cache (sandbox url w/o path)
+        tmp = rs.Url(sandbox)
+        tmp.path = '/'
+        key = str(tmp)
 
-            if action in [rpc.TRANSFER] and src.schema in ['file']:
-                actionables.append([src, tgt, flags])
+        if key not in self._cache:
+            self._cache[key] = rs.filesystem.Directory(tmp, 
+                    session=self._session)
 
-        if actionables:
-
-            # we have actionable staging directives, and thus we need a unit
-            # sandbox.
-            sandbox = rs.Url(unit["sandbox"])
-            self._prof.prof("create sandbox", msg=str(sandbox))
-
-            # url used for cache (sandbox url w/o path)
-            tmp = rs.Url(sandbox)
-            tmp.path = '/'
-            key = str(tmp)
-
-            if key not in self._cache:
-                self._cache[key] = rs.filesystem.Directory(tmp, 
-                        session=self._session)
-
-            saga_dir = self._cache[key]
-            saga_dir.make_dir(sandbox, flags=rs.filesystem.CREATE_PARENTS)
-
-            self._prof.prof("created sandbox", uid=uid)
+        saga_dir = self._cache[key]
+        saga_dir.make_dir(sandbox, flags=rs.filesystem.CREATE_PARENTS)
+        self._prof.prof("created sandbox", uid=uid)
 
 
-            # Loop over all transfer directives and execute them.
-            for src, tgt, flags in actionables:
+        # Loop over all transfer directives and execute them.
+        for src, tgt, flags in actionables:
 
-                self._prof.prof('umgr staging in', msg=src, uid=uid)
+            self._prof.prof('umgr staging in', msg=src, uid=uid)
 
-                if rpc.CREATE_PARENTS in flags:
-                    copy_flags = rs.filesystem.CREATE_PARENTS
-                else:
-                    copy_flags = 0
+            if rpc.CREATE_PARENTS in flags:
+                copy_flags = rs.filesystem.CREATE_PARENTS
+            else:
+                copy_flags = 0
 
-                saga_dir.copy(src, tgt, flags=copy_flags)
+            saga_dir.copy(src, tgt, flags=copy_flags)
 
-                self._prof.prof('umgr staged  in', msg=src, uid=uid)
+            self._prof.prof('umgr staged  in', msg=src, uid=uid)
 
-
-        # all staging is done -- pass on to the agent
-        # At this point, the unit will leave the umgr, we thus dump it
-        # completely into the DB
-        unit['$all']    = True
-        unit['control'] = 'agent_pending'
+        # staging is done, we can advance the unit at last
         self.advance(unit, rps.AGENT_STAGING_INPUT_PENDING, publish=True, push=True)
 
 

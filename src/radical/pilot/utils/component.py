@@ -1284,12 +1284,12 @@ class Component(mp.Process):
             if ttype not in ['unit', 'pilot']:
                 raise TypeError("thing has unknown type (%s)" % uid)
 
-            if not state:
-                # no state advance
-                state = thing['state']
-            else:
-                # state advance
+            if state:
+                # state advance done here
                 thing['state'] = state
+            else:
+                # state advance happened before
+                state = thing['state']
 
             self._prof.prof('advance', uid=uid, state=state, timestamp=timestamp)
 

@@ -6,6 +6,7 @@ __license__   = "MIT"
 import os
 import shutil
 
+import saga          as rs
 import radical.utils as ru
 
 from .... import pilot     as rp
@@ -54,84 +55,100 @@ class Default(AgentStagingInputComponent):
 
         self.advance(units, rps.AGENT_STAGING_INPUT, publish=True, push=False)
 
+        # we first filter out any units which don't need any input staging, and
+        # advance them again as a bulk.  We work over the others one by one, and
+        # advance them individually, to avoid stalling from slow staging ops.
+        
+        no_staging_units = list()
+        staging_units    = list()
+
         for unit in units:
 
-            self._handle_unit(unit)
+            # no matter if we perform any staging or not, we will push the full
+            # unit info to the DB on the next advance, and will pass control to
+            # the agent.
+            unit['$all']    = True
+            unit['control'] = 'agent_pending'
+
+            # check if we have any staging directives to be enacted in this
+            # component
+            actionables = list()
+            for entry in unit.get('input_staging', []):
+
+                action = entry['action']
+                flags  = entry['flags']
+                src    = ru.Url(entry['source'])
+                tgt    = ru.Url(entry['target'])
+
+                if action in [rpc.LINK, rpc.COPY, rpc.MOVE]:
+                    actionables.append([src, tgt, flags])
+
+            if actionables:
+                staging_units.append([unit, actionables])
+            else:
+                no_staging_units.append(unit)
+
+
+        if no_staging_units:
+            self.advance(no_staging_units, rps.AGENT_SCHEDULING_PENDING, 
+                         publish=True, push=True)
+
+        for unit,actionables in staging_units:
+            self._handle_unit(unit, actionables)
 
 
     # --------------------------------------------------------------------------
     #
-    def _handle_unit(self, unit):
+    def _handle_unit(self, unit, actionables):
 
         uid     = unit['uid']
         sandbox = ru.Url(unit["sandbox"]).path
 
-        # prepare stdout/stderr
-        stdout_file = unit['description'].get('stdout') or 'STDOUT'
-        stderr_file = unit['description'].get('stderr') or 'STDERR'
+        # we have actionables, thus we need sandbox and staging area
+        # TODO: optimization: sandbox,staging_area might already exist
+        pilot_sandbox = ru.Url(self._cfg['pilot_sandbox']).path
+        staging_area  = os.path.join(pilot_sandbox, self._cfg['staging_area'])
 
-        unit['stdout_file'] = os.path.join(sandbox, stdout_file)
-        unit['stderr_file'] = os.path.join(sandbox, stderr_file)
+        self._prof.prof("create  sandbox", uid=uid, msg=sandbox)
+        rpu.rec_makedir(sandbox)
+        self._prof.prof("created sandbox", uid=uid)
 
-        # check if we have any staging directives to be enacted in this
-        # component
-        actionables = list()
-        for entry in unit.get('input_staging', []):
+        self._prof.prof("create  staging_area", uid=uid, msg=staging_area)
+        # FIXME: this is only required once
+        rpu.rec_makedir(staging_area)
+        self._prof.prof("created staging_area", uid=uid)
 
-            action = entry['action']
-            flags  = entry['flags']
-            src    = ru.Url(entry['source'])
-            tgt    = ru.Url(entry['target'])
+        # Loop over all transfer directives and execute them.
+        for src, tgt, flags in actionables:
 
-            if action in [rpc.LINK, rpc.COPY, rpc.MOVE]:
-                actionables.append([src, tgt, flags])
+            self._prof.prof('agent staging in', msg=src, uid=uid)
 
-        if actionables:
+            # Handle special 'staging' schema
+            if src.schema == self._cfg['staging_schema']:
+                # remove leading '/' to convert into rel path
+                source = os.path.join(staging_area, src.path[1:])
+            else:
+                source = src.path
 
-            # we have actionables, thus we need sandbox and staging area
-            # TODO: optimization: sandbox,staging_area might already exist
-            pilot_sandbox = ru.Url(self._cfg['pilot_sandbox']).path
-            staging_area  = os.path.join(pilot_sandbox, self._cfg['staging_area'])
+            target = os.path.join(sandbox, tgt.path)
 
-            self._prof.prof("create  sandbox", uid=uid, msg=sandbox)
-            rpu.rec_makedir(sandbox)
-            self._prof.prof("created sandbox", uid=uid)
+            if rpc.CREATE_PARENTS in flags:
+                tgtdir = os.path.dirname(target)
+                if tgtdir != sandbox:
+                    # TODO: optimization point: create each dir only once
+                    self._log.debug("mkdir %s" % tgtdir)
+                    rpu.rec_makedir(tgtdir)
 
-            self._prof.prof("create  staging_area", uid=uid, msg=staging_area)
-            rpu.rec_makedir(staging_area)
-            self._prof.prof("created staging_area", uid=uid)
+            self._log.info("%sing %s to %s", action, src, tgt)
 
-            # Loop over all transfer directives and execute them.
-            for src, tgt, flags in actionables:
+            if   action == rpc.LINK: os.symlink     (source, target)
+            elif action == rpc.COPY: shutil.copyfile(source, target)
+            elif action == rpc.MOVE: shutil.move    (source, target)
+            else:
+                # FIXME: implement TRANSFER mode
+                raise NotImplementedError('unsupported action %s' % action)
 
-                self._prof.prof('agent staging in', msg=src, uid=uid)
-
-                # Handle special 'staging' schema
-                if src.schema == self._cfg['staging_schema']:
-                    # remove leading '/' to convert into rel path
-                    source = os.path.join(staging_area, src.path[1:])
-                else:
-                    source = src.path
-
-                target = os.path.join(sandbox, tgt.path)
-
-                if rpc.CREATE_PARENTS in flags:
-                    tgtdir = os.path.dirname(target)
-                    if tgtdir != sandbox:
-                        # TODO: optimization point: create each dir only once
-                        self._log.debug("mkdir %s" % tgtdir)
-                        rpu.rec_makedir(tgtdir)
-
-                self._log.info("%sing %s to %s", action, src, tgt)
-
-                if   action == rpc.LINK: os.symlink     (source, target)
-                elif action == rpc.COPY: shutil.copyfile(source, target)
-                elif action == rpc.MOVE: shutil.move    (source, target)
-                else:
-                    # FIXME: implement TRANSFER mode
-                    raise NotImplementedError('unsupported action %s' % action)
-
-                self._log.info("%s'ed %s to %s" % (action, source, target))
+            self._log.info("%s'ed %s to %s" % (action, source, target))
 
 
         # all staging is done -- pass on to the scheduler
