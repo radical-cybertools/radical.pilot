@@ -269,16 +269,12 @@ class UnitManager(rpu.Component):
         self._prof.prof('get', msg="bulk size: %d" % len(units), uid=self.uid)
         for unit in units:
             unit['control'] = 'umgr'
-            unit['state']   = rps._unit_state_collapse(unit['states'])
             self._prof.prof('get', msg="bulk size: %d" % len(units), uid=unit['uid'])
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline).  We don't publish the advance, since that
         # happened already on the agent side when the state was set.
-        self.advance(units, publish=False, push=True)
-
-        # make sure the unit instance is updated
-        self._update_unit(unit['uid'], unit)
+        self.advance(units, publish=True, push=True)
 
         return True
 
@@ -302,7 +298,7 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _update_unit(self, uid, unit):
+    def _update_unit(self, uid, unit_dict):
 
         # we don't care about units we don't know
         # otherwise get old state
@@ -312,8 +308,8 @@ class UnitManager(rpu.Component):
                 return False
 
             # only update on state changes
-            if self._units[uid].state != unit['state']:
-                return self._units[uid]._update(unit)
+            if self._units[uid].state != unit_dict['state']:
+                return self._units[uid]._update(unit_dict)
             else:
                 return False
 

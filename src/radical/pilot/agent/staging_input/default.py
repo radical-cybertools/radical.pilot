@@ -64,12 +64,6 @@ class Default(AgentStagingInputComponent):
 
         for unit in units:
 
-            # no matter if we perform any staging or not, we will push the full
-            # unit info to the DB on the next advance, and will pass control to
-            # the agent.
-            unit['$all']    = True
-            unit['control'] = 'agent_pending'
-
             # check if we have any staging directives to be enacted in this
             # component
             actionables = list()

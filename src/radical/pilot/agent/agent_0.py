@@ -405,10 +405,9 @@ class Agent_0(rpu.Worker):
         #        find -- so we do it right here.
         #        This also blocks us from using multiple ingest threads, or from
         #        doing late binding by unit pull :/
-        unit_cursor = self._session._dbs._c.find(spec  = {
-            'type'    : 'unit',
-            'pilot'   : self._pilot_id,
-            'control' : 'agent_pending'})
+        unit_cursor = self._session._dbs._c.find(spec = {'type'    : 'unit',
+                                                         'pilot'   : self._pilot_id,
+                                                         'control' : 'agent_pending'})
 
         if not unit_cursor.count():
             # no units whatsoever...
@@ -419,13 +418,22 @@ class Agent_0(rpu.Worker):
         unit_list = list(unit_cursor)
         unit_uids = [unit['uid'] for unit in unit_list]
 
+        self._log.info("units PULLED: %4d", len(unit_list))
+
         self._session._dbs._c.update(multi    = True,
                         spec     = {'type'  : 'unit',
                                     'uid'   : {'$in'     : unit_uids}},
                         document = {'$set'  : {'control' : 'agent'}})
 
-        self._log.info("units pulled: %4d"   % len(unit_list))
+        for unit in unit_list:
+            if unit['control'] != 'agent_pending':
+                self._log.error(' === invalid control: %s', (pprint.pformat(unit)))
+            if unit['state'] != rps.AGENT_STAGING_INPUT_PENDING:
+                self._log.error(' === invalid state: %s', (pprint.pformat(unit)))
+
+        self._log.info("units pulled: %4d", len(unit_list))
         self._prof.prof('get', msg="bulk size: %d" % len(unit_list), uid=self._pilot_id)
+
         for unit in unit_list:
             unit['control'] = 'agent'
 
