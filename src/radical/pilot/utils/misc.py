@@ -89,9 +89,13 @@ def hostip(req=None, black_list=None, pref_list=None, logger=None):
     if not pref_list:
         pref_list = [
             'ipogif0', # Cray's
-            'br0',     # SuperMIC
-            'eth0'
+            'br0'      # SuperMIC
         ]
+
+    # we always add the currently used interface to the preferred ones
+    default = netifaces.gateways()['default'][netifaces.AF_INET][1]
+    if default not in pref_list:
+        pref_list.append(default)
 
     # Get a list of all network interfaces
     all = netifaces.interfaces()
