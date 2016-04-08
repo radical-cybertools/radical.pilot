@@ -1,5 +1,4 @@
 #!/bin/bash -l
-
 # ------------------------------------------------------------------------------
 # Copyright 2013-2015, RADICAL @ Rutgers
 # Licensed under the MIT License
@@ -39,6 +38,7 @@ PILOT_ID=
 RP_VERSION=
 PYTHON=
 SESSION_ID=
+SESSION_DIR=
 SANDBOX=`pwd`
 PREBOOTSTRAP2=""
 
@@ -97,7 +97,7 @@ EOT
 #
 profile_event()
 {
-    PROFILE="$SESSION_ID/bootstrap_1.prof"
+    PROFILE="bootstrap_1.prof"
 
     if test -z "$RADICAL_PILOT_PROFILE"
     then
@@ -482,7 +482,7 @@ virtenv_setup()
             do
                 src=${sdist%.tgz}
                 src=${sdist%.tar.gz}
-                tar zxmf $sdist
+                tar zxmf "$SESSION_DIR/$sdist"
                 RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
             done
             RP_INSTALL_TARGET='VIRTENV'
@@ -494,7 +494,7 @@ virtenv_setup()
             do
                 src=${sdist%.tgz}
                 src=${sdist%.tar.gz}
-                tar zxmf $sdist
+                tar zxmf "$SESSION_DIR/$sdist"
                 RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
             done
             RP_INSTALL_TARGET='SANDBOX'
@@ -1182,8 +1182,9 @@ env | sort
 echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
-while getopts "b:cd:e:f:h:i:m:p:r:s:t:v:w:x" OPTION; do
+while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x" OPTION; do
     case $OPTION in
+        a)  SESSION_DIR="$OPTARG"  ;;
         b)  PYTHON_DIST="$OPTARG"  ;;
         c)  CCM='TRUE'  ;;
         d)  SDISTS="$OPTARG"  ;;
@@ -1225,12 +1226,13 @@ rmdir "$VIRTENV" 2>/dev/null
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
-if test -z "$PILOT_ID"    ; then  usage "missing PILOT_ID      ";  fi
-if test -z "$SESSION_ID"  ; then  usage "missing SESSION_ID    ";  fi
-if test -z "$RP_VERSION"  ; then  usage "missing RP_VERSION   ";  fi
+if test -z "$PILOT_ID"    ; then  usage "missing PILOT_ID"  ;  fi
+if test -z "$RP_VERSION"  ; then  usage "missing RP_VERSION";  fi
 
-#for log files etc
-mkdir -p $SESSION_ID
+if test -z "$SESSION_DIR"
+then  
+    SESSION_DIR="$SANDBOX/.."
+fi
 
 # If the host that will run the agent is not capable of communication
 # with the outside world directly, we will setup a tunnel.
@@ -1401,7 +1403,7 @@ $PREBOOTSTRAP2_EXPANDED
 
 # start agent, forward arguments
 # NOTE: exec only makes sense in the last line of the script
-exec $AGENT_CMD "\$1" 1>"$SESSION_ID/\$1.out" 2>"$SESSION_ID/\$1.err"
+exec $AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
 
 EOT
 
@@ -1440,7 +1442,7 @@ profile_event 'agent start'
 
 # start the master agent instance (zero)
 profile_event 'sync rel' 'agent start'
-./bootstrap_2.sh 'agent_0' 1>$SESSION_ID/agent_0.bootstrap_2.out 2>$SESSION_ID/agent_0.bootstrap_2.err
+./bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
 
 AGENT_EXITCODE=$?
 

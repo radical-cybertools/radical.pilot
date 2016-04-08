@@ -34,6 +34,9 @@ JOB_CHECK_INTERVAL    = 60  # seconds between runs of the job state check loop
 JOB_CHECK_MAX_MISSES  =  3  # number of times to find a job missing before
                             # declaring it dead
 
+LOCAL_SCHEME = 'file'
+BOOTSTRAPPER_SCRIPT = "bootstrap_1.sh"
+
 # ==============================================================================
 #
 class Default(PMGRLaunchingComponent):
@@ -60,7 +63,7 @@ class Default(PMGRLaunchingComponent):
         self._missing       = dict()             # for failed state checks
         self._pilots_lock   = threading.RLock()  # lock on maipulating the above
         self._saga_js_cache = dict()             # cache of saga job services
-        self._sandbox_cache = dict()             # cache of global sandbox URLs
+        self._sandboxes     = dict()             # cache of global sandbox URLs
         self._cache_lock    = threading.RLock()  # lock for cache
 
         self._mod_dir       = os.path.dirname(os.path.abspath(__file__))
@@ -288,6 +291,92 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
+    def _create_pilot_sandbox(self, pilot, resource, rcfg, cf_url, agent_cfg_name):
+
+        # make sure we have a session sandbox
+        self._create_session_sandbox(pilot, resource, rcfg)
+
+        # create and populate the pilot sandbox
+        pilot_sandbox_url = self._session._get_pilot_sandbox(pilot)
+        pilot_sandbox     = rs.filesystem.Directory(pilot_sandbox_url,
+                                                    session=self._session, 
+                                                    flags=rs.filesystem.CREATE_PARENTS)
+
+        self._log.debug("Copy agent cfg '%s' to '%s'", cf_url, pilot_sandbox)
+        pilot_sandbox.copy(cf_url, agent_cfg_name)
+        pilot_sandbox.close()
+        
+
+    # --------------------------------------------------------------------------
+    #
+    def _create_session_sandbox(self, pilot, resource, rcfg):
+
+        # check if we have a sandbox cached for that resource.  If so, we have
+        # nothing to do.  Otherwise we create the sandbox and stage the RP
+        # stack etc.
+        # NOTE: this will race when multiple pilot launcher instances are used!
+        with self._cache_lock:
+
+            if not resource in self._sandboxes:
+
+                stage_cacerts = rcfg.get ('stage_cacerts', 'False')
+                rp_version    = rcfg.get ('rp_version',    DEFAULT_RP_VERSION)
+
+                session_sandbox_url = self._session._get_session_sandbox(pilot)
+                session_sandbox     = rs.filesystem.Directory(session_sandbox_url,
+                                                              session=self._session,
+                                                              flags=rs.filesystem.CREATE_PARENTS)
+
+                # ------------------------------------------------------------------
+                # Copy the bootstrap shell script.
+                # This also creates the sandbox.
+                bootstrapper_path = os.path.abspath("%s/agent/%s" \
+                        % (self._root_dir, BOOTSTRAPPER_SCRIPT))
+
+                bs_script_url = rs.Url("%s://localhost%s" % (LOCAL_SCHEME, bootstrapper_path))
+
+                self._log.debug("Using bootstrapper %s", bootstrapper_path)
+                self._log.debug("Copy bootstrapper '%s' to %s.", bs_script_url,
+                    session_sandbox)
+
+                session_sandbox.copy(bs_script_url, BOOTSTRAPPER_SCRIPT)
+
+                if  not rp_version.startswith('@') and \
+                    not rp_version in ['installed', 'local', 'debug', 'release']:
+                    raise ValueError("invalid rp_version '%s'" % rp_version)
+        
+                stage_sdist = False
+                if rp_version in ['local', 'debug']:
+
+                    # ------------------------------------------------------------------
+                    # Copy the rp sdist if needed.  We actually also stage
+                    # the sdists for radical.utils and radical.saga, so that
+                    # we have the complete stack to install...
+
+                        for sdist_path in [ru.sdist_path, rs.sdist_path, self._rp_sdist_path]:
+
+                            sdist_url = rs.Url("%s://localhost%s" % (LOCAL_SCHEME, sdist_path))
+                            self._log.debug("Copy sdist '%s' to '%s'", sdist_url, session_sandbox_url)
+                            session_sandbox.copy(sdist_url, os.path.basename(str(sdist_url)))
+
+                # ------------------------------------------------------------------
+                # Some machines cannot run pip due to outdated CA certs.
+                # For those, we also stage an updated certificate bundle
+                # TODO: use booleans all the way?
+                if stage_cacerts.lower() == 'true':
+
+                    cc_path = os.path.abspath("%s/agent/%s" \
+                            % (self._root_dir, 'cacert.pem.gz'))
+                    cc_url  = rs.Url("%s://localhost/%s" % (LOCAL_SCHEME, cc_path))
+                    self._log.debug("Copy CAs '%s' to '%s'", cc_url, session_sandbox_url)
+                    session_sandbox.copy(cc_url, os.path.basename(str(cc_url)))
+
+                session_sandbox.close()
+                self._sandboxes[resource] = True
+
+
+    # --------------------------------------------------------------------------
+    #
     def work(self, pilots):
 
         if not isinstance(pilots, list):
@@ -343,11 +432,6 @@ class Default(PMGRLaunchingComponent):
         memory          = pilot['description']['memory']
         candidate_hosts = pilot['description']['candidate_hosts']
 
-        # get pilot and global sandbox
-        global_sandbox   = self._session._get_global_sandbox(pilot)
-        pilot_sandbox    = self._session._get_pilot_sandbox(pilot)
-        pilot['sandbox'] = pilot_sandbox
-
         # ------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
         rcfg = self._session.get_resource_config(resource, schema)
@@ -371,12 +455,16 @@ class Default(PMGRLaunchingComponent):
         rp_version              = rcfg.get ('rp_version',          DEFAULT_RP_VERSION)
         virtenv_mode            = rcfg.get ('virtenv_mode',        DEFAULT_VIRTENV_MODE)
         virtenv                 = rcfg.get ('virtenv',             DEFAULT_VIRTENV)
-        stage_cacerts           = rcfg.get ('stage_cacerts',       'False')
         cores_per_node          = rcfg.get ('cores_per_node')
-        shared_filesystem       = rcfg.get ('shared_filesystem', True)
         health_check            = rcfg.get ('health_check', True)
         python_dist             = rcfg.get ('python_dist')
 
+
+        # get pilot and global sandbox
+        global_sandbox_url  = self._session._get_global_sandbox(pilot)
+        session_sandbox_url = self._session._get_session_sandbox(pilot)
+        pilot_sandbox_url   = self._session._get_pilot_sandbox(pilot)
+        pilot['sandbox']    = str(pilot_sandbox_url)
 
         # Agent configuration that is not part of the public API.
         # The agent config can either be a config dict, or
@@ -415,15 +503,10 @@ class Default(PMGRLaunchingComponent):
             # we can't handle this type
             raise TypeError('agent config must be string (filename) or dict')
 
-        # TODO: use booleans all the way?
-        if stage_cacerts.lower() == 'true':
-            stage_cacerts = True
-        else:
-            stage_cacerts = False
-
         # expand variables in virtenv string
-        virtenv = virtenv % {'pilot_sandbox' : rs.Url(pilot_sandbox).path,
-                             'global_sandbox': rs.Url(global_sandbox).path }
+        virtenv = virtenv % {'pilot_sandbox'   :   pilot_sandbox_url.path,
+                             'session_sandbox' : session_sandbox_url.path,
+                             'global_sandbox'  :  global_sandbox_url.path}
 
         # Check for deprecated global_virtenv
         if 'global_virtenv' in rcfg:
@@ -435,32 +518,6 @@ class Default(PMGRLaunchingComponent):
             db_hostport = "%s:%d" % (db_url.host, db_url.port)
         else:
             db_hostport = "%s:%d" % (db_url.host, 27017) # mongodb default
-
-        # Open the remote sandbox
-        # TODO: make conditional on shared_fs?
-        sandbox_tgt = rs.filesystem.Directory(pilot_sandbox,
-                                              session=self._session,
-                                              flags=rs.filesystem.CREATE_PARENTS)
-        LOCAL_SCHEME = 'file'
-        
-        # Also create the session_id dir for logs and profiles
-        sandbox_tgt.make_dir(self._session.uid)
-
-        
-        # ------------------------------------------------------------------
-        # Copy the bootstrap shell script.
-        # This also creates the sandbox.
-        BOOTSTRAPPER_SCRIPT = "bootstrap_1.sh"
-        bootstrapper_path   = os.path.abspath("%s/agent/%s" \
-                % (self._root_dir, BOOTSTRAPPER_SCRIPT))
-
-        bs_script_url = rs.Url("%s://localhost%s" % (LOCAL_SCHEME, bootstrapper_path))
-
-        self._log.debug("Using bootstrapper %s", bootstrapper_path)
-        self._log.debug("Copy bootstrapper '%s' to %s.", bs_script_url, sandbox_tgt)
-
-        if shared_filesystem:
-            sandbox_tgt.copy(bs_script_url, BOOTSTRAPPER_SCRIPT)
 
         # ------------------------------------------------------------------
         # the version of the agent is derived from
@@ -524,44 +581,8 @@ class Default(PMGRLaunchingComponent):
         # above syntax is ignored, and the fallback stage@local
         # is used.
 
-        if  not rp_version.startswith('@') and \
-            not rp_version in ['installed', 'local', 'debug']:
-            raise ValueError("invalid rp_version '%s'" % rp_version)
-
-        stage_sdist=True
-        if rp_version in ['installed', 'release']:
-            stage_sdist = False
-
         if rp_version.startswith('@'):
-            stage_sdist = False
             rp_version  = rp_version[1:]  # strip '@'
-
-
-        # ------------------------------------------------------------------
-        # Copy the rp sdist if needed.  We actually also stage
-        # the sdists for radical.utils and radical.saga, so that
-        # we have the complete stack to install...
-        if stage_sdist:
-
-            for sdist_path in [ru.sdist_path, rs.sdist_path, self._rp_sdist_path]:
-
-                sdist_url = rs.Url("%s://localhost%s" % (LOCAL_SCHEME, sdist_path))
-                if shared_filesystem:
-                    self._log.debug("Copy sdist '%s' to '%s'", sdist_url, pilot_sandbox)
-                    sandbox_tgt.copy(sdist_url, os.path.basename(str(sdist_url)))
-
-
-        # ------------------------------------------------------------------
-        # Some machines cannot run pip due to outdated CA certs.
-        # For those, we also stage an updated certificate bundle
-        if stage_cacerts:
-            cc_path = os.path.abspath("%s/agent/%s" \
-                    % (self._root_dir, 'cacert.pem.gz'))
-
-            cc_url= rs.Url("%s://localhost/%s" % (LOCAL_SCHEME, cc_path))
-            if shared_filesystem:
-                self._log.debug("Copy CAs '%s' to '%s'", cc_url, pilot_sandbox)
-                sandbox_tgt.copy(cc_url, os.path.basename(str(cc_url)))
 
 
         # ------------------------------------------------------------------
@@ -638,8 +659,10 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['scheduler']          = agent_scheduler
         agent_cfg['runtime']            = runtime
         agent_cfg['pilot_id']           = pid
-        agent_cfg['pilot_sandbox']      = pilot_sandbox
-        agent_cfg['global_sandbox']     = global_sandbox
+        agent_cfg['logdir']             = pilot_sandbox_url.path
+        agent_cfg['pilot_sandbox']      = pilot_sandbox_url.path
+        agent_cfg['session_sandbox']    = session_sandbox_url.path
+        agent_cfg['global_sandbox']     = global_sandbox_url.path
         agent_cfg['agent_launch_method']= agent_launch_method
         agent_cfg['task_launch_method'] = task_launch_method
         if mpi_launch_method:
@@ -661,16 +684,13 @@ class Default(PMGRLaunchingComponent):
         ru.write_json(agent_cfg, cfg_tmp_file)
 
         cf_url = rs.Url("%s://localhost%s" % (LOCAL_SCHEME, cfg_tmp_file))
-        if shared_filesystem:
-            self._log.debug("Copy agent cfg '%s' to '%s'", cf_url, pilot_sandbox)
-            sandbox_tgt.copy(cf_url, agent_cfg_name)
+
+        # create the remote sandbox
+        # TODO: make conditional on shared_fs?
+        self._create_pilot_sandbox(pilot, resource, rcfg, cf_url, agent_cfg_name)
 
         # Close agent config file
         os.close(cfg_tmp_handle)
-
-        # ------------------------------------------------------------------
-        # Done with all transfers to pilot sandbox, close handle
-        sandbox_tgt.close()
 
         # ------------------------------------------------------------------
         # now that the scripts are in place and configured, 
@@ -690,12 +710,14 @@ class Default(PMGRLaunchingComponent):
 
         jd = rs.job.Description()
 
+        bootstrap_tgt = '%s/%s' % (session_sandbox_url.path, BOOTSTRAPPER_SCRIPT)
+
         jd.executable            = "/bin/bash"
-        jd.arguments             = ["-l %s" % BOOTSTRAPPER_SCRIPT, bootstrap_args]
-        jd.working_directory     = rs.Url(pilot_sandbox).path
+        jd.arguments             = ['-l %s' % bootstrap_tgt, bootstrap_args]
+        jd.working_directory     = pilot_sandbox_url.path
         jd.project               = project
-        jd.output                = "%s/bootstrap_1.out" % self._session.uid
-        jd.error                 = "%s/bootstrap_1.err" % self._session.uid
+        jd.output                = "bootstrap_1.out"
+        jd.error                 = "bootstrap_1.err"
         jd.total_cpu_count       = number_cores
         jd.processes_per_host    = cores_per_node
         jd.wall_time_limit       = runtime
@@ -705,7 +727,8 @@ class Default(PMGRLaunchingComponent):
         jd.environment           = dict()
 
         # TODO: not all files might be required, this also needs to be made conditional
-        if not shared_filesystem:
+      # if not shared_filesystem:
+        if False:
             jd.file_transfer = [
               # '%s > %s' % (bootstrapper_path, os.path.basename(bootstrapper_path)),
                 '%s > %s' % (bootstrapper_path, os.path.join(jd.working_directory,

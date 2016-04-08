@@ -77,8 +77,9 @@ class Session(rs.Session):
         self._cache       = dict()  # cache sandboxes etc.
         self._cache_lock  = threading.RLock()
 
-        self._cache['global_sandbox'] = dict()
-        self._cache['pilot_sandbox']  = dict()
+        self._cache['global_sandbox']  = dict()
+        self._cache['session_sandbox'] = dict()
+        self._cache['pilot_sandbox']   = dict()
 
         # before doing anything else, set up the debug helper for the lifetime
         # of the session.
@@ -116,7 +117,8 @@ class Session(rs.Session):
             self._uid = ru.generate_id('rp.session',  mode=ru.ID_PRIVATE)
             ru.reset_id_counters(prefix='rp.session', reset_all_others=True)
 
-        self._log = self._get_logger('radical.pilot')
+        self._logdir = self._cfg.get('logdir', '%s/%s' % (os.getcwd(), self._uid))
+        self._log    = self._get_logger('radical.pilot')
 
 
         if not dburl: dburl = self._cfg.get('dburl')
@@ -471,10 +473,7 @@ class Session(rs.Session):
         log files end up in a separate directory with the name of `session.uid`.
         """
 
-        target = "."
-        path   = "%s/%s/" % (os.getcwd(), self.uid)
-
-        log = ru.get_logger(name, target, path, level)
+        log = ru.get_logger(name, '.', self._logdir, level)
         log.info('radical.pilot        version: %s' % rp_version_detail)
 
         return log
@@ -488,9 +487,7 @@ class Session(rs.Session):
         profiles end up in a separate directory with the name of `session.uid`.
         """
 
-        prof = rpu.Profiler(name, path="%s/%s" % (os.getcwd(), self._uid))
-
-        return prof
+        return rpu.Profiler(name, path=self._logdir)
 
 
     # --------------------------------------------------------------------------
@@ -718,58 +715,82 @@ class Session(rs.Session):
         # the global sandbox will be the same for all pilots on any resource, so
         # we cache it
         with self._cache_lock:
-            if resource in self._cache['global_sandbox']:
-                return self._cache['global_sandbox'][resource]
 
-        # cache miss -- determine sandbox and fill cache
-        rcfg   = self.get_resource_config(resource, schema)
-        fs_url = rs.Url(rcfg['filesystem_endpoint'])
+            if resource not in self._cache['global_sandbox']:
 
-        # Get the sandbox from either the pilot_desc or resource conf
-        sandbox_raw = pilot['description'].get('sandbox')
-        if not sandbox_raw:
-            sandbox_raw = rcfg.get('default_remote_workdir', "$PWD")
+                # cache miss -- determine sandbox and fill cache
+                rcfg   = self.get_resource_config(resource, schema)
+                fs_url = rs.Url(rcfg['filesystem_endpoint'])
+        
+                # Get the sandbox from either the pilot_desc or resource conf
+                sandbox_raw = pilot['description'].get('sandbox')
+                if not sandbox_raw:
+                    sandbox_raw = rcfg.get('default_remote_workdir', "$PWD")
+        
+                # If the sandbox contains expandables, we need to resolve those remotely.
+                # NOTE: Note that this will only work for (gsi)ssh or shell based access mechanisms
+                if '$' not in sandbox_raw and '`' not in sandbox_raw:
+                    # no need to expand further
+                    sandbox_base = sandbox_raw
+        
+                else:
+                    js_url = rs.Url(rcfg['job_manager_endpoint'])
+        
+                    if 'ssh' in js_url.schema.split('+'):
+                        js_url.schema = 'ssh'
+                    elif 'gsissh' in js_url.schema.split('+'):
+                        js_url.schema = 'gsissh'
+                    elif 'fork' in js_url.schema.split('+'):
+                        js_url.schema = 'fork'
+                    elif '+' not in js_url.schema:
+                        # For local access to queueing systems use fork
+                        js_url.schema = 'fork'
+                    else:
+                        raise Exception("unsupported access schema: %s" % js_url.schema)
+        
+                    self._log.debug("rsup.PTYShell('%s')" % js_url)
+                    shell = rsup.PTYShell(js_url, self)
+        
+                    ret, out, err = shell.run_sync(' echo "WORKDIR: %s"' % sandbox_raw)
+                    if ret == 0 and 'WORKDIR:' in out:
+                        sandbox_base = out.split(":")[1].strip()
+                        self._log.debug("sandbox base %s: '%s'" % (js_url, sandbox_base))
+                    else:
+                        raise RuntimeError("Couldn't get remote working directory.")
+        
+                # at this point we have determined the remote 'pwd' - the global sandbox
+                # is relative to it.
+                fs_url.path = "%s/radical.pilot.sandbox" % sandbox_base
+        
+                # before returning, keep the URL string in cache
+                self._cache['global_sandbox'][resource] = fs_url
 
-        # If the sandbox contains expandables, we need to resolve those remotely.
-        # NOTE: Note that this will only work for (gsi)ssh or shell based access mechanisms
-        if '$' not in sandbox_raw and '`' not in sandbox_raw:
-            # no need to expand further
-            sandbox_base = sandbox_raw
+            return self._cache['global_sandbox'][resource]
 
-        else:
-            js_url = rs.Url(rcfg['job_manager_endpoint'])
 
-            if 'ssh' in js_url.schema.split('+'):
-                js_url.schema = 'ssh'
-            elif 'gsissh' in js_url.schema.split('+'):
-                js_url.schema = 'gsissh'
-            elif 'fork' in js_url.schema.split('+'):
-                js_url.schema = 'fork'
-            elif '+' not in js_url.schema:
-                # For local access to queueing systems use fork
-                js_url.schema = 'fork'
-            else:
-                raise Exception("unsupported access schema: %s" % js_url.schema)
+    # --------------------------------------------------------------------------
+    #
+    def _get_session_sandbox(self, pilot):
 
-            self._log.debug("rsup.PTYShell('%s')" % js_url)
-            shell = rsup.PTYShell(js_url, self)
 
-            ret, out, err = shell.run_sync(' echo "WORKDIR: %s"' % sandbox_raw)
-            if ret == 0 and 'WORKDIR:' in out:
-                sandbox_base = out.split(":")[1].strip()
-                self._log.debug("sandbox base %s: '%s'" % (js_url, sandbox_base))
-            else:
-                raise RuntimeError("Couldn't get remote working directory.")
+        resource = pilot['description'].get('resource')
 
-        # at this point we have determined the remote 'pwd' - the global sandbox
-        # is relative to it.
-        fs_url.path = "%s/radical.pilot.sandbox" % sandbox_base
+        if not resource:
+            raise ValueError('Cannot get session sandbox w/o resource target')
 
-        # before returning, keep the URL string in cache
         with self._cache_lock:
-            self._cache['global_sandbox'][resource] = str(fs_url)
 
-        return str(fs_url)
+            if resource not in self._cache['session_sandbox']:
+
+                # cache miss
+                global_sandbox  = self._get_global_sandbox(pilot)
+                session_sandbox = rs.Url(global_sandbox)
+                session_sandbox.path += '/%s' % self.uid
+
+                with self._cache_lock:
+                    self._cache['session_sandbox'][resource] = session_sandbox
+
+            return self._cache['session_sandbox'][resource]
 
 
     # --------------------------------------------------------------------------
@@ -783,8 +804,9 @@ class Session(rs.Session):
                 return self._cache['pilot_sandbox'][pid]
 
         # cache miss
-        global_sandbox = self._get_global_sandbox(pilot)
-        pilot_sandbox  = "%s/%s-%s/" % (str(global_sandbox), self.uid, pilot['uid'])
+        session_sandbox = self._get_session_sandbox(pilot)
+        pilot_sandbox  = rs.Url (session_sandbox)
+        pilot_sandbox.path += '/%s/' % pilot['uid']
 
         with self._cache_lock:
             self._cache['pilot_sandbox'][pid] = pilot_sandbox

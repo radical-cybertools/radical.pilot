@@ -61,22 +61,24 @@ if __name__ == '__main__':
           #     session.close()
         umgr.register_callback(unit_cb)
 
+        n = 1
         pdescs = list()
         for resource in resources:
 
             # Define an [n]-core local pilot that runs for [x] minutes
             # Here we use a dict to initialize the description object
-            pd_init = {
-                    'resource'      : resource,
-                    'cores'         : 64,   # pilot size
-                    'runtime'       : 60,    # pilot runtime (min)
-                    'exit_on_error' : True,
-                    'project'       : config[resource]['project'],
-                    'queue'         : config[resource]['queue'],
-                    'access_schema' : config[resource]['schema']
-                    }
-            pdesc = rp.ComputePilotDescription(pd_init)
-            pdescs.append(pdesc)
+            for i in range(n):
+               pd_init = {
+                       'resource'      : resource,
+                       'cores'         : 64,   # pilot size
+                       'runtime'       : 60,    # pilot runtime (min)
+                       'exit_on_error' : True,
+                       'project'       : config[resource]['project'],
+                       'queue'         : config[resource]['queue'],
+                       'access_schema' : config[resource]['schema']
+                       }
+               pdesc = rp.ComputePilotDescription(pd_init)
+               pdescs.append(pdesc)
        
         # Launch the pilot.
         pilots = pmgr.submit_pilots(pdescs)
@@ -96,7 +98,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 10 # number of units to run
+        n = 40 # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -139,12 +141,12 @@ if __name__ == '__main__':
             if unit.state in [rp.FAILED, rp.CANCELED]:
                 report.plain('  * %s: %s, exit: %5s, err: %35s' \
                         % (unit.uid, unit.state[:4], 
-                           unit.exit_code, unit.stderr))
+                           unit.exit_code, unit.stderr.strip()))
                 report.error('>>err\n')
             else:
                 report.plain('  * %s: %s, exit: %5s, out: %35s' \
                         % (unit.uid, unit.state[:4], 
-                            unit.exit_code, unit.stdout))
+                            unit.exit_code, unit.stdout.strip()))
                 report.ok('>>ok\n')
     
 

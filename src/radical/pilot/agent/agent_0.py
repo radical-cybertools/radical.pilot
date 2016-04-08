@@ -177,11 +177,11 @@ class Agent_0(rpu.Worker):
         err = None
         log = None
     
-        try    : out = open('./%s/agent.out' % self._session.uid, 'r').read()
+        try    : out = open('./agent.out', 'r').read()
         except : pass
-        try    : err = open('./%s/agent.err' % self._session.uid, 'r').read()
+        try    : err = open('./agent.err', 'r').read()
         except : pass
-        try    : log = open('./%s/agent.log' % self._session.uid, 'r').read()
+        try    : log = open('./agent.log', 'r').read()
         except : pass
     
         self._session.get_db()._c.update(
@@ -309,8 +309,8 @@ class Agent_0(rpu.Worker):
     
             # spawn the sub-agent
             self._log.info ("create sub-agent %s: %s" % (sa, cmdline))
-            sa_out = open("%s/%s.out" % (self._session.uid, sa), "w")
-            sa_err = open("%s/%s.err" % (self._session.uid, sa), "w")
+            sa_out = open("%s.out" % sa, "w")
+            sa_err = open("%s.err" % sa, "w")
             sa_proc = sp.Popen(args=cmdline.split(), stdout=sa_out, stderr=sa_err)
     
             # make sure we can stop the sa_proc
@@ -425,16 +425,18 @@ class Agent_0(rpu.Worker):
                                     'uid'   : {'$in'     : unit_uids}},
                         document = {'$set'  : {'control' : 'agent'}})
 
-        for unit in unit_list:
-            if unit['control'] != 'agent_pending':
-                self._log.error(' === invalid control: %s', (pprint.pformat(unit)))
-            if unit['state'] != rps.AGENT_STAGING_INPUT_PENDING:
-                self._log.error(' === invalid state: %s', (pprint.pformat(unit)))
-
         self._log.info("units pulled: %4d", len(unit_list))
         self._prof.prof('get', msg="bulk size: %d" % len(unit_list), uid=self._pilot_id)
 
         for unit in unit_list:
+
+            # FIXME: raise or fail unit!
+            if unit['control'] != 'agent_pending':
+                self._log.error(' === invalid control: %s', (pprint.pformat(unit)))
+
+            if unit['state'] != rps.AGENT_STAGING_INPUT_PENDING:
+                self._log.error(' === invalid state: %s', (pprint.pformat(unit)))
+
             unit['control'] = 'agent'
 
             # we need to make sure to have the correct state:
