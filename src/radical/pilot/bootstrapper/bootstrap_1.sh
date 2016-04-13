@@ -648,6 +648,15 @@ virtenv_activate()
         return
     fi
 
+    # before we change python related settings, we keep a copy for later CU
+    # environments
+    # TODO: should we do this before even running the pre_execs?
+    _OLD_VIRTUAL_PYTHONPATH=$"PYTHONPATH"
+    _OLD_VIRTUAL_PYTHONHOME=$"PYTHONHOME"
+    _OLD_VIRTUAL_PATH=$"PATH"
+    _OLD_VIRTUAL_PS1=$"PS1"
+
+
     if test "$python_dist" = "anaconda"
     then
         source activate $virtenv/
@@ -716,10 +725,6 @@ virtenv_activate()
     # to derive the PYTHONPATH into the sandbox rp_install, if needed.
     RP_MOD_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$virtenv|$virtenv/rp_install|"`
     VE_PYTHONPATH="$PYTHONPATH"
-
-    # before we change PYTHONPATH, we keep the original for later use in CU
-    # environment settings
-    _OLD_VIRTUAL_PYTHONPATH=$PYTHONPATH
 
     # NOTE: this should not be necessary, but we explicit set PYTHONPATH to
     #       include the VE module tree, because some systems set a PYTHONPATH on
