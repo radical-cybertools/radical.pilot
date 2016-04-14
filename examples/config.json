@@ -78,6 +78,12 @@
             "schema"   : "gsissh"
         },
 
+        "xsede.greenfield" : {
+            "project"  : null,
+            "queue"    : "debug",
+            "schema"   : "gsissh"
+        },
+
         "xsede.trestles" : {
             "project"  : "TG-MCB090174" ,
             "queue"    : "shared",
