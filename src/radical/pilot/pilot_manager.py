@@ -83,7 +83,6 @@ class PilotManager(rpu.Component):
         self._pilots_lock = threading.RLock()
         self._callbacks   = dict()
         self._cb_lock     = threading.RLock()
-        self._terminate   = threading.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
 
@@ -153,8 +152,6 @@ class PilotManager(rpu.Component):
 
         self._log.debug("closing %s", self.uid)
         self._log.report.info('<<close pilot manager')
-
-        self._terminate.set()
 
         # If terminate is set, we cancel all pilots. 
         if terminate:

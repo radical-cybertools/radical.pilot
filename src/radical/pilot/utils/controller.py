@@ -189,27 +189,21 @@ class Controller(object):
     def stop(self):
 
         if self._heartbeat_term:
-          # print 'term   hb'
             if mt.current_thread().name != self._heartbeat_tname:
                 assert(self._heartbeat_thread)
                 self._heartbeat_term.set()
                 self._heartbeat_thread.join()
-              # print 'termed hb'
 
         if self._watcher_term:
-          # print 'term   watcher'
             if mt.current_thread().name != self._watcher_tname:
                 assert(self._watcher_thread)
                 self._watcher_term.set()
                 self._watcher_thread.join()
-              # print 'termed watcher'
 
         for t in self._to_watch:
-          # print 'term   t %s' % t.name
             t.stop()
 
         for t in self._to_watch:
-          # print 'join   t %s' % t.name
             t.join()
 
 
@@ -527,6 +521,7 @@ class Controller(object):
             # NOTE: this loop relies on the _to_watch list to only ever expand,
             #       bever to shrink.
             for thing in self._to_watch:
+
                 state = thing.poll()
                 if state == None:
                   # self._log.debug('%-40s: ok' % thing.name)

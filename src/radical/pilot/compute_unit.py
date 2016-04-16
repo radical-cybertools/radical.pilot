@@ -445,7 +445,7 @@ class ComputeUnit(object):
             return self.state
 
         start_wait = time.time()
-        while self.state not in states and not self._umgr._terminate.is_set():
+        while self.state not in states:
 
             time.sleep(0.1)
 

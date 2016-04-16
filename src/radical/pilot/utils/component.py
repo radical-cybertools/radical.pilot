@@ -156,12 +156,15 @@ class Component(mp.Process):
         # state we carry over the fork
         self._started       = False
         self._debug         = cfg.get('debug', 'DEBUG')
-        self._owner         = cfg['owner']
+        self._owner         = cfg.get('owner', session.uid)
         self._ctype         = "%s.%s" % (self.__class__.__module__,
                                          self.__class__.__name__)
         self._number        = cfg.get('number', 0)
         self._name          = cfg.get('name.%s' %  self._number,
                                       '%s.%s'   % (self._ctype, self._number))
+
+        if self._owner == self.uid:
+            self._owner = 'root'
 
         # don't create log and profiler, yet -- we do that all on start, and
         # inbetween nothing should happen anyway
@@ -307,6 +310,7 @@ class Component(mp.Process):
         self._idlers        = dict()       # callbacks to call in intervals
 
         self._finalized     = False        # finalization guard
+
         self._cb_lock       = ru.RLock()   # guard threaded callback invokations
         self._exit_cause    = None         # exit message for main thread
 
@@ -468,16 +472,14 @@ class Component(mp.Process):
         # it exists, parent otherwise.
         if self.is_parent and not self.has_child:
             self._log.debug('parent sends alive')
-            assert(self._cfg['owner'])
             self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
                                               'arg' : {'sender' : self.uid,
-                                                       'owner'  : self._cfg['owner']}})
+                                                       'owner'  : self.owner}})
         elif self.is_child:
             self._log.debug('child sends alive')
-            assert(self._cfg['owner'])
             self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
                                               'arg' : {'sender' : self.uid,
-                                                       'owner'  : self._cfg['owner']}})
+                                                       'owner'  : self.owner}})
         else:
             self._log.debug('no alive sent (%s : %s : %s)', self.is_child,
                     self.has_child, self.is_parent)
@@ -899,9 +901,8 @@ class Component(mp.Process):
             if name in self._idlers:
                 raise ValueError('cb %s already registered' % cb.__name__)
 
-        if None == timeout:
-            timeout = 0.1
-        timeout = float(timeout)
+        if None != timeout:
+            timeout = float(timeout)
 
         # create a separate thread per idle cb
         # NOTE: idle timing is a tricky beast: if we sleep for too long, then we
@@ -916,14 +917,15 @@ class Component(mp.Process):
                 last = 0.0  # never been called
                 while not terminate.is_set():
                     now = time.time()
-                    if (now-last) > to:
+                    if to == None or (now-last) > to:
                         with self._cb_lock:
                             if callback_data != None:
                                 callback(cb_data=callback_data)
                             else:
                                 callback()
                         last = now
-                    time.sleep(0.1)
+                    if to:
+                        time.sleep(0.1)
             except Exception as e:
                 self._log.exception("idler failed %s", mt.current_thread().name)
         # ----------------------------------------------------------------------
@@ -1023,16 +1025,13 @@ class Component(mp.Process):
         """
 
         name = "%s.subscriber.%s" % (self.uid, cb.__name__)
+
         # get address for pubsub
         if not pubsub in self._cfg['bridges']:
             raise ValueError('no bridge known for pubsub channel %s' % pubsub)
 
         addr = self._cfg['bridges'][pubsub]['addr_out']
         self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
-
-        # create a pubsub subscriber (the pubsub name doubles as topic)
-        q = rpu_Pubsub.create(self._session, rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB, addr=addr)
-        q.subscribe(pubsub)
 
         # subscription is racey for the *first* subscriber: the bridge gets the
         # subscription request, and forwards it to the publishers -- and only
@@ -1062,15 +1061,18 @@ class Component(mp.Process):
             except Exception as e:
                 self._log.exception("subscriber failed %s" % mt.current_thread().name)
         # ----------------------------------------------------------------------
-        e = mt.Event()
-        t = mt.Thread(target=_subscriber, args=[q,e,cb,cb_data], name=name)
-        t.start()
 
         with self._cb_lock:
             if name in self._subscribers:
-                e.set()
-                t.join()
                 raise ValueError('cb %s already registered for %s' % (cb.__name__, pubsub))
+
+            # create a pubsub subscriber (the pubsub name doubles as topic)
+            q = rpu_Pubsub.create(self._session, rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB, addr=addr)
+            q.subscribe(pubsub)
+
+            e = mt.Event()
+            t = mt.Thread(target=_subscriber, args=[q,e,cb,cb_data], name=name)
+            t.start()
 
             self._subscribers[name] = {'term'   : e,  # termination signal
                                        'thread' : t}  # thread handle
@@ -1116,7 +1118,7 @@ class Component(mp.Process):
                 t = self._idlers[i]['thread']
                 if not t.is_alive():
                     self._log.error('idler %s died', t.name)
-                    time.sleep(3)
+                  # time.sleep(3)
                     self.stop()
 
 
@@ -1141,6 +1143,8 @@ class Component(mp.Process):
         """
 
         try:
+            signal.signal(signal.SIGINT, signal.SIG_IGN)
+
             # this is now the child process context
             self._initialize_child()
 

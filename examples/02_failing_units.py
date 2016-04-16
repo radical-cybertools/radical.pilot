@@ -71,7 +71,7 @@ if __name__ == '__main__':
                pd_init = {
                        'resource'      : resource,
                        'cores'         : 64,   # pilot size
-                       'runtime'       : 60,    # pilot runtime (min)
+                       'runtime'       : 60,   # pilot runtime (min)
                        'exit_on_error' : True,
                        'project'       : config[resource]['project'],
                        'queue'         : config[resource]['queue'],
@@ -98,7 +98,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 40 # number of units to run
+        n = 1024 # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()

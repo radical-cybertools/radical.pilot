@@ -403,11 +403,10 @@ class QueueZMQ(Queue):
             def _bridge(addr, pqueue):
 
                 try:
-                
                     spt.setproctitle('rp.%s' % self._name)
                     
                     # reset signal handlers to their default
-                    signal.signal(signal.SIGINT,  signal.SIG_DFL)
+                    signal.signal(signal.SIGINT,  signal.SIG_IGN)
                     signal.signal(signal.SIGTERM, signal.SIG_DFL)
                     signal.signal(signal.SIGALRM, signal.SIG_DFL)
 

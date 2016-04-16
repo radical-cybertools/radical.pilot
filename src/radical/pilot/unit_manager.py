@@ -89,7 +89,6 @@ class UnitManager(rpu.Component):
         self._units_lock  = threading.RLock()
         self._callbacks   = dict()
         self._cb_lock     = threading.RLock()
-        self._terminate   = threading.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
 
@@ -174,8 +173,6 @@ class UnitManager(rpu.Component):
 
         self._log.debug("closing %s", self.uid)
         self._log.report.info('<<close unit manager')
-
-        self._terminate.set()
 
         # kill child process, threads
         self._controller.stop()

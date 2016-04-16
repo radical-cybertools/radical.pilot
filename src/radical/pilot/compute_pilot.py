@@ -417,7 +417,7 @@ class ComputePilot(object):
             return self.state
 
         start_wait = time.time()
-        while self.state not in states and not self._pmgr._terminate.is_set():
+        while self.state not in states:
 
           # print 'pilot: %s %s' % (self.state, states)
 

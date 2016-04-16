@@ -252,7 +252,7 @@ class PubsubZMQ(Pubsub):
                     atexit.register(exit_handler)
 
                     # reset signal handlers to their default
-                    signal.signal(signal.SIGINT,  signal.SIG_DFL)
+                    signal.signal(signal.SIGINT,  signal.SIG_IGN)
                     signal.signal(signal.SIGTERM, signal.SIG_DFL)
                     signal.signal(signal.SIGALRM, signal.SIG_DFL)
 
