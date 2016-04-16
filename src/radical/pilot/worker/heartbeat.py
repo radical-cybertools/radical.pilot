@@ -115,7 +115,7 @@ class Heartbeat(rpu.Worker):
             elif cmd == rpc.COMMAND_CANCEL_COMPUTE_UNIT:
                 self._log.info('cancel unit cmd')
                 self.publish('command', {'cmd' : 'cancel_unit',
-                                         'arg' : command})
+                                         'arg' : command['arg']})
 
             elif cmd == rpc.COMMAND_KEEP_ALIVE:
                 self._log.info('keepalive pilot cmd')
