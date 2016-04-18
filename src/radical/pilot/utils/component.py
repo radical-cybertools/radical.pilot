@@ -706,9 +706,12 @@ class Component(mp.Process):
 
             # Signal the child -- if one exists
             if self.has_child:
-                self._log.info("terminating %s" % self.pid)
+                self._log.info("stop    %s" % self.pid)
                 self.terminate()
+                self._log.info("stopped %s" % self.pid)
+                self._log.info("join    %s" % self.pid)
                 self.join()
+                self._log.info("joined  %s" % self.pid)
 
             self._finalize_parent()
 

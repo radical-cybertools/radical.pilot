@@ -325,8 +325,6 @@ class Session(rs.Session):
         if not self._valid:
             return
 
-        print '%s close' % self.uid
-
         self._log.report.info('closing session %s' % self._uid)
         self._log.debug("session %s closing" % (str(self._uid)))
         self.prof.prof("close", uid=self._uid)

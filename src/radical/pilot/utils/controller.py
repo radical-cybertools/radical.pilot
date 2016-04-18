@@ -194,18 +194,22 @@ class Controller(object):
         self_thread = mt.current_thread()
 
         if self._heartbeat_thread:
-            print '%s stop    hbeat' % self.uid
+            self._log.debug('%s stop    hbeat', self.uid)
             self._heartbeat_term.set()
+            self._log.debug('%s stopped hbeat', self.uid)
             if self._heartbeat_thread != self_thread:
+                self._log.debug('%s join    hbeat', self.uid)
                 self._heartbeat_thread.join()
-            print '%s stopped hbeat' % self.uid
+                self._log.debug('%s joined  hbeat', self.uid)
 
         if self._watcher_thread:
-            print '%s stop    watch' % self.uid
+            self._log.debug('%s stop    watch', self.uid)
             self._watcher_term.set()
+            self._log.debug('%s stopped watch', self.uid)
             if self._watcher_thread != self_thread:
+                self._log.debug('%s join    watch', self.uid)
                 self._watcher_thread.join()
-            print '%s stopped watch' % self.uid
+                self._log.debug('%s joined  watch', self.uid)
 
         # we first stop all components (and sub-agents), and only then tear down
         # the communication bridges.  That way, the bridges will be available
@@ -214,15 +218,15 @@ class Controller(object):
         for to_stop_list in [self._components_to_watch, self._bridges_to_watch]:
 
             for t in to_stop_list:
-                print '%s stop    %s' % (self.uid, t)
+                self._log.debug('%s stop    %s', self.uid, t)
                 t.stop()
-                print '%s stopped %s' % (self.uid, t)
+                self._log.debug('%s stopped %s', self.uid, t)
 
             for t in to_stop_list:
-                print '%s join    %s' % (self.uid, t)
+                self._log.debug('%s join    %s', self.uid, t)
                 if t != self_thread:
                     t.join()
-                print '%s joined  %s' % (self.uid, t)
+                self._log.debug('%s joined  %s', self.uid, t)
 
         if not ru.is_main_thread():
             # only the main thread should survive

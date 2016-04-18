@@ -172,8 +172,6 @@ class UnitManager(rpu.Component):
         if self._closed:
             return
 
-        print '%s close' % self.uid
-
         self._log.debug("closing %s", self.uid)
         self._log.report.info('<<close unit manager')
 
@@ -678,6 +676,13 @@ class UnitManager(rpu.Component):
         self._log.report.idle(mode='start')
         while to_check and not self._terminate.is_set():
 
+            # check timeout
+            if timeout and (timeout <= (time.time() - start)):
+                self._log.debug ("wait timed out")
+                break
+
+            time.sleep (0.1)
+
             # FIXME: print percentage...
             self._log.report.idle()
           # print 'wait units: %s' % [[u.uid, u.state] for u in to_check]
@@ -697,15 +702,6 @@ class UnitManager(rpu.Component):
                         self._log.report.idle(color='ok', c='+')
 
             to_check = check_again
-
-            # check timeout
-            if to_check:
-                if timeout and (timeout <= (time.time() - start)):
-                    self._log.debug ("wait timed out")
-                    break
-
-                time.sleep (0.1)
-              # time.sleep (3.0)
 
         self._log.report.idle(mode='stop')
 
@@ -769,7 +765,6 @@ class UnitManager(rpu.Component):
         #       disable this optimization.
         # FIXME: the effect of the env var is not well tested
         if os.environ.get('RADICAL_PILOT_STRICT_CANCEL', '').lower() != 'true':
-            print 'no-strict cancel'
             with self._units_lock:
                 units = [self._units[uid] for uid  in uids ]
             unit_docs = [unit.as_dict()   for unit in units]

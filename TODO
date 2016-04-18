@@ -133,3 +133,8 @@ Expected Termination Behavior:
   - pilot.exit_on_error
     session.close + raise
 
+  - cancellation leads to double wait, which is ok, but also reports twice,
+    which is not
+  - umgr wait and pmgr wait report different things, differently
+    (inclusion of previously final things, final state marker)
+

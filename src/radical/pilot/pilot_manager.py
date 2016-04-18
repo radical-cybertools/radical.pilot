@@ -151,9 +151,6 @@ class PilotManager(rpu.Component):
         if self._closed:
             return
 
-        print '%s close' % self.uid
-        ru.print_stacktrace()
-
         self._log.debug("closing %s", self.uid)
         self._log.report.info('<<close pilot manager')
 
@@ -161,8 +158,6 @@ class PilotManager(rpu.Component):
         if terminate:
             self.cancel_pilots()
             self.wait_pilots()
-
-        print 'pilots are canceled'
 
         self._terminate.set()
 
@@ -480,9 +475,6 @@ class PilotManager(rpu.Component):
 
             self._log.report.idle()
 
-            to_check = [pilot for pilot in to_check \
-                               if pilot.state not in states and \
-                                  pilot.state not in rps.FINAL]
             # check timeout
             if to_check:
                 if timeout and (timeout <= (time.time() - start)):
@@ -490,6 +482,10 @@ class PilotManager(rpu.Component):
                     break
 
                 time.sleep (0.1)
+
+            to_check = [pilot for pilot in to_check \
+                               if pilot.state not in states and \
+                                  pilot.state not in rps.FINAL]
 
         self._log.report.idle(mode='stop')
 
