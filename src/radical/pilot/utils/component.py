@@ -204,14 +204,17 @@ class Component(mp.Process):
     #
     def _heartbeat_checker_cb(self):
 
-        if (self._heartbeat + self._heartbeat_timeout) < time.time():
+        last = time.time() - self._heartbeat
+        tout = self._heartbeat_timeout
+
+        if last > tout:
           # print " ### %s heartbeat FAIL (self.owner)" % self.uid
-            self._log.debug('heartbeat check failed')
-            self.stop()
+            self._log.error('heartbeat check failed (%s / %s)', last, tout)
+            raise RuntimeError('heartbeat check failed (%s / %s)' % (last, tout))
 
         else:
           # print " --- %s heartbeat OK" % self.uid
-            self._log.debug('heartbeat check ok')
+            self._log.debug('heartbeat check ok (%s / %s)', last, tout)
 
         return False # always sleep
 
@@ -312,7 +315,6 @@ class Component(mp.Process):
         self._finalized     = False        # finalization guard
 
         self._cb_lock       = ru.RLock()   # guard threaded callback invokations
-        self._exit_cause    = None         # exit message for main thread
 
         # get debugging, logging, profiling set up
         self._dh   = ru.DebugHelper(name=self.uid)
@@ -650,7 +652,7 @@ class Component(mp.Process):
         self._initialize_parent()
       # except Exception as e:
       #     self._log.exception ('initialization failed')
-      #     self.stop()
+      #     ru.cancel_main_thread()
       #     raise
 
 
@@ -685,7 +687,7 @@ class Component(mp.Process):
 
             tear down all subscriber threads
             if parent:
-                finalize()
+                finalize_parent()
                 self.terminate()
             else:
                 finalize_child()
@@ -695,17 +697,6 @@ class Component(mp.Process):
         self._log.debug('stop %s (%s : %s : %s) [%s]' % (self.uid, os.getpid(),
                         self.pid, mt.current_thread().name,
                         ru.get_caller_name()))
-
-        # we only really stop in the main thread.  Any other thread will call
-        # sys.exit(), this ending the thread, which should eventually result in
-        # the main thread calling stop(), this ending here again.
-        # To distinguish from any other uncoordinated thread exit, we leave
-        # a message.
-        if not isinstance(mt.current_thread(), mt._MainThread) :
-            if not self._exit_cause:
-                self._exit_cause = 'stop'
-            os.kill(os.getpid(), signal.SIGTERM)  # let the parent thread know
-            sys.exit()                            # exit this thread
 
         # parent and child finalization will have all comoonents and bridges
         # available
@@ -1112,14 +1103,13 @@ class Component(mp.Process):
                 t = self._subscribers[s]['thread']
                 if not t.is_alive():
                     self._log.error('subscriber %s died', t.name)
-                    self.stop()
+                    raise RuntimeError('subscriber %s died' % t.name)
 
             for i in self._idlers:
                 t = self._idlers[i]['thread']
                 if not t.is_alive():
                     self._log.error('idler %s died', t.name)
-                  # time.sleep(3)
-                    self.stop()
+                    raise RuntimeError('idler %s died' % t.name)
 
 
     # --------------------------------------------------------------------------
@@ -1211,17 +1201,15 @@ class Component(mp.Process):
                                 self._prof.prof(event='work done ', state=state, uid=uid)
 
                         except Exception as e:
+                            # this is not fatal -- only the 'things' fail, not
+                            # the component
+
                             self._log.exception("worker %s failed", self._workers[state])
                             self.advance(things, rps.FAILED, publish=True, push=False)
 
                             for thing in things:
                                 self._prof.prof(event='failed', msg=str(e), 
                                                 uid=thing['uid'], state=state)
-
-                            # NOTE: for now, we consider this fatal.  We should
-                            #       reconsider that in the context of system
-                            #       resilience.
-                            raise
 
         except Exception as e:
             # We should see that exception only on process termination -- and of
@@ -1233,6 +1221,9 @@ class Component(mp.Process):
         
         except SystemExit:
             self._log.exception("loop exit")
+        
+        except KeyboardInterrupt:
+            self._log.exception("loop cancel")
         
         except:
             # Can be any other signal or interrupt.

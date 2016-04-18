@@ -83,6 +83,7 @@ class PilotManager(rpu.Component):
         self._pilots_lock = threading.RLock()
         self._callbacks   = dict()
         self._cb_lock     = threading.RLock()
+        self._terminate   = threading.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
 
@@ -148,7 +149,10 @@ class PilotManager(rpu.Component):
         """
 
         if self._closed:
-            raise RuntimeError("instance is already closed")
+            return
+
+        print '%s close' % self.uid
+        ru.print_stacktrace()
 
         self._log.debug("closing %s", self.uid)
         self._log.report.info('<<close pilot manager')
@@ -157,6 +161,10 @@ class PilotManager(rpu.Component):
         if terminate:
             self.cancel_pilots()
             self.wait_pilots()
+
+        print 'pilots are canceled'
+
+        self._terminate.set()
 
         # kill child process, threads
         self._controller.stop()
@@ -434,7 +442,7 @@ class PilotManager(rpu.Component):
         """
 
         if self._closed:
-            raise RuntimeError("instance is already closed")
+            raise RuntimeError("instance is already losed")
 
         if not uids:
             with self._pilots_lock:
@@ -468,7 +476,7 @@ class PilotManager(rpu.Component):
         # create a list from which we drop the pilots as we find them in
         # a matching state
         self._log.report.idle(mode='start')
-        while to_check:
+        while to_check and not self._terminate.is_set:
 
             self._log.report.idle()
 
@@ -522,9 +530,7 @@ class PilotManager(rpu.Component):
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots', 
                                           'arg' : {'uids' : uids}})
 
-        pilots = self.get_pilots(uids)
-        for pilot in pilots:
-            pilot.wait()
+        self.wait_pilots(uids=uids)
 
 
     # --------------------------------------------------------------------------

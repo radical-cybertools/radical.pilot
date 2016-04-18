@@ -124,8 +124,11 @@ class ComputePilot(object):
     def _default_error_cb(self):
 
         if self.state == rps.FAILED and self._exit_on_error:
+            print '%s exit on error' % self.uid
             self._log.error("[Callback]: pilot '%s' failed", self.uid)
-            self._pmgr._session.stop()
+            self._session.close()
+            raise RuntimeError('pilot %s failed - fatal!' % self.uid)
+            sys.exit()
 
 
     # --------------------------------------------------------------------------
@@ -419,11 +422,12 @@ class ComputePilot(object):
         start_wait = time.time()
         while self.state not in states:
 
-          # print 'pilot: %s %s' % (self.state, states)
-
             time.sleep(0.1)
             if timeout and (timeout <= (time.time() - start_wait)):
                 break
+
+          # if self._pmgr._terminate.is_set():
+          #     break
 
         return self.state
 

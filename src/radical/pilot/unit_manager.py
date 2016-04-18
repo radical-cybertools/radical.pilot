@@ -89,6 +89,7 @@ class UnitManager(rpu.Component):
         self._units_lock  = threading.RLock()
         self._callbacks   = dict()
         self._cb_lock     = threading.RLock()
+        self._terminate   = threading.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
 
@@ -169,10 +170,16 @@ class UnitManager(rpu.Component):
         """
 
         if self._closed:
-            raise RuntimeError("instance is already closed")
+            return
+
+        print '%s close' % self.uid
 
         self._log.debug("closing %s", self.uid)
         self._log.report.info('<<close unit manager')
+
+        self.cancel_units()
+
+        self._terminate.set()
 
         # kill child process, threads
         self._controller.stop()
@@ -669,7 +676,7 @@ class UnitManager(rpu.Component):
         # create a list from which we drop the units as we find them in
         # a matching state
         self._log.report.idle(mode='start')
-        while to_check:
+        while to_check and not self._terminate.is_set():
 
             # FIXME: print percentage...
             self._log.report.idle()
@@ -721,23 +728,62 @@ class UnitManager(rpu.Component):
         """
         Cancel one or more :class:`radical.pilot.ComputeUnits`.
 
+        Note that cancellation of units is *immediate*, i.e. their state is
+        immediately set to `CANCELED`, even if some RP component may still
+        operate on the units.  Specifically, other state transitions, including
+        other final states (`DONE`, `FAILED`) can occur *after* cancellation.
+        This is a side effect of an optimization: we consider this 
+        acceptable tradeoff in the sense "Oh, that unit was DONE at point of
+        cancellation -- ok, we can use the results, sure!".
+
+        If that behavior is not wanted, set the environment variable:
+
+            export RADICAL_PILOT_STRICT_CANCEL=True
+
         **Arguments:**
             * **uids** [`string` or `list of strings`]: The IDs of the
-              compute unit objects to cancel.
+              compute units objects to cancel.
         """
         if self._closed:
             raise RuntimeError("instance is already closed")
 
         if not uids:
             with self._units_lock:
-                uids = self._units.keys()
+                uids  = self._units.keys()
+        else:
+            if not isinstance(uids, list):
+                uids = [uids]
 
-        if not isinstance(uids, list):
-            uids = [uids]
+        # NOTE: We advance all units to cancelled, and send a cancellation
+        #       control command.  If that command is picked up *after* some
+        #       state progression, we'll see state transitions after cancel.
+        #       For non-final states that is not a problem, as it is equivalent
+        #       with a state update message race, which our state collapse
+        #       mechanism accounts for.  For an eevntual non-canceled final
+        #       state, we do get an invalid state transition.  That is also
+        #       corrected eventually in the state collapse, but the point
+        #       remains, that the state model is temporarily violated.  We
+        #       consider this a side effect of the fast-cancel optimization.
+        #
+        #       The env variable 'RADICAL_PILOT_STRICT_CANCEL == True' will
+        #       disable this optimization.
+        # FIXME: the effect of the env var is not well tested
+        if os.environ.get('RADICAL_PILOT_STRICT_CANCEL', '').lower() != 'true':
+            print 'no-strict cancel'
+            with self._units_lock:
+                units = [self._units[uid] for uid  in uids ]
+            unit_docs = [unit.as_dict()   for unit in units]
+            self.advance(unit_docs, state=rps.CANCELED, publish=True, push=True)
 
-        units = self.get_units(uids)
-        for unit in units:
-            unit.cancel()
+        # we *always* issue the cancellation command!
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_units', 
+                                          'arg' : {'uids' : uids}})
+
+        # In the default case of calling 'advance' above, we just set the state,
+        # so we *know* units are canceled.  But we nevertheless wait until that
+        # state progression trickled through, so that the application will see
+        # the same state on unit inspection.
+        self.wait_units(uids=uids)
 
 
     # --------------------------------------------------------------------------

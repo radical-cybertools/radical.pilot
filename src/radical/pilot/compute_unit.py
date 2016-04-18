@@ -452,6 +452,9 @@ class ComputeUnit(object):
             if timeout and (timeout <= (time.time() - start_wait)):
                 break
 
+          # if self._umgr._terminate.is_set():
+          #     break
+
         return self.state
 
 
@@ -462,7 +465,7 @@ class ComputeUnit(object):
         Cancel the unit.
         """
         
-        self._umgr._cancel_unit(self.uid)
+        self._umgr.cancel_units(self.uid)
 
 # ------------------------------------------------------------------------------
 

@@ -118,7 +118,7 @@ class Session(rs.Session):
             ru.reset_id_counters(prefix='rp.session', reset_all_others=True)
 
         self._logdir = self._cfg.get('logdir', '%s/%s' % (os.getcwd(), self._uid))
-        self._log    = self._get_logger('radical.pilot')
+        self._log    = self._get_logger('radical.pilot', level='DEBUG')
 
 
         if not dburl: dburl = self._cfg.get('dburl')
@@ -322,7 +322,10 @@ class Session(rs.Session):
               or doesn't exist. 
         """
 
-        self._is_valid()
+        if not self._valid:
+            return
+
+        print '%s close' % self.uid
 
         self._log.report.info('closing session %s' % self._uid)
         self._log.debug("session %s closing" % (str(self._uid)))
@@ -369,7 +372,6 @@ class Session(rs.Session):
         self.prof.close()
 
         self._valid = False
-
         self._log.report.info('<<session lifetime: %.1fs' % (self.closed - self.created))
         self._log.report.ok('>>ok\n')
 

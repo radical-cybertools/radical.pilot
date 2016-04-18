@@ -42,6 +42,15 @@ def _pilot_state_progress(current, target):
     See documentation of 'unit_state_progress' below.
     """
 
+    # first handle final state corrections
+    if current == CANCELED:
+        if target in [DONE, FAILED]:
+            return[target, []]
+
+    if current in FINAL:
+        if target in FINAL:
+            raise ValueError('invalid transition %s -> %s' % (current, target))
+
     cur = _pilot_state_values[current]
     tgt = _pilot_state_values[target]
 
@@ -65,6 +74,11 @@ def _pilot_state_collapse(states):
     This method takes a list of pilot states and selects the one with the highest
     state value.
     """
+    # we first check the final states, as we want to express a preference there.
+    # Then we start comparing actual values.
+    if DONE     in states: return DONE
+    if FAILED   in states: return FAILED
+    if CANCELED in states: return CANCELED
     ret = None
     for state in states:
         if _pilot_state_values[state] > _pilot_state_values[ret]:
@@ -133,6 +147,9 @@ def _unit_state_progress(current, target):
     final.  Requesting such transitions will result in silent discard of the
     invalid target state.
 
+    On contradicting final states, DONE and FAILED are preferred over CANCELED,
+    but no other transitions are allowed
+
     unit_state_progress(UMGR_SCHEDULING, NEW)
     --> [UMGR_SCHEDULING, []]
     
@@ -149,6 +166,15 @@ def _unit_state_progress(current, target):
     --> [DONE, []]
 
     """
+
+    # first handle final state corrections
+    if current == CANCELED:
+        if target in [DONE, FAILED]:
+            return[target, []]
+
+    if current in FINAL:
+        if target in FINAL:
+            raise ValueError('invalid transition %s -> %s' % (current, target))
 
     cur = _unit_state_values[current]
     tgt = _unit_state_values[target]
@@ -173,6 +199,11 @@ def _unit_state_collapse(states):
     This method takes a list of unit states and selects the one with the highest
     state value.
     """
+    # we first check the final states, as we want to express a preference there.
+    # Then we start comparing actual values.
+    if DONE     in states: return DONE
+    if FAILED   in states: return FAILED
+    if CANCELED in states: return CANCELED
     ret = None
     for state in states:
         if _unit_state_values[state] > _unit_state_values[ret]:

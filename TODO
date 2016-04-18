@@ -40,13 +40,14 @@
   + default output staging component: __init__ calls Component __init__, but
     should call base __init__, which then calls Component __init__
     Same holds for other component implementations.
-  - The component base.create calls should pick up all component implementations
+  - component's base.create calls should pick up all component implementations
     automatically, instead of having a static type map
   + Bridges should be created by session, both on client and on agent side.
-  - on the component, add 'declare_thread' for actions which are needed more
+  + on the component, add 'declare_thread' for actions which are needed more
     frequent than idle callbacks, and also need some guarantees on the
     frequency.  Prominent example: execution watcher threads.  Handle the
     'work()' loop as just one of those threads (the default one).
+  - register_idle_callback -> register_timed_callback
   + component watcher needs to clean out component threads even for failed
     components
   + shutdown command propagation is broken
@@ -57,9 +58,11 @@
       - add to self._cancel_requested
     - whenver we see an advance or work request:
       - if uid in self._cancel_requested: advance(CANCEL) + drop   
+    - we can still additionally add cancel actions during staging and
+      execution...
 
   - use heartbeat mechanism also for bridges, sub_agents
-  - define _cfg['heart'] and use that for heartbeat src instead of owner,
+  + define _cfg['heart'] and use that for heartbeat src instead of owner,
     limiting traffic and noise
   - Component.stop() should *first* unregister component_checker_cb 
     (and probably all other callbacks)
@@ -91,4 +94,42 @@
   - lrms -> rm
   + dead in pilot watcher cb remains undetected
   - separation of controller.[uid,heart,owner] is unclean
+
+
+Expected Termination Behavior:
+
+  - session.close() at any point in time
+    - in main thread:
+      - close all umgrs
+        - terminate all threads
+        - cancel any non-final units and wait for them
+          - advance them to CANCELED
+          - issue 'cancel' commands (no reschedule)
+          ? do we want notifications for the unit cancel?
+          ? do we rely on UpdateWorker to register/store CANCELED advance?
+        - stop all components (delegated to session controller)
+        - stop all bridges    (delegated to session controller)
+      - close all pmgrs
+        - cancel any non-final pilots and wait for them
+        ? do we want notifications for the pilot cancel?
+        - terminate all threads
+        - stop all components (delegated to session controller)
+        - stop all bridges    (delegated to session controller)
+      - terminate all threads
+      - close session controller
+        - terminate all threads
+        - stop all bridges
+        - stop all components
+    - in other threads
+      - as in main thread
+      - thread should then exit (default), call sys.exit, or raise.
+    - in other processes / components
+      - stop the component
+      - no message is sent, we expect the pmgr, umgr or session watcher to
+        detect the closed component (if needed), and to start teardown 
+        -> watcher calling session.close + raise
+  - <Ctrl-C>:
+    - application must except, call session.close()
+  - pilot.exit_on_error
+    session.close + raise
 

@@ -111,7 +111,8 @@ class Controller(object):
 
         # keep handles to bridges and components started by us, but also to
         # other things handed to us via 'add_things()' (such as sub-agents)
-        self._to_watch = list()
+        self._bridges_to_watch    = list()
+        self._components_to_watch = list()
 
         # we will later subscribe to the ctrl pubsub -- keep a handle
         self._ctrl_sub = None
@@ -188,23 +189,44 @@ class Controller(object):
     #
     def stop(self):
 
-        if self._heartbeat_term:
-            if mt.current_thread().name != self._heartbeat_tname:
-                assert(self._heartbeat_thread)
-                self._heartbeat_term.set()
+      # ru.print_stacktrace()
+
+        self_thread = mt.current_thread()
+
+        if self._heartbeat_thread:
+            print '%s stop    hbeat' % self.uid
+            self._heartbeat_term.set()
+            if self._heartbeat_thread != self_thread:
                 self._heartbeat_thread.join()
+            print '%s stopped hbeat' % self.uid
 
-        if self._watcher_term:
-            if mt.current_thread().name != self._watcher_tname:
-                assert(self._watcher_thread)
-                self._watcher_term.set()
+        if self._watcher_thread:
+            print '%s stop    watch' % self.uid
+            self._watcher_term.set()
+            if self._watcher_thread != self_thread:
                 self._watcher_thread.join()
+            print '%s stopped watch' % self.uid
 
-        for t in self._to_watch:
-            t.stop()
+        # we first stop all components (and sub-agents), and only then tear down
+        # the communication bridges.  That way, the bridges will be available
+        # during shutdown.
 
-        for t in self._to_watch:
-            t.join()
+        for to_stop_list in [self._components_to_watch, self._bridges_to_watch]:
+
+            for t in to_stop_list:
+                print '%s stop    %s' % (self.uid, t)
+                t.stop()
+                print '%s stopped %s' % (self.uid, t)
+
+            for t in to_stop_list:
+                print '%s join    %s' % (self.uid, t)
+                if t != self_thread:
+                    t.join()
+                print '%s joined  %s' % (self.uid, t)
+
+        if not ru.is_main_thread():
+            # only the main thread should survive
+            sys.exit()
 
 
     # --------------------------------------------------------------------------
@@ -290,7 +312,7 @@ class Controller(object):
                 self._watcher_thread.start()
 
         # make sure the bridges are watched:
-        self._to_watch += bridges
+        self._bridges_to_watch += bridges
 
         # if we are the root of a component tree, start sending heartbeats 
         self._log.debug('send heartbeat?: %s =? %s', self._owner, self._ctrl_cfg['heart'])
@@ -381,6 +403,11 @@ class Controller(object):
     # --------------------------------------------------------------------------
     #
     def add_things(self, things, owner=None):
+        """
+        Only those 'things' can be added to our watch list which issue 'alive'
+        commands.  Those wouldbe components and sub-agents -- but not
+        communication bridges!
+        """
         
         # for a given set of things, we check the control channel for 'alive'
         # messages from these things (addressed to the owner (or us), and from
@@ -501,7 +528,7 @@ class Controller(object):
             self._watcher_thread.start()
 
         # make sure the watcher picks up the right things
-        self._to_watch += things
+        self._components_to_watch += things
 
 
     # --------------------------------------------------------------------------
@@ -518,12 +545,13 @@ class Controller(object):
           # self._log.debug('watching %s things' % len(to_watch))
           # self._log.debug('watching %s' % pprint.pformat(to_watch))
 
-            # NOTE: this loop relies on the _to_watch list to only ever expand,
-            #       bever to shrink.
-            for thing in self._to_watch:
+            # NOTE: these loops rely on the _*_to_watch lists to only ever 
+            #       expand, but never to shrink.
+            things = (self._components_to_watch + self._bridges_to_watch)
+                    
+            for thing in things:
 
-                state = thing.poll()
-                if state == None:
+                if thing.poll() == None:
                   # self._log.debug('%-40s: ok' % thing.name)
                     pass
                 else:

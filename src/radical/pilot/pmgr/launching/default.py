@@ -71,7 +71,7 @@ class Default(PMGRLaunchingComponent):
         self._conf_dir      = "%s/configs/" % self._root_dir 
         
         # FIXME: make interval configurable
-        self.register_idle_cb(self._pilot_watcher_cb, timeout=10.0)
+        self.register_idle_cb(self._pilot_watcher_cb, timeout=1.0)
         
         # we listen for pilot cancel commands
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
@@ -100,7 +100,7 @@ class Default(PMGRLaunchingComponent):
         cmd = msg['cmd']
         arg = msg['arg']
 
-      # print 'launcher got %s' % msg
+        self._log.debug('launcher got %s', msg)
 
         if cmd == 'cancel_pilots':
             uids = arg['uids']
@@ -115,26 +115,37 @@ class Default(PMGRLaunchingComponent):
                 saga_jobs = list()
                 for uid in uids:
                     if uid not in self._pilots:
+                        self._log.debug('unknown: %s', uid)
                         raise 'cannot cancel pilot %s: unknown' % uid
 
                     saga_pid  = self._pilots[uid]['_saga_pid']   
                     js_url    = rs.Url(self._pilots[uid]['_saga_js_url'])
+                    self._log.debug('js: %s', js_url)
 
                     with self._cache_lock:
+                        self._log.debug('lock: %s', js_url)
                         if js_url in self._saga_js_cache:
                             js = self._saga_js_cache[js_url]
                         else :
                             js = rs.job.Service(js_url, session=self._session)
                             self._saga_js_cache[js_url] = js
 
-                    saga_job = js.get_job(saga_pid)
-                    saga_job.cancel()
-                    saga_jobs.append(saga_job)
-                    self._log.debug('launcher: cancel %s', saga_pid)
+                        self._log.debug('js inst: %s', js)
+
+                        saga_job = js.get_job(saga_pid)
+                        self._log.debug('job  : %s', saga_job)
+                        self._log.debug('state: %s', saga_job.state)
+                        saga_job.cancel()
+                        self._log.debug('cancel: %s', saga_job.state)
+                        saga_jobs.append(saga_job)
+                        self._log.debug('launcher: cancel %s', saga_pid)
                     
                 for saga_job in saga_jobs:
+                    self._log.debug('check: %s', saga_job)
                     self._log.debug('launcher: wait %s', saga_job.state)
+                    self._log.debug('wait : %s', saga_job.state)
                     saga_job.wait()
+                    self._log.debug('final: %s', saga_job.state)
                     self._log.debug('launcher: waited %s', saga_job.state)
 
                 # move pilots into final state
@@ -152,6 +163,7 @@ class Default(PMGRLaunchingComponent):
                     pilot['log']   = log
                     self._log.info('pilot %s canceled', uid)
                     self.advance(pilot, rps.CANCELED, push=False, publish=True)
+                    self._log.debug('advance cancel: %s', pilot)
 
 
     # --------------------------------------------------------------------------
