@@ -141,8 +141,8 @@ Expected Termination Behavior:
   - ctrl 
     + things -> watchable
   - advance -> no push/pull args?
-  - comment in cb in sch base
-  - release_slot in rr
+  + comment in cb in sch base
+  + remove release_slot in rr
   - add_pilot -> add_pilots
   - start/stop in mgrs...
 

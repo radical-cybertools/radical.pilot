@@ -49,12 +49,5 @@ class Backfilling(UMGRSchedulingComponent):
         return pids[self.idx]
 
 
-    # --------------------------------------------------------------------------
-    #
-    def _release_slot(self, opaque_slots):
-
-        pass
-
-
 # ------------------------------------------------------------------------------
 

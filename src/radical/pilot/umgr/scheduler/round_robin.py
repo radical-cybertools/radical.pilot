@@ -107,12 +107,5 @@ class RoundRobin(UMGRSchedulingComponent):
                          publish=True, push=True)
         
 
-    # --------------------------------------------------------------------------
-    #
-    def _release_slot(self, opaque_slots):
-
-        pass
-
-
 # ------------------------------------------------------------------------------
 
