@@ -105,8 +105,6 @@ def hostip(req=None, black_list=None, pref_list=None, logger=None):
     # Get a list of all network interfaces
     all = netifaces.interfaces()
 
-    print all
-
     if logger:
         logger.debug("Network interfaces detected: %s", all)
 
@@ -118,9 +116,6 @@ def hostip(req=None, black_list=None, pref_list=None, logger=None):
     else:
         # No requested or request not found, create preference list
         potentials = [iface for iface in all if iface not in black_list]
-
-    print pref
-    print potentials
 
     # If we didn't select an interface already
     if not pref:
