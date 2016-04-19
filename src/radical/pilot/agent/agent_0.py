@@ -318,10 +318,8 @@ class Agent_0(rpu.Worker):
             sa_proc.stop = sa_proc.terminate
             sub_agents.append(sa_proc)
     
-        # the agents are up - register an idle callback to watch them
-        # FIXME: make timeout configurable?
-        self._session._controller.add_things(sub_agents, owner=self._pilot_id)
-      # self.register_idle_cb(self._sa_watcher_cb, timeout=1.0)
+        # the agents are up - let the session controller manage them from here
+        self._session._controller.add_watchables(sub_agents, owner=self._pilot_id)
     
         self._log.debug('start_sub_agents done')
 

@@ -136,5 +136,13 @@ Expected Termination Behavior:
   - cancellation leads to double wait, which is ok, but also reports twice,
     which is not
   - umgr wait and pmgr wait report different things, differently
-    (inclusion of previously final things, final state marker)
+(inclusion of previously final things, final state marker)
+
+  - ctrl 
+    + things -> watchable
+  - advance -> no push/pull args?
+  - comment in cb in sch base
+  - release_slot in rr
+  - add_pilot -> add_pilots
+  - start/stop in mgrs...
 

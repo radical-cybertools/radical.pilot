@@ -110,7 +110,7 @@ class Controller(object):
         self._owner = cfg['owner']
 
         # keep handles to bridges and components started by us, but also to
-        # other things handed to us via 'add_things()' (such as sub-agents)
+        # other things handed to us via 'add_watchables()' (such as sub-agents)
         self._bridges_to_watch    = list()
         self._components_to_watch = list()
 
@@ -401,16 +401,19 @@ class Controller(object):
 
         # components are started -- we now will trigger the startup syncing (to
         # get alive messages from them), and then get them added to the watcher
-        self.add_things(comps)
+        self.add_watchables(comps)
 
 
     # --------------------------------------------------------------------------
     #
-    def add_things(self, things, owner=None):
+    def add_watchables(self, things, owner=None):
         """
-        Only those 'things' can be added to our watch list which issue 'alive'
-        commands.  Those wouldbe components and sub-agents -- but not
-        communication bridges!
+        This method allows to inject objects into the set of things this
+        controller is watching.  Only those object types can be added which
+            - issue 'alive' notifications
+            - expose pull(), stop() and join() methods.
+        Such objects would be components and sub-agents -- but not communication
+        bridges (no alive notifications).
         """
         
         # for a given set of things, we check the control channel for 'alive'
