@@ -168,7 +168,7 @@ class DBSession(object):
 
         # only the Session which created the collection can delete it!
         if delete and self._can_remove:
-            self._log.error('delete session')
+            self._log.info('delete session')
             self._c.drop()
 
         self._mongo.close()
