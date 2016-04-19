@@ -41,7 +41,7 @@ class Agent(rpu.Worker):
         session = rp_Session(cfg=session_cfg, uid=self._session_id, _connect=False)
         ru.dict_merge(cfg, session.ctrl_cfg, ru.PRESERVE)
 
-        rpu.Worker.__init__(self, cfg, session, spawn=True)
+        rpu.Worker.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------

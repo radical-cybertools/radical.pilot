@@ -117,8 +117,8 @@ class UnitManager(rpu.Component):
         # initialize the base class (with no intent to fork)
         self._uid    = ru.generate_id('umgr')
         cfg['owner'] = self.uid
-        rpu.Component.__init__(self, cfg, session, spawn=False)
-        self.start()
+        rpu.Component.__init__(self, cfg, session)
+        self.start(spawn=False)
 
         # only now we have a logger... :/
         self._log.report.info('<<create unit manager')
@@ -178,8 +178,6 @@ class UnitManager(rpu.Component):
         self.cancel_units()
 
         self._terminate.set()
-
-        # kill child process, threads
         self._controller.stop()
         self.stop()
 

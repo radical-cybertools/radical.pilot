@@ -22,7 +22,7 @@ def bootstrap_3():
         setproctitle.setproctitle('rp.agent_0')
 
         agent_0 = Agent_0()
-        agent_0.start()
+        agent_0.start(spawn=False)
 
         # we never really quit this way, but instead the agent_0 command_cb may
         # pick up a shutdown signal, the watcher_cb may detect a failing

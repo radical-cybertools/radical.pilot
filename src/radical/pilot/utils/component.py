@@ -113,7 +113,7 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session, spawn=True):
+    def __init__(self, cfg, session):
         """
         This constructor MUST be called by inheriting classes, as it specifies
         the operation mode of the component: components can spawn a child
@@ -147,7 +147,6 @@ class Component(mp.Process):
 
         self._cfg     = copy.deepcopy(cfg)
         self._session = session
-        self._spawn   = spawn
 
         # we always need an UID
         if not hasattr(self, 'uid'):
@@ -605,7 +604,7 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def start(self):
+    def start(self, spawn=True):
         """
         This method will start the child process.  *After* doing so, it will
         call the parent's initialize, so that this is only executed in the
@@ -637,7 +636,7 @@ class Component(mp.Process):
 
         # fork child process -- and provide the right uid
 
-        if self._spawn:
+        if spawn:
             self._parent_uid = self._uid
             self._child_uid  = self._uid + '.child'
             self._uid        = self._child_uid
@@ -1403,9 +1402,9 @@ class Worker(Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session=None, spawn=True):
+    def __init__(self, cfg, session=None):
 
-        Component.__init__(self, cfg=cfg, session=session, spawn=spawn)
+        Component.__init__(self, cfg=cfg, session=session)
 
 
     # --------------------------------------------------------------------------

@@ -143,6 +143,6 @@ Expected Termination Behavior:
   - advance -> no push/pull args?
   + comment in cb in sch base
   + remove release_slot in rr
-  - add_pilot -> add_pilots
-  - start/stop in mgrs...
+  + add_pilot -> add_pilots
+  + start/stop in mgrs...
 

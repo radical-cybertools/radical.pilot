@@ -92,7 +92,7 @@ class Agent_0(rpu.Worker):
 
         # at this point the session is up, and the session controller should
         # have brought up all communication bridges and the UpdateWorker.  
-        rpu.Worker.__init__(self, cfg, self._session, spawn=False)
+        rpu.Worker.__init__(self, cfg, self._session)
 
 
     # --------------------------------------------------------------------------

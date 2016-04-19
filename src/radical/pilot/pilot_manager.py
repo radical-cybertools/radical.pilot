@@ -104,8 +104,8 @@ class PilotManager(rpu.Component):
         # initialize the base class (with no intent to fork)
         self._uid    = ru.generate_id('pmgr')
         cfg['owner'] = self.uid
-        rpu.Component.__init__(self, cfg, session, spawn=False)
-        self.start()
+        rpu.Component.__init__(self, cfg, session)
+        self.start(spawn=False)
 
         # only now we have a logger... :/
         self._log.report.info('<<create pilot manager')
@@ -160,8 +160,6 @@ class PilotManager(rpu.Component):
             self.wait_pilots()
 
         self._terminate.set()
-
-        # kill child process, threads
         self._controller.stop()
         self.stop()
 
