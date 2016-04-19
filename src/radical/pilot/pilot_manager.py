@@ -157,7 +157,6 @@ class PilotManager(rpu.Component):
         # If terminate is set, we cancel all pilots. 
         if terminate:
             self.cancel_pilots()
-            self.wait_pilots()
 
         self._terminate.set()
         self._controller.stop()
@@ -523,7 +522,6 @@ class PilotManager(rpu.Component):
       # print 'pmgr: send cancel to %s' % uids
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots', 
                                           'arg' : {'uids' : uids}})
-
         self.wait_pilots(uids=uids)
 
 
