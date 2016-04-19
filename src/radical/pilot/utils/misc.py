@@ -83,12 +83,11 @@ def hostip(req=None, black_list=None, pref_list=None, logger=None):
 
     # List of interfaces that we probably dont want to bind to by default
     if not black_list:
-        black_list = ['sit0']
+        black_list = ['sit0', 'lo']
 
     # Known intefaces in preferred order
     if not pref_list:
         pref_list = [
-            'lo',
             'ipogif0', # Cray's
             'br0'      # SuperMIC
         ]

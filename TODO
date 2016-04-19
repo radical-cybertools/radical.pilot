@@ -96,7 +96,24 @@
   - separation of controller.[uid,heart,owner] is unclean
 
 
+  - cancellation leads to double wait, which is ok, but also reports twice,
+    which is not
+  - umgr wait and pmgr wait report different things, differently
+    (inclusion of previously final things, final state marker)
+
+  + ctrl 
+    + things -> watchable
+  - advance -> no push/pull args?
+  + comment in cb in sch base
+  + remove release_slot in rr
+  + add_pilot -> add_pilots
+  + start/stop in mgrs...
+
+
+
+
 Expected Termination Behavior:
+------------------------------
 
   - session.close() at any point in time
     - in main thread:
@@ -128,21 +145,9 @@ Expected Termination Behavior:
       - no message is sent, we expect the pmgr, umgr or session watcher to
         detect the closed component (if needed), and to start teardown 
         -> watcher calling session.close + raise
+
   - <Ctrl-C>:
     - application must except, call session.close()
-  - pilot.exit_on_error
-    session.close + raise
 
-  - cancellation leads to double wait, which is ok, but also reports twice,
-    which is not
-  - umgr wait and pmgr wait report different things, differently
-(inclusion of previously final things, final state marker)
-
-  - ctrl 
-    + things -> watchable
-  - advance -> no push/pull args?
-  + comment in cb in sch base
-  + remove release_slot in rr
-  + add_pilot -> add_pilots
-  + start/stop in mgrs...
+  - pilot.exit_on_error: session.close + raise
 
