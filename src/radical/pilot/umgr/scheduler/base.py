@@ -157,7 +157,7 @@ class UMGRSchedulingComponent(rpu.Component):
     #
     def _base_command_cb(self, topic, msg):
 
-        # we'll wait for commands from the agent, to learn about pilots we can
+        # we'll wait for commands from the umgr, to learn about pilots we can
         # use or we should stop using.
         #
         # make sure command is for *this* scheduler, and from *that* umgr
