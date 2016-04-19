@@ -383,24 +383,19 @@ class UnitManager(rpu.Component):
 
         with self._pilots_lock:
 
-            # FIXME: double-bookkeepeing between here and the scheduler :/
+            # sanity check, and keep pilots around for inspection
             for pilot in pilots:
-
                 pid = pilot.uid
-
-                # sanity check
                 if pid in self._pilots:
                     raise ValueError('pilot %s already added' % pid)
-
-                # publish to the command channel for the scheduler to pick up
-                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'add_pilot', 
-                                                  'arg' : {'pid'  : pid, 
-                                                           'pilot': pilot.as_dict(),
-                                                           'umgr' : self.uid}})
-
-                # also keep pilots around for inspection
                 self._pilots[pid] = pilot
 
+        pilot_docs = [pilot.as_dict() for pilot in pilots]
+
+        # publish to the command channel for the scheduler to pick up
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'add_pilots',
+                                          'arg' : {'pilots': pilot_docs,
+                                                   'umgr'  : self.uid}})
         self._log.report.ok('>>ok\n')
 
 
@@ -457,27 +452,36 @@ class UnitManager(rpu.Component):
 
         # TODO: Implement 'drain'.
 
-        if self._closed:
-            raise RuntimeError("instance is already closed")
-
         if drain:
             raise RuntimeError("'drain' is not yet implemented")
 
-        if not isinstance(pilot_ids, list):
-            pilot_ids = [pilot_ids]
+        if self._closed:
+            raise RuntimeError("instance is already closed")
+
+        if not isinstance(pilots, list):
+            pilots = [pilots]
+
+        if len(pilots) == 0:
+            raise ValueError('cannot remove no pilots')
+
+        self._log.report.info('<<add %d pilot(s)' % len(pilots))
 
         with self._pilots_lock:
-            for pid in pilot_ids:
 
+            # sanity check, and keep pilots around for inspection
+            for pilot in pilots:
+                pid = pilot.uid
                 if pid not in self._pilots:
                     raise ValueError('pilot %s not added' % pid)
-
                 del(self._pilots[pid])
 
-                # publish to the command channel for the scheduler to pick up
-                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'remove_pilot', 
-                                                  'arg' : {'pid'  : pid, 
-                                                           'umgr' : self.uid}})
+        pids = [pilot.uid for pilot in pilots]
+
+        # publish to the command channel for the scheduler to pick up
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'remove_pilots',
+                                          'arg' : {'pids'  : pids, 
+                                                   'umgr'  : self.uid}})
+        self._log.report.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------

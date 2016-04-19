@@ -37,27 +37,34 @@ class RoundRobin(UMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def add_pilot(self, pid):
+    def add_pilots(self, pids):
 
-        # a pilot just got added.  If we did not have any pilot before, we might
+        # pilots just got added.  If we did not have any pilot before, we might
         # have units in the wait queue waiting -- now is a good time to take
         # care of those!
         with self._wait_lock:
-            self._pids.append(pid)
-            units = self._wait_pool[:]   # deep copy to avoid data recursion
-            self._wait_pool = list()
-            self._schedule_units(units)
+
+            self._pids += pids
+
+            if self._wait_pool:
+                units = self._wait_pool[:]   # deep copy to avoid data recursion
+                self._wait_pool = list()
+                self._schedule_units(units)
 
 
     # --------------------------------------------------------------------------
     #
-    def remove_pilot(self, pid):
+    def remove_pilots(self, pids):
 
         with self._pilots_lock:
-            if not pid in self._pids:
-                raise ValueError('no such pilot %s' % pid)
-            self._pids.remove(pid)
-            # FIXME: cancel units
+
+            for pid in pids:
+
+                if not pid in self._pids:
+                    raise ValueError('no such pilot %s' % pid)
+
+                self._pids.remove(pid)
+                # FIXME: cancel units
 
 
     # --------------------------------------------------------------------------

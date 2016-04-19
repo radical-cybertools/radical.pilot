@@ -83,22 +83,30 @@ def hostip(req=None, black_list=None, pref_list=None, logger=None):
 
     # List of interfaces that we probably dont want to bind to by default
     if not black_list:
-        black_list = ['lo', 'sit0']
+        black_list = ['sit0']
 
     # Known intefaces in preferred order
     if not pref_list:
         pref_list = [
+            'lo',
             'ipogif0', # Cray's
             'br0'      # SuperMIC
         ]
 
+    gateways = netifaces.gateways()
+    if  not 'default' in gateways or \
+        not gateways['default']:
+        return '127.0.0.1'
+
     # we always add the currently used interface to the preferred ones
-    default = netifaces.gateways()['default'][netifaces.AF_INET][1]
+    default = gateways['default'][netifaces.AF_INET][1]
     if default not in pref_list:
         pref_list.append(default)
 
     # Get a list of all network interfaces
     all = netifaces.interfaces()
+
+    print all
 
     if logger:
         logger.debug("Network interfaces detected: %s", all)
@@ -111,6 +119,9 @@ def hostip(req=None, black_list=None, pref_list=None, logger=None):
     else:
         # No requested or request not found, create preference list
         potentials = [iface for iface in all if iface not in black_list]
+
+    print pref
+    print potentials
 
     # If we didn't select an interface already
     if not pref:

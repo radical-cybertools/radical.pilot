@@ -164,11 +164,10 @@ class UMGRSchedulingComponent(rpu.Component):
 
         cmd = msg['cmd']
 
-        if cmd not in ['add_pilot', 'remove_pilot']:
+        if cmd not in ['add_pilots', 'remove_pilots']:
             return
 
         arg   = msg['arg']
-        pid   = arg['pid']
         umgr  = arg['umgr']
 
         self._log.info('scheduler command: %s: %s' % (cmd, arg))
@@ -178,42 +177,53 @@ class UMGRSchedulingComponent(rpu.Component):
             return
 
 
-        if cmd == 'add_pilot':
+        if cmd == 'add_pilots':
+
+            pilots = arg['pilots']
         
             with self._pilots_lock:
 
-                if pid in self._pilots:
-                    if self._pilots[pid]['role'] == ADDED:
-                        raise ValueError('pilot already added (%s)' % pid)
-                else:
-                    self._pilots[pid] = {'role'  : None,
-                                         'state' : None,
-                                         'pilot' : None}
-                self._pilots[pid]['role']  = ADDED
-                self._pilots[pid]['pilot'] = copy.deepcopy(arg['pilot'])
-                self._update_pilot_state(arg['pilot'])
+                for pilot in pilots:
 
-                self._log.debug('added pilot: %s', self._pilots[pid])
+                    pid = pilot['uid']
+
+                    if pid in self._pilots:
+                        if self._pilots[pid]['role'] == ADDED:
+                            raise ValueError('pilot already added (%s)' % pid)
+                    else:
+                        self._pilots[pid] = {'role'  : None,
+                                             'state' : None,
+                                             'pilot' : None}
+
+                    self._pilots[pid]['role']  = ADDED
+                    self._pilots[pid]['pilot'] = pilot
+                    self._update_pilot_state(pilot)
+
+                    self._log.debug('added pilot: %s', self._pilots[pid])
 
             # let the scheduler know
-            self.add_pilot(pid)
+            self.add_pilots([pilot['uid'] for pilot in pilots])
 
 
-        elif cmd == 'remove_pilot':
+        elif cmd == 'remove_pilots':
+
+            pids = arg['pids']
 
             with self._pilots_lock:
 
-                if pid not in self._pilots:
-                    raise ValueError('pilot not added (%s)' % pid)
+                for pid in pids:
 
-                if self._pilots[pid]['role'] != ADDED:
-                    raise ValueError('pilot not added (%s)' % pid)
+                    if pid not in self._pilots:
+                        raise ValueError('pilot not added (%s)' % pid)
 
-                self._pilots[pid]['role'] = REMOVED
-                self._log.debug('removed pilot: %s' % self._pilots[pid])
+                    if self._pilots[pid]['role'] != ADDED:
+                        raise ValueError('pilot not added (%s)' % pid)
+
+                    self._pilots[pid]['role'] = REMOVED
+                    self._log.debug('removed pilot: %s' % self._pilots[pid])
 
             # let the scheduler know
-            self.remove_pilot(pid)
+            self.remove_pilots(pids)
 
 
     # --------------------------------------------------------------------------
@@ -225,14 +235,14 @@ class UMGRSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def add_pilot(self, pid):
-        raise NotImplementedError("add_pilot() missing for '%s'" % self.uid)
+    def add_pilots(self, pids):
+        raise NotImplementedError("add_pilots() missing for '%s'" % self.uid)
 
 
     # --------------------------------------------------------------------------
     #
-    def remove_pilot(self, pid):
-        raise NotImplementedError("remove_pilot() missing for '%s'" % self.uid)
+    def remove_pilots(self, pids):
+        raise NotImplementedError("remove_pilots() missing for '%s'" % self.uid)
 
 
     # --------------------------------------------------------------------------
