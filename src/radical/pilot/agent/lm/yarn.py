@@ -386,6 +386,20 @@ class Yarn(LaunchMethod):
             scp_input_files+='"'
             print_str+="echo 'scp $YarnUser@%s:%s .'>>ExecScript.sh\n"%(client_node,scp_input_files)
 
+        if cud['pre_exec']:
+            pre_exec_string = ''
+            if isinstance(cud['pre_exec'], list):
+                for elem in cud['pre_exec']:
+                    pre_exec_string += '%s;' % elem
+            else:
+                pre_exec_string += '%s;' % cud['pre_exec']
+            pre_exec_string=''
+            print_str+="echo ''>>ExecScript.sh\n"
+            print_str+="echo ''>>ExecScript.sh\n"
+            print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
+            print_str+="echo '# Pre exec'>>ExecScript.sh\n"
+            print_str+="echo '%s'>>ExecScript.sh\n"%pre_exec_string
+        
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
