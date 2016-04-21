@@ -62,10 +62,10 @@ VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntpl
 
 # before we change anything else in the pilot environment, we safe a couple of
 # env vars to bve able to re-create a close-to-pristine env for unit execution.
-_OLD_VIRTUAL_PYTHONPATH=$"PYTHONPATH"
-_OLD_VIRTUAL_PYTHONHOME=$"PYTHONHOME"
-_OLD_VIRTUAL_PATH=$"PATH"
-_OLD_VIRTUAL_PS1=$"PS1"
+_OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
+_OLD_VIRTUAL_PYTHONHOME="$PYTHONHOME"
+_OLD_VIRTUAL_PATH="$PATH"
+_OLD_VIRTUAL_PS1="$PS1"
 
 export _OLD_VIRTUAL_PYTHONPATH
 export _OLD_VIRTUAL_PYTHONHOME
