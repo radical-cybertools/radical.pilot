@@ -109,6 +109,10 @@
   + add_pilot -> add_pilots
   + start/stop in mgrs...
 
+  - open saga ticket: condor staging target should point to the job cwd, not
+    to intermediate storage
+  - units can end up in 'CANCELED + agent_pending', so agent pulls unusable
+    units
 
 
 

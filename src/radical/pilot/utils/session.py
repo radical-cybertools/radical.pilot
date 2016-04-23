@@ -218,16 +218,10 @@ def get_session_frames (sids, db=None, cachedir=None) :
         for pilot in docs['pilot'] :
 
             pid         = pilot['uid']
-            description = pilot.get ('description', dict())
-            started     = pilot.get ('started')
-            finished    = pilot.get ('finished')
-            
-            cores = 0
-
-            if pilot['nodes'] and pilot['cores_per_node']:
-                cores = len(pilot['nodes']) * pilot['cores_per_node']
-            else:
-                cores = description.get('cores')
+            description = pilot.get('description', dict())
+            started     = pilot.get('started')
+            finished    = pilot.get('finished')
+            cores       = description.get('cores')
 
             if started  : started  -= session_start
             if finished : finished -= session_start

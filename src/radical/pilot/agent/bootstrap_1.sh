@@ -38,8 +38,8 @@ PILOT_ID=
 RP_VERSION=
 PYTHON=
 SESSION_ID=
-SESSION_DIR=
-SANDBOX=`pwd`
+SESSION_SANDBOX=
+PILOT_SANDBOX=`pwd`
 PREBOOTSTRAP2=""
 
 # flag which is set when a system level RP installation is found, triggers
@@ -245,14 +245,25 @@ rehash()
     #       channel for some reason, so does not need the cert bundle.
     #       see https://github.com/pypa/pip/issues/2130
     #       ca-cert bundle from http://curl.haxx.se/docs/caextract.html
-    if test -f 'cacert.pem.gz'
+    
+    # NOTE: Condor does not support staging into some arbitrary
+    #       directory, so we may find the dists in pwd
+    CA_CERT_GZ="$SESSION_SANDBOX/cacert.pem.gz"
+    CA_CERT_PEM="$SESSION_SANDBOX/cacert.pem"
+    if ! test -f "$CA_CERT_GZ"
     then
-        gunzip cacert.pem.gz
+        CA_CERT_GZ="./cacert.pem.gz"
+        CA_CERT_PEM="./cacert.pem"
     fi
 
-    if test -f 'cacert.pem'
+    if test -f "$CA_CERT_GZ"
     then
-        PIP="`which pip` --cert cacert.pem"
+        gunzip "$CA_CERT_GZ"
+    fi
+
+    if test -f "$CA_CERT_PEM"
+    then
+        PIP="`which pip` --cert $CA_CERT_PEM"
     else
         PIP="`which pip`"
     fi
@@ -482,7 +493,14 @@ virtenv_setup()
             do
                 src=${sdist%.tgz}
                 src=${sdist%.tar.gz}
-                tar zxmf "$SESSION_DIR/$sdist"
+                # NOTE: Condor does not support staging into some arbitrary
+                #       directory, so we may find the dists in pwd
+                if test -e "$SESSION_SANDBOX/$sdist"
+                then
+                    tar zxmf "$SESSION_SANDBOX/$sdist"
+                else
+                    tar zxmf "./$sdist"
+                fi
                 RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
             done
             RP_INSTALL_TARGET='VIRTENV'
@@ -494,7 +512,14 @@ virtenv_setup()
             do
                 src=${sdist%.tgz}
                 src=${sdist%.tar.gz}
-                tar zxmf "$SESSION_DIR/$sdist"
+                # NOTE: Condor does not support staging into some arbitrary
+                #       directory, so we may find the dists in pwd
+                if test -e "$SESSION_SANDBOX/$sdist"
+                then
+                    tar zxmf "$SESSION_SANDBOX/$sdist"
+                else
+                    tar zxmf "./$sdist"
+                fi
                 RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
             done
             RP_INSTALL_TARGET='SANDBOX'
@@ -889,8 +914,8 @@ virtenv_update()
 #
 #   debug: # needs sdist staging
 #       tar zxmf $sdist.tgz
-#       pip install -t $SANDBOX/rp_install $sdist/
-#       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
+#       pip install -t $PILOT_SANDBOX/rp_install $sdist/
+#       export PYTHONPATH=$PILOT_SANDBOX/rp_install:$PYTHONPATH
 #
 #   installed: # no sdist staging
 #       true
@@ -955,14 +980,14 @@ rp_install()
             ;;
 
         SANDBOX)
-            RP_INSTALL="$SANDBOX/rp_install"
+            RP_INSTALL="$PILOT_SANDBOX/rp_install"
 
             # make sure the lib path into the prefix conforms to the python conventions
-            RP_LOC_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$VIRTENV|$SANDBOX/rp_install|"`
+            RP_LOC_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$VIRTENV|$PILOT_SANDBOX/rp_install|"`
 
             echo "VE_MOD_PREFIX: $VE_MOD_PREFIX"
             echo "VIRTENV      : $VIRTENV"
-            echo "SANDBOX      : $SANDBOX"
+            echo "SANDBOX      : $PILOT_SANDBOX"
             echo "VE_LOC_PREFIX: $VE_LOC_PREFIX"
 
             # local PYTHONPATH needs to be pre-pended.  The ve PYTHONPATH is
@@ -973,7 +998,7 @@ rp_install()
             PYTHONPATH="$RP_LOC_PREFIX:$VE_MOD_REFIX:$VE_PYTHONPATH"
             export PYTHONPATH
 
-            PATH="$SANDBOX/rp_install/bin:$PATH"
+            PATH="$PILOT_SANDBOX/rp_install/bin:$PATH"
             export PATH
 
             RADICAL_MOD_PREFIX="$RP_LOC_PREFIX/radical/"
@@ -1034,8 +1059,8 @@ rp_install()
   #     fi
   # fi
 
-    pip_flags="$pip_flags --src '$SANDBOX/rp_install/src'"
-    pip_flags="$pip_flags --build '$SANDBOX/rp_install/build'"
+    pip_flags="$pip_flags --src '$PILOT_SANDBOX/rp_install/src'"
+    pip_flags="$pip_flags --build '$PILOT_SANDBOX/rp_install/build'"
     pip_flags="$pip_flags --install-option='--prefix=$RP_INSTALL'"
 
     for src in $RP_INSTALL_SOURCES
@@ -1049,7 +1074,7 @@ rp_install()
         fi
 
         # NOTE: why? fuck pip, that's why!
-        rm -rf "$SANDBOX/rp_install/build"
+        rm -rf "$PILOT_SANDBOX/rp_install/build"
     done
 
     profile_event 'rp_install done'
@@ -1172,19 +1197,18 @@ $cmd"
 
 # Report where we are, as this is not always what you expect ;-)
 # Print environment, useful for debugging
-echo "# -------------------------------------------------------------------"
-echo "# bootstrap_1 running on host: `hostname -f`."
-echo "# bootstrap_1 started as     : '$0 $@'"
-echo "# Environment of bootstrap_1 process:"
-echo "#"
-echo "#"
+echo "---------------------------------------------------------------------"
+echo "bootstrap_1 running on host: `hostname -f`."
+echo "bootstrap_1 started as     : '$0 $@'"
+echo "Environment of bootstrap_1 process:"
+echo ""
 env | sort
-echo "# -------------------------------------------------------------------"
+echo "---------------------------------------------------------------------"
 
 # parse command line arguments
 while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x" OPTION; do
     case $OPTION in
-        a)  SESSION_DIR="$OPTARG"  ;;
+        a)  SESSION_SANDBOX="$OPTARG"  ;;
         b)  PYTHON_DIST="$OPTARG"  ;;
         c)  CCM='TRUE'  ;;
         d)  SDISTS="$OPTARG"  ;;
@@ -1229,9 +1253,9 @@ rmdir "$VIRTENV" 2>/dev/null
 if test -z "$PILOT_ID"    ; then  usage "missing PILOT_ID"  ;  fi
 if test -z "$RP_VERSION"  ; then  usage "missing RP_VERSION";  fi
 
-if test -z "$SESSION_DIR"
+if test -z "$SESSION_SANDBOX"
 then  
-    SESSION_DIR="$SANDBOX/.."
+    SESSION_SANDBOX="$PILOT_SANDBOX/.."
 fi
 
 # If the host that will run the agent is not capable of communication
@@ -1305,9 +1329,9 @@ export _OLD_VIRTUAL_PS1
 # FIXME: the second option should use $RP_MOD_PATH, or should derive the path
 #       from the imported rp modules __file__.
 PILOT_SCRIPT=`which radical-pilot-agent`
-# if test "$RP_INSTALL_TARGET" = 'SANDBOX'
+# if test "$RP_INSTALL_TARGET" = 'PILOT_SANDBOX'
 # then
-#     PILOT_SCRIPT="$SANDBOX/rp_install/bin/radical-pilot-agent"
+#     PILOT_SCRIPT="$PILOT_SANDBOX/rp_install/bin/radical-pilot-agent"
 # else
 #     PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent"
 # fi
@@ -1374,7 +1398,7 @@ fi
 hostname
 
 # make sure we use the correct sandbox
-cd $SANDBOX
+cd $PILOT_SANDBOX
 
 # activate virtenv
 if test "$PYTHON_DIST" = "anaconda"
@@ -1457,10 +1481,10 @@ echo
 echo "# -------------------------------------------------------------------"
 echo "# CLEANUP: $CLEANUP"
 echo "#"
-contains $CLEANUP 'l' && rm -r "$SANDBOX/agent.*"
-contains $CLEANUP 'u' && rm -r "$SANDBOX/unit.*"
+contains $CLEANUP 'l' && rm -r "$PILOT_SANDBOX/agent.*"
+contains $CLEANUP 'u' && rm -r "$PILOT_SANDBOX/unit.*"
 contains $CLEANUP 'v' && rm -r "$VIRTENV/" # FIXME: in what cases?
-contains $CLEANUP 'e' && rm -r "$SANDBOX/"
+contains $CLEANUP 'e' && rm -r "$PILOT_SANDBOX/"
 
 profile_event 'cleanup done'
 echo "#"
