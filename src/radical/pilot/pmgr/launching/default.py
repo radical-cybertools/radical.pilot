@@ -62,7 +62,7 @@ class Default(PMGRLaunchingComponent):
         # pilot jobs to the resource management system (RM).
 
         self._pilots        = dict()             # dict for all known pilots
-        self._tocheck       = list()             # pilots run state checks on
+        self._tocheck       = dict()             # pilots to run state checks on
         self._missing       = dict()             # for failed state checks
         self._pilots_lock   = threading.RLock()  # lock on maipulating the above
         self._saga_fs_cache = dict()             # cache of saga directories
@@ -107,27 +107,26 @@ class Default(PMGRLaunchingComponent):
         self._log.debug('launcher got %s', msg)
 
         if cmd == 'cancel_pilots':
-            uids = arg['uids']
+            pids = arg['uids']
 
             with self._pilots_lock:
 
-                if not isinstance(uids, list):
-                    uids = [uids]
+                if not isinstance(pids, list):
+                    pids = [pids]
 
-                self._log.info('received pilot_cancel command (%s)', uids)
+                self._log.info('received pilot_cancel command (%s)', pids)
 
                 saga_jobs = list()
-                for uid in uids:
-                    if uid not in self._pilots:
-                        self._log.debug('unknown: %s', uid)
-                        raise 'cannot cancel pilot %s: unknown' % uid
+                for pid in pids:
+                    if pid not in self._pilots:
+                        self._log.debug('unknown: %s', pid)
+                        raise 'cannot cancel pilot %s: unknown' % pid
 
-                    saga_pid  = self._pilots[uid]['_saga_pid']   
-                    js_url    = rs.Url(self._pilots[uid]['_saga_js_url'])
-                    self._log.debug('js: %s', js_url)
+                    saga_pid  = self._pilots[pid]['_saga_pid']
+                    js_url    = self._pilots[pid]['_saga_js_url']
 
                     with self._cache_lock:
-                        self._log.debug('lock: %s', js_url)
+
                         if js_url in self._saga_js_cache:
                             js = self._saga_js_cache[js_url]
                         else :
@@ -143,7 +142,7 @@ class Default(PMGRLaunchingComponent):
                         self._log.debug('cancel: %s', saga_job.state)
                         saga_jobs.append(saga_job)
                         self._log.debug('launcher: cancel %s', saga_pid)
-                    
+
                 for saga_job in saga_jobs:
                     self._log.debug('check: %s', saga_job)
                     self._log.debug('launcher: wait %s', saga_job.state)
@@ -153,19 +152,20 @@ class Default(PMGRLaunchingComponent):
                     self._log.debug('launcher: waited %s', saga_job.state)
 
                 # move pilots into final state
-                for uid in uids:
-                    
-                    pilot    = self._pilots[uid]
-                    saga_pid = self._pilots[uid]['_saga_pid']   
+                for pid in pids:
+
+                    pilot    = self._pilots[pid]
+                    saga_pid = self._pilots[pid]['_saga_pid']
+                    js_url   = self._pilots[pid]['_saga_js_url']
 
                     # we don't want the watcher checking for this pilot anymore
-                    self._tocheck.remove([uid,saga_pid])
+                    self._tocheck[js_url].remove(pid)
 
                     out, err, log  = self._get_pilot_logs(pilot)
                     pilot['out']   = out
                     pilot['err']   = err
                     pilot['log']   = log
-                    self._log.info('pilot %s canceled', uid)
+                    self._log.info('pilot %s canceled', pid)
                     self.advance(pilot, rps.CANCELED, push=False, publish=True)
                     self._log.debug('advance cancel: %s', pilot)
 
@@ -230,25 +230,27 @@ class Default(PMGRLaunchingComponent):
         #          error
         #          disappeared
         #       This implies that we need to communicate 'final_cause'
-        
+
         # we don't want to lock our members all the time.  For that reason we
         # use a copy of the pilots_tocheck list and iterate over that, and only
         # lock other members when they are manipulated.
 
         with self._pilots_lock:
-            checklist = self._tocheck[:]  # deep copy
+            checklist = list()
+            for js_url in self._tocheck:
+                checklist += self._tocheck[js_url][:] # deep copy
 
-        for pid,saga_pid in checklist:
+        for pid in checklist:
 
             pilot_failed = False
             pilot_done   = False
-            log_message  = ""
+
+            saga_pid  = self._pilots[pid]['_saga_pid']
+            js_url    = self._pilots[pid]['_saga_js_url']
 
             self._log.info("health check for %s [%s]", pid, saga_pid)
 
             try:
-                js_url = saga_pid.split("]-[")[0][1:]
-
                 with self._cache_lock:
                     if js_url in self._saga_js_cache:
                         js = self._saga_js_cache.get(js_url)
@@ -282,7 +284,7 @@ class Default(PMGRLaunchingComponent):
             if pilot_done or pilot_failed:
 
                 with self._pilots_lock:
-                    self._tocheck.remove([pid,saga_pid])
+                    self._tocheck[js_url].remove(pid)
 
                 pilot = self._pilots[pid]
 
@@ -504,7 +506,9 @@ class Default(PMGRLaunchingComponent):
                 self._pilots[pid]['_saga_js_url'] = str(js_url)
 
                 # make sure we watch that pilot
-                self._tocheck.append([pid, j.id])
+                if js_url not in self._tocheck:
+                    self._tocheck[js_url] = list()
+                self._tocheck[js_url].append(pid)
 
                 # Update the Pilot's state to 'PMGR_ACTIVE_PENDING' if SAGA job
                 # submission was successful.  Since the pilot leaves the scope of
@@ -512,7 +516,7 @@ class Default(PMGRLaunchingComponent):
                 pilot['$all'] = True
 
         self.advance(pilots, rps.PMGR_ACTIVE_PENDING, push=False, publish=True)
-        
+
 
     # --------------------------------------------------------------------------
     #
