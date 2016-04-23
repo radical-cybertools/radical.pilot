@@ -397,9 +397,10 @@ class Default(PMGRLaunchingComponent):
         # pilots
         # NOTE: on untar, there is a race between multiple launcher components
         #       within the same session toward the same target resource.
-        tmp_dir = tempfile.mkdtemp(prefix='rp_agent_tar_dir')
-        tar_tgt = '%s/%s.tgz' % (tmp_dir, sid)
-        tar_url = rs.Url('file://localhost/%s' % tar_tgt)
+        tmp_dir  = tempfile.mkdtemp(prefix='rp_agent_tar_dir')
+        tar_name = '%s.%s.tgz' % (sid, self.uid)
+        tar_tgt  = '%s/%s'     % (tmp_dir, tar_name)
+        tar_url  = rs.Url('file://localhost/%s' % tar_tgt)
 
         global_sandbox  = self._session._get_global_sandbox (pilot).path
         session_sandbox = self._session._get_session_sandbox(pilot).path
@@ -441,7 +442,7 @@ class Default(PMGRLaunchingComponent):
                 self._saga_fs_cache[fs_url] = fs
 
         tar_rem      = rs.Url(fs_url)
-        tar_rem.path = "%s/%s.tgz" % (session_sandbox, sid)
+        tar_rem.path = "%s/%s" % (session_sandbox, tar_name)
 
         fs.copy(tar_url, tar_rem, flags=rs.filesystem.CREATE_PARENTS)
 
@@ -458,7 +459,7 @@ class Default(PMGRLaunchingComponent):
             else:
                 js = rs.job.Service(js_url, session=self._session)
                 self._saga_js_cache[js_url] = js
-        cmd = "tar zmxvf %s/%s.tgz -C /" % (session_sandbox, sid)
+        cmd = "tar zmxvf %s/%s -C /" % (session_sandbox, tar_name)
         j = js.run_job(cmd)
         j.wait()
 
