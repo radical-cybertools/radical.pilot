@@ -57,7 +57,7 @@ if __name__ == '__main__':
         for resource in resources:
             pd_init = {
                     'resource'      : resource,
-                    'cores'         : 512, # pilot size
+                    'cores'         : 256, # pilot size
                     'runtime'       : 60,  # pilot runtime (min)
                     'exit_on_error' : True,
                     'project'       : config[resource]['project'],
