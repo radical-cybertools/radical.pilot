@@ -27,6 +27,7 @@ class PMGRLaunchingComponent(rpu.Component):
 
         rpu.Component.__init__(self, cfg, session)
 
+        self._pmgr = self._owner
 
     # --------------------------------------------------------------------------
     #

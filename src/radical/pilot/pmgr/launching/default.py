@@ -62,9 +62,9 @@ class Default(PMGRLaunchingComponent):
         # pilot jobs to the resource management system (RM).
 
         self._pilots        = dict()             # dict for all known pilots
-        self._tocheck       = dict()             # pilots to run state checks on
-        self._missing       = dict()             # for failed state checks
         self._pilots_lock   = threading.RLock()  # lock on maipulating the above
+        self._checking      = list()             # pilots to check state on
+        self._check_lock    = threading.RLock()  # lock on maipulating the above
         self._saga_fs_cache = dict()             # cache of saga directories
         self._saga_js_cache = dict()             # cache of saga job services
         self._sandboxes     = dict()             # cache of global sandbox URLs
@@ -107,67 +107,49 @@ class Default(PMGRLaunchingComponent):
         self._log.debug('launcher got %s', msg)
 
         if cmd == 'cancel_pilots':
+
+            pmgr = arg['pmgr']
             pids = arg['uids']
 
+            if pmgr != self._pmgr:
+                # this request is not for us to enact
+                return
+
+            if not isinstance(pids, list):
+                pids = [pids]
+
+            self._log.info('received pilot_cancel command (%s)', pids)
+
+            pilots = dict()
+            tc     = rs.task.Container()
             with self._pilots_lock:
 
-                if not isinstance(pids, list):
-                    pids = [pids]
-
-                self._log.info('received pilot_cancel command (%s)', pids)
-
-                saga_jobs = list()
                 for pid in pids:
+
                     if pid not in self._pilots:
                         self._log.debug('unknown: %s', pid)
                         raise 'cannot cancel pilot %s: unknown' % pid
 
-                    saga_pid  = self._pilots[pid]['_saga_pid']
-                    js_url    = self._pilots[pid]['_saga_js_url']
+                    pilots[pid] = self._pilots[pid]['pilot']
+                    tc.add(self._pilots[pid]['job'])
 
-                    with self._cache_lock:
+            tc.cancel()
+            tc.wait()
 
-                        if js_url in self._saga_js_cache:
-                            js = self._saga_js_cache[js_url]
-                        else :
-                            js = rs.job.Service(js_url, session=self._session)
-                            self._saga_js_cache[js_url] = js
+            for pid in pilots:
 
-                        self._log.debug('js inst: %s', js)
+                # we don't want the watcher checking for this pilot anymore
+                with self._check_lock:
+                    self._checking.remove(pid)
 
-                        saga_job = js.get_job(saga_pid)
-                        self._log.debug('job  : %s', saga_job)
-                        self._log.debug('state: %s', saga_job.state)
-                        saga_job.cancel()
-                        self._log.debug('cancel: %s', saga_job.state)
-                        saga_jobs.append(saga_job)
-                        self._log.debug('launcher: cancel %s', saga_pid)
+                # FIXME: where is my bulk?
+                out, err, log  = self._get_pilot_logs(pilot)
+                pilots[pid]['out']   = out
+                pilots[pid]['err']   = err
+                pilots[pid]['log']   = log
+                pilots[pid]['state'] = rps.CANCELED
 
-                for saga_job in saga_jobs:
-                    self._log.debug('check: %s', saga_job)
-                    self._log.debug('launcher: wait %s', saga_job.state)
-                    self._log.debug('wait : %s', saga_job.state)
-                    saga_job.wait()
-                    self._log.debug('final: %s', saga_job.state)
-                    self._log.debug('launcher: waited %s', saga_job.state)
-
-                # move pilots into final state
-                for pid in pids:
-
-                    pilot    = self._pilots[pid]
-                    saga_pid = self._pilots[pid]['_saga_pid']
-                    js_url   = self._pilots[pid]['_saga_js_url']
-
-                    # we don't want the watcher checking for this pilot anymore
-                    self._tocheck[js_url].remove(pid)
-
-                    out, err, log  = self._get_pilot_logs(pilot)
-                    pilot['out']   = out
-                    pilot['err']   = err
-                    pilot['log']   = log
-                    self._log.info('pilot %s canceled', pid)
-                    self.advance(pilot, rps.CANCELED, push=False, publish=True)
-                    self._log.debug('advance cancel: %s', pilot)
+            self.advance(pilots, push=False, publish=True)
 
 
     # --------------------------------------------------------------------------
@@ -229,82 +211,49 @@ class Default(PMGRLaunchingComponent):
         #          timeout
         #          error
         #          disappeared
-        #       This implies that we need to communicate 'final_cause'
+        #        This implies that we want to communicate 'final_cause'
 
         # we don't want to lock our members all the time.  For that reason we
         # use a copy of the pilots_tocheck list and iterate over that, and only
         # lock other members when they are manipulated.
 
-        with self._pilots_lock:
-            checklist = list()
-            for js_url in self._tocheck:
-                checklist += self._tocheck[js_url][:] # deep copy
+        tc = rs.job.Container()
+        with self._pilots_lock, self._check_lock:
 
-        for pid in checklist:
+            for pid in self._checking:
+                tc.add(self._pilots[pid]['job'])
 
-            pilot_failed = False
-            pilot_done   = False
+        states = tc.get_states()
 
-            saga_pid  = self._pilots[pid]['_saga_pid']
-            js_url    = self._pilots[pid]['_saga_js_url']
+        # if none of the states is final, we have nothing to do.
+        # We can't rely on the ordering of tasks and states in the task
+        # container, so we hope that the task container's bulk state query lead
+        # to a caching of state information, and we thus have cache hits when
+        # querying the pilots individually
 
-            self._log.info("health check for %s [%s]", pid, saga_pid)
+        pilots = list()
+        with self._pilots_lock, self._check_lock:
+            for pid in self._checking:
+                state = self._pilots[pid]['job'].state
+                if state in [rs.job.DONE, rs.job.FAILED, rs.job.CANCELED]:
+                    pilots.append(self._pilots[pid]['pilot'])
 
-            try:
-                with self._cache_lock:
-                    if js_url in self._saga_js_cache:
-                        js = self._saga_js_cache.get(js_url)
-                    else:
-                        js = rs.job.Service(js_url, session=self._session)
-                        self._saga_js_cache[js_url] = js
+        if not pilots:
+            # no final pilots
+            return
 
-                saga_job = js.get_job(saga_pid)
-                self._log.debug("SAGA job state for %s: %s.", pid, saga_job.state)
+        for pilot in pilots:
 
-                if  saga_job.state in [rs.job.FAILED, rs.job.CANCELED]:
-                    pilot_failed = True
+            out, err, log = self._get_pilot_logs(pilot)
+            pilot['out'] = out
+            pilot['err'] = err
+            pilot['log'] = log
 
-                if  saga_job.state in [rs.job.DONE]:
-                    pilot_done = True
+            with self._check_lock:
+                # stop monitoring this pilot
+                self._checking.remove(pilot['uid'])
 
-
-            except Exception as e:
-
-                if pid not in self._missing: self._missing[pid]  = 1
-                else                       : self._missing[pid] += 1
-
-                self._log.exception ('could not reconnect to pilot (%s)', e)
-
-                if  self._missing[pid] >= JOB_CHECK_MAX_MISSES:
-                    self._log.debug('giving up (%s attempts)', self._missing[pid])
-                    pilot_failed = True
-
-
-            # no need to watch final pilots anymore...
-            if pilot_done or pilot_failed:
-
-                with self._pilots_lock:
-                    self._tocheck[js_url].remove(pid)
-
-                pilot = self._pilots[pid]
-
-                if  pilot_failed:
-                    out, err, log = self._get_pilot_logs(pilot)
-                    pilot['out'] = out
-                    pilot['err'] = err
-                    pilot['log'] = log
-                    self._log.warn('pilot %s is dead', pid)
-                  # print 'launcher: advance to FAILED'
-                    self.advance(pilot, rps.FAILED, push=False, publish=True)
-
-                elif pilot_done:
-                    out, err, log = self._get_pilot_logs(pilot)
-                    pilot['out'] = out
-                    pilot['err'] = err
-                    pilot['log'] = log
-                    self._log.info('pilot %s is done', pid)
-                  # print 'launcher: advance to DONE'
-                    self.advance(pilot, rps.DONE, push=False, publish=True)
+        self.advance(pilots, rps.CANCELED, push=False, publish=True)
 
 
     # --------------------------------------------------------------------------
@@ -498,22 +447,21 @@ class Default(PMGRLaunchingComponent):
             self._log.debug('pilot job: %s : %s : %s : %s', 
                             pid, j.id, j.name, j.state)
 
+            # Update the Pilot's state to 'PMGR_ACTIVE_PENDING' if SAGA job
+            # submission was successful.  Since the pilot leaves the scope of
+            # the PMGR for the time being, we update the complete DB document
+            pilot['$all'] = True
+
             # FIXME: update the right pilot
             with self._pilots_lock:
 
-                self._pilots[pid] = pilot
-                self._pilots[pid]['_saga_pid']    = j.id
-                self._pilots[pid]['_saga_js_url'] = str(js_url)
+                self._pilots[pid] = dict()
+                self._pilots[pid]['pilot'] = pilot
+                self._pilots[pid]['job']   = j
 
-                # make sure we watch that pilot
-                if js_url not in self._tocheck:
-                    self._tocheck[js_url] = list()
-                self._tocheck[js_url].append(pid)
-
-                # Update the Pilot's state to 'PMGR_ACTIVE_PENDING' if SAGA job
-                # submission was successful.  Since the pilot leaves the scope of
-                # the PMGR for the time being, we update the complete DB document
-                pilot['$all'] = True
+            # make sure we watch that pilot
+            with self._check_lock:
+                self._checking.append(pid)
 
         self.advance(pilots, rps.PMGR_ACTIVE_PENDING, push=False, publish=True)
 

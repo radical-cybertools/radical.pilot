@@ -521,7 +521,8 @@ class PilotManager(rpu.Component):
 
       # print 'pmgr: send cancel to %s' % uids
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots', 
-                                          'arg' : {'uids' : uids}})
+                                          'arg' : {'pmgr' : self.uid,
+                                                   'uids' : uids}})
         self.wait_pilots(uids=uids)
 
 
