@@ -468,7 +468,7 @@ class PilotManager(rpu.Component):
         # create a list from which we drop the pilots as we find them in
         # a matching state
         self._log.report.idle(mode='start')
-        while to_check and not self._terminate.is_set:
+        while to_check and not self._terminate.is_set():
 
             self._log.report.idle()
 
@@ -519,7 +519,6 @@ class PilotManager(rpu.Component):
         if not isinstance(uids, list):
             uids = [uids]
 
-      # print 'pmgr: send cancel to %s' % uids
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots', 
                                           'arg' : {'pmgr' : self.uid,
                                                    'uids' : uids}})

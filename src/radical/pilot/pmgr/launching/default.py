@@ -120,7 +120,7 @@ class Default(PMGRLaunchingComponent):
 
             self._log.info('received pilot_cancel command (%s)', pids)
 
-            pilots = dict()
+            pilots = list()
             tc     = rs.task.Container()
             with self._pilots_lock:
 
@@ -130,13 +130,15 @@ class Default(PMGRLaunchingComponent):
                         self._log.debug('unknown: %s', pid)
                         raise 'cannot cancel pilot %s: unknown' % pid
 
-                    pilots[pid] = self._pilots[pid]['pilot']
+                    pilots.append(self._pilots[pid]['pilot'])
                     tc.add(self._pilots[pid]['job'])
 
             tc.cancel()
             tc.wait()
 
-            for pid in pilots:
+            for pilot in pilots:
+
+                pid = pilot['uid']
 
                 # we don't want the watcher checking for this pilot anymore
                 with self._check_lock:
@@ -144,10 +146,10 @@ class Default(PMGRLaunchingComponent):
 
                 # FIXME: where is my bulk?
                 out, err, log  = self._get_pilot_logs(pilot)
-                pilots[pid]['out']   = out
-                pilots[pid]['err']   = err
-                pilots[pid]['log']   = log
-                pilots[pid]['state'] = rps.CANCELED
+                pilot['out']   = out
+                pilot['err']   = err
+                pilot['log']   = log
+                pilot['state'] = rps.CANCELED
 
             self.advance(pilots, push=False, publish=True)
 
