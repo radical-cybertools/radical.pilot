@@ -8,6 +8,7 @@ import subprocess
 import urllib
 import sys
 import socket
+import random
 
 from .base import LaunchMethod
 
@@ -250,9 +251,7 @@ class Spark(LaunchMethod):
 
         master_ip   = opaque_slots['lm_info']['master_ip']
         client_node = opaque_slots['lm_info']['nodename']
-        ui_port = 4040 + int(unit_id.split('.')[1])
 
-        
 
         if task_env:
             env_string = ''
@@ -274,9 +273,12 @@ class Spark(LaunchMethod):
         else:
             command = " "
 
-
-
-        spark_command = self.launch_command + '/' + task_exec + ' ' +  command
+        spark_configurations = " "
+        # if the user hasn't specified another ui port use this one
+        if not 'spark.ui.port' in command:
+            spark_configurations += ' --conf spark.ui.port=%d '  % (random.randint(4020,4180))  # can i use this range? TODO
+        
+        spark_command = self.launch_command + '/' + task_exec + '  ' + spark_configurations + ' '  +  command
 
 
         self._log.debug("Spark  Command %s"%spark_command)
