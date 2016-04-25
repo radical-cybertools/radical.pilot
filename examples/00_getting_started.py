@@ -56,7 +56,7 @@ if __name__ == '__main__':
         # Here we use a dict to initialize the description object
         pd_init = {
                 'resource'      : resource,
-                'cores'         : 64,  # pilot size
+                'cores'         : 32,  # pilot size
                 'runtime'       : 15,  # pilot runtime (min)
                 'exit_on_error' : True,
                 'project'       : config[resource]['project'],
@@ -88,6 +88,7 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.executable = '/bin/date'
+            cud.cores = 16
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
