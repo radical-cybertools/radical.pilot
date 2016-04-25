@@ -297,7 +297,6 @@ class LRMS(object):
             for iface in sorted_preferred:
                 if iface in all:
                     # check if we see any settings on that interface
-                    logger.debug('%s: %s', iface, netifaces.ifaddresses(iface))
                     if netifaces.ifaddresses(iface).get(AF):
                         pref = iface
                         break
@@ -306,7 +305,6 @@ class LRMS(object):
         # potentials if it has entries
         if not pref and potentials:
             for iface in potentials:
-                logger.debug('%s: %s', iface, netifaces.ifaddresses(iface))
                 if netifaces.ifaddresses(iface).get(AF):
                     pref = iface
                     break
@@ -315,12 +313,12 @@ class LRMS(object):
         if not pref:
             for iface in black_list:
                 if iface in all:
-                    logger.debug('%s: %s', iface, netifaces.ifaddresses(iface))
                     if netifaces.ifaddresses(iface).get(AF):
                         # Found something, get out of here
                         pref = iface
                         break
 
+        logger.debug("Network interfaces selected: %s", pref)
         # Use IPv4, because, we can ...
         ip = netifaces.ifaddresses(pref)[AF][0]['addr']
 
