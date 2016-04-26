@@ -3,6 +3,7 @@ import os
 import sys
 import copy
 import time
+import errno
 import datetime
 import pymongo
 import threading
@@ -56,6 +57,7 @@ def rec_makedir(target):
 
     try:
         os.makedirs(target)
+
     except OSError as e:
         # ignore failure on existing directory
         if e.errno == errno.EEXIST and os.path.isdir(os.path.dirname(target)):
@@ -64,5 +66,5 @@ def rec_makedir(target):
             raise
 
 
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------
 

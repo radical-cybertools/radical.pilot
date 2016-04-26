@@ -18,12 +18,12 @@
         "pre_bootstrap_1"             : ["module load python"],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/global", "/scratch",  "/scratch2"],
-        "bootstrapper"                : "default_bootstrapper.sh",
         "rp_version"                  : "debug",
         "virtenv"                     : "%(global_sandbox)s/ve_hopper",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : "True",
-        "cores_per_node"              : "24"
+        "cores_per_node"              : "24",
+        "python_dist"                 : "default"
     },
     "hopper": {
         "description"                 : "The NERSC Hopper Cray XE6 (https://www.nersc.gov/users/computational-systems/hopper/)",
@@ -65,11 +65,11 @@
         ],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/global", "/scratch1", "/scratch2"],
-        "bootstrapper"                : "default_bootstrapper.sh",
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_hopper",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True"
+        "stage_cacerts"               : "True",
+        "python_dist"                 : "default"
     },
     "hopper_ccm": {
         "description"                 : "The NERSC Hopper Cray XE6 in Cluster Compatibility Mode (https://www.nersc.gov/users/computational-systems/hopper/)",
@@ -97,12 +97,12 @@
         "valid_roots"                 : ["/global", "/scratch",  "/scratch2"],
         "forward_tunnel_endpoint"     : "BIND_ADDRESS",
         "tunnel_bind_device"          : "ipogif0",
-        "bootstrapper"                : "default_bootstrapper.sh",
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_hopper",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : "True",
-        "cores_per_node"              : "24"
+        "cores_per_node"              : "24",
+        "python_dist"                 : "default"
     },
     "edison_aprun": {
         "description"                 : "The NERSC Edison Cray XC30 (https://www.nersc.gov/users/computational-systems/edison/)",
@@ -128,11 +128,11 @@
         "pre_bootstrap_1"             : ["module load python"],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/global", "/scratch1", "/scratch2"],
-        "bootstrapper"                : "default_bootstrapper.sh",
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_edison",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True"
+        "stage_cacerts"               : "True",
+        "python_dist"                 : "default"
     },
     "edison": {
         "description"                 : "The NERSC Edison Cray XC30 (https://www.nersc.gov/users/computational-systems/edison/)",
@@ -172,11 +172,11 @@
         ],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/global", "/scratch1", "/scratch2"],
-        "bootstrapper"                : "default_bootstrapper.sh",
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_edison",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True"
+        "stage_cacerts"               : "True",
+        "python_dist"                 : "default"
     },
     "edison_ccm": {
         "description"                 : "The NERSC Edison Cray XC30 in Cluster Compatibility Mode (https://www.nersc.gov/users/computational-systems/edison/)",
@@ -203,10 +203,10 @@
         "valid_roots"                 : ["/global", "/scratch1", "/scratch2"],
         "forward_tunnel_endpoint"     : "localhost",
         "tunnel_bind_device"          : "ipogif0",
-        "bootstrapper"                : "default_bootstrapper.sh",
         "rp_version"                  : "debug",
         "virtenv"                     : "%(global_sandbox)s/ve_edison",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True"
+        "stage_cacerts"               : "True",
+        "python_dist"                 : "default"
     }
 }

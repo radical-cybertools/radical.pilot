@@ -1,0 +1,28 @@
+{
+    "grace": {
+        "description"                 : "Grace is a shared-use facility within Yale’s Faculty of Arts and Sciences (FAS).",
+        "notes"                       : "",
+        "schemas"                     : ["ssh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "lsf+ssh://grace.hpc.yale.edu/?span=ptile=4",
+            "filesystem_endpoint"     : "sftp://grace.hpc.yale.edu/"
+        },
+        "default_queue"               : "shared",
+        "lrms"                        : "LSF",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN",
+        "pre_bootstrap_1"             : [
+            "module load Langs/Python/2.7.6",
+            "module load MPI/OpenMPI"],
+        "pre_bootstrap_2"             : [],
+        "valid_roots"                 : ["/"],
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_grace",
+        "virtenv_mode"                : "create"
+    }
+}

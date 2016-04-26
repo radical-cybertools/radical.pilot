@@ -5,6 +5,7 @@ import json
 import time
 import errno
 import pprint
+import signal
 import Queue           as pyq
 import multiprocessing as mp
 import radical.utils   as ru
@@ -20,8 +21,10 @@ PUBSUB_ROLES  = [PUBSUB_PUB, PUBSUB_SUB, PUBSUB_BRIDGE]
 PUBSUB_ZMQ    = 'zmq'
 PUBSUB_TYPES  = [PUBSUB_ZMQ]
 
-_USE_MULTIPART  = False # send [topic, data] as multipart message
-_BRIDGE_TIMEOUT = 5.0   # how long to wait for bridge startup
+_USE_MULTIPART   =  False  # send [topic, data] as multipart message
+_BRIDGE_TIMEOUT  =      1  # how long to wait for bridge startup
+_LINGER_TIMEOUT  =    250  # ms to linger after close
+_HIGH_WATER_MARK =      0  # number of bytes to buffer before dropping
 
 
 # --------------------------------------------------------------------------
@@ -45,7 +48,6 @@ def _uninterruptible(f, *args, **kwargs):
                 if cnt > 10:
                     raise
                 # interrupted, try again
-                print 'interrupted! [%s] [%s] [%s]' % (f, args, kwargs)
                 continue
             else:
                 # real error, raise it
@@ -74,8 +76,8 @@ class Pubsub(object):
         self._role       = role
         self._addr       = address
         self._debug      = False
-        self._log        = ru.get_logger('rp.bridges')
         self._name       = "pubsub.%s.%s" % (self._channel, self._role)
+        self._log        = ru.get_logger('rp.bridges', target="%s.log" % self._name)
         self._bridge_in  = None           # bridge input  addr
         self._bridge_out = None           # bridge output addr
 
@@ -209,6 +211,8 @@ class PubsubZMQ(Pubsub):
 
             ctx = zmq.Context()
             self._q = ctx.socket(zmq.PUB)
+            self._q.linger = _LINGER_TIMEOUT
+            self._q.hwm    = _HIGH_WATER_MARK
             self._q.connect(str(self._addr))
 
 
@@ -232,14 +236,22 @@ class PubsubZMQ(Pubsub):
                     pass
 
                 try:
+                    # reset signal handlers to their default
+                    signal.signal(signal.SIGINT,  signal.SIG_DFL)
+                    signal.signal(signal.SIGTERM, signal.SIG_DFL)
+                    signal.signal(signal.SIGALRM, signal.SIG_DFL)
 
                     self._log.info('start bridge %s on %s', self._name, addr)
 
                     ctx = zmq.Context()
                     _in = ctx.socket(zmq.XSUB)
+                    _in.linger = _LINGER_TIMEOUT
+                    _in.hwm    = _HIGH_WATER_MARK
                     _in.bind(addr)
 
                     _out = ctx.socket(zmq.XPUB)
+                    _out.linger = _LINGER_TIMEOUT
+                    _out.hwm    = _HIGH_WATER_MARK
                     _out.bind(addr)
 
                     # communicate the bridge ports to the parent process
@@ -296,6 +308,8 @@ class PubsubZMQ(Pubsub):
 
             ctx = zmq.Context()
             self._q = ctx.socket(zmq.SUB)
+            self._q.linger = _LINGER_TIMEOUT
+            self._q.hwm    = _HIGH_WATER_MARK
             self._q.connect(self._addr)
 
         # ----------------------------------------------------------------------

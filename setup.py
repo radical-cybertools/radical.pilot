@@ -14,14 +14,14 @@ import sys
 import shutil
 import subprocess as sp
 
+name     = 'radical.pilot'
+mod_root = 'src/radical/pilot/'
+
 try:
     from setuptools import setup, Command, find_packages
 except ImportError as e:
-    print("radical.pilot needs setuptools to install")
+    print("%s needs setuptools to install" % name)
     sys.exit(1)
-
-name     = 'radical.pilot'
-mod_root = 'src/radical/pilot/'
 
 # ------------------------------------------------------------------------------
 #
@@ -99,7 +99,7 @@ def get_version (mod_root):
         sdist_name = sdist_name.replace ('@', '-')
         sdist_name = sdist_name.replace ('#', '-')
         sdist_name = sdist_name.replace ('_', '-')
-        if '--record'  in sys.argv or 'bdist_egg' in sys.argv:
+        if '--record'  in sys.argv or 'bdist_egg' in sys.argv or 'bdist_wheel' in sys.argv:
            # pip install stage 2      easy_install stage 1
            # NOTE: pip install will untar the sdist in a tmp tree.  In that tmp
            # tree, we won't be able to derive git version tags -- so we pack the
@@ -273,7 +273,7 @@ setup_args = {
     'package_data'       : {'': ['*.sh', '*.json', '*.gz', 'VERSION', 'SDIST', sdist_name]},
     'cmdclass'           : {
         'test'           : our_test,
-    },
+                           },
     'install_requires'   : ['saga-python',
                             'radical.utils',
                             'pymongo==2.8',
@@ -281,9 +281,10 @@ setup_args = {
                             'netifaces',
                             'setproctitle',
                             'ntplib',
-                            'pyzmq'],
+                            'pyzmq'
+                           ],
     'tests_require'      : [],
-    'test_suite'         : 'radical.pilot.tests',
+    'test_suite'         : '%s.tests' % name,
     'zip_safe'           : False,
 #   'build_sphinx'       : {
 #       'source-dir'     : 'docs/',
@@ -294,16 +295,16 @@ setup_args = {
 #       'upload-dir'     : 'docs/build/html',
 #   }
     # This copies the contents of the examples/ dir under
-    # sys.prefix/share/radical.pilot.
+    # sys.prefix/share/$name
     # It needs the MANIFEST.in entries to work.
-    'data_files'         : makeDataFiles('share/radical.pilot/examples/', 'examples'),
+    'data_files'         : makeDataFiles('share/%s/examples/' % name, 'examples'),
 }
 
 # ------------------------------------------------------------------------------
 
 setup (**setup_args)
 
-os.system('rm -rf src/radical.pilot.egg-info')
+os.system('rm -rf src/%s.egg-info' % name)
 
 # ------------------------------------------------------------------------------
 

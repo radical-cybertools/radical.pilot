@@ -35,3 +35,48 @@ AGENT_RESCHEDULE_PUBSUB        = 'agent_reschedule_pubsub'
 AGENT_COMMAND_PUBSUB           = 'agent_command_pubsub'
 AGENT_STATE_PUBSUB             = 'agent_state_pubsub'
 
+
+# ------------------------------------------------------------------------------
+#
+# protocol defines
+#
+COMMAND_CANCEL_PILOT        = "Cancel_Pilot"
+COMMAND_CANCEL_COMPUTE_UNIT = "Cancel_Compute_Unit"
+COMMAND_KEEP_ALIVE          = "Keep_Alive"
+COMMAND_FIELD               = "commands"
+COMMAND_TYPE                = "type"
+COMMAND_ARG                 = "arg"
+COMMAND_CANCEL              = "Cancel"
+COMMAND_SCHEDULE            = "schedule"
+COMMAND_RESCHEDULE          = "reschedule"
+COMMAND_UNSCHEDULE          = "unschedule"
+COMMAND_WAKEUP              = "wakeup"
+
+# two-state for resource occupation.
+FREE = 'Free'
+BUSY = 'Busy'
+
+
+# ------------------------------------------------------------------------------
+#
+# staging defines
+#
+COPY     = 'Copy'     # local cp
+LINK     = 'Link'     # local ln -s
+MOVE     = 'Move'     # local mv
+TRANSFER = 'Transfer' # saga remote transfer TODO: This might just be a special case of copy
+
+#
+# Flags
+#
+CREATE_PARENTS = 'CreateParents'  # Create parent directories while writing file
+SKIP_FAILED    = 'SkipFailed'     # Don't stage out files if tasks failed
+
+#
+# Defaults
+#
+DEFAULT_ACTION   = TRANSFER
+DEFAULT_PRIORITY = 0
+DEFAULT_FLAGS    = [CREATE_PARENTS, SKIP_FAILED]
+STAGING_AREA     = 'staging_area'
+

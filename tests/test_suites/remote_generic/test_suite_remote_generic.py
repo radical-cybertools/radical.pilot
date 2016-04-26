@@ -11,8 +11,6 @@ import radical.pilot as rp
 
 logging.raiseExceptions = False
 
-db_url     = "mongodb://ec2-54-221-194-147.compute-1.amazonaws.com:24242/jenkins-tests"
-
 json_data=open("../pytest_config.json")
 CONFIG = json.load(json_data)
 json_data.close()
@@ -28,7 +26,6 @@ def pilot_state_cb (pilot, state):
         print '\nSTDOUT: %s' % pilot.stdout
         print '\nSTDERR: %s' % pilot.stderr
         print '\nLOG   : %s' % pilot.log
-        sys.exit (1)
 
     if state in [rp.DONE, rp.FAILED, rp.CANCELED]:
         for cb in pilot.callback_history:
@@ -51,7 +48,6 @@ def unit_state_cb (unit, state):
     if state == rp.FAILED:
         print "\nSTDOUT: %s" % unit.stdout
         print "\nSTDERR: %s" % unit.stderr
-        sys.exit (1)
 
     if state in [rp.DONE, rp.FAILED, rp.CANCELED]:
         for cb in unit.callback_history:
@@ -62,8 +58,7 @@ def unit_state_cb (unit, state):
 @pytest.fixture(scope="module")
 def setup_local_1(request):
 
-    session1 = rp.Session(database_url=db_url, 
-                         database_name='rp-testing')
+    session1 = rp.Session()
 
     print "session id local_1: {0}".format(session1.uid)
 
@@ -109,7 +104,7 @@ def setup_local_1(request):
 @pytest.fixture(scope="module")
 def setup_local_2(request):
 
-    session1 = rp.Session(database_url=db_url)
+    session1 = rp.Session()
 
     print "session id local_2: {0}".format(session1.uid)
 
@@ -155,7 +150,7 @@ def setup_local_2(request):
 @pytest.fixture(scope="class")
 def setup_gordon(request):
 
-    session1 = rp.Session(database_url=db_url)
+    session1 = rp.Session()
 
     print "session id gordon: {0}".format(session1.uid)
 
@@ -207,7 +202,7 @@ def setup_gordon(request):
 @pytest.fixture(scope="class")
 def setup_comet(request):
 
-    session2 = rp.Session(database_url=db_url)
+    session2 = rp.Session()
 
     print "session id comet: {0}".format(session2.uid)
 
@@ -257,7 +252,7 @@ def setup_comet(request):
 @pytest.fixture(scope="class")
 def setup_stampede(request):
 
-    session3 = rp.Session(database_url=db_url)
+    session3 = rp.Session()
 
     print "session id stampede: {0}".format(session3.uid)
 
@@ -307,7 +302,7 @@ def setup_stampede(request):
 @pytest.fixture(scope="class")
 def setup_stampede_two(request):
 
-    session3 = rp.Session(database_url=db_url)
+    session3 = rp.Session()
 
     print "session id stampede: {0}".format(session3.uid)
 
@@ -356,7 +351,7 @@ def setup_stampede_two(request):
 # add tests below...
 #-------------------------------------------------------------------------------
 # 
-class TestLocalOne(object):
+class TestRemoteOne(object):
 
     def test_pass_one(self, setup_stampede):
 
@@ -376,14 +371,11 @@ class TestLocalOne(object):
 
         units = umgr.submit_units(compute_units)
 
-        try:
-            umgr.wait_units()
+        umgr.wait_units()
 
-            # Wait for all compute units to finish.
-            for unit in units:
-                unit.wait()
-        except:
-            pass
+        # Wait for all compute units to finish.
+        for unit in units:
+            unit.wait()
 
         for unit in units:
             assert (unit.state == rp.DONE)
@@ -411,10 +403,7 @@ class TestLocalOne(object):
 
         units = umgr.submit_units(compute_units)
 
-        try:
-            umgr.wait_units()
-        except:
-            pass
+        umgr.wait_units()
 
         for unit in units:
             #print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
@@ -457,20 +446,17 @@ class TestLocalOne(object):
 
         units = umgr.submit_units(cuds)
 
-        try:
-            umgr.wait_units()
+        umgr.wait_units()
 
-            for cu in units:
-                cu.wait()
-        except:
-            pass
+        for cu in units:
+            cu.wait()
 
         for cu in units:
             assert (cu.state == rp.DONE)
 
 #-------------------------------------------------------------------------------
 #
-class TestLocalTwo(object):
+class TestRemoteTwo(object):
     #---------------------------------------------------------------------------
     # multi-node mpi executable
     #
@@ -497,10 +483,7 @@ class TestLocalTwo(object):
 
         units = umgr.submit_units(compute_units)
 
-        try:
-            umgr.wait_units()
-        except:
-            pass
+        umgr.wait_units()
 
         for unit in units:
             assert (unit.state == rp.DONE)
@@ -592,9 +575,9 @@ def test_fail_issue_172(setup_stampede):
 #-------------------------------------------------------------------------------
 # issue 359; check! does not work now...
 #
-def test_fail_issue_359():
+def test_pass_issue_359():
 
-    session = rp.Session(database_url=db_url)
+    session = rp.Session()
 
     try:
         c = rp.Context('ssh')
@@ -604,7 +587,7 @@ def test_fail_issue_359():
         pmgr = rp.PilotManager(session=session)
         pmgr.register_callback(pilot_state_cb)
 
-        core_configs = [1, 16, 17, 32, 33]
+        core_configs = [8, 16, 17, 32, 33]
 
         umgr_list = []
         for cores in core_configs:
@@ -701,7 +684,7 @@ def test_pass_issue_57():
 
     for i in [16, 32, 64]:
 
-        session = rp.Session(database_url=db_url)
+        session = rp.Session()
 
         try:
 
@@ -732,14 +715,11 @@ def test_pass_issue_57():
                 unit_descrs.append(cu)
         
             units = umgr.submit_units(unit_descrs)
-        
-            try:
-                umgr.wait_units()
 
-                for unit in units:
-                    unit.wait()
-            except:
-                pass
+            umgr.wait_units()
+
+            for unit in units:
+                unit.wait()
 
             pmgr.cancel_pilots()       
             pmgr.wait_pilots()
