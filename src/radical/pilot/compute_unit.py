@@ -508,7 +508,7 @@ class ComputeUnit(object):
             logger.debug("Compute unit %s has state %s, will abort start-up." % (self._uid, self.state))
             self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
 
-        elif self.state == EXECUTING:
+        elif self.state in [ALLOCATING, EXECUTING]:
             logger.debug("Compute unit %s has state %s, will terminate the task." % (self._uid, self.state))
             self._manager._session._dbs.send_command_to_pilot(cmd=COMMAND_CANCEL_COMPUTE_UNIT, arg=self.uid, pilot_ids=pilot_uid)
 

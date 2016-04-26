@@ -1340,7 +1340,7 @@ if test -z "$CCM"
 then
     AGENT_CMD="$PYTHON $PILOT_SCRIPT"
 else
-    AGENT_CMD="ccmrun $PYTHON $AGENT_CMD"
+    AGENT_CMD="ccmrun $PYTHON $PILOT_SCRIPT"
 fi
 
 verify_rp_install
