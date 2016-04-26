@@ -23,7 +23,9 @@ QUEUE_PROCESS = 'process'
 QUEUE_ZMQ     = 'zmq'
 QUEUE_TYPES   = [QUEUE_THREAD, QUEUE_PROCESS, QUEUE_ZMQ]
 
-_BRIDGE_TIMEOUT = 5.0  # how long to wait for bridge startup
+_BRIDGE_TIMEOUT  =      1  # how long to wait for bridge startup
+_LINGER_TIMEOUT  =    250  # ms to linger after close
+_HIGH_WATER_MARK =      0  # number of bytes to buffer before dropping
 
 # --------------------------------------------------------------------------
 #
@@ -46,7 +48,6 @@ def _uninterruptible(f, *args, **kwargs):
                 if cnt > 10:
                     raise
                 # interrupted, try again
-                print 'interrupted! [%s] [%s] [%s]' % (f, args, kwargs)
                 continue
             else:
                 # real error, raise it
@@ -366,6 +367,8 @@ class QueueZMQ(Queue):
         if self._role == QUEUE_INPUT:
             ctx = zmq.Context()
             self._q = ctx.socket(zmq.PUSH)
+            self._q.linger = _LINGER_TIMEOUT
+            self._q.hwm    = _HIGH_WATER_MARK
             self._q.connect(self._addr)
 
 
@@ -401,9 +404,13 @@ class QueueZMQ(Queue):
 
                     ctx = zmq.Context()
                     _in = ctx.socket(zmq.PULL)
+                    _in.linger = _LINGER_TIMEOUT
+                    _in.hwm    = _HIGH_WATER_MARK
                     _in.bind(addr)
 
                     _out = ctx.socket(zmq.REP)
+                    _out.linger = _LINGER_TIMEOUT
+                    _out.hwm    = _HIGH_WATER_MARK
                     _out.bind(addr)
 
                     # communicate the bridge ports to the parent process
@@ -443,6 +450,8 @@ class QueueZMQ(Queue):
         elif self._role == QUEUE_OUTPUT:
             ctx = zmq.Context()
             self._q = ctx.socket(zmq.REQ)
+            self._q.linger = _LINGER_TIMEOUT
+            self._q.hwm    = _HIGH_WATER_MARK
             self._q.connect(self._addr)
 
         # ----------------------------------------------------------------------
