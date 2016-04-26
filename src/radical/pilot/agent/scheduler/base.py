@@ -30,7 +30,7 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def __init__(self, cfg):
 
-        self._slots = None
+        self.slots = None
         self._lrms  = None
 
         rpu.Component.__init__(self, rpc.AGENT_SCHEDULING_COMPONENT, cfg)
@@ -268,12 +268,12 @@ class AgentSchedulingComponent(rpu.Component):
             # of) core(s).  But also, we don't really want to schedule, that is
             # why we blow up on output, right?
             #
-            # So we fake scheduling.  This assumes the 'self._slots' structure as
+            # So we fake scheduling.  This assumes the 'self.slots' structure as
             # used by the continuous scheduler, wo will likely only work for
             # this one (FIXME): we walk our own index into the slot structure,
             # and simply assign that core, be it busy or not.
             #
-            # FIXME: This method makes no attempt to set 'task_slots', so will
+            # FIXME: This method makes no attempt to set 'taskslots', so will
             # not work properly for some launch methods.
             #
             # This is awful.  I mean, really awful.  Like, nothing good can come
@@ -283,7 +283,7 @@ class AgentSchedulingComponent(rpu.Component):
             if prof: prof.prof      ('clone_cb', uid=unit['_id'])
             else   : self._prof.prof('clone_cb', uid=unit['_id'])
 
-            slot = self._slots[self._clone_slot_idx]
+            slot = self.slots[self._clone_slot_idx]
 
             unit['opaque_slots']['task_slots'][0] = '%s:%d' \
                     % (slot['node'], self._clone_core_idx)
@@ -295,7 +295,7 @@ class AgentSchedulingComponent(rpu.Component):
                 self._clone_core_idx  = 0
                 self._clone_slot_idx += 1
 
-                if self._clone_slot_idx >= len(self._slots):
+                if self._clone_slot_idx >= len(self.slots):
                     self._clone_slot_idx = 0
 
 
