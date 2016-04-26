@@ -18,6 +18,12 @@
             "schema"   : "gsissh"
         },
 
+        "ncsa.bw_ccm" : {
+            "project"  : "gkd",
+            "queue"    : "debug",
+            "schema"   : "gsissh"
+        },
+
         "nersc.edison" : {
             "project"  : null,
             "queue"    : "debug",
@@ -49,8 +55,14 @@
         },
 
         "xsede.stampede" : {
-            "project"  : "TG-MCB150124",
+            "project"  : "TG-MCB090174",
             "queue"    : "development",
+            "schema"   : null
+        },
+
+        "xsede.wrangler" : {
+            "project"  : "TG-MCB090174",
+            "queue"    : "debug",
             "schema"   : null
         },
 
