@@ -106,7 +106,7 @@ class Yarn(AgentSchedulingComponent):
         # If the application requests resources that exist in the cluster, not
         # necessarily free, then it returns true else it returns false
         #TODO: Add provision for memory request
-        if (cores_requested+1) <= self.avail_cores and \
+        if (cores_requested) <= self.avail_cores and \
               mem_requested<=self.avail_mem and \
               self.avail_app['apps'] != 0:
             self.avail_cores -=cores_requested
@@ -190,7 +190,7 @@ class Yarn(AgentSchedulingComponent):
         # put it on the wait queue.
         if self._try_allocation(cu):
             self._prof.prof('schedule', msg="allocation succeeded", uid=cu['_id'])
-            self.advance(cu, rps.EXECUTING_PENDING, publish=False, push=True)
+            self.advance(cu, rps.EXECUTING_PENDING, publish=True, push=True)
 
         else:
             # No resources available, put in wait queue
