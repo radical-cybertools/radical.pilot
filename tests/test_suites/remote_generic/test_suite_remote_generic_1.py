@@ -11,8 +11,6 @@ import radical.pilot as rp
 
 logging.raiseExceptions = False
 
-db_url     = "mongodb://ec2-54-221-194-147.compute-1.amazonaws.com:24242/"
-
 json_data=open("../pytest_config.json")
 CONFIG = json.load(json_data)
 json_data.close()
@@ -62,8 +60,7 @@ def unit_state_cb (unit, state):
 @pytest.fixture(scope="module")
 def setup_stampede_4096(request):
 
-    session3 = rp.Session(database_url=db_url, 
-                          database_name='rp-testing')
+    session3 = rp.Session()
 
     print "session id stampede: {0}".format(session3.uid)
 
@@ -112,8 +109,7 @@ def setup_stampede_4096(request):
 @pytest.fixture(scope="module")
 def setup_stampede_683(request):
 
-    session = rp.Session(database_url=db_url, 
-                          database_name='rp-testing')
+    session = rp.Session()
 
     print "session id stampede: {0}".format(session.uid)
 

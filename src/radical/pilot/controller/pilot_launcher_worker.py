@@ -438,13 +438,20 @@ class PilotLauncherWorker(threading.Thread):
                                     agent_cfg_dict = ru.read_json(agent_config)
                                 else:
                                     # otherwise interpret as a config name
-                                    # FIXME: load in session just like resource
-                                    #        configs, including user level overloads
                                     module_path = os.path.dirname(os.path.abspath(__file__))
                                     config_path = "%s/../configs/" % module_path
                                     agent_cfg_file = os.path.join(config_path, "agent_%s.json" % agent_config)
                                     logger.info("Read agent config file: %s" % agent_cfg_file)
                                     agent_cfg_dict = ru.read_json(agent_cfg_file)
+                                # no matter how we read the config file, we
+                                # allow for user level overload
+                                cfg_base = os.path.basename(agent_cfg_file)
+                                user_cfg = '%s/.radical/pilot/config/%s' \
+                                              % (os.environ['HOME'], cfg_base)
+                                if os.path.exists(user_cfg):
+                                    logger.info("merging user config: %s" % user_cfg)
+                                    user_cfg_dict = ru.read_json(user_cfg)
+                                    ru.dict_merge (agent_cfg_dict, user_cfg_dict, policy='overwrite')
                             except Exception as e:
                                 logger.exception("Error reading agent config file: %s" % e)
                                 raise
