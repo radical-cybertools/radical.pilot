@@ -531,9 +531,9 @@ class Session (saga.Session):
             unit_manager_ids = [unit_manager_ids]
             return_scalar = True
 
-        pilot_manager_objects = list()
+        unit_manager_objects = list()
         for uid in unit_manager_ids:
-            unit_manager_objects.append (self._unit_manager_objects[pid])
+            unit_manager_objects.append (self._unit_manager_objects[uid])
 
         if return_scalar is True:
             unit_manager_objects = unit_manager_objects[0]

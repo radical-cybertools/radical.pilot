@@ -16,7 +16,7 @@
 #
 # Arguments passed to bootstrap_1 should be required by bootstrap_1 itself,
 # and *not* be passed down to the agent.  Configuration used by the agent should
-# go in the agent config file, and *not( be passed as an argument to 
+# go in the agent config file, and *not( be passed as an argument to
 # bootstrap_1.  Only parameters used by both should be passed to the bootstrap_1
 # and  consecutively passed to the agent. It is rarely justified to duplicate
 # information as parameters and agent config entries.  Exceptions would be:
@@ -239,10 +239,10 @@ rehash()
     else
         PYTHON="$explicit_python"
     fi
-    
+
     # NOTE: if a cacert.pem.gz was staged, we unpack it and use it for all pip
-    #       commands (It means that the pip cacert [or the system's, dunno] 
-    #       is not up to date).  Easy_install seems to use a different access 
+    #       commands (It means that the pip cacert [or the system's, dunno]
+    #       is not up to date).  Easy_install seems to use a different access
     #       channel for some reason, so does not need the cert bundle.
     #       see https://github.com/pypa/pip/issues/2130
     #       ca-cert bundle from http://curl.haxx.se/docs/caextract.html
@@ -258,11 +258,11 @@ rehash()
         PIP="`which pip`"
     fi
 
-    # NOTE: some resources define a function pip() to implement the same cacert 
-    #       fix we do above.  On some machines, that is broken (hello archer), 
+    # NOTE: some resources define a function pip() to implement the same cacert
+    #       fix we do above.  On some machines, that is broken (hello archer),
     #       thus we undefine that function here.
     unset -f pip
-    
+
     echo "PYTHON: $PYTHON"
     echo "PIP   : $PIP"
 }
@@ -361,6 +361,7 @@ This script launches a RADICAL-Pilot agent.
 
 OPTIONS:
    -a   agent type (default: 'multicore')
+   -b   python distribution (default, anaconda)
    -c   ccm mode of agent startup
    -d   distribution source tarballs for radical stack install
    -e   execute commands before bootstrapping phase 1: the main agent
@@ -414,13 +415,14 @@ virtenv_setup()
     pid="$1"
     virtenv="$2"
     virtenv_mode="$3"
+    python_dist="$4"
 
     virtenv_create=UNDEFINED
     virtenv_update=UNDEFINED
 
     if test "$virtenv_mode" = "private"
     then
-        if test -f "$virtenv/bin/activate"
+        if test -d "$virtenv/"
         then
             printf "\nERROR: private virtenv already exists at $virtenv\n\n"
             exit 1
@@ -432,8 +434,7 @@ virtenv_setup()
     then
         virtenv_create=FALSE
         virtenv_update=TRUE
-        test -f "$virtenv/bin/activate" || virtenv_create=TRUE
-
+        test -d "$virtenv/" || virtenv_create=TRUE
     elif test "$virtenv_mode" = "create"
     then
         virtenv_create=TRUE
@@ -441,9 +442,9 @@ virtenv_setup()
 
     elif test "$virtenv_mode" = "use"
     then
-        if ! test -f "$virtenv/bin/activate"
+        if ! test -d "$virtenv/"
         then
-            printf "\nERROR: given virtenv does not exists at $virtenv\n\n"
+            printf "\nERROR: given virtenv does not exist at $virtenv\n\n"
             exit 1
         fi
         virtenv_create=FALSE
@@ -451,7 +452,7 @@ virtenv_setup()
 
     elif test "$virtenv_mode" = "recreate"
     then
-        test -f "$virtenv/bin/activate" && rm -r "$virtenv"
+        test -d "$virtenv/" && rm -r "$virtenv"
         virtenv_create=TRUE
         virtenv_update=FALSE
     else
@@ -522,12 +523,12 @@ virtenv_setup()
                 RP_INSTALL_SOURCES='radical.pilot'
                 RP_INSTALL_TARGET='VIRTENV'
                 RP_INSTALL_SDIST='FALSE'
-            fi 
+            fi
             ;;
 
         *)
-            # NOTE: do *not* use 'pip -e' -- egg linking does not work with 
-            #       PYTHONPATH.  Instead, we manually clone the respective 
+            # NOTE: do *not* use 'pip -e' -- egg linking does not work with
+            #       PYTHONPATH.  Instead, we manually clone the respective
             #       git repository, and switch to the branch/tag/commit.
             git clone https://github.com/radical-cybertools/radical.pilot.git
             (cd radical.pilot; git checkout $RP_VERSION)
@@ -537,8 +538,8 @@ virtenv_setup()
     esac
 
     # NOTE: for any immutable virtenv (VIRTENV_MODE==use), we have to choose
-    #       a SANDBOX install target.  SANDBOX installation will only work with 
-    #       'python setup.py install' (pip cannot handle it), so we have to use 
+    #       a SANDBOX install target.  SANDBOX installation will only work with
+    #       'python setup.py install' (pip cannot handle it), so we have to use
     #       the sdist, and the RP_INSTALL_SOURCES has to point to directories.
     if test "$virtenv_mode" = "use"
     then
@@ -554,7 +555,7 @@ virtenv_setup()
             do
                 if ! test -d "$src"
                 then
-                    # TODO: we could in principle download from pypi and 
+                    # TODO: we could in principle download from pypi and
                     # extract, or 'git clone' to local, and then use the setup
                     # install.  Not sure if this is worth the effor (AM)
                     echo "ERROR: local RP install needs sdist based install (not '$src')"
@@ -579,11 +580,11 @@ virtenv_setup()
     # create virtenv if needed.  This also activates the virtenv.
     if test "$virtenv_create" = "TRUE"
     then
-        if ! test -f "$virtenv/bin/activate"
+        if ! test -d "$virtenv/"
         then
             echo 'rp lock for ve create'
             lock "$pid" "$virtenv" # use default timeout
-            virtenv_create "$virtenv"
+            virtenv_create "$virtenv" "$python_dist"
             if ! test "$?" = 0
             then
                echo "Error on virtenv creation -- abort"
@@ -599,7 +600,7 @@ virtenv_setup()
     fi
 
     # creation or not -- at this point it needs activation
-    virtenv_activate "$virtenv"
+    virtenv_activate "$virtenv" "$python_dist"
 
 
     # update virtenv if needed.  This also activates the virtenv.
@@ -607,7 +608,7 @@ virtenv_setup()
     then
         echo 'rp lock for ve update'
         lock "$pid" "$virtenv" # use default timeout
-        virtenv_update "$virtenv"
+        virtenv_update "$virtenv" "$python_dist"
         if ! test "$?" = 0
         then
            echo "Error on virtenv update -- abort"
@@ -640,20 +641,32 @@ virtenv_setup()
 virtenv_activate()
 {
     virtenv="$1"
+    python_dist="$2"
 
     if test "$VIRTENV_IS_ACTIVATED" = "TRUE"
     then
         return
     fi
 
-    . "$virtenv/bin/activate"
+    if test "$python_dist" = "anaconda"
+    then
+        source activate $virtenv/
+    else
+        . "$virtenv/bin/activate"
+        if test -z "$VIRTUAL_ENV"
+        then
+            echo "Loading of virtual env failed!"
+            exit 1
+        fi
+
+    fi
     VIRTENV_IS_ACTIVATED=TRUE
 
     # make sure we use the new python binary
     rehash
 
   # # NOTE: calling radicalpilot-version does not work here -- depending on the
-  # #       system settings, python setup it may not be found even if the 
+  # #       system settings, python setup it may not be found even if the
   # #       rp module is installed and importable.
   # system_rp_loc="`python -c 'import radical.pilot as rp; print rp.__file__' 2>/dev/null`"
   # if ! test -z "$system_rp_loc"
@@ -674,7 +687,7 @@ virtenv_activate()
     echo "PIP version       : `$PIP --version`"
 
     # NOTE: distutils.sc.get_python_lib() behaves different on different
-    #       systems: on some systems (versions?) it returns a normalized path, 
+    #       systems: on some systems (versions?) it returns a normalized path,
     #       on some it does not.  As we need consistent behavior to have
     #       a chance of the sed below to succeed, we normalize the path ourself.
   # VE_MOD_PREFIX=`(cd $VE_MOD_PREFIX; pwd -P)`
@@ -703,6 +716,10 @@ virtenv_activate()
     # to derive the PYTHONPATH into the sandbox rp_install, if needed.
     RP_MOD_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$virtenv|$virtenv/rp_install|"`
     VE_PYTHONPATH="$PYTHONPATH"
+
+    # before we change PYTHONPATH, we keep the original for later use in CU
+    # environment settings
+    _OLD_VIRTUAL_PYTHONPATH=$PYTHONPATH
 
     # NOTE: this should not be necessary, but we explicit set PYTHONPATH to
     #       include the VE module tree, because some systems set a PYTHONPATH on
@@ -733,33 +750,43 @@ virtenv_create()
     profile_event 'virtenv_create start'
 
     virtenv="$1"
+    python_dist="$2"
 
-    # NOTE: create a fresh virtualenv. We use an older 1.9.x version of
-    #       virtualenv as this seems to work more reliable than newer versions.
-    run_cmd "Download virtualenv tgz" \
-            "curl -k -O '$VIRTENV_TGZ_URL'"
-
-    if ! test "$?" = 0
+    if test "$python_dist" = "default"
     then
-        echo "WARNING: Couldn't download virtualenv via curl! Using system version."
-        BOOTSTRAP_CMD="virtualenv $virtenv"
+        # NOTE: create a fresh virtualenv. We use an older 1.9.x version of
+        #       virtualenv as this seems to work more reliable than newer versions.
+        run_cmd "Download virtualenv tgz" \
+                "curl -k -O '$VIRTENV_TGZ_URL'"
 
-    else :
-        run_cmd "unpacking virtualenv tgz" \
-                "tar zxmf '$VIRTENV_TGZ'"
-
-        if test $? -ne 0
+        if ! test "$?" = 0
         then
-            echo "Couldn't unpack virtualenv!"
-            return 1
-        fi
+            echo "WARNING: Couldn't download virtualenv via curl! Using system version."
+            BOOTSTRAP_CMD="virtualenv $virtenv"
 
-        BOOTSTRAP_CMD="$PYTHON virtualenv-1.9/virtualenv.py $virtenv"
+        else :
+            run_cmd "unpacking virtualenv tgz" \
+                    "tar zxmf '$VIRTENV_TGZ'"
+
+            if test $? -ne 0
+            then
+                echo "Couldn't unpack virtualenv!"
+                return 1
+            fi
+
+            BOOTSTRAP_CMD="$PYTHON virtualenv-1.9/virtualenv.py $virtenv"
+        fi
     fi
 
-
-    run_cmd "Create virtualenv" \
+    if test "$python_dist" = "anaconda"
+    then
+        run_cmd "Create virtualenv" \
+            "conda create -y -p $virtenv python=2.7"
+    else
+        run_cmd "Create virtualenv" \
             "$BOOTSTRAP_CMD"
+    fi
+
     if test $? -ne 0
     then
         echo "Couldn't create virtualenv"
@@ -767,7 +794,7 @@ virtenv_create()
     fi
 
     # activate the virtualenv
-    virtenv_activate "$virtenv"
+    virtenv_activate "$virtenv" "$python_dist"
 
     # make sure we have pip
     PIP=`which pip`
@@ -790,7 +817,7 @@ virtenv_create()
 
     # NOTE: new releases of pip deprecate options we depend upon.  While the pip
     #       developers discuss if those options will get un-deprecated again,
-    #       fact is that there are released pip versions around which do not 
+    #       fact is that there are released pip versions around which do not
     #       work for us (hello supermuc!).  So we fix the version to one we know
     #       is functional.
     run_cmd "update pip" \
@@ -802,14 +829,14 @@ virtenv_create()
 
 
     # NOTE: On india/fg 'pip install saga-python' does not work as pip fails to
-    #       install apache-libcloud (missing bz2 compression).  We thus install 
+    #       install apache-libcloud (missing bz2 compression).  We thus install
     #       that dependency via easy_install.
     run_cmd "install apache-libcloud" \
             "easy_install --upgrade apache-libcloud" \
          || echo "Couldn't install/upgrade apache-libcloud! Lets see how far we get ..."
 
 
-    # now that the virtenv is set up, we install all dependencies 
+    # now that the virtenv is set up, we install all dependencies
     # of the RADICAL stack
     for dep in "$VIRTENV_RADICAL_DEPS"
     do
@@ -829,10 +856,11 @@ virtenv_update()
     profile_event 'virtenv_update start'
 
     virtenv="$1"
-    virtenv_activate "$virtenv"
+    pytohn_dist="$2"
+    virtenv_activate "$virtenv" "$python_dist"
 
     # we upgrade all dependencies of the RADICAL stack, one by one.
-    # NOTE: we only do pip upgrades -- that will ignore the easy_installed 
+    # NOTE: we only do pip upgrades -- that will ignore the easy_installed
     #       modules on india etc.
     for dep in "$VIRTENV_RADICAL_DEPS"
     do
@@ -847,12 +875,12 @@ virtenv_update()
 
 # ------------------------------------------------------------------------------
 #
-# Install the radical stack, ie. install RP which pulls the rest. 
+# Install the radical stack, ie. install RP which pulls the rest.
 # This assumes that the virtenv has been activated.  Any previously installed
 # stack version is deleted.
 #
 # As the virtenv should have all dependencies set up (see VIRTENV_RADICAL_DEPS),
-# we don't expect any additional module pull from pypi.  Some rp_versions will, 
+# we don't expect any additional module pull from pypi.  Some rp_versions will,
 # however, pull the rp modules from pypi or git.
 #
 # . $VIRTENV/bin/activate
@@ -885,10 +913,10 @@ virtenv_update()
 #       true
 # esac
 #
-# NOTE: A 'pip install' (without '--upgrade') will not install anything if an 
-#       old version lives in the system space.  A 'pip install --upgrade' will 
-#       fail if there is no network connectivity (which otherwise is not really 
-#       needed when we install from sdists).  '--upgrade' is not needed when 
+# NOTE: A 'pip install' (without '--upgrade') will not install anything if an
+#       old version lives in the system space.  A 'pip install --upgrade' will
+#       fail if there is no network connectivity (which otherwise is not really
+#       needed when we install from sdists).  '--upgrade' is not needed when
 #       installing from sdists.
 #
 rp_install()
@@ -918,7 +946,7 @@ rp_install()
     # install rp into a separate tree -- no matter if in shared ve or a local
     # sandbox or elsewhere
     case "$rp_install_target" in
-    
+
         VIRTENV)
             RP_INSTALL="$VIRTENV/rp_install"
 
@@ -977,10 +1005,10 @@ rp_install()
             # this should never happen
             echo "ERROR: invalid RP install target '$RP_INSTALL_TARGET'"
             exit 1
-    
+
     esac
 
-    # NOTE: we need to purge the whole install tree (not only the module dir), 
+    # NOTE: we need to purge the whole install tree (not only the module dir),
     #       as pip will otherwise find the eggs and interpret them as satisfied
     #       dependencies, even if the modules are gone.  Of course, there should
     #       not be any eggs in the first place, but...
@@ -1031,7 +1059,7 @@ rp_install()
     do
         run_cmd "update $src via pip" \
                 "$PIP install $pip_flags $src"
-        
+
         if test $? -ne 0
         then
             echo "Couldn't install $src! Lets see how far we get ..."
@@ -1054,11 +1082,11 @@ verify_rp_install()
     OLD_SAGA_VERBOSE=$SAGA_VERBOSE
     OLD_RADICAL_VERBOSE=$RADICAL_VERBOSE
     OLD_RADICAL_PILOT_VERBOSE=$RADICAL_PILOT_VERBOSE
-    
+
     SAGA_VERBOSE=WARNING
     RADICAL_VERBOSE=WARNING
     RADICAL_PILOT_VERBOSE=WARNING
-    
+
     # print the ve information and stack versions for verification
     echo
     echo "---------------------------------------------------------------------"
@@ -1075,7 +1103,7 @@ verify_rp_install()
     echo
     echo "---------------------------------------------------------------------"
     echo
-    
+
     SAGA_VERBOSE=$OLD_SAGA_VERBOSE
     RADICAL_VERBOSE=$OLD_RADICAL_VERBOSE
     RADICAL_PILOT_VERBOSE=$OLD_RADICAL_PILOT_VERBOSE
@@ -1171,9 +1199,10 @@ env | sort
 echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
-while getopts "a:cd:e:f:h:i:m:p:r:s:t:v:w:x" OPTION; do
+while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x" OPTION; do
     case $OPTION in
         a)  AGENT_TYPE="$OPTARG"  ;;
+        b)  PYTHON_DIST="$OPTARG"  ;;
         c)  CCM='TRUE'  ;;
         d)  SDISTS="$OPTARG"  ;;
         e)  pre_bootstrap_1 "$OPTARG"  ;;
@@ -1210,6 +1239,7 @@ mkdir -p "$VIRTENV"
 echo "VIRTENV : $VIRTENV"
 VIRTENV=`(cd $VIRTENV; pwd -P)`
 echo "VIRTENV : $VIRTENV (normalized)"
+rmdir "$VIRTENV" 2>/dev/null
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
@@ -1266,12 +1296,13 @@ fi
 rehash "$PYTHON"
 
 # ready to setup the virtenv
-virtenv_setup    "$PILOTID" "$VIRTENV" "$VIRTENV_MODE"
-virtenv_activate "$VIRTENV"
+virtenv_setup    "$PILOTID" "$VIRTENV" "$VIRTENV_MODE" "$PYTHON_DIST"
+virtenv_activate "$VIRTENV" "$PYTHON_DIST"
 
 # Export the variables related to virtualenv,
 # so that we can disable the virtualenv for the cu.
 export _OLD_VIRTUAL_PATH
+export _OLD_VIRTUAL_PYTHONPATH
 export _OLD_VIRTUAL_PYTHONHOME
 export _OLD_VIRTUAL_PS1
 
@@ -1281,8 +1312,8 @@ export _OLD_VIRTUAL_PS1
 # the actual agent script lives in PWD if it was staged -- otherwise we use it
 # from the virtenv
 # NOTE: For some reasons, I have seen installations where 'scripts' go into
-#       bin/, and some where setuptools only changes them in place.  For now, 
-#       we allow for both -- but eventually (once the agent itself is small), 
+#       bin/, and some where setuptools only changes them in place.  For now,
+#       we allow for both -- but eventually (once the agent itself is small),
 #       we may want to move it to bin ourself.  At that point, we probably
 #       have re-implemented pip... :/
 # FIXME: the second option should use $RP_MOD_PATH, or should derive the path
@@ -1308,7 +1339,7 @@ if test -z "$CCM"
 then
     AGENT_CMD="$PYTHON $PILOT_SCRIPT"
 else
-    AGENT_CMD="ccmrun $PYTHON $AGENT_CMD"
+    AGENT_CMD="ccmrun $PYTHON $PILOT_SCRIPT"
 fi
 
 verify_rp_install
@@ -1348,8 +1379,17 @@ RADICAL_PILOT_NTPHOST=`dig +short 0.pool.ntp.org | grep -v -e ";;" -e "\.$" | he
 # Famous last words, I know...
 # Arguments to that script are passed on to the agent, which is specifically
 # done to distinguish agent instances.
+
+# NOTE: anaconda only supports bash.  Really.  I am not kidding...
+if test "$PYTHON_DIST" = "anaconda"
+then
+    BS_SHELL='/bin/bash'
+else
+    BS_SHELL='/bin/sh'
+fi
+
 (cat <<EOT
-#!/bin/sh
+#!$BS_SHELL
 
 # some inspection for logging
 hostname
@@ -1358,7 +1398,12 @@ hostname
 cd $SANDBOX
 
 # activate virtenv
-. $VIRTENV/bin/activate
+if test "$PYTHON_DIST" = "anaconda"
+then
+    source activate $VIRTENV/
+else
+    . $VIRTENV/bin/activate
+fi
 
 # make sure rp_install is used
 export PYTHONPATH=$PYTHONPATH
@@ -1418,7 +1463,8 @@ profile_event 'agent start'
 
 # start the master agent instance (zero)
 profile_event 'sync rel' 'agent start'
-sh bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
+./bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
+
 AGENT_EXITCODE=$?
 
 profile_event 'cleanup start'

@@ -5,6 +5,33 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.40.1 Release                                                        2016-02-11
+--------------------------------------------------------------------------------
+
+  - hotfix which makes sure agents don't report FAILED on cancel()
+
+
+0.40 Release                                                          2016-02-03
+--------------------------------------------------------------------------------
+
+  - Really numberous changes, fixes and features, most prominently:
+    - OSG support
+    - Yarn support
+    - new resource supported
+    - ORTE used for more resources
+    - improved examples, profiling
+    - communication cleanup
+    - large CU support
+    - lrms hook fixes
+    - agent code splitup
+
+
+0.38 Release                                                          2015-12-22
+--------------------------------------------------------------------------------
+
+  - fix busy mongodb pull
+
+
 0.37.10 Release                                                       2015-10-20
 --------------------------------------------------------------------------------
 
@@ -458,4 +485,5 @@ API Changes:
 
 
 --------------------------------------------------------------------------------
+
 

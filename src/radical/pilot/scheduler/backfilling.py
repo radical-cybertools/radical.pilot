@@ -155,9 +155,9 @@ class BackfillingScheduler(Scheduler):
                   # FIXME: this warning should not come up as frequently as it
                   #        does -- needs investigation!
                   # if not found_unit :
+                  #     # TODO: pid can not be in self.pilots[]
                   #     logger.warn ('unit %s freed %s cores on %s (== %s) -- not reused'
                   #               % (uid, unit.description.cores, pid, self.pilots[pid]['caps']))
-
 
         except Exception as e :
             logger.exception ("error in unit callback for backfiller (%s) - ignored" % e)

@@ -44,7 +44,8 @@
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_stampede",
-        "virtenv_mode"                : "create"
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
     },
 
     "stampede_yarn": {
@@ -94,6 +95,48 @@
         "virtenv_mode"                : "create"
     },
 
+    "wrangler": {
+        "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["ssh", "gsissh", "go"],
+        "mandatory_args"              : ["project"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://wrangler.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://wrangler.tacc.utexas.edu/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://wrangler.tacc.utexas.edu:2222/",
+            "filesystem_endpoint"     : "gsisftp://wrangler.tacc.utexas.edu:2222/"
+        },
+        "go":
+        {
+            "job_manager_endpoint"    : "slurm+ssh://wrangler.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "go://xsede#wrangler/"
+        },
+        "default_queue"               : "normal",
+        "lrms"                        : "SLURM",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN_RSH",
+        "pre_bootstrap_1"             : ["module load python/2.7.9",
+                                         "export TACC_DELETE_FILES=TRUE"
+                                        ],
+        "pre_bootstrap_2"             : ["export PATH=$PATH",
+                                         "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+                                        ],
+        "default_remote_workdir"      : "$WORK",
+        "valid_roots"                 : ["/work", "$WORK", "$DATA"],
+        "rp_version"                  : "installed",
+        "virtenv"                     : "/work/03170/tg824689/wrangler/ve_wrangler",
+        "virtenv_mode"                : "use",
+        "python_dist"                 : "default"
+    },
+
     "lonestar": {
         "description"                 : "The XSEDE 'Lonestar' cluster at TACC (https://www.tacc.utexas.edu/resources/hpc/lonestar).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
@@ -127,7 +170,8 @@
         "valid_roots"                 : ["/home1", "/scratch", "/work"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_lonestar",
-        "virtenv_mode"                : "create"
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
     },
 
     "trestles": {
@@ -156,7 +200,8 @@
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_trestles",
-        "virtenv_mode"                : "create"
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
     },
 
     "gordon": {
@@ -185,7 +230,8 @@
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "debug",
         "virtenv"                     : "%(global_sandbox)s/ve_gordon",
-        "virtenv_mode"                : "create"
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
     },
 
     "blacklight": {
@@ -219,7 +265,8 @@
         "stage_cacerts"               : "True",
         "rp_version"                  : "debug",
         "virtenv"                     : "%(global_sandbox)s/ve_blacklight",
-        "virtenv_mode"                : "create"
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
     },
 
     "comet": {
@@ -296,7 +343,8 @@
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_comet",
-        "virtenv_mode"                : "create"
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
     },
 
     "supermic": {
@@ -325,7 +373,8 @@
         "valid_roots"                 : ["/work"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_supermic",
-        "virtenv_mode"                : "create"
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
     }
 }
 

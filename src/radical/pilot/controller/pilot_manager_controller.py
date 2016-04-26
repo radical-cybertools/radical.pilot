@@ -501,7 +501,7 @@ class PilotManagerController(threading.Thread):
             # iterate over copy
             for cb in self._shared_data[pid]['callbacks'][:]: 
                 if cb_func == cb['cb_func']:
-                    self._shared_data[pid]['callbacks'].remove(db)
+                    self._shared_data[pid]['callbacks'].remove(cb)
         else:
             # remove all callbacks
             self._shared_data[pid]['callbacks'] = []

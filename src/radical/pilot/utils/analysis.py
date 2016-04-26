@@ -6,7 +6,7 @@ from ..states import *
 info_names = {
         'AgentWorker'                 : 'awo',
         'AgentStagingInputComponent'  : 'asic',
-        'SchedulerContinuous'         : 'asc',  # agent scheduler component
+        'AgentSchedulingComponent'    : 'asc',
         'AgentExecutingComponent'     : 'aec',
         'AgentStagingOutputComponent' : 'asoc',
         'session'                     : 'mod'
@@ -67,12 +67,12 @@ _info_entries = [
     ('usoc_get_u',      'OutputFileTransfer',     'advance',   'StagingOutput'),
     ('usoc_adv_u',      'OutputFileTransfer',     'advance',   'Done'),
 
-    # FIXME: the names below will break for other schedulers
-    ('asc_allocated',   'SchedulerContinuous',    'schedule',  'allocated'),
-    ('asc_alloc_nok',   'SchedulerContinuous',    'schedule',  'allocation failed'),
-    ('asc_alloc_ok',    'SchedulerContinuous',    'schedule',  'allocation succeeded'),
-    ('asc_unqueue',     'SchedulerContinuous',    'unqueue',   're-allocation done'),
-    ('asc_released',    'SchedulerContinuous',    'unschedule','released'),
+    ('asc_try',         'AgentScheduling',        'schedule',  'try'),
+    ('asc_allocated',   'AgentScheduling',        'schedule',  'allocated'),
+    ('asc_alloc_nok',   'AgentScheduling',        'schedule',  'allocation failed'),
+    ('asc_alloc_ok',    'AgentScheduling',        'schedule',  'allocation succeeded'),
+    ('asc_unqueue',     'AgentScheduling',        'unqueue',   're-allocation done'),
+    ('asc_released',    'AgentScheduling',        'unschedule','released'),
 
     ('aec_launch',      'AgentExecuting',         'exec',      'unit launch'),
     ('aec_spawn',       'AgentExecuting',         'spawn',     'unit spawn'),
@@ -80,12 +80,13 @@ _info_entries = [
     ('ace_outerr',      'AgentExecuting',         'command',   'stdout and stderr files created'),
     ('aec_handover',    'AgentExecuting',         'spawn',     'spawning passed to pty'),
     ('aec_handover',    'AgentExecuting',         'spawn',     'spawning passed to popen'),
+    ('aec_handover',    'AgentExecuting',         'spawn',     'spawning passed to orte'),
     ('aec_end',         'AgentExecuting',         'final',     ''),
 
     ('aec_pickup',      'AgentExecuting',         'passed',    'ExecWatcher picked up unit'),
-    ('aec_start_script','AgentStagingOutputComponent','script','start_script'),
-    ('aec_after_cd',    'AgentStagingOutputComponent','script','after_cd'),
-    ('aec_after_exec',  'AgentStagingOutputComponent','script','after_exec'),
+    ('aec_start_script','AgentStagingOutput',     'script',    'start_script'),
+    ('aec_after_cd',    'AgentStagingOutput',     'script',    'after_cd'),
+    ('aec_after_exec',  'AgentStagingOutput',     'script',    'after_exec'),
     ('aec_complete',    'AgentExecuting',         'exec',      'execution complete'),
 ]
 
@@ -243,7 +244,7 @@ def add_event_count(frame, tgt, spec):
     a counter of the events specified in 'spec'.
 
     This works similar to add_frequency: we first filter, and then add the
-    cumsum.
+    cumsum. 
     """
 
     raise NotImplementedError('not yet implemented')
@@ -252,14 +253,14 @@ def add_event_count(frame, tgt, spec):
     def _ecnt(t, _tmp):
         # get sequence of frame which falls within the time window, and return
         # length of that sequence
-        return len(_tmp.uid[(_tmp.time > t-_window) & (_tmp.time <= t)])
+        return len(_tmp.uid[(_tmp.time <= t)])
     # --------------------------------------------------------------------------
 
     # filter the frame by the given spec
     tmp = frame
     for key,val in spec.iteritems():
         tmp = tmp[tmp[key].isin([val])]
-    frame[tgt] = 1 if tmp else 0
+    frame[tgt] = tmp.time.apply(_ecnt, args=[tmp])
 
     return frame
 

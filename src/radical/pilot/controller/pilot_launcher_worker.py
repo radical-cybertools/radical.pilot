@@ -38,6 +38,7 @@ DEFAULT_RP_VERSION    = 'local'
 DEFAULT_VIRTENV       = '%(global_sandbox)s/ve'
 DEFAULT_VIRTENV_MODE  = 'update'
 DEFAULT_AGENT_CONFIG  = 'default'
+DEFAULT_PYTHON_DIST   = 'default'
 
 # ----------------------------------------------------------------------------
 #
@@ -145,7 +146,8 @@ class PilotLauncherWorker(threading.Thread):
 
         pending_pilots = pilot_col.find(
             {"pilotmanager": self.pilot_manager_id,
-             "state"       : {"$in": [PENDING_ACTIVE, ACTIVE]}}
+             "state"       : {"$in": [PENDING_ACTIVE, ACTIVE]},
+             "health_check_enabled": True}
         )
 
         for pending_pilot in pending_pilots:
@@ -354,7 +356,6 @@ class PilotLauncherWorker(threading.Thread):
 
                         logger.info("Launching ComputePilot %s" % pilot_id)
 
-
                         # ------------------------------------------------------
                         # Database connection parameters
                         session_id    = self._session.uid
@@ -362,16 +363,17 @@ class PilotLauncherWorker(threading.Thread):
 
                         # ------------------------------------------------------
                         # pilot description and resource configuration
-                        number_cores   = compute_pilot['description']['cores']
-                        runtime        = compute_pilot['description']['runtime']
-                        queue          = compute_pilot['description']['queue']
-                        project        = compute_pilot['description']['project']
-                        cleanup        = compute_pilot['description']['cleanup']
-                        resource_key   = compute_pilot['description']['resource']
-                        schema         = compute_pilot['description']['access_schema']
-                        memory         = compute_pilot['description']['memory']
-                        pilot_sandbox  = compute_pilot['sandbox']
-                        global_sandbox = compute_pilot['global_sandbox']
+                        number_cores    = compute_pilot['description']['cores']
+                        runtime         = compute_pilot['description']['runtime']
+                        queue           = compute_pilot['description']['queue']
+                        project         = compute_pilot['description']['project']
+                        cleanup         = compute_pilot['description']['cleanup']
+                        resource_key    = compute_pilot['description']['resource']
+                        schema          = compute_pilot['description']['access_schema']
+                        memory          = compute_pilot['description']['memory']
+                        candidate_hosts = compute_pilot['description']['candidate_hosts']
+                        pilot_sandbox   = compute_pilot['sandbox']
+                        global_sandbox  = compute_pilot['global_sandbox']
 
                         # we expand and exchange keys in the resource config,
                         # depending on the selected schema so better use a deep
@@ -405,6 +407,9 @@ class PilotLauncherWorker(threading.Thread):
                         virtenv                 = resource_cfg.get ('virtenv',             DEFAULT_VIRTENV)
                         stage_cacerts           = resource_cfg.get ('stage_cacerts',       'False')
                         cores_per_node          = resource_cfg.get ('cores_per_node')
+                        shared_filesystem       = resource_cfg.get ('shared_filesystem', True)
+                        health_check            = resource_cfg.get ('health_check', True)
+                        python_dist             = resource_cfg.get ('python_dist', DEFAULT_PYTHON_DIST)
 
 
                         # Agent configuration that is not part of the public API.
@@ -431,13 +436,20 @@ class PilotLauncherWorker(threading.Thread):
                                     agent_cfg_dict = ru.read_json(agent_config)
                                 else:
                                     # otherwise interpret as a config name
-                                    # FIXME: load in session just like resource
-                                    #        configs, including user level overloads
                                     module_path = os.path.dirname(os.path.abspath(__file__))
                                     config_path = "%s/../configs/" % module_path
                                     agent_cfg_file = os.path.join(config_path, "agent_%s.json" % agent_config)
                                     logger.info("Read agent config file: %s" % agent_cfg_file)
                                     agent_cfg_dict = ru.read_json(agent_cfg_file)
+                                # no matter how we read the config file, we
+                                # allow for user level overload
+                                cfg_base = os.path.basename(agent_cfg_file)
+                                user_cfg = '%s/.radical/pilot/config/%s' \
+                                              % (os.environ['HOME'], cfg_base)
+                                if os.path.exists(user_cfg):
+                                    logger.info("merging user config: %s" % user_cfg)
+                                    user_cfg_dict = ru.read_json(user_cfg)
+                                    ru.dict_merge (agent_cfg_dict, user_cfg_dict, policy='overwrite')
                             except Exception as e:
                                 logger.exception("Error reading agent config file: %s" % e)
                                 raise
@@ -471,20 +483,19 @@ class PilotLauncherWorker(threading.Thread):
                             db_hostport = "%s:%d" % (db_url.host, 27017) # mongodb default
 
                         # Open the remote sandbox
+                        # TODO: make conditional on shared_fs?
                         sandbox_tgt = saga.filesystem.Directory(pilot_sandbox,
                                                                 session=self._session,
                                                                 flags=saga.filesystem.CREATE_PARENTS)
 
-                        BOOTSTRAPPER_SCRIPT = "bootstrap_1.sh"
                         LOCAL_SCHEME = 'file'
 
                         # ------------------------------------------------------
-                        # Copy the bootstrap shell script.  This also creates
-                        # the sandbox. We use always "default_bootstrapper.sh"
-                        # TODO: Is this still configurable and/or in the resource configs?
-                        bootstrapper = "default_bootstrapper.sh"
-                        bootstrapper_path = os.path.abspath("%s/../bootstrapper/%s" \
-                                % (mod_dir, bootstrapper))
+                        # Copy the bootstrap shell script.
+                        # This also creates the sandbox.
+                        BOOTSTRAPPER_SCRIPT = "bootstrap_1.sh"
+                        bootstrapper_path   = os.path.abspath("%s/../bootstrapper/%s" \
+                                % (mod_dir, BOOTSTRAPPER_SCRIPT))
 
                         msg = "Using bootstrapper %s" % bootstrapper_path
                         logentries.append(Logentry(msg, logger=logger.info))
@@ -495,7 +506,8 @@ class PilotLauncherWorker(threading.Thread):
                                 % (bs_script_url, sandbox_tgt)
                         logentries.append(Logentry (msg, logger=logger.debug))
 
-                        sandbox_tgt.copy(bs_script_url, BOOTSTRAPPER_SCRIPT)
+                        if shared_filesystem:
+                            sandbox_tgt.copy(bs_script_url, BOOTSTRAPPER_SCRIPT)
 
                         # ------------------------------------------------------
                         # the version of the agent is derived from
@@ -583,7 +595,8 @@ class PilotLauncherWorker(threading.Thread):
                                 sdist_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, sdist_path))
                                 msg = "Copying sdist '%s' to sandbox (%s)." % (sdist_url, pilot_sandbox)
                                 logentries.append(Logentry (msg, logger=logger.debug))
-                                sandbox_tgt.copy(sdist_url, os.path.basename(str(sdist_url)))
+                                if shared_filesystem:
+                                    sandbox_tgt.copy(sdist_url, os.path.basename(str(sdist_url)))
 
 
                         # ------------------------------------------------------
@@ -596,7 +609,8 @@ class PilotLauncherWorker(threading.Thread):
                             cc_url= saga.Url("%s://localhost/%s" % (LOCAL_SCHEME, cc_path))
                             msg = "Copying CA certificate bundle '%s' to sandbox (%s)." % (cc_url, pilot_sandbox)
                             logentries.append(Logentry (msg, logger=logger.debug))
-                            sandbox_tgt.copy(cc_url, os.path.basename(str(cc_url)))
+                            if shared_filesystem:
+                                sandbox_tgt.copy(cc_url, os.path.basename(str(cc_url)))
 
 
                         # ------------------------------------------------------
@@ -606,7 +620,6 @@ class PilotLauncherWorker(threading.Thread):
                         if not lrms               : raise RuntimeError("missing LRMS")
                         if not agent_launch_method: raise RuntimeError("missing agentlaunch method")
                         if not task_launch_method : raise RuntimeError("missing task launch method")
-                        if not mpi_launch_method  : raise RuntimeError("missing mpi launch method")
 
                         # massage some values
                         if not queue :
@@ -639,6 +652,7 @@ class PilotLauncherWorker(threading.Thread):
                         bootstrap_args += " -r '%s'" % rp_version
                         bootstrap_args += " -s '%s'" % session_id
                         bootstrap_args += " -v '%s'" % virtenv
+                        bootstrap_args += " -b '%s'" % python_dist
 
                         # set optional args
                         if agent_type:              bootstrap_args += " -a '%s'" % agent_type
@@ -663,28 +677,32 @@ class PilotLauncherWorker(threading.Thread):
                         agent_cfg_dict['session_id']         = session_id
                         agent_cfg_dict['agent_launch_method']= agent_launch_method
                         agent_cfg_dict['task_launch_method'] = task_launch_method
-                        agent_cfg_dict['mpi_launch_method']  = mpi_launch_method
+                        if mpi_launch_method:
+                            agent_cfg_dict['mpi_launch_method']  = mpi_launch_method
                         if cores_per_node:
                             agent_cfg_dict['cores_per_node'] = cores_per_node
 
                         # ------------------------------------------------------
                         # Write agent config dict to a json file in pilot sandbox.
-                        
-                        cfg_tmp_handle, cf_tmp_file = tempfile.mkstemp(suffix='.json', prefix='rp_agent_cfg_')
+
+                        cfg_tmp_dir = tempfile.mkdtemp(prefix='rp_agent_cfg_dir')
+                        agent_cfg_name = 'agent_0.cfg'
+                        cfg_tmp_file = os.path.join(cfg_tmp_dir, agent_cfg_name)
+                        cfg_tmp_handle = os.open(cfg_tmp_file, os.O_WRONLY|os.O_CREAT)
 
                         # Convert dict to json file
-                        msg = "Writing agent configuration to file '%s'." % cf_tmp_file
+                        msg = "Writing agent configuration to file '%s'." % cfg_tmp_file
                         logentries.append(Logentry (msg, logger=logger.debug))
-                        ru.write_json(agent_cfg_dict, cf_tmp_file)
+                        ru.write_json(agent_cfg_dict, cfg_tmp_file)
 
-                        cf_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, cf_tmp_file))
+                        cf_url = saga.Url("%s://localhost%s" % (LOCAL_SCHEME, cfg_tmp_file))
                         msg = "Copying agent configuration file '%s' to sandbox (%s)." % (cf_url, pilot_sandbox)
                         logentries.append(Logentry (msg, logger=logger.debug))
-                        sandbox_tgt.copy(cf_url, 'agent_0.cfg')
+                        if shared_filesystem:
+                            sandbox_tgt.copy(cf_url, agent_cfg_name)
 
-                        # close and remove temp file
+                        # Close agent config file
                         os.close(cfg_tmp_handle)
-                        os.unlink(cf_tmp_file)
 
                         # ------------------------------------------------------
                         # Done with all transfers to pilot sandbox, close handle
@@ -718,7 +736,42 @@ class PilotLauncherWorker(threading.Thread):
                         jd.wall_time_limit       = runtime
                         jd.total_physical_memory = memory
                         jd.queue                 = queue
+                        jd.candidate_hosts       = candidate_hosts
                         jd.environment           = dict()
+
+                        # TODO: not all files might be required, this also needs to be made conditional
+                        if not shared_filesystem:
+                            jd.file_transfer = [
+                                #'%s > %s' % (bootstrapper_path, os.path.basename(bootstrapper_path)),
+                                '%s > %s' % (bootstrapper_path, os.path.join(jd.working_directory, 'input', os.path.basename(bootstrapper_path))),
+                                '%s > %s' % (cfg_tmp_file, os.path.join(jd.working_directory, 'input', agent_cfg_name)),
+                                #'%s < %s' % ('agent.log', os.path.join(jd.working_directory, 'agent.log')),
+                                #'%s < %s' % (os.path.join(jd.working_directory, 'agent.log'), 'agent.log'),
+                                #'%s < %s' % ('agent.log', 'agent.log'),
+                                #'%s < %s' % (os.path.join(jd.working_directory, 'STDOUT'), 'unit.000000/STDOUT'),
+                                #'%s < %s' % (os.path.join(jd.working_directory, 'unit.000000/STDERR'), 'STDERR')
+                                #'%s < %s' % ('unit.000000/STDERR', 'unit.000000/STDERR')
+
+                                # TODO: This needs to go into a per pilot directory on the submit node
+                                '%s < %s' % ('pilot.0000.log.tgz', 'pilot.0000.log.tgz')
+                            ]
+
+                            if stage_sdist:
+                                jd.file_transfer.extend([
+                                    #'%s > %s' % (rp_sdist_path, os.path.basename(rp_sdist_path)),
+                                    '%s > %s' % (rp_sdist_path, os.path.join(jd.working_directory, 'input', os.path.basename(rp_sdist_path))),
+                                    #'%s > %s' % (saga.sdist_path, os.path.basename(saga.sdist_path)),
+                                    '%s > %s' % (saga.sdist_path, os.path.join(jd.working_directory, 'input', os.path.basename(saga.sdist_path))),
+                                    #'%s > %s' % (ru.sdist_path, os.path.basename(ru.sdist_path)),
+                                    '%s > %s' % (ru.sdist_path, os.path.join(jd.working_directory, 'input', os.path.basename(ru.sdist_path)))
+                                ])
+
+                            if stage_cacerts:
+                                jd.file_transfer.append('%s > %s' % (cc_path, os.path.join(jd.working_directory, 'input', os.path.basename(cc_path))))
+
+                            if 'RADICAL_PILOT_PROFILE' in os.environ :
+                                # TODO: This needs to go into a per pilot directory on the submit node
+                                jd.file_transfer.append('%s < %s' % ('pilot.0000.prof.tgz', 'pilot.0000.prof.tgz'))
 
                         # Set the SPMD variation only if required
                         if spmd_variation:
@@ -734,6 +787,9 @@ class PilotLauncherWorker(threading.Thread):
 
                         pilotjob = js.create_job(jd)
                         pilotjob.run()
+
+                        # Clean up agent config file after submission
+                        os.unlink(cfg_tmp_file)
 
                         # do a quick error check
                         if pilotjob.state == saga.FAILED:
@@ -759,6 +815,7 @@ class PilotLauncherWorker(threading.Thread):
                              "state": LAUNCHING},
                             {"$set" : {"state": PENDING_ACTIVE,
                                        "saga_job_id": saga_job_id,
+                                       "health_check_enabled": health_check,
                                        "agent_config": agent_cfg_dict},
                              "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
                              "$pushAll": {"log": log_dicts}
@@ -772,7 +829,8 @@ class PilotLauncherWorker(threading.Thread):
                             # FIXME: make sure of the agent state!
                             ret = pilot_col.update(
                                 {"_id"  : pilot_id},
-                                {"$set" : {"saga_job_id": saga_job_id},
+                                {"$set" : {"saga_job_id": saga_job_id,
+                                           "health_check_enabled": health_check},
                                  "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
                                  "$pushAll": {"log": log_dicts}}
                             )
@@ -814,5 +872,3 @@ class PilotLauncherWorker(threading.Thread):
             logger.exception("pilot launcher thread caught system exit -- forcing application shutdown")
             import thread
             thread.interrupt_main ()
-
-

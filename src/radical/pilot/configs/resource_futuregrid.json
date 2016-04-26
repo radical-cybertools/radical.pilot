@@ -21,7 +21,8 @@
         "valid_roots"                 : ["/N"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_india",
-        "virtenv_mode"                : "update"
+        "virtenv_mode"                : "update",
+        "python_dist"                 : "default"
     },
     "bravo": {
         "description"                 : "FutureGrid Hewlett-Packard ProLiant compute cluster (https://futuregrid.github.io/manual/hardware.html).",
@@ -47,7 +48,8 @@
         "valid_roots"                 : ["/N"],
         "rp_version"                  : "local",
         "virtenv"                     : "~marksant/pilot-ve-20141211",
-        "virtenv_mode"                : "update"
+        "virtenv_mode"                : "update",
+        "python_dist"                 : "default"
 
     },
     "delta": {
@@ -70,7 +72,8 @@
         "valid_roots"                 : ["/N"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_delta",
-        "virtenv_mode"                : "update"
+        "virtenv_mode"                : "update",
+        "python_dist"                 : "default"
 
     },
     "echo": {
@@ -93,7 +96,8 @@
         "valid_roots"                 : ["/N"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_echo",
-        "virtenv_mode"                : "update"
+        "virtenv_mode"                : "update",
+        "python_dist"                 : "default"
 
     },
     "xray": {
@@ -116,7 +120,8 @@
         "valid_roots"                 : ["/scratch", "/home/users"],
         "rp_version"                  : "local",
         "virtenv"                     : "~marksant/pilot_ve_20141210",
-        "virtenv_mode"                : "update"
+        "virtenv_mode"                : "update",
+        "python_dist"                 : "default"
     },
     "xray_ccm": {
         "description"                 : "FutureGrid Cray XT5m cluster in Cluster Compatibility Mode (CCM) (https://futuregrid.github.io/manual/hardware.html).",
@@ -139,7 +144,8 @@
         "valid_roots"                 : ["/scratch", "/home/users"],
         "rp_version"                  : "local",
         "virtenv"                     : "~marksant/pilot_ve_20141210",
-        "virtenv_mode"                : "use"
+        "virtenv_mode"                : "use",
+        "python_dist"                 : "default"
     }
 }
 
