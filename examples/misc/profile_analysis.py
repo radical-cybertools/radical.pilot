@@ -19,19 +19,102 @@ import radical.utils as ru
 #
 # ------------------------------------------------------------------------------
 
+# we use a reporter class for nicer output
+report = ru.LogReporter(name='radical.pilot')
+report.title('Getting Started (RP version %s)' % rp.version)
+
+
+# ------------------------------------------------------------------------------
+#
+def profile_analysis(sid):
+
+    import radical.pilot.utils as rpu
+
+    report.header('profile analysis')
+
+    # fetch profiles for all pilots
+    profiles   = rpu.fetch_profiles(sid=sid, tgt='/tmp/')
+    print profiles
+
+    # combine into a single profile
+    profile    = rpu.combine_profiles(profiles)
+
+    # derive a global data frame
+    frame      = rpu.prof2frame(profile)
+
+    # split into session / pilot / unit frames
+    sf, pf, uf = rpu.split_frame(frame)
+
+    print len(sf)
+    print len(pf)
+    print len(uf)
+    
+    print sf[0:10]
+    print pf[0:10]
+    print uf[0:10]
+
+
+    # derive some additional 'info' columns, which contains some commonly used
+    # tags
+    rpu.add_info(uf)
+
+    for index, row in uf.iterrows():
+        if str(row['info']) != 'nan':
+            print "%-20s : %-10s : %-25s : %-20s" % \
+                    (row['time'], row['uid'], row['state'], row['info'])
+
+    # add a 'state_from' columns which signals a state transition
+    rpu.add_states(uf)
+    adv = uf[uf['event'].isin(['advance'])]
+    print '---------------'
+    print len(adv)
+    print uf[uf['uid'] == 'unit.000001']
+    print list(pf['event'])
+
+    tmp = uf[uf['uid'] == 'unit.000001'].dropna()
+    print tmp[['time', 'uid', 'state', 'state_from']]
+
+    # add a columns 'rate_out' which contains the rate (1/s) of the event
+    # 'advance to state STAGING_OUTPUT'
+    print '---------------'
+    rpu.add_frequency(adv, 'rate_out', 0.5, {'state' : 'StagingOutput', 'event' : 'advance'})
+    print adv[['time', 'rate_out']].dropna(subset=['rate_out'])
+    print '---------------'
+
+    fig, plot = rpu.create_plot()
+    plot.set_title('rate of ouput staging transitions', y=1.05, fontsize=18)
+
+    plot.set_xlabel('time (s)', fontsize=14)
+    plot.set_ylabel('rate (1/s)', fontsize=14)
+    plot.set_frame_on(True)
+
+    adv[['time', 'rate_out']].dropna().plot(ax=plot, logx=False, logy=False,
+            x='time', y='rate_out',
+            drawstyle='steps',
+            label='output rate', legend=False)
+
+    plot.legend(labels=['output rate'], loc='best', fontsize=14, frameon=True)
+
+    fig.savefig('profile.png', bbox_inches='tight')
+
+
+#-------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
-    # we use a reporter class for nicer output
-    report = ru.LogReporter(name='radical.pilot')
-    report.title('Getting Started (RP version %s)' % rp.version)
+    resource = 'local.localhost'
 
-    # use the resource specified as argument, fall back to localhost
-    if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
-    elif len(sys.argv) == 2: resource = sys.argv[1]
-    else                   : resource = 'local.localhost'
+    # use the sid specified as argument, otherwise run a test
+    if   len(sys.argv)  > 2: report.exit('Usage:\t%s [sid]\n\n' % sys.argv[0])
+    elif len(sys.argv) == 2: sid = sys.argv[1]
+    else                   : sid = None
+
+    if sid:
+        profile_analysis(sid)
+        sys.exit()
+
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -146,45 +229,9 @@ if __name__ == '__main__':
     if not session:
         sys.exit(-1)
 
-
-    import radical.pilot.utils as rpu
-
-    # we have a session
-    sid        = session.uid
-    profiles   = rpu.fetch_profiles(sid=sid, tgt='/tmp/')
-    profile    = rpu.combine_profiles (profiles)
-    frame      = rpu.prof2frame(profile)
-    sf, pf, uf = rpu.split_frame(frame)
-
-  # print len(sf)
-  # print len(pf)
-  # print len(uf)
-  # 
-  # print sf[0:10]
-  # print pf[0:10]
-  # print uf[0:10]
-    rpu.add_info(uf)
-
-    for index, row in uf.iterrows():
-        if str(row['info']) != 'nan':
-            print "%-20s : %-10s : %-25s : %-20s" % \
-                    (row['time'], row['uid'], row['state'], row['info'])
-
-    rpu.add_states(uf)
-    adv = uf[uf['event'].isin(['advance'])]
-    print len(adv)
-  # print uf[uf['uid'] == 'unit.000001']
-  # print list(pf['event'])
-
-    rpu.add_frequency(adv, 'f_exe', 0.5, {'state' : 'Executing', 'event' : 'advance'})
-    print adv[['time', 'f_exe']].dropna(subset=['f_exe'])
-
-    s_frame, p_frame, u_frame = rpu.get_session_frames(sid)
-    print str(u_frame)
-
-    for f in profiles:
-        os.unlink(f)
+    profile_analysis(session.uid)
+    sys.exit()
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
