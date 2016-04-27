@@ -408,11 +408,8 @@ class PilotLauncherWorker(threading.Thread):
                         cores_per_node          = resource_cfg.get ('cores_per_node')
                         shared_filesystem       = resource_cfg.get ('shared_filesystem', True)
                         health_check            = resource_cfg.get ('health_check', True)
-                        if resource_cfg.has_key('python_dist'):
-                            python_dist         = resource_cfg.get ('python_dist')
-                        else:
-                            raise RuntimeError('Resource CFG does not have: python_dist')
-
+                        python_dist             = resource_cfg.get ('python_dist')
+                        
 
                         # Agent configuration that is not part of the public API.
                         # The agent config can either be a config dict, or
@@ -617,6 +614,7 @@ class PilotLauncherWorker(threading.Thread):
 
                         # ------------------------------------------------------
                         # sanity checks
+                        if not python_dist        : raise RuntimeError("missing python distribution")
                         if not agent_spawner      : raise RuntimeError("missing agent spawner")
                         if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
                         if not lrms               : raise RuntimeError("missing LRMS")
