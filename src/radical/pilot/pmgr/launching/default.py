@@ -127,8 +127,8 @@ class Default(PMGRLaunchingComponent):
                 for pid in pids:
 
                     if pid not in self._pilots:
-                        self._log.debug('unknown: %s', pid)
-                        raise 'cannot cancel pilot %s: unknown' % pid
+                        self._log.error('unknown: %s', pid)
+                        raise ValueError('unknown pilot %s' % pid)
 
                     pilots.append(self._pilots[pid]['pilot'])
                     tc.add(self._pilots[pid]['job'])
@@ -402,22 +402,35 @@ class Default(PMGRLaunchingComponent):
         shutil.rmtree(tmp_dir)
 
 
-        # we now need to untar on the target machine.
-        js_endpoint = rcfg['job_manager_endpoint']
-        js_url      = rs.Url(js_endpoint)
+        # we now need to untar on the target machine -- if needed use the hop
+        js_ep   = rcfg['job_manager_endpoint']
+        js_hop  = rcfg.get('job_manager_hop', js_ep)
+        js_url  = rs.Url(js_hop)
 
         with self._cache_lock:
             if js_url in self._saga_js_cache:
-                js = self._saga_js_cache[js_url]
+                js_tmp = self._saga_js_cache[js_url]
             else:
-                js = rs.job.Service(js_url, session=self._session)
-                self._saga_js_cache[js_url] = js
+                js_tmp = rs.job.Service(js_url, session=self._session)
+                self._saga_js_cache[js_url] = js_tmp
         cmd = "tar zmxvf %s/%s -C /" % (session_sandbox, tar_name)
-        j = js.run_job(cmd)
+        j = js_tmp.run_job(cmd)
         j.wait()
 
         self._log.debug('tar cmd : %s', cmd)
         self._log.debug('tar done: %s, %s, %s', j.state, j.stdout, j.stderr)
+
+        if js_ep == js_hop:
+            # we can use the same job service for pilot submission
+            js = js_tmp
+        else:
+            # we need a different js for actual job submission
+            with self._cache_lock:
+                if js_ep in self._saga_js_cache:
+                    js = self._saga_js_cache[js_ep]
+                else:
+                    js = rs.job.Service(js_ep, session=self._session)
+                    self._saga_js_cache[js_ep] = js
 
         # now that the scripts are in place and configured, 
         # we can launch the agent
@@ -437,6 +450,7 @@ class Default(PMGRLaunchingComponent):
 
             pilot = None
             for p in pilots:
+                self._log.debug(' === checking job name for %s:%s:%s', j.id, j.name, j.get_name())
                 if p['uid'] == j.name:
                     pilot = p
                     break
@@ -515,6 +529,7 @@ class Default(PMGRLaunchingComponent):
         python_dist             = rcfg.get('python_dist')
         spmd_variation          = rcfg.get('spmd_variation')
         shared_filesystem       = rcfg.get('shared_filesystem', True)
+        stage_cacerts           = rcfg.get ('stage_cacerts', False)
 
 
         # get pilot and global sandbox
@@ -778,8 +793,7 @@ class Default(PMGRLaunchingComponent):
                 # Some machines cannot run pip due to outdated CA certs.
                 # For those, we also stage an updated certificate bundle
                 # TODO: use booleans all the way?
-                stage_cacerts = rcfg.get ('stage_cacerts', 'False')
-                if stage_cacerts.lower() == 'true':
+                if stage_cacerts:
 
                     cc_name = 'cacert.pem.gz'
                     cc_path = os.path.abspath("%s/agent/%s" % (self._root_dir, cc_name))
@@ -797,9 +811,13 @@ class Default(PMGRLaunchingComponent):
 
         jd = rs.job.Description()
 
-        bootstrap_tgt = '%s/%s' % (session_sandbox, BOOTSTRAPPER)
+        if shared_filesystem:
+            bootstrap_tgt = '%s/%s' % (session_sandbox, BOOTSTRAPPER)
+        else:
+            bootstrap_tgt = '%s/%s' % ('.', BOOTSTRAPPER)
 
         jd.name                  = pid
+        self._log.debug(' === set jd name to %s'% pid)
         jd.executable            = "/bin/bash"
         jd.arguments             = ['-l %s' % bootstrap_tgt, bootstrap_args]
         jd.working_directory     = pilot_sandbox
@@ -824,24 +842,24 @@ class Default(PMGRLaunchingComponent):
         jd.file_transfer = list()
         if not shared_filesystem:
 
-            jd.filetransfer.extend([
-                '%s/%s > %s' % (session_sandbox, BOOTSTRAPPER,   BOOTSTRAPPER),
-                '%s/%s > %s' % (pilot_sandbox,   agent_cfg_name, agent_cfg_name),
-                '%s/%s.log.tgz < %s.log.tgz' % (session_sandbox, pid, pid)
+            jd.file_transfer.extend([
+                'site:%s/%s > %s' % (session_sandbox, BOOTSTRAPPER,   BOOTSTRAPPER),
+                'site:%s/%s > %s' % (pilot_sandbox,   agent_cfg_name, agent_cfg_name),
+                'site:%s/%s.log.tgz < %s.log.tgz' % (session_sandbox, pid, pid)
             ])
 
             for sdist in sdist_names:
-                jd.filetransfer.append(
-                    '%s/%s > %s' % (session_sandbox, sdist, sdist))
+                jd.file_transfer.append(
+                    'site:%s/%s > %s' % (session_sandbox, sdist, sdist))
 
-            if stage_cacerts.lower() == 'true':
-                jd.filetransfer.append(
-                    '%s/%s > %s' % (session_sandbox, cc_name, cc_name)
+            if stage_cacerts:
+                jd.file_transfer.append(
+                    'site:%s/%s > %s' % (session_sandbox, cc_name, cc_name)
                 )
 
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                jd.filetransfer.append(
-                    '%s/%s.prof.tgz < %s.prof.tgz' % (session_sandbox, pid, pid)
+                jd.file_transfer.append(
+                    'site:%s/%s.prof.tgz < %s.prof.tgz' % (session_sandbox, pid, pid)
                 )
 
         self._log.debug("Bootstrap command line: %s %s" % (jd.executable, jd.arguments))

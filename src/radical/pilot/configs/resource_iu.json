@@ -20,7 +20,7 @@
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_br2",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
     "bigred2_ccm": {
@@ -52,7 +52,7 @@
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_br2",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "python_dist"                 : "default"
     }
 }

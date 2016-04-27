@@ -214,7 +214,7 @@
                                          "unset PYTHONPATH"
                                         ],
         "valid_roots"                 : ["/usr/users", "/brashear"],
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "rp_version"                  : "debug",
         "virtenv"                     : "%(global_sandbox)s/ve_blacklight",
         "virtenv_mode"                : "create",

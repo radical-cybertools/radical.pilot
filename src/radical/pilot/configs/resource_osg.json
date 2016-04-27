@@ -10,10 +10,12 @@
       "project"
     ],
     "ssh": {
+      "job_manager_hop": "ssh://xd-login.opensciencegrid.org",
       "job_manager_endpoint": "condor+ssh://xd-login.opensciencegrid.org",
       "filesystem_endpoint": "sftp://xd-login.opensciencegrid.org/"
     },
     "gsissh": {
+      "job_manager_hop": "gsissh://xd-login.opensciencegrid.org",
       "job_manager_endpoint": "condor+gsissh://xd-login.opensciencegrid.org",
       "filesystem_endpoint": "gsisftp://xd-login.opensciencegrid.org/"
     },

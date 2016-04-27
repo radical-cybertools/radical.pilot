@@ -47,7 +47,7 @@
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_titan",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "python_dist"                 : "default"
     }
 }

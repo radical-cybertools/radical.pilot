@@ -20,7 +20,7 @@
         "rp_version"                  : "debug",
         "virtenv"                     : "%(global_sandbox)s/ve_hopper",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "cores_per_node"              : "24",
         "python_dist"                 : "default"
     },
@@ -66,7 +66,7 @@
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_hopper",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
     "hopper_ccm": {
@@ -97,7 +97,7 @@
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_hopper",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "cores_per_node"              : "24",
         "python_dist"                 : "default"
     },
@@ -127,7 +127,7 @@
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_edison",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
     "edison": {
@@ -170,7 +170,7 @@
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_edison",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
     "edison_ccm": {
@@ -200,7 +200,7 @@
         "rp_version"                  : "debug",
         "virtenv"                     : "%(global_sandbox)s/ve_edison",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "python_dist"                 : "default"
     }
 }
