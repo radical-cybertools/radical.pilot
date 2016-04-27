@@ -1,132 +1,44 @@
 #!/usr/bin/env python
 
-__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2013-2014, http://radical.rutgers.edu'
+__license__   = 'MIT'
 
+import os
 import sys
+
+os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
+
 import radical.pilot as rp
 import radical.utils as ru
 
-dh = ru.DebugHelper ()
+FLOPS     = 1 * 1000 * 1000 * 1000
+BYTES_IN  = 1 * 1000 * 1000  # not yet used
+BYTES_OUT = 1 * 1000 * 1000  # not yet used
+BYTES_MEM = 1 * 1000 * 1000  # not yet used
 
-CNT       = 0
 
-FLOPS     = 10 * 1000 * 1000 * 1000
-BYTES_IN  = 10 * 1000 * 1000  # not yet supported
-BYTES_OUT = 10 * 1000 * 1000  # not yet supported
-BYTES_MEM = 10 * 1000 * 1000  # not yet supported
-
-RUNTIME   = 10
-UNITS     = 10
-CORES     = 12
-
-SCHED     = rp.SCHED_DIRECT_SUBMISSION
-
-RESOURCE  = 'local.localhost'
-PROJECT   = None
-QUEUE     = None
-SCHEMA    = None
-  
-# RESOURCE  = 'home.test'
-# PROJECT   = None
-# QUEUE     = None
-# SCHEMA    = 'ssh'
-
-# RESOURCE  = 'epsrc.archer'
-# PROJECT   = 'e290'
-# QUEUE     = 'short'
-# SCHEMA    = None
-
-# RESOURCE  = 'lrz.supermuc'
-# PROJECT   = 'e290'
-# QUEUE     = 'short'
-# SCHEMA    = None
-
-# RESOURCE  = 'xsede.stampede'
-# PROJECT   = 'TG-MCB090174' 
-# QUEUE     = 'development'
-# SCHEMA    = None
-
-# RESOURCE  = 'xsede.gordon'
-# PROJECT   = None
-# QUEUE     = 'debug'
-# SCHEMA    = None
-
-# RESOURCE  = 'xsede.blacklight'
-# PROJECT   = None
-# QUEUE     = 'debug'
-# SCHEMA    = 'gsissh'
-
-# RESOURCE  = 'xsede.trestles'
-# PROJECT   = 'TG-MCB090174' 
-# QUEUE     = 'shared'
-# SCHEMA    = None
-
-# RESOURCE  = 'futuregrid.india'
-# PROJECT   = None
-# QUEUE     = None
-# SCHEMA    = None
-  
-# RESOURCE  = 'nersc.hopper'
-# PROJECT   = None
-# QUEUE     = 'debug'
-# SCHEMA    = 'ssh'
-
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
-def pilot_state_cb (pilot, state):
-
-    if not pilot:
-        return
-
-    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
-
-    if state == rp.FAILED:
-        sys.exit (1)
+# READ the RADICAL-Pilot documentation: http://radicalpilot.readthedocs.org/
+#
+# ------------------------------------------------------------------------------
 
 
 #------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state):
+if __name__ == '__main__':
 
-    if not unit:
-        return
+    # we use a reporter class for nicer output
+    report = ru.LogReporter(name='radical.pilot')
+    report.title('Getting Started (RP version %s)' % rp.version)
 
-    global CNT
-
-    print "[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot_id, state)
-
-    if state in [rp.FAILED, rp.DONE, rp.CANCELED]:
-        CNT += 1
-        print "[Callback]: # %6d" % CNT
-
-
-    if state == rp.FAILED:
-        print "stderr: %s" % unit.stderr
-        sys.exit(2)
-
-
-#------------------------------------------------------------------------------
-#
-def wait_queue_size_cb(umgr, wait_queue_size):
-
-    print "[Callback]: wait_queue_size: %s." % wait_queue_size
-
-
-#------------------------------------------------------------------------------
-#
-if __name__ == "__main__":
-
-    # we can optionally pass session name to RP
-    if len(sys.argv) > 1:
-        session_name = sys.argv[1]
-    else:
-        session_name = None
+    # use the resource specified as argument, fall back to localhost
+    if len(sys.argv) >= 2  : resources = sys.argv[1:]
+    else                   : resources = ['local.localhost']
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
-    session = rp.Session(name=session_name)
-    print "session id: %s" % session.uid
+    session = rp.Session()
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
@@ -134,79 +46,98 @@ if __name__ == "__main__":
     # clause...
     try:
 
+        # read the config used for resource details
+        report.info('read config')
+        config = ru.read_json('%s/../config.json' % os.path.dirname(os.path.abspath(__file__)))
+        report.ok('>>ok\n')
+
+        report.header('submit pilots')
+
+        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = rp.PilotManager(session=session)
-        pmgr.register_callback(pilot_state_cb)
 
-        pdesc = rp.ComputePilotDescription()
-        pdesc.resource      = RESOURCE
-        pdesc.cores         = CORES
-        pdesc.project       = PROJECT
-        pdesc.queue         = QUEUE
-        pdesc.runtime       = RUNTIME
-        pdesc.cleanup       = False
-        pdesc.access_schema = SCHEMA
+        # Define an [n]-core local pilot that runs for [x] minutes
+        # Here we use a dict to initialize the description object
+        pdescs = list()
+        for resource in resources:
+            pd_init = {
+                    'resource'      : resource,
+                    'cores'         : 64,  # pilot size
+                    'runtime'       : 15,  # pilot runtime (min)
+                    'exit_on_error' : True,
+                    'project'       : config[resource]['project'],
+                    'queue'         : config[resource]['queue'],
+                    'access_schema' : config[resource]['schema']
+                    }
+            pdescs.append(rp.ComputePilotDescription(pd_init))
 
-        pilot = pmgr.submit_pilots(pdesc)
+        # Launch the pilots.
+        pilots = pmgr.submit_pilots(pdescs)
 
-        input_sd_pilot = {
-                'source': 'file:///etc/passwd',
-                'target': 'staging:///f1',
-                'action': rp.TRANSFER
-                }
-        pilot.stage_in (input_sd_pilot)
 
-        umgr = rp.UnitManager(session=session, scheduler=SCHED)
-        umgr.register_callback(unit_state_cb,      rp.UNIT_STATE)
-        umgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
-        umgr.add_pilots(pilot)
+        report.header('submit synapse installer unit')
 
-        input_sd_umgr   = {'source':'/etc/group',        'target': 'f2',                'action': rp.TRANSFER}
-        input_sd_agent  = {'source':'staging:///f1',     'target': 'f1',                'action': rp.COPY}
-        output_sd_agent = {'source':'f1',                'target': 'staging:///f1.bak', 'action': rp.COPY}
-        output_sd_umgr  = {'source':'f2',                'target': 'f2.bak',            'action': rp.TRANSFER}
-
+        # Register the ComputePilot in a UnitManager object.
+        umgr = rp.UnitManager(session=session)
+        umgr.add_pilots(pilots)
 
         # we create one pseudo unit which installs radical.synapse in the pilot
         # ve
         cud = rp.ComputeUnitDescription()
-        cud.pre_exec    = ["pip uninstall -y radical.synapse",
+        cud.pre_exec    = ["unset PYTHONPATH",
+                           "virtualenv /tmp/rp_synapse_ve_$USER",
+                           ". /tmp/rp_synapse_ve_$USER/bin/activate",
                            "pip install --upgrade radical.synapse"]
         cud.executable  = "radical-synapse-version"
+        cud.post_exec   = ["python -c 'import radical.synapse as ry; print ry.__file__'"]
         cud.cores       = 1
 
         cu = umgr.submit_units(cud)
         umgr.wait_units(cu.uid)
         assert(cu.state == rp.DONE)
 
-        cuds = list()
-        for n in range(1,UNITS+1):
-            cud = rp.ComputeUnitDescription()
-            cud.executable     = "radical-synapse-sample"
-            cud.arguments      = ("-m sample -f %s -s %d" % (FLOPS, n)).split()
-            cud.cores          = n
-            cud.input_staging  = [ input_sd_umgr,  input_sd_agent]
-            cud.output_staging = [output_sd_umgr, output_sd_agent]
-            cuds.append(cud)
 
+        report.header('submit synapse workload units')
+
+        # Create a workload of ComputeUnits.
+        # Each compute unit reports the id of the pilot it runs on.
+
+        n = 128   # number of units to run
+        report.info('create %d unit description(s)\n\t' % n)
+
+        cuds = list()
+        for i in range(0, n):
+
+            # create a new CU description, and fill it.
+            # Here we don't use dict initialization.
+            cud = rp.ComputeUnitDescription()
+            cud.pre_exec       = ["unset PYTHONPATH",
+                                  ". /tmp/rp_synapse_ve_$USER/bin/activate"]
+            cud.executable     = "radical-synapse-sample"
+            cud.arguments      = ("-m sample -f %s -s 1" % (FLOPS)).split()
+            cuds.append(cud)
+            report.progress()
+        report.ok('>>ok\n')
+
+        # Submit the previously created ComputeUnit descriptions to the
+        # PilotManager. This will trigger the selected scheduler to start
+        # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(cuds)
 
+        # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
+        report.header('gather results')
         umgr.wait_units()
-
-        for cu in units:
-            print "* Task %s state %s, exit code: %s, started: %s, finished: %s" \
-                % (cu.uid, cu.state, cu.exit_code, cu.start_time, cu.stop_time)
-            print "out:"
-            print cu.stdout
-            print "err:"
-            print cu.stderr
-            print
-
-      # os.system ("radicalpilot-stats -m stat,plot -s %s > %s.stat" % (session.uid, session_name))
+    
+        report.info('\n')
+        for unit in units:
+            report.plain('  * %s: %s, exit: %3s\n' \
+                    % (unit.uid, unit.state[:4], 
+                        unit.exit_code))
 
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        print "caught Exception: %s" % e
+        report.error('caught Exception: %s\n' % e)
         raise
 
     except (KeyboardInterrupt, SystemExit) as e:
@@ -214,20 +145,15 @@ if __name__ == "__main__":
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        print "need to exit now: %s" % e
+        report.warn('exit requested\n')
 
     finally:
         # always clean up the session, no matter if we caught an exception or
-        # not.
-        print "closing session"
-        session.close ()
+        # not.  This will kill all remaining pilots.
+        report.header('finalize')
+        session.close()
 
-        # the above is equivalent to
-        #
-        #   session.close (cleanup=True, terminate=True)
-        #
-        # it will thus both clean out the session's database record, and kill
-        # all remaining pilots (none in our example).
+    report.header()
 
 
 #-------------------------------------------------------------------------------

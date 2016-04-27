@@ -29,7 +29,7 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def __init__(self, cfg):
 
-        self._slots = None
+        self.slots = None
         self._lrms  = None
 
         rpu.Component.__init__(self, rpc.AGENT_SCHEDULING_COMPONENT, cfg)
@@ -68,7 +68,6 @@ class AgentSchedulingComponent(rpu.Component):
         # when cloning, we fake scheduling via round robin over all cores.
         # These indexes keeps track of the last used core.
         self._clone_slot_idx = 0
-        self._clone_core_idx = 0
 
         # The scheduler needs the LRMS information which have been collected
         # during agent startup.  We dig them out of the config at this point.
@@ -275,12 +274,12 @@ class AgentSchedulingComponent(rpu.Component):
             # of) core(s).  But also, we don't really want to schedule, that is
             # why we blow up on output, right?
             #
-            # So we fake scheduling.  This assumes the 'self._slots' structure as
+            # So we fake scheduling.  This assumes the 'self.slots' structure as
             # used by the continuous scheduler, wo will likely only work for
             # this one (FIXME): we walk our own index into the slot structure,
             # and simply assign that core, be it busy or not.
             #
-            # FIXME: This method makes no attempt to set 'task_slots', so will
+            # FIXME: This method makes no attempt to set 'taskslots', so will
             # not work properly for some launch methods.
             #
             # This is awful.  I mean, really awful.  Like, nothing good can come
@@ -290,20 +289,17 @@ class AgentSchedulingComponent(rpu.Component):
             if prof: prof.prof      ('clone_cb', uid=unit['_id'])
             else   : self._prof.prof('clone_cb', uid=unit['_id'])
 
-            slot = self._slots[self._clone_slot_idx]
+            self._clone_slot_idx += unit['description']['cores']
+
+            slot = self._clone_slot_idx / self._lrms_cores_per_node
+            core = self._clone_slot_idx % self._lrms_cores_per_node
+
+            node = self.slots[slot]['node']
 
             unit['opaque_slots']['task_slots'][0] = '%s:%d' \
-                    % (slot['node'], self._clone_core_idx)
+                    % (node, core)
           # self._log.debug(' === clone cb out : %s', unit['opaque_slots'])
 
-            if (self._clone_core_idx +  1) < self._lrms_cores_per_node:
-                self._clone_core_idx += 1
-            else:
-                self._clone_core_idx  = 0
-                self._clone_slot_idx += 1
-
-                if self._clone_slot_idx >= len(self._slots):
-                    self._clone_slot_idx = 0
 
 
     # --------------------------------------------------------------------------
