@@ -181,8 +181,9 @@ class Spark(LaunchMethod):
         # dict, and will be passed around as part of the opaque_slots structure,
         # so it is available on all LM create_command calls.
         #TODO fix the dictionary #george
-        lm_info = {'spark_home'   : spark_home,
-                   'master_ip'    : master_ip,
+        lm_info = {'spark_home'    : spark_home,
+                   'lm_detail'     : spark_master_string,
+                   'master_ip'     : master_ip,
                    'name'          : lrms.name,
                    'launch_command': launch_command,
                    'nodename'      : lrms.node_list[0]}
