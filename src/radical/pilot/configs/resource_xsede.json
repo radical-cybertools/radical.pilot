@@ -269,6 +269,41 @@
         "python_dist"                 : "default"
     },
 
+    "greenfield": {
+        "description"                 : "The XSEDE 'Greenfield' cluster at PSC (https://www.psc.edu/index.php/computing-resources/greenfield).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["ssh", "gsissh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "torque+ssh://greenfield.psc.xsede.org",
+            "filesystem_endpoint"     : "sftp://greenfield.psc.xsede.org/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "torque+gsissh://greenfield.psc.xsede.org",
+            "filesystem_endpoint"     : "gsisftp://greenfield.psc.xsede.org/"
+        },
+        "default_queue"               : "batch",
+        "cores_per_node"              : "15",
+        "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "FORK",
+        "task_launch_method"          : "FORK",
+        "mpi_launch_method"           : "MPIEXEC",
+        "pre_bootstrap_1"             : ["source /usr/share/Modules/init/bash",
+                                         "module load python",
+                                         "unset PYTHONPATH"
+                                        ],
+        "valid_roots"                 : ["/home", "/crucible", "/arc"],
+        "stage_cacerts"               : "True",
+        "rp_version"                  : "debug",
+        "virtenv"                     : "%(global_sandbox)s/ve_greenfield",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
+    },
+
     "comet": {
         "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
@@ -373,6 +408,32 @@
         "valid_roots"                 : ["/work"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_supermic",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
+    },
+    "darter_aprun": {
+        "description"                 : "Darter is a Cray XC30 system with an Aries interconnect and a Lustre storage system, that provide both high scalability and sustained performance. The Darter supercomputer has a peak performance of 240.9 Tflops (1012 floating point operations per second). (https://portal.xsede.org/nics-darter)",
+        "notes"                       : "Primary access through GSISSH.",
+        "schemas"                     : ["gsissh"],
+        "gsissh"                      : {
+            "job_manager_endpoint"    : "torque+gsissh://gsissh.darter.nics.xsede.org",
+            "filesystem_endpoint"     : "gsisftp://gsissh.darter.nics.xsede.org/"
+        },
+        "default_queue"               : "batch",
+        "cores_per_node"              : "16",
+        "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "APRUN",
+        "task_launch_method"          : "APRUN",
+        "mpi_launch_method"           : "APRUN",
+        "pre_bootstrap_1"             : ["module load python"],
+        #"pre_bootstrap_2"             : ["export TMPDIR=/var/tmp"],
+        "default_remote_workdir"      : "/lustre/medusa/$USER",
+        "valid_roots"                 : ["/lustre"],
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_darter",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     }
