@@ -90,10 +90,22 @@
             "schema"   : "gsissh"
         },
 
+        "xsede.greenfield" : {
+            "project"  : null,
+            "queue"    : "debug",
+            "schema"   : "gsissh"
+        },
+
         "xsede.trestles" : {
             "project"  : "TG-MCB090174" ,
             "queue"    : "shared",
             "schema"   : null
+        },
+
+        "xsede.darter_aprun" : {
+            "project"  : null,
+            "queue"    : null,
+            "schema"   : "gsissh"
         },
 
         "futuregrid.india" : {
