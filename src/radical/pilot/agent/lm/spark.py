@@ -150,7 +150,7 @@ class Spark(LaunchMethod):
                 for config in cfg['resource_cfg']['pre_bootstrap_1']:
                     spark_env_file.write(config + '\n')
 
-            spark_env_file.write('export SPARK_MASTER_IP=' + master_ip +"\n")
+            spark_env_file.write('export SPARK_MASTER_IP=' + master_ip + "\n")
             spark_env_file.write('export SCALA_HOME='+ scala_home+ "\n")
             spark_env_file.write('export JAVA_HOME=' + java_home + "\n")
             spark_env_file.write('export SPARK_LOG_DIR='+os.getcwd()+'/spark-logs'+'\n')
@@ -159,8 +159,11 @@ class Spark(LaunchMethod):
 
 
             #### Start spark Cluster
-            logger.info('Start Spark Cluster')
-            spark_start = os.system(spark_home + '/sbin/start-all.sh')
+            spark_start = subprocess.check_output(spark_home + '/sbin/start-all.sh')
+            if 'Error' in spark_start:
+                raise RuntimeError("Spark Cluster failed to start: %s" % spark_start)
+            else:
+                logger.info('Start Spark Cluster')
             launch_command = spark_home +'/bin'
 
           
@@ -189,7 +192,11 @@ class Spark(LaunchMethod):
 
         if lm_info['name'] != 'SPARKLRMS':
             logger.info('Stoping SPARK')
-            os.system(lm_info['spark_home'] + '/sbin/stop-all.sh') 
+            stop_spark = subprocess.check_output(lm_info['spark_home'] + '/sbin/stop-all.sh') 
+            if 'Error' in stop_spark:
+                logger.info("Spark didn't terminate properly")
+            else:
+                logger.info("Spark stopped successfully")
 
     # --------------------------------------------------------------------------
     #
@@ -234,8 +241,20 @@ class Spark(LaunchMethod):
             raise RuntimeError('nodename not in lm_info for %s: %s' \
                     % (self.name, opaque_slots))
 
+
+
         master_ip   = opaque_slots['lm_info']['master_ip']
         client_node = opaque_slots['lm_info']['nodename']
+        #spark_home = opaque_slots['lm_info']['spark_home']
+
+        # spark_logs = os.path.dirname(spark_home) + '/spark-logs'
+        # for filename in os.listdir(spark_logs):
+        #     f = subprocess.Popen(['tail','-F',filename],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        #     line = f.stdout.readline()
+        #     for line in lines:
+        #         if line.find('ERROR'):
+        #             if not line.find('SIGTERM'):
+        #                 raise RuntimeError("CU failed to execute: " + line + "\n" + "Check: "+ spark_logs + filename + "\n")
 
 
         if task_env:
