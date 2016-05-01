@@ -75,7 +75,7 @@ class Default(PMGRLaunchingComponent):
         self._conf_dir      = "%s/configs/" % self._root_dir 
         
         # FIXME: make interval configurable
-        self.register_idle_cb(self._pilot_watcher_cb, timeout=1.0)
+        self.register_timed_cb(self._pilot_watcher_cb, timer=1.0)
         
         # we listen for pilot cancel commands
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)

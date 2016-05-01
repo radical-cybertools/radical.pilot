@@ -196,7 +196,39 @@ class Component(mp.Process):
             else:
                 self._log.debug('heartbeat ignored (%s)', sender)
         else:
-            self._log.debug('command ignored: %s (%s)', cmd, arg)
+            self._log.debug('command ignored: %s', cmd)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _cancel_monitor_cb(self, topic, msg):
+        """
+        We listen on the control channel for cancel requests, and append any
+        found UIDs to our cancel list.
+        """
+        
+        # FIXME: We do not check for types of things to cancel - the UIDs are
+        #        supposed to be unique.  That abstraction however breaks as we
+        #        currently have no abstract 'cancel' command, but instead use
+        #        'cancel_units'.
+
+        self._log.debug('command incoming: %s', msg)
+
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        if cmd == 'cancel_units':
+            uids = arg[uids]
+
+            if not isinstance(uids, list):
+                uids = [uids]
+
+            self._log.debug('register for cancellation: %s', uids)
+
+            with self._cancel_lock:
+                self._cancel_list += uids
+        else:
+            self._log.debug('command ignored: %s', cmd)
 
 
     # --------------------------------------------------------------------------
@@ -313,7 +345,7 @@ class Component(mp.Process):
 
         self._finalized     = False        # finalization guard
 
-        self._cb_lock       = ru.RLock()   # guard threaded callback invokations
+        self._cb_lock       = mt.RLock()   # guard threaded callback invokations
 
         # get debugging, logging, profiling set up
         self._dh   = ru.DebugHelper(name=self.uid)
@@ -338,8 +370,8 @@ class Component(mp.Process):
         self.register_publisher(rpc.CONTROL_PUBSUB)
 
         # make sure we watch all threads, flush all profiles
-        self.register_idle_cb(self._thread_watcher_cb, timeout= 0.1)
-        self.register_idle_cb(self._profile_flush_cb,  timeout=60.0)
+        self.register_timed_cb(self._thread_watcher_cb, timer= 0.1)
+        self.register_timed_cb(self._profile_flush_cb,  timer=60.0)
 
         # give any derived class the opportunity to perform initialization in
         # parent *and* child context
@@ -433,9 +465,14 @@ class Component(mp.Process):
         self._heartbeat          = time.time()  # startup =~ heartbeat
         self._heartbeat_timeout  = self._cfg['heartbeat_timeout']
         self._heartbeat_interval = self._cfg['heartbeat_interval']
-        self.register_idle_cb(self._heartbeat_checker_cb,
-                              timeout=self._heartbeat_interval)
+        self.register_timed_cb(self._heartbeat_checker_cb,
+                               timer=self._heartbeat_interval)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._heartbeat_monitor_cb)
+
+        # set controller callback to handle cancellation requests
+        self._cancel_list = list()
+        self._cancel_lock = mt.RLock()
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._cancel_monitor_cb)
 
         # parent calls terminate on stop(), which we translate here into stop()
         def sigterm_handler(signum, frame):
@@ -876,16 +913,12 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def register_idle_cb(self, cb, cb_data=None, timeout=None):
+    def register_timed_cb(self, cb, cb_data=None, timer=None):
         """
-        Idle callbacks are invoked at regular intervals from the child's main
-        loop.  They are guaranteed to *not* be called more frequently than
-        'timeout' seconds, no promise is made on a minimal call frequency.
-
-        The intent for these callbacks is to use idle times, ie. times where no
-        actual work is performed in self.work().  For anything else, and
-        sepcifically for high throughput concurrency, the component should use
-        its own threading.
+        Idle callbacks are invoked at regular intervals -- they are guaranteed
+        to *not* be called more frequently than 'timer' seconds, no promise is
+        made on a minimal call frequency.  The intent for these callbacks is to
+        run lightweight work in semi-regular intervals.  
         """
 
         name = "%s.idler.%s" % (self.uid, cb.__name__)
@@ -894,14 +927,14 @@ class Component(mp.Process):
             if name in self._idlers:
                 raise ValueError('cb %s already registered' % cb.__name__)
 
-        if None != timeout:
-            timeout = float(timeout)
+        if None != timer:
+            timer = float(timer)
 
         # create a separate thread per idle cb
         # NOTE: idle timing is a tricky beast: if we sleep for too long, then we
         #       have to wait that long on stop() for the thread to get active
         #       again and terminate/join.  So we always sleep for 1sec, and
-        #       manually check if timeout has passed before activating the
+        #       manually check if timer has passed before activating the
         #       callback.
         # ----------------------------------------------------------------------
         def _idler(terminate, callback, callback_data, to):
@@ -925,7 +958,7 @@ class Component(mp.Process):
 
         # create a idler thread
         e = mt.Event()
-        t = mt.Thread(target=_idler, args=[e,cb,cb_data,timeout], name=name)
+        t = mt.Thread(target=_idler, args=[e,cb,cb_data,timer], name=name)
         t.start()
 
         with self._cb_lock:
@@ -937,9 +970,9 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def unregister_idle_cb(self, pubsub, cb):
+    def unregister_timed_cb(self, pubsub, cb):
         """
-        This method is reverts the register_idle_cb() above: it
+        This method is reverts the register_timed_cb() above: it
         removes an idler from the component, and will terminate the
         respective thread.
         """
@@ -1186,14 +1219,25 @@ class Component(mp.Process):
                         assert(state in self._workers)
 
                         try:
+                            to_cancel = list()
                             for thing in things:
                                 uid   = thing['uid']
                                 ttype = thing['type']
                                 state = thing['state']
 
+                                # FIXME: this can become expensive over time
+                                #        if the cancel list is never cleaned
+                                if uid in self._cancel_list:
+                                    with self._cancel_lock:
+                                        self._cancel_list.del(uid)
+                                    to_cancel.append(thing)
+
                                 self._log.debug('got %s (%s)', ttype, thing)
                                 self._prof.prof(event='get', state=state, uid=uid, msg=input.name)
                                 self._prof.prof(event='work start', state=state, uid=uid)
+
+                            if to_cancel:
+                                self.advance(to_cancel, rps.CANCELED, publish=True, push=False)
 
                             with self._cb_lock:
                                 self._log.debug(' === work on bulk [%s]', len(things))

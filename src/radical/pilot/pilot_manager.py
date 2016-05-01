@@ -125,8 +125,8 @@ class PilotManager(rpu.Component):
         # register the state notification pull cb
         # FIXME: we may want to have the frequency configurable
         # FIXME: this should be a tailing cursor in the update worker
-        self.register_idle_cb(self._state_pull_cb, 
-                              timeout=self._cfg['db_poll_sleeptime'])
+        self.register_timed_cb(self._state_pull_cb, 
+                               timer=self._cfg['db_poll_sleeptime'])
 
         # also listen to the state pubsub for pilot state changes
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_sub_cb)

@@ -47,24 +47,24 @@
     frequent than idle callbacks, and also need some guarantees on the
     frequency.  Prominent example: execution watcher threads.  Handle the
     'work()' loop as just one of those threads (the default one).
-  - register_idle_callback -> register_timed_callback
+  + register_idle_callback -> register_timed_callback
   + component watcher needs to clean out component threads even for failed
     components
   + shutdown command propagation is broken
 
-  - unit cancelation is best done on component level
-    - subscribe to control to get cancel requests
-    - for each cancel request
-      - add to self._cancel_requested
-    - whenver we see an advance or work request:
-      - if uid in self._cancel_requested: advance(CANCEL) + drop   
+  + unit cancelation is best done on component level
+    + subscribe to control to get cancel requests
+    + for each cancel request
+      + add to self._cancel_requested
+    + whenver we see an advance or work request:
+      + if uid in self._cancel_requested: advance(CANCEL) + drop   
     - we can still additionally add cancel actions during staging and
       execution...
 
   - use heartbeat mechanism also for bridges, sub_agents
   + define _cfg['heart'] and use that for heartbeat src instead of owner,
     limiting traffic and noise
-  - Component.stop() should *first* unregister component_checker_cb 
+  - component.stop() should *first* unregister component_checker_cb 
     (and probably all other callbacks)
   - pilot default error cb calls sys.exit -> no shutdown.
 

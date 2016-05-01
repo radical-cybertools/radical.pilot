@@ -115,8 +115,8 @@ class Agent_0(rpu.Worker):
         self._start_sub_agents()
 
         # register the command callback which pulls the DB for commands
-        self.register_idle_cb(self._agent_command_cb, 
-                              timeout=self._cfg['heartbeat_interval'])
+        self.register_timed_cb(self._agent_command_cb, 
+                               timer=self._cfg['heartbeat_interval'])
 
         # registers the staging_input_queue as this is what we want to push
         # units to
@@ -134,7 +134,8 @@ class Agent_0(rpu.Worker):
 
         # register idle callback, to pull for units -- which is the only action
         # we have to perform, really
-        self.register_idle_cb(self._check_units, timeout=self._cfg['db_poll_sleeptime'])
+        self.register_timed_cb(self._check_units, 
+                               timer=self._cfg['db_poll_sleeptime'])
 
 
     # --------------------------------------------------------------------------

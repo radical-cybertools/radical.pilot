@@ -71,7 +71,7 @@ class Update(rpu.Worker):
                                           DEFAULT_BULK_COLLECTION_SIZE)
 
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
-        self.register_idle_cb(self._idle_cb, timeout=self._bct)
+        self.register_timed_cb(self._idle_cb, timer=self._bct)
 
 
     # --------------------------------------------------------------------------
