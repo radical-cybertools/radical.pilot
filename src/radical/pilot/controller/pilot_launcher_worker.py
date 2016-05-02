@@ -701,8 +701,9 @@ class PilotLauncherWorker(threading.Thread):
                         if shared_filesystem:
                             sandbox_tgt.copy(cf_url, agent_cfg_name)
 
-                        # Close agent config file and remove directory
+                        # Close and remove agent config file and remove directory
                         os.close(cfg_tmp_handle)
+                        os.remove(cfg_tmp_handle)
                         os.rmdir(cfg_tmp_dir)
 
                         # ------------------------------------------------------
