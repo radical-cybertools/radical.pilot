@@ -437,6 +437,7 @@ class Default(PMGRLaunchingComponent):
         jc = rs.job.Container()
 
         for jd in jd_list:
+            self._log.debug('jd: %s', pprint.pformat(jd.as_dict()))
             jc.add(js.create_job(jd))
 
         jc.run()

@@ -550,8 +550,9 @@ class Component(mp.Process):
         # unlock the cb lock, for the case that we have a (locked) callback
         # somewhere upward in the callstack.  Since all threads have the term
         # event now set, they should fall out of their event loops at this
-        # point.
-        self._cb_lock.release()
+        # point.  The main thread should not have the lock at this point.
+        if self_thread.name != 'MainThread':
+            self._cb_lock.release()
 
         # collect the threads
         for s in self._subscribers:
@@ -1229,7 +1230,7 @@ class Component(mp.Process):
                                 #        if the cancel list is never cleaned
                                 if uid in self._cancel_list:
                                     with self._cancel_lock:
-                                        self._cancel_list.del(uid)
+                                        self._cancel_list.remove(uid)
                                     to_cancel.append(thing)
 
                                 self._log.debug('got %s (%s)', ttype, thing)

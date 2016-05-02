@@ -1228,12 +1228,29 @@ while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x" OPTION; do
     esac
 done
 
+# derive some var names from given args
+if test -z "$SESSION_SANDBOX"
+then  
+    SESSION_SANDBOX="$PILOT_SANDBOX/.."
+fi
+
+LOGFILES_TARBALL="$PILOT_ID.log.tgz"
+PROFILES_TARBALL="$PILOT_ID.prof.tgz"
+
+# some backends (condor) never finalize a job when output files are missing --
+# so we touch them here to prevent that
+echo 'touching output tarballs'
+touch "$LOGFILES_TARBALL"
+touch "$PROFILES_TARBALL"
+
+
 # FIXME: By now the pre_process rules are already performed.
 #        We should split the parsing and the execution of those.
 #        "bootstrap start" is here so that $PILOT_ID is known.
 # Create header for profile log
 if ! test -z "$RADICAL_PILOT_PROFILE"
 then
+    echo 'create gtod'
     create_gtod
     profile_event 'bootstrap start'
 fi
@@ -1252,11 +1269,6 @@ rmdir "$VIRTENV" 2>/dev/null
 # (Currently all that are passed through to the agent)
 if test -z "$PILOT_ID"    ; then  usage "missing PILOT_ID"  ;  fi
 if test -z "$RP_VERSION"  ; then  usage "missing RP_VERSION";  fi
-
-if test -z "$SESSION_SANDBOX"
-then  
-    SESSION_SANDBOX="$PILOT_SANDBOX/.."
-fi
 
 # If the host that will run the agent is not capable of communication
 # with the outside world directly, we will setup a tunnel.
@@ -1528,7 +1540,6 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Tarring profiles ..."
-    PROFILES_TARBALL="$PILOTID.prof.tgz"
     tar -czf $PROFILES_TARBALL *.prof
     ls -l $PROFILES_TARBALL
     echo "#"
@@ -1543,7 +1554,6 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Tarring logfiles ..."
-    LOGFILES_TARBALL="$PILOTID.log.tgz"
     tar -czf $LOGFILES_TARBALL *.{log,out,err,cfg}
     ls -l $LOGFILES_TARBALL
     echo "#"
@@ -1559,3 +1569,4 @@ echo "# -------------------------------------------------------------------"
 
 # ... and exit
 exit $AGENT_EXITCODE
+
