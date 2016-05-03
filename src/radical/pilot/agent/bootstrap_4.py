@@ -10,9 +10,9 @@ import setproctitle
 
 import radical.utils  as ru
 
-from .. import worker as rpw
 from .. import utils  as rpu
 
+from   .agent_n import Agent_n
 
 # ==============================================================================
 #
@@ -21,7 +21,7 @@ from .. import utils  as rpu
 # ==============================================================================
 #
 # avoid undefined vars on finalization / signal handling
-def bootstrap_4(agent_name):
+def bootstrap_4(agent_name, agent_part):
     """
     This method continues where the bootstrapper left off, but will soon pass
     control to the Agent class which will spawn the functional components.
@@ -39,8 +39,6 @@ def bootstrap_4(agent_name):
     """
 
     try:
-        assert(agent_name != 'agent_0')
-
         print "startup agent %s" % agent_name
         setproctitle.setproctitle('rp.%s' % agent_name)
 
@@ -51,23 +49,24 @@ def bootstrap_4(agent_name):
         pilot_id   = cfg['pilot_id']
         session_id = cfg['session_id']
 
+        assert(cfg['partition'] == agent_part)
+
         # set up a logger and profiler
         print "Agent config (%s):\n%s\n\n" % (agent_cfg, pprint.pformat(cfg))
 
         # des Pudels Kern
-        agent = rpw.Agent(cfg)
+        agent = Agent_n(cfg)
         agent.start()
         agent.join()
-
 
     except SystemExit:
         print "Exit running %s" % agent_name
 
     except Exception as e:
         print "Error running %s" % agent_name
+        raise
 
     finally:
-
         # in all cases, make sure we perform an orderly shutdown.  I hope python
         # does not mind doing all those things in a finally clause of
         # (essentially) main...

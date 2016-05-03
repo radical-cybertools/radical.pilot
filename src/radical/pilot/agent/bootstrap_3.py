@@ -12,22 +12,22 @@ from   .agent_0 import Agent_0
 
 # ------------------------------------------------------------------------------
 #
-def bootstrap_3():
+def bootstrap_3(agent_name, agent_part):
     """
-    This is only executed by agent_0
+    This is only executed by agent.P.0 for each partision P
     """
 
     agent_0 = None
     try:
-        setproctitle.setproctitle('rp.agent_0')
+        setproctitle.setproctitle(agent_name)
 
-        agent_0 = Agent_0()
+        agent_0 = Agent_0(agent_name, agent_part)
         agent_0.start(spawn=False)
 
-        # we never really quit this way, but instead the agent_0 command_cb may
-        # pick up a shutdown signal, the watcher_cb may detect a failing
-        # component or sub-agent, or we get a kill signal from the RM.  In all
-        # three cases, we'll end up in agent_0.stop()
+        # we never really quit this way (w/o spawning that is), but instead the
+        # agent_0 command_cb may pick up a shutdown signal, the watcher_cb may
+        # detect a failing component or sub-agent, or we get a kill signal from
+        # the RM.  In all three cases, we'll end up in agent_0.stop()
         while True:
             time.sleep(1)
 
@@ -41,3 +41,4 @@ def bootstrap_3():
 
 
 # ------------------------------------------------------------------------------
+

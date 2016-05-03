@@ -37,16 +37,14 @@ class Agent_0(rpu.Worker):
     
     # --------------------------------------------------------------------------
     #
-    def __init__(self):
+    def __init__(self, agent_name, agent_part):
 
         # load config, create session and controller, init rpu.Worker
 
         # load the agent config, and overload the config dicts
         cfg               = ru.read_json_str("%s/agent.cfg" % (os.getcwd()))
-        self._uid         = 'agent_0'
-        self._pilot_id    = cfg['pilot_id']
-        self._session_id  = cfg['session_id']
-        self._runtime     = cfg['runtime']
+        self._uid         = agent_name
+        self._part        = agent_part
         self._starttime   = time.time()
         self._final_cause = None
         self._lrms        = None
@@ -63,6 +61,10 @@ class Agent_0(rpu.Worker):
         if not 'spawner'             in cfg: raise ValueError("Missing agent spawner")
         if not 'task_launch_method'  in cfg: raise ValueError("Missing unit launch method")
         if not 'agent_layout'        in cfg: raise ValueError("Missing agent layout")
+
+        self._pilot_id    = cfg['pilot_id']
+        self._session_id  = cfg['session_id']
+        self._runtime     = cfg['runtime']
 
         # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold
         # the address of the tunnelized DB endpoint. If it exists, we
@@ -170,9 +172,6 @@ class Agent_0(rpu.Worker):
         self._log.info('rusage: %s', rpu.get_rusage())
         self._log.info(msg)
 
-        if state == rps.FAILED:
-            self._log.info(ru.get_trace())
-    
         now = rpu.timestamp()
         out = None
         err = None
@@ -214,17 +213,18 @@ class Agent_0(rpu.Worker):
         sa_cfg_0 = None
         for sa in self._cfg.get('agent_layout', []):
 
-            assert(sa != 'agent_0')
+            sa_name = sa.replace('_', '.')
 
             tmp_cfg = copy.deepcopy(sa_cfg)
 
             # merge sub_agent layout into the confoig
             ru.dict_merge(tmp_cfg, self._cfg['agent_layout'][sa], ru.OVERWRITE)
 
-            tmp_cfg['agent_name'] = sa
+            tmp_cfg['agent_name'] = sa_name
             tmp_cfg['owner']      = self._pilot_id
+            # FIXME: should 'owner' be the sub-agent, possibly?
 
-            ru.write_json(tmp_cfg, './%s.cfg' % sa)
+            ru.write_json(tmp_cfg, './%s.cfg' % sa_name)
 
 
     # --------------------------------------------------------------------------
@@ -240,7 +240,7 @@ class Agent_0(rpu.Worker):
     
         self._log.debug('start_sub_agents')
     
-        if not self._cfg['agent_layout'].keys():
+        if not self._cfg['agent_layout']:
             self._log.debug('start_sub_agents noop')
             return
 
@@ -254,23 +254,29 @@ class Agent_0(rpu.Worker):
         agent_lm   = None
         sub_agents = list()
         for sa in self._cfg['agent_layout']:
-    
-            target = self._cfg['agent_layout'][sa]['target']
-    
+
+            sa_name = sa.replace('_', '.')
+
+            target    = self._cfg['agent_layout'][sa]['target']
+            partition = self._cfg['agent_layout'][sa]['partition']
+
+            if partition != self._part:
+                # this sub-agent belongs to a different partition
+                continue
+
             if target == 'local':
-    
                 # start agent locally
-                cmdline = "/bin/sh -l %s/bootstrap_2.sh %s" % (os.getcwd(), sa)
-    
+                cmdline = "/bin/sh -l %s/bootstrap_2.sh %s %d" \
+                        % (os.getcwd(), sa_name, partition)
+
             elif target == 'node':
-    
                 if not agent_lm:
                     agent_lm = rpa_lm.LM.create(
                         name    = self._cfg['agent_launch_method'],
                         cfg     = self._cfg,
                         session = self._session)
     
-                node = self._cfg['lrms_info']['agent_nodes'][sa]
+                node = self._cfg['lrms_info']['agent_nodes'][sa_name]
                 # start agent remotely, use launch method
                 # NOTE:  there is some implicit assumption that we can use
                 #        the 'agent_node' string as 'agent_string:0' and
@@ -281,7 +287,7 @@ class Agent_0(rpu.Worker):
                 #        out for the moment, which will make this unable to
                 #        work with a number of launch methods.  Can the
                 #        offset computation be moved to the LRMS?
-                ls_name = "%s/%s.sh" % (os.getcwd(), sa)
+                ls_name = "%s/%s.sh" % (os.getcwd(), sa_name)
                 opaque_slots = {
                         'task_slots'   : ['%s:0' % node],
                         'task_offsets' : [],
@@ -291,7 +297,8 @@ class Agent_0(rpu.Worker):
                         'description'  : {
                             'cores'      : 1,
                             'executable' : "/bin/sh",
-                            'arguments'  : ["%s/bootstrap_2.sh" % os.getcwd(), sa]
+                            'arguments'  : ["%s/bootstrap_2.sh" % os.getcwd(),
+                                            sa_name, partition]
                             }
                         }
                 cmd, hop = agent_lm.construct_command(agent_cmd,
@@ -309,20 +316,21 @@ class Agent_0(rpu.Worker):
                 else   : cmdline = ls_name
     
             # spawn the sub-agent
-            self._log.info ("create sub-agent %s: %s" % (sa, cmdline))
-            sa_out = open("%s.out" % sa, "w")
-            sa_err = open("%s.err" % sa, "w")
+            self._log.info ("create sub-agent %s: %s" % (sa_name, cmdline))
+            sa_out = open("%s.out" % sa_name, "w")
+            sa_err = open("%s.err" % sa_name, "w")
             sa_proc = sp.Popen(args=cmdline.split(), stdout=sa_out, stderr=sa_err)
     
             # make sure we can stop the sa_proc
-            sa_proc.name = sa
+            sa_proc.name = sa_name
             sa_proc.stop = sa_proc.terminate
             sub_agents.append(sa_proc)
     
         # the agents are up - let the session controller manage them from here
-        self._session._controller.add_watchables(sub_agents, owner=self._pilot_id)
+        if sub_agents:
+            self._session._controller.add_watchables(sub_agents, owner=self._pilot_id)
     
-        self._log.debug('start_sub_agents done')
+        self._log.debug('%d sub_agents started', len(sub_agents))
 
 
     # --------------------------------------------------------------------------

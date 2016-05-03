@@ -498,7 +498,7 @@ class Default(PMGRLaunchingComponent):
 
         # ------------------------------------------------------------------
         # pilot description and resource configuration
-        number_cores    = pilot['description']['cores']
+        cores           = pilot['description']['cores']
         runtime         = pilot['description']['runtime']
         queue           = pilot['description']['queue']
         project         = pilot['description']['project']
@@ -692,12 +692,31 @@ class Default(PMGRLaunchingComponent):
             sdist_names = list()
             sdist_paths = list()
 
-        # if cores_per_node is set (!= None), then we need to
-        # allocation full nodes, and thus round up
+        # cores can contain a partitioning specification like # 32:32:64 
+        # (3 partitions with 32, 32 and 64 cores each), so we need to
+        # derive the actual core count.
+        total_cores = 0
+        partitions  = 0
+
+        # if cores_per_node is set (!= None), then we need to allocation full
+        # nodes, and thus round up.  We need to do this for each partition, as
+        # we currently only partition at node boundaries.  This may change the
+        # overall core count, so we update 'cores', too.
         if cores_per_node:
             cores_per_node = int(cores_per_node)
-            number_cores   = int(cores_per_node
-                           * math.ceil(float(number_cores)/cores_per_node))
+            new_cores      = ''
+            for c in cores.split(':'):
+                part_cores   = int(cores_per_node
+                             * math.ceil(float(c)/cores_per_node))
+                total_cores += part_cores
+                new_cores   += '%d:' % part_cores
+                partitions  += 1
+            cores = new_cores[:-1]  # remove trailing ':'
+        else:
+            # otherwise, total cores is just the sum of the given partitions.
+            for c in cores.split(':'):
+                total_cores += int(c)
+                partitions  += 1
 
         # set mandatory args
         bootstrap_args  = ""
@@ -705,6 +724,7 @@ class Default(PMGRLaunchingComponent):
         bootstrap_args += " -p '%s'" % pid
         bootstrap_args += " -s '%s'" % sid
         bootstrap_args += " -m '%s'" % virtenv_mode
+        bootstrap_args += " -n '%d'" % partitions
         bootstrap_args += " -r '%s'" % rp_version
         bootstrap_args += " -b '%s'" % python_dist
         bootstrap_args += " -v '%s'" % virtenv
@@ -734,7 +754,20 @@ class Default(PMGRLaunchingComponent):
 
         ru.dict_merge(agent_cfg, agent_base_cfg, ru.PRESERVE)
 
-        agent_cfg['cores']              = number_cores
+        # depending on the number of partitions, we want to massage the agent
+        # config a little.  At the moment, we simply consider the agent configs
+        # to apply identically to each partition, thus we replicate all
+        # sub-agent config session for all partitions
+        layout = copy.deepcopy(agent_cfg['agent_layout'])
+        agent_cfg['agent_layout'] = dict()
+        for sub_agent in layout:
+            agent_id = int(sub_agent.split('_', 1)[1])
+            for p in range(partitions):
+                agent_name = 'agent_%d_%s' % (p, agent_id)
+                agent_cfg['agent_layout'][agent_name] = layout[sub_agent]
+                agent_cfg['agent_layout'][agent_name]['partition'] = p
+
+        agent_cfg['cores']              = cores
         agent_cfg['debug']              = os.environ.get('RADICAL_PILOT_AGENT_VERBOSE', 
                                                          self._log.getEffectiveLevel())
         agent_cfg['lrms']               = lrms
@@ -825,7 +858,7 @@ class Default(PMGRLaunchingComponent):
         jd.project               = project
         jd.output                = "bootstrap_1.out"
         jd.error                 = "bootstrap_1.err"
-        jd.total_cpu_count       = number_cores
+        jd.total_cpu_count       = total_cores
         jd.processes_per_host    = cores_per_node
         jd.spmd_variation        = spmd_variation
         jd.wall_time_limit       = runtime

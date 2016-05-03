@@ -33,6 +33,7 @@ HOSTPORT=
 SDISTS=
 VIRTENV=
 VIRTENV_MODE=
+PARTITIONS=
 CCM=
 PILOT_ID=
 RP_VERSION=
@@ -370,6 +371,7 @@ usage: $0 options
 This script launches a RADICAL-Pilot agent.
 
 OPTIONS:
+   -a   session sandbox
    -b   python distribution (default, anaconda)
    -c   ccm mode of agent startup
    -d   distribution source tarballs for radical stack install
@@ -377,6 +379,7 @@ OPTIONS:
    -f   tunnel forward endpoint (MongoDB host:port)
    -h   hostport to create tunnel to
    -i   python Interpreter to use, e.g., python2.7
+   -n   number of partitions
    -m   mode of stack installion
    -p   pilot ID
    -r   radical-pilot version version to install in virtenv
@@ -1206,7 +1209,7 @@ env | sort
 echo "---------------------------------------------------------------------"
 
 # parse command line arguments
-while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x" OPTION; do
+while getopts "a:b:cd:e:f:h:i:m:n:p:r:s:t:v:w:x" OPTION; do
     case $OPTION in
         a)  SESSION_SANDBOX="$OPTARG"  ;;
         b)  PYTHON_DIST="$OPTARG"  ;;
@@ -1216,6 +1219,7 @@ while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x" OPTION; do
         f)  FORWARD_TUNNEL_ENDPOINT="$OPTARG"  ;;
         h)  HOSTPORT="$OPTARG"  ;;
         i)  PYTHON="$OPTARG"  ;;
+        n)  PARTITIONS="$OPTARG"  ;;
         m)  VIRTENV_MODE="$OPTARG"  ;;
         p)  PILOT_ID="$OPTARG"  ;;
         r)  RP_VERSION="$OPTARG"  ;;
@@ -1341,13 +1345,6 @@ export _OLD_VIRTUAL_PS1
 # FIXME: the second option should use $RP_MOD_PATH, or should derive the path
 #       from the imported rp modules __file__.
 PILOT_SCRIPT=`which radical-pilot-agent`
-# if test "$RP_INSTALL_TARGET" = 'PILOT_SANDBOX'
-# then
-#     PILOT_SCRIPT="$PILOT_SANDBOX/rp_install/bin/radical-pilot-agent"
-# else
-#     PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent"
-# fi
-
 
 # TODO: Can this be generalized with our new split-agent now?
 if test -z "$CCM"
@@ -1362,8 +1359,9 @@ verify_rp_install
 # TODO: (re)move this output?
 echo
 echo "# -------------------------------------------------------------------"
-echo "# Launching radical-pilot-agent "
-echo "# CMDLINE: $AGENT_CMD"
+echo "# Launching radical-pilot-agents "
+echo "# CMDLINE:    $AGENT_CMD"
+echo "# PARTITIONS: $PARTITIONS"
 
 # At this point we expand the variables in $PREBOOTSTRAP2 to pick up the
 # changes made by the environment by pre_bootstrap_1.
@@ -1439,7 +1437,8 @@ $PREBOOTSTRAP2_EXPANDED
 
 # start agent, forward arguments
 # NOTE: exec only makes sense in the last line of the script
-exec $AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
+echo "$AGENT_CMD  \$1  \$2"
+exec  $AGENT_CMD "\$1" "\$2" 1>"\$1.out" 2>"\$1.err"
 
 EOT
 
@@ -1476,13 +1475,78 @@ fi
 
 profile_event 'agent start'
 
-# start the master agent instance (zero)
-profile_event 'sync rel' 'agent start'
-./bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
+# start the master agent instances for each partition
+profile_event 'sync rel' 'agents start'
+part=0
+pids=''
+while ! test "$part" == "$PARTITIONS"
+do
+    profile_event 'sync rel' "agent.$part.0 start"
+    acmd="./bootstrap_2.sh agent.$part.0 $part 1>agent.$part.0.bootstrap_2.out 2>agent.$part.0.bootstrap_2.err"
+    echo "acmd: $acmd"
+    $acmd &
+    pids="$pids $!"
+    part=$((part+1))
+done
 
-AGENT_EXITCODE=$?
+# remove trailing space
+pids="${pids%% }"
 
-profile_event 'cleanup start'
+# wait for all agents to finish: whenever one of them finishes with an non-zero
+# exit code, we will kill all the others and bail out;  otherwise we wait for
+# all of them to finish w/o error.
+AGENT_EXITCODE=0
+while ! test -z "$pids"
+do
+    sleep 1
+    for pid in $pids
+    do
+        # check if agent is still alive
+        kill -0 $pid
+        if ! test $? == 0
+        then
+            # agent died, remove from pid list and get exit value 
+            new_pids=''
+            for _pid in $pids
+            do
+                if test $_pid != $pid
+                then
+                    new_pids="$new_pids $_pid"
+                fi
+            done
+
+            wait $pid
+            ec=$?
+            if test $ec == 0
+            then
+                # agent completed successfully - wait for all others
+                pids=$new_pids
+            else
+                # an agent failed
+                AGENT_EXITCODE=$ec
+
+                # kill all other agents
+                for _pid in $new_pids
+                do
+                    kill $_pid
+                done
+
+                # and wait for them to stop
+                for _pid in $new_pids
+                do
+                    wait $_pid
+                done
+
+                # no need to wait any longer, all agents are done
+                pids=""
+            fi
+
+            # at this point, we always have a new $pids set, so we restart the
+            # wait loop
+            break
+        fi
+    done
+done
 
 # cleanup flags:
 #   l : pilot log files
@@ -1493,11 +1557,11 @@ echo
 echo "# -------------------------------------------------------------------"
 echo "# CLEANUP: $CLEANUP"
 echo "#"
+profile_event 'cleanup start'
 contains $CLEANUP 'l' && rm -r "$PILOT_SANDBOX/agent.*"
 contains $CLEANUP 'u' && rm -r "$PILOT_SANDBOX/unit.*"
 contains $CLEANUP 'v' && rm -r "$VIRTENV/" # FIXME: in what cases?
 contains $CLEANUP 'e' && rm -r "$PILOT_SANDBOX/"
-
 profile_event 'cleanup done'
 echo "#"
 echo "# -------------------------------------------------------------------"
@@ -1507,7 +1571,7 @@ then
     echo
     echo "# -------------------------------------------------------------------"
     echo "#"
-    echo "# Mark final profiling entry ..."
+    echo "# final profiling entry"
     profile_event 'QED'
     echo "#"
     echo "# -------------------------------------------------------------------"

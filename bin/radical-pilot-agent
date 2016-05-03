@@ -24,6 +24,10 @@ if __name__ == "__main__":
     job.
     """
 
+    print sys.argv
+    agent_name = str(sys.argv[1])
+    agent_part = int(sys.argv[2])
+
     print "---------------------------------------------------------------------"
     print
     print "PYTHONPATH: %s"  % sys.path
@@ -31,22 +35,21 @@ if __name__ == "__main__":
     print "utils : %-5s : %s" % (ru.version_detail, ru.__file__)
     print "saga  : %-5s : %s" % (rs.version_detail, rs.__file__)
     print "pilot : %-5s : %s" % (rp.version_detail, rp.__file__)
-    print "        type  : multicore"
-    print "        gitid : %s" % git_ident
+    print "        type : multicore"
+    print "        gitid: %s" % git_ident
+    print "agent : %s [%s]"   % (agent_name, agent_part)
     print
     print "---------------------------------------------------------------------"
     print
 
-    agent_name=sys.argv[1]
-
-    if agent_name == 'agent_0':
-        # spawn sub agents
-        rp.agent.bootstrap_3()
-        print "bootstrap_3 done"
+    if agent_name == 'agent.%d.0' % agent_part:
+        # spawn one agent per partition
+        rp.agent.bootstrap_3(agent_name, agent_part)
+        print "bootstrap_3 done (%s)" % agent_name
 
     else:
         # this is a sub agent - bootstrap it!
-        rp.agent.bootstrap_4(agent_name)
+        rp.agent.bootstrap_4(agent_name, agent_part)
         print "bootstrap_4 done (%s)" % agent_name
 
 #

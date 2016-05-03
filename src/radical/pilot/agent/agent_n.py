@@ -21,7 +21,10 @@ from ..session  import Session as rp_Session
 
 # ==============================================================================
 #
-class Agent(rpu.Worker):
+class Agent_n(rpu.Worker):
+    """
+    This is an sub-agent to Agent_0
+    """
 
     # --------------------------------------------------------------------------
     #
