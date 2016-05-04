@@ -307,6 +307,8 @@ class AgentSchedulingComponent(rpu.Component):
             else:
                 self._prof.prof('drop_cb', uid=unit['_id'])
 
+            # Comment out the unschedule_cb() call below to run
+            # scheduling micro-benchmarks without freeing cores
             self.unschedule_cb(topic=None, msg=unit)
 
 
