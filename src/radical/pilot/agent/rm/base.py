@@ -67,7 +67,8 @@ class LRMS(object):
         self._cfg            = cfg
         self._session        = session
         self._log            = self._session._log
-        self.requested_cores = self._cfg['cores']
+        self.partition       = self._cfg['partition']
+        self.requested_cores = int(self._cfg['cores'].split(':')[self.partition])
 
         self._log.info("Configuring LRMS %s.", self.name)
 

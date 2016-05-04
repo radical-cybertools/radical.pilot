@@ -49,6 +49,8 @@ class Agent_0(rpu.Worker):
         self._final_cause = None
         self._lrms        = None
 
+        cfg['partition']  = self._part
+
         # sanity check on config settings
         if not 'cores'               in cfg: raise ValueError("Missing number of cores")
         if not 'debug'               in cfg: raise ValueError("Missing DEBUG level")

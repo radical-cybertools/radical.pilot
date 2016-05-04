@@ -48,4 +48,3 @@ class Fork(LRMS):
                 len(self.node_list), self.cores_per_node)
 
 
-
