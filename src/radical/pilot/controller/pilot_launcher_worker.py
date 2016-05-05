@@ -701,9 +701,8 @@ class PilotLauncherWorker(threading.Thread):
                         if shared_filesystem:
                             sandbox_tgt.copy(cf_url, agent_cfg_name)
 
-                        # Close agent config file and remove directory
+                        # Close agent config file
                         os.close(cfg_tmp_handle)
-                        os.rmdir(cfg_tmp_dir)
 
                         # ------------------------------------------------------
                         # Done with all transfers to pilot sandbox, close handle
@@ -789,8 +788,9 @@ class PilotLauncherWorker(threading.Thread):
                         pilotjob = js.create_job(jd)
                         pilotjob.run()
 
-                        # Clean up agent config file after submission
+                        # Clean up agent config file and dir after submission
                         os.unlink(cfg_tmp_file)
+                        os.rmdir(cfg_tmp_dir)
 
                         # do a quick error check
                         if pilotjob.state == saga.FAILED:

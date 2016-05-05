@@ -126,12 +126,6 @@
             "schema"   : null
         },
 
-        "xsede.darter_aprun" : {
-            "project"  : null,
-            "queue"    : null,
-            "schema"   : "gsissh"
-        },
-
         "futuregrid.india" : {
             "project"  : null,
             "queue"    : null,
