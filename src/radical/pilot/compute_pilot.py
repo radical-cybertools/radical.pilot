@@ -124,7 +124,8 @@ class ComputePilot (object):
             'submission_time': self.submission_time,
             'start_time':      self.start_time,
             'stop_time':       self.stop_time,
-            'resource_detail': self.resource_detail
+            'resource_detail': self.resource_detail,
+            'spark_master_url': self.spark_master_url
         }
         return obj_dict
 
@@ -303,6 +304,19 @@ class ComputePilot (object):
             'cores_per_node': pilot_json['cores_per_node']
         }
         return resource_details
+
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def spark_master_url(self):
+        """Returns the master url of apache spark
+        """
+        # Check if this instance is valid
+        if not self._uid:
+            return None
+
+        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
+        return pilot_json.get('lm_detail')
 
     # -------------------------------------------------------------------------
     #
@@ -527,7 +541,7 @@ class ComputePilot (object):
             # the directory if it does not yet exist.
             target_dir = saga.filesystem.Directory(tgt_dir_url, flags=saga.filesystem.CREATE_PARENTS)
 
-            if action == LINK:
+            if action == LINK:	
                 # TODO: Does this make sense?
                 #log_message = 'Linking %s to %s' % (source, abs_target)
                 #os.symlink(source, abs_target)
