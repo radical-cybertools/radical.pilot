@@ -124,8 +124,7 @@ class ComputePilot (object):
             'submission_time': self.submission_time,
             'start_time':      self.start_time,
             'stop_time':       self.stop_time,
-            'resource_detail': self.resource_detail,
-            'spark_master_url': self.spark_master_url
+            'resource_detail': self.resource_detail
         }
         return obj_dict
 
@@ -301,22 +300,10 @@ class ComputePilot (object):
         pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         resource_details = {
             'nodes':          pilot_json['nodes'],
-            'cores_per_node': pilot_json['cores_per_node']
+            'cores_per_node': pilot_json['cores_per_node'],
+            'spark_master_url': pilot_json['lm_detail']
         }
         return resource_details
-
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def spark_master_url(self):
-        """Returns the master url of apache spark
-        """
-        # Check if this instance is valid
-        if not self._uid:
-            return None
-
-        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
-        return pilot_json.get('lm_detail')
 
     # -------------------------------------------------------------------------
     #
