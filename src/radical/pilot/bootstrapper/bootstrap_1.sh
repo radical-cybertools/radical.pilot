@@ -1334,13 +1334,7 @@ else
 fi
 
 
-# TODO: Can this be generalized with our new split-agent now?
-if test -z "$CCM"
-then
-    AGENT_CMD="$PYTHON $PILOT_SCRIPT"
-else
-    AGENT_CMD="ccmrun $PYTHON $PILOT_SCRIPT"
-fi
+AGENT_CMD="$PYTHON $PILOT_SCRIPT"
 
 verify_rp_install
 
@@ -1463,7 +1457,13 @@ profile_event 'agent start'
 
 # start the master agent instance (zero)
 profile_event 'sync rel' 'agent start'
+
+# TODO: Can this be generalized with our new split-agent now?
+if test -z "$CCM"; then
 ./bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
+else
+ccmrun ./bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
+fi
 
 AGENT_EXITCODE=$?
 
