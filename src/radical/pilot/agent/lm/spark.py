@@ -58,7 +58,7 @@ class Spark(LaunchMethod):
                 node_name = lrms.node_list[0]
             else:
                 logger.info("Bootstrap SPARK on " + socket.gethostname())
-                node_name = socket.gethostname()
+                node_name =  socket.gethostname()
             
             VERSION = "1.5.2"
             SPARK_DOWNLOAD_URL= "http://d3kbcqa49mib13.cloudfront.net/spark-1.5.2-bin-hadoop2.6.tgz" #prebuilt
@@ -77,20 +77,21 @@ class Spark(LaunchMethod):
 
             #-------------------------------------------------------------------
             platform_os = sys.platform
-            if platform_os == "linux" or platform_os == "linux2":
-                java = ru.which('java')
-                if java != '/usr/bin/java':
-                    jpos=java.split('bin')
-                else:
-                    jpos = os.path.realpath('/usr/bin/java').split('bin')
+            java_home = os.environ.get('JAVA_HOME')
 
-                if jpos[0].find('jre') != -1:
-                    java_home = jpos[0][:jpos[0].find('jre')]
-                else:
-                    java_home = jpos[0]
-             
+            if platform_os == "linux" or platform_os == "linux2":
+                if not java_home:
+                    java = ru.which('java')
+                    if java != '/usr/bin/java':
+                        jpos=java.split('bin')
+                    else:
+                        jpos = os.path.realpath('/usr/bin/java').split('bin')
+
+                    if jpos[0].find('jre') != -1:
+                        java_home = jpos[0][:jpos[0].find('jre')]
+                    else:
+                        java_home = jpos[0]       
             else:
-                java_home = os.environ.get('JAVA_HOME')
                 if not java_home:
                     try:
                         java_home = subprocess.check_output("/usr/libexec/java_home").split()[0]
@@ -113,6 +114,7 @@ class Spark(LaunchMethod):
 
             if lrms.node_list[0]!='localhost':
                 hostname = subprocess.check_output('/bin/hostname').split(lrms.node_list[0])[1].split('\n')[0]
+
             else:
                 hostname = ''
 
