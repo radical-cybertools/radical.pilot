@@ -19,14 +19,14 @@
         },
 
         "epsrc.archer" : {
-            "project"  : "e290",
-            "queue"    : "short",
+            "project"  : "y14-ExTASY",
+            "queue"    : "course1",
             "schema"   : null
         },
 
         "epsrc.archer_orte" : {
-            "project"  : "e290",
-            "queue"    : "short",
+            "project"  : "y14-ExTASY",
+            "queue"    : "course1",
             "schema"   : null
         },
 
@@ -43,21 +43,21 @@
         },
 
         "xsede.stampede" : {
-            "project"  : "TG-MCB150124",
+            "project"  : "TG-TRA100001S",
             "queue"    : "development",
-            "schema"   : null
+            "schema"   : "gsissh"
         },
 
         "xsede.comet"  : {
-            "project"  : "unc100",
-            "queue"    : "",
-            "schema"   : null
+            "project"  : "TG-TRA100001S",
+            "queue"    : "compute",
+            "schema"   : "gsissh"
         },
 
         "xsede.comet_orte": {
-            "project"  : "unc100",
-            "queue"    : "",
-            "schema"   : null
+            "project"  : "TG-TRA100001S",
+            "queue"    : "compute",
+            "schema"   : "gsissh"
         },
 
         "xsede.gordon" : {
