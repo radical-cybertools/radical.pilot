@@ -42,6 +42,9 @@ SESSION_SANDBOX=
 PILOT_SANDBOX=`pwd`
 PREBOOTSTRAP2=""
 
+#  NOTE:  $HOME is set to the job sandbox on OSG.  Bah!
+mkdir -p .ssh/
+
 # flag which is set when a system level RP installation is found, triggers
 # '--upgrade' flag for pip
 # NOTE: this mechanism is disabled, as it affects a minority of machines and
@@ -279,6 +282,34 @@ rehash()
 
 
 # ------------------------------------------------------------------------------
+# verify that we have a usable python installation
+verify_install()
+{
+    echo -n "verify python viability: $PYTHON ..."
+    if ! $PYTHON -c 'import sys; assert(sys.version_info >= (2,7))'
+    then
+        echo "python installation ($PYTHON) is not usable - abort"
+        exit 1
+    fi
+    echo ' ok'
+
+    # FIXME: attempt to load all required modules
+    modules='saga radical.utils pymongo hostlist netifaces setproctitle ntplib msgpack zmq'
+    for m in $modules
+    do
+        printf 'verify module viability: %-15s ...' $m
+        if ! $PYTHON -c "import $m"
+        then
+            echo "python installation cannot load module $m - abort"
+            exit 1
+        fi
+        echo ' ok'
+
+    done
+}
+
+
+# ------------------------------------------------------------------------------
 # contains(string, substring)
 #
 # Returns 0 if the specified string contains the specified substring,
@@ -500,6 +531,7 @@ virtenv_setup()
                     tar zxmf "$SESSION_SANDBOX/$sdist"
                 else
                     tar zxmf "./$sdist"
+                    rm  -v   "./$sdist"
                 fi
                 RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
             done
@@ -519,6 +551,7 @@ virtenv_setup()
                     tar zxmf "$SESSION_SANDBOX/$sdist"
                 else
                     tar zxmf "./$sdist"
+                    rm  -v   "./$sdist"
                 fi
                 RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
             done
@@ -795,6 +828,12 @@ virtenv_create()
             "$BOOTSTRAP_CMD"
     fi
 
+    # clean out virtenv sources
+    if test -d "virtualenv-1.9/"
+    then
+        rm -rf "virtualenv-1.9/"
+    fi
+
     if test $? -ne 0
     then
         echo "Couldn't create virtualenv"
@@ -1063,7 +1102,7 @@ rp_install()
     pip_flags="$pip_flags --build '$PILOT_SANDBOX/rp_install/build'"
     pip_flags="$pip_flags --install-option='--prefix=$RP_INSTALL'"
 
-    for src in $RP_INSTALL_SOURCES
+    for src in $rp_install_sources
     do
         run_cmd "update $src via pip" \
                 "$PIP install $pip_flags $src"
@@ -1075,6 +1114,13 @@ rp_install()
 
         # NOTE: why? fuck pip, that's why!
         rm -rf "$PILOT_SANDBOX/rp_install/build"
+
+        # clean out the install source if it is a local dir
+        if test -d "$src"
+        then
+            echo "purge install source at $src"
+            rm -r "$src"
+        fi
     done
 
     profile_event 'rp_install done'
@@ -1348,6 +1394,9 @@ PILOT_SCRIPT=`which radical-pilot-agent`
 #     PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent"
 # fi
 
+# after all is said and done, we should end up with a usable python version.
+# Verify it
+verify_install
 
 # TODO: Can this be generalized with our new split-agent now?
 if test -z "$CCM"
@@ -1502,6 +1551,7 @@ profile_event 'cleanup done'
 echo "#"
 echo "# -------------------------------------------------------------------"
 
+touch $PROFILES_TARBALL
 if ! test -z "`ls *.prof 2>/dev/null`"
 then
     echo
@@ -1546,6 +1596,7 @@ then
     echo "# -------------------------------------------------------------------"
 fi
 
+touch $LOGFILES_TARBALL
 if ! test -z "`ls *{log,out,err,cfg} 2>/dev/null`"
 then
     # TODO: This might not include all logs, as some systems only write
@@ -1559,6 +1610,11 @@ then
     echo "#"
     echo "# -------------------------------------------------------------------"
 fi
+
+echo "# -------------------------------------------------------------------"
+echo "# create debug tarball"
+tar -zcf $PROFILES_TARBALL *
+echo "# -------------------------------------------------------------------"
 
 echo
 echo "# -------------------------------------------------------------------"

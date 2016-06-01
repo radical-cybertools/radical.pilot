@@ -218,7 +218,8 @@ class Component(mp.Process):
         arg = msg['arg']
 
         if cmd == 'cancel_units':
-            uids = arg[uids]
+
+            uids = arg['uids']
 
             if not isinstance(uids, list):
                 uids = [uids]
@@ -550,9 +551,11 @@ class Component(mp.Process):
         # unlock the cb lock, for the case that we have a (locked) callback
         # somewhere upward in the callstack.  Since all threads have the term
         # event now set, they should fall out of their event loops at this
-        # point.  The main thread should not have the lock at this point.
-        if self_thread.name != 'MainThread':
+        # point.  We do not always have the lock though...
+        try:
             self._cb_lock.release()
+        except:
+            pass
 
         # collect the threads
         for s in self._subscribers:
