@@ -1,4 +1,14 @@
 #!/bin/bash -l
+
+# interleave stdout and stderr, to get a coherent set of log messages
+if test -z "$RP_BOOTSTRAP_1_REDIR"
+then
+    export RP_BOOTSTRAP_1_REDIR=True
+    exec 2>&1
+fi
+
+echo "bootstrap_1 stderr redirected to stdout"
+
 # ------------------------------------------------------------------------------
 # Copyright 2013-2015, RADICAL @ Rutgers
 # Licensed under the MIT License
@@ -42,8 +52,9 @@ SESSION_SANDBOX=
 PILOT_SANDBOX=`pwd`
 PREBOOTSTRAP2=""
 
-#  NOTE:  $HOME is set to the job sandbox on OSG.  Bah!
-mkdir -p .ssh/
+# NOTE:  $HOME is set to the job sandbox on OSG.  Bah!
+# FIXME: the need for this needs to be reconfirmed and documented
+# mkdir -p .ssh/
 
 # flag which is set when a system level RP installation is found, triggers
 # '--upgrade' flag for pip
@@ -288,6 +299,7 @@ verify_install()
     echo -n "verify python viability: $PYTHON ..."
     if ! $PYTHON -c 'import sys; assert(sys.version_info >= (2,7))'
     then
+        echo ' failed'
         echo "python installation ($PYTHON) is not usable - abort"
         exit 1
     fi
@@ -300,6 +312,7 @@ verify_install()
         printf 'verify module viability: %-15s ...' $m
         if ! $PYTHON -c "import $m"
         then
+            echo ' failed'
             echo "python installation cannot load module $m - abort"
             exit 1
         fi
@@ -344,7 +357,7 @@ run_cmd()
     echo "# $msg"
     echo "# cmd: $cmd"
     echo "#"
-    eval "$cmd"
+    eval "$cmd" 2>&1
     if test "$?" = 0
     then
         echo "#"
@@ -1252,7 +1265,7 @@ env | sort
 echo "---------------------------------------------------------------------"
 
 # parse command line arguments
-while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x" OPTION; do
+while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x:" OPTION; do
     case $OPTION in
         a)  SESSION_SANDBOX="$OPTARG"  ;;
         b)  PYTHON_DIST="$OPTARG"  ;;
@@ -1279,15 +1292,6 @@ if test -z "$SESSION_SANDBOX"
 then  
     SESSION_SANDBOX="$PILOT_SANDBOX/.."
 fi
-
-LOGFILES_TARBALL="$PILOT_ID.log.tgz"
-PROFILES_TARBALL="$PILOT_ID.prof.tgz"
-
-# some backends (condor) never finalize a job when output files are missing --
-# so we touch them here to prevent that
-echo 'touching output tarballs'
-touch "$LOGFILES_TARBALL"
-touch "$PROFILES_TARBALL"
 
 
 # FIXME: By now the pre_process rules are already performed.
@@ -1551,7 +1555,6 @@ profile_event 'cleanup done'
 echo "#"
 echo "# -------------------------------------------------------------------"
 
-touch $PROFILES_TARBALL
 if ! test -z "`ls *.prof 2>/dev/null`"
 then
     echo
@@ -1590,13 +1593,13 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Tarring profiles ..."
+    PROFILES_TARBALL="$PILOT_ID.prof.tgz"
     tar -czf $PROFILES_TARBALL *.prof
     ls -l $PROFILES_TARBALL
     echo "#"
     echo "# -------------------------------------------------------------------"
 fi
 
-touch $LOGFILES_TARBALL
 if ! test -z "`ls *{log,out,err,cfg} 2>/dev/null`"
 then
     # TODO: This might not include all logs, as some systems only write
@@ -1605,16 +1608,12 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Tarring logfiles ..."
+    LOGFILES_TARBALL="$PILOT_ID.log.tgz"
     tar -czf $LOGFILES_TARBALL *.{log,out,err,cfg}
     ls -l $LOGFILES_TARBALL
     echo "#"
     echo "# -------------------------------------------------------------------"
 fi
-
-echo "# -------------------------------------------------------------------"
-echo "# create debug tarball"
-tar -zcf $PROFILES_TARBALL *
-echo "# -------------------------------------------------------------------"
 
 echo
 echo "# -------------------------------------------------------------------"

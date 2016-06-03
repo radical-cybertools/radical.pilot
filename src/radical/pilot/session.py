@@ -705,6 +705,7 @@ class Session(rs.Session):
         for a given pilot dict, determine the global RP sandbox, based on the
         pilot's 'resource' attribute.
         """
+        # FIXME: this should get 'resource, schema=None' as parameters
 
         resource = pilot['description'].get('resource')
         schema   = pilot['description'].get('access_schema')
@@ -772,6 +773,7 @@ class Session(rs.Session):
     #
     def _get_session_sandbox(self, pilot):
 
+        # FIXME: this should get 'resource, schema=None' as parameters
 
         resource = pilot['description'].get('resource')
 
@@ -797,6 +799,7 @@ class Session(rs.Session):
     #
     def _get_pilot_sandbox(self, pilot):
 
+        # FIXME: this should get 'pid, resource, schema=None' as parameters
 
         pid = pilot['uid']
         with self._cache_lock:

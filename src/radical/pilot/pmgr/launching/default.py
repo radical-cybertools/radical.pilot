@@ -337,29 +337,34 @@ class Default(PMGRLaunchingComponent):
         rcfg = self._session.get_resource_config(resource, schema)
         sid  = self._session.uid
 
+        # we create a fake session_sandbox with all pilot_sandboxes in /tmp, and
+        # then tar it up.  Once we untar that tarball on the target machine, we
+        # should have all sandboxes and all files required to bootstrap the
+        # pilots
+        # FIXME: on untar, there is a race between multiple launcher components
+        #        within the same session toward the same target resource.
+        tmp_dir  = tempfile.mkdtemp(prefix='rp_agent_tar_dir')
+        tar_name = '%s.%s.tgz' % (sid, self.uid)
+        tar_tgt  = '%s/%s'     % (tmp_dir, tar_name)
+        tar_url  = rs.Url('file://localhost/%s' % tar_tgt)
+
+        # we need the session sandbox url, but that is (at least in principle)
+        # dependent on the schema to use for pilot startup.  So we confirm here
+        # that the bulk is consistent wrt. to the schema.
+        # FIXME: if it is not, it needs to be splitted into schema-specific
+        # sub-bulks
+        schema = pilots[0]['description'].get('access_schema')
+        for pilot in pilots[1:]:
+            assert(schema == pilot['description'].get('access_schema'))
+
+        session_sandbox = self._session._get_session_sandbox(pilots[0]).path
+
         ft_list = list()  # files to stage
         jd_list = list()  # jobs  to submit
         for pilot in pilots:
             info = self._prepare_pilot(resource, rcfg, pilot)
             ft_list += info['ft']
             jd_list.append(info['jd'])
-
-        # we create a fake session_sandbox with all pilot_sandboxes in /tmp, and
-        # then tar it up.  Once we untar that tarball on the target machine, we
-        # should have all sandboxes and all files required to bootstrap the
-        # pilots
-        # NOTE: on untar, there is a race between multiple launcher components
-        #       within the same session toward the same target resource.
-        tmp_dir  = tempfile.mkdtemp(prefix='rp_agent_tar_dir')
-        tar_name = '%s.%s.tgz' % (sid, self.uid)
-        tar_tgt  = '%s/%s'     % (tmp_dir, tar_name)
-        tar_url  = rs.Url('file://localhost/%s' % tar_tgt)
-
-        global_sandbox  = self._session._get_global_sandbox (pilot).path
-        session_sandbox = self._session._get_session_sandbox(pilot).path
-        pilot_sandbox   = self._session._get_pilot_sandbox  (pilot).path
-
-        # FIXME: pilot_sandbox differs per pilot!
 
         for ft in ft_list:
             src     = os.path.abspath(ft['src'])
@@ -413,7 +418,9 @@ class Default(PMGRLaunchingComponent):
             else:
                 js_tmp = rs.job.Service(js_url, session=self._session)
                 self._saga_js_cache[js_url] = js_tmp
-        cmd = "tar zmxvf %s/%s -C /" % (session_sandbox, tar_name)
+     ## cmd = "tar zmxvf %s/%s -C / ; rm -f %s" % \
+        cmd = "tar zmxvf %s/%s -C /" % \
+                (session_sandbox, tar_name)
         j = js_tmp.run_job(cmd)
         j.wait()
 
@@ -675,11 +682,20 @@ class Default(PMGRLaunchingComponent):
             queue = default_queue
 
         if  cleanup and isinstance (cleanup, bool) :
-            cleanup = 'luve'    #  l : log files
-                                #  u : unit work dirs
-                                #  v : virtualenv
-                                #  e : everything (== pilot sandbox)
-                                #
+            #  l : log files
+            #  u : unit work dirs
+            #  v : virtualenv
+            #  e : everything (== pilot sandbox)
+            if shared_filesystem:
+                cleanup = 'luve'
+            else:
+                # we cannot clean the sandbox from within the agent, as the hop
+                # staging would then fail, and we'd get nothing back.
+                # FIXME: cleanup needs to be done by the pmgr.launcher, or
+                #        someone else, really, after fetching all logs and 
+                #        profiles.
+                cleanup = 'luv'
+
             # we never cleanup virtenvs which are not private
             if virtenv_mode is not 'private' :
                 cleanup = cleanup.replace ('v', '')
@@ -742,7 +758,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['scheduler']          = agent_scheduler
         agent_cfg['runtime']            = runtime
         agent_cfg['pilot_id']           = pid
-        agent_cfg['logdir']             = pilot_sandbox
+        agent_cfg['logdir']             = '.'
         agent_cfg['pilot_sandbox']      = pilot_sandbox
         agent_cfg['session_sandbox']    = session_sandbox
         agent_cfg['global_sandbox']     = global_sandbox
