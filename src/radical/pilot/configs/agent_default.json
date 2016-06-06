@@ -1,7 +1,9 @@
+
 # this is the default agent config which is used if no other config is
 # specified for an agent.  It contains the minimal set of settings required for
 # a functional pilot agent, and does not reserve any nodes for the agent
 # components.
+
 {
     # directory for staging files inside the agent sandbox
     "staging_area"         : "staging_area",

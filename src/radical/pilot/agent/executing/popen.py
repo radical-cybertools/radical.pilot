@@ -41,6 +41,8 @@ class Popen(AgentExecutingComponent) :
     #
     def initialize_child(self):
 
+        self._pwd = os.getcwd()
+
         self.register_input(rps.AGENT_EXECUTING_PENDING,
                             rpc.AGENT_EXECUTING_QUEUE, self.work)
 
@@ -76,7 +78,7 @@ class Popen(AgentExecutingComponent) :
 
         self._cu_environment = self._populate_cu_environment()
 
-        self.gtod   = "%s/gtod" % ru.Url(self._cfg['pilot_sandbox']).path
+        self.gtod   = "%s/gtod" % self._pwd
         self.tmpdir = tempfile.gettempdir()
 
 
@@ -191,30 +193,28 @@ class Popen(AgentExecutingComponent) :
 
         self._prof.prof('spawn', msg='unit spawn', uid=cu['uid'])
 
-        if False:
-            cu_tmpdir = '%s/%s' % (self.tmpdir, cu['uid'])
-        else:
-            cu_tmpdir = ru.Url(cu['sandbox']).path
+        # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
+        #       class definition.
+        sandbox = '%s/%s' % (self._pwd, cu['uid'])
 
         # make sure the sandbox exists
-        rpu.rec_makedir(cu_tmpdir)
+        rpu.rec_makedir(sandbox)
 
         # prep stdout/err so that we can append w/o checking for None
         cu['stdout'] = ''
         cu['stderr'] = ''
 
-        rpu.rec_makedir(cu_tmpdir)
-        launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu_tmpdir
+        launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % sandbox
         self._log.debug("Created launch_script: %s", launch_script_name)
 
         with open(launch_script_name, "w") as launch_script:
             launch_script.write('#!/bin/sh\n\n')
 
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                launch_script.write("echo script start_script `%s` >> %s/PROF\n" % (self.gtod, cu_tmpdir))
-            launch_script.write('\n# Change to working directory for unit\ncd %s\n' % cu_tmpdir)
+                launch_script.write("echo script start_script `%s` >> %s/PROF\n" % (self.gtod, sandbox))
+            launch_script.write('\n# Change to working directory for unit\ncd %s\n' % sandbox)
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                launch_script.write("echo script after_cd `%s` >> %s/PROF\n" % (self.gtod, cu_tmpdir))
+                launch_script.write("echo script after_cd `%s` >> %s/PROF\n" % (self.gtod, sandbox))
 
             # Before the Big Bang there was nothing
             if cu['description']['pre_exec']:
@@ -227,10 +227,10 @@ class Popen(AgentExecutingComponent) :
                 # Note: extra spaces below are for visual alignment
                 launch_script.write("# Pre-exec commands\n")
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write("echo pre  start `%s` >> %s/PROF\n" % (self.gtod, cu_tmpdir))
+                    launch_script.write("echo pre  start `%s` >> %s/PROF\n" % (self.gtod, sandbox))
                 launch_script.write(pre_exec_string)
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (self.gtod, cu_tmpdir))
+                    launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (self.gtod, sandbox))
 
             # Create string for environment variable setting
             env_string = 'export'
@@ -260,7 +260,7 @@ class Popen(AgentExecutingComponent) :
             launch_script.write("%s\n" % launch_command)
             launch_script.write("RETVAL=$?\n")
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                launch_script.write("echo script after_exec `%s` >> %s/PROF\n" % (self.gtod, cu_tmpdir))
+                launch_script.write("echo script after_exec `%s` >> %s/PROF\n" % (self.gtod, sandbox))
 
             # After the universe dies the infrared death, there will be nothing
             if cu['description']['post_exec']:
@@ -272,10 +272,10 @@ class Popen(AgentExecutingComponent) :
                     post_exec_string += "%s\n" % cu['description']['post_exec']
                 launch_script.write("# Post-exec commands\n")
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write("echo post start `%s` >> %s/PROF\n" % (self.gtod, cu_tmpdir))
+                    launch_script.write("echo post start `%s` >> %s/PROF\n" % (self.gtod, sandbox))
                 launch_script.write('%s\n' % post_exec_string)
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (self.gtod, cu_tmpdir))
+                    launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (self.gtod, sandbox))
 
             launch_script.write("# Exit the script with the return code from the command\n")
             launch_script.write("exit $RETVAL\n")
@@ -284,8 +284,6 @@ class Popen(AgentExecutingComponent) :
         st = os.stat(launch_script_name)
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
         self._prof.prof('control', msg='launch script constructed', uid=cu['uid'])
-
-        sandbox = ru.Url(cu["sandbox"]).path
 
         # prepare stdout/stderr
         stdout_file = cu['description'].get('stdout') or 'STDOUT'
@@ -298,7 +296,7 @@ class Popen(AgentExecutingComponent) :
         _stderr_file_h = open(cu['stderr_file'], "w+")
         self._prof.prof('control', msg='stdout and stderr files created', uid=cu['uid'])
 
-        self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, cu_tmpdir)
+        self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, sandbox)
 
         cu['proc'] = subprocess.Popen(args               = cmdline,
                                       bufsize            = 0,
@@ -309,7 +307,7 @@ class Popen(AgentExecutingComponent) :
                                       preexec_fn         = None,
                                       close_fds          = True,
                                       shell              = True,
-                                      cwd                = cu_tmpdir,
+                                      cwd                = sandbox,
                                       env                = self._cu_environment,
                                       universal_newlines = False,
                                       startupinfo        = None,

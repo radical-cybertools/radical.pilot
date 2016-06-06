@@ -42,6 +42,8 @@ class ABDS(AgentExecutingComponent):
 
         from .... import pilot as rp
 
+        self._pwd = os.getcwd()
+
         self.register_input(rps.AGENT_EXECUTING_PENDING,
                             rpc.AGENT_EXECUTING_QUEUE, self.work)
 
@@ -78,7 +80,7 @@ class ABDS(AgentExecutingComponent):
 
         self._cu_environment = self._populate_cu_environment()
 
-        self.gtod   = "%s/gtod" % ru.Url(self._cfg['pilot_sandbox']).path
+        self.gtod   = "%s/gtod" % self._pwd
         self.tmpdir = tempfile.gettempdir()
 
 
@@ -201,30 +203,28 @@ class ABDS(AgentExecutingComponent):
 
         self._prof.prof('spawn', msg='unit spawn', uid=cu['uid'])
 
-        if False:
-            cu_tmpdir = '%s/%s' % (self.tmpdir, cu['uid'])
-        else:
-            cu_tmpdir = ru.Url(cu['sandbox']).path
+        # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
+        #       class definition.
+        sandbox = '%s/%s' % (self._pwd, cu['uid'])
 
         # make sure the sandbox exists
-        rpu.rec_makedir(cu_tmpdir)
+        rpu.rec_makedir(sandbox)
 
         # prep stdout/err so that we can append w/o checking for None
         cu['stdout'] = ''
         cu['stderr'] = ''
 
-        rpu.rec_makedir(cu_tmpdir)
-        launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu_tmpdir
+        launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % sandbox
         self._log.debug("Created launch_script: %s", launch_script_name)
 
         with open(launch_script_name, "w") as launch_script:
             launch_script.write('#!/bin/sh\n\n')
 
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                launch_script.write("echo script start_script `%s` >> %s/PROF\n" % (self.gtod, cu_tmpdir))
-            launch_script.write('\n# Change to working directory for unit\ncd %s\n' % cu_tmpdir)
+                launch_script.write("echo script start_script `%s` >> %s/PROF\n" % (self.gtod, sandbox))
+            launch_script.write('\n# Change to working directory for unit\ncd %s\n' % sandbox)
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                launch_script.write("echo script after_cd `%s` >> %s/PROF\n" % (self.gtod, cu_tmpdir))
+                launch_script.write("echo script after_cd `%s` >> %s/PROF\n" % (self.gtod, sandbox))
 
             # Before the Big Bang there was nothing
             if cu['description']['pre_exec']:
@@ -237,10 +237,10 @@ class ABDS(AgentExecutingComponent):
                 # Note: extra spaces below are for visual alignment
                 launch_script.write("# Pre-exec commands\n")
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write("echo pre  start `%s` >> %s/PROF\n" % (self.gtod, cu_tmpdir))
+                    launch_script.write("echo pre  start `%s` >> %s/PROF\n" % (self.gtod, sandbox))
                 launch_script.write(pre_exec_string)
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (self.gtod, cu_tmpdir))
+                    launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (self.gtod, sandbox))
 
             # YARN pre execution folder permission change
             launch_script.write('\n## Changing Working Directory permissions for YARN\n')
@@ -277,7 +277,7 @@ class ABDS(AgentExecutingComponent):
             launch_script.write("%s\n" % launch_command)
             launch_script.write("RETVAL=$?\n")
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                launch_script.write("echo script after_exec `%s` >> %s/PROF\n" % (self.gtod, cu_tmpdir))
+                launch_script.write("echo script after_exec `%s` >> %s/PROF\n" % (self.gtod, sandbox))
 
             # After the universe dies the infrared death, there will be nothing
             if cu['description']['post_exec']:
@@ -289,10 +289,10 @@ class ABDS(AgentExecutingComponent):
                     post_exec_string += "%s\n" % cu['description']['post_exec']
                 launch_script.write("# Post-exec commands\n")
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write("echo post start `%s` >> %s/PROF\n" % (self.gtod, cu_tmpdir))
+                    launch_script.write("echo post start `%s` >> %s/PROF\n" % (self.gtod, sandbox))
                 launch_script.write('%s\n' % post_exec_string)
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (self.gtod, cu_tmpdir))
+                    launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (self.gtod, sandbox))
 
             # YARN pre execution folder permission change
             launch_script.write('\n## Changing Working Directory permissions for YARN\n')
@@ -306,8 +306,6 @@ class ABDS(AgentExecutingComponent):
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
         self._prof.prof('control', msg='launch script constructed', uid=cu['uid'])
 
-        sandbox = ru.Url(cu["sandbox"]).path
-
         # prepare stdout/stderr
         stdout_file = cu['description'].get('stdout') or 'STDOUT'
         stderr_file = cu['description'].get('stderr') or 'STDERR'
@@ -319,7 +317,7 @@ class ABDS(AgentExecutingComponent):
         _stderr_file_h = open(cu['stderr_file'], "w+")
         self._prof.prof('control', msg='stdout and stderr files created', uid=cu['uid'])
 
-        self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, cu_tmpdir)
+        self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, sandbox)
 
         cu['proc'] = subprocess.Popen(args               = cmdline,
                                       bufsize            = 0,
@@ -330,7 +328,7 @@ class ABDS(AgentExecutingComponent):
                                       preexec_fn         = None,
                                       close_fds          = True,
                                       shell              = True,
-                                      cwd                = cu_tmpdir,
+                                      cwd                = sandbox,
                                       env                = self._cu_environment,
                                       universal_newlines = False,
                                       startupinfo        = None,
@@ -400,14 +398,17 @@ class ABDS(AgentExecutingComponent):
         action = 0
 
         for cu in self._cus_to_watch:
+            
+            sandbox = '%s/%s' % (self._pwd, cu['uid'])
+
             #-------------------------------------------------------------------
             # This code snippet reads the YARN application report file and if
             # the application is RUNNING it update the state of the CU with the
             # right time stamp. In any other case it works as it was.
-            if cu['state']==rps.ALLOCATING \
-               and os.path.isfile(cu['sandbox']+'/YarnApplicationReport.log'):
+            logfile = '%s/YarnApplicationReport.log' % sandbox
+            if cu['state'] == rps.ALLOCATING and os.path.isfile(logfile):
 
-                yarnreport=open(cu['sandbox']+'/YarnApplicationReport.log','r')
+                yarnreport = open(logfile,'r')
                 report_contents = yarnreport.readlines()
                 yarnreport.close()
 
@@ -477,8 +478,8 @@ class ABDS(AgentExecutingComponent):
                     del(cu['proc'])  # proc is not json serializable
                     self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
-                    if os.path.isfile("%s/PROF" % cu['sandbox']):
-                        with open("%s/PROF" % cu['sandbox'], 'r') as prof_f:
+                    if os.path.isfile("%s/PROF" % sandbox):
+                        with open("%s/PROF" % sandbox, 'r') as prof_f:
                             try:
                                 txt = prof_f.read()
                                 for line in txt.split("\n"):

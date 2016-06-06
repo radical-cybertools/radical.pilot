@@ -44,7 +44,7 @@ def _pilot_state_progress(current, target):
 
     # first handle final state corrections
     if current == CANCELED:
-        if target in [DONE, FAILED]:
+        if target in [DONE, FAILED, CANCELED]:
             return[target, []]
 
     if current in FINAL:
@@ -169,7 +169,7 @@ def _unit_state_progress(current, target):
 
     # first handle final state corrections
     if current == CANCELED:
-        if target in [DONE, FAILED]:
+        if target in [DONE, FAILED, CANCELED]:
             return[target, []]
 
     if current in FINAL:

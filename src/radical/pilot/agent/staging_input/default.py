@@ -39,6 +39,8 @@ class Default(AgentStagingInputComponent):
     #
     def initialize_child(self):
 
+        self._pwd = os.getcwd()
+
         self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
                             rpc.AGENT_STAGING_INPUT_QUEUE, self.work)
 
@@ -95,13 +97,15 @@ class Default(AgentStagingInputComponent):
     #
     def _handle_unit(self, unit, actionables):
 
-        uid     = unit['uid']
-        sandbox = ru.Url(unit["sandbox"]).path
+        uid = unit['uid']
+
+        # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
+        #       class definition.
+        sandbox = '%s/%s' % (self._pwd, uid)
 
         # we have actionables, thus we need sandbox and staging area
         # TODO: optimization: sandbox,staging_area might already exist
-        pilot_sandbox = ru.Url(self._cfg['pilot_sandbox']).path
-        staging_area  = os.path.join(pilot_sandbox, self._cfg['staging_area'])
+        staging_area = '%s/%s' % (self._pwd, self._cfg['staging_area'])
 
         self._prof.prof("create  sandbox", uid=uid, msg=sandbox)
         rpu.rec_makedir(sandbox)

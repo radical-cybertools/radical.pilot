@@ -334,6 +334,19 @@ class ComputePilot(object):
             * A URL (radical.utils.Url).
         """
 
+        # NOTE: The pilot has a sandbox property, containing the full sandbox
+        #       path, which is used by the pmgr to stage data back and forth.
+        #       However, the full path as visible from the pmgr side might not
+        #       be what the agent is seeing, specifically in the case of
+        #       non-shared filesystems (OSG).  The agent thus uses
+        #       `$PWD` as sandbox, with the assumption that this will
+        #       get mapped to whatever is here returned as sandbox URL.  
+        #
+        #       There is thus implicit knowledge shared between the RP client
+        #       and the RP agent that `$PWD` *is* the sandbox!  The same 
+        #       implicitly also holds for the staging area, which is relative
+        #       to the pilot sandbox.
+
         return self._sandbox
 
 

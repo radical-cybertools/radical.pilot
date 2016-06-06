@@ -36,6 +36,8 @@ class Shell(AgentExecutingComponent):
 
         from .... import pilot as rp
 
+        self._pwd = os.getcwd() 
+
         self.register_input(rps.EXECUTING_PENDING, 
                             rpc.AGENT_EXECUTING_QUEUE, self.work)
 
@@ -132,9 +134,9 @@ class Shell(AgentExecutingComponent):
         # tmp = tempfile.gettempdir()
         # Moving back to shared file system again, until it reaches maturity,
         # as this breaks launch methods with a hop, e.g. ssh.
-        tmp = os.getcwd() # FIXME: see #658
+        # FIXME: see #658
         self._pilot_id    = self._cfg['pilot_id']
-        self._spawner_tmp = "/%s/%s-%s" % (tmp, self._pilot_id, self.uid)
+        self._spawner_tmp = "/%s/%s-%s" % (self._pwd, self._pilot_id, self.uid)
 
         ret, out, _  = self.launcher_shell.run_sync \
                            ("/bin/sh %s/agent/executing/shell_spawner.sh %s" \
@@ -154,7 +156,7 @@ class Shell(AgentExecutingComponent):
         self._watcher.daemon = True
         self._watcher.start ()
 
-        self.gtod = "%s/gtod" % ru.Url(self._cfg['pilot_sandbox']).path
+        self.gtod = "%s/gtod" % self._pwd
 
         self._prof.prof('run setup done', uid=self._pilot_id)
 
@@ -306,14 +308,17 @@ class Shell(AgentExecutingComponent):
         cmd   = ""
         descr = cu['description']
 
-        if  cu['sandbox'] :
-            cwd  += "# CU sandbox\n"
-            cwd  += "mkdir -p %s\n" % ru.Url(cu['sandbox']).path
-            # TODO: how do we align this timing with the mkdir with POPEN? (do we at all?)
-            cwd  += "cd       %s\n" % cu['sandbox']
-            if 'RADICAL_PILOT_PROFILE' in os.environ:
-                cwd  += "echo script after_cd `%s` >> %s/PROF\n" % (self.gtod, cu['sandbox'])
-            cwd  += "\n"
+        # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
+        #       class definition.
+        sbox  = '%s/%s' % (self._pwd, cu['uid'])
+
+        cwd  += "# CU sandbox\n"
+        cwd  += "mkdir -p %s\n" % sbox
+        # TODO: how do we align this timing with the mkdir with POPEN? (do we at all?)
+        cwd  += "cd       %s\n" % sbox
+        if 'RADICAL_PILOT_PROFILE' in os.environ:
+            cwd  += "echo script after_cd `%s` >> %s/PROF\n" % (self.gtod, sbox)
+        cwd  += "\n"
 
         env  += "# CU environment\n"
         if descr['environment']:
@@ -329,21 +334,21 @@ class Shell(AgentExecutingComponent):
         if  descr['pre_exec'] :
             pre  += "# CU pre-exec\n"
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                pre  += "echo pre  start `%s` >> %s/PROF\n" % (self.gtod, cu['sandbox'])
+                pre  += "echo pre  start `%s` >> %s/PROF\n" % (self.gtod, sbox)
             pre  += '\n'.join(descr['pre_exec' ])
             pre  += "\n"
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                pre  += "echo pre  stop  `%s` >> %s/PROF\n" % (self.gtod, cu['sandbox'])
+                pre  += "echo pre  stop  `%s` >> %s/PROF\n" % (self.gtod, sbox)
             pre  += "\n"
 
         if  descr['post_exec'] :
             post += "# CU post-exec\n"
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                post += "echo post start `%s` >> %s/PROF\n" % (self.gtod, cu['sandbox'])
+                post += "echo post start `%s` >> %s/PROF\n" % (self.gtod, sbox)
             post += '\n'.join(descr['post_exec' ])
             post += "\n"
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                post += "echo post stop  `%s` >> %s/PROF\n" % (self.gtod, cu['sandbox'])
+                post += "echo post stop  `%s` >> %s/PROF\n" % (self.gtod, sbox)
             post += "\n"
 
         if  descr['arguments']  :
@@ -360,7 +365,7 @@ class Shell(AgentExecutingComponent):
 
         script = ''
         if 'RADICAL_PILOT_PROFILE' in os.environ:
-            script += "echo script start_script `%s` >> %s/PROF\n" % (self.gtod, cu['sandbox'])
+            script += "echo script start_script `%s` >> %s/PROF\n" % (self.gtod, sbox)
 
         if hop_cmd :
             # the script will itself contain a remote callout which calls again
@@ -384,7 +389,7 @@ class Shell(AgentExecutingComponent):
         script += "%s %s\n\n" % (cmd, io)
         script += "RETVAL=$?\n"
         if 'RADICAL_PILOT_PROFILE' in os.environ:
-            script += "echo script after_exec `%s` >> %s/PROF\n" % (self.gtod, cu['sandbox'])
+            script += "echo script after_exec `%s` >> %s/PROF\n" % (self.gtod, sbox)
         script += "%s"        %  post
         script += "exit $RETVAL\n"
         script += "# ------------------------------------------------------\n\n"
@@ -398,7 +403,8 @@ class Shell(AgentExecutingComponent):
     #
     def spawn(self, launcher, cu):
 
-        uid = cu['uid']
+        uid     = cu['uid']
+        sandbox = '%s/%s' % (self._pwd, uid)
 
         self._prof.prof('spawn', msg='unit spawn', uid=uid)
 
@@ -449,7 +455,7 @@ class Shell(AgentExecutingComponent):
         # for convenience, we link the ExecWorker job-cwd to the unit sandbox
         try:
             os.symlink("%s/%s" % (self._spawner_tmp, cu['pid']),
-                       "%s/%s" % (cu['sandbox'], 'SHELL_SPAWNER_TMP'))
+                       "%s/%s" % (sandbox, 'SHELL_SPAWNER_TMP'))
         except Exception as e:
             self._log.exception('shell cwd symlink failed: %s' % e)
 
