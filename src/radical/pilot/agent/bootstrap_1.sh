@@ -80,6 +80,7 @@ VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntpl
 #
 create_gtod()
 {
+    # we "should" be able to build this everywhere ...
 
     cat > gtod.c <<EOT
 #include <stdio.h>
@@ -93,14 +94,26 @@ int main ()
     return (0);
 }
 EOT
-    cc -o gtod gtod.c
+    if ! test -e "./gtod"
+    then
+        echo -n "build gtod with cc... "
+        cc -o gtod gtod.c
+    fi
 
     if ! test -e "./gtod"
     then
-        # we "should" be able to build this everywhere ...
-        echo "can't build gtod binary!"
+        echo "failed"
+        echo -n "build gtod with gcc... "
+        gcc -o gtod gtod.c
+    fi
+
+    if ! test -e "./gtod"
+    then
+        echo "failed - giving up"
         exit 1
     fi
+
+    echo "success"
 
     TIME_ZERO=`./gtod`
     export TIME_ZERO
