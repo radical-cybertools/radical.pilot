@@ -389,6 +389,7 @@ class Controller(object):
                 # etc.
                 ccfg = copy.deepcopy(self._cfg)
                 ccfg['components'] = dict()  # avoid recursion
+                ccfg['cname']      = cname
                 ccfg['number']     = i
                 ccfg['owner']      = self._owner
 

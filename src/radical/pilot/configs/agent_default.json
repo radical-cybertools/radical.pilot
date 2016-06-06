@@ -77,6 +77,13 @@
         # the update worker must live in agent_0, since only that agent is 
         # sure to have connectivity toward the DB.
         "UpdateWorker" : 1
+    },
+
+    "raise_on" : {
+        # inject errors for debugging
+        "AgentExecutingComponent" : {
+            "work unit" : 0
+        }
     }
 }
 

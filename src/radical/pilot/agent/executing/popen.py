@@ -145,14 +145,17 @@ class Popen(AgentExecutingComponent) :
 
         self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
 
-        for unit in units:
+        self._raise_on('work bulk')
 
+        for unit in units:
             self._handle_unit(unit)
 
 
     # --------------------------------------------------------------------------
     #
     def _handle_unit(self, cu):
+
+        self._raise_on('work unit')
 
         try:
             if cu['description']['mpi']:

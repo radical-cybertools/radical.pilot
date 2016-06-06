@@ -156,11 +156,18 @@ class Component(mp.Process):
         self._started       = False
         self._debug         = cfg.get('debug', 'DEBUG')
         self._owner         = cfg.get('owner', session.uid)
+        self._cname         = cfg.get('cname', self.__class__.__name__)
         self._ctype         = "%s.%s" % (self.__class__.__module__,
                                          self.__class__.__name__)
         self._number        = cfg.get('number', 0)
         self._name          = cfg.get('name.%s' %  self._number,
                                       '%s.%s'   % (self._ctype, self._number))
+
+        # see documentation of self._raise_on
+        self._raise_on_cfg  = cfg.get('raise_on', {}).get(self._cname, {})
+        self._raise_on_cnt  = dict()
+        for k in self._raise_on_cfg:
+            self._raise_on_cnt[k] = 0
 
         if self._owner == self.uid:
             self._owner = 'root'
@@ -177,6 +184,44 @@ class Component(mp.Process):
     #
     def __str__(self):
         return "%s <%s> [%s]" % (self.uid, self.__class__.__name__, self._owner)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _raise_on(self, tag):
+        """
+        A self._cfg can contain a dict of the following format:
+
+          'raise_on': 
+              {
+              'uid' : 
+                  {
+                      'tag_1' : 10, 
+                      'tag_2' :  0
+                  }
+              }
+
+        This is interpreted as follows: on the n'th invocation of this method
+        with any given tag on a component with a matching uid, an exception is
+        raised.  If n is '0', no exception is ever raised.
+
+        The purpose is to artificially trigger error conditions for testing 
+        purposes, for example when handling the n'th unit, getting the n'th 
+        heartbeat signal, etc.
+        """
+
+        self._log.debug('raise_on check %s' % tag)
+        if tag in self._raise_on_cnt:
+            
+            self._raise_on_cnt[tag] += 1
+
+            count = self._raise_on_cnt[tag]
+            limit = self._raise_on_cfg.get(tag, 0)
+            self._log.debug('raise_on check %s [%s / %s]' % (tag, count, limit))
+
+            if limit and count >= limit:
+                self._log.error('raise_on for %s [%s]' % (tag, limit))
+                raise RuntimeError('raise_on for %s [%s]' % (tag, limit))
 
 
     # --------------------------------------------------------------------------
