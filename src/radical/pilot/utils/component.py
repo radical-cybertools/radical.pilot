@@ -220,6 +220,7 @@ class Component(mp.Process):
             self._log.debug('raise_on check %s [%s / %s]' % (tag, count, limit))
 
             if limit and count >= limit:
+                self._raise_on_cnt[tag] = 0
                 self._log.error('raise_on for %s [%s]' % (tag, limit))
                 raise RuntimeError('raise_on for %s [%s]' % (tag, limit))
 
