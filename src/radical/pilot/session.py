@@ -473,7 +473,7 @@ class Session(rs.Session):
         log files end up in a separate directory with the name of `session.uid`.
         """
 
-        log = ru.get_logger(name, '.', self._logdir, level)
+        log = ru.get_logger(name, target='.', level=level, path=self._logdir)
         log.info('radical.pilot        version: %s' % rp_version_detail)
 
         return log

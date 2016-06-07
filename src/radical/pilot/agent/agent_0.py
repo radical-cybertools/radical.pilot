@@ -84,7 +84,7 @@ class Agent_0(rpu.Worker):
         self._prof = self._session._get_profiler('bootstrap_3')
         self._prof.prof('sync ref', msg='%s start' % self._uid, uid=self._pilot_id)
 
-        self._log  = self._session._get_logger('bootstrap_3', cfg.get('debug'))
+        self._log  = self._session._get_logger('bootstrap_3', level=cfg.get('debug'))
         self._log.info('start')
 
         if not self._session.is_connected:

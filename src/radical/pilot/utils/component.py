@@ -396,7 +396,7 @@ class Component(mp.Process):
 
         # get debugging, logging, profiling set up
         self._dh   = ru.DebugHelper(name=self.uid)
-        self._log  = self._session._get_logger(self.uid, self._debug)
+        self._log  = self._session._get_logger(self.uid, level=self._debug)
         self._prof = self._session._get_profiler(self.uid)
 
         self._prof.prof('initialize', uid=self.uid)
