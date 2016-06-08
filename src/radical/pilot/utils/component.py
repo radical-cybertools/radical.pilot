@@ -1430,16 +1430,16 @@ class Component(mp.Process):
                         self._log.debug('%s %s ===| %s' % ('push', thing['uid'], thing['state']))
                     continue
 
-                if not self._outputs[state]:
-                    # empty output -- drop thing
-                    for thing in things:
-                        self._log.debug('%s %s ~~~| %s' % ('push', thing['uid'], thing['state']))
-                    continue
-
                 if state not in self._outputs:
                     # unknown target state -- error
                     self._log.error("%s can't route state %s (%s)" \
                             % (self.uid, state, self._outputs.keys()))
+                    continue
+
+                if not self._outputs[state]:
+                    # empty output -- drop thing
+                    for thing in things:
+                        self._log.debug('%s %s ~~~| %s' % ('push', thing['uid'], thing['state']))
                     continue
 
                 output = self._outputs[state]

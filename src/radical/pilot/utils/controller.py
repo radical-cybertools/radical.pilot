@@ -87,6 +87,17 @@ class Controller(object):
 
         self._session = session
 
+        # we use a uid to uniquely identify message to and from bridges and
+        # components, and for logging/profiling.
+        self._uid   = '%s.ctrl' % cfg['owner']
+        self._owner = cfg['owner']
+
+        # get debugging, logging, profiling set up
+        self._debug = cfg.get('debug')
+        self._dh    = ru.DebugHelper(name=self.uid)
+        self._log   = self._session._get_logger(self.uid, level=self._debug)
+        self._prof  = self._session._get_profiler(self.uid)
+
         # we keep a copy of the cfg around, so that we can pass it on when
         # creating components.
         self._cfg = copy.deepcopy(cfg)
@@ -99,15 +110,11 @@ class Controller(object):
                 'heartbeat_interval' : cfg.get('heartbeat_interval'),
                 'heartbeat_timeout'  : cfg.get('heartbeat_timeout'),
         }
-
         # we also ceep the component information around, in case we need to
         # start any
         self._comp_cfg = copy.deepcopy(cfg.get('components', {}))
 
-        # we use a uid to uniquely identify message to and from bridges and
-        # components, and for logging/profiling.
-        self._uid   = '%s.ctrl' % cfg['owner']
-        self._owner = cfg['owner']
+        self._log.info('initialize %s', self.uid)
 
         # keep handles to bridges and components started by us, but also to
         # other things handed to us via 'add_watchables()' (such as sub-agents)
@@ -156,14 +163,6 @@ class Controller(object):
                          rpc.AGENT_EXECUTING_COMPONENT      : rpa.Executing,
                          rpc.AGENT_STAGING_OUTPUT_COMPONENT : rpa.Output
                          }
-
-        # get debugging, logging, profiling set up
-        self._debug = cfg.get('debug')
-        self._dh    = ru.DebugHelper(name=self.uid)
-        self._log   = self._session._get_logger(self.uid, self._debug)
-        self._prof  = self._session._get_profiler(self.uid)
-
-        self._log.info('initialize %s', self.uid)
 
         # complete the setup with bridge and component creation
         self._start_bridges()

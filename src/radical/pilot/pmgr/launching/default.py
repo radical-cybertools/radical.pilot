@@ -374,7 +374,13 @@ class Default(PMGRLaunchingComponent):
 
             if not os.path.isdir('%s/%s' % (tmp_dir, tgt_dir)):
                 os.makedirs('%s/%s' % (tmp_dir, tgt_dir))
-            os.symlink(src, '%s/%s' % (tmp_dir, tgt))
+
+            if src == '/dev/null' :
+                # we want an empty file -- touch it (tar will refuse to 
+                # handle a symlink to /dev/null)
+                open('%s/%s' % (tmp_dir, tgt), 'a').close()
+            else:
+                os.symlink(src, '%s/%s' % (tmp_dir, tgt))
 
         # tar.  If any command fails, this will raise.
         cmd = "cd %s && tar zchf %s *" % (tmp_dir, tar_tgt)
@@ -458,7 +464,6 @@ class Default(PMGRLaunchingComponent):
 
             pilot = None
             for p in pilots:
-                self._log.debug(' === checking job name for %s:%s:%s', j.id, j.name, j.get_name())
                 if p['uid'] == j.name:
                     pilot = p
                     break
@@ -784,6 +789,15 @@ class Default(PMGRLaunchingComponent):
                           'tgt' : '%s/%s' % (pilot_sandbox, agent_cfg_name),
                           'rem' : True})  # purge the tmp file after packing
 
+        # ----------------------------------------------------------------------
+        # we also touch the log and profile tarballs in the target pilot sandbox
+        ret['ft'].append({'src' : '/dev/null',
+                          'tgt' : '%s/%s' % (pilot_sandbox, '%s.log.tgz' % pid),
+                          'rem' : False})  # don't remove /dev/null
+        ret['ft'].append({'src' : '/dev/null',
+                          'tgt' : '%s/%s' % (pilot_sandbox, '%s.prof.tgz' % pid),
+                          'rem' : False})  # don't remove /dev/null
+
         # check if we have a sandbox cached for that resource.  If so, we have
         # nothing to do.  Otherwise we create the sandbox and stage the RP
         # stack etc.
@@ -834,7 +848,6 @@ class Default(PMGRLaunchingComponent):
             bootstrap_tgt = '%s/%s' % ('.', BOOTSTRAPPER)
 
         jd.name                  = pid
-        self._log.debug(' === set jd name to %s'% pid)
         jd.executable            = "/bin/bash"
         jd.arguments             = ['-l %s' % bootstrap_tgt, bootstrap_args]
         jd.working_directory     = pilot_sandbox
