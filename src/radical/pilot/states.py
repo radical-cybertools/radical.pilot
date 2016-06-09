@@ -37,6 +37,10 @@ _pilot_state_values = {
         CANCELED               :  5}
 _pilot_state_inv   = {v: k for k, v in _pilot_state_values.iteritems()}
 
+def _pilot_state_value(s):
+    return _pilot_state_values[s] 
+
+
 def _pilot_state_progress(current, target):
     """
     See documentation of 'unit_state_progress' below.
@@ -128,6 +132,10 @@ _unit_state_values = {
         FAILED                       : 15,
         CANCELED                     : 15}
 _unit_state_inv   = {v: k for k, v in _unit_state_values.iteritems()}
+
+def _unit_state_value(s):
+    return _unit_state_values[s] 
+
 
 def _unit_state_progress(current, target):
     """
