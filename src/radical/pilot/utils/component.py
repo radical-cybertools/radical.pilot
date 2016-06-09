@@ -1432,8 +1432,8 @@ class Component(mp.Process):
 
                 if state not in self._outputs:
                     # unknown target state -- error
-                    self._log.error("%s can't route state %s (%s)" \
-                            % (self.uid, state, self._outputs.keys()))
+                    self._log.error("%s can't route state for %s: %s (%s)" \
+                            % (self.uid, things[0]['uid'], state, self._outputs.keys()))
                     continue
 
                 if not self._outputs[state]:
