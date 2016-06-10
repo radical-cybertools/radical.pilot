@@ -1393,18 +1393,17 @@ class Component(mp.Process):
 
             to_publish = list()
 
-            # Things in final state are published in full
-            for state,things in buckets.iteritems():
-                if state in rps.FINAL:
-                    for thing in things:
-                        thing['$all'] = True
-
-            # is '$all' is set, we update the complete thing_dict.  In all
-            # other cases, we only send 'uid', 'type' and 'state'.
+            # If '$all' is set, we update the complete thing_dict.  
+            # Things in final state are also published in full.
+            # In all other cases, we only send 'uid', 'type' and 'state'.
             for thing in things:
                 if '$all' in thing:
                     del(thing['$all'])
                     to_publish.append(thing)
+
+                elif state in rps.FINAL:
+                    to_publish.append(thing)
+
                 else:
                     to_publish.append({'uid'   : thing['uid'],
                                        'type'  : thing['type'],
@@ -1415,6 +1414,11 @@ class Component(mp.Process):
             for thing in things:
                 self._prof.prof('publish', uid=thing['uid'], state=thing['state'], timestamp=ts)
 
+        # never carry $all across component boundaries!
+        else:
+            for thing in things:
+                if '$all' in thing:
+                    del(thing['$all'])
 
         # should we push things downstream, to the next component
         if push:

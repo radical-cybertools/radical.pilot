@@ -166,16 +166,16 @@ class UnitManager(rpu.Component):
     #
     def close(self):
         """
-        Shuts down the UnitManager.  This will cancel all units.
+        Shut down the UnitManager, and all umgr components.
         """
+
+        # we do not cancel units
 
         if self._closed:
             return
 
         self._log.debug("closing %s", self.uid)
         self._log.report.info('<<close unit manager')
-
-        self.cancel_units()
 
         self._terminate.set()
         self._controller.stop()
@@ -274,7 +274,7 @@ class UnitManager(rpu.Component):
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline).  We don't publish the advance, since that
         # happened already on the agent side when the state was set.
-        self.advance(units, publish=True, push=True)
+        self.advance(units, publish=False, push=True)
 
         return True
 
@@ -757,7 +757,7 @@ class UnitManager(rpu.Component):
         #       state progression, we'll see state transitions after cancel.
         #       For non-final states that is not a problem, as it is equivalent
         #       with a state update message race, which our state collapse
-        #       mechanism accounts for.  For an eevntual non-canceled final
+        #       mechanism accounts for.  For an eventual non-canceled final
         #       state, we do get an invalid state transition.  That is also
         #       corrected eventually in the state collapse, but the point
         #       remains, that the state model is temporarily violated.  We
@@ -765,8 +765,9 @@ class UnitManager(rpu.Component):
         #
         #       The env variable 'RADICAL_PILOT_STRICT_CANCEL == True' will
         #       disable this optimization.
+        #
         # FIXME: the effect of the env var is not well tested
-        if os.environ.get('RADICAL_PILOT_STRICT_CANCEL', '').lower() != 'true':
+        if 'RADICAL_PILOT_STRICT_CANCEL' not in os.environ:
             with self._units_lock:
                 units = [self._units[uid] for uid  in uids ]
             unit_docs = [unit.as_dict()   for unit in units]
