@@ -109,6 +109,21 @@ EOT
 
     if ! test -e "./gtod"
     then
+        tmp=`date '+%s.%N'`
+        if test "$?" = 0
+        then
+            if ! contains "$tmp" '%'
+            then
+                # we can use the system tool
+                echo "#!/bin/sh"      > ./gtod
+                echo "date '+%s.%N'" >> ./gtod
+                chmod 0755              ./gtod
+            fi
+        fi
+    fi
+
+    if ! test -e "./gtod"
+    then
         echo "failed - giving up"
         exit 1
     fi

@@ -733,13 +733,13 @@ class Component(mp.Process):
             self._child_uid  = None
 
 
-      # try:
+        try:
             # this is now the parent process context
-        self._initialize_parent()
-      # except Exception as e:
-      #     self._log.exception ('initialization failed')
-      #     ru.cancel_main_thread()
-      #     raise
+            self._initialize_parent()
+        except Exception as e:
+            self._log.exception ('initialization failed')
+            ru.cancel_main_thread()
+            raise
 
 
     # --------------------------------------------------------------------------

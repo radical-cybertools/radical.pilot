@@ -169,7 +169,9 @@ class UnitManager(rpu.Component):
         Shut down the UnitManager, and all umgr components.
         """
 
-        # we do not cancel units
+        # we do not cancel units at this point, in case any component or pilot
+        # wants to continue to progress unit states, which should indeed be
+        # independent from the umgr life cycle.
 
         if self._closed:
             return
