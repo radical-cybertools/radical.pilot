@@ -109,15 +109,25 @@
   + add_pilot -> add_pilots
   + start/stop in mgrs...
 
-  - open saga ticket: condor staging target should point to the job cwd, not
+  + open saga ticket: condor staging target should point to the job cwd, not
     to intermediate storage
   - units can end up in 'CANCELED + agent_pending', so agent pulls unusable
     units
 
+  - worker/agent.py -> agent/agent_n.py
+  + agent_n controller has uid of pilot.000.ctrl -- should be agent_n.ctrl
+  + sub-agents: catch stdout/err for popen procs
+  - agent_n does not need a child process really?
+
+  - agent state ACTIVE is recorded twice
+  - agent state DONE   is recorded twice on timeout
 
 
 Expected Termination Behavior:
-------------------------------
+==============================
+
+application calls session close
+-------------------------------
 
   - session.close() at any point in time
     - in main thread:
@@ -150,8 +160,32 @@ Expected Termination Behavior:
         detect the closed component (if needed), and to start teardown 
         -> watcher calling session.close + raise
 
-  - <Ctrl-C>:
-    - application must except, call session.close()
+        
+user interrupts via Ctrl-C
+--------------------------
+  - application must except, call session.close()
 
-  - pilot.exit_on_error: session.close + raise
+
+pilot fails, exit_on_error is set
+---------------------------------
+  - call to sys.exit()
+  - application must except, call session.close()
+
+
+pilot times out
+---------------
+  - the agent_0 starts an idle callback (agent_command_cb) which checks runtime
+  - if runtime limit is reached
+    - set self._final_cause to 'timeout'
+    - call self.stop()
+    - agent_0 is a worker which does not spawn, so the stop will
+      - call finalize_common
+        - terminate and join all subscribers
+        - close profiler
+      - call finalize_parent
+        - stop self._lrms
+        - update db for final state
+        - call session.close()
+
+
 

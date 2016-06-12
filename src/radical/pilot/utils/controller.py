@@ -191,6 +191,7 @@ class Controller(object):
       # ru.print_stacktrace()
 
         self_thread = mt.current_thread()
+        self._log.debug('%s stopped', self.uid)
 
         if self._heartbeat_thread:
             self._log.debug('%s stop    hbeat', self.uid)
@@ -200,6 +201,9 @@ class Controller(object):
                 self._log.debug('%s join    hbeat', self.uid)
                 self._heartbeat_thread.join()
                 self._log.debug('%s joined  hbeat', self.uid)
+            else:
+                self._log.debug('%s stop as hbeat', self.uid)
+
 
         if self._watcher_thread:
             self._log.debug('%s stop    watch', self.uid)
@@ -209,6 +213,8 @@ class Controller(object):
                 self._log.debug('%s join    watch', self.uid)
                 self._watcher_thread.join()
                 self._log.debug('%s joined  watch', self.uid)
+            else:
+                self._log.debug('%s stop as watch', self.uid)
 
         # we first stop all components (and sub-agents), and only then tear down
         # the communication bridges.  That way, the bridges will be available
@@ -217,18 +223,21 @@ class Controller(object):
         for to_stop_list in [self._components_to_watch, self._bridges_to_watch]:
 
             for t in to_stop_list:
-                self._log.debug('%s stop    %s', self.uid, t)
+                self._log.debug('%s stop    %s', self.uid, t.name)
                 t.stop()
-                self._log.debug('%s stopped %s', self.uid, t)
+                self._log.debug('%s stopped %s', self.uid, t.name)
 
             for t in to_stop_list:
-                self._log.debug('%s join    %s', self.uid, t)
+                self._log.debug('%s join    %s', self.uid, t.name)
                 if t != self_thread:
                     t.join()
-                self._log.debug('%s joined  %s', self.uid, t)
+                self._log.debug('%s joined  %s', self.uid, t.name)
+
+        self._log.debug('%s stopped', self.uid)
 
         if not ru.is_main_thread():
             # only the main thread should survive
+            self._log.debug('%s exit thread', self.uid)
             sys.exit()
 
 
@@ -528,6 +537,7 @@ class Controller(object):
         # things are alive -- we can start monitoring them.  We may have
         # done so before, so check
         if not self._watcher_thread:
+            self._log.debug('create watcher thread')
             self._watcher_term   = mt.Event()
             self._watcher_thread = mt.Thread(target=self._watcher,
                                              args=[self._watcher_term],
@@ -536,6 +546,8 @@ class Controller(object):
 
         # make sure the watcher picks up the right things
         self._components_to_watch += things
+
+        self._log.debug('controller startup completed')
 
 
     # --------------------------------------------------------------------------

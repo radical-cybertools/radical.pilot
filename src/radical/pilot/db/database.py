@@ -152,7 +152,7 @@ class DBSession(object):
     @property
     def is_connected(self):
 
-        return not self.closed
+        return (self._connected != None)
 
 
     #--------------------------------------------------------------------------

@@ -201,14 +201,15 @@ class PilotManager(rpu.Component):
 
         # pull all pilot states from the DB, and compare to the states we know
         # about.  If any state changed, update the pilot instance and issue
-        # notification callbacks as needed
+        # notification callbacks as needed.  Do not publish to the database
+        # again, otherwise we are running circles :P
         # FIXME: we also pull for dead pilots.  That is not efficient...
         # FIXME: this needs to be converted into a tailed cursor in the update
         #        worker
         pilots = self._session._dbs.get_pilots(pmgr_uid=self.uid)
 
         for pilot in pilots:
-            self._update_pilot(pilot['uid'], pilot, publish=True)
+            self._update_pilot(pilot['uid'], pilot, publish=False)
 
 
     # --------------------------------------------------------------------------

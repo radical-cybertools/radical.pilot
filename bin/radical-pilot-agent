@@ -20,8 +20,7 @@ if __name__ == "__main__":
 
     """
     This script is part of the pilot bootstrapping routine, representing the
-    entry point into Python.  It is started on the landing node of the pilot
-    job.
+    entry point into Python.
     """
 
     print "---------------------------------------------------------------------"

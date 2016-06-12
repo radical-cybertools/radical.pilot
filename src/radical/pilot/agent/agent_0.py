@@ -31,7 +31,7 @@ class Agent_0(rpu.Worker):
     # down the other sub-agents and itself.  
     #
     # This class inherits the rpu.Worker, so that it can use the communication
-    # bridges and callback mechniams.  It will own a session (which creates said
+    # bridges and callback mechanisms.  It will own a session (which creates said
     # communication bridges (or at least some of them); and a controller, which
     # will control the sub-agents.
     
@@ -73,11 +73,13 @@ class Agent_0(rpu.Worker):
             dburl.host, dburl.port = hostport.split(':')
             cfg['dburl'] = str(dburl)
         
-        # Create a session which connects to MongoDB.
-        # This session will also create any communication channels and
-        # components/workers specified in the config.
-        self._session = rp_Session(cfg=cfg, uid=self._session_id, _connect=True)
-        ru.dict_merge(cfg, self._session.ctrl_cfg, ru.PRESERVE)
+        # Create a session.  
+        #
+        # This session will connect to MongoDB, and will also create any
+        # communication channels and components/workers specified in the 
+        # config -- we merge that information into our own config.
+        session = rp_Session(cfg=cfg)
+        ru.dict_merge(cfg, session.ctrl_cfg, ru.PRESERVE)
         pprint.pprint(cfg)
 
         # set up a logger and profiler
@@ -145,7 +147,9 @@ class Agent_0(rpu.Worker):
         # tear things down in reverse order
 
         if self._lrms:
+            self._log.debug('stop    lrms %s', self._lrms)
             self._lrms.stop()
+            self._log.debug('stopped lrms %s', self._lrms)
 
         if   self._final_cause == 'timeout'  : state = rps.DONE 
         elif self._final_cause == 'cancel'   : state = rps.CANCELED
@@ -154,12 +158,13 @@ class Agent_0(rpu.Worker):
 
         # we don't rely on the existence / viability of the update worker at
         # that point.
+        self._log.debug('update db %s: %s', state, self._final_cause)
         self._update_db(state, self._final_cause)
 
         if self._session:
+            self._log.debug('close  session %s', self._session.uid)
             self._session.close()
-
-        self._prof.close()
+            self._log.debug('closed session %s', self._session.uid)
 
 
     # --------------------------------------------------------------------------
@@ -185,7 +190,7 @@ class Agent_0(rpu.Worker):
         try    : log = open('./agent.log', 'r').read()
         except : pass
     
-        self._session.get_db()._c.update(
+        ret = self._session._dbs._c.update(
                 {'type'   : 'pilot', 
                  "uid"    : self._pilot_id},
                 {"$push"  : {"states"        : state},
@@ -195,6 +200,7 @@ class Agent_0(rpu.Worker):
                              "logfile"       : rpu.tail(log),
                              "finished"      : now}
                 })
+        self._log.debug('update ret: %s', ret)
     
 
     # --------------------------------------------------------------------------
@@ -265,7 +271,7 @@ class Agent_0(rpu.Worker):
             elif target == 'node':
     
                 if not agent_lm:
-                    agent_lm = rpa_lm.LM.create(
+                    agent_lm = rpa_lm.LaunchMethod.create(
                         name    = self._cfg['agent_launch_method'],
                         cfg     = self._cfg,
                         session = self._session)
@@ -314,9 +320,10 @@ class Agent_0(rpu.Worker):
             sa_err = open("%s.err" % sa, "w")
             sa_proc = sp.Popen(args=cmdline.split(), stdout=sa_out, stderr=sa_err)
     
-            # make sure we can stop the sa_proc
+            # make sure the controller can stop and join the sa_proc
             sa_proc.name = sa
             sa_proc.stop = sa_proc.terminate
+            sa_proc.join = sa_proc.wait
             sub_agents.append(sa_proc)
     
         # the agents are up - let the session controller manage them from here

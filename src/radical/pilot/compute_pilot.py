@@ -125,7 +125,6 @@ class ComputePilot(object):
 
         if self.state == rps.FAILED and self._exit_on_error:
             self._log.error("[Callback]: pilot '%s' failed", self.uid)
-            self._session.close()
             raise RuntimeError('pilot %s failed - fatal!' % self.uid)
             sys.exit()
 

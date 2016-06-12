@@ -360,7 +360,9 @@ class Session(rs.Session):
 
         # stop the controller
         if self._controller:
+            self._log.debug("session %s closes ctrl   %s", self._uid, self._controller.uid)
             self._controller.stop()  
+            self._log.debug("session %s closed ctrl   %s", self._uid, self._controller.uid)
 
         self.prof.prof("closing", msg=cleanup, uid=self._uid)
         if self._dbs:

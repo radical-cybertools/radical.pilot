@@ -369,7 +369,7 @@ class Component(mp.Process):
         the context of the parent process, *and* once in the context of the
         child process, after start().
         """
-        self._log.debug('base initialize_common (NOOP)')
+        self._log.debug('initialize_common (NOOP)')
 
     # --------------------------------------------------------------------------
     #
@@ -468,7 +468,7 @@ class Component(mp.Process):
         the context of the parent process, upon start(), and should be used to
         set up component state before things arrive.
         """
-        self._log.debug('base initialize_parent (NOOP)')
+        self._log.debug('initialize_parent (NOOP)')
 
 
     # --------------------------------------------------------------------------
@@ -546,7 +546,7 @@ class Component(mp.Process):
         the context of the child process, upon start(), and should be used to
         set up component state before things arrive.
         """
-        self._log.debug('base initialize_child (NOOP)')
+        self._log.debug('initialize_child (NOOP)')
 
 
     # --------------------------------------------------------------------------
@@ -574,7 +574,7 @@ class Component(mp.Process):
     #
     def _finalize_common(self):
 
-        self._log.debug('base _finalize_common')
+        self._log.debug('_finalize_common')
 
         if self._finalized:
             # some other thread is already taking care of finalization
@@ -593,15 +593,6 @@ class Component(mp.Process):
         for i in self._idlers:
             self._log.debug('%s -> term %s' % (self.uid, i))
             self._idlers[i]['term'].set()
-
-        # unlock the cb lock, for the case that we have a (locked) callback
-        # somewhere upward in the callstack.  Since all threads have the term
-        # event now set, they should fall out of their event loops at this
-        # point.  We do not always have the lock though...
-        try:
-            self._cb_lock.release()
-        except:
-            pass
 
         # collect the threads
         for s in self._subscribers:
@@ -626,7 +617,7 @@ class Component(mp.Process):
             except Exception:
                 pass
 
-        self._log.debug('base _finalize_common done')
+        self._log.debug('_finalize_common done')
 
 
     # --------------------------------------------------------------------------
@@ -638,7 +629,7 @@ class Component(mp.Process):
         should be used to tear down component state after things have been
         processed.
         """
-        self._log.debug('base finalize_common (NOOP)')
+        self._log.debug('finalize_common (NOOP)')
 
         # FIXME: finaliers should unrergister all callbacks/idlers/subscribers
 
@@ -663,7 +654,7 @@ class Component(mp.Process):
         the context of the parent process, upon stop(), and should be used to
         tear down component state after things have been processed.
         """
-        self._log.debug('base finalize_parent (NOOP)')
+        self._log.debug('finalize_parent (NOOP)')
 
 
     # --------------------------------------------------------------------------
@@ -686,7 +677,7 @@ class Component(mp.Process):
         the context of the child process, upon stop(), and should be used to
         tear down component state after things have been processed.
         """
-        self._log.debug('base finalize_child (NOOP)')
+        self._log.debug('finalize_child (NOOP)')
 
 
     # --------------------------------------------------------------------------
@@ -745,11 +736,13 @@ class Component(mp.Process):
     # --------------------------------------------------------------------------
     #
     def join(self, timeout=None):
-        # we only really join when the comoinent child pricess has been started
+        # we only really join when the component child process has been started
         if self.pid:
-            self._log.debug('%s join   (%s)' % (self.uid, self.pid))
+            self._log.debug('%s join   (%s)', self.uid, self.pid)
             mp.Process.join(self, timeout)
-            self._log.debug('%s joined (%s)' % (self.uid, self.pid))
+            self._log.debug('%s joined (%s)', self.uid, self.pid)
+        else:
+            self._log.debug('skip join for %s: no child', self.uid)
 
 
     # --------------------------------------------------------------------------
@@ -788,8 +781,6 @@ class Component(mp.Process):
         # available
         if self._is_parent:
 
-            self._log.debug('stop as parent')
-
             # Signal the child -- if one exists
             if self.has_child:
                 self._log.info("stop    %s" % self.pid)
@@ -803,6 +794,9 @@ class Component(mp.Process):
 
             # FIXME: self._finalize is set now.  We should add finalization
             #        guards around all methods.
+
+            self._log.debug('stop as parent (return)')
+            return
 
         else:
             # The child exits here.

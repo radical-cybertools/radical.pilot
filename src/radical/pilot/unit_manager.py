@@ -451,6 +451,7 @@ class UnitManager(rpu.Component):
         """
 
         # TODO: Implement 'drain'.
+        # NOTE: the actual removal of pilots from the scheduler is asynchron!
 
         if drain:
             raise RuntimeError("'drain' is not yet implemented")
@@ -458,28 +459,25 @@ class UnitManager(rpu.Component):
         if self._closed:
             raise RuntimeError("instance is already closed")
 
-        if not isinstance(pilots, list):
-            pilots = [pilots]
+        if not isinstance(pilot_ids, list):
+            pilot_ids = [pilot_ids]
 
-        if len(pilots) == 0:
+        if len(pilot_ids) == 0:
             raise ValueError('cannot remove no pilots')
 
-        self._log.report.info('<<add %d pilot(s)' % len(pilots))
+        self._log.report.info('<<add %d pilot(s)' % len(pilot_ids))
 
         with self._pilots_lock:
 
             # sanity check, and keep pilots around for inspection
-            for pilot in pilots:
-                pid = pilot.uid
+            for pid in pilot_ids:
                 if pid not in self._pilots:
                     raise ValueError('pilot %s not added' % pid)
                 del(self._pilots[pid])
 
-        pids = [pilot.uid for pilot in pilots]
-
         # publish to the command channel for the scheduler to pick up
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'remove_pilots',
-                                          'arg' : {'pids'  : pids, 
+                                          'arg' : {'pids'  : pilot_ids, 
                                                    'umgr'  : self.uid}})
         self._log.report.ok('>>ok\n')
 

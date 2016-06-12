@@ -79,7 +79,7 @@ class Default(AgentStagingInputComponent):
                 tgt    = ru.Url(entry['target'])
 
                 if action in [rpc.LINK, rpc.COPY, rpc.MOVE]:
-                    actionables.append([src, tgt, flags])
+                    actionables.append([src, tgt, action, flags])
 
             if actionables:
                 staging_units.append([unit, actionables])
@@ -121,7 +121,7 @@ class Default(AgentStagingInputComponent):
         self._prof.prof("created staging_area", uid=uid)
 
         # Loop over all transfer directives and execute them.
-        for src, tgt, flags in actionables:
+        for src, tgt, action, flags in actionables:
 
             self._prof.prof('agent staging in', msg=src, uid=uid)
 

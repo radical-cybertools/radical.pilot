@@ -1,5 +1,5 @@
 
-__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
+__copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
