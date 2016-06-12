@@ -777,7 +777,7 @@ class Default(PMGRLaunchingComponent):
         # ------------------------------------------------------------------
         # Write agent config dict to a json file in pilot sandbox.
 
-        agent_cfg_name = 'agent.cfg'
+        agent_cfg_name = 'agent_0.cfg'
         cfg_tmp_handle, cfg_tmp_file = tempfile.mkstemp(prefix='rp.agent_cfg.')
         os.close(cfg_tmp_handle)  # file exists now
 

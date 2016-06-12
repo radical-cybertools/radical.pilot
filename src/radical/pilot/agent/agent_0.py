@@ -2,28 +2,32 @@
 __copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+
 import os
 import sys
 import copy
 import stat
 import time
 import pprint
-import subprocess        as sp
-import radical.utils     as ru
+import subprocess         as sp
 
-from .. import states    as rps
-from .. import constants as rpc
-from .. import utils     as rpu
-from .. import Session   as rp_Session
+import radical.utils      as ru
 
-from .  import rm        as rpa_rm
-from .  import lm        as rpa_lm
+from ..  import utils     as rpu
+from ..  import states    as rps
+from ..  import constants as rpc
+from ..  import Session   as rp_Session
+
+from .  import rm         as rpa_rm
+from .  import lm         as rpa_lm
 
 
 # this needs git attribute 'ident' set for this file
 git_ident = "$Id$"
 
 
+# ==============================================================================
+#
 class Agent_0(rpu.Worker):
 
     # This is the base agent.  It does not do much apart from starting
@@ -37,19 +41,25 @@ class Agent_0(rpu.Worker):
     
     # --------------------------------------------------------------------------
     #
-    def __init__(self):
+    def __init__(self, agent_name):
+
+        assert(agent_name == 'agent_0')
+        print "startup agent %s" % agent_name
 
         # load config, create session and controller, init rpu.Worker
+        agent_cfg  = "%s/%s.cfg" % (os.getcwd(), agent_name)
+        cfg        = ru.read_json_str(agent_cfg)
 
-        # load the agent config, and overload the config dicts
-        cfg               = ru.read_json_str("%s/agent.cfg" % (os.getcwd()))
-        self._uid         = 'agent_0'
+        self._uid         = agent_name
         self._pilot_id    = cfg['pilot_id']
         self._session_id  = cfg['session_id']
         self._runtime     = cfg['runtime']
         self._starttime   = time.time()
         self._final_cause = None
         self._lrms        = None
+
+        # this better be on a shared FS!
+        cfg['workdir']    = os.getcwd()
 
         # sanity check on config settings
         if not 'cores'               in cfg: raise ValueError("Missing number of cores")
@@ -82,19 +92,13 @@ class Agent_0(rpu.Worker):
         ru.dict_merge(cfg, session.ctrl_cfg, ru.PRESERVE)
         pprint.pprint(cfg)
 
-        # set up a logger and profiler
-        self._prof = self._session._get_profiler('bootstrap_3')
-        self._prof.prof('sync ref', msg='%s start' % self._uid, uid=self._pilot_id)
+        if not session.is_connected:
+            raise RuntimeError('agent_0 could not connect to mongodb')
 
-        self._log  = self._session._get_logger('bootstrap_3', level=cfg.get('debug'))
-        self._log.info('start')
-
-        if not self._session.is_connected:
-            raise RuntimeError('agent could not connect to mongodb')
-
-        # at this point the session is up, and the session controller should
-        # have brought up all communication bridges and the UpdateWorker.  
-        rpu.Worker.__init__(self, cfg, self._session)
+        # at this point the session is up and connected, and the session
+        # controller should have brought up all communication bridges and the
+        # UpdateWorker.  We are ready to rumble!
+        rpu.Worker.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -183,11 +187,11 @@ class Agent_0(rpu.Worker):
         err = None
         log = None
     
-        try    : out = open('./agent.out', 'r').read()
+        try    : out = open('./agent_0.out', 'r').read(1024)
         except : pass
-        try    : err = open('./agent.err', 'r').read()
+        try    : err = open('./agent_0.err', 'r').read(1024)
         except : pass
-        try    : log = open('./agent.log', 'r').read()
+        try    : log = open('./agent_0.log', 'r').read(1024)
         except : pass
     
         ret = self._session._dbs._c.update(
@@ -375,7 +379,6 @@ class Agent_0(rpu.Worker):
             if cmd == rpc.COMMAND_CANCEL_PILOT:
                 self._log.info('cancel pilot cmd')
                 self.final_cause = 'cancel'
-                self._cb_lock.release()
                 self.stop()
 
             elif cmd == rpc.COMMAND_CANCEL_COMPUTE_UNIT:
@@ -394,7 +397,6 @@ class Agent_0(rpu.Worker):
             if time.time() >= self._starttime + (int(self._runtime) * 60):
                 self._log.info("reached runtime limit (%ss).", self._runtime*60)
                 self._final_cause = 'timeout'
-                self._cb_lock.release()
                 self.stop()
 
 

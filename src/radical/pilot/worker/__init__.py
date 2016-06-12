@@ -4,6 +4,5 @@ __license__   = "MIT"
 
 
 from .update    import Update
-from .agent     import Agent
 
 

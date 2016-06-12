@@ -38,15 +38,9 @@ if __name__ == "__main__":
 
     agent_name=sys.argv[1]
 
-    if agent_name == 'agent_0':
-        # spawn sub agents
-        rp.agent.bootstrap_3()
-        print "bootstrap_3 done"
-
-    else:
-        # this is a sub agent - bootstrap it!
-        rp.agent.bootstrap_4(agent_name)
-        print "bootstrap_4 done (%s)" % agent_name
+    print "%s.bootstrap_3 start" % agent_name
+    rp.agent.bootstrap_3(agent_name)
+    print "%s.bootstrap_3 done" % agent_name
 
 #
 # ------------------------------------------------------------------------------

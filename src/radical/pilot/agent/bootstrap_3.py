@@ -8,11 +8,15 @@ import signal
 import setproctitle
 
 from   .agent_0 import Agent_0
+from   .agent_n import Agent_n
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
-def bootstrap_3():
+# Agent bootstrap stage 3
+#
+# ==============================================================================
+def bootstrap_3(agent_name):
     """
     This method continues where the bootstrap_1/2 left off, but will soon pass
     control to the Agent class which will spawn the functional components.
@@ -29,27 +33,40 @@ def bootstrap_3():
     agent_0 will create derived config files for all sub-agents.
     """
 
-    agent_0 = None
-    try:
-        setproctitle.setproctitle('rp.agent_0')
+    print "bootstrap agent %s" % agent_name
+    agent = None
 
-        agent_0 = Agent_0()
-        agent_0.start(spawn=False)
+    try:
+        setproctitle.setproctitle('rp.%s' % agent_name)
+
+        if agent_name == 'agent_0':
+            agent = Agent_0(agent_name)
+        else:
+            agent = Agent_n(agent_name)
+
+        print 'start   %s' % agent_name
+        agent.start(spawn=False)
+        print 'started %s' % agent_name
 
         # we never really quit this way, but instead the agent command_cb may
         # pick up a shutdown signal, the watcher_cb may detect a failing
         # component or sub-agent, or we get a kill signal from the RM.  In all
-        # three cases, we'll end up in agent_0.stop()
-        while True:
-            time.sleep(1)
+        # three cases, we'll end up in agent.stop()
+        agent.join()
+        agent = None  # avoid stop in finally clause
+        print 'joined  %s' % agent_name
 
     finally:
 
         # in all cases, make sure we perform an orderly shutdown.  I hope python
         # does not mind doing all those things in a finally clause of
         # (essentially) main...
-        if agent_0:
-            agent_0.stop()
-
+        print 'finally %s' % agent_name
+        if agent:
+            print 'finally stop %s' % agent_name
+            agent.stop()
+            print 'finally join %s' % agent_name
+            agent.join()
+            print 'finally joined %s' % agent_name
 
 # ------------------------------------------------------------------------------
