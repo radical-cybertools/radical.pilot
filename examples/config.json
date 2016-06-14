@@ -18,6 +18,12 @@
             "schema"   : "gsissh"
         },
 
+        "ncsa.bw_ccm" : {
+            "project"  : "gkd",
+            "queue"    : "debug",
+            "schema"   : "gsissh"
+        },
+
         "nersc.edison" : {
             "project"  : null,
             "queue"    : "debug",
@@ -54,6 +60,12 @@
             "schema"   : null
         },
 
+        "xsede.wrangler" : {
+            "project"  : "TG-MCB090174",
+            "queue"    : "debug",
+            "schema"   : null
+        },
+
         "xsede.comet"  : {
             "project"  : "unc100",
             "queue"    : "",
@@ -73,6 +85,12 @@
         },
 
         "xsede.blacklight" : {
+            "project"  : null,
+            "queue"    : "debug",
+            "schema"   : "gsissh"
+        },
+
+        "xsede.greenfield" : {
             "project"  : null,
             "queue"    : "debug",
             "schema"   : "gsissh"

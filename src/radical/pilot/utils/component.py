@@ -843,7 +843,7 @@ class Component(mp.Process):
 
             if state:
                 unit['state']          = state
-                unit['state_timstamp'] = timestamp
+                unit['state_timestamp'] = timestamp
                 if prof:
                     self._prof.prof('advance', uid=unit['_id'], state=state,
                             timestamp=timestamp)

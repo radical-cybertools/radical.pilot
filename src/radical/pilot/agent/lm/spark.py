@@ -98,7 +98,6 @@ class Spark(LaunchMethod):
                     except Exception:
                         java_home = '/Library/Java/Home'
 
-
             # if no installation found install scala 2.10.4
             scala_home=ru.which('scala')
             if not scala_home:
@@ -156,6 +155,7 @@ class Spark(LaunchMethod):
             spark_env_file.write('export SCALA_HOME='+ scala_home+ "\n")
             spark_env_file.write('export JAVA_HOME=' + java_home + "\n")
             spark_env_file.write('export SPARK_LOG_DIR='+os.getcwd()+'/spark-logs'+'\n')
+            spark_env_file.write('export PYSPARK_PYTHON='+python+'\n')
 
             spark_env_file.close()
 

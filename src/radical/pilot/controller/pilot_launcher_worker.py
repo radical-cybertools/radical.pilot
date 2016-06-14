@@ -38,7 +38,6 @@ DEFAULT_RP_VERSION    = 'local'
 DEFAULT_VIRTENV       = '%(global_sandbox)s/ve'
 DEFAULT_VIRTENV_MODE  = 'update'
 DEFAULT_AGENT_CONFIG  = 'default'
-DEFAULT_PYTHON_DIST   = 'default'
 
 # ----------------------------------------------------------------------------
 #
@@ -409,8 +408,8 @@ class PilotLauncherWorker(threading.Thread):
                         cores_per_node          = resource_cfg.get ('cores_per_node')
                         shared_filesystem       = resource_cfg.get ('shared_filesystem', True)
                         health_check            = resource_cfg.get ('health_check', True)
-                        python_dist             = resource_cfg.get ('python_dist', DEFAULT_PYTHON_DIST)
-
+                        python_dist             = resource_cfg.get ('python_dist')
+                        
 
                         # Agent configuration that is not part of the public API.
                         # The agent config can either be a config dict, or
@@ -436,13 +435,20 @@ class PilotLauncherWorker(threading.Thread):
                                     agent_cfg_dict = ru.read_json(agent_config)
                                 else:
                                     # otherwise interpret as a config name
-                                    # FIXME: load in session just like resource
-                                    #        configs, including user level overloads
                                     module_path = os.path.dirname(os.path.abspath(__file__))
                                     config_path = "%s/../configs/" % module_path
                                     agent_cfg_file = os.path.join(config_path, "agent_%s.json" % agent_config)
                                     logger.info("Read agent config file: %s" % agent_cfg_file)
                                     agent_cfg_dict = ru.read_json(agent_cfg_file)
+                                # no matter how we read the config file, we
+                                # allow for user level overload
+                                cfg_base = os.path.basename(agent_cfg_file)
+                                user_cfg = '%s/.radical/pilot/config/%s' \
+                                              % (os.environ['HOME'], cfg_base)
+                                if os.path.exists(user_cfg):
+                                    logger.info("merging user config: %s" % user_cfg)
+                                    user_cfg_dict = ru.read_json(user_cfg)
+                                    ru.dict_merge (agent_cfg_dict, user_cfg_dict, policy='overwrite')
                             except Exception as e:
                                 logger.exception("Error reading agent config file: %s" % e)
                                 raise
@@ -608,6 +614,7 @@ class PilotLauncherWorker(threading.Thread):
 
                         # ------------------------------------------------------
                         # sanity checks
+                        if not python_dist        : raise RuntimeError("missing python distribution")
                         if not agent_spawner      : raise RuntimeError("missing agent spawner")
                         if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
                         if not lrms               : raise RuntimeError("missing LRMS")
@@ -783,8 +790,9 @@ class PilotLauncherWorker(threading.Thread):
                         pilotjob = js.create_job(jd)
                         pilotjob.run()
 
-                        # Clean up agent config file after submission
+                        # Clean up agent config file and dir after submission
                         os.unlink(cfg_tmp_file)
+                        os.rmdir(cfg_tmp_dir)
 
                         # do a quick error check
                         if pilotjob.state == saga.FAILED:

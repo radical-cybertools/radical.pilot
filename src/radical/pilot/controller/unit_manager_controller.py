@@ -583,6 +583,9 @@ class UnitManagerController(threading.Thread):
             unit_ids = [unit.uid for unit in units]
             self._dbs.set_compute_unit_state(unit_ids, UNSCHEDULED, "unit remains unscheduled")
             for unit in units:
+                # FIXME: this leads to repeated entries in the case of
+                #        backfilling, since we record a state change which
+                #        does not really happen...
                 self._session.prof.prof('advance', uid=unit.uid, 
                         msg=UNSCHEDULED, state=UNSCHEDULED)
 

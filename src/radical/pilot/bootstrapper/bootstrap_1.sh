@@ -60,6 +60,18 @@ VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
 VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces setproctitle"
 
+# before we change anything else in the pilot environment, we safe a couple of
+# env vars to bve able to re-create a close-to-pristine env for unit execution.
+_OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
+_OLD_VIRTUAL_PYTHONHOME="$PYTHONHOME"
+_OLD_VIRTUAL_PATH="$PATH"
+_OLD_VIRTUAL_PS1="$PS1"
+
+export _OLD_VIRTUAL_PYTHONPATH
+export _OLD_VIRTUAL_PYTHONHOME
+export _OLD_VIRTUAL_PATH
+export _OLD_VIRTUAL_PS1
+
 
 # ------------------------------------------------------------------------------
 #
@@ -1295,12 +1307,6 @@ rehash "$PYTHON"
 virtenv_setup    "$PILOTID" "$VIRTENV" "$VIRTENV_MODE" "$PYTHON_DIST"
 virtenv_activate "$VIRTENV" "$PYTHON_DIST"
 
-# Export the variables related to virtualenv,
-# so that we can disable the virtualenv for the cu.
-export _OLD_VIRTUAL_PATH
-export _OLD_VIRTUAL_PYTHONHOME
-export _OLD_VIRTUAL_PS1
-
 # ------------------------------------------------------------------------------
 # launch the radical agent
 #
@@ -1329,13 +1335,7 @@ else
 fi
 
 
-# TODO: Can this be generalized with our new split-agent now?
-if test -z "$CCM"
-then
-    AGENT_CMD="$PYTHON $PILOT_SCRIPT"
-else
-    AGENT_CMD="ccmrun $PYTHON $AGENT_CMD"
-fi
+AGENT_CMD="$PYTHON $PILOT_SCRIPT"
 
 verify_rp_install
 
@@ -1458,7 +1458,13 @@ profile_event 'agent start'
 
 # start the master agent instance (zero)
 profile_event 'sync rel' 'agent start'
+
+# TODO: Can this be generalized with our new split-agent now?
+if test -z "$CCM"; then
 ./bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
+else
+ccmrun ./bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
+fi
 
 AGENT_EXITCODE=$?
 

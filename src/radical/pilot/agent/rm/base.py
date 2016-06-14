@@ -267,6 +267,8 @@ class LRMS(object):
         If interface is not given, do some magic.
         """
 
+        AF = netifaces.AF_INET
+
         # List of interfaces that we probably dont want to bind to by default
         black_list = ['lo', 'sit0']
 
@@ -274,7 +276,8 @@ class LRMS(object):
         sorted_preferred = [
             'ipogif0', # Cray's
             'br0', # SuperMIC
-            'eth0'
+            'eth0',
+            'wlan0'
         ]
 
         # Get a list of all network interfaces
@@ -296,24 +299,31 @@ class LRMS(object):
             # Go through the sorted list and see if it is available
             for iface in sorted_preferred:
                 if iface in all:
-                    # Found something, get out of here
-                    pref = iface
-                    break
+                    # check if we see any settings on that interface
+                    if netifaces.ifaddresses(iface).get(AF):
+                        pref = iface
+                        break
 
         # If we still didn't find something, grab the first one from the
         # potentials if it has entries
         if not pref and potentials:
-            pref = potentials[0]
+            for iface in potentials:
+                if netifaces.ifaddresses(iface).get(AF):
+                    pref = iface
+                    break
 
         # If there were no potentials, see if we can find one in the blacklist
         if not pref:
             for iface in black_list:
                 if iface in all:
-                    pref = iface
+                    if netifaces.ifaddresses(iface).get(AF):
+                        # Found something, get out of here
+                        pref = iface
+                        break
 
+        logger.debug("Network interfaces selected: %s", pref)
         # Use IPv4, because, we can ...
-        af = netifaces.AF_INET
-        ip = netifaces.ifaddresses(pref)[af][0]['addr']
+        ip = netifaces.ifaddresses(pref)[AF][0]['addr']
 
         return ip
 
