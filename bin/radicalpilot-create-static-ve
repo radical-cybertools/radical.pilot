@@ -1,44 +1,6 @@
 #!/bin/sh
 
-<<<<<<< HEAD
 # set -x
-=======
-reqs="pymongo==2.8 python-hostlist netifaces setproctitle ntplib pyzmq"
-reqs="$reqs apache-libcloud colorama backports.ssl-match-hostname"
-
-setuptools="setuptools==0.6c11"
-pip="pip==1.4.1"
-
-# ------------------------------------------------------------------------------
-#
-help(){
-
-    err="$1"
-    ret=0
-    
-    if ! test -z "$err"
-    then
-        ret=1
-        printf "\n    ERROR: $err\n"
-    fi
-
-    cat <<EOT
-
-    usage: $0 <target> [-h]
-
-    This script creates a virtualenv at the given target location.  That
-    virtualenv should be suitable to be used as static VE for a radical.pilot
-    target resource, and can be specified in a resource configuration for RP.
-
-EOT
-    exit $ret
-}
-
-
-# ------------------------------------------------------------------------------
-#
-prefix=$1
->>>>>>> 1ff6357... improve ve create script
 
 scriptname="radicalpilot-create-static-ve"
 
@@ -119,19 +81,8 @@ pip install --upgrade $reqs
 # ($prefix/rp_install(, so that any local install can use the ve *w/o* 
 # the radical stack, by re-routing PYTHONPATH
 python_version=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
-<<<<<<< HEAD
-<<<<<<< HEAD
-ve_mod_prefix=`python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
-rp_mod_prefix=`echo $ve_mod_prefix | sed -e "s|$prefix|$prefix/rp_install|"`
-=======
 ve_mod_prefix=` python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
 rp_mod_prefix=`echo $ve_mod_prefix | sed -e "s|$prefix|$prefix/rp_install/|"`
->>>>>>> 1ff6357... improve ve create script
-
-=======
-ve_mod_prefix=` python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
-rp_mod_prefix=`echo $ve_mod_prefix | sed -e "s|$prefix|$prefix/rp_install/|"`
->>>>>>> devel
 
 PYTHONPATH="$rp_mod_prefix:$PYTHONPATH"
 export PYTHONPATH
