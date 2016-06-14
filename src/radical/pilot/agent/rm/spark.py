@@ -45,12 +45,9 @@ class Spark(LRMS):
                 self._log.warn("more cores available: using requested %d instead of available %d.",
                         selected_cpus, detected_cpus)
 
-
-   
-
         hostname = os.environ.get('HOSTNAME')
 
-        if hostname == None:
+        if not hostname:
             self.node_list = ['localhost']
         else:
             self.node_list = [hostname]

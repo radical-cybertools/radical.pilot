@@ -45,27 +45,23 @@ class Spark(LaunchMethod):
         # it is the one that the SPARK LRMS returns
         spark_home = None   
         if lrms.name == 'SPARKLRMS':
+            #TODO: Create LRMS for existing Spark cluster
             logger.info("Found SPARK ")
             logger.info('Hook called by SPARK LRMS')
-            logger.info('NameNode: {0}'.format(lrms.namenode_url))
+            logger.info('NameNode: %s',lrms.namenode_url)
             rm_url         = "%s:%s" % (lrms.rm_ip, lrms.rm_port)
             rm_ip          = lrms.rm_ip
             launch_command = ru.which('spark')
 
         else:
             # Here are the necessary commands to start the cluster.
-            if lrms.node_list[0] == 'localhost':
-                node_name = lrms.node_list[0]
-            else:
-                logger.info("Bootstrap SPARK on " + socket.gethostname())
-                node_name =  socket.gethostname()
             
             VERSION = "1.5.2"
             SPARK_DOWNLOAD_URL= "http://d3kbcqa49mib13.cloudfront.net/spark-1.5.2-bin-hadoop2.6.tgz" #prebuilt
             #Download the tar file
             opener = urllib.FancyURLopener({})
             download_destination = os.path.join(os.getcwd(),"spark-" + VERSION + ".tar.gz")
-            logger.info("Download: %s to %s"%(SPARK_DOWNLOAD_URL, download_destination))
+            logger.info("Download: %s to %s",SPARK_DOWNLOAD_URL, download_destination,)
             opener.retrieve(SPARK_DOWNLOAD_URL, download_destination)
             spark_tar = "spark-" + VERSION + ".tar.gz"
             if not os.path.isfile(spark_tar):
@@ -164,8 +160,8 @@ class Spark(LaunchMethod):
             spark_start = subprocess.check_output(spark_home + '/sbin/start-all.sh')
             if 'Error' in spark_start:
                 raise RuntimeError("Spark Cluster failed to start: %s" % spark_start)
-            else:
-                logger.info('Start Spark Cluster')
+            
+            logger.info('Start Spark Cluster')
             launch_command = spark_home +'/bin'
 
           
@@ -189,14 +185,14 @@ class Spark(LaunchMethod):
     @classmethod
     def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
         if 'name' not in lm_info:
-            raise RuntimeError('rm_ip not in lm_info for %s' \
+            raise RuntimeError('name not in lm_info for %s' \
                     % (self.name))
 
         if lm_info['name'] != 'SPARKLRMS':
             logger.info('Stoping SPARK')
             stop_spark = subprocess.check_output(lm_info['spark_home'] + '/sbin/stop-all.sh') 
             if 'Error' in stop_spark:
-                logger.info("Spark didn't terminate properly")
+                logger.warn("Spark didn't terminate properly")
             else:
                 logger.info("Spark stopped successfully")
 
@@ -242,8 +238,6 @@ class Spark(LaunchMethod):
         if 'nodename' not in opaque_slots['lm_info']:
             raise RuntimeError('nodename not in lm_info for %s: %s' \
                     % (self.name, opaque_slots))
-
-
 
         master_ip   = opaque_slots['lm_info']['master_ip']
         client_node = opaque_slots['lm_info']['nodename']

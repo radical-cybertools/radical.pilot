@@ -40,7 +40,7 @@ class Spark(AgentSchedulingComponent):
         #    raise RuntimeError('rm_ip not in lm_info for %s' \
         #            % (self.name))
 
-        self._log.info('Checking rm_ip %s' % self._cfg['lrms_info']['lm_info']['rm_ip'])
+        self._log.info('Checking rm_ip %s',self._cfg['lrms_info']['lm_info']['rm_ip'])
         self._rm_ip = self._cfg['lrms_info']['lm_info']['rm_ip']
         self._rm_url = self._cfg['lrms_info']['lm_info']['rm_url']
         self._client_node = self._cfg['lrms_info']['lm_info']['nodename']
@@ -66,14 +66,11 @@ class Spark(AgentSchedulingComponent):
         #-----------------------------------------------------------------------
         # One application has finished, increase the number of available slots.
         #with self._slot_lock:
-        self._log.info('Releasing : {0} Cores, {1} RAM'.format(opaque_slot['task_slots'][0],opaque_slot['task_slots'][1]))
+        self._log.info('Releasing : %s Cores, %s RAM',[opaque_slot['task_slots'][0],opaque_slot['task_slots'][1])
         self.avail_cores +=opaque_slot['task_slots'][0]
         self.avail_mem +=opaque_slot['task_slots'][1]
         self.avail_app['apps']+=1
         return True
-
-
-
 
     # --------------------------------------------------------------------------
     #
