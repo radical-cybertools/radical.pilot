@@ -88,10 +88,13 @@ class Default(PMGRLaunchingComponent):
     #
     def finalize_child(self):
 
+        self._log.debug('finalize child')
         with self._cache_lock:
-            for js in self._saga_js_cache.values():
+            for url,js in self._saga_js_cache.iteritems():
+                self._log.debug('close js to %s', url)
                 js.close()
             self._saga_js_cache.clear()
+        self._log.debug('finalized child')
 
 
     # --------------------------------------------------------------------------

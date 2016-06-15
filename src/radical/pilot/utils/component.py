@@ -726,9 +726,11 @@ class Component(mp.Process):
 
         try:
             # this is now the parent process context
+            self._log.debug('%s call initialize_parent', self.uid)
             self._initialize_parent()
+            self._log.debug('%s called initialize_parent', self.uid)
         except Exception as e:
-            self._log.exception ('initialization failed')
+            self._log.exception ('%s initialize_parent failed' % uid)
             ru.cancel_main_thread()
             raise
 

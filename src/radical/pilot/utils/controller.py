@@ -204,7 +204,6 @@ class Controller(object):
             else:
                 self._log.debug('%s stop as hbeat', self.uid)
 
-
         if self._watcher_thread:
             self._log.debug('%s stop    watch', self.uid)
             self._watcher_term.set()
