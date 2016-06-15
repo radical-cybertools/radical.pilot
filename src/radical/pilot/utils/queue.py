@@ -159,8 +159,8 @@ class Queue(object):
         self._cfg     = copy.deepcopy(cfg)
         self._addr    = addr
 
-        self._name    = "%s.%s" % (self._qname, self._role)
-        self._log     = self._session._get_logger('rp.%s' % self._name, 
+        self._name    = "%s.%s" % (self._qname.replace('_', '.'), self._role)
+        self._log     = self._session._get_logger(self._name, 
                                                   level=self._cfg.get('log_level', 'off'))
 
         if self._log.getEffectiveLevel() == 10: # logging.DEBUG:

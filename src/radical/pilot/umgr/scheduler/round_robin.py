@@ -129,6 +129,7 @@ class RoundRobin(UMGRSchedulingComponent):
             # advance all units
             self.advance(units, rps.UMGR_STAGING_INPUT_PENDING, 
                          publish=True, push=True)
+
         
 
 # ------------------------------------------------------------------------------

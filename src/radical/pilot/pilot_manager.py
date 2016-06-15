@@ -209,7 +209,7 @@ class PilotManager(rpu.Component):
         pilots = self._session._dbs.get_pilots(pmgr_uid=self.uid)
 
         for pilot in pilots:
-            self._update_pilot(pilot['uid'], pilot, publish=False)
+            self._update_pilot(pilot['uid'], pilot)
 
 
     # --------------------------------------------------------------------------
@@ -226,13 +226,12 @@ class PilotManager(rpu.Component):
                 pid   = thing["uid"]
                 state = thing["state"]
 
-                # since we get this info from the pubsub, we don't publish it again
-                self._update_pilot(pid, thing, publish=False)
+                self._update_pilot(pid, thing)
 
 
     # --------------------------------------------------------------------------
     #
-    def _update_pilot(self, pid, pilot, publish=False):
+    def _update_pilot(self, pid, pilot):
 
         # we don't care about pilots we don't know
         # otherwise get old state
@@ -246,10 +245,10 @@ class PilotManager(rpu.Component):
             target, passed = rps._pilot_state_progress(current, pilot['state'])
 
             for s in passed:
+                # we got state from either pubsub or DB, so don't publish again
                 pilot['state'] = s
                 self._pilots[pid]._update(pilot)
-                if publish:
-                    self.advance(pilot, s, publish=publish, push=False)
+                self.advance(pilot, s, publish=False, push=False)
 
 
     # --------------------------------------------------------------------------

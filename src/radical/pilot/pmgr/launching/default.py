@@ -144,56 +144,7 @@ class Default(PMGRLaunchingComponent):
                 with self._check_lock:
                     self._checking.remove(pid)
 
-                # FIXME: where is my bulk?
-                out, err, log  = self._get_pilot_logs(pilot)
-                pilot['out']   = out
-                pilot['err']   = err
-                pilot['log']   = log
-                pilot['state'] = rps.CANCELED
-
             self.advance(pilots, push=False, publish=True)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_pilot_logs(self, pilot):
-
-        s_out = None
-        s_err = None
-        s_log = None
-
-        # attempt to get stdout/stderr/log.  We only expect those if pilot was
-        # attempting launch at some point
-        # FIXME: check state
-        # FIXME: we have many different log files - should we fetch more? all?
-
-        MAX_IO_LOGLENGTH = 10240    # 10k should be enough for anybody...
-
-        try:
-            n_out = "%s/%s/%s" % (pilot['sandbox'], self._session.uid, 'agent.out')
-            f_out = rs.filesystem.File(n_out, session=self._session)
-            s_out = f_out.read()[-MAX_IO_LOGLENGTH:]
-            f_out.close ()
-        except Exception as e:
-            s_out = 'stdout is not available (%s)' % e
-
-        try:
-            n_err = "%s/%s/%s" % (pilot['sandbox'], self._session.uid, 'agent.err')
-            f_err = rs.filesystem.File(n_err, session=self._session)
-            s_err = f_err.read()[-MAX_IO_LOGLENGTH:]
-            f_err.close ()
-        except Exception as e:
-            s_err = 'stderr is not available (%s)' % e
-
-        try:
-            n_log = "%s/%s/%s" % (pilot['sandbox'], self._session.uid, 'agent.log')
-            f_log = rs.filesystem.File(n_log, session=self._session)
-            s_log = f_log.read()[-MAX_IO_LOGLENGTH:]
-            f_log.close ()
-        except Exception as e:
-            s_log = 'log is not available (%s)' % e
-
-        return s_out, s_err, s_log
 
 
     # --------------------------------------------------------------------------
@@ -245,11 +196,6 @@ class Default(PMGRLaunchingComponent):
             return
 
         for pilot in pilots:
-
-            out, err, log = self._get_pilot_logs(pilot)
-            pilot['out'] = out
-            pilot['err'] = err
-            pilot['log'] = log
 
             with self._check_lock:
                 # stop monitoring this pilot

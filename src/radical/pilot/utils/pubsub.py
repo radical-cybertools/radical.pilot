@@ -83,8 +83,8 @@ class Pubsub(object):
         self._addr       = addr
 
         sys.stdout.flush()
-        self._name       = "%s.%s" % (self._channel, self._role)
-        self._log        = self._session._get_logger('rp.%s' % self._name, 
+        self._name       = "%s.%s" % (self._channel.replace('_', '.'), self._role)
+        self._log        = self._session._get_logger(self._name, 
                                                      level=self._cfg.get('log_level', 'debug'))
 
         if self._log.getEffectiveLevel() == 10: # logging.DEBUG:

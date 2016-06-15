@@ -119,8 +119,8 @@
   + sub-agents: catch stdout/err for popen procs
   - agent_n does not need a child process really?
 
-  - agent state ACTIVE is recorded twice
-  - agent state DONE   is recorded twice on timeout
+  + agent state ACTIVE is recorded twice
+  + agent state DONE   is recorded twice on timeout
 
 
 Expected Termination Behavior:
