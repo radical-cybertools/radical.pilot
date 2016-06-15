@@ -11,16 +11,17 @@ import shutil
 import tempfile
 import threading
 
-import subprocess as sp
+import subprocess           as sp
+import threading            as mt
 
 import saga                 as rs
 import saga.utils.pty_shell as rsup
 import radical.utils        as ru
 
-from .... import pilot     as rp
-from ...  import utils     as rpu
-from ...  import states    as rps
-from ...  import constants as rpc
+from .... import pilot      as rp
+from ...  import utils      as rpu
+from ...  import states     as rps
+from ...  import constants  as rpc
 
 from .base import PMGRLaunchingComponent
 
@@ -73,7 +74,7 @@ class Default(PMGRLaunchingComponent):
         self._mod_dir       = os.path.dirname(os.path.abspath(__file__))
         self._root_dir      = "%s/../../"   % self._mod_dir  
         self._conf_dir      = "%s/configs/" % self._root_dir 
-        
+
         # FIXME: make interval configurable
         self.register_timed_cb(self._pilot_watcher_cb, timer=1.0)
         
@@ -89,10 +90,13 @@ class Default(PMGRLaunchingComponent):
     def finalize_child(self):
 
         self._log.debug('finalize child')
+        # avoid shutdown races:
+
         with self._cache_lock:
             for url,js in self._saga_js_cache.iteritems():
-                self._log.debug('close js to %s', url)
+                self._log.debug('close  js to %s', url)
                 js.close()
+                self._log.debug('closed js to %s', url)
             self._saga_js_cache.clear()
         self._log.debug('finalized child')
 
@@ -187,24 +191,24 @@ class Default(PMGRLaunchingComponent):
         # to a caching of state information, and we thus have cache hits when
         # querying the pilots individually
 
-        pilots = list()
+        final_pilots = list()
         with self._pilots_lock, self._check_lock:
             for pid in self._checking:
                 state = self._pilots[pid]['job'].state
                 if state in [rs.job.DONE, rs.job.FAILED, rs.job.CANCELED]:
-                    pilots.append(self._pilots[pid]['pilot'])
+                    final_pilots.append(self._pilots[pid]['pilot'])
 
-        if not pilots:
-            # no final pilots
+        if not final_pilots:
             return
 
-        for pilot in pilots:
+        for pilot in final_pilots:
 
             with self._check_lock:
                 # stop monitoring this pilot
                 self._checking.remove(pilot['uid'])
 
-        self.advance(pilots, rps.CANCELED, push=False, publish=True)
+        # FIXME: why canceled?
+        self.advance(final_pilots, rps.CANCELED, push=False, publish=True)
 
 
     # --------------------------------------------------------------------------

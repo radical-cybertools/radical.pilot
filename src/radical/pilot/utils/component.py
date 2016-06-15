@@ -475,11 +475,11 @@ class Component(mp.Process):
         # parent calls terminate on stop(), which we translate here into stop()
         def sigterm_handler(signum, frame):
             self._log.warn('caught sigterm')
-            self.stop()
+            ru.cancel_main_thread()
         signal.signal(signal.SIGTERM, sigterm_handler)
         def sighup_handler(signum, frame):
             self._log.warn('caught sighup')
-            self.stop()
+            ru.cancel_main_thread()
         signal.signal(signal.SIGHUP, sighup_handler)
 
     # --------------------------------------------------------------------------
@@ -596,9 +596,10 @@ class Component(mp.Process):
     #
     def _finalize_common(self):
 
-        self._log.debug('_finalize_common')
+        self._log.debug('_finalize_common (%s)', self)
 
         if self._finalized:
+            self._log.debug('_finalize_common found done (%s)', self)
             # some other thread is already taking care of finalization
             return
 
@@ -610,29 +611,29 @@ class Component(mp.Process):
 
         # signal all threads to terminate
         for s in self._subscribers:
-            self._log.debug('%s -> term %s' % (self.uid, s))
+            self._log.debug('%s -> term %s', self.uid, s)
             self._subscribers[s]['term'].set()
         for i in self._idlers:
-            self._log.debug('%s -> term %s' % (self.uid, i))
+            self._log.debug('%s -> term %s', self.uid, i)
             self._idlers[i]['term'].set()
 
         # collect the threads
         for s in self._subscribers:
             t = self._subscribers[s]['thread']
             if t != self_thread:
-                self._log.debug('%s -> join %s' % (self.uid, s))
+                self._log.debug('%s -> join %s', self.uid, s)
                 t.join()
-                self._log.debug('%s >> join %s' % (self.uid, s))
+                self._log.debug('%s >> join %s', self.uid, s)
         for i in self._idlers:
             t = self._idlers[i]['thread']
             if t != self_thread:
-                self._log.debug('%s -> join %s' % (self.uid, i))
+                self._log.debug('%s -> join %s', self.uid, i)
                 t.join()
-                self._log.debug('%s >> join %s' % (self.uid, i))
+                self._log.debug('%s >> join %s', self.uid, i)
 
         # NOTE: this relies on us not to change the name of MainThread
         if self_thread.name == 'MainThread':
-            self._log.debug('%s close prof' % self.uid)
+            self._log.debug('%s close prof', self.uid)
             try:
                 self._prof.prof("stopped", uid=self._uid)
                 self._prof.close()
@@ -756,7 +757,24 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
+    def wait(self, timeout=None):
+        """
+        wait will block until stop() self._term has been set
+        """
+
+        start = time.time()
+        while not self._term.is_set():
+            if timeout != None:
+                now = time.time()
+                if now-start > timeout:
+                    break
+            time.sleep(1)
+
+
+    # --------------------------------------------------------------------------
+    #
     def join(self, timeout=None):
+
         # we only really join when the component child process has been started
         if self.pid:
             self._log.debug('%s join   (%s)', self.uid, self.pid)
@@ -800,6 +818,10 @@ class Component(mp.Process):
 
         # avoid races with any idle checkers
         self._term.set()
+
+        # we also don't need any further signalling during shutdown
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        signal.signal(signal.SIGHUP,  signal.SIG_IGN)
 
         # parent and child finalization will have all comoonents and bridges
         # available

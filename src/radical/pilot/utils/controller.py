@@ -96,7 +96,6 @@ class Controller(object):
         self._debug = cfg.get('debug')
         self._dh    = ru.DebugHelper(name=self.uid)
         self._log   = self._session._get_logger(self._owner, level=self._debug)
-        self._prof  = self._session._get_profiler(self.uid)
 
         # we keep a copy of the cfg around, so that we can pass it on when
         # creating components.
@@ -123,6 +122,9 @@ class Controller(object):
 
         # we will later subscribe to the ctrl pubsub -- keep a handle
         self._ctrl_sub = None
+
+        # control thread activities
+        self._term     = mt.Event()
 
         # set up for eventual heartbeat sending/receiving
         self._heartbeat_interval = self._ctrl_cfg.get('heartbeat_interval',  10)
@@ -189,6 +191,9 @@ class Controller(object):
     def stop(self):
 
       # ru.print_stacktrace()
+
+        # avoid races with watcher thread
+        self._term.set()
 
         self_thread = mt.current_thread()
         self._log.debug('%s stopped', self.uid)
@@ -558,7 +563,7 @@ class Controller(object):
         tear down this agent.
         """
 
-        while not term.is_set():
+        while not term.is_set() and not self._term.is_set():
 
           # self._log.debug('watching %s things' % len(to_watch))
           # self._log.debug('watching %s' % pprint.pformat(to_watch))
@@ -582,7 +587,7 @@ class Controller(object):
 
     # --------------------------------------------------------------------------
     #
-    def _heartbeat_sender(self, terminate):
+    def _heartbeat_sender(self, term):
 
         # we use a loop which runs quicker than self._heartbeat_interval would
         # make you think.  This way we can check more frequently for any
@@ -594,7 +599,7 @@ class Controller(object):
                                   rpc.CONTROL_PUBSUB, rpu_PUBSUB_PUB, addr=addr)
 
         last_heartbeat = 0.0  # we never sent a heartbeat before
-        while not terminate.is_set():
+        while not term.is_set() and not self._term.is_set():
 
             now = time.time()
             if last_heartbeat + self._heartbeat_interval < now:

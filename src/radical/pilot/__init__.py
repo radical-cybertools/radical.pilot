@@ -4,6 +4,12 @@ __license__   = "MIT"
 
 
 # ------------------------------------------------------------------------------
+# we *first* import radical.utils, so that the monkeypatching of the logger has
+# a chance to kick in before the logging module is pulled by any other 3rd party
+# module
+import radical.utils as _ru
+
+# ------------------------------------------------------------------------------
 # constants and types
 from .types      import *
 from .states     import *

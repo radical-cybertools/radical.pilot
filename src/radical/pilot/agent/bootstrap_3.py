@@ -51,10 +51,9 @@ def bootstrap_3(agent_name):
         # we never really quit this way, but instead the agent command_cb may
         # pick up a shutdown signal, the watcher_cb may detect a failing
         # component or sub-agent, or we get a kill signal from the RM.  In all
-        # three cases, we'll end up in agent.stop()
-        agent.join()
-        agent = None  # avoid stop in finally clause
-        print 'joined  %s' % agent_name
+        # three cases, we'll end up in agent.stop() -- agent.wait() will wait
+        # until then.
+        agent.wait()
 
     finally:
 

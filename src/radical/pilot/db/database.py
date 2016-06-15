@@ -44,7 +44,7 @@ class DBSession(object):
         self._log        = logger
         self._mongo      = None
         self._db         = None
-        self._created    = None
+        self._created    = rpu.timestamp()
         self._connected  = None
         self._closed     = None
         self._c          = None
@@ -76,7 +76,6 @@ class DBSession(object):
 
             # insert the session doc
             self._can_delete = True
-            self._created    = rpu.timestamp()
             self._c.insert({'type'      : 'session',
                             '_id'       : sid,
                             'uid'       : sid,
@@ -171,7 +170,9 @@ class DBSession(object):
             self._log.info('delete session')
             self._c.drop()
 
-        self._mongo.close()
+        if self._mongo:
+            self._mongo.close()
+
         self._closed = rpu.timestamp()
         self._c = None
 

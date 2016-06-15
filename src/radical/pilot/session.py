@@ -232,7 +232,6 @@ class Session(rs.Session):
         # the controller explicit.  Once the controller is up, we merge the
         # bridge addresses etc. into the session config.
 
-        self._log.debug('=== create session controller')
         if not self._controller:
             self._cfg['session_id'] = self._uid
             self._cfg['dburl']      = str(self._dburl)
@@ -374,8 +373,9 @@ class Session(rs.Session):
 
         self.prof.prof("closing", msg=cleanup, uid=self._uid)
         if self._dbs:
+            self._log.debug("session %s closes db (%s)", self._uid, cleanup)
             self._dbs.close(delete=cleanup)
-        self._log.debug("session %s closed (delete=%s)", str(self._uid), cleanup)
+        self._log.debug("session %s closed (delete=%s)", self._uid, cleanup)
         self.prof.prof("closed", uid=self._uid)
         self.prof.close()
 
