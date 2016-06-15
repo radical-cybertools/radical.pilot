@@ -178,14 +178,15 @@ pilot times out
   - if runtime limit is reached
     - set self._final_cause to 'timeout'
     - call self.stop()
-    - agent_0 is a worker which does not spawn, so the stop will
-      - call finalize_common
-        - terminate and join all subscribers
-        - close profiler
+    - agent_0 is a worker w/o child.  stop() triggers this sequence:
       - call finalize_parent
         - stop self._lrms
         - update db for final state
         - call session.close()
+
+      - call finalize_common
+        - terminate and join all subscribers
+        - close profiler
 
 
 

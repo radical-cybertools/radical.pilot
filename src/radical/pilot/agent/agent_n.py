@@ -51,7 +51,9 @@ class Agent_n(rpu.Worker):
         # This session will not connect to MongoDB, but will create any
         # communication channels and components/workers specified in the 
         # config -- we merge that information into our own config.
-        session = rp_Session(cfg=cfg, _connect=False)
+        session_cfg = copy.deepcopy(cfg)
+        session_cfg['owner'] = self._uid
+        session = rp_Session(cfg=session_cfg, _connect=False)
         ru.dict_merge(cfg, session.ctrl_cfg, ru.PRESERVE)
         pprint.pprint(cfg)
 

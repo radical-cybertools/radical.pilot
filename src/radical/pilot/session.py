@@ -117,8 +117,17 @@ class Session(rs.Session):
             self._uid = ru.generate_id('rp.session',  mode=ru.ID_PRIVATE)
             ru.reset_id_counters(prefix='rp.session', reset_all_others=True)
 
-        self._logdir = self._cfg.get('logdir', '%s/%s' % (os.getcwd(), self._uid))
-        self._log    = self._get_logger('radical.pilot', level='DEBUG')
+        if not self._cfg.get('owner'):
+            self._cfg['owner'] = self._uid
+
+        if not self._cfg.get('debug'):
+            self._cfg['debug'] = 'DEBUG'
+
+        if not self._cfg.get('logdir'):
+            self._cfg['logdir'] = '%s/%s' % (os.getcwd(), self._uid)
+
+        self._logdir = self._cfg['logdir']
+        self._log    = self._get_logger(self._cfg['owner'], self._cfg['debug'])
 
 
         if not dburl: dburl = self._cfg.get('dburl')
@@ -146,7 +155,7 @@ class Session(rs.Session):
         self._log.info("using database %s" % self._dburl)
 
         # initialize profiling
-        self.prof = self._get_profiler(self._uid)
+        self.prof = self._get_profiler(self._cfg['owner'])
 
         if self._reconnected:
             self.prof.prof('reconnect session', uid=self._uid)
@@ -225,7 +234,6 @@ class Session(rs.Session):
 
         self._log.debug('=== create session controller')
         if not self._controller:
-            self._cfg['owner']      = self._uid  # session is always root
             self._cfg['session_id'] = self._uid
             self._cfg['dburl']      = str(self._dburl)
             self._controller = rpu.Controller(cfg=self._cfg, session=self)

@@ -95,7 +95,7 @@ class Controller(object):
         # get debugging, logging, profiling set up
         self._debug = cfg.get('debug')
         self._dh    = ru.DebugHelper(name=self.uid)
-        self._log   = self._session._get_logger(self.uid, level=self._debug)
+        self._log   = self._session._get_logger(self._owner, level=self._debug)
         self._prof  = self._session._get_profiler(self.uid)
 
         # we keep a copy of the cfg around, so that we can pass it on when
@@ -437,7 +437,7 @@ class Controller(object):
         # Once control is passed to this controller, the callee is not supposed
         # to handle the goven things anymore
 
-        if not owner: 
+        if not owner:
             owner = self._owner
 
         if not isinstance(things, list):
@@ -486,7 +486,7 @@ class Controller(object):
 
                 # only look at interesting messages
                 if not arg['owner'] == owner:
-                    self._log.debug('unusable alive msg for %s' % arg['owner'])
+                    self._log.debug('unusable alive msg for %s (%s)', arg['owner'], owner)
                     break
 
                 sender = arg['sender']

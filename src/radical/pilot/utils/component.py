@@ -155,13 +155,14 @@ class Component(mp.Process):
         # state we carry over the fork
         self._started       = False
         self._debug         = cfg.get('debug', 'DEBUG')
-        self._owner         = cfg.get('owner', session.uid)
+        self._owner         = cfg.get('owner', self.uid)
         self._cname         = cfg.get('cname', self.__class__.__name__)
         self._ctype         = "%s.%s" % (self.__class__.__module__,
                                          self.__class__.__name__)
         self._number        = cfg.get('number', 0)
         self._name          = cfg.get('name.%s' %  self._number,
                                       '%s.%s'   % (self._ctype, self._number))
+        self._term          = mt.Event()  # control watcher threads
 
         # see documentation of self._raise_on
         self._raise_on_cfg  = cfg.get('raise_on', {}).get(self._cname, {})
@@ -210,6 +211,8 @@ class Component(mp.Process):
         heartbeat signal, etc.
         """
 
+        # FIXME: move to RU
+
         self._log.debug('raise_on check %s' % tag)
         if tag in self._raise_on_cnt:
             
@@ -230,6 +233,10 @@ class Component(mp.Process):
     def _heartbeat_monitor_cb(self, topic, msg):
 
         self._log.debug('command incoming: %s', msg)
+
+        if self._term.is_set():
+            self._log.debug('command ignored during shutdown')
+            return
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -260,6 +267,10 @@ class Component(mp.Process):
 
         self._log.debug('command incoming: %s', msg)
 
+        if self._term.is_set():
+            self._log.debug('command ignored during shutdown')
+            return
+
         cmd = msg['cmd']
         arg = msg['arg']
 
@@ -282,19 +293,30 @@ class Component(mp.Process):
     #
     def _heartbeat_checker_cb(self):
 
+        if self._term.is_set():
+            self._log.debug('hbeat check disabled during shutdown')
+            return
+
         last = time.time() - self._heartbeat
         tout = self._heartbeat_timeout
 
         if last > tout:
-          # print " ### %s heartbeat FAIL (self.owner)" % self.uid
             self._log.error('heartbeat check failed (%s / %s)', last, tout)
-            raise RuntimeError('heartbeat check failed (%s / %s)' % (last, tout))
+            ru.cancel_main_thread()
 
         else:
-          # print " --- %s heartbeat OK" % self.uid
             self._log.debug('heartbeat check ok (%s / %s)', last, tout)
 
         return False # always sleep
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _profile_flush_cb(self):
+
+        # this cb remains active during shutdown
+        self._log.handlers[0].flush()
+        self._prof.flush()
 
 
     # --------------------------------------------------------------------------
@@ -417,7 +439,7 @@ class Component(mp.Process):
         self.register_publisher(rpc.CONTROL_PUBSUB)
 
         # make sure we watch all threads, flush all profiles
-        self.register_timed_cb(self._thread_watcher_cb, timer= 0.1)
+        self.register_timed_cb(self._thread_watcher_cb, timer= 1.0)
         self.register_timed_cb(self._profile_flush_cb,  timer=60.0)
 
         # give any derived class the opportunity to perform initialization in
@@ -776,6 +798,9 @@ class Component(mp.Process):
                         self.pid, mt.current_thread().name,
                         ru.get_caller_name()))
 
+        # avoid races with any idle checkers
+        self._term.set()
+
         # parent and child finalization will have all comoonents and bridges
         # available
         if self._is_parent:
@@ -984,7 +1009,7 @@ class Component(mp.Process):
           # print 'thread %10s : %s' % (ru.gettid(), mt.current_thread().name)
             try:
                 last = 0.0  # never been called
-                while not terminate.is_set():
+                while not terminate.is_set() and not self._term.is_set():
                     now = time.time()
                     if to == None or (now-last) > to:
                         with self._cb_lock:
@@ -1115,7 +1140,7 @@ class Component(mp.Process):
         # ----------------------------------------------------------------------
         def _subscriber(q, terminate, callback, callback_data):
             try:
-                while not terminate.is_set():
+                while not terminate.is_set() and not self._term.is_set():
                     topic, msg = q.get_nowait(1000) # timout in ms
                     if topic and msg:
                         if not isinstance(msg,list):
@@ -1181,21 +1206,13 @@ class Component(mp.Process):
                 t = self._subscribers[s]['thread']
                 if not t.is_alive():
                     self._log.error('subscriber %s died', t.name)
-                    raise RuntimeError('subscriber %s died' % t.name)
+                    ru.cancel_main_thread()
 
             for i in self._idlers:
                 t = self._idlers[i]['thread']
                 if not t.is_alive():
                     self._log.error('idler %s died', t.name)
-                    raise RuntimeError('idler %s died' % t.name)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _profile_flush_cb(self):
-
-        self._log.handlers[0].flush()
-        self._prof.flush()
+                    ru.cancel_main_thread()
 
 
     # --------------------------------------------------------------------------
@@ -1242,7 +1259,7 @@ class Component(mp.Process):
                     if not isinstance(things, list):
                         things = [things]
 
-                    self._log.debug(' === input bulk %s things on %s' % (len(things), name))
+                  # self._log.debug(' === input bulk %s things on %s' % (len(things), name))
 
                     # the worker target depends on the state of things, so we 
                     # need to sort the things into buckets by state before 
@@ -1283,7 +1300,7 @@ class Component(mp.Process):
                                 self.advance(to_cancel, rps.CANCELED, publish=True, push=False)
 
                             with self._cb_lock:
-                                self._log.debug(' === work on bulk [%s]', len(things))
+                              # self._log.debug(' === work on bulk [%s]', len(things))
                                 self._workers[state](things)
 
                             for thing in things:
@@ -1356,7 +1373,7 @@ class Component(mp.Process):
         if not isinstance(things, list):
             things = [things]
 
-        self._log.debug(' === advance bulk size: %s', len(things))
+      # self._log.debug(' === advance bulk size: %s', len(things))
 
         # assign state, sort things by state
         buckets = dict()
@@ -1423,8 +1440,8 @@ class Component(mp.Process):
 
                 if state in rps.FINAL:
                     # things in final state are dropped
-                    for thing in things:
-                        self._log.debug('%s %s ===| %s' % ('push', thing['uid'], thing['state']))
+                  # for thing in things:
+                  #     self._log.debug('%s %s ===| %s' % ('push', thing['uid'], thing['state']))
                     continue
 
                 if state not in self._outputs:
@@ -1444,7 +1461,7 @@ class Component(mp.Process):
                 # push the thing down the drain
                 # FIXME: we should assert that the things are in a PENDING state.
                 #        Better yet, enact the *_PENDING transition right here...
-                self._log.debug(' === put bulk %s: %s', state, len(things))
+              # self._log.debug(' === put bulk %s: %s', state, len(things))
                 output.put(things)
 
                 ts = rpu_timestamp()

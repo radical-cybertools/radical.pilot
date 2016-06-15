@@ -140,7 +140,7 @@ class Agent_0(rpu.Worker):
 
         # register idle callback, to pull for units -- which is the only action
         # we have to perform, really
-        self.register_timed_cb(self._check_units, 
+        self.register_timed_cb(self._check_units_cb, 
                                timer=self._cfg['db_poll_sleeptime'])
 
 
@@ -174,7 +174,7 @@ class Agent_0(rpu.Worker):
     # --------------------------------------------------------------------------
     #
     def _update_db(self, state, msg=None):
-    
+
         self._log.info('pilot state: %s', state)
         self._log.info('rusage: %s', rpu.get_rusage())
         self._log.info(msg)
@@ -232,7 +232,7 @@ class Agent_0(rpu.Worker):
             ru.dict_merge(tmp_cfg, self._cfg['agent_layout'][sa], ru.OVERWRITE)
 
             tmp_cfg['agent_name'] = sa
-            tmp_cfg['owner']      = self._pilot_id
+            tmp_cfg['owner']      = 'agent_0'
 
             ru.write_json(tmp_cfg, './%s.cfg' % sa)
 
@@ -331,7 +331,7 @@ class Agent_0(rpu.Worker):
             sub_agents.append(sa_proc)
     
         # the agents are up - let the session controller manage them from here
-        self._session._controller.add_watchables(sub_agents, owner=self._pilot_id)
+        self._session._controller.add_watchables(sub_agents, owner=self._uid)
     
         self._log.debug('start_sub_agents done')
 
@@ -402,7 +402,7 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _check_units(self):
+    def _check_units_cb(self):
 
         # Check if there are compute units waiting for input staging
         # and log that we pulled it.

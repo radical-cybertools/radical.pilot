@@ -704,6 +704,7 @@ class Default(PMGRLaunchingComponent):
 
         ru.dict_merge(agent_cfg, agent_base_cfg, ru.PRESERVE)
 
+        agent_cfg['owner']              = 'agent_0'
         agent_cfg['cores']              = number_cores
         agent_cfg['debug']              = os.environ.get('RADICAL_PILOT_AGENT_VERBOSE', 
                                                          self._log.getEffectiveLevel())
