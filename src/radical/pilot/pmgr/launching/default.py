@@ -830,22 +830,25 @@ class Default(PMGRLaunchingComponent):
             jd.file_transfer.extend([
                 'site:%s/%s > %s' % (session_sandbox, BOOTSTRAPPER,   BOOTSTRAPPER),
                 'site:%s/%s > %s' % (pilot_sandbox,   agent_cfg_name, agent_cfg_name),
-                'site:%s/%s.log.tgz < %s.log.tgz' % (session_sandbox, pid, pid)
+                'site:%s/%s.log.tgz > %s.log.tgz' % (pilot_sandbox, pid, pid),
+                'site:%s/%s.log.tgz < %s.log.tgz' % (pilot_sandbox, pid, pid)
             ])
 
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                jd.file_transfer.extend([
+                    'site:%s/%s.prof.tgz > %s.prof.tgz' % (pilot_sandbox, pid, pid),
+                    'site:%s/%s.prof.tgz < %s.prof.tgz' % (pilot_sandbox, pid, pid)
+                ])
+
             for sdist in sdist_names:
-                jd.file_transfer.append(
-                    'site:%s/%s > %s' % (session_sandbox, sdist, sdist))
+                jd.file_transfer.extend([
+                    'site:%s/%s > %s' % (session_sandbox, sdist, sdist)
+                ])
 
             if stage_cacerts:
-                jd.file_transfer.append(
+                jd.file_transfer.extend([
                     'site:%s/%s > %s' % (session_sandbox, cc_name, cc_name)
-                )
-
-            if 'RADICAL_PILOT_PROFILE' in os.environ:
-                jd.file_transfer.append(
-                    'site:%s/%s.prof.tgz < %s.prof.tgz' % (session_sandbox, pid, pid)
-                )
+                ])
 
         self._log.debug("Bootstrap command line: %s %s" % (jd.executable, jd.arguments))
 

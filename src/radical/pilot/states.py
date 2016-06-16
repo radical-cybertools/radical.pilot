@@ -51,7 +51,7 @@ def _pilot_state_progress(current, target):
         if target in [DONE, FAILED, CANCELED]:
             return[target, []]
 
-    if current in FINAL:
+    if current in FINAL and target != current:
         if target in FINAL:
             raise ValueError('invalid transition %s -> %s' % (current, target))
 

@@ -293,6 +293,7 @@ class Backfilling(UMGRSchedulingComponent):
                     if info['used'] <= info['hwm']:
 
                       # print ' === sch unit  %s -> %s' % (uid, pid)
+                        self._log.info('schedule %s -> %s', uid, pid)
 
                         pilot = self._pilots[pid]['pilot']
                         info['units'].append(unit['uid'])
