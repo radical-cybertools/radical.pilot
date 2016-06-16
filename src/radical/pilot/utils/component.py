@@ -819,10 +819,6 @@ class Component(mp.Process):
         # avoid races with any idle checkers
         self._term.set()
 
-        # we also don't need any further signalling during shutdown
-        signal.signal(signal.SIGTERM, signal.SIG_IGN)
-        signal.signal(signal.SIGHUP,  signal.SIG_IGN)
-
         # parent and child finalization will have all comoonents and bridges
         # available
         if self._is_parent:

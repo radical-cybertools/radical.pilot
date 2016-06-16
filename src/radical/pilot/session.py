@@ -138,8 +138,11 @@ class Session(rs.Session):
             # we forgive missing dburl on reconnect, but not otherwise
             raise RuntimeError("no database URL (set RADICAL_PILOT_DBURL)")  
 
+        self._dburl = ru.Url(dburl)
+
         if _connect:
-            self._dburl = ru.Url(dburl)
+
+            self._log.info("using database %s" % self._dburl)
 
             # if the database url contains a path element, we interpret that as
             # database name (without the leading slash)
@@ -150,9 +153,6 @@ class Session(rs.Session):
                     # we fake reconnnect if no DB is available -- but otherwise we
                     # really really need a db connection...
                     raise ValueError("incomplete DBURL '%s' no db name!" % self._dburl)
-
-
-        self._log.info("using database %s" % self._dburl)
 
         # initialize profiling
         self.prof = self._get_profiler(self._cfg['owner'])
@@ -189,7 +189,7 @@ class Session(rs.Session):
 
         # create/connect database handle
         try:
-            self._dbs = DBSession(sid=self.uid, dburl=self.dburl,
+            self._dbs = DBSession(sid=self.uid, dburl=self._dburl,
                                   cfg=self._cfg, logger=self._log, 
                                   connect=_connect)
 
