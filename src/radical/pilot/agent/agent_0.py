@@ -51,7 +51,7 @@ class Agent_0(rpu.Worker):
         cfg        = ru.read_json_str(agent_cfg)
 
         self._uid         = agent_name
-        self._pilot_id    = cfg['pilot_id']
+        self._pid         = cfg['pilot_id']
         self._session_id  = cfg['session_id']
         self._runtime     = cfg['runtime']
         self._starttime   = time.time()
@@ -132,7 +132,7 @@ class Agent_0(rpu.Worker):
         # sub-agents are started, components are started, bridges are up: we are
         # ready to roll!
         pilot = {'type'    : 'pilot',
-                 'uid'     : self._pilot_id,
+                 'uid'     : self._pid,
                  'state'   : rps.PMGR_ACTIVE,
                  'lm_info' : self._lrms.lm_info.get('version_info'),
                  '$set'    : 'lm_info'}
@@ -196,7 +196,7 @@ class Agent_0(rpu.Worker):
     
         ret = self._session._dbs._c.update(
                 {'type'   : 'pilot', 
-                 "uid"    : self._pilot_id},
+                 "uid"    : self._pid},
                 {"$push"  : {"states"        : state},
                  "$set"   : {"state"         : state, 
                              "stdout"        : rpu.tail(out),
@@ -356,32 +356,29 @@ class Agent_0(rpu.Worker):
         #        should then be communicated over the command pubsub
         # FIXME: commands go to pmgr, umgr, session docs
         # FIXME: this is disabled right now
-        return
         retdoc = self._session._dbs._c.find_and_modify(
-                    query  = {"uid"  : self._owner},
-                    update = {"$set" : {rpc.COMMAND_FIELD: []}}, # Wipe content of array
-                    fields = [rpc.COMMAND_FIELD]
+                    query  = {"uid"  : self._pid},
+                    update = {"$set" : {'cmd': []}}, # Wipe content of array
+                    fields = ['cmd']
                     )
 
         if not retdoc:
             return
 
-        self._log.debug('hb %s got %s', self._owner, retdoc['_id'])
+        for spec in retdoc.get('cmd', []):
 
-        for command in retdoc.get(rpc.COMMAND_FIELD, []):
+            cmd = spec['cmd']
+            arg = spec['arg']
 
-            cmd = command[rpc.COMMAND_TYPE]
-            arg = command[rpc.COMMAND_ARG]
-
-            self._prof.prof('ingest_cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" \
+            self._prof.prof('cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" \
                             % (cmd, arg), uid=self._owner)
 
-            if cmd == rpc.COMMAND_CANCEL_PILOT:
+            if cmd == rpc.CMD_CANCEL_PILOT:
                 self._log.info('cancel pilot cmd')
                 self.final_cause = 'cancel'
                 self.stop()
 
-            elif cmd == rpc.COMMAND_CANCEL_COMPUTE_UNIT:
+            elif cmd == rpc.CMD_CANCEL_COMPUTE_UNIT:
                 self._log.info('cancel unit cmd')
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_unit',
                                                   'arg' : command})
@@ -414,7 +411,7 @@ class Agent_0(rpu.Worker):
         #        This also blocks us from using multiple ingest threads, or from
         #        doing late binding by unit pull :/
         unit_cursor = self._session._dbs._c.find(spec = {'type'    : 'unit',
-                                                         'pilot'   : self._pilot_id,
+                                                         'pilot'   : self._pid,
                                                          'control' : 'agent_pending'})
 
         if not unit_cursor.count():
@@ -434,7 +431,7 @@ class Agent_0(rpu.Worker):
                         document = {'$set'  : {'control' : 'agent'}})
 
         self._log.info("units pulled: %4d", len(unit_list))
-        self._prof.prof('get', msg="bulk size: %d" % len(unit_list), uid=self._pilot_id)
+        self._prof.prof('get', msg="bulk size: %d" % len(unit_list), uid=self._pid)
 
         for unit in unit_list:
 

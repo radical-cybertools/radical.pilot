@@ -459,7 +459,7 @@ class Controller(object):
         # messages on the control pubsub, for a certain time.  If we don't hear
         # back from them in time, we consider startup to have failed, and shut
         # down.
-        timeout = 30
+        timeout = 60
         start   = time.time()
 
         # we register 'alive' messages earlier.  Whenever an 'alive' message

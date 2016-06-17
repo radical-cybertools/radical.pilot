@@ -9,15 +9,10 @@ import saga
 import gridfs
 import pprint
 import pymongo
-import radical.utils as ru
+import radical.utils     as ru
 
-from .. import utils  as rpu
-from .. import states as rps
-
-COMMAND_FIELD = 'commands'
-COMMAND_TYPE  = 'type'
-COMMAND_ARG   = 'arg'
-COMMAND_TIME  = 'time'
+from .. import utils     as rpu
+from .. import states    as rps
 
 
 #-----------------------------------------------------------------------------
@@ -209,19 +204,21 @@ class DBSession(object):
         bulk = self._c.initialize_ordered_bulk_op()
 
         for doc in pilot_docs:
-            doc['_id']      = doc['uid']
-            doc['type']     = 'pilot'
-            doc['states']   = [doc['state']]
-            doc['commands'] = list()
+            doc['_id']     = doc['uid']
+            doc['type']    = 'pilot'
+            doc['control'] = 'pmgr'
+            doc['states']  = [doc['state']]
+            doc['cmd']     = list()
             bulk.insert(doc)
 
         try:
             res = bulk.execute()
             self._log.debug('bulk pilot insert result: %s', res)
             # FIXME: evaluate res
+
         except pymongo.errors.OperationFailure as e:
             self._log.exception('pymongo error: %s' % e.details)
-            raise RuntimeError('pymongo error: %s' % e.details)
+            raise RuntimeError ('pymongo error: %s' % e.details)
 
 
     #--------------------------------------------------------------------------
@@ -324,11 +321,12 @@ class DBSession(object):
         bulk = self._c.initialize_ordered_bulk_op()
 
         for doc in unit_docs:
-            doc['_id']      = doc['uid']
-            doc['type']     = 'unit'
-            doc['control']  = 'umgr'
-            doc['states']   = [doc['state']]
-            doc['commands'] = list()
+            doc['_id']     = doc['uid']
+            doc['type']    = 'unit'
+            doc['control'] = 'umgr'
+            doc['states']  = [doc['state']]
+            doc['cmd']     = list()
+
             bulk.insert(doc)
 
         try:

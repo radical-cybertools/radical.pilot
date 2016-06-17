@@ -152,7 +152,7 @@ class Default(PMGRLaunchingComponent):
                     if pid in self._checking:
                         self._checking.remove(pid)
 
-            self.advance(pilots, push=False, publish=True)
+            self.advance(pilots, state=rps.CANCELED, push=False, publish=True)
 
 
     # --------------------------------------------------------------------------

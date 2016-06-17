@@ -120,7 +120,7 @@ class Default(AgentStagingOutputComponent):
         #       don't need to advance those units anymore, but can make them
         #       final.
         if unit['target_state'] != rps.DONE:
-            self.advance(unit, unit['target_state'], publish=True, push=False)
+            self.advance(unit, state=unit['target_state'], publish=True, push=False)
             return
 
         # check if we have any staging directives to be enacted in this
