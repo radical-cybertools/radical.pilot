@@ -500,6 +500,8 @@ class Component(mp.Process):
         child initialization of component base class goes here
         """
 
+        time.sleep(1)
+
         # we don't have a child, we *are* the child
         self._is_parent = False
         self._child_uid = None

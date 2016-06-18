@@ -108,7 +108,7 @@ class ComputeUnit(object):
     #
     def __str__(self):
 
-        return str(self.as_dict())
+        return [self.uid, self.pilot, self.state]
 
 
     # --------------------------------------------------------------------------

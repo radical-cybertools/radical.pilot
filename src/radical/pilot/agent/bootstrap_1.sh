@@ -41,6 +41,7 @@ TUNNEL_BIND_DEVICE="lo"
 CLEANUP=
 HOSTPORT=
 SDISTS=
+RUNTIME=
 VIRTENV=
 VIRTENV_MODE=
 CCM=
@@ -159,7 +160,41 @@ profile_event()
 
     printf "%.4f,%s,%s,%s,%s,%s\n" \
         "$NOW" "bootstrap_1" "$PILOT_ID" "ACTIVE_PENDING" "$event" "$msg" \
-        >> "$PROFILE"
+        | tee -a "$PROFILE"
+}
+
+
+# ------------------------------------------------------------------------------
+#
+# we add another safety feature to ensure agent cancelation after runtime
+# expires: the timeout() function expects *exactly* two processes to run in the
+# background.  Whichever finishes with will cause a SIGUSR1 signal, which is
+# then trapped to kill both processes.  Since the first one is dead, only the
+# second will actually get the kill, and the subsequent wait will thus 
+#
+timeout()
+{
+    TIMEOUT="$1"; shift
+    COMMAND="$*"
+
+    RET=./timetrap.ret
+
+    timetrap()
+    {
+        kill $PID_1 2>&1 > /dev/null
+        kill $PID_2 2>&1 > /dev/null
+    }
+    trap timetrap USR1
+    
+    rm -f $RET
+    ($COMMAND;       echo "$?" >> $RET; /bin/kill -s USR1 $$) & PID_1=$!
+    (sleep $TIMEOUT; echo "1"  >> $RET; /bin/kill -s USR1 $$) & PID_2=$!
+
+    wait
+
+    ret=`cat $RET || echo 2`
+    echo "------------------"
+    return $ret
 }
 
 
@@ -457,6 +492,7 @@ OPTIONS:
    -v   virtualenv location (create if missing)
    -w   execute commands before bootstrapping phase 2: the worker
    -x   exit cleanup - delete pilot sandbox, virtualenv etc. after completion
+   -y   runtime limit
 
 EOF
 
@@ -1293,7 +1329,7 @@ env | sort
 echo "---------------------------------------------------------------------"
 
 # parse command line arguments
-while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x:" OPTION; do
+while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
     case $OPTION in
         a)  SESSION_SANDBOX="$OPTARG"  ;;
         b)  PYTHON_DIST="$OPTARG"  ;;
@@ -1311,6 +1347,7 @@ while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x:" OPTION; do
         v)  VIRTENV=$(eval echo "$OPTARG")  ;;
         w)  pre_bootstrap_2 "$OPTARG"  ;;
         x)  CLEANUP="$OPTARG"  ;;
+        y)  RUNTIME="$OPTARG"  ;;
         *)  usage "Unknown option: '$OPTION'='$OPTARG'"  ;;
     esac
 done
@@ -1345,8 +1382,16 @@ rmdir "$VIRTENV" 2>/dev/null
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
+if test -z "$RUNTIME"     ; then  usage "missing RUNTIME"   ;  fi
 if test -z "$PILOT_ID"    ; then  usage "missing PILOT_ID"  ;  fi
 if test -z "$RP_VERSION"  ; then  usage "missing RP_VERSION";  fi
+
+# pilot runtime is specified in minutes -- on shell level, we want seconds
+RUNTIME=$((RUNTIME * 60))
+
+# we also add a minute as safety margin, to give the agent proper time to shut
+# down on its own
+RUNTIME=$((RUNTIME + 60))
 
 # If the host that will run the agent is not capable of communication
 # with the outside world directly, we will setup a tunnel.
@@ -1559,8 +1604,9 @@ profile_event 'agent start'
 
 # start the master agent instance (zero)
 profile_event 'sync rel' 'agent start'
-./bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
 
+timeout $RUNTIME \
+        ./bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err &
 AGENT_EXITCODE=$?
 
 profile_event 'cleanup start'

@@ -6,6 +6,7 @@ __license__   = "MIT"
 import os
 import copy
 import math
+import time
 import pprint
 import shutil
 import tempfile
@@ -34,6 +35,7 @@ DEFAULT_VIRTENV       = '%(global_sandbox)s/ve'
 DEFAULT_VIRTENV_MODE  = 'update'
 DEFAULT_AGENT_CONFIG  = 'default'
 
+JOB_CANCEL_DELAY      = 60  # seconds between cancel signal and job kill
 JOB_CHECK_INTERVAL    = 60  # seconds between runs of the job state check loop
 JOB_CHECK_MAX_MISSES  =  3  # number of times to find a job missing before
                             # declaring it dead
@@ -105,15 +107,18 @@ class Default(PMGRLaunchingComponent):
     #
     def _pmgr_control_cb(self, topic, msg):
 
-        # wait for 'terminate' commands, but only accept those where 'src' is
-        # either myself, my session, or my owner
-
         cmd = msg['cmd']
         arg = msg['arg']
 
         self._log.debug('launcher got %s', msg)
 
         if cmd == 'cancel_pilots':
+
+            # on cancel_pilot requests, we forward the DB entries via MongoDB,
+            # by pushing a pilot update.  We also mark the pilot for
+            # cancelation, so that the pilot watcher can cancel the job after
+            # JOB_CANCEL_DELAY seconds, in case the pilot did not react on the
+            # command in time.
 
             pmgr = arg['pmgr']
             pids = arg['uids']
@@ -127,32 +132,10 @@ class Default(PMGRLaunchingComponent):
 
             self._log.info('received pilot_cancel command (%s)', pids)
 
-            pilots = list()
-            tc     = rs.task.Container()
             with self._pilots_lock:
-
                 for pid in pids:
-
-                    if pid not in self._pilots:
-                        self._log.error('unknown: %s', pid)
-                        raise ValueError('unknown pilot %s' % pid)
-
-                    pilots.append(self._pilots[pid]['pilot'])
-                    tc.add(self._pilots[pid]['job'])
-
-            tc.cancel()
-            tc.wait()
-
-            for pilot in pilots:
-
-                pid = pilot['uid']
-
-                # we don't want the watcher checking for this pilot anymore
-                with self._check_lock:
-                    if pid in self._checking:
-                        self._checking.remove(pid)
-
-            self.advance(pilots, state=rps.CANCELED, push=False, publish=True)
+                    self._pilots[pid]['pilot']['cancel_requested'] = time.time()
+                    self._pilots[pid]['pilot']['$push'] = {'cmd' : 'cancel_pilot'}
 
 
     # --------------------------------------------------------------------------
@@ -199,17 +182,68 @@ class Default(PMGRLaunchingComponent):
                 if state in [rs.job.DONE, rs.job.FAILED, rs.job.CANCELED]:
                     final_pilots.append(self._pilots[pid]['pilot'])
 
-        if not final_pilots:
+        if final_pilots:
+
+            for pilot in final_pilots:
+
+                with self._check_lock:
+                    # stop monitoring this pilot
+                    self._checking.remove(pilot['uid'])
+
+            self.advance(final_pilots, push=False, publish=True)
+
+        # all checks are done, final pilots are weeded out.  Now check if any
+        # pilot is scheduled for cancellation and is overdue, and kill it
+        # forcefully.
+
+        to_cancel = list()
+        with self._pilots_lock:
+
+            for pid in self._pilots:
+
+                pilot = self._pilots[pid]['pilot']
+                cr    = pilot.get('cancel_requested')
+                if cr and cr + JOB_CANCEL_DELAY > time.time():
+                    del(pilot['cancel_requested'])
+                    to_cancel.append(pid)
+
+        if not to_cancel:
             return
 
-        for pilot in final_pilots:
+        tc = rs.task.Container()
+        with self._pilots_lock:
 
-            with self._check_lock:
-                # stop monitoring this pilot
-                self._checking.remove(pilot['uid'])
+            for pid in to_cancel:
 
-        # FIXME: why canceled?
-        self.advance(final_pilots, rps.CANCELED, push=False, publish=True)
+                if pid not in self._pilots:
+                    self._log.error('unknown: %s', pid)
+                    raise ValueError('unknown pilot %s' % pid)
+
+                tc.add(self._pilots[pid]['job'])
+
+        tc.cancel()
+        tc.wait()
+
+        # we don't want the watcher checking for this pilot anymore
+        with self._check_lock:
+            for pid in to_cancel:
+                if pid in self._checking:
+                    self._checking.remove(pid)
+
+        # set canceled state
+        to_advance = list()
+        with self._pilots_lock:
+
+            for pid in to_cancel:
+
+                pilot = self._pilots[pid]['pilot']
+                to_advance.append(pilot)
+
+                if 'uid' not in pilot:
+                    self._log.debug(' === %s', to_cancel)
+                    self._log.debug(' === %s', p)
+
+        self.advance(to_advance, state=rps.CANCELED, push=False, publish=True)
 
 
     # --------------------------------------------------------------------------
@@ -683,6 +717,7 @@ class Default(PMGRLaunchingComponent):
         bootstrap_args += " -r '%s'" % rp_version
         bootstrap_args += " -b '%s'" % python_dist
         bootstrap_args += " -v '%s'" % virtenv
+        bootstrap_args += " -y '%d'" % runtime
 
         # set optional args
         if lrms == "CCM":           bootstrap_args += " -c"

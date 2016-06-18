@@ -85,8 +85,11 @@ class Update(rpu.Worker):
         now = time.time()
         age = now - self._last
 
-        # only push if collection time or size have been exceeded
-        if not flush and age < self._bct and len(self._uids) < self._bcs:
+        # only push if flush is forced, or when Acollection time or size 
+        # have been exceeded
+        if  not flush \
+            and age < self._bct \
+            and len(self._uids) < self._bcs:
             return False
 
         try:
@@ -101,6 +104,7 @@ class Update(rpu.Worker):
 
         self._prof.prof('update bulk pushed (%d)' % len(self._uids),
                         uid=self._owner)
+
         for entry in self._uids:
             uid   = entry[0]
             ttype = entry[1]

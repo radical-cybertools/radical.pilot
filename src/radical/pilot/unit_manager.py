@@ -270,6 +270,12 @@ class UnitManager(rpu.Component):
         self._log.info("units pulled: %4d"   % len(units))
         self._prof.prof('get', msg="bulk size: %d" % len(units), uid=self.uid)
         for unit in units:
+            
+            # we need to make sure to have the correct state:
+            old = unit['state']
+            new = rps._unit_state_collapse(unit['states'])
+
+            unit['state'] = new
             unit['control'] = 'umgr'
             self._prof.prof('get', msg="bulk size: %d" % len(units), uid=unit['uid'])
 

@@ -373,15 +373,15 @@ class Agent_0(rpu.Worker):
             self._prof.prof('cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" \
                             % (cmd, arg), uid=self._owner)
 
-            if cmd == rpc.CMD_CANCEL_PILOT:
+            if cmd == 'cancel pilot':
                 self._log.info('cancel pilot cmd')
                 self.final_cause = 'cancel'
                 self.stop()
 
-            elif cmd == rpc.CMD_CANCEL_COMPUTE_UNIT:
+            elif cmd == 'cancel compute unit':
                 self._log.info('cancel unit cmd')
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_unit',
-                                                  'arg' : command})
+                                                  'arg' : arg})
 
 
     # --------------------------------------------------------------------------
