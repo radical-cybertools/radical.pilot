@@ -1508,6 +1508,12 @@ IFS=$OLD_IFS
 # and communicate the IP to the agent.  The agent may still not be able to
 # connect, but then a sensible timeout will kick in on ntplib.
 RADICAL_PILOT_NTPHOST=`dig +short 0.pool.ntp.org | grep -v -e ";;" -e "\.$" | head -n 1`
+if test "$?" = 0
+then
+    RADICAL_PILOT_NTPHOST="46.101.140.169"
+fi
+echo "ntphost: $RADICAL_PILOT_NTPHOST"
+ping -c 1 "$RADICAL_PILOT_NTPHOST"
 
 # Before we start the (sub-)agent proper, we'll create a bootstrap_2.sh script
 # to do so.  For a single agent this is not needed -- but in the case where
@@ -1606,7 +1612,9 @@ profile_event 'agent start'
 profile_event 'sync rel' 'agent start'
 
 timeout $RUNTIME \
-        ./bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err &
+        ./bootstrap_2.sh 'agent_0'    \
+            1>agent_0.bootstrap_2.out \
+            2>agent_0.bootstrap_2.err
 AGENT_EXITCODE=$?
 
 profile_event 'cleanup start'

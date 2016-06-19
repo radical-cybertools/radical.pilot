@@ -132,10 +132,15 @@ class Default(PMGRLaunchingComponent):
 
             self._log.info('received pilot_cancel command (%s)', pids)
 
+            # send the cancelation equest to the pilots
+            self._session._dbs.pilot_command('cancel_pilot', [], pids)
+
+            # recod time of request, so that forceful termination can happen
+            # after a certain delay
+            now = time.time()
             with self._pilots_lock:
                 for pid in pids:
-                    self._pilots[pid]['pilot']['cancel_requested'] = time.time()
-                    self._pilots[pid]['pilot']['$push'] = {'cmd' : 'cancel_pilot'}
+                    self._pilots[pid]['pilot']['cancel_requested'] = now
 
 
     # --------------------------------------------------------------------------

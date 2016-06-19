@@ -223,6 +223,32 @@ class DBSession(object):
 
     #--------------------------------------------------------------------------
     #
+    def pilot_command(self, cmd, arg, pids):
+        """
+        send a command and arg to a set of pilots
+        """
+
+        if self.closed:
+            raise Exception('No active session.')
+
+        if not isinstance(pids, list):
+            pids = [pids]
+
+        try:
+            spec = {'cmd' : cmd, 'arg' : arg}
+            # FIXME: evaluate res
+            res = self._c.update(multi     = True,
+                                  spec     = {'type'  : 'pilot',
+                                              'uid'   : {'$in' : pids}},
+                                  document = {'$push' : {'cmd' : spec}})
+
+        except pymongo.errors.OperationFailure as e:
+            self._log.exception('pymongo error: %s' % e.details)
+            raise RuntimeError ('pymongo error: %s' % e.details)
+
+
+    #--------------------------------------------------------------------------
+    #
     def get_pilots(self, pmgr_uid=None, pilot_ids=None):
         """
         Get a pilot
