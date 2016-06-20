@@ -200,38 +200,70 @@ class PilotManager(rpu.Component):
     def _state_pull_cb(self):
 
         # pull all pilot states from the DB, and compare to the states we know
-        # about.  If any state changed, update the pilot instance and issue
-        # notification callbacks as needed.  Do not publish to the database
-        # again, otherwise we are running circles :P
+        # about.  If any state changed, update the known pilot instances and 
+        # push an update message to the state pubsub.
+        # pubsub.
         # FIXME: we also pull for dead pilots.  That is not efficient...
         # FIXME: this needs to be converted into a tailed cursor in the update
         #        worker
-        pilots = self._session._dbs.get_pilots(pmgr_uid=self.uid)
+        # FIXME: this is a big and frequently invoked lock
+        pilot_dicts = self._session._dbs.get_pilots(pmgr_uid=self.uid)
 
-        for pilot in pilots:
-            self._update_pilot(pilot['uid'], pilot)
+        to_update = list()
+        with self._pilots_lock:
+
+            for pilot_dict in pilot_dicts:
+
+                pid   = pilot_dict.get('uid')
+                state = pilot_dict.get('state')
+
+                if pid in self._pilots:
+
+                    if state != self._pilots[pid].state:
+
+                        to_update.append(pilot_dict)
+
+
+        # push state update information to other interested parties
+        if to_update:
+
+            for pilot_dict in to_update:
+                self._update_pilot(pilot_dict)
+
+            # NOTE: this will be picked up again by the pmgr itself, which will
+            #       again lock and check for pilot state changes, even though we
+            #       just updated the instances above.  We could skip the update
+            #       above, but that will make actual state progression slower.
+            self.publish(rpc.STATE_PUBSUB, {'cmd' : 'update', 
+                                            'arg' : to_update})
 
 
     # --------------------------------------------------------------------------
     #
     def _state_sub_cb(self, topic, msg):
 
-        if isinstance(msg, list): things =  msg
-        else                    : things = [msg]
+        cmd = msg.get('cmd')
+        arg = msg.get('arg')
+
+        if cmd != 'update':
+            self._log.debug('ignore state cb msg with cmd %s', cmd)
+            return
+
+        if isinstance(arg, list): things =  arg
+        else                    : things = [arg]
 
         for thing in things:
 
-            if 'type' in thing and thing['type'] == 'pilot':
+            if thing['type'] == 'pilot':
 
-                pid   = thing["uid"]
-                state = thing["state"]
-
-                self._update_pilot(pid, thing)
+                self._update_pilot(thing)
 
 
     # --------------------------------------------------------------------------
     #
-    def _update_pilot(self, pid, pilot):
+    def _update_pilot(self, pilot_dict):
+
+        pid = pilot_dict['uid']
 
         # we don't care about pilots we don't know
         # otherwise get old state
@@ -242,23 +274,28 @@ class PilotManager(rpu.Component):
 
             # only update on state changes
             current = self._pilots[pid].state
-            target, passed = rps._pilot_state_progress(current, pilot['state'])
+            target, passed = rps._pilot_state_progress(current, pilot_dict['state'])
 
             for s in passed:
-                # we got state from either pubsub or DB, so don't publish again
-                pilot['state'] = s
-                self._pilots[pid]._update(pilot)
-                self.advance(pilot, s, publish=False, push=False)
+                # we got state from either pubsub or DB, so don't publish again.
+                # we also don't need to maintain bulks for that reason.
+                pilot_dict['state'] = s
+                self._pilots[pid]._update(pilot_dict)
+                self.advance(pilot_dict, s, publish=False, push=False)
 
 
     # --------------------------------------------------------------------------
     #
-    def _call_pilot_callbacks(self, pilot, state):
+    def _call_pilot_callbacks(self, pilot_obj, state):
+
+      # print ' ~~~ call pcbs: %s -> %s' % (pilot_obj.uid, state)
 
         for cb, cb_data in self._callbacks[rpt.PILOT_STATE]:
+            
+          # print ' ~~~ call pcbs: %s -> %s : %s' % (pilot_obj.uid, state, cb.__name__)
 
-            if cb_data: cb(pilot, state, cb_data)
-            else      : cb(pilot, state)
+            if cb_data: cb(pilot_obj, state, cb_data)
+            else      : cb(pilot_obj, state)
 
 
     # --------------------------------------------------------------------------

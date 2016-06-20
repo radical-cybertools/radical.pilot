@@ -255,7 +255,7 @@ class UnitManager(rpu.Component):
 
         if not unit_cursor.count():
             # no units whatsoever...
-            self._log.info("units pulled:    0")
+            self._log.info(" === units pulled:    0")
             return False
 
         # update the units to avoid pulling them again next time.
@@ -267,17 +267,27 @@ class UnitManager(rpu.Component):
                                     'uid'   : {'$in'     : uids}},
                         document = {'$set'  : {'control' : 'umgr'}})
 
-        self._log.info("units pulled: %4d"   % len(units))
+        self._log.info(" === units pulled: %4d %s", len(units), [u['uid'] for u in units])
         self._prof.prof('get', msg="bulk size: %d" % len(units), uid=self.uid)
         for unit in units:
+
+            self._log.debug('\n\n=======================================')
+            self._log.debug(' === details %s: %s', unit['uid'], pprint.pformat(unit))
             
             # we need to make sure to have the correct state:
             old = unit['state']
             new = rps._unit_state_collapse(unit['states'])
+            self._log.debug(' === %s state: %s -> %s', unit['uid'], old, new)
+
+            if new == rps.UMGR_STAGING_OUTPUT:
+                self._log.debug(' === %s state: %s -> %s %s', unit['uid'], old, new, unit['states'])
+
 
             unit['state'] = new
             unit['control'] = 'umgr'
             self._prof.prof('get', msg="bulk size: %d" % len(units), uid=unit['uid'])
+
+            self._log.debug('\n=======================================\n\n')
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline).  We don't publish the advance, since that
@@ -326,10 +336,10 @@ class UnitManager(rpu.Component):
     #
     def _call_unit_callbacks(self, unit, state):
 
-        for cb_func, cb_data in self._callbacks[rpt.UNIT_STATE]:
+        for cb, cb_data in self._callbacks[rpt.UNIT_STATE]:
 
-            if cb_data: cb_func(unit, state, cb_data)
-            else      : cb_func(unit, state)
+            if cb_data: cb(unit, state, cb_data)
+            else      : cb(unit, state)
 
 
     # --------------------------------------------------------------------------
@@ -792,7 +802,7 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def register_callback(self, cb_func, metric=rpt.UNIT_STATE, cb_data=None):
+    def register_callback(self, cb, metric=rpt.UNIT_STATE, cb_data=None):
         """
         Registers a new callback function with the UnitManager.  Manager-level
         callbacks get called if the specified metric changes.  The default
@@ -801,7 +811,7 @@ class UnitManager(rpu.Component):
 
         All callback functions need to have the same signature::
 
-            def cb_func(obj, value, cb_data)
+            def cb(obj, value, cb_data)
 
         where ``object`` is a handle to the object that triggered the callback,
         ``value`` is the metric, and ``data`` is the data provided on
@@ -826,7 +836,7 @@ class UnitManager(rpu.Component):
             raise ValueError ("Metric '%s' is not available on the unit manager" % metric)
 
         with self._cb_lock:
-            self._callbacks[metric].append([cb_func, cb_data])
+            self._callbacks[metric].append([cb, cb_data])
 
 
 # ------------------------------------------------------------------------------

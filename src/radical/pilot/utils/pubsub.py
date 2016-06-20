@@ -171,12 +171,6 @@ class Pubsub(object):
 
     # --------------------------------------------------------------------------
     #
-    def publish(self, topic):
-        raise NotImplementedError('publish() is not implemented')
-
-
-    # --------------------------------------------------------------------------
-    #
     def subscribe(self, topic):
         raise NotImplementedError('subscribe() is not implemented')
 
@@ -396,19 +390,28 @@ class PubsubZMQ(Pubsub):
     def put(self, topic, msg):
 
         if not self._role == PUBSUB_PUB:
+            self._log.debug("!> role mismatch")
             raise RuntimeError("channel %s (%s) can't put()" % (self._channel, self._role))
+
+        if not isinstance(msg,dict):
+            self._log.error("not a dict message: \n%s\n\n%s\n\n",
+                    pprint.pformat(msg),
+                    ru.get_stacktrace())
+            raise RuntimeError('ill formated publication on %s' % pubsub)
+
+        self._log.debug("?> %s" % pprint.pformat(msg))
 
         topic = topic.replace(' ', '_')
         data  = msgpack.packb(msg) 
 
         if _USE_MULTIPART:
             if self._debug:
-                self._log.debug("-> %s", ([topic, pprint.pformat(data)]))
+                self._log.debug("-> %s", ([topic, pprint.pformat(msg)]))
             _uninterruptible(self._q.send_multipart, [topic, data])
 
         else:
             if self._debug:
-                self._log.debug("-> %s %s", topic, pprint.pformat(data))
+                self._log.debug("-> %s %s", topic, pprint.pformat(msg))
             _uninterruptible(self._q.send, "%s %s" % (topic, data))
 
 

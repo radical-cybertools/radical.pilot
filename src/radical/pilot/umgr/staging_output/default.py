@@ -48,6 +48,8 @@ class Default(UMGRStagingOutputComponent):
         if not isinstance(units, list):
             units = [units]
 
+        for unit in units:
+            self._log.debug(" === work on %s in %s @ %s", unit['uid'], unit['state'], unit['control'])
         self.advance(units, rps.UMGR_STAGING_OUTPUT, publish=True, push=False)
 
         # we first filter out any units which don't need any output staging, and

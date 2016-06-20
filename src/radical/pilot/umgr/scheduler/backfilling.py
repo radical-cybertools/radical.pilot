@@ -99,6 +99,8 @@ class Backfilling(UMGRSchedulingComponent):
     #
     def update_pilots(self, pids):
 
+        self._log.debug(' === update pilots for %s', pids)
+
         # FIXME: if ACTIVE: schedule
         # FIXME: if FINAL:  un/re-schedule
         action = False
@@ -111,17 +113,22 @@ class Backfilling(UMGRSchedulingComponent):
               # print ' === upd pilot  %s: %s' % (pid, state)
 
                 if  rps._pilot_state_value(state) < _BF_START_VAL:
+                  # print ' === early'
                     # not eligible, yet
                     continue
 
                 if  rps._pilot_state_value(state) > _BF_STOP_VAL:
-                    # not ligible anymore
+                  # print ' === late'
+                    # not eligible anymore
                     continue
 
                 # this pilot is eligible.  Stop checking the others, and attempt
                 # reschedule
                 action = True
+              # print ' === break'
                 break
+
+      # print ' === action: %s' % action
 
         if action:
           # print ' === upd pilot  -> schedule'
@@ -131,6 +138,8 @@ class Backfilling(UMGRSchedulingComponent):
     # --------------------------------------------------------------------------
     #
     def update_units(self, units):
+
+      # print ' === update  units: %s' % [u['uid'] for u in units]
 
         reschedule = False
 
@@ -173,7 +182,7 @@ class Backfilling(UMGRSchedulingComponent):
                     info['done'].append(uid)
                     info['used'] -= unit['description']['cores']
                     reschedule = True
-                  # print ' === upd unit  %s -> schedule' % uid
+                  # print ' === upd unit  %s -  schedule' % uid
 
                     if info['used'] < 0:
                         self._log.error('bf: pilot %s inconsistent', pid)
@@ -229,7 +238,7 @@ class Backfilling(UMGRSchedulingComponent):
         than pilot size however.
         """
 
-      # print '\n################################### schedule\n'
+      # print '\n\n === schedule\n'
 
         with self._pilots_lock, self._wait_lock:
 

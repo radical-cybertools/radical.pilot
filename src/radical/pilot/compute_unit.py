@@ -151,10 +151,10 @@ class ComputeUnit(object):
             passed = passed[-1:]
 
         for state in passed:
-            for cb_func, cb_data in self._callbacks:
+            for cb, cb_data in self._callbacks:
                 self._state = state
-                if cb_data: cb_func(self, state, cb_data)
-                else      : cb_func(self, state)
+                if cb_data: cb(self, state, cb_data)
+                else      : cb(self, state)
 
             # also inform pmgr about state change, to collect any callbacks
             # it has registered globally
@@ -390,25 +390,25 @@ class ComputeUnit(object):
 
     # --------------------------------------------------------------------------
     #
-    def register_callback(self, cb_func, cb_data=None):
+    def register_callback(self, cb, cb_data=None):
         """
         Registers a callback function that is triggered every time the
         unit's state changes.
 
         All callback functions need to have the same signature::
 
-            def cb_func(obj, state)
+            def cb(obj, state)
 
         where ``object`` is a handle to the object that triggered the callback
         and ``state`` is the new state of that object.  If 'cb_data' is given,
-        then the 'cb_func' signature changes to 
+        then the 'cb' signature changes to 
 
-            def cb_func(obj, state, cb_data)
+            def cb(obj, state, cb_data)
 
         and 'cb_data' are passed along.
 
         """
-        self._umgr.register_callback(self.uid, rpt.UNIT_STATE, cb_func, cb_data)
+        self._umgr.register_callback(self.uid, rpt.UNIT_STATE, cb, cb_data)
 
 
     # --------------------------------------------------------------------------

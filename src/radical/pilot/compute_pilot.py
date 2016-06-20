@@ -139,6 +139,9 @@ class ComputePilot(object):
         Return True if state changed, False otherwise
         """
 
+
+        assert(pilot_dict['uid'] == self.uid)
+
         # _update() calls can happen out of order -- it is up to *this* method
         # to make sure that the update results in a consistent state.
         #
@@ -155,14 +158,22 @@ class ComputePilot(object):
 
         if current != target:
 
-            for cb_func, cb_data in self._callbacks:
+          # print ' ~~~ call PCBS: %s -> %s' % (self.uid, target)
+
+            for cb, cb_data in self._callbacks:
                 self._state = target
-                if cb_data: cb_func(self, target, cb_data)
-                else      : cb_func(self, target)
+            
+              # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, target, cb.__name__)
+                
+                if cb_data: cb(self, target, cb_data)
+                else      : cb(self, target)
 
             # also inform pmgr about state change, to collect any callbacks
             # it has registered globally
             self._pmgr._call_pilot_callbacks(self, target)
+
+      # else:
+      #   # print ' ~~! call PCBS: %s -> %s' % (self.uid, target)
 
         # make sure we end up with the right state
         self._state = target

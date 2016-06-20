@@ -314,9 +314,11 @@ class Component(mp.Process):
     #
     def _profile_flush_cb(self):
 
-        # this cb remains active during shutdown
-        self._log.handlers[0].flush()
-        self._prof.flush()
+        with self._cb_lock:
+
+            # this cb remains active during shutdown
+            self._log.handlers[0].flush()
+            self._prof.flush()
 
 
     # --------------------------------------------------------------------------
@@ -611,27 +613,29 @@ class Component(mp.Process):
 
         self_thread = mt.current_thread()
 
-        # signal all threads to terminate
-        for s in self._subscribers:
-            self._log.debug('%s -> term %s', self.uid, s)
-            self._subscribers[s]['term'].set()
-        for i in self._idlers:
-            self._log.debug('%s -> term %s', self.uid, i)
-            self._idlers[i]['term'].set()
+        with self._cb_lock:
 
-        # collect the threads
-        for s in self._subscribers:
-            t = self._subscribers[s]['thread']
-            if t != self_thread:
-                self._log.debug('%s -> join %s', self.uid, s)
-                t.join()
-                self._log.debug('%s >> join %s', self.uid, s)
-        for i in self._idlers:
-            t = self._idlers[i]['thread']
-            if t != self_thread:
-                self._log.debug('%s -> join %s', self.uid, i)
-                t.join()
-                self._log.debug('%s >> join %s', self.uid, i)
+            # signal all threads to terminate
+            for s in self._subscribers:
+                self._log.debug('%s -> term %s', self.uid, s)
+                self._subscribers[s]['term'].set()
+            for i in self._idlers:
+                self._log.debug('%s -> term %s', self.uid, i)
+                self._idlers[i]['term'].set()
+
+            # collect the threads
+            for s in self._subscribers:
+                t = self._subscribers[s]['thread']
+                if t != self_thread:
+                    self._log.debug('%s -> join %s', self.uid, s)
+                    t.join()
+                    self._log.debug('%s >> join %s', self.uid, s)
+            for i in self._idlers:
+                t = self._idlers[i]['thread']
+                if t != self_thread:
+                    self._log.debug('%s -> join %s', self.uid, i)
+                    t.join()
+                    self._log.debug('%s >> join %s', self.uid, i)
 
         # NOTE: this relies on us not to change the name of MainThread
         if self_thread.name == 'MainThread':
@@ -1159,6 +1163,7 @@ class Component(mp.Process):
 
         # ----------------------------------------------------------------------
         def _subscriber(q, terminate, callback, callback_data):
+
             try:
                 while not terminate.is_set() and not self._term.is_set():
                     topic, msg = q.get_nowait(1000) # timout in ms
@@ -1166,14 +1171,14 @@ class Component(mp.Process):
                         if not isinstance(msg,list):
                             msg = [msg]
                         for m in msg:
-                            self._log.debug("<= %s: %s" % (callback.__name__, [topic, m]))
+                            self._log.debug("<= %s: %s", callback.__name__, topic)
                             with self._cb_lock:
                                 if callback_data != None:
                                     callback(topic=topic, msg=m, cb_data=callback_data)
                                 else:
                                     callback(topic=topic, msg=m)
             except Exception as e:
-                self._log.exception("subscriber failed %s" % mt.current_thread().name)
+                self._log.exception("subscriber failed %s", mt.current_thread().name)
         # ----------------------------------------------------------------------
 
         with self._cb_lock:
@@ -1393,7 +1398,7 @@ class Component(mp.Process):
         if not isinstance(things, list):
             things = [things]
 
-      # self._log.debug(' === advance bulk size: %s', len(things))
+        self._log.debug(' === advance bulk size: %s', len(things))
 
         # assign state, sort things by state
         buckets = dict()
@@ -1505,16 +1510,11 @@ class Component(mp.Process):
         push information into a publication channel
         """
 
-        if not isinstance(msg, list):
-            msg = [msg]
-
         if pubsub not in self._publishers:
-            self._log.error("can't route '%s' notification: %s" % (pubsub, msg))
-            return
+            raise RuntimeError("can't route '%s' notification: %s" % (pubsub, msg))
 
         if not self._publishers[pubsub]:
-            self._log.error("no route for '%s' notification: %s" % (pubsub, msg))
-            return
+            raise RuntimeError("no route for '%s' notification: %s" % (pubsub, msg))
 
         self._publishers[pubsub].put(pubsub, msg)
 
