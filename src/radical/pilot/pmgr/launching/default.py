@@ -35,10 +35,10 @@ DEFAULT_VIRTENV       = '%(global_sandbox)s/ve'
 DEFAULT_VIRTENV_MODE  = 'update'
 DEFAULT_AGENT_CONFIG  = 'default'
 
-JOB_CANCEL_DELAY      = 60  # seconds between cancel signal and job kill
-JOB_CHECK_INTERVAL    = 60  # seconds between runs of the job state check loop
-JOB_CHECK_MAX_MISSES  =  3  # number of times to find a job missing before
-                            # declaring it dead
+JOB_CANCEL_DELAY      = 120  # seconds between cancel signal and job kill
+JOB_CHECK_INTERVAL    =  60  # seconds between runs of the job state check loop
+JOB_CHECK_MAX_MISSES  =   3  # number of times to find a job missing before
+                             # declaring it dead
 
 LOCAL_SCHEME = 'file'
 BOOTSTRAPPER = "bootstrap_1.sh"
@@ -206,9 +206,9 @@ class Default(PMGRLaunchingComponent):
 
             for pid in self._pilots:
 
-                pilot = self._pilots[pid]['pilot']
-                cr    = pilot.get('cancel_requested')
-                if cr and cr + JOB_CANCEL_DELAY > time.time():
+                pilot   = self._pilots[pid]['pilot']
+                time_cr = pilot.get('cancel_requested')
+                if time_cr and time_cr + JOB_CANCEL_DELAY < time.time():
                     del(pilot['cancel_requested'])
                     to_cancel.append(pid)
 
@@ -243,10 +243,6 @@ class Default(PMGRLaunchingComponent):
 
                 pilot = self._pilots[pid]['pilot']
                 to_advance.append(pilot)
-
-                if 'uid' not in pilot:
-                    self._log.debug(' === %s', to_cancel)
-                    self._log.debug(' === %s', p)
 
         self.advance(to_advance, state=rps.CANCELED, push=False, publish=True)
 

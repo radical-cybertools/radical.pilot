@@ -162,7 +162,7 @@ class Agent_0(rpu.Worker):
 
         # we don't rely on the existence / viability of the update worker at
         # that point.
-        self._log.debug('update db %s: %s', state, self._final_cause)
+        self._log.debug('update db state: %s: %s', state, self._final_cause)
         self._update_db(state, self._final_cause)
 
         if self._session:
@@ -373,15 +373,18 @@ class Agent_0(rpu.Worker):
             self._prof.prof('cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" \
                             % (cmd, arg), uid=self._owner)
 
-            if cmd == 'cancel pilot':
+            if cmd == 'cancel_pilot':
                 self._log.info('cancel pilot cmd')
-                self.final_cause = 'cancel'
+                self._final_cause = 'cancel'
                 self.stop()
 
-            elif cmd == 'cancel compute unit':
+            elif cmd == 'cancel_unit':
                 self._log.info('cancel unit cmd')
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_unit',
                                                   'arg' : arg})
+
+            else:
+                self.log.error('could not interpret cmd "%s" - ignore', cmd)
 
 
     # --------------------------------------------------------------------------

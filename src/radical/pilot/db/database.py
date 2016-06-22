@@ -229,18 +229,21 @@ class DBSession(object):
         """
 
         if self.closed:
-            raise Exception('No active session.')
+            raise Exception('session is closed')
+
+        if not self._c:
+            raise Exception('session is disconnected ')
 
         if not isinstance(pids, list):
             pids = [pids]
 
         try:
-            spec = {'cmd' : cmd, 'arg' : arg}
+            cmd_spec = {'cmd' : cmd, 'arg' : arg}
             # FIXME: evaluate res
-            res = self._c.update(multi     = True,
-                                  spec     = {'type'  : 'pilot',
-                                              'uid'   : {'$in' : pids}},
-                                  document = {'$push' : {'cmd' : spec}})
+            res = self._c.update({'type'  : 'pilot',
+                                  'uid'   : {'$in' : pids}},
+                                 {'$push' : {'cmd' : cmd_spec}},
+                                 multi = True)
 
         except pymongo.errors.OperationFailure as e:
             self._log.exception('pymongo error: %s' % e.details)

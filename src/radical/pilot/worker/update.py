@@ -57,6 +57,7 @@ class Update(rpu.Worker):
         self._dburl      = self._cfg['dburl']
         self._owner      = self._cfg['owner']
 
+        # TODO: get db handle from a connected session
         _, db, _, _, _   = ru.mongodb_connect(self._dburl)
         self._mongo_db   = db
         self._coll       = self._mongo_db[self._session_id]
