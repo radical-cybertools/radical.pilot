@@ -66,7 +66,7 @@ class Spark(AgentSchedulingComponent):
         #-----------------------------------------------------------------------
         # One application has finished, increase the number of available slots.
         #with self._slot_lock:
-        self._log.info('Releasing : %s Cores, %s RAM',[opaque_slot['task_slots'][0],opaque_slot['task_slots'][1])
+        self._log.info('Releasing : %s Cores, %s RAM',opaque_slot['task_slots'][0],opaque_slot['task_slots'][1])
         self.avail_cores +=opaque_slot['task_slots'][0]
         self.avail_mem +=opaque_slot['task_slots'][1]
         self.avail_app['apps']+=1
