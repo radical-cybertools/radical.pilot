@@ -207,7 +207,8 @@ class Default(PMGRLaunchingComponent):
         # all checks are done, final pilots are weeded out.  Now check if any
         # pilot is scheduled for cancellation and is overdue, and kill it
         # forcefully.
-        to_cancel = list()
+        to_cancel  = list()
+        to_advance = list()
         with self._pilots_lock:
 
             for pid in self._pilots:
@@ -235,7 +236,9 @@ class Default(PMGRLaunchingComponent):
                     self._log.error('unknown: %s', pid)
                     raise ValueError('unknown pilot %s' % pid)
 
-                tc.add(self._pilots[pid]['job'])
+                pilot = self._pilots[pid]['pilot']
+                to_advance.append(pilot)
+                tc.add(pilot['job'])
 
         tc.cancel()
         tc.wait()
