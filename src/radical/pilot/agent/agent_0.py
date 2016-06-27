@@ -188,11 +188,11 @@ class Agent_0(rpu.Worker):
         log = None
     
         try    : out = open('./agent_0.out', 'r').read(1024)
-        except : pass
+        except Exception: pass
         try    : err = open('./agent_0.err', 'r').read(1024)
-        except : pass
+        except Exception: pass
         try    : log = open('./agent_0.log', 'r').read(1024)
-        except : pass
+        except Exception: pass
     
         ret = self._session._dbs._c.update(
                 {'type'   : 'pilot', 

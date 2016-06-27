@@ -59,42 +59,43 @@
     + whenver we see an advance or work request:
       + if uid in self._cancel_requested: advance(CANCEL) + drop   
     - we can still additionally add cancel actions during staging and
-      execution...
+      execution -- but the component base should provide support for that.
 
-  - use heartbeat mechanism also for bridges, sub_agents
+  - use heartbeat mechanism also for bridges, agents, sub_agents
   + define _cfg['heart'] and use that for heartbeat src instead of owner,
     limiting traffic and noise
   - component.stop() should *first* unregister component_checker_cb 
     (and probably all other callbacks)
+    - in fact, we should be very careful to unregister callbacks in reverse
+      order of registration.
   - pilot default error cb calls sys.exit -> no shutdown.
 
-  - fix all schedulers
+  + update the backfilling scheduler
   - state notifications should be obtained via a tailed cursor
-  - update worker should check if a unit has multiple state updates pending. If
+  - update worker could check if a unit has multiple state updates pending. If
     so, only send the last one.  The client side cann still play callbacks for
-    all intermediate states
-  - update worker should not push state_host on state updates, only on full
+    all intermediate states.  That implies delayed filling of the bulk.
+  + update worker should not push state_hist on state updates, only on full
     udpdates.
   - pilot failing during wait_units results in timeout.
 
-  - the update worker should have a list of keys which it needs to push to
+  + the update worker should have a list of keys which it needs to push to
     MongoDB, and it should ignore other dict entries.  Alternatively, components
     should use underscore-prefixed keys for things which don't need to be stored
     in MongoDB.
 
-  - separate single-process components from multi-processed, in terms of
+  + separate single-process components from multi-processed, in terms of
     initialization
-  - make sure we don't carry locks across fork calls.  If that turns out to be
-    difficult (hi zmq), we have to execve after fork and start afresh.
-  - idle_cb naming...
-  - kill pilots on finalize_child
+  + make sure we don't carry locks across fork calls.  If that turns out to be
+    difficult (hi logging), we have to execve after fork and start afresh.
+  - idle_cb -> timed_cb (we make no promise on idleness, really)
+  - kill pilots on pmgr.launching.finalize_child?
   + saga_pid in pmgr.launcher control_cb
   + heartbeat interval assertion
   - dying agent bridge causes agent shutdown to hang
   - lrms -> rm
-  + dead in pilot watcher cb remains undetected
+  + dying pilot watcher cb remains undetected
   - separation of controller.[uid,heart,owner] is unclean
-
 
   - cancellation leads to double wait, which is ok, but also reports twice,
     which is not
@@ -103,7 +104,8 @@
 
   + ctrl 
     + things -> watchable
-  - advance -> no push/pull args?
+  - advance -> remove push/pull args, and make those separate calls?  
+    Probably not though...
   + comment in cb in sch base
   + remove release_slot in rr
   + add_pilot -> add_pilots
@@ -112,15 +114,20 @@
   + open saga ticket: condor staging target should point to the job cwd, not
     to intermediate storage
   - units can end up in 'CANCELED + agent_pending', so agent pulls unusable
-    units
+    units.  Final states should *always* set 'control' to 'umgr' or 'pmgr',
+    respectively
 
-  - worker/agent.py -> agent/agent_n.py
+  + worker/agent.py -> agent/agent_n.py
   + agent_n controller has uid of pilot.000.ctrl -- should be agent_n.ctrl
   + sub-agents: catch stdout/err for popen procs
   - agent_n does not need a child process really?
 
   + agent state ACTIVE is recorded twice
   + agent state DONE   is recorded twice on timeout
+
+  - we should never have a wildcard `except`, as that will also catch inetrrupts
+    and system exits, which we though expect to fall through to the component
+    layer for lifetime management.
 
 
 Expected Termination Behavior:

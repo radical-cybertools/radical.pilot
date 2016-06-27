@@ -1364,10 +1364,6 @@ class Component(mp.Process):
             # a thread caused this by calling ru.cancel_main_thread()
             self._log.info("loop cancel")
         
-        except:
-            # any other signal or interrupt.
-            self._log.exception('loop interrupted')
-        
         finally:
             self._log.info('loop stops')
             self._finalize_child()

@@ -102,7 +102,7 @@ class TestIssue169(unittest.TestCase):
                 assert pilot.state == radical.pilot.DONE, "state: %s" % pilot.state
                 assert pilot.stop_time  is not None,      "time : %s" % pilot.stop_time
                 assert pilot.start_time is not None,      "time : %s" % pilot.start_time
-            except :
+            except Exception:
                 print 'pilot: %s (%s)' % (pilot.uid, pilot.state)
                 for entry in pilot.state_history :
                     print '       %s : %s' % (entry.timestamp, entry.state)
