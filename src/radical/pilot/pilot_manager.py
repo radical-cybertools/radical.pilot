@@ -209,33 +209,8 @@ class PilotManager(rpu.Component):
         # FIXME: this is a big and frequently invoked lock
         pilot_dicts = self._session._dbs.get_pilots(pmgr_uid=self.uid)
 
-        to_update = list()
-        with self._pilots_lock:
-
-            for pilot_dict in pilot_dicts:
-
-                pid   = pilot_dict.get('uid')
-                state = pilot_dict.get('state')
-
-                if pid in self._pilots:
-
-                    if state != self._pilots[pid].state:
-
-                        to_update.append(pilot_dict)
-
-
-        # push state update information to other interested parties
-        if to_update:
-
-            for pilot_dict in to_update:
-                self._update_pilot(pilot_dict)
-
-            # NOTE: this will be picked up again by the pmgr itself, which will
-            #       again lock and check for pilot state changes, even though we
-            #       just updated the instances above.  We could skip the update
-            #       above, but that will make actual state progression slower.
-            self.publish(rpc.STATE_PUBSUB, {'cmd' : 'update', 
-                                            'arg' : to_update})
+        for pilot_dict in pilot_dicts:
+            self._update_pilot(pilot_dict)
 
 
     # --------------------------------------------------------------------------
@@ -286,16 +261,12 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _call_pilot_callbacks(self, pilot_obj, state):
-
-      # print ' ~~~ call pcbs: %s -> %s' % (pilot_obj.uid, state)
+    def _call_pilot_callbacks(self, pilot_obj):
 
         for cb, cb_data in self._callbacks[rpt.PILOT_STATE]:
             
-          # print ' ~~~ call pcbs: %s -> %s : %s' % (pilot_obj.uid, state, cb.__name__)
-
-            if cb_data: cb(pilot_obj, state, cb_data)
-            else      : cb(pilot_obj, state)
+            if cb_data: cb(pilot_obj, pilot_obj.state, cb_data)
+            else      : cb(pilot_obj, pilot_obj.state)
 
 
     # --------------------------------------------------------------------------
@@ -490,7 +461,7 @@ class PilotManager(rpu.Component):
         ret_list = True
         if not isinstance(uids, list):
             ret_list = False
-            uids = [uids]
+            uids     = [uids]
 
         self._log.report.info('<<wait for %d pilot(s)\n\t' % len(uids))
 
@@ -498,6 +469,11 @@ class PilotManager(rpu.Component):
         to_check = None
 
         with self._pilots_lock:
+
+            for uid in uids:
+                if uid not in self._pilots:
+                    raise ValueError('pilot %s not known' % uid)
+
             to_check = [self._pilots[uid] for uid in uids]
 
         # We don't want to iterate over all pilots again and again, as that would
@@ -509,17 +485,18 @@ class PilotManager(rpu.Component):
 
             self._log.report.idle()
 
-            # check timeout
+            to_check = [pilot for pilot in to_check \
+                               if pilot.state not in states and \
+                                  pilot.state not in rps.FINAL]
+
             if to_check:
+
                 if timeout and (timeout <= (time.time() - start)):
                     self._log.debug ("wait timed out")
                     break
 
                 time.sleep (0.1)
 
-            to_check = [pilot for pilot in to_check \
-                               if pilot.state not in states and \
-                                  pilot.state not in rps.FINAL]
 
         self._log.report.idle(mode='stop')
 
@@ -555,6 +532,12 @@ class PilotManager(rpu.Component):
 
         if not isinstance(uids, list):
             uids = [uids]
+
+        with self._pilots_lock:
+            for uid in uids:
+                if uid not in self._pilots:
+                    raise ValueError('pilot %s not known' % uid)
+
 
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots', 
                                           'arg' : {'pmgr' : self.uid,

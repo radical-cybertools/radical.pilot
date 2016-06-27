@@ -9,13 +9,17 @@ import errno
 import pprint
 import signal
 import msgpack
+
 import Queue           as pyq
 import setproctitle    as spt
 import multiprocessing as mp
+
 import radical.utils   as ru
+
 
 # --------------------------------------------------------------------------
 # defines for pubsub roles
+#
 PUBSUB_PUB    = 'pub'
 PUBSUB_SUB    = 'sub'
 PUBSUB_BRIDGE = 'bridge'
@@ -246,7 +250,7 @@ class PubsubZMQ(Pubsub):
                     atexit.register(exit_handler)
 
                     # reset signal handlers to their default
-                    signal.signal(signal.SIGINT,  signal.SIG_IGN)
+                  # signal.signal(signal.SIGINT,  signal.SIG_IGN)
                     signal.signal(signal.SIGTERM, signal.SIG_DFL)
                     signal.signal(signal.SIGALRM, signal.SIG_DFL)
 

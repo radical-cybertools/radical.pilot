@@ -139,44 +139,38 @@ class ComputePilot(object):
         Return True if state changed, False otherwise
         """
 
-
         assert(pilot_dict['uid'] == self.uid)
 
-        # _update() calls can happen out of order -- it is up to *this* method
-        # to make sure that the update results in a consistent state.
-        #
-        # FIXME: add sanity checks
+        # callee (pmgr) will make sure that state transitions are valid and
+        # continuous
         current = self.state
         target  = pilot_dict['state']
 
         # we update all fields
-        for key,val in pilot_dict.iteritems():
-            # FIXME: well, this is ugly...  we should maintain all state in
-            #        a dict.
-            if key in ['state', 'sandbox', 'stdout', 'stderr']:
+        # FIXME: well, not all really :/
+        for key in ['sandbox', 'stdout', 'stderr']:
+
+            val = pilot_dict.get(key, None)
+
+            if val:
                 setattr(self, "_%s" % key, val)
+
+
+        # make sure we end up with the right state
+        self._state = target
 
         if current != target:
 
-          # print ' ~~~ call PCBS: %s -> %s' % (self.uid, target)
-
             for cb, cb_data in self._callbacks:
-                self._state = target
             
               # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, target, cb.__name__)
                 
                 if cb_data: cb(self, target, cb_data)
                 else      : cb(self, target)
 
-            # also inform pmgr about state change, to collect any callbacks
-            # it has registered globally
-            self._pmgr._call_pilot_callbacks(self, target)
+            # ask pmgr to invike any global callbacks
+            self._pmgr._call_pilot_callbacks(self)
 
-      # else:
-      #   # print ' ~~! call PCBS: %s -> %s' % (self.uid, target)
-
-        # make sure we end up with the right state
-        self._state = target
 
         # this should be the last cb invoked on state changes
         if self.state == rps.FAILED and self._exit_on_error:
@@ -526,21 +520,24 @@ class ComputePilot(object):
                 #os.symlink(source, abs_target)
                 self._log.error("action 'LINK' not supported on pilot level staging")
                 raise ValueError("action 'LINK' not supported on pilot level staging")
+
             elif action == COPY:
                 # TODO: Does this make sense?
                 #log_message = 'Copying %s to %s' % (source, abs_target)
                 #shutil.copyfile(source, abs_target)
                 self._log.error("action 'COPY' not supported on pilot level staging")
                 raise ValueError("action 'COPY' not supported on pilot level staging")
+
             elif action == MOVE:
                 # TODO: Does this make sense?
                 #log_message = 'Moving %s to %s' % (source, abs_target)
                 #shutil.move(source, abs_target)
                 self._log.error("action 'MOVE' not supported on pilot level staging")
                 raise ValueError("action 'MOVE' not supported on pilot level staging")
+
             elif action == TRANSFER:
-                log_message = 'Transferring %s to %s' % (src_url, os.path.join(str(tgt_dir_url), tgt_filename))
-                self._log.info(log_message)
+                self._log.info('Transferring %s to %s/%s', 
+                               src_url, tgt_dir_url, tgt_filename)
                 # Transfer the source file to the target staging area
                 target_dir.copy(src_url, tgt_filename)
             else:

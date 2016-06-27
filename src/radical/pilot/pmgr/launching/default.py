@@ -93,6 +93,9 @@ class Default(PMGRLaunchingComponent):
 
         self._log.debug('finalize child')
         # avoid shutdown races:
+        
+        self.unregister_timed_cb(self._pilot_watcher_cb)
+        self.unregister_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
 
         with self._cache_lock:
             for url,js in self._saga_js_cache.iteritems():
@@ -185,7 +188,11 @@ class Default(PMGRLaunchingComponent):
             for pid in self._checking:
                 state = self._pilots[pid]['job'].state
                 if state in [rs.job.DONE, rs.job.FAILED, rs.job.CANCELED]:
-                    final_pilots.append(self._pilots[pid]['pilot'])
+                    pilot = self._pilots[pid]['pilot']
+                    if state == rs.job.DONE    : pilot['state'] = rps.DONE
+                    if state == rs.job.FAILED  : pilot['state'] = rps.FAILED
+                    if state == rs.job.CANCELED: pilot['state'] = rps.CANCELED
+                    final_pilots.append(pilot)
 
         if final_pilots:
 
@@ -200,7 +207,6 @@ class Default(PMGRLaunchingComponent):
         # all checks are done, final pilots are weeded out.  Now check if any
         # pilot is scheduled for cancellation and is overdue, and kill it
         # forcefully.
-
         to_cancel = list()
         with self._pilots_lock:
 
@@ -208,6 +214,11 @@ class Default(PMGRLaunchingComponent):
 
                 pilot   = self._pilots[pid]['pilot']
                 time_cr = pilot.get('cancel_requested')
+
+                # check if the pilot is final meanwhile
+                if pilot['state'] in rps.FINAL:
+                    continue
+
                 if time_cr and time_cr + JOB_CANCEL_DELAY < time.time():
                     del(pilot['cancel_requested'])
                     to_cancel.append(pid)

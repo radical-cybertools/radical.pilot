@@ -232,24 +232,26 @@ class Component(mp.Process):
     #
     def _heartbeat_monitor_cb(self, topic, msg):
 
-        self._log.debug('command incoming: %s', msg)
-
-        if self._term.is_set():
-            self._log.debug('command ignored during shutdown')
-            return
+      # self._log.debug('command incoming: %s', msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
 
+        if self._term.is_set():
+            self._log.debug('command [%s] ignored during shutdown', cmd)
+            return
+
         if cmd == 'heartbeat':
             sender = arg['sender']
             if sender == self._cfg['heart']:
-                self._log.debug('heartbeat monitored (%s)', sender)
+              # self._log.debug('heartbeat monitored (%s)', sender)
                 self._heartbeat = time.time()
             else:
-                self._log.debug('heartbeat ignored (%s)', sender)
+                pass
+              # self._log.debug('heartbeat ignored (%s)', sender)
         else:
-            self._log.debug('command ignored: %s', cmd)
+            pass
+          # self._log.debug('command ignored: %s', cmd)
 
 
     # --------------------------------------------------------------------------
@@ -265,7 +267,7 @@ class Component(mp.Process):
         #        currently have no abstract 'cancel' command, but instead use
         #        'cancel_units'.
 
-        self._log.debug('command incoming: %s', msg)
+      # self._log.debug('command incoming: %s', msg)
 
         if self._term.is_set():
             self._log.debug('command ignored during shutdown')
@@ -286,7 +288,8 @@ class Component(mp.Process):
             with self._cancel_lock:
                 self._cancel_list += uids
         else:
-            self._log.debug('command ignored: %s', cmd)
+            pass
+          # self._log.debug('command ignored: %s', cmd)
 
 
     # --------------------------------------------------------------------------
@@ -305,7 +308,8 @@ class Component(mp.Process):
             ru.cancel_main_thread()
 
         else:
-            self._log.debug('heartbeat check ok (%s / %s)', last, tout)
+            pass
+          # self._log.debug('heartbeat check ok (%s / %s)', last, tout)
 
         return False # always sleep
 
@@ -472,7 +476,7 @@ class Component(mp.Process):
         # otherwise we'd invite race conditions (only after init we have
         # subscribed to channels, and only then any publishing on those channels
         # should start, otherwise we'll loose messages.
-        self._signal_alive()
+        self._send_alive()
 
         # parent calls terminate on stop(), which we translate here into stop()
         def sigterm_handler(signum, frame):
@@ -561,7 +565,7 @@ class Component(mp.Process):
         # otherwise we'd invite race conditions (only after init we have
         # subscribed to channels, and only then any publishing on those channels
         # should start, otherwise we'll loose messages.
-        self._signal_alive()
+        self._send_alive()
 
 
     # --------------------------------------------------------------------------
@@ -577,7 +581,7 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def _signal_alive(self):
+    def _send_alive(self):
 
         # parent *or* child will send an alive message.  child will send it if
         # it exists, parent otherwise.
@@ -608,34 +612,32 @@ class Component(mp.Process):
             return
 
         self._finalized = True
+        self_thread     = mt.current_thread()
 
+        # call finalizer of deriving classes
         self.finalize_common()
 
-        self_thread = mt.current_thread()
+        # signal all threads to terminate
+        for s in self._subscribers:
+            self._log.debug('%s -> term %s', self.uid, s)
+            self._subscribers[s]['term'].set()
+        for i in self._idlers:
+            self._log.debug('%s -> term %s', self.uid, i)
+            self._idlers[i]['term'].set()
 
-        with self._cb_lock:
-
-            # signal all threads to terminate
-            for s in self._subscribers:
-                self._log.debug('%s -> term %s', self.uid, s)
-                self._subscribers[s]['term'].set()
-            for i in self._idlers:
-                self._log.debug('%s -> term %s', self.uid, i)
-                self._idlers[i]['term'].set()
-
-            # collect the threads
-            for s in self._subscribers:
-                t = self._subscribers[s]['thread']
-                if t != self_thread:
-                    self._log.debug('%s -> join %s', self.uid, s)
-                    t.join()
-                    self._log.debug('%s >> join %s', self.uid, s)
-            for i in self._idlers:
-                t = self._idlers[i]['thread']
-                if t != self_thread:
-                    self._log.debug('%s -> join %s', self.uid, i)
-                    t.join()
-                    self._log.debug('%s >> join %s', self.uid, i)
+        # collect the threads
+        for s in self._subscribers:
+            t = self._subscribers[s]['thread']
+            if t != self_thread:
+                self._log.debug('%s -> join %s', self.uid, s)
+                t.join()
+                self._log.debug('%s >> join %s', self.uid, s)
+        for i in self._idlers:
+            t = self._idlers[i]['thread']
+            if t != self_thread:
+                self._log.debug('%s -> join %s', self.uid, i)
+                t.join()
+                self._log.debug('%s >> join %s', self.uid, i)
 
         # NOTE: this relies on us not to change the name of MainThread
         if self_thread.name == 'MainThread':
@@ -741,13 +743,14 @@ class Component(mp.Process):
         method, ie. after fork.
         """
 
-        # fork child process -- and provide the right uid
+        # this method will fork the child process
+        # and provide the right uid
 
         if spawn:
             self._parent_uid = self._uid
             self._child_uid  = self._uid + '.child'
             self._uid        = self._child_uid
-            mp.Process.start(self)
+            mp.Process.start(self)  # fork happens here
         else:
             self._parent_uid = self._uid
             self._child_uid  = None
@@ -759,35 +762,6 @@ class Component(mp.Process):
         except Exception as e:
             ru.cancel_main_thread()
             raise
-
-
-    # --------------------------------------------------------------------------
-    #
-    def wait(self, timeout=None):
-        """
-        wait will block until stop() self._term has been set
-        """
-
-        start = time.time()
-        while not self._term.is_set():
-            if timeout != None:
-                now = time.time()
-                if now-start > timeout:
-                    break
-            time.sleep(1)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def join(self, timeout=None):
-
-        # we only really join when the component child process has been started
-        if self.pid:
-            self._log.debug('%s join   (%s)', self.uid, self.pid)
-            mp.Process.join(self, timeout)
-            self._log.debug('%s joined (%s)', self.uid, self.pid)
-        else:
-            self._log.debug('skip join for %s: no child', self.uid)
 
 
     # --------------------------------------------------------------------------
@@ -829,7 +803,7 @@ class Component(mp.Process):
         # available
         if self._is_parent:
 
-            # Signal the child -- if one exists
+            # signal the child -- if one exists
             if self.has_child:
                 self._log.info("stop    %s" % self.pid)
                 self.terminate()
@@ -847,9 +821,43 @@ class Component(mp.Process):
             return
 
         else:
-            # The child exits here.
+
+            # we don't call the finalizers here, as this could be a thread.
+            # the child exits here.  This is caught in the run loop, which will
+            # then call the finalizers in the finally clause, before calling
+            # stop() itself, then to exit the main thread.
             self._log.debug('stop as child (exit)')
             sys.exit()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def wait(self, timeout=None):
+        """
+        wait will block until stop() self._term has been set
+        """
+
+        start = time.time()
+        while not self._term.is_set():
+            if timeout != None:
+                now = time.time()
+                if now-start > timeout:
+                    break
+            time.sleep(1)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def join(self, timeout=None):
+
+        # we only really join when the component child process has been started
+        # this is basically a wait(2) on the child pid.
+        if self.pid:
+            self._log.debug('%s join   (%s)', self.uid, self.pid)
+            mp.Process.join(self, timeout)
+            self._log.debug('%s joined (%s)', self.uid, self.pid)
+        else:
+            self._log.debug('skip join for %s: no child', self.uid)
 
 
     # --------------------------------------------------------------------------
@@ -1062,7 +1070,7 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def unregister_timed_cb(self, pubsub, cb):
+    def unregister_timed_cb(self, cb):
         """
         This method is reverts the register_timed_cb() above: it
         removes an idler from the component, and will terminate the
@@ -1171,12 +1179,13 @@ class Component(mp.Process):
                         if not isinstance(msg,list):
                             msg = [msg]
                         for m in msg:
-                            self._log.debug("<= %s: %s", callback.__name__, topic)
+                            self._log.debug("<= %s:%s: %s", self.uid, callback.__name__, topic)
                             with self._cb_lock:
                                 if callback_data != None:
                                     callback(topic=topic, msg=m, cb_data=callback_data)
                                 else:
                                     callback(topic=topic, msg=m)
+                self._log.debug("x< %s:%s: %s", self.uid, callback.__name__, topic)
             except Exception as e:
                 self._log.exception("subscriber failed %s", mt.current_thread().name)
         # ----------------------------------------------------------------------
@@ -1226,18 +1235,17 @@ class Component(mp.Process):
     #
     def _thread_watcher_cb(self):
 
-        with self._cb_lock:
-            for s in self._subscribers:
-                t = self._subscribers[s]['thread']
-                if not t.is_alive():
-                    self._log.error('subscriber %s died', t.name)
-                    ru.cancel_main_thread()
+        for s in self._subscribers:
+            t = self._subscribers[s]['thread']
+            if not t.is_alive() and not self._term.is_set():
+                self._log.error('subscriber %s died', t.name)
+                ru.cancel_main_thread()
 
-            for i in self._idlers:
-                t = self._idlers[i]['thread']
-                if not t.is_alive():
-                    self._log.error('idler %s died', t.name)
-                    ru.cancel_main_thread()
+        for i in self._idlers:
+            t = self._idlers[i]['thread']
+            if not t.is_alive() and not self._term.is_set():
+                self._log.error('idler %s died', t.name)
+                ru.cancel_main_thread()
 
 
     # --------------------------------------------------------------------------
@@ -1253,7 +1261,6 @@ class Component(mp.Process):
         """
 
         try:
-            signal.signal(signal.SIGINT, signal.SIG_IGN)
 
             # this is now the child process context
             self._initialize_child()
@@ -1343,22 +1350,23 @@ class Component(mp.Process):
                                                 uid=thing['uid'], state=state)
 
         except Exception as e:
-            # We should see that exception only on process termination -- and of
-            # course on incorrect implementations of component workers.  We
-            # could in principle detect the latter within the loop -- - but
+            # error in communication channel or worker
+            # we could in principle detect the latter within the loop -- - but
             # since we don't know what to do with the things it operated on, we
             # don't bother...
             self._log.exception('loop exception')
         
         except SystemExit:
-            self._log.exception("loop exit")
+            # normal shutdown from self.()stop()
+            self._log.info("loop exit")
         
         except KeyboardInterrupt:
-            self._log.exception("loop cancel")
+            # a thread caused this by calling ru.cancel_main_thread()
+            self._log.info("loop cancel")
         
         except:
-            # Can be any other signal or interrupt.
-            self._log.exception('loop interruption')
+            # any other signal or interrupt.
+            self._log.exception('loop interrupted')
         
         finally:
             self._log.info('loop stops')

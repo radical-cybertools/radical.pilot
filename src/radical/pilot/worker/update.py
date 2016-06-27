@@ -242,7 +242,9 @@ class Update(rpu.Worker):
                 self._bulk.find  ({'uid'  : uid, 
                                    'type' : ttype}) \
                           .update(update_dict)
-                self._prof.prof('bulk', msg='bulked (%s)' % state, uid=uid)
+
+            self._prof.prof('bulk', msg='bulked (%s)' % state, uid=uid)
+            self._log.debug('bulked %s [%s] %s', uid, state, self.uid)
 
         with self._lock:
             # attempt a timed update

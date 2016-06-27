@@ -366,6 +366,53 @@ class DBSession(object):
             self._log.exception('pymongo error: %s' % e.details)
             raise RuntimeError('pymongo error: %s' % e.details)
 
+    # --------------------------------------------------------------------------
+    #
+    def tailed_find(self, collection, pattern, fields, cb, cb_data=None):
+        """
+        open a collection in capped mode, and create a tailing find-cursor with
+        the given pattern on it.  For all returned documents, invoke the given
+        callback as:
+
+          cb(docs, cb_data=None)
+
+        where 'docs' is a list of None, one or more matching documents.
+        Specifically, the callback is also invoked when *no* document currently 
+        matches the pattern.  Documents are returned as partial docs, which only
+        contain the set of field names given.  If 'fields' is an empty list
+        though, then complete documents are returned.
+
+        This method is blocking, and will never return.  It is adviseable to
+        call it in a thread.
+        """
+        raise NotImplementedError('duh!')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def tailed_control(self, collection, control, pattern, cb, cb_data=None):
+        """
+        open a collection in capped mode, and create a tailing find-cursor on
+        it, where the find searches for the pattern:
+
+          pattern.extent({ 'control' : control + '_pending' })
+
+        For any matching document, the 'control' field is updated to 'control',
+        ie. the 'pending' postfix is removed.  The resulting documents are
+        passed to the given callback as
+
+          cb(docs, cb_data=None)
+
+        where 'docs' is a list of None, one or more matching documents.
+        Specifically, the callback is also invoked when *no* document currently
+        matches the pattern.  The documents are returned in full, ie. with all
+        available fields.
+
+        This method is blocking, and will never return.  It is adviseable to
+        call it in a thread.
+        """
+        raise NotImplementedError('duh!')
+
 
 # ------------------------------------------------------------------------------
 

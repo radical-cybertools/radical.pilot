@@ -19,7 +19,7 @@ resources = {
     'osg.xsede-virt-clust' : {
         'project'  : 'TG-CCR140028',
         'queue'    : None,
-        'schema'   : 'ssh'
+        'schema'   : 'gsissh'
     },
     'osg.connect' : {
         'project'  : 'RADICAL',

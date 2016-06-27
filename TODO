@@ -189,4 +189,8 @@ pilot times out
         - close profiler
 
 
+tmp:
+----
+  - pilots canceled but state is not picked up during shutdown
+
 
