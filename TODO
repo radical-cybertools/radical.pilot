@@ -125,7 +125,7 @@
   + agent state ACTIVE is recorded twice
   + agent state DONE   is recorded twice on timeout
 
-  - we should never have a wildcard `except`, as that will also catch inetrrupts
+  + we should never have a wildcard `except`, as that will also catch inetrrupts
     and system exits, which we though expect to fall through to the component
     layer for lifetime management.
 
