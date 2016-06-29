@@ -66,9 +66,11 @@ def sigterm_handler(signum, frame):
     print 'sigterm handler %s' % os.getpid()
     raise RuntimeError('sigterm')
 
+SLEEP    = 0.1
+RAISE_ON = 3
 # ------------------------------------------------------------------------------
 #
-class ThreadWorker(mt.Thread):
+class WorkerThread(mt.Thread):
 
     def __init__(self, num, pnum, tnum):
 
@@ -95,10 +97,10 @@ class ThreadWorker(mt.Thread):
           # print ' %s start' % self.uid
 
             while not self.term.is_set():
-                time.sleep(1)
+                time.sleep(SLEEP)
               # print ' %s run' % self.uid
                 if self.num == 3 and self.pnum == 0:
-                    raise RuntimeError('Error in %s' % self.uid)
+                    ru.raise_on(self.uid, RAISE_ON)
     
           # print ' %s stop' % self.uid
     
@@ -118,18 +120,18 @@ class ThreadWorker(mt.Thread):
 
 # ------------------------------------------------------------------------------
 #
-class ThreadWatcher(mt.Thread):
+class WatcherThread(mt.Thread):
     
-    def __init__(self, worker, num, pnum, tnum):
+    def __init__(self, to_watch, num, pnum, tnum):
 
-        self.worker = worker
-        self.num    = num
-        self.pnum   = pnum
-        self.tnum   = tnum
-        self.pid    = os.getpid() 
-        self.tid    = mt.currentThread().ident 
-        self.uid    = "w.%d.%s.%6d.%s" % (self.pnum, self.tnum, self.pid, self.tid)
-        self.term   = mt.Event()
+        self.to_watch = to_watch
+        self.num      = num
+        self.pnum     = pnum
+        self.tnum     = tnum
+        self.pid      = os.getpid() 
+        self.tid      = mt.currentThread().ident 
+        self.uid      = "w.%d.%s.%6d.%s" % (self.pnum, self.tnum, self.pid, self.tid)
+        self.term     = mt.Event()
         
         mt.Thread.__init__(self, name=self.uid)
 
@@ -149,26 +151,30 @@ class ThreadWatcher(mt.Thread):
             while not self.term.is_set():
 
               # print ' %s run' % self.uid
-                time.sleep(1)
+                time.sleep(SLEEP)
                 if self.num == 4 and self.pnum == 0:
-                    raise RuntimeError('Error in %s' % self.uid)
+                    ru.raise_on(self.uid, RAISE_ON)
 
-                if not self.worker.is_alive():
-                    print ' %s event: thread %s died' % (self.uid, self.worker.uid)
-                    ru.cancel_main_thread()
-                    raise RuntimeError('thread %s died' % self.worker.uid)
+                for thing in self.to_watch:
+                    if not thing.is_alive():
+                        print ' %s event: something %s died' % (self.uid, thing.uid)
+                        ru.cancel_main_thread()
+                        raise RuntimeError('something %s died - assert' % thing.uid)
 
             print ' %s stop' % self.uid
 
 
         except Exception as e:
             print ' %s error %s [%s]' % (self.uid, e, type(e))
+            ru.cancel_main_thread()
        
         except SystemExit:
             print ' %s exit' % (self.uid)
+            ru.cancel_main_thread()
        
         except KeyboardInterrupt:
             print ' %s intr' % (self.uid)
+            ru.cancel_main_thread()
        
         finally:
             print ' %s final' % (self.uid)
@@ -194,6 +200,11 @@ class ProcessWorker(mp.Process):
         self.watcher = None
 
 
+    def stop(self):
+
+        return self.terminate()
+
+
     def run(self):
 
       # signal.signal(signal.SIGINT, sigint_handler)
@@ -207,27 +218,17 @@ class ProcessWorker(mp.Process):
             print ' %s start' % self.uid
 
             # create worker thread
-            self.worker  = ThreadWorker(self.num, self.pnum, 0)
+            self.worker  = WorkerThread(self.num, self.pnum, 0)
             self.worker.start()
      
-            self.watcher  = ThreadWatcher(self.worker, self.num, self.pnum, 1)
+            self.watcher  = WatcherThread([self.worker], self.num, self.pnum, 1)
             self.watcher.start()
 
             while True:
                 print ' %s run' % self.uid
-                time.sleep(1)
-
-                if not self.watcher.is_alive():
-                    self.watcher.join()
-                    self.watcher = None
-                    raise RuntimeError('watcher died')
-                if not self.worker.is_alive():
-                    self.worker.join()
-                    self.worker = None
-                    raise RuntimeError('worker died')
-
+                time.sleep(SLEEP)
                 if self.num == 2 and self.pnum == 0:
-                    raise RuntimeError('Error in %s' % self.uid)
+                    ru.raise_on(self.uid, RAISE_ON)
 
             print ' %s stop' % self.uid
 
@@ -242,14 +243,18 @@ class ProcessWorker(mp.Process):
             print ' %s intr' % (self.uid)
        
         finally:
-            print ' %s final -> watcher' % (self.uid)
             if self.watcher:
+                print ' %s final -> watcher' % (self.uid)
                 self.watcher.stop()
+                print ' %s final => watcher' % (self.uid)
                 self.watcher.join
-            print ' %s final -> worker' % (self.uid)
+                print ' %s final |> watcher' % (self.uid)
             if self.worker:
+                print ' %s final -> worker' % (self.uid)
                 self.worker.stop()
+                print ' %s final => worker' % (self.uid)
                 self.worker.join
+                print ' %s final |> worker' % (self.uid)
             print ' %s final' % (self.uid)
 
         print 'worker done'
@@ -260,8 +265,9 @@ class ProcessWorker(mp.Process):
 #
 def main(num):
 
-    p1 = None
-    p2 = None
+    watcher = None
+    p1      = None
+    p2      = None
 
     try:
         pid = os.getpid() 
@@ -275,18 +281,14 @@ def main(num):
         p1.start()
         p2.start()
 
+        watcher  = WatcherThread([p1, p2], num, 0, 1)
+        watcher.start()
+
         while True:
             print ' %s run' % uid
-            time.sleep(2)
-            if not p1.is_alive():
-                p1 = None
-                raise RuntimeError('p1 died')
-            if not p2.is_alive():
-                p2 = None
-                raise RuntimeError('p2 died')
+            time.sleep(SLEEP)
             if num == 1:
-                print ' %s raise' % uid
-                raise RuntimeError('Error in %s' % uid)
+                ru.raise_on(uid, RAISE_ON)
 
         print ' %s stop' % uid
 
@@ -300,15 +302,26 @@ def main(num):
         print ' %s intr' % (uid)
     
     finally:
-        print ' %s final -> p1' % (uid)
         if p1:
-            os.kill(p1.pid, signal.SIGTERM)
-          # p1.terminate()
+            print ' %s final -> p1' % (uid)
+            p1.stop()
+            print ' %s final => p1' % (uid)
             p1.join()
-        print ' %s final -> p2' % (uid)
+            print ' %s final |> p1' % (uid)
+
         if p2:
-            p2.terminate()
+            print ' %s final -> p2' % (uid)
+            p2.stop()
+            print ' %s final => p2' % (uid)
             p2.join()
+            print ' %s final |> p2' % (uid)
+
+        if watcher:
+            print ' %s final -> watcher' % (uid)
+            watcher.stop()
+            print ' %s final => watcher' % (uid)
+            watcher.join()
+            print ' %s final |> watcher' % (uid)
         print ' %s final' % (uid)
 
 
