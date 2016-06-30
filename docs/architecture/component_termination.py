@@ -72,7 +72,6 @@ dh = ru.DebugHelper()
 #
 def sigterm_handler(signum, frame):
     print 'sigterm handler %s' % os.getpid()
-    ru.print_stacktrace()
     raise RuntimeError('sigterm')
 
 def sigusr2_handler(signum, frame):
