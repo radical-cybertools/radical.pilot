@@ -12,7 +12,16 @@ import tempfile
 import threading
 import traceback
 
-from orte_cffi import ffi, lib as orte_lib
+try:
+    from orte_cffi import ffi, lib as orte_lib
+    ffi_def_extern = ffi.def_extern
+except:
+    def ffi_def_extern(f):
+        def _f():
+            f()
+        return _f
+
+
 
 from .... import pilot     as rp
 from ...  import utils     as rpu
@@ -38,14 +47,14 @@ def rec_makedir(target):
 
 # ==============================================================================
 #
-@ffi.def_extern()
+@ffi_def_extern()
 def launch_cb(task, jdata, status, cbdata):
     return ffi.from_handle(cbdata).unit_spawned_cb(task, status)
 
 
 # ==============================================================================
 #
-@ffi.def_extern()
+@ffi_def_extern()
 def finish_cb(task, jdata, status, cbdata):
     return ffi.from_handle(cbdata).unit_completed_cb(task, status)
 
@@ -57,6 +66,12 @@ class ORTE(AgentExecutingComponent):
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg):
+
+        # failing to load orte_cffi will be ignored on module load above, but
+        # will cause an 
+        #   ImportError: No module named orte_cffi
+        # when creating the ORTE exec component.
+        import orte_cffi
 
         AgentExecutingComponent.__init__ (self, cfg)
 
