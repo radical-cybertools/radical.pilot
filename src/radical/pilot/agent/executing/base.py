@@ -45,25 +45,22 @@ class AgentExecutingComponent(rpu.Component):
         if cls != AgentExecutingComponent:
             raise TypeError("Factory only available to base class!")
 
-        from .popen import Popen
-        from .shell import Shell
-        from .abds  import ABDS
-        from .orte  import ORTE
-
-        try:
-            impl = {
-                EXECUTING_NAME_POPEN : Popen,
-                EXECUTING_NAME_SHELL : Shell,
-                EXECUTING_NAME_ABDS  : ABDS,
-                EXECUTING_NAME_ORTE  : ORTE
-            }[name]
-
-            impl = impl(cfg)
-            return impl
-
-        except KeyError:
+        if name == EXECUTING_NAME_POPEN:
+            from .popen import Popen
+            impl = Popen(cfg)
+        elif name == EXECUTING_NAME_SHELL:
+            from .shell import Shell
+            impl = Shell(cfg)
+        elif name == EXECUTING_NAME_ABDS:
+            from .abds import ABDS
+            impl = ABDS(cfg)
+        elif name == EXECUTING_NAME_ORTE:
+            from .orte import ORTE
+            impl = ORTE(cfg)
+        else:
             raise ValueError("AgentExecutingComponent '%s' unknown or defunct" % name)
+
+        return impl
 
 
 # ------------------------------------------------------------------------------
-
