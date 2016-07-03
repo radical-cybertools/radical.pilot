@@ -384,7 +384,7 @@ class Agent_0(rpu.Worker):
                                                   'arg' : arg})
 
             else:
-                self.log.error('could not interpret cmd "%s" - ignore', cmd)
+                self._log.error('could not interpret cmd "%s" - ignore', cmd)
 
 
     # --------------------------------------------------------------------------

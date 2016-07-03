@@ -18,16 +18,29 @@ from .misc       import hostip
 from .prof_utils import timestamp      as rpu_timestamp
 
 from .queue      import Queue          as rpu_Queue
-from .queue      import QUEUE_ZMQ      as rpu_QUEUE_ZMQ
 from .queue      import QUEUE_OUTPUT   as rpu_QUEUE_OUTPUT
 from .queue      import QUEUE_INPUT    as rpu_QUEUE_INPUT
 from .queue      import QUEUE_BRIDGE   as rpu_QUEUE_BRIDGE
 
 from .pubsub     import Pubsub         as rpu_Pubsub
-from .pubsub     import PUBSUB_ZMQ     as rpu_PUBSUB_ZMQ
 from .pubsub     import PUBSUB_PUB     as rpu_PUBSUB_PUB
 from .pubsub     import PUBSUB_SUB     as rpu_PUBSUB_SUB
 from .pubsub     import PUBSUB_BRIDGE  as rpu_PUBSUB_BRIDGE
+
+
+# ------------------------------------------------------------------------------
+#
+# all RP processes, both parents and children, will install the two signal
+# handlers below, which are used to coordinate the component termination
+# sequence.  For details, see docs/architecture/component_termination.py.
+#
+def _sigterm_handler(signum, frame):
+  # print 'caught sigterm'
+    raise KeyboardInterrupt('sigterm')
+
+def _sigusr2_handler(signum, frame):
+  # print 'caught sigusr2'
+    raise KeyboardInterrupt('sigusr2')
 
 
 # ==============================================================================
@@ -153,16 +166,16 @@ class Component(mp.Process):
             raise ValueError('class which inherits Component needs a uid')
 
         # state we carry over the fork
-        self._started       = False
-        self._debug         = cfg.get('debug', 'DEBUG')
-        self._owner         = cfg.get('owner', self.uid)
-        self._cname         = cfg.get('cname', self.__class__.__name__)
-        self._ctype         = "%s.%s" % (self.__class__.__module__,
-                                         self.__class__.__name__)
-        self._number        = cfg.get('number', 0)
-        self._name          = cfg.get('name.%s' %  self._number,
-                                      '%s.%s'   % (self._ctype, self._number))
-        self._term          = mt.Event()  # control watcher threads
+        self._started   = False
+        self._debug     = cfg.get('debug', 'DEBUG')
+        self._owner     = cfg.get('owner', self.uid)
+        self._cname     = cfg.get('cname', self.__class__.__name__)
+        self._ctype     = "%s.%s" % (self.__class__.__module__,
+                                     self.__class__.__name__)
+        self._number    = cfg.get('number', 0)
+        self._name      = cfg.get('name.%s' %  self._number,
+                                  '%s.%s'   % (self._ctype, self._number))
+        self._term      = mt.Event()  # control watcher threads
 
         if self._owner == self.uid:
             self._owner = 'root'
@@ -431,15 +444,6 @@ class Component(mp.Process):
         # should start, otherwise we'll loose messages.
         self._send_alive()
 
-        # parent calls terminate on stop(), which we translate here into stop()
-        def sigterm_handler(signum, frame):
-            self._log.warn('caught sigterm')
-            ru.cancel_main_thread()
-        signal.signal(signal.SIGTERM, sigterm_handler)
-        def sighup_handler(signum, frame):
-            self._log.warn('caught sighup')
-            ru.cancel_main_thread()
-        signal.signal(signal.SIGHUP, sighup_handler)
 
     # --------------------------------------------------------------------------
     #
@@ -645,12 +649,25 @@ class Component(mp.Process):
     #
     def _finalize_child(self):
 
-        self._log.debug('_finalize_child')
+        # FIXME: revert actions from _initialize_child
 
-        self.finalize_child()
-        self._finalize_common()
+        try:
+            self._log.debug('_finalize_child')
 
-        self._log.debug('_finalize_child done')
+            self.finalize_child()
+            self._finalize_common()
+
+        except Exception as e:
+            self._log.warn('%s error %s [%s]', self.uid, e, type(e))
+       
+        except SystemExit:
+            self._log.warn('%s exit', self.uid)
+
+        except KeyboardInterrupt:
+            self._log.warn('%s intr', self.uid)
+       
+        finally:
+            self._log.debug('_finalize_child done')
 
 
     # --------------------------------------------------------------------------
@@ -750,25 +767,38 @@ class Component(mp.Process):
                         ru.get_caller_name()))
 
         # avoid races with any idle checkers
+        # FIXME: that is useless w/o actually joining them
         self._term.set()
 
-        # parent and child finalization will have all comoonents and bridges
+        # parent and child finalization will have all components and bridges
         # available
         if self._is_parent:
 
             # signal the child -- if one exists
             if self.has_child:
                 self._log.info("stop    %s" % self.pid)
-                self.terminate()
+                
+                # The mp stop can race with internal process termination.  We catch the
+                # respective OSError here.
+
+                # In some cases, the popen module seems finalized before the stop is
+                # gone through.  I suspect that this is a race between the process
+                # object finalization and internal process termination.  We catch the
+                # respective AttributeError, caused by `self._popen` being unavailable.
+                
+                try:
+                    self.terminate()
+                except OSError as e:
+                    self._log.warn('%s stop: child is gone', self.uid)
+                except AttributeError as e:
+                    self._log.warn('%s stop: popen is gone', self.uid)
+
                 self._log.info("stopped %s" % self.pid)
                 self._log.info("join    %s" % self.pid)
                 self.join()
                 self._log.info("joined  %s" % self.pid)
 
             self._finalize_parent()
-
-            # FIXME: self._finalize is set now.  We should add finalization
-            #        guards around all methods.
 
             self._log.debug('stop as parent (return)')
             return
@@ -783,34 +813,48 @@ class Component(mp.Process):
             sys.exit()
 
 
-    # --------------------------------------------------------------------------
-    #
-    def wait(self, timeout=None):
-        """
-        wait will block until stop() self._term has been set
-        """
-
-        start = time.time()
-        while not self._term.is_set():
-            if timeout != None:
-                now = time.time()
-                if now-start > timeout:
-                    break
-            time.sleep(1)
-
-
+  # # --------------------------------------------------------------------------
+  # #
+  # # FIXME: remove in favor of join().wait
+  # # 
+  # def wait(self, timeout=None):
+  #     """
+  #     wait will block until stop() self._term has been set
+  #     """
+  #
+  #     start = time.time()
+  #     while not self._term.is_set():
+  #         if timeout != None:
+  #             now = time.time()
+  #             if now-start > timeout:
+  #                 break
+  #         time.sleep(1)
+  #
+  #
     # --------------------------------------------------------------------------
     #
     def join(self, timeout=None):
 
-        # we only really join when the component child process has been started
-        # this is basically a wait(2) on the child pid.
-        if self.pid:
-            self._log.debug('%s join   (%s)', self.uid, self.pid)
-            mp.Process.join(self, timeout)
-            self._log.debug('%s joined (%s)', self.uid, self.pid)
-        else:
-            self._log.debug('skip join for %s: no child', self.uid)
+        # Due to the overloaded stop, we may seen situations where the child
+        # process pid is not known anymore, and an assertion in the mp layer
+        # gets triggered.  We catch that assertion and assume the join
+        # completed.
+
+        try:
+            # we only really join when the component child process has been started
+            # this is basically a wait(2) on the child pid.
+            if self.pid:
+                self._log.debug('%s join   (%s)', self.uid, self.pid)
+                mp.Process.join(self, timeout)
+                self._log.debug('%s joined (%s)', self.uid, self.pid)
+            else:
+                self._log.warn('skip join for %s: no child', self.uid)
+
+        except AssertionError as e:
+            self._log.warn('ignored assertion error on join')
+
+        # let callee know if child has been joined
+        return (not self.is_alive())
 
 
     # --------------------------------------------------------------------------
@@ -862,7 +906,7 @@ class Component(mp.Process):
         addr = self._cfg['bridges'][input]['addr_out']
         self._log.debug("using addr %s for input %s" % (addr, input))
 
-        q = rpu_Queue.create(self._session, rpu_QUEUE_ZMQ, input, rpu_QUEUE_OUTPUT, addr=addr)
+        q = rpu_Queue(self._session, input, rpu_QUEUE_OUTPUT, self._cfg, addr=addr)
         self._inputs['name'] = {'queue'  : q,
                                 'states' : states}
 
@@ -940,7 +984,7 @@ class Component(mp.Process):
                 self._log.debug("using addr %s for output %s" % (addr, output))
 
                 # non-final state, ie. we want a queue to push to
-                q = rpu_Queue.create(self._session, rpu_QUEUE_ZMQ, output, rpu_QUEUE_INPUT, addr=addr)
+                q = rpu_Queue(self._session, output, rpu_QUEUE_INPUT, self._cfg, addr=addr)
                 self._outputs[state] = q
 
                 self._log.debug('registered output    : %s : %s : %s' \
@@ -1063,7 +1107,7 @@ class Component(mp.Process):
         addr = self._cfg['bridges'][pubsub]['addr_in']
         self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
 
-        q = rpu_Pubsub.create(self._session, rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_PUB, addr=addr)
+        q = rpu_Pubsub(self._session, pubsub, rpu_PUBSUB_PUB, self._cfg, addr=addr)
         self._publishers[pubsub] = q
 
         self._log.debug('registered publisher : %s : %s' % (pubsub, q.name))
@@ -1148,7 +1192,7 @@ class Component(mp.Process):
                 raise ValueError('cb %s already registered for %s' % (cb.__name__, pubsub))
 
             # create a pubsub subscriber (the pubsub name doubles as topic)
-            q = rpu_Pubsub.create(self._session, rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB, addr=addr)
+            q = rpu_Pubsub(self._session, pubsub, rpu_PUBSUB_SUB, self._cfg, addr=addr)
             q.subscribe(pubsub)
 
             e = mt.Event()
@@ -1212,6 +1256,10 @@ class Component(mp.Process):
         respective worker method.  Once the thing is worked upon, the next
         attempt on getting a thing is up.
         """
+
+        # install signal handlers for termination handling
+        signal.signal(signal.SIGTERM, _sigterm_handler)
+        signal.signal(signal.SIGUSR2, _sigusr2_handler)
 
         try:
 
@@ -1315,7 +1363,7 @@ class Component(mp.Process):
         
         except KeyboardInterrupt:
             # a thread caused this by calling ru.cancel_main_thread()
-            self._log.info("loop cancel")
+            self._log.info("loop intr")
         
         finally:
             self._log.info('loop stops')

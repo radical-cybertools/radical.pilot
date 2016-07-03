@@ -18,13 +18,11 @@ from .misc       import hostip
 from .prof_utils import timestamp      as rpu_timestamp
 
 from .queue      import Queue          as rpu_Queue
-from .queue      import QUEUE_ZMQ      as rpu_QUEUE_ZMQ
 from .queue      import QUEUE_OUTPUT   as rpu_QUEUE_OUTPUT
 from .queue      import QUEUE_INPUT    as rpu_QUEUE_INPUT
 from .queue      import QUEUE_BRIDGE   as rpu_QUEUE_BRIDGE
 
 from .pubsub     import Pubsub         as rpu_Pubsub
-from .pubsub     import PUBSUB_ZMQ     as rpu_PUBSUB_ZMQ
 from .pubsub     import PUBSUB_PUB     as rpu_PUBSUB_PUB
 from .pubsub     import PUBSUB_SUB     as rpu_PUBSUB_SUB
 from .pubsub     import PUBSUB_BRIDGE  as rpu_PUBSUB_BRIDGE
@@ -291,11 +289,9 @@ class Controller(object):
                 self._log.info('create bridge %s', bname)
             
                 if bname.endswith('queue'):
-                    bridge = rpu_Queue.create(self._session, rpu_QUEUE_ZMQ, 
-                                              bname, rpu_QUEUE_BRIDGE, bcfg)
+                    bridge = rpu_Queue(self._session, bname, rpu_QUEUE_BRIDGE, bcfg)
                 elif bname.endswith('pubsub'):
-                    bridge = rpu_Pubsub.create(self._session, rpu_PUBSUB_ZMQ, 
-                                               bname, rpu_PUBSUB_BRIDGE, bcfg)
+                    bridge = rpu_Pubsub(self._session, bname, rpu_PUBSUB_BRIDGE, bcfg)
                 else:
                     raise ValueError('unknown bridge type for %s' % bname)
 
@@ -351,9 +347,8 @@ class Controller(object):
         # messages, otherwise those messages can arrive before we are able to
         # get them.
         addr = self._ctrl_cfg['bridges'][rpc.CONTROL_PUBSUB]['addr_out']
-        self._ctrl_sub = rpu_Pubsub.create(self._session, rpu_PUBSUB_ZMQ, 
-                                           rpc.CONTROL_PUBSUB, rpu_PUBSUB_SUB, 
-                                           addr=addr)
+        self._ctrl_sub = rpu_Pubsub(self._session, rpc.CONTROL_PUBSUB, rpu_PUBSUB_SUB, 
+                                    self._ctrl_cfg, addr=addr)
         self._ctrl_sub.subscribe(rpc.CONTROL_PUBSUB)
 
         self._log.debug('start_bridges done')
@@ -596,8 +591,8 @@ class Controller(object):
 
         heart = self._ctrl_cfg['heart']
         addr  = self._ctrl_cfg['bridges'][rpc.CONTROL_PUBSUB]['addr_in']
-        pub   = rpu_Pubsub.create(self._session, rpu_PUBSUB_ZMQ, 
-                                  rpc.CONTROL_PUBSUB, rpu_PUBSUB_PUB, addr=addr)
+        pub   = rpu_Pubsub(self._session, rpc.CONTROL_PUBSUB, rpu_PUBSUB_PUB,
+                           self._ctrl_cfg, addr=addr)
 
         last_heartbeat = 0.0  # we never sent a heartbeat before
         while not term.is_set() and not self._term.is_set():

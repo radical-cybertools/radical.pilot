@@ -272,7 +272,7 @@ class ProcessWorker(mp.Process):
 
     def stop(self):
 
-        # The mp join can race with internal process termination.  We catch the
+        # The mp stop can race with internal process termination.  We catch the
         # respective OSError here.
 
         # In some cases, the popen module seems finalized before the stop is
@@ -441,6 +441,7 @@ def main(num):
     
     finally:
         finalize(p1, p2, watcher)
+
 
 def finalize(p1, p2, watcher):
 
