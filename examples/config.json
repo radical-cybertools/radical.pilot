@@ -12,6 +12,12 @@
             "schema"   : "gsissh"
         },
 
+        "ncsa.bw_xk" : {
+            "project"  : "gkd",
+            "queue"    : "debug",
+            "schema"   : "gsissh"
+        },
+
         "ncsa.bw_ccm" : {
             "project"  : "gkd",
             "queue"    : "debug",
