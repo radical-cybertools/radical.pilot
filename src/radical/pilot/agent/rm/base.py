@@ -264,55 +264,71 @@ class LRMS(object):
         If interface is not given, do some magic.
         """
 
-        # List of interfaces that we probably dont want to bind to by default
-        black_list = ['lo', 'sit0']
+        AF_INET = netifaces.AF_INET
 
-        # Known intefaces in preferred order
-        sorted_preferred = [
-            'ipogif0', # Cray's
-            'br0', # SuperMIC
-            'eth0'
-        ]
+        # We create a ordered preference list, consisting of:
+        #   - given arglist
+        #   - white list (hardcoded preferred interfaces)
+        #   - black_list (hardcoded unfavorable interfaces)
+        #   - all others (whatever is not in the above)
+        # Then this list is traversed, we check if the interface exists and has an
+        # IP address.  The first match is used.
 
-        # Get a list of all network interfaces
-        all = netifaces.interfaces()
-
-        logger.debug("Network interfaces detected: %s", all)
-
-        pref = None
-        # If we got a request, see if it is in the list that we detected
-        if req and req in all:
-            # Requested is available, set it
-            pref = req
+        if req: 
+            if not isinstance(req, list):
+                req = [req]
         else:
-            # No requested or request not found, create preference list
-            potentials = [iface for iface in all if iface not in black_list]
+            req = []
 
-        # If we didn't select an interface already
-        if not pref:
-            # Go through the sorted list and see if it is available
-            for iface in sorted_preferred:
-                if iface in all:
-                    # Found something, get out of here
-                    pref = iface
-                    break
+        white_list = [
+                'ipogif0', # Cray's
+                'br0',     # SuperMIC
+                'eth0',    # desktops etc.
+                'wlan0'    # laptops etc.
+                ]
 
-        # If we still didn't find something, grab the first one from the
-        # potentials if it has entries
-        if not pref and potentials:
-            pref = potentials[0]
+        black_list = [
+                'lo',      # takes the 'inter' out of the 'net'
+                'sit0'     # ?
+                ]
 
-        # If there were no potentials, see if we can find one in the blacklist
-        if not pref:
-            for iface in black_list:
-                if iface in all:
-                    pref = iface
+        all  = netifaces.interfaces()
+        rest = [iface for iface in all \
+                       if iface not in req and \
+                          iface not in white_list and \
+                          iface not in black_list]
 
-        # Use IPv4, because, we can ...
-        af = netifaces.AF_INET
-        ip = netifaces.ifaddresses(pref)[af][0]['addr']
+        preflist = req + white_list + black_list + rest
+
+        for iface in preflist:
+
+            if iface not in all:
+                if logger:
+                    logger.debug('check iface %s: does not exist', iface)
+                continue
+
+            info = netifaces.ifaddresses(iface)
+            if AF_INET not in info:
+                if logger:
+                    logger.debug('check iface %s: no information', iface)
+                continue
+
+            if not len(info[AF_INET]):
+                if logger:
+                    logger.debug('check iface %s: insufficient information', iface)
+                continue
+
+            if not info[AF_INET][0].get('addr'):
+                if logger:
+                    logger.debug('check iface %s: disconnected', iface)
+                continue
+
+          
+            ip = info[AF_INET][0].get('addr')
+            logger.debug('check iface %s: ip is %s', iface, ip)
 
         return ip
 
 
+# ------------------------------------------------------------------------------
 
