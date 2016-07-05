@@ -43,19 +43,19 @@
         },
 
         "xsede.stampede" : {
-            "project"  : "TG-TRA100001S",
+            "project"  : "TG-MCB090174",
             "queue"    : "development",
             "schema"   : "gsissh"
         },
 
         "xsede.comet"  : {
-            "project"  : "TG-TRA100001S",
+            "project"  : "TG-MCB090174",
             "queue"    : "compute",
             "schema"   : "gsissh"
         },
 
         "xsede.comet_orte": {
-            "project"  : "TG-TRA100001S",
+            "project"  : "TG-MCB090174",
             "queue"    : "compute",
             "schema"   : "gsissh"
         },
