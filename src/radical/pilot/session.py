@@ -163,7 +163,7 @@ class Session (saga.Session):
             logger.report.error(">>err\n")
             logger.exception ('session create failed')
             raise PilotException("Couldn't create new session (database URL '%s' incorrect?): %s" \
-                            % (self._dburl, ex))  
+                            % (dburl, ex))  
 
         # Loading all "default" resource configurations
         module_path  = os.path.dirname(os.path.abspath(__file__))
