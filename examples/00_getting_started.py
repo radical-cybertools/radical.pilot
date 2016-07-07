@@ -10,6 +10,8 @@ verbose  = os.environ.get('RADICAL_PILOT_VERBOSE', 'REPORT')
 rp_dburl = os.environ.get('RADICAL_PILOT_DBURL',
                           'mongodb://rp:rp@ds015335.mlab.com:15335/rp')
 
+os.environ['RADICAL_PILOT_VERBOSE'] = verbose
+
 import radical.pilot as rp
 import radical.utils as ru
 
@@ -26,7 +28,7 @@ import radical.utils as ru
 if __name__ == '__main__':
 
     # we use a reporter class for nicer output
-    report = ru.LogReporter(name='radical.pilot.examples', level=verbose)
+    report = ru.LogReporter(name='radical.pilot', level=verbose)
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
