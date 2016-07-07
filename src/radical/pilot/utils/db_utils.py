@@ -41,6 +41,8 @@ def get_session_ids (db) :
 
     # this is not bein cashed, as the session list can and will change freqently
 
+    print db
+    print type(db)
     cnames = db.collection_names ()
     sids   = list()
     for cname in cnames :
