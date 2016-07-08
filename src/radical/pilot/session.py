@@ -110,7 +110,6 @@ class Session (saga.Session):
             database_url = os.environ.get("RADICAL_PILOT_DBURL")
 
         if  not database_url:
-            print 'oops'
             logger.warning('using default dburl %s', default_dburl)
             database_url = default_dburl
 
