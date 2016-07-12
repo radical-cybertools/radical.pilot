@@ -19,6 +19,10 @@ import radical.utils as ru
 #
 # ------------------------------------------------------------------------------
 
+helloworld_mpi_bin  = 'helloworld_mpi.py'
+helloworld_mpi_path = '%s/%s' % (os.path.abspath(os.path.dirname(__file__)),
+                                 helloworld_mpi_bin)
+
 
 #------------------------------------------------------------------------------
 #
@@ -89,8 +93,8 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.executable     = 'python'
-            cud.arguments      = ['helloworld_mpi.py']
-            cud.input_staging  = ['helloworld_mpi.py']
+            cud.arguments      = [helloworld_mpi_bin ]
+            cud.input_staging  = [helloworld_mpi_path]
             cud.cores          = 4
             cud.mpi            = True
             cuds.append(cud)
