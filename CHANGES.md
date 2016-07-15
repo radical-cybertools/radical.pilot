@@ -5,6 +5,20 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+
+0.41 Release                                                          2016-07-15
+--------------------------------------------------------------------------------
+
+  - address some of error messages and type checks 
+  - add scheduler documentation simplify interpretation of BF oversubscription fix a log message 
+  - fix logging problem reported by Ming and Vivek 
+  - global default url, sync profile/logfile/db fetching tools 
+  - make staging path resilient against cwd changes 
+  - Switch SSH and ORTE for Comet
+  - sync session cleanup tool with rpu 
+  - update allocation IDs 
+
+
 0.40.3 Release                                                        2016-05-17
 --------------------------------------------------------------------------------
 
@@ -497,5 +511,4 @@ API Changes:
 
 
 --------------------------------------------------------------------------------
-
 
