@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.40.4 Release                                                        2016-05-18
+--------------------------------------------------------------------------------
+
+  - point release with more tutorial configurations
+
+
 0.40.3 Release                                                        2016-05-17
 --------------------------------------------------------------------------------
 
