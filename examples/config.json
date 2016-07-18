@@ -3,102 +3,119 @@
         "local.localhost" : {
             "project"  : null,
             "queue"    : null,
-            "schema"   : null
+            "schema"   : null,
+            "cores"    : 2
         },
 
         "ncsa.bw" : {
             "project"  : "gkd",
             "queue"    : "debug",
-            "schema"   : "gsissh"
+            "schema"   : "gsissh",
+            "cores"    : 64
         },
 
         "nersc.edison" : {
             "project"  : null,
             "queue"    : "debug",
-            "schema"   : "ssh"
+            "schema"   : "ssh",
+            "cores"    : 64
         },
 
         "epsrc.archer" : {
             "project"  : "y14-ExTASY",
             "queue"    : "course1",
-            "schema"   : null
+            "schema"   : null,
+            "cores"    : 64
         },
 
         "epsrc.archer_orte" : {
             "project"  : "y14-ExTASY",
             "queue"    : "course1",
-            "schema"   : null
+            "schema"   : null,
+            "cores"    : 64
         },
 
         "lrz.supermuc" : {
             "project"  : "e290",
             "queue"    : "short",
-            "schema"   : null
+            "schema"   : null,
+            "cores"    : 64
         },
 
         "xsede.supermic" : {
             "project"  : "TG-CCR140028",
             "queue"    : "workq",
-            "schema"   : null
+            "schema"   : null,
+            "cores"    : 64
         },
 
         "xsede.stampede" : {
             "project"  : "TG-MCB090174",
             "queue"    : "development",
-            "schema"   : "gsissh"
+            "schema"   : "gsissh",
+            "cores"    : 64
         },
 
         "xsede.comet"  : {
             "project"  : "TG-MCB090174",
             "queue"    : "compute",
-            "schema"   : "gsissh"
+            "schema"   : "gsissh",
+            "cores"    : 64
         },
 
         "xsede.comet_orte": {
             "project"  : "TG-MCB090174",
             "queue"    : "compute",
-            "schema"   : "gsissh"
+            "schema"   : "gsissh",
+            "cores"    : 64
         },
 
         "xsede.gordon" : {
             "project"  : null,
             "queue"    : "normal",
-            "schema"   : null
+            "schema"   : null,
+            "cores"    : 64
         },
 
         "xsede.blacklight" : {
             "project"  : null,
             "queue"    : "debug",
-            "schema"   : "gsissh"
+            "schema"   : "gsissh",
+            "cores"    : 64
         },
 
         "xsede.trestles" : {
             "project"  : "TG-MCB090174" ,
             "queue"    : "shared",
-            "schema"   : null
+            "schema"   : null,
+            "cores"    : 64
         },
 
         "futuregrid.india" : {
             "project"  : null,
             "queue"    : null,
-            "schema"   : null
+            "schema"   : null,
+            "cores"    : 64
         },
 
         "ornl.titan"   : {
             "project"  : "csc168",
             "queue"    : "batch",
-            "schema"   : "local"
+            "schema"   : "local",
+            "cores"    : 64
         },
 
         "nersc.hopper" : {
             "project"  : null,
             "queue"    : "debug",
-            "schema"   : "ssh"
+            "schema"   : "ssh",
+            "cores"    : 64
         },
 
         "yale.grace"   : {
             "project"  : null,
             "queue"    : "shared",
-            "schema"   : "ssh"
+            "schema"   : "ssh",
+            "cores"    : 64
         }
 }

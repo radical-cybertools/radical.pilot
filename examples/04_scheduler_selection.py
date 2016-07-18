@@ -58,12 +58,12 @@ if __name__ == '__main__':
         for resource in resources:
             pd_init = {
                     'resource'      : resource,
-                    'cores'         : 64,  # pilot size
                     'runtime'       : 15,  # pilot runtime (min)
                     'exit_on_error' : True,
                     'project'       : config[resource]['project'],
                     'queue'         : config[resource]['queue'],
-                    'access_schema' : config[resource]['schema']
+                    'access_schema' : config[resource]['schema'],
+                    'cores'         : config[resource]['cores'],
                     }
             pdescs.append(rp.ComputePilotDescription(pd_init))
 
