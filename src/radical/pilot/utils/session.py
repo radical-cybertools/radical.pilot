@@ -133,7 +133,7 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
         # We now have a local tarball
         if tarball_available:
             print "Extracting tarball %s into '%s'." % (ftgt.path, tgt_url.path)
-            tarball = tarfile.open(ftgt.path)
+            tarball = tarfile.open(ftgt.path, mode='r:gz')
             tarball.extractall("%s/%s" % (tgt_url.path, pilot['uid']))
 
             profiles = glob.glob("%s/%s/*.prof" % (tgt_url.path, pilot['uid']))
