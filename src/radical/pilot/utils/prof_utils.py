@@ -1,3 +1,4 @@
+
 import os
 import csv
 import copy
@@ -270,11 +271,39 @@ def get_experiment_frames(experiments, datadir=None):
 
 # ------------------------------------------------------------------------------
 #
-def combine_profiles(profiles):
+def read_profiles(profiles):
     """
-    We first read all profiles as CSV files and parse them.  For each profile,
-    we back-calculate global time (epoch) from the synch timestamps.  Then all
-    profiles are merged (time sorted).
+    We read all profiles as CSV files and parse them.  For each profile,
+    we back-calculate global time (epoch) from the synch timestamps.  
+    
+    """
+    ret = dict()
+
+    for prof in profiles:
+        p     = list()
+        with open(prof, 'r') as csvfile:
+            reader = csv.DictReader(csvfile, fieldnames=_prof_fields)
+            for row in reader:
+
+                # skip header
+                if row['time'].startswith('#'):
+                    continue
+
+                row['time'] = float(row['time'])
+    
+                # store row in profile
+                p.append(row)
+    
+        ret[prof] = p
+
+    return ret
+
+
+# ------------------------------------------------------------------------------
+#
+def combine_profiles(profs):
+    """
+    We merge all profiles and sorted by time.
 
     This routine expectes all profiles to have a synchronization time stamp.
     Two kinds of sync timestamps are supported: absolute and relative.  'sync
@@ -293,47 +322,36 @@ def combine_profiles(profiles):
     pd_abs = dict() # profiles which have absolute time refs
     pd_rel = dict() # profiles which have relative time refs
 
-    for prof in profiles:
-        p     = list()
+    for pname, prof in profs.iteritems():
+
         tref  = None
-        qed = 0
-        with open(prof, 'r') as csvfile:
-            reader = csv.DictReader(csvfile, fieldnames=_prof_fields)
-            empty  = True
-            for row in reader:
+        qed   = 0
 
-                # skip header
-                if row['time'].startswith('#'):
-                    continue
+        for row in prof:
 
-                empty = False
-                row['time'] = float(row['time'])
-    
-                # find first tref
-                if not tref:
-                    if row['event'] == 'sync rel' : 
-                        tref = 'rel'
-                        rd_rel[prof] = [row['time'], row['msg']]
-                    if row['event'] == 'sync abs' : 
-                        tref = 'abs'
-                        rd_abs[prof] = [row['time']] + row['msg'].split(':')
+            # find first tref
+            if not tref:
+                if row['event'] == 'sync rel' : 
+                    tref = 'rel'
+                    rd_rel[pname] = [row['time'], row['msg']]
+                if row['event'] == 'sync abs' : 
+                    tref = 'abs'
+                    rd_abs[pname] = [row['time']] + row['msg'].split(':')
 
-                # Record closing entries
-                if row['event'] == 'QED':
-                    qed += 1
+            # Record closing entries
+            if row['event'] == 'QED':
+                qed += 1
 
-                # store row in profile
-                p.append(row)
-    
-        if   tref == 'abs': pd_abs[prof] = p
-        elif tref == 'rel': pd_rel[prof] = p
-        elif not empty    : print 'WARNING: skipping profile %s (no sync)' % prof
+        if   tref == 'abs': pd_abs[pname] = prof
+        elif tref == 'rel': pd_rel[pname] = prof
+        elif len(pname)   : print 'WARNING: skipping profile %s (no sync)' % pname
 
-        # Check for proper closure of profiling files
-        if qed == 0:
-            print 'WARNING: profile "%s" not correctly closed.' % prof
-        if qed > 1:
-            print 'WARNING: profile "%s" closed %d times.' % (prof, qed)
+
+      # # Check for proper closure of profiling files
+      # if qed == 0:
+      #     print 'WARNING: profile "%s" not correctly closed.' % prof
+      # if qed > 1:
+      #     print 'WARNING: profile "%s" closed %d times.' % (prof, qed)
 
     # make all timestamps absolute for pd_abs profiles
     for prof, p in pd_abs.iteritems():
@@ -551,6 +569,43 @@ def clone_units(cfg, units, name, mode, prof=None, clone_cb=None, logger=None):
     if logger:
         logger.debug('cloning with factor [%s][%s]: %s gives %s units',
                      name, mode, factor, len(ret))
+
+    return ret
+
+
+# ------------------------------------------------------------------------------
+# 
+def get_profile_description(sid):
+    """
+    This will return a description which is usable for radical.analytics
+    evaluation.  It informs about
+      - set of stateful entities
+      - state models of those entities
+      - event models of those entities (maybe)
+      - configuration of the application / module
+    """
+    from radical.pilot import states as rps
+
+    ret             = dict()
+    ret['entities'] = dict()
+
+    ret['entities']['cu'] = {
+            'states' : rps._unit_state_values,
+            'events' : dict(),
+            }
+
+    ret['entities']['cp'] = {
+            'states' : rps._pilot_state_values,
+            'events' : dict(),
+            }
+
+    ret['entities']['session'] = {
+            'states' : dict(), # session has no states, only events
+            'events' : dict(),
+            }
+
+    ret['config'] = dict() # magic to get session config goes here
+
 
     return ret
 

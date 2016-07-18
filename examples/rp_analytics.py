@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-__copyright__ = 'Copyright 2013-2014, http://radical.rutgers.edu'
+__copyright__ = 'Copyright 2013-2016, http://radical.rutgers.edu'
 __license__   = 'MIT'
 
 import os
@@ -23,12 +23,18 @@ if __name__ == '__main__':
     sid = sys.argv[1]
 
 
-    profs = rpu.fetch_profiles(sid=sid, dburl=None, client=os.getcwd(),
-                               tgt=os.getcwd(), access=None, skip_existing=True)
-    for p in profs:
+    profiles = rpu.fetch_profiles(sid=sid, dburl=None, client="%s/.." % os.getcwd(),
+                                  tgt=os.getcwd(), access=None, skip_existing=True)
+    for p in profiles:
         print p
 
+    profs = rpu.read_profiles(profiles)
+
+    for p in profs:
+        print type(p)
+
     prof = rpu.combine_profiles(profs)
+
     print len(prof)
     for entry in prof:
         print entry
