@@ -23,8 +23,7 @@ if __name__ == '__main__':
     sid = sys.argv[1]
 
 
-    profiles = rpu.fetch_profiles(sid=sid, dburl=None, client="%s/.." % os.getcwd(),
-                                  tgt=os.getcwd(), access=None, skip_existing=True)
+    profiles = rpu.fetch_profiles(sid=sid, skip_existing=True)
     for p in profiles:
         print p
 

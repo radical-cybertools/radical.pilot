@@ -424,6 +424,119 @@ def combine_profiles(profs):
 
 
 # ------------------------------------------------------------------------------
+# 
+def clean_profile(profile, sid):
+    """
+    This method will prepare a profile for consumption in radical.analytics.  It
+    performs the following actions:
+
+      - makes sure all events have a `ename` entry
+      - remove all state transitions to `CANCELLED` if a different final state 
+        is encountered for the same uid
+      - assignes the session uid to all events without uid
+      - makes sure that state transitions have an `ename` set to `state`
+    """
+
+    from radical.pilot import states as rps
+
+    entities = dict()  # things which have a uid
+
+    for event in profile:
+        uid   = event['uid']
+        state = event['state']
+        time  = event['time']
+        name  = event['event']
+
+        # we derive entity_type from the uid
+        if uid:
+            event['entity_type'] = uid.split('.',1)[0]
+        else:
+            event['entity_type'] = 'session'
+            event['uid']         = sid
+            uid = sid
+
+        if uid not in entities:
+            entities[uid] = dict()
+            entities[uid]['states'] = dict()
+            entities[uid]['events'] = list()
+
+        if name == 'advance':
+
+            # this is a state progression
+            assert(state)
+            assert(uid)
+
+            event['event_name']  = 'state'
+
+            if state in rps.FINAL:
+
+                # a final state will cancel any previoud CANCELED state
+                if rps.CANCELED in entities[uid]['states']:
+                   del (entities[uid]['states'][rps.CANCELED])
+
+          # if state in entities[uid]['states']:
+          #     raise ValueError('double state (%s) for %s' % (state, uid))
+
+            entities[uid]['states'][state] = event
+
+        else:
+            # FIXME: define different event types (we have that somewhere)
+            event['event_name'] = 'event'
+
+        entities[uid]['events'].append(event)
+
+
+    # we have evaluated, cleaned and sorted all events -- now we recreate
+    # a clean profile out of them
+    ret = list()
+    for uid,entity in entities.iteritems():
+
+        ret += entity['events']
+        for state,event in entity['states'].iteritems():
+            ret.append(event)
+
+    return ret
+
+
+
+# ------------------------------------------------------------------------------
+# 
+def get_profile_description(sid):
+    """
+    This will return a description which is usable for radical.analytics
+    evaluation.  It informs about
+      - set of stateful entities
+      - state models of those entities
+      - event models of those entities (maybe)
+      - configuration of the application / module
+    """
+    from radical.pilot import states as rps
+
+    ret             = dict()
+    ret['entities'] = dict()
+
+    ret['entities']['pilot'] = {
+            'state_model' : rps._unit_state_values,
+            'event_model' : dict(),
+            }
+
+    ret['entities']['unit'] = {
+            'state_model' : rps._pilot_state_values,
+            'event_model' : dict(),
+            }
+
+    ret['entities']['session'] = {
+            'state_model' : dict(), # session has no states, only events
+            'event_model' : dict(),
+            }
+
+    ret['config'] = dict() # magic to get session config goes here
+
+
+    return ret
+
+
+# ------------------------------------------------------------------------------
 #
 def drop_units(cfg, units, name, mode, drop_cb=None, prof=None, logger=None):
     """
@@ -569,43 +682,6 @@ def clone_units(cfg, units, name, mode, prof=None, clone_cb=None, logger=None):
     if logger:
         logger.debug('cloning with factor [%s][%s]: %s gives %s units',
                      name, mode, factor, len(ret))
-
-    return ret
-
-
-# ------------------------------------------------------------------------------
-# 
-def get_profile_description(sid):
-    """
-    This will return a description which is usable for radical.analytics
-    evaluation.  It informs about
-      - set of stateful entities
-      - state models of those entities
-      - event models of those entities (maybe)
-      - configuration of the application / module
-    """
-    from radical.pilot import states as rps
-
-    ret             = dict()
-    ret['entities'] = dict()
-
-    ret['entities']['cu'] = {
-            'state_model' : rps._unit_state_values,
-            'event_model' : dict(),
-            }
-
-    ret['entities']['cp'] = {
-            'state_model' : rps._pilot_state_values,
-            'event_model' : dict(),
-            }
-
-    ret['entities']['session'] = {
-            'state_model' : dict(), # session has no states, only events
-            'event_model' : dict(),
-            }
-
-    ret['config'] = dict() # magic to get session config goes here
-
 
     return ret
 

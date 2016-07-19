@@ -13,12 +13,14 @@ logger = ru.get_logger('radical.pilot.utils')
 
 # ------------------------------------------------------------------------------
 #
-def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None, 
+def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None, 
         session=None, skip_existing=False):
     '''
     sid: session for which all profiles are fetched
-    client: dir to look for client session profiles
+    src: dir to look for client session profiles ($src/$sid/*.prof)
     tgt: dir to store the profile in
+         - $tgt/$sid/*.prof,
+         - $tgt/$sid/$pilot_id/*.prof)
 
     returns list of file names
     '''
@@ -31,8 +33,8 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
     if not dburl:
         raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
 
-    if not client:
-        client = os.getcwd()
+    if not src:
+        src = os.getcwd()
             
     if not tgt:
         tgt = os.getcwd()
@@ -53,22 +55,26 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
     # first fetch session profile
     # FIXME: should we record pwd or profile location in db session?  Or create
     #        a sandbox like dir for storing profiles and logs?
-    client_profile = "%s/%s.prof" % (client, sid)
+    client_profiles = glob.glob("%s/%s/*.prof" % (src, sid))
+    if not client_profiles:
+        raise RuntimeError('no client profiles in %s/%s' % (src, sid))
 
-    ftgt = saga.Url('%s/%s' % (tgt_url, os.path.basename(client_profile)))
-    ret.append("%s" % ftgt.path)
+    for client_profile in client_profiles:
 
-    if skip_existing and os.path.isfile(ftgt.path) \
-            and os.stat(ftgt.path).st_size > 0:
+        ftgt = saga.Url('%s/%s' % (tgt_url, os.path.basename(client_profile)))
+        ret.append("%s" % ftgt.path)
 
-        logger.report.info("\t- %s\n" % client_profile.split('/')[-1])
+        if skip_existing and os.path.isfile(ftgt.path) \
+                and os.stat(ftgt.path).st_size > 0:
 
-    else:
+            logger.report.info("\t- %s\n" % client_profile.split('/')[-1])
 
-        logger.report.info("\t+ %s\n" % client_profile.split('/')[-1])
-        prof_file = saga.filesystem.File(client_profile, session=session)
-        prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
-        prof_file.close()
+        else:
+
+            logger.report.info("\t+ %s\n" % client_profile.split('/')[-1])
+            prof_file = saga.filesystem.File(client_profile, session=session)
+            prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
+            prof_file.close()
 
     _, db, _, _, _ = ru.mongodb_connect (dburl)
 
@@ -167,11 +173,11 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
 
 # ------------------------------------------------------------------------------
 #
-def fetch_logfiles (sid, dburl=None, client=None, tgt=None, access=None, 
+def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None, 
         session=None, skip_existing=False):
     '''
     sid: session for which all logfiles are fetched
-    client: dir to look for client session logfiles
+    src: dir to look for client session logfiles
     tgt: dir to store the logfile in
 
     returns list of file names
@@ -185,8 +191,8 @@ def fetch_logfiles (sid, dburl=None, client=None, tgt=None, access=None,
     if not dburl:
         raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
 
-    if not client:
-        client = os.getcwd()
+    if not src:
+        src = os.getcwd()
             
     if not tgt:
         tgt = os.getcwd()
@@ -207,7 +213,7 @@ def fetch_logfiles (sid, dburl=None, client=None, tgt=None, access=None,
     # first fetch session logfile
     # FIXME: should we record pwd or logfile location in db session?  Or create
     #        a sandbox like dir for storing logfiles and logs?
-    client_logfile = "%s/%s.log" % (client, sid)
+    client_logfile = "%s/%s.log" % (src, sid)
 
     ftgt = saga.Url('%s/%s' % (tgt_url, os.path.basename(client_logfile)))
     ret.append("%s" % ftgt.path)
