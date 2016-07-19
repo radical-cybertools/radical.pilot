@@ -447,9 +447,16 @@ def clean_profile(profile, sid):
         time  = event['time']
         name  = event['event']
 
-        # we derive entity_type from the uid
+        # we derive entity_type from the uid -- but funnel 
+        # some cases into the session
         if uid:
             event['entity_type'] = uid.split('.',1)[0]
+
+        elif uid == 'root':
+            event['entity_type'] = 'session'
+            event['uid']         = sid
+            uid = sid
+
         else:
             event['entity_type'] = 'session'
             event['uid']         = sid
