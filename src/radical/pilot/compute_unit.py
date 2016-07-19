@@ -85,6 +85,7 @@ class ComputeUnit(object):
         # If staging directives exist, expand them
         expand_description(self._descr)
 
+        self._umgr.advance(self.as_dict(), rps.NEW, publish=False, push=False)
 
     # --------------------------------------------------------------------------
     #

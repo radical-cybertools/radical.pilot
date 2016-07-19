@@ -81,6 +81,8 @@ class ComputePilot(object):
             if not self._descr.get(check):
                 raise ValueError("ComputePilotDescription needs '%s'" % check)
 
+        self._pmgr.advance(self.as_dict(), rps.NEW, publish=False, push=False)
+
 
     # -------------------------------------------------------------------------
     #
