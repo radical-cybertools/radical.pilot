@@ -234,9 +234,10 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _update_pilot(self, pilot_dict, advance=False):
+    def _update_pilot(self, pilot_dict, advance=True):
 
-        pid = pilot_dict['uid']
+        pid   = pilot_dict['uid']
+        state = pilot_dict['state']
 
         # we don't care about pilots we don't know
         # otherwise get old state
@@ -339,17 +340,21 @@ class PilotManager(rpu.Component):
             pilots.append(pilot)
             pilot_doc = pilot.as_dict()
             pilot_docs.append(pilot_doc)
-            self._update_pilot(pilot_doc)
 
             # keep pilots around
             with self._pilots_lock:
                 self._pilots[pilot.uid] = pilot
+
+            # pilot is now known, we can update (and advance)
+            self._update_pilot(pilot_doc)
 
             if self._session._rec:
                 import radical.utils as ru
                 ru.write_json(descr.as_dict(), "%s/%s.batch.%03d.json" \
                         % (self._session._rec, pilot.uid, self._rec_id))
             self._log.report.progress()
+
+        self.advance(pilot_docs, state=rps.NEW, publish=True, push=True)
 
         if self._session._rec:
             self._rec_id += 1
