@@ -525,12 +525,12 @@ def get_profile_description(sid):
     ret['entities'] = dict()
 
     ret['entities']['pilot'] = {
-            'state_model' : rps._unit_state_values,
+            'state_model' : rps._pilot_state_values,
             'event_model' : dict(),
             }
 
     ret['entities']['unit'] = {
-            'state_model' : rps._pilot_state_values,
+            'state_model' : rps._unit_state_values,
             'event_model' : dict(),
             }
 
