@@ -530,13 +530,15 @@ def get_profile_description(sid):
             }
 
     ret['entities']['unit'] = {
-            'state_model' : rps._unit_state_values,
-            'event_model' : dict(),
+            'state_model'  : rps._unit_state_values,
+            'state_values' : rps._unit_state_inv_full,
+            'event_model'  : dict(),
             }
 
     ret['entities']['session'] = {
-            'state_model' : dict(), # session has no states, only events
-            'event_model' : dict(),
+            'state_model'  : dict(), # session has no states, only events
+            'state_values' : rps._pilot_state_inv_full,
+            'event_model'  : dict(),
             }
 
     ret['config'] = dict() # magic to get session config goes here
