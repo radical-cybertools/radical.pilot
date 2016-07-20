@@ -345,16 +345,16 @@ class PilotManager(rpu.Component):
             with self._pilots_lock:
                 self._pilots[pilot.uid] = pilot
 
-            # pilot is now known, we can update (and advance)
-            self._update_pilot(pilot_doc)
-
             if self._session._rec:
                 import radical.utils as ru
                 ru.write_json(descr.as_dict(), "%s/%s.batch.%03d.json" \
                         % (self._session._rec, pilot.uid, self._rec_id))
             self._log.report.progress()
 
-        self.advance(pilot_docs, state=rps.NEW, publish=True, push=True)
+        # FIXME: we should use update_pilot(), but that will not trigger an
+        #        advance, since the state did not change.  We would then miss
+        #        the profile entry for the advance to NEW...
+        self.advance(pilot_docs, state=rps.NEW, publish=False, push=False)
 
         if self._session._rec:
             self._rec_id += 1
