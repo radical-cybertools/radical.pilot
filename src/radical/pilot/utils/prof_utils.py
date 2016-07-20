@@ -469,8 +469,6 @@ def clean_profile(profile, sid):
 
         if name == 'advance':
 
-            print event
-
             # this is a state progression
             assert(state)
             assert(uid)
@@ -484,7 +482,9 @@ def clean_profile(profile, sid):
                    del (entities[uid]['states'][rps.CANCELED])
 
             if state in entities[uid]['states']:
-                raise ValueError('double state (%s) for %s' % (state, uid))
+                # ignore duplicated recordings of state transitions
+                continue
+              # raise ValueError('double state (%s) for %s' % (state, uid))
 
             entities[uid]['states'][state] = event
 

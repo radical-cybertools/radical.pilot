@@ -316,7 +316,7 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _update_unit(self, uid, unit_dict):
+    def _update_unit(self, uid, unit_dict, advance=False):
 
         # we don't care about units we don't know
         # otherwise get old state
