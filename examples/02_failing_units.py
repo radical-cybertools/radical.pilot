@@ -61,7 +61,7 @@ if __name__ == '__main__':
           #     session.close()
         umgr.register_callback(unit_cb)
 
-        n = 1
+        n = 2
         pdescs = list()
         for resource in resources:
 

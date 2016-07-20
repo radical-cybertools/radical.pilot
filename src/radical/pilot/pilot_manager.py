@@ -228,15 +228,13 @@ class PilotManager(rpu.Component):
         else                    : things = [arg]
 
         for thing in things:
-
             if thing['type'] == 'pilot':
-
                 self._update_pilot(thing)
 
 
     # --------------------------------------------------------------------------
     #
-    def _update_pilot(self, pilot_dict):
+    def _update_pilot(self, pilot_dict, advance=False):
 
         pid = pilot_dict['uid']
 
@@ -256,7 +254,9 @@ class PilotManager(rpu.Component):
                 # we also don't need to maintain bulks for that reason.
                 pilot_dict['state'] = s
                 self._pilots[pid]._update(pilot_dict)
-                self.advance(pilot_dict, s, publish=False, push=False)
+
+                if advance:
+                    self.advance(pilot_dict, s, publish=False, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -335,9 +335,11 @@ class PilotManager(rpu.Component):
         pilots     = list()
         pilot_docs = list()
         for descr in descriptions :
-            pilot = ComputePilot.create(pmgr=self, descr=descr)
+            pilot = ComputePilot(pmgr=self, descr=descr)
             pilots.append(pilot)
-            pilot_docs.append(pilot.as_dict())
+            pilot_doc = pilot.as_dict()
+            pilot_docs.append(pilot_doc)
+            self._update_pilot(pilot_doc)
 
             # keep pilots around
             with self._pilots_lock:
@@ -357,7 +359,10 @@ class PilotManager(rpu.Component):
 
         # Only after the insert can we hand the pilots over to the next
         # components (ie. advance state).
-        self.advance(pilot_docs, rps.PMGR_LAUNCHING_PENDING, publish=True, push=True)
+        for pd in pilot_docs:
+            pd['state'] = rps.PMGR_LAUNCHING_PENDING
+            self._update_pilot(pd, advance=False)
+        self.advance(pilot_docs, publish=True, push=True)
 
         self._log.report.ok('>>ok\n')
 

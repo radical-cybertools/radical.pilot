@@ -81,19 +81,6 @@ class ComputePilot(object):
             if not self._descr.get(check):
                 raise ValueError("ComputePilotDescription needs '%s'" % check)
 
-        self._pmgr.advance(self.as_dict(), rps.NEW, publish=False, push=False)
-
-
-    # -------------------------------------------------------------------------
-    #
-    @staticmethod
-    def create(pmgr, descr):
-        """ 
-        PRIVATE: Create a new compute pilot (in NEW state)
-        """
-
-        return ComputePilot(pmgr=pmgr, descr=descr)
-
 
     # --------------------------------------------------------------------------
     #
