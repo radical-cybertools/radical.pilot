@@ -525,8 +525,9 @@ def get_profile_description(sid):
     ret['entities'] = dict()
 
     ret['entities']['pilot'] = {
-            'state_model' : rps._pilot_state_values,
-            'event_model' : dict(),
+            'state_model'  : rps._pilot_state_values,
+            'state_values' : rps._pilot_state_inv_full,
+            'event_model'  : dict(),
             }
 
     ret['entities']['unit'] = {
@@ -536,8 +537,8 @@ def get_profile_description(sid):
             }
 
     ret['entities']['session'] = {
-            'state_model'  : dict(), # session has no states, only events
-            'state_values' : rps._pilot_state_inv_full,
+            'state_model'  : None, # session has no states, only events
+            'state_values' : None,
             'event_model'  : dict(),
             }
 
