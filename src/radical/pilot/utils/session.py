@@ -610,10 +610,6 @@ def fetch_json(sid, dburl=None, tgt=None, skip_existing=False):
     except OSError:
         pass # dir exists
 
-    print dst
-    print skip_existing
-    print os.stat(dst).st_size
-
     if skip_existing and os.path.isfile(dst) \
             and os.stat(dst).st_size > 0:
 
