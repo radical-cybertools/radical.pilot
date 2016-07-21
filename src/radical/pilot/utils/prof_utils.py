@@ -325,7 +325,12 @@ def combine_profiles(profs):
             print 'empty profile %s' % pname
             continue
 
+        if not prof[0]['msg']:
+            print 'unsynced profile %s' % pname
+            continue
+
         t_prof = prof[0]['time']
+
         host, ip, t_sys, t_ntp, t_mode = prof[0]['msg'].split(':')
         host_id = '%s:%s' % (host, ip)
 
@@ -352,6 +357,9 @@ def combine_profiles(profs):
     for pname, prof in profs.iteritems():
 
         if not len(prof):
+            continue
+
+        if not prof[0]['msg']:
             continue
 
         host, ip, _, _, _ = prof[0]['msg'].split(':')
@@ -504,7 +512,7 @@ def get_session_profile(sid):
 
 # ------------------------------------------------------------------------------
 # 
-def get_session_description(sid):
+def get_session_description(sid, src=None, dburl=None):
     """
     This will return a description which is usable for radical.analytics
     evaluation.  It informs about
@@ -512,17 +520,27 @@ def get_session_description(sid):
       - state models of those entities
       - event models of those entities (maybe)
       - configuration of the application / module
+
+    If `src` is given, it is interpreted as path to search for session
+    information (json dump).  `src` defaults to `$PWD/$sid`.
+
+    if `dburl` is given, its value is used to fetch session information from
+    a database.  The dburl value defaults to `RADICAL_PILOT_DBURL`.
     """
+
     from radical.pilot import states as rps
+    from .session      import fetch_json
 
-    ret             = dict()
-    ret['entities'] = dict()
+    if not src:
+        src = "%s/%s" % (os.getcwd(), sid)
 
-    from .session import fetch_json
-    ftmp = fetch_json(sid=sid)
+    ftmp = fetch_json(sid=sid, dburl=dburl, tgt=src, skip_existing=True)
     json = ru.read_json(ftmp)
 
     assert(sid == json['session']['uid'])
+
+    ret             = dict()
+    ret['entities'] = dict()
 
     tree      = dict()
     tree[sid] = {'uid'   : sid,

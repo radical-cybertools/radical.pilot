@@ -1,3 +1,4 @@
+
 import os
 import sys
 import glob
@@ -604,6 +605,15 @@ def fetch_json(sid, dburl=None, tgt=None, skip_existing=False):
         # Assume a relative path
         dst = os.path.join(os.getcwd(), tgt, '%s.json' % sid)
 
+    try:
+        os.makedirs(os.path.dirname(tgt))
+    except OSError:
+        pass # dir exists
+
+    print dst
+    print skip_existing
+    print os.stat(dst).st_size
+
     if skip_existing and os.path.isfile(dst) \
             and os.stat(dst).st_size > 0:
 
@@ -612,7 +622,7 @@ def fetch_json(sid, dburl=None, tgt=None, skip_existing=False):
     else:
 
         if not dburl:
-            dburl = os.environ['RADICAL_PILOT_DBURL']
+            dburl = os.environ.get('RADICAL_PILOT_DBURL')
 
         if not dburl:
             raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
