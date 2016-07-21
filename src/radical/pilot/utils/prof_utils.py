@@ -2,8 +2,11 @@
 import os
 import csv
 import copy
+import glob
 import time
 import threading
+
+import radical.utils as ru
 
 
 # ------------------------------------------------------------------------------
@@ -49,7 +52,7 @@ class Profiler (object):
 
         try:
             os.makedirs(self._path)
-        except Exception:
+        except OSError:
             pass # already exists
 
         self._handle = open("%s/%s.prof" % (self._path, self._name), 'a')
@@ -59,9 +62,10 @@ class Profiler (object):
         #       and downstream analysis tools too!
         self._handle.write("#%s\n" % (','.join(_prof_fields)))
         self._handle.write("%.4f,%s:%s,%s,%s,%s,%s\n" % \
-                           (0.0, self._name, "", "", "", 'sync abs',
-                            "%s:%s:%s:%s" % (time.time(), self._ts_zero, 
-                                             self._ts_abs, self._ts_mode)))
+                           (self.timestamp(), self._name, "", "", "", 'sync abs',
+                            "%s:%s:%s:%s:%s" % (
+                                ru.get_hostname(), ru.get_hostip(),
+                                self._ts_zero, self._ts_abs, self._ts_mode)))
 
 
     # ------------------------------------------------------------------------------
@@ -102,17 +106,8 @@ class Profiler (object):
         if logger:
             logger("%s (%10s%s) : %s", event, uid, state, msg)
 
-        if timestamp != None:
-            if timestamp > (100 * 1000 * 1000):
-                # older than 3 years (time after 1973) 
-                # --> this is an absolute timestamp
-                timestamp = timestamp - self._ts_zero
-            else:
-                # this is a relative timestamp -- leave as is
-                pass
-        else:
-            # no timestamp provided -- use 'now'
-            timestamp = self._timestamp_now()
+        if not timestamp:
+            timestamp = self.timestamp()
 
         tid = threading.current_thread().name
 
@@ -139,14 +134,18 @@ class Profiler (object):
         # We first try to contact a network time service for a timestamp, if that
         # fails we use the current system time.
         try:
-            ntphost = os.environ.get('RADICAL_PILOT_NTPHOST', '').strip()
+            import ntplib
 
-            if ntphost:
-                import ntplib
-                response = ntplib.NTPClient().request(ntphost, timeout=1)
-                timestamp_sys = response.orig_time
-                timestamp_abs = response.tx_time
-                return [timestamp_sys, timestamp_abs, 'ntp']
+            ntphost = os.environ.get('RADICAL_PILOT_NTPHOST', '0.pool.ntp.org')
+
+            t_one = time.time()
+            response = ntplib.NTPClient().request(ntphost, timeout=1)
+            t_two = time.time()
+
+            ts_ntp = response.tx_time
+            ts_sys = (t_one + t_two) / 2.0
+            return [ts_sys, ts_ntp, 'ntp']
+
         except Exception:
             pass
 
@@ -156,10 +155,9 @@ class Profiler (object):
 
     # --------------------------------------------------------------------------
     #
-    def _timestamp_now(self):
+    def timestamp(self):
 
-        # relative timestamp seconds since TIME_ZERO (start)
-        return float(time.time()) - self._ts_zero
+        return time.time()
 
 
 # --------------------------------------------------------------------------
@@ -167,6 +165,7 @@ class Profiler (object):
 def timestamp():
     # human readable absolute UTC timestamp for log entries in database
     return time.time()
+
 
 # ------------------------------------------------------------------------------
 #
@@ -260,7 +259,6 @@ def get_experiment_frames(experiments, datadir=None):
         for sid, label in experiments[exp]:
             print "   - %s" % sid
             
-            import glob
             for prof in glob.glob ("%s/%s-pilot.*.prof" % (datadir, sid)):
                 print "     - %s" % prof
                 frame = pd.read_csv(prof)
@@ -306,117 +304,89 @@ def combine_profiles(profs):
     We merge all profiles and sorted by time.
 
     This routine expectes all profiles to have a synchronization time stamp.
-    Two kinds of sync timestamps are supported: absolute and relative.  'sync
-    abs' events have a message which contains system time and ntp time, and thus
-    allow to adjust the whole timeframe toward globally synched 'seconds since 
-    epoch' units.  'sync rel' events have messages which have a corresponding
-    'sync ref' event in another profile.  When that second profile is 'sync
-    abs'ed, then the first profile will be normalized based on the synchronizity
-    of the 'sync rel' and 'sync ref' events.
+    Two kinds of sync timestamps are supported: absolute and relative.  
 
-    This method is somewhat convoluted -- I would not be surprised if it can be
-    written much shorter and clearer with some python or pandas magic...
+    Time syncing is done based on 'sync abs' timestamps, which we expect one to
+    be available per host (the first profile entry will contain host
+    information).  All timestamps from the same host will be corrected by the
+    respectively determined ntp offset.
     """
-    rd_abs = dict() # dict of absolute time refs
-    rd_rel = dict() # dict of relative time refs
-    pd_abs = dict() # profiles which have absolute time refs
+
     pd_rel = dict() # profiles which have relative time refs
+
+    t_host = dict() # time offset per host
+    p_glob = list() # global profile
+    t_min  = None   # absolute starting point of prof session
+    c_qed  = 0      # counter for profile closing tag
 
     for pname, prof in profs.iteritems():
 
-        tref  = None
-        qed   = 0
+        if not len(prof):
+            print 'empty profile %s' % pname
+            continue
 
+        t_prof = prof[0]['time']
+        host, ip, t_sys, t_ntp, t_mode = prof[0]['msg'].split(':')
+        host_id = '%s:%s' % (host, ip)
+
+        if t_min:
+            t_min = min(t_min, t_prof)
+        else:
+            t_min = t_prof
+
+        if t_mode != 'sys':
+            continue
+
+        # determine the correction for the given host
+        t_sys = float(t_sys)
+        t_ntp = float(t_ntp)
+        t_off = t_sys - t_ntp
+
+        if host_id in t_host:
+          # print 'conflicting time sync for %s (%s)' % (pname, host_id)
+            continue
+
+        t_host[host_id] = t_off
+
+
+    for pname, prof in profs.iteritems():
+
+        if not len(prof):
+            continue
+
+        host, ip, _, _, _ = prof[0]['msg'].split(':')
+        host_id = '%s:%s' % (host, ip)
+        if host_id in t_host:
+            t_off   = t_host[host_id]
+        else:
+            print 'WARNING: no time offset for %s' % host_id
+            t_off = 0.0
+
+        t_0 = prof[0]['time']
+        t_0 -= t_min
+
+        # correct profile timestamps
         for row in prof:
 
-            # find first tref
-            if not tref:
-                if row['event'] == 'sync rel' : 
-                    tref = 'rel'
-                    rd_rel[pname] = [row['time'], row['msg']]
-                if row['event'] == 'sync abs' : 
-                    tref = 'abs'
-                    rd_abs[pname] = [row['time']] + row['msg'].split(':')
+            t_orig = row['time'] 
 
-            # Record closing entries
+            row['time'] -= t_min
+            row['time'] -= t_off
+
+            # count closing entries
             if row['event'] == 'QED':
-                qed += 1
+                c_qed += 1
 
-        if   tref == 'abs': pd_abs[pname] = prof
-        elif tref == 'rel': pd_rel[pname] = prof
-        elif len(pname)   : print 'WARNING: skipping profile %s (no sync)' % pname
+        # add profile to global one
+        p_glob += prof
 
 
       # # Check for proper closure of profiling files
-      # if qed == 0:
+      # if c_qed == 0:
       #     print 'WARNING: profile "%s" not correctly closed.' % prof
-      # if qed > 1:
-      #     print 'WARNING: profile "%s" closed %d times.' % (prof, qed)
+      # if c_qed > 1:
+      #     print 'WARNING: profile "%s" closed %d times.' % (prof, c_qed)
 
-    # make all timestamps absolute for pd_abs profiles
-    for prof, p in pd_abs.iteritems():
-    
-        # the profile created an entry t_rel at t_abs.
-        # The offset is thus t_abs - t_rel, and all timestamps
-        # in the profile need to be corrected by that to get absolute time
-        t_rel   = float(rd_abs[prof][0])
-        t_stamp = float(rd_abs[prof][1])
-        t_zero  = float(rd_abs[prof][2])
-        t_abs   = float(rd_abs[prof][3])
-        t_off   = t_abs - t_rel
-    
-        for row in p:
-            row['time'] = row['time'] + t_off
-    
-    # combine the abs profiles into a global one.  We will add rel rpfiles as
-    # they are corrected.
-    p_glob = list()
-    for prof, p in pd_abs.iteritems():
-        p_glob += p
-
-    
-    # reference relative profiles
-    for prof, p in pd_rel.iteritems():
-    
-        # a sync message was created at time t_rel
-        t_rel = rd_rel[prof][0]
-        t_msg = rd_rel[prof][1]
-    
-        # now find the referenced sync point in other, absolute profiles
-        t_ref = None
-        for _prof, _p in pd_abs.iteritems():
-            if not t_ref:
-                for _row in _p:
-                    if  _row['event'] == 'sync ref' and \
-                        _row['msg']   == t_msg:
-                        t_ref = _row['time'] # referenced timestamp
-                        break
-    
-        if t_ref == None:
-            print "WARNING: 'sync rel' reference not found %s" % prof
-            continue
-    
-        # the profile's sync reference t_rel was created at the t_abs of the
-        # referenced point (t_ref), so all timestamps in the profile need to be
-        # corrected by (t_ref - t_rel)
-        t_off = t_ref - t_rel
-    
-        for row in p:
-            row['time'] = row['time'] + t_off
-            p_glob.append(row)
-
-    # we now have all profiles combined into one large profile, and can make
-    # timestamps relative to its smallest timestamp again
-    
-    # find the smallest time over all profiles
-    t_min = 9999999999.9 # future...
-    for row in p_glob:
-        t_min = min(t_min, row['time'])
-    
-    # make times relative to t_min again
-    for row in p_glob:
-        row['time'] -= t_min
-    
     # sort by time and return
     p_glob = sorted(p_glob[:], key=lambda k: k['time']) 
 
@@ -504,13 +474,37 @@ def clean_profile(profile, sid):
         for state,event in entity['states'].iteritems():
             ret.append(event)
 
+    # sort by time and return
+    ret = sorted(ret[:], key=lambda k: k['time']) 
+
     return ret
 
+
+# ------------------------------------------------------------------------------
+#
+def get_session_profile(sid):
+    
+    profdir = '%s/%s/' % (os.getcwd(), sid)
+
+    if os.path.exists(profdir):
+        # we have profiles locally
+        profiles  = glob.glob("%s/*.prof"   % profdir)
+        profiles += glob.glob("%s/*/*.prof" % profdir)
+    else:
+        # need to fetch profiles
+        from .session import fetch_profiles
+        profiles = fetch_profiles(sid=sid, skip_existing=True)
+
+    profs = read_profiles(profiles)
+    prof  = combine_profiles(profs)
+    prof  = clean_profile(prof, sid)
+
+    return prof
 
 
 # ------------------------------------------------------------------------------
 # 
-def get_profile_description(sid):
+def get_session_description(sid):
     """
     This will return a description which is usable for radical.analytics
     evaluation.  It informs about
@@ -544,156 +538,6 @@ def get_profile_description(sid):
 
     ret['config'] = dict() # magic to get session config goes here
 
-
-    return ret
-
-
-# ------------------------------------------------------------------------------
-#
-def drop_units(cfg, units, name, mode, drop_cb=None, prof=None, logger=None):
-    """
-    For each unit in units, check if the queue is configured to drop
-    units in the given mode ('in' or 'out').  If drop is set to 0, the units
-    list is returned as is.  If drop is set to one, all cloned units are
-    removed from the list.  If drop is set to two, an empty list is returned.
-
-    For each dropped unit, we check if 'drop_cb' is defined, and call
-    that callback if that is the case, with the signature:
-
-      drop_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
-    """
-
-    # blowup is only enabled on profiling
-    if 'RADICAL_PILOT_PROFILE' not in os.environ:
-        if logger:
-            logger.debug('no profiling - no dropping')
-        return units
-
-    if not units:
-      # if logger:
-      #     logger.debug('no units - no dropping')
-        return units
-
-    drop = cfg.get('drop', {}).get(name, {}).get(mode, 1)
-
-    if drop == 0:
-      # if logger:
-      #     logger.debug('dropped nothing')
-        return units
-
-    return_list = True
-    if not isinstance(units, list):
-        return_list = False
-        units = [units]
-
-    if drop == 2:
-        if drop_cb:
-            for unit in units:
-                drop_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
-        if logger:
-            logger.debug('dropped all')
-            for unit in units:
-                logger.debug('dropped %s', unit['uid'])
-        if return_list: return []
-        else          : return None
-
-    if drop != 1:
-        raise ValueError('drop[%s][%s] not in [0, 1, 2], but is %s' \
-                      % (name, mode, drop))
-
-    ret = list()
-    for unit in units :
-        if '.clone_' not in unit['uid']:
-            ret.append(unit)
-          # if logger:
-          #     logger.debug('dropped not %s', unit['uid'])
-        else:
-            if drop_cb:
-                drop_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
-            if logger:
-                logger.debug('dropped %s', unit['uid'])
-
-    if return_list: 
-        return ret
-    else: 
-        if ret: return ret[0]
-        else  : return None
-
-
-# ------------------------------------------------------------------------------
-#
-def clone_units(cfg, units, name, mode, prof=None, clone_cb=None, logger=None):
-    """
-    For each unit in units, add 'factor' clones just like it, just with
-    a different ID (<id>.clone_001).  The factor depends on the context of
-    this clone call (ie. the queue name), and on mode (which is 'input' or
-    'output').  This methid will always return a list.
-
-    For each cloned unit, we check if 'clone_cb' is defined, and call
-    that callback if that is the case, with the signature:
-
-      clone_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
-    """
-
-    if units == None:
-        if logger:
-            logger.debug('no units - no cloning')
-        return list()
-
-    if not isinstance(units, list):
-        units = [units]
-
-    # blowup is only enabled on profiling
-    if 'RADICAL_PILOT_PROFILE' not in os.environ:
-        if logger:
-            logger.debug('no profiling - no cloning')
-        return units
-
-    if not units:
-        # nothing to clone...
-        if logger:
-            logger.debug('No units - no cloning')
-        return units
-
-    factor = cfg.get('clone', {}).get(name, {}).get(mode, 1)
-
-    if factor == 1:
-        if logger:
-            logger.debug('cloning with factor [%s][%s]: 1' % (name, mode))
-        return units
-
-    if factor < 1:
-        raise ValueError('clone factor must be >= 1 (not %s)' % factor)
-
-    ret = list()
-    for unit in units :
-
-        uid = unit['uid']
-
-        for idx in range(factor-1) :
-
-            clone    = copy.deepcopy(dict(unit))
-            clone_id = '%s.clone_%05d' % (uid, idx+1)
-
-            for key in clone :
-                if isinstance (clone[key], basestring) :
-                    clone[key] = clone[key].replace (uid, clone_id)
-
-            idx += 1
-            ret.append(clone)
-
-            if clone_cb:
-                clone_cb(unit=clone, name=name, mode=mode, prof=prof, logger=logger)
-
-        # Append the original cu last, to increase the likelyhood that
-        # application state only advances once all clone states have also
-        # advanced (they'll get pushed onto queues earlier).  This cannot be
-        # relied upon, obviously.
-        ret.append(unit)
-
-    if logger:
-        logger.debug('cloning with factor [%s][%s]: %s gives %s units',
-                     name, mode, factor, len(ret))
 
     return ret
 
