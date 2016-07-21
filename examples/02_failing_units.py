@@ -61,7 +61,7 @@ if __name__ == '__main__':
           #     session.close()
         umgr.register_callback(unit_cb)
 
-        n = 2
+        n = 1
         pdescs = list()
         for resource in resources:
 
@@ -72,10 +72,10 @@ if __name__ == '__main__':
                        'resource'      : resource,
                        'cores'         : 64,   # pilot size
                        'runtime'       : 60,   # pilot runtime (min)
-                       'exit_on_error' : True,
-                       'project'       : config[resource]['project'],
-                       'queue'         : config[resource]['queue'],
-                       'access_schema' : config[resource]['schema']
+                     # 'exit_on_error' : False,
+                       'project'       : config.get(resource,{}).get('project'),
+                       'queue'         : config.get(resource,{}).get('queue'),
+                       'access_schema' : config.get(resource,{}).get('schema'),
                        }
                pdesc = rp.ComputePilotDescription(pd_init)
                pdescs.append(pdesc)
@@ -84,13 +84,13 @@ if __name__ == '__main__':
         pilots = pmgr.submit_pilots(pdescs)
         umgr.add_pilots(pilots)
 
-        def pilot_cb(pilot, state):
-          # print 'cb: pilot %s: %s : %s' % (pilot.uid, state, time.time())
-            if state in [rp.FAILED]:
-                print 'cb: pilot %s: %s : %s' % (pilot.uid, state, time.time())
-                session.close()
-        for pilot in pilots:
-            pilot.register_callback(pilot_cb)
+      # def pilot_cb(pilot, state):
+      #   # print 'cb: pilot %s: %s : %s' % (pilot.uid, state, time.time())
+      #     if state in [rp.FAILED]:
+      #         print 'cb: pilot %s: %s : %s' % (pilot.uid, state, time.time())
+      #         session.close()
+      # for pilot in pilots:
+      #     pilot.register_callback(pilot_cb)
        
         report.header('submit units')
 
@@ -98,7 +98,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 10 # number of units to run
+        n = 10000 # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -109,9 +109,10 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             # trigger an error now and then
-            if i % 2: 
+            if i % 100: 
               # cud.executable = 'sleep'
               # cud.arguments  = ['1']
+              # cud.pre_exec   = ['sleep 1']
                 cud.executable = '/bin/echo'
                 cud.arguments  = ['$RP_PILOT_ID']
             else:

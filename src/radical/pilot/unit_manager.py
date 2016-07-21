@@ -240,6 +240,8 @@ class UnitManager(rpu.Component):
     #
     def _unit_pull_cb(self):
 
+        self._log.info(" === units pulled: ?")
+
         # pull units those units from the agent which are about to get back
         # under umgr control, and push them into the respective queues
         # FIXME: this should also be based on a tailed cursor
@@ -316,7 +318,7 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _update_unit(self, uid, unit_dict, advance=False):
+    def _update_unit(self, uid, unit_dict):
 
         # we don't care about units we don't know
         # otherwise get old state

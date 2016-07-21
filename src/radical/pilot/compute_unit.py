@@ -146,11 +146,12 @@ class ComputeUnit(object):
 
         new_state, passed = rps._unit_state_progress(current, target)
 
-        # replay all state transitions
-        if new_state in [rps.CANCELED, rps.FAILED]:
-            # don't replay intermediate states
-            passed = passed[-1:]
+        if new_state is rps.FAILED:
+            import pprint
+            print ' === %s: %s -> %s\n%s\n\n' % (unit_dict['uid'], current,
+                    target, pprint.pformat(unit_dict))
 
+        # replay all state transitions
         for state in passed:
             for cb, cb_data in self._callbacks:
                 self._state = state

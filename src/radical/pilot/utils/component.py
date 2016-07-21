@@ -1469,8 +1469,8 @@ class Component(mp.Process):
 
                 if state in rps.FINAL:
                     # things in final state are dropped
-                  # for thing in things:
-                  #     self._log.debug('%s %s ===| %s' % ('push', thing['uid'], thing['state']))
+                    for thing in things:
+                        self._log.debug('%s %s ===| %s' % ('push', thing['uid'], thing['state']))
                     continue
 
                 if state not in self._outputs:
@@ -1492,7 +1492,7 @@ class Component(mp.Process):
                 # push the thing down the drain
                 # FIXME: we should assert that the things are in a PENDING state.
                 #        Better yet, enact the *_PENDING transition right here...
-              # self._log.debug(' === put bulk %s: %s', state, len(things))
+                self._log.debug(' === put bulk %s: %s', state, len(things))
                 output.put(things)
 
                 ts = rpu_timestamp()

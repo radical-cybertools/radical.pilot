@@ -518,6 +518,66 @@ def get_session_description(sid):
     ret             = dict()
     ret['entities'] = dict()
 
+    from .session import fetch_json
+    ftmp = fetch_json(sid=sid)
+    json = ru.read_json(ftmp)
+
+    assert(sid == json['session']['uid'])
+
+    tree      = dict()
+    tree[sid] = {'uid'   : sid,
+                 'etype' : 'session',
+                 'cfg'   : json['session']['cfg'],
+                 'has'   : ['umgr', 'pmgr', 'pilot', 'unit'],
+                 'umgr'  : list(),
+                 'pmgr'  : list()
+                }
+
+    for pmgr in sorted(json['pmgr'], key=lambda k: k['uid']):
+        uid = pmgr['uid']
+        tree[sid]['pmgr'].append(uid)
+        tree[uid] = {'uid'   : uid,
+                     'etype' : 'pmgr',
+                     'cfg'   : pmgr['cfg'],
+                     'has'   : ['pilot'],
+                     'pilot' : list()
+                    }
+
+    for umgr in sorted(json['umgr'], key=lambda k: k['uid']):
+        uid = umgr['uid']
+        tree[sid]['umgr'].append(uid)
+        tree[uid] = {'uid'   : uid,
+                     'etype' : 'umgr',
+                     'cfg'   : umgr['cfg'],
+                     'has'   : ['unit'],
+                     'unit' : list()
+                    }
+
+    for pilot in sorted(json['pilot'], key=lambda k: k['uid']):
+        uid  = pilot['uid']
+        pmgr = pilot['pmgr']
+        tree[pmgr]['pilot'].append(uid)
+        tree[uid] = {'uid'   : uid,
+                     'etype' : 'pilot',
+                     'cfg'   : pilot['cfg'],
+                     'has'   : ['unit'],
+                     'unit' : list()
+                    }
+
+    for unit in sorted(json['unit'], key=lambda k: k['uid']):
+        uid  = unit['uid']
+        pid  = unit['umgr']
+        umgr = unit['pilot']
+        tree[pid ]['unit'].append(uid)
+        tree[umgr]['unit'].append(uid)
+        tree[uid] = {'uid'   : uid,
+                     'etype' : 'unit',
+                     'cfg'   : unit['description'],
+                     'has'   : [],
+                    }
+
+    ret['tree'] = tree
+
     ret['entities']['pilot'] = {
             'state_model'  : rps._pilot_state_values,
             'state_values' : rps._pilot_state_inv_full,
