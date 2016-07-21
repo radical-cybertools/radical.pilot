@@ -53,7 +53,9 @@ def bootstrap_3(agent_name):
         # component or sub-agent, or we get a kill signal from the RM.  In all
         # three cases, we'll end up in agent.stop() -- agent.wait() will wait
         # until then.
-        agent.wait()
+        agent.join()
+        while True:
+            time.sleep(1)
 
     finally:
 

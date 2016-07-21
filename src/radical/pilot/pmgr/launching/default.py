@@ -237,8 +237,9 @@ class Default(PMGRLaunchingComponent):
                     raise ValueError('unknown pilot %s' % pid)
 
                 pilot = self._pilots[pid]['pilot']
+                job   = self._pilots[pid]['job']
                 to_advance.append(pilot)
-                tc.add(pilot['job'])
+                tc.add(job)
 
         tc.cancel()
         tc.wait()
