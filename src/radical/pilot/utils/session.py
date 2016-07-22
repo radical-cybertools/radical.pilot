@@ -275,21 +275,23 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
                 if skip_existing and os.path.isfile(ftgt.path) \
                         and os.stat(ftgt.path).st_size > 0:
 
-                     "Skip fetching of '%s/%s' to '%s'." % (sandbox_url, LOGILES_TARBALL, tgt_url)
+                    log.info("Skip fetching of '%s/%s' to '%s'.", 
+                             sandbox_url, LOGILES_TARBALL, tgt_url)
                     tarball_available = True
                 else:
 
-                    print "Fetching '%s%s' to '%s'." % (sandbox_url, LOGILES_TARBALL, tgt_url)
+                    log.info("Fetching '%s%s' to '%s'.", 
+                            sandbox_url, LOGILES_TARBALL, tgt_url)
                     log_file = saga.filesystem.File("%s%s" % (sandbox_url, LOGILES_TARBALL), session=session)
                     log_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
                     log_file.close()
 
                     tarball_available = True
             else:
-                print "logiles tarball doesnt exists!"
+                log.warn("logiles tarball doesnt exists")
 
         except saga.DoesNotExist:
-            print "exception(TODO): logfiles tarball doesnt exists!"
+            log.warn("logfiles tarball doesnt exists")
 
         try:
             os.mkdir("%s/%s" % (tgt_url.path, pilot['uid']))
@@ -298,12 +300,13 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
 
         # We now have a local tarball
         if tarball_available:
-            print "Extracting tarball %s into '%s'." % (ftgt.path, tgt_url.path)
+            log.debug("Extract tarball %s to %s", ftgt.path, tgt_url.path)
             tarball = tarfile.open(ftgt.path)
             tarball.extractall("%s/%s" % (tgt_url.path, pilot['uid']))
 
             logfiles = glob.glob("%s/%s/*.log" % (tgt_url.path, pilot['uid']))
-            print "Tarball %s extracted to '%s/%s/'." % (ftgt.path, tgt_url.path, pilot['uid'])
+            log.info("tarball %s extracted to '%s/%s/'.", 
+                    ftgt.path, tgt_url.path, pilot['uid'])
             ret.extend(logfiles)
 
             # If extract succeeded, no need to fetch individual logfiles
