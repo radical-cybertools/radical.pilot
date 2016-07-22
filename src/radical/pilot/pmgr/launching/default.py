@@ -422,6 +422,15 @@ class Default(PMGRLaunchingComponent):
         js_hop  = rcfg.get('job_manager_hop', js_ep)
         js_url  = rs.Url(js_hop)
 
+        # well, we actually don't need to talk to the lrms, but only need
+        # a shell on the headnode.  That seems true for all LRMSs we use right
+        # now.  So, lets convert the URL:
+        if '+' in js_url.scheme:
+            parts = js_url.scheme.split('+')
+            if   'ssh'    in parts: js_url.scheme = 'ssh'
+            elif 'gsissh' in parts: js_url.scheme = 'gsissh'
+            elif 'fork'   in parts: js_url.scheme = 'fork'
+
         with self._cache_lock:
             if js_url in self._saga_js_cache:
                 js_tmp = self._saga_js_cache[js_url]
