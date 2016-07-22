@@ -26,6 +26,8 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
     returns list of file names
     '''
 
+    log = ru.get_logger('radical.pilot.utils')
+
     ret = list()
 
     if not dburl:
@@ -83,12 +85,12 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
     pilots = json_docs['pilot']
     num_pilots = len(pilots)
- #  print "Session: %s" % sid
- #  print "Number of pilots in session: %d" % num_pilots
+    log.debug("Session: %s", sid)
+    log.debug("Number of pilots in session: %d", num_pilots)
 
     for pilot in pilots:
 
-      # print "processing pilot '%s'" % pilot['uid']
+        log.debug("processing pilot '%s'", pilot['uid'])
 
         sandbox_url = saga.Url(pilot['sandbox'])
 
@@ -109,28 +111,31 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
         tarball_available = False
         try:
             if sandbox.is_file(PROFILES_TARBALL):
-                print "Profiles tarball exists!"
+                log.warn("Profiles tarball exists")
 
                 ftgt = saga.Url('%s/%s' % (tgt_url, PROFILES_TARBALL))
 
                 if skip_existing and os.path.isfile(ftgt.path) \
                         and os.stat(ftgt.path).st_size > 0:
 
-                    print "Skipping fetching of '%s/%s' to '%s'." % (sandbox_url, PROFILES_TARBALL, tgt_url)
+                    log.info("skip fetching of '%s/%s' to '%s'.", 
+                             sandbox_url, PROFILES_TARBALL, tgt_url)
                     tarball_available = True
                 else:
 
-                    print "Fetching '%s%s' to '%s'." % (sandbox_url, PROFILES_TARBALL, tgt_url)
+                    log.info("fetch '%s%s' to '%s'.", sandbox_url, 
+                             PROFILES_TARBALL, tgt_url)
+
                     prof_file = saga.filesystem.File("%s%s" % (sandbox_url, PROFILES_TARBALL), session=session)
                     prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
                     prof_file.close()
 
                     tarball_available = True
             else:
-                print "profiles tarball doesnt exists!"
+                log.warn("profiles tarball doesnt exists!")
 
         except saga.DoesNotExist:
-            print "exception(TODO): profiles tarball doesnt exists!"
+            log.exception("exception(TODO): profiles tarball doesnt exists!")
 
         try:
             os.mkdir("%s/%s" % (tgt_url.path, pilot['uid']))
@@ -139,12 +144,11 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
         # We now have a local tarball
         if tarball_available:
-            print "Extracting tarball %s into '%s'." % (ftgt.path, tgt_url.path)
+            log.info("Extract tarball %s to '%s'.", ftgt.path, tgt_url.path)
             tarball = tarfile.open(ftgt.path, mode='r:gz')
             tarball.extractall("%s/%s" % (tgt_url.path, pilot['uid']))
 
             profiles = glob.glob("%s/%s/*.prof" % (tgt_url.path, pilot['uid']))
-            print "Tarball %s extracted to '%s/%s/'." % (ftgt.path, tgt_url.path, pilot['uid'])
             ret.extend(profiles)
 
             # If extract succeeded, no need to fetch individual profiles
@@ -184,6 +188,7 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
     returns list of file names
     '''
 
+    log = ru.get_logger('radical.pilot.utils')
     ret = list()
 
     if not dburl:
@@ -237,8 +242,8 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
 
     pilots = json_docs['pilot']
     num_pilots = len(pilots)
- #  print "Session: %s" % sid
- #  print "Number of pilots in session: %d" % num_pilots
+    log.info("Session: %s", sid)
+    log.info("Number of pilots in session: %d", num_pilots)
 
     for pilot in pilots:
 
@@ -263,14 +268,14 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
         tarball_available = False
         try:
             if sandbox.is_file(LOGILES_TARBALL):
-                print "logfiles tarball exists!"
 
+                log.info("logfiles tarball exists")
                 ftgt = saga.Url('%s/%s' % (tgt_url, LOGILES_TARBALL))
 
                 if skip_existing and os.path.isfile(ftgt.path) \
                         and os.stat(ftgt.path).st_size > 0:
 
-                    print "Skipping fetching of '%s/%s' to '%s'." % (sandbox_url, LOGILES_TARBALL, tgt_url)
+                     "Skip fetching of '%s/%s' to '%s'." % (sandbox_url, LOGILES_TARBALL, tgt_url)
                     tarball_available = True
                 else:
 
@@ -590,10 +595,11 @@ def get_session_frames (sids, db=None, cachedir=None) :
 # ------------------------------------------------------------------------------
 #
 def fetch_json(sid, dburl=None, tgt=None, skip_existing=False):
-
     '''
     returns file name
     '''
+
+    log = ru.get_logger('radical.pilot.utils')
 
     if not tgt:
         tgt = '.'
@@ -613,7 +619,7 @@ def fetch_json(sid, dburl=None, tgt=None, skip_existing=False):
     if skip_existing and os.path.isfile(dst) \
             and os.stat(dst).st_size > 0:
 
-        print "session already in %s" % dst
+        log.info("session already in %s", dst)
 
     else:
 
@@ -628,7 +634,7 @@ def fetch_json(sid, dburl=None, tgt=None, skip_existing=False):
         json_docs = get_session_docs(db, sid)
         ru.write_json(json_docs, dst)
 
-        print "session written to %s" % dst
+        log.info("session written to %s", dst)
 
         mongo.close()
 
