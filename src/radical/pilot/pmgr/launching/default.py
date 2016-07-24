@@ -432,10 +432,10 @@ class Default(PMGRLaunchingComponent):
             elif 'fork'   in parts: js_url.scheme = 'fork'
 
         with self._cache_lock:
-            if js_url in self._saga_js_cache:
-                js_tmp = self._saga_js_cache[js_url]
+            if  js_url in self._saga_js_cache:
+                js_tmp  = self._saga_js_cache[js_url]
             else:
-                js_tmp = rs.job.Service(js_url, session=self._session)
+                js_tmp  = rs.job.Service(js_url, session=self._session)
                 self._saga_js_cache[js_url] = js_tmp
      ## cmd = "tar zmxvf %s/%s -C / ; rm -f %s" % \
         cmd = "tar zmxvf %s/%s -C /" % \
@@ -446,17 +446,14 @@ class Default(PMGRLaunchingComponent):
         self._log.debug('tar cmd : %s', cmd)
         self._log.debug('tar done: %s, %s, %s', j.state, j.stdout, j.stderr)
 
-        if js_ep == js_hop:
-            # we can use the same job service for pilot submission
-            js = js_tmp
-        else:
-            # we need a different js for actual job submission
-            with self._cache_lock:
-                if js_ep in self._saga_js_cache:
-                    js = self._saga_js_cache[js_ep]
-                else:
-                    js = rs.job.Service(js_ep, session=self._session)
-                    self._saga_js_cache[js_ep] = js
+        # look up or create JS for actual pilot submission.  This might result
+        # in the same JS, or not.
+        with self._cache_lock:
+            if js_ep in self._saga_js_cache:
+                js = self._saga_js_cache[js_ep]
+            else:
+                js = rs.job.Service(js_ep, session=self._session)
+                self._saga_js_cache[js_ep] = js
 
         # now that the scripts are in place and configured, 
         # we can launch the agent
