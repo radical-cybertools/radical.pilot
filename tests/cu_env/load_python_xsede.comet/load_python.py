@@ -93,9 +93,9 @@ if __name__ == '__main__':
 		report.header('gather results')
 		umgr.wait_units()
 	
-		# Get output of "module load python" from comet
+		# Get output of "module load python" from comet (login node)
 		import subprocess
-		prog = subprocess.Popen(["ssh", "xsede.comet", "module load python; which python"], stdout=subprocess.PIPE)
+		prog = subprocess.Popen(["ssh", "comet.sdsc.xsede.org", "module load python; which python"], stdout=subprocess.PIPE)
 		out = prog.communicate()[0]
 
 		for unit in cus:
