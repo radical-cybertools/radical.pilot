@@ -8,27 +8,37 @@ import signal
 import setproctitle
 
 from   .agent_0 import Agent_0
+from   .agent_n import Agent_n
 
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 #
-def bootstrap_3(agent_name, agent_part):
+# Agent bootstrap stage 4
+#
+def bootstrap_3(agent_name):
     """
     This is only executed by agent.P.0 for each partision P
+
     """
 
-    agent_0 = None
+    print "bootstrap agent %s" % agent_name
+    agent = None
+
     try:
-        setproctitle.setproctitle(agent_name)
+        setproctitle.setproctitle('rp.%s' % agent_name)
 
-        agent_0 = Agent_0(agent_name, agent_part)
-        agent_0.start(spawn=False)
+        agent = Agent_0(agent_name)
 
-        # we never really quit this way (w/o spawning that is), but instead the
-        # agent_0 command_cb may pick up a shutdown signal, the watcher_cb may
-        # detect a failing component or sub-agent, or we get a kill signal from
-        # the RM.  In all three cases, we'll end up in agent_0.stop()
+        print 'start   %s' % agent_name
+        agent.start(spawn=False)
+        print 'started %s' % agent_name
+
+        # we never really quit here, but instead the agent command_cb may
+        # pick up a shutdown signal, the watcher_cb may detect a failing
+        # component or sub-agent, or we get a kill signal from the RM.  In all
+        # three cases, we'll end up in agent.stop().
         while True:
+            print 'xxx'
             time.sleep(1)
 
     finally:
@@ -36,9 +46,13 @@ def bootstrap_3(agent_name, agent_part):
         # in all cases, make sure we perform an orderly shutdown.  I hope python
         # does not mind doing all those things in a finally clause of
         # (essentially) main...
-        if agent_0:
-            agent_0.stop()
-
+        print 'finally %s' % agent_name
+        if agent:
+            print 'finally stop %s' % agent_name
+            agent.stop()
+            print 'finally join %s' % agent_name
+            agent.join()
+            print 'finally joined %s' % agent_name
 
 # ------------------------------------------------------------------------------
 

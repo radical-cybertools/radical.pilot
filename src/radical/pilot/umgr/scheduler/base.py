@@ -15,7 +15,6 @@ from ... import constants as rpc
 
 # ------------------------------------------------------------------------------
 # 'enum' for RPs's umgr scheduler types
-SCHEDULER_DIRECT       = "direct"
 SCHEDULER_ROUND_ROBIN  = "round_robin"
 SCHEDULER_BACKFILLING  = "backfilling"
 
@@ -85,13 +84,11 @@ class UMGRSchedulingComponent(rpu.Component):
 
         name = cfg['scheduler']
 
-        from .direct       import Direct
         from .round_robin  import RoundRobin
         from .backfilling  import Backfilling
 
         try:
             impl = {
-                SCHEDULER_DIRECT      : Direct,
                 SCHEDULER_ROUND_ROBIN : RoundRobin,
                 SCHEDULER_BACKFILLING : Backfilling
             }[name]
@@ -112,45 +109,89 @@ class UMGRSchedulingComponent(rpu.Component):
         # a scheduler needs to keep track of those, it will need to add its own
         # callback.
         
-        cmd = msg['cmd']
-        arg = msg['arg']
+        cmd = msg.get('cmd')
+        arg = msg.get('arg')
 
-        self._log.info('scheduler state_cb: %s: %s' % (cmd, arg))
+        self._log.info('scheduler state_cb: %s', cmd)
+      # print ' === base state cb: %s' % cmd
 
         # FIXME: get cmd string consistent throughout the code
         if cmd not in ['update', 'state_update']:
+          # print ' === base state cb: ignore %s' % cmd
+            self._log.debug('ignore cmd %s', cmd)
             return
 
         if not isinstance(arg, list): things = [arg]
         else                        : things =  arg
 
-        for thing in things:
-            if thing['type'] == 'pilot':
-                self._update_pilot_state(thing)
+      # print ' === base state cb: things %s' % things
+
+        pilots = [t for t in things if t['type'] == 'pilot']
+        units  = [t for t in things if t['type'] == 'unit' ]
+
+        self._log.debug('update pilots %s', [p['uid'] for p in pilots])
+        self._log.debug('update units  %s', [u['uid'] for u in units])
+
+      # print ' === base state cb: update  pilots: %s' % [p['uid'] for p in pilots]
+        self._update_pilot_states(pilots)
+      # print ' === base state cb: updated pilots: %s' % [p['uid'] for p in pilots]
+      # print ' === base state cb: update  units: %s' % [u['uid'] for u in units]
+        self._update_unit_states(units)
+      # print ' === base state cb: updated units: %s' % [u['uid'] for u in units]
 
 
     # --------------------------------------------------------------------------
     #
-    def _update_pilot_state(self, pilot):
+    def _update_pilot_states(self, pilots):
+
+        self._log.debug('update pilot states for %s', [p['uid'] for p in pilots])
+
+      # print ' === update pilot states for %s' % ([p['uid'] for p in pilots])
+
+        if not pilots:
+            return
+
+        to_update = list()
 
         with self._pilots_lock:
 
-            pid = pilot['uid']
+            for pilot in pilots:
 
-            if pid not in self._pilots:
-                self._pilots[pid] = {'role'  : None,
-                                     'state' : None,
-                                     'pilot' : None}
+                pid = pilot['uid']
 
-            target  = pilot['state']
-            current = self._pilots[pid]['state']
+                if pid not in self._pilots:
+                    self._pilots[pid] = {'role'  : None,
+                                         'state' : None,
+                                         'pilot' : None, 
+                                         'info'  : dict()  # scheduler private info
+                                         }
 
-            # enforce state model order
-            target, passed = rps._pilot_state_progress(current, target) 
+                target  = pilot['state']
+                current = self._pilots[pid]['state']
 
-            if current != target:
-                self._pilots[pid]['state'] = target
-                self._log.debug('update pilot state: %s -> %s', current, passed)
+                # enforce state model order
+                target, passed = rps._pilot_state_progress(current, target) 
+
+                if current != target:
+                  # print ' === %s: %s -> %s' % (pid,  current, target)
+                    to_update.append(pid)
+                    self._pilots[pid]['state'] = target
+                    self._log.debug('update pilot state: %s -> %s', current, passed)
+
+      # print ' === to update: %s' % to_update
+        if to_update:
+            self.update_pilots(to_update)
+      # print ' === updated  : %s' % to_update
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _update_unit_states(self, units):
+
+      # if not units:
+      #     print ' === no units to update'
+
+        self.update_units(units)
 
 
     # --------------------------------------------------------------------------
@@ -193,13 +234,15 @@ class UMGRSchedulingComponent(rpu.Component):
                     else:
                         self._pilots[pid] = {'role'  : None,
                                              'state' : None,
-                                             'pilot' : None}
+                                             'pilot' : None,
+                                             'info'  : dict()
+                                            }
 
                     self._pilots[pid]['role']  = ADDED
                     self._pilots[pid]['pilot'] = pilot
-                    self._update_pilot_state(pilot)
-
                     self._log.debug('added pilot: %s', self._pilots[pid])
+
+                self._update_pilot_states(pilots)
 
             # let the scheduler know
             self.add_pilots([pilot['uid'] for pilot in pilots])
@@ -229,7 +272,6 @@ class UMGRSchedulingComponent(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-
         raise NotImplementedError("_configure() missing for '%s'" % self.uid)
 
 
@@ -243,6 +285,18 @@ class UMGRSchedulingComponent(rpu.Component):
     #
     def remove_pilots(self, pids):
         raise NotImplementedError("remove_pilots() missing for '%s'" % self.uid)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def update_pilots(self, pids):
+        raise NotImplementedError("update_pilots() missing for '%s'" % self.uid)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def update_units(self, uids):
+        raise NotImplementedError("update_units() missing for '%s'" % self.uid)
 
 
     # --------------------------------------------------------------------------

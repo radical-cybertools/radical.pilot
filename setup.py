@@ -270,7 +270,7 @@ setup_args = {
                             'bin/radicalpilot-stats.plot',
                             'bin/radical-pilot-agent'
                            ],
-    'package_data'       : {'': ['*.sh', '*.json', '*.gz', 'VERSION', 'SDIST', sdist_name]},
+    'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', 'VERSION', 'SDIST', sdist_name]},
     'cmdclass'           : {
         'test'           : our_test,
     },

@@ -72,9 +72,6 @@ class Agent_n(rpu.Worker):
         self._runtime    = self._cfg['runtime']
         self._starttime  = time.time()
 
-        # this better be on a shared FS!
-        self._cfg['workdir'] = os.getcwd()
-
         self._controller = rpu.Controller(cfg=self._cfg, session=self._session)
 
         self._prof.prof('Agent setup done', logger=self._log.debug, uid=self._pilot_id)

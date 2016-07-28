@@ -37,6 +37,10 @@ _pilot_state_values = {
         CANCELED               :  5}
 _pilot_state_inv   = {v: k for k, v in _pilot_state_values.iteritems()}
 
+def _pilot_state_value(s):
+    return _pilot_state_values[s] 
+
+
 def _pilot_state_progress(current, target):
     """
     See documentation of 'unit_state_progress' below.
@@ -44,10 +48,10 @@ def _pilot_state_progress(current, target):
 
     # first handle final state corrections
     if current == CANCELED:
-        if target in [DONE, FAILED]:
+        if target in [DONE, FAILED, CANCELED]:
             return[target, []]
 
-    if current in FINAL:
+    if current in FINAL and target != current:
         if target in FINAL:
             raise ValueError('invalid transition %s -> %s' % (current, target))
 
@@ -129,6 +133,10 @@ _unit_state_values = {
         CANCELED                     : 15}
 _unit_state_inv   = {v: k for k, v in _unit_state_values.iteritems()}
 
+def _unit_state_value(s):
+    return _unit_state_values[s] 
+
+
 def _unit_state_progress(current, target):
     """
     This method will ensure a unit state progression in sync with the state
@@ -169,7 +177,7 @@ def _unit_state_progress(current, target):
 
     # first handle final state corrections
     if current == CANCELED:
-        if target in [DONE, FAILED]:
+        if target in [DONE, FAILED, CANCELED]:
             return[target, []]
 
     if current in FINAL:

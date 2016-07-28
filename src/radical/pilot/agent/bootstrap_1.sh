@@ -1,4 +1,14 @@
 #!/bin/bash -l
+
+# interleave stdout and stderr, to get a coherent set of log messages
+if test -z "$RP_BOOTSTRAP_1_REDIR"
+then
+    export RP_BOOTSTRAP_1_REDIR=True
+    exec 2>&1
+fi
+
+echo "bootstrap_1 stderr redirected to stdout"
+
 # ------------------------------------------------------------------------------
 # Copyright 2013-2015, RADICAL @ Rutgers
 # Licensed under the MIT License
@@ -31,6 +41,7 @@ TUNNEL_BIND_DEVICE="lo"
 CLEANUP=
 HOSTPORT=
 SDISTS=
+RUNTIME=
 VIRTENV=
 VIRTENV_MODE=
 PARTITIONS=
@@ -42,6 +53,10 @@ SESSION_ID=
 SESSION_SANDBOX=
 PILOT_SANDBOX=`pwd`
 PREBOOTSTRAP2=""
+
+# NOTE:  $HOME is set to the job sandbox on OSG.  Bah!
+# FIXME: the need for this needs to be reconfirmed and documented
+# mkdir -p .ssh/
 
 # flag which is set when a system level RP installation is found, triggers
 # '--upgrade' flag for pip
@@ -58,7 +73,7 @@ LOCK_TIMEOUT=180 # 3 min
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
 VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
-VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces setproctitle"
+VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces setproctitle msgpack-python"
 
 
 # ------------------------------------------------------------------------------
@@ -67,6 +82,7 @@ VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntpl
 #
 create_gtod()
 {
+    # we "should" be able to build this everywhere ...
 
     cat > gtod.c <<EOT
 #include <stdio.h>
@@ -80,14 +96,41 @@ int main ()
     return (0);
 }
 EOT
-    cc -o gtod gtod.c
+    if ! test -e "./gtod"
+    then
+        echo -n "build gtod with cc... "
+        cc -o gtod gtod.c
+    fi
 
     if ! test -e "./gtod"
     then
-        # we "should" be able to build this everywhere ...
-        echo "can't build gtod binary!"
+        echo "failed"
+        echo -n "build gtod with gcc... "
+        gcc -o gtod gtod.c
+    fi
+
+    if ! test -e "./gtod"
+    then
+        tmp=`date '+%s.%N'`
+        if test "$?" = 0
+        then
+            if ! contains "$tmp" '%'
+            then
+                # we can use the system tool
+                echo "#!/bin/sh"      > ./gtod
+                echo "date '+%s.%N'" >> ./gtod
+                chmod 0755              ./gtod
+            fi
+        fi
+    fi
+
+    if ! test -e "./gtod"
+    then
+        echo "failed - giving up"
         exit 1
     fi
+
+    echo "success"
 
     TIME_ZERO=`./gtod`
     export TIME_ZERO
@@ -118,7 +161,41 @@ profile_event()
 
     printf "%.4f,%s,%s,%s,%s,%s\n" \
         "$NOW" "bootstrap_1" "$PILOT_ID" "ACTIVE_PENDING" "$event" "$msg" \
-        >> "$PROFILE"
+        | tee -a "$PROFILE"
+}
+
+
+# ------------------------------------------------------------------------------
+#
+# we add another safety feature to ensure agent cancelation after runtime
+# expires: the timeout() function expects *exactly* two processes to run in the
+# background.  Whichever finishes with will cause a SIGUSR1 signal, which is
+# then trapped to kill both processes.  Since the first one is dead, only the
+# second will actually get the kill, and the subsequent wait will thus 
+#
+timeout()
+{
+    TIMEOUT="$1"; shift
+    COMMAND="$*"
+
+    RET=./timetrap.ret
+
+    timetrap()
+    {
+        kill $PID_1 2>&1 > /dev/null
+        kill $PID_2 2>&1 > /dev/null
+    }
+    trap timetrap USR1
+    
+    rm -f $RET
+    ($COMMAND;       echo "$?" >> $RET; /bin/kill -s USR1 $$) & PID_1=$!
+    (sleep $TIMEOUT; echo "1"  >> $RET; /bin/kill -s USR1 $$) & PID_2=$!
+
+    wait
+
+    ret=`cat $RET || echo 2`
+    echo "------------------"
+    return $ret
 }
 
 
@@ -280,6 +357,36 @@ rehash()
 
 
 # ------------------------------------------------------------------------------
+# verify that we have a usable python installation
+verify_install()
+{
+    echo -n "verify python viability: $PYTHON ..."
+    if ! $PYTHON -c 'import sys; assert(sys.version_info >= (2,7))'
+    then
+        echo ' failed'
+        echo "python installation ($PYTHON) is not usable - abort"
+        exit 1
+    fi
+    echo ' ok'
+
+    # FIXME: attempt to load all required modules
+    modules='saga radical.utils pymongo hostlist netifaces setproctitle ntplib msgpack zmq'
+    for m in $modules
+    do
+        printf 'verify module viability: %-15s ...' $m
+        if ! $PYTHON -c "import $m"
+        then
+            echo ' failed'
+            echo "python installation cannot load module $m - abort"
+            exit 1
+        fi
+        echo ' ok'
+
+    done
+}
+
+
+# ------------------------------------------------------------------------------
 # contains(string, substring)
 #
 # Returns 0 if the specified string contains the specified substring,
@@ -314,7 +421,7 @@ run_cmd()
     echo "# $msg"
     echo "# cmd: $cmd"
     echo "#"
-    eval "$cmd"
+    eval "$cmd" 2>&1
     if test "$?" = 0
     then
         echo "#"
@@ -388,6 +495,7 @@ OPTIONS:
    -v   virtualenv location (create if missing)
    -w   execute commands before bootstrapping phase 2: the worker
    -x   exit cleanup - delete pilot sandbox, virtualenv etc. after completion
+   -y   runtime limit
 
 EOF
 
@@ -503,6 +611,7 @@ virtenv_setup()
                     tar zxmf "$SESSION_SANDBOX/$sdist"
                 else
                     tar zxmf "./$sdist"
+                    rm  -v   "./$sdist"
                 fi
                 RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
             done
@@ -522,6 +631,7 @@ virtenv_setup()
                     tar zxmf "$SESSION_SANDBOX/$sdist"
                 else
                     tar zxmf "./$sdist"
+                    rm  -v   "./$sdist"
                 fi
                 RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
             done
@@ -798,6 +908,12 @@ virtenv_create()
             "$BOOTSTRAP_CMD"
     fi
 
+    # clean out virtenv sources
+    if test -d "virtualenv-1.9/"
+    then
+        rm -rf "virtualenv-1.9/"
+    fi
+
     if test $? -ne 0
     then
         echo "Couldn't create virtualenv"
@@ -1066,7 +1182,7 @@ rp_install()
     pip_flags="$pip_flags --build '$PILOT_SANDBOX/rp_install/build'"
     pip_flags="$pip_flags --install-option='--prefix=$RP_INSTALL'"
 
-    for src in $RP_INSTALL_SOURCES
+    for src in $rp_install_sources
     do
         run_cmd "update $src via pip" \
                 "$PIP install $pip_flags $src"
@@ -1078,6 +1194,13 @@ rp_install()
 
         # NOTE: why? fuck pip, that's why!
         rm -rf "$PILOT_SANDBOX/rp_install/build"
+
+        # clean out the install source if it is a local dir
+        if test -d "$src"
+        then
+            echo "purge install source at $src"
+            rm -r "$src"
+        fi
     done
 
     profile_event 'rp_install done'
@@ -1209,7 +1332,7 @@ env | sort
 echo "---------------------------------------------------------------------"
 
 # parse command line arguments
-while getopts "a:b:cd:e:f:h:i:m:n:p:r:s:t:v:w:x" OPTION; do
+while getopts "a:b:cd:e:f:h:i:m:n:p:r:s:t:v:w:x:y:" OPTION; do
     case $OPTION in
         a)  SESSION_SANDBOX="$OPTARG"  ;;
         b)  PYTHON_DIST="$OPTARG"  ;;
@@ -1228,6 +1351,7 @@ while getopts "a:b:cd:e:f:h:i:m:n:p:r:s:t:v:w:x" OPTION; do
         v)  VIRTENV=$(eval echo "$OPTARG")  ;;
         w)  pre_bootstrap_2 "$OPTARG"  ;;
         x)  CLEANUP="$OPTARG"  ;;
+        y)  RUNTIME="$OPTARG"  ;;
         *)  usage "Unknown option: '$OPTION'='$OPTARG'"  ;;
     esac
 done
@@ -1237,15 +1361,6 @@ if test -z "$SESSION_SANDBOX"
 then  
     SESSION_SANDBOX="$PILOT_SANDBOX/.."
 fi
-
-LOGFILES_TARBALL="$PILOT_ID.log.tgz"
-PROFILES_TARBALL="$PILOT_ID.prof.tgz"
-
-# some backends (condor) never finalize a job when output files are missing --
-# so we touch them here to prevent that
-echo 'touching output tarballs'
-touch "$LOGFILES_TARBALL"
-touch "$PROFILES_TARBALL"
 
 
 # FIXME: By now the pre_process rules are already performed.
@@ -1271,8 +1386,16 @@ rmdir "$VIRTENV" 2>/dev/null
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
+if test -z "$RUNTIME"     ; then  usage "missing RUNTIME"   ;  fi
 if test -z "$PILOT_ID"    ; then  usage "missing PILOT_ID"  ;  fi
 if test -z "$RP_VERSION"  ; then  usage "missing RP_VERSION";  fi
+
+# pilot runtime is specified in minutes -- on shell level, we want seconds
+RUNTIME=$((RUNTIME * 60))
+
+# we also add a minute as safety margin, to give the agent proper time to shut
+# down on its own
+RUNTIME=$((RUNTIME + 60))
 
 # If the host that will run the agent is not capable of communication
 # with the outside world directly, we will setup a tunnel.
@@ -1346,6 +1469,19 @@ export _OLD_VIRTUAL_PS1
 #       from the imported rp modules __file__.
 PILOT_SCRIPT=`which radical-pilot-agent`
 
+
+# if test "$RP_INSTALL_TARGET" = 'PILOT_SANDBOX'
+# then
+#     PILOT_SCRIPT="$PILOT_SANDBOX/rp_install/bin/radical-pilot-agent"
+# else
+#     PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent"
+# fi
+
+# after all is said and done, we should end up with a usable python version.
+# Verify it
+verify_install
+
+
 # TODO: Can this be generalized with our new split-agent now?
 if test -z "$CCM"
 then
@@ -1360,8 +1496,9 @@ verify_rp_install
 echo
 echo "# -------------------------------------------------------------------"
 echo "# Launching radical-pilot-agents "
-echo "# CMDLINE:    $AGENT_CMD"
-echo "# PARTITIONS: $PARTITIONS"
+echo "# PILOT_SCRIPT  : $PILOT_SCRIPT"
+echo "# CMDLINE       : $AGENT_CMD"
+echo "# PARTITIONS    : $PARTITIONS"
 
 # At this point we expand the variables in $PREBOOTSTRAP2 to pick up the
 # changes made by the environment by pre_bootstrap_1.
@@ -1380,6 +1517,12 @@ IFS=$OLD_IFS
 # and communicate the IP to the agent.  The agent may still not be able to
 # connect, but then a sensible timeout will kick in on ntplib.
 RADICAL_PILOT_NTPHOST=`dig +short 0.pool.ntp.org | grep -v -e ";;" -e "\.$" | head -n 1`
+if test "$?" = 0
+then
+    RADICAL_PILOT_NTPHOST="46.101.140.169"
+fi
+echo "ntphost: $RADICAL_PILOT_NTPHOST"
+ping -c 1 "$RADICAL_PILOT_NTPHOST"
 
 # Before we start the (sub-)agent proper, we'll create a bootstrap_2.sh script
 # to do so.  For a single agent this is not needed -- but in the case where
@@ -1407,8 +1550,8 @@ fi
 # some inspection for logging
 hostname
 
-# make sure we use the correct sandbox
-cd $PILOT_SANDBOX
+# make sure we use the correct sandbox / agent partition
+cd "$PILOT_SANDBOX/\$1"
 
 # activate virtenv
 if test "$PYTHON_DIST" = "anaconda"
@@ -1437,8 +1580,8 @@ $PREBOOTSTRAP2_EXPANDED
 
 # start agent, forward arguments
 # NOTE: exec only makes sense in the last line of the script
-echo "$AGENT_CMD  \$1  \$2"
-exec  $AGENT_CMD "\$1" "\$2" 1>"\$1.out" 2>"\$1.err"
+echo "$AGENT_CMD  \$1 \$2" 
+exec  $AGENT_CMD "\$1" "\$2"  1>"\$1.out" 2>"\$1.err"
 
 EOT
 
@@ -1482,9 +1625,10 @@ pids=''
 while ! test "$part" == "$PARTITIONS"
 do
     profile_event 'sync rel' "agent.$part.0 start"
-    acmd="./bootstrap_2.sh agent.$part.0 $part 1>agent.$part.0.bootstrap_2.out 2>agent.$part.0.bootstrap_2.err"
+    acmd="./bootstrap_2.sh agent.$part partition 1>agent.$part.0.bootstrap_2.out 2>agent.$part.0.bootstrap_2.err"
     echo "acmd: $acmd"
-    $acmd &
+    timeout $RUNTIME \
+        $acmd &
     pids="$pids $!"
     part=$((part+1))
 done
@@ -1604,6 +1748,7 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Tarring profiles ..."
+    PROFILES_TARBALL="$PILOT_ID.prof.tgz"
     tar -czf $PROFILES_TARBALL *.prof
     ls -l $PROFILES_TARBALL
     echo "#"
@@ -1618,6 +1763,7 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Tarring logfiles ..."
+    LOGFILES_TARBALL="$PILOT_ID.log.tgz"
     tar -czf $LOGFILES_TARBALL *.{log,out,err,cfg}
     ls -l $LOGFILES_TARBALL
     echo "#"

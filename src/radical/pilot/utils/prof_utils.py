@@ -48,7 +48,7 @@ class Profiler (object):
 
         try:
             os.makedirs(self._path)
-        except:
+        except Exception:
             pass # already exists
 
         self._handle = open("%s/%s.prof" % (self._path, self._name), 'a')
@@ -146,7 +146,7 @@ class Profiler (object):
                 timestamp_sys = response.orig_time
                 timestamp_abs = response.tx_time
                 return [timestamp_sys, timestamp_abs, 'ntp']
-        except:
+        except Exception:
             pass
 
         t = time.time()

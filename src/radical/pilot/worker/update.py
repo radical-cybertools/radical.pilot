@@ -57,6 +57,7 @@ class Update(rpu.Worker):
         self._dburl      = self._cfg['dburl']
         self._owner      = self._cfg['owner']
 
+        # TODO: get db handle from a connected session
         _, db, _, _, _   = ru.mongodb_connect(self._dburl)
         self._mongo_db   = db
         self._coll       = self._mongo_db[self._session_id]
@@ -85,8 +86,11 @@ class Update(rpu.Worker):
         now = time.time()
         age = now - self._last
 
-        # only push if collection time or size have been exceeded
-        if not flush and age < self._bct and len(self._uids) < self._bcs:
+        # only push if flush is forced, or when Acollection time or size 
+        # have been exceeded
+        if  not flush \
+            and age < self._bct \
+            and len(self._uids) < self._bcs:
             return False
 
         try:
@@ -101,6 +105,7 @@ class Update(rpu.Worker):
 
         self._prof.prof('update bulk pushed (%d)' % len(self._uids),
                         uid=self._owner)
+
         for entry in self._uids:
             uid   = entry[0]
             ttype = entry[1]
@@ -237,7 +242,9 @@ class Update(rpu.Worker):
                 self._bulk.find  ({'uid'  : uid, 
                                    'type' : ttype}) \
                           .update(update_dict)
-                self._prof.prof('bulk', msg='bulked (%s)' % state, uid=uid)
+
+            self._prof.prof('bulk', msg='bulked (%s)' % state, uid=uid)
+            self._log.debug('bulked %s [%s] %s', uid, state, self.uid)
 
         with self._lock:
             # attempt a timed update

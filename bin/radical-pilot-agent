@@ -4,6 +4,7 @@ __copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import os
 import sys
 
 import saga                    as rs
@@ -20,13 +21,12 @@ if __name__ == "__main__":
 
     """
     This script is part of the pilot bootstrapping routine, representing the
-    entry point into Python.  It is started on the landing node of the pilot
-    job.
+    entry point into Python.
     """
 
     print sys.argv
     agent_name = str(sys.argv[1])
-    agent_part = int(sys.argv[2])
+    agent_mode = str(sys.argv[2])
 
     print "---------------------------------------------------------------------"
     print
@@ -37,21 +37,29 @@ if __name__ == "__main__":
     print "pilot : %-5s : %s" % (rp.version_detail, rp.__file__)
     print "        type : multicore"
     print "        gitid: %s" % git_ident
-    print "agent : %s [%s]"   % (agent_name, agent_part)
+    print "agent : %s [%s]"   % (agent_name, agent_mode)
     print
     print "---------------------------------------------------------------------"
     print
 
-    if agent_name == 'agent.%d.0' % agent_part:
-        # spawn one agent per partition
-        rp.agent.bootstrap_3(agent_name, agent_part)
+    if agent_mode not in ['partition', 'sub-agent']:
+        raise ValueError('unknown agent-mode [%s]' % agent_mode)
+
+
+    if agent_mode == 'partition':
+        # spawn one agent per partition, in its own partition workdir
+        print "bootstrap_3 start (%s)" % agent_name
+        rp.agent.bootstrap_3(agent_name)
         print "bootstrap_3 done (%s)" % agent_name
 
     else:
-        # this is a sub agent - bootstrap it!
-        rp.agent.bootstrap_4(agent_name, agent_part)
-        print "bootstrap_4 done (%s)" % agent_name
+        assert(agent_mode == 'sub-agent')
 
+        # this is a sub agent - bootstrap it! 
+        # (we are in the correct subdir already)
+        print "bootstrap_4 start (%s)" % agent_name
+        rp.agent.bootstrap_4(agent_name)
+        print "bootstrap_4 done (%s)" % agent_name
 #
 # ------------------------------------------------------------------------------
 

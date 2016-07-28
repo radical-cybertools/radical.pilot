@@ -111,6 +111,8 @@ class PilotManager(rpu.Component):
         self._log.report.info('<<create pilot manager')
         self._prof.prof('create pmgr', uid=self._uid)
 
+        self._log.debug('pmgr init: \n%s', '\n'.join(ru.get_stacktrace()))
+
         # we can start bridges and components, as needed
         self._controller = rpu.Controller(cfg=self._cfg, session=self.session)
 
@@ -200,38 +202,45 @@ class PilotManager(rpu.Component):
     def _state_pull_cb(self):
 
         # pull all pilot states from the DB, and compare to the states we know
-        # about.  If any state changed, update the pilot instance and issue
-        # notification callbacks as needed
+        # about.  If any state changed, update the known pilot instances and 
+        # push an update message to the state pubsub.
+        # pubsub.
         # FIXME: we also pull for dead pilots.  That is not efficient...
         # FIXME: this needs to be converted into a tailed cursor in the update
         #        worker
-        pilots = self._session._dbs.get_pilots(pmgr_uid=self.uid)
+        # FIXME: this is a big and frequently invoked lock
+        pilot_dicts = self._session._dbs.get_pilots(pmgr_uid=self.uid)
 
-        for pilot in pilots:
-            self._update_pilot(pilot['uid'], pilot, publish=True)
+        for pilot_dict in pilot_dicts:
+            self._update_pilot(pilot_dict)
 
 
     # --------------------------------------------------------------------------
     #
     def _state_sub_cb(self, topic, msg):
 
-        if isinstance(msg, list): things =  msg
-        else                    : things = [msg]
+        cmd = msg.get('cmd')
+        arg = msg.get('arg')
+
+        if cmd != 'update':
+            self._log.debug('ignore state cb msg with cmd %s', cmd)
+            return
+
+        if isinstance(arg, list): things =  arg
+        else                    : things = [arg]
 
         for thing in things:
 
-            if 'type' in thing and thing['type'] == 'pilot':
+            if thing['type'] == 'pilot':
 
-                pid   = thing["uid"]
-                state = thing["state"]
-
-                # since we get this info from the pubsub, we don't publish it again
-                self._update_pilot(pid, thing, publish=False)
+                self._update_pilot(thing)
 
 
     # --------------------------------------------------------------------------
     #
-    def _update_pilot(self, pid, pilot, publish=False):
+    def _update_pilot(self, pilot_dict):
+
+        pid = pilot_dict['uid']
 
         # we don't care about pilots we don't know
         # otherwise get old state
@@ -242,23 +251,24 @@ class PilotManager(rpu.Component):
 
             # only update on state changes
             current = self._pilots[pid].state
-            target, passed = rps._pilot_state_progress(current, pilot['state'])
+            target, passed = rps._pilot_state_progress(current, pilot_dict['state'])
 
             for s in passed:
-                pilot['state'] = s
-                self._pilots[pid]._update(pilot)
-                if publish:
-                    self.advance(pilot, s, publish=publish, push=False)
+                # we got state from either pubsub or DB, so don't publish again.
+                # we also don't need to maintain bulks for that reason.
+                pilot_dict['state'] = s
+                self._pilots[pid]._update(pilot_dict)
+                self.advance(pilot_dict, s, publish=False, push=False)
 
 
     # --------------------------------------------------------------------------
     #
-    def _call_pilot_callbacks(self, pilot, state):
+    def _call_pilot_callbacks(self, pilot_obj):
 
         for cb, cb_data in self._callbacks[rpt.PILOT_STATE]:
-
-            if cb_data: cb(pilot, state, cb_data)
-            else      : cb(pilot, state)
+            
+            if cb_data: cb(pilot_obj, pilot_obj.state, cb_data)
+            else      : cb(pilot_obj, pilot_obj.state)
 
 
     # --------------------------------------------------------------------------
@@ -453,7 +463,7 @@ class PilotManager(rpu.Component):
         ret_list = True
         if not isinstance(uids, list):
             ret_list = False
-            uids = [uids]
+            uids     = [uids]
 
         self._log.report.info('<<wait for %d pilot(s)\n\t' % len(uids))
 
@@ -461,6 +471,11 @@ class PilotManager(rpu.Component):
         to_check = None
 
         with self._pilots_lock:
+
+            for uid in uids:
+                if uid not in self._pilots:
+                    raise ValueError('pilot %s not known' % uid)
+
             to_check = [self._pilots[uid] for uid in uids]
 
         # We don't want to iterate over all pilots again and again, as that would
@@ -472,17 +487,18 @@ class PilotManager(rpu.Component):
 
             self._log.report.idle()
 
-            # check timeout
+            to_check = [pilot for pilot in to_check \
+                               if pilot.state not in states and \
+                                  pilot.state not in rps.FINAL]
+
             if to_check:
+
                 if timeout and (timeout <= (time.time() - start)):
                     self._log.debug ("wait timed out")
                     break
 
                 time.sleep (0.1)
 
-            to_check = [pilot for pilot in to_check \
-                               if pilot.state not in states and \
-                                  pilot.state not in rps.FINAL]
 
         self._log.report.idle(mode='stop')
 
@@ -518,6 +534,12 @@ class PilotManager(rpu.Component):
 
         if not isinstance(uids, list):
             uids = [uids]
+
+        with self._pilots_lock:
+            for uid in uids:
+                if uid not in self._pilots:
+                    raise ValueError('pilot %s not known' % uid)
+
 
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots', 
                                           'arg' : {'pmgr' : self.uid,

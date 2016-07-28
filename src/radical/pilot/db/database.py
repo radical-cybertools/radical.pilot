@@ -9,15 +9,10 @@ import saga
 import gridfs
 import pprint
 import pymongo
-import radical.utils as ru
+import radical.utils     as ru
 
-from .. import utils  as rpu
-from .. import states as rps
-
-COMMAND_FIELD = 'commands'
-COMMAND_TYPE  = 'type'
-COMMAND_ARG   = 'arg'
-COMMAND_TIME  = 'time'
+from .. import utils     as rpu
+from .. import states    as rps
 
 
 #-----------------------------------------------------------------------------
@@ -44,7 +39,7 @@ class DBSession(object):
         self._log        = logger
         self._mongo      = None
         self._db         = None
-        self._created    = None
+        self._created    = rpu.timestamp()
         self._connected  = None
         self._closed     = None
         self._c          = None
@@ -76,7 +71,6 @@ class DBSession(object):
 
             # insert the session doc
             self._can_delete = True
-            self._created    = rpu.timestamp()
             self._c.insert({'type'      : 'session',
                             '_id'       : sid,
                             'uid'       : sid,
@@ -152,7 +146,7 @@ class DBSession(object):
     @property
     def is_connected(self):
 
-        return not self.closed
+        return (self._connected != None)
 
 
     #--------------------------------------------------------------------------
@@ -171,7 +165,9 @@ class DBSession(object):
             self._log.info('delete session')
             self._c.drop()
 
-        self._mongo.close()
+        if self._mongo:
+            self._mongo.close()
+
         self._closed = rpu.timestamp()
         self._c = None
 
@@ -208,19 +204,50 @@ class DBSession(object):
         bulk = self._c.initialize_ordered_bulk_op()
 
         for doc in pilot_docs:
-            doc['_id']      = doc['uid']
-            doc['type']     = 'pilot'
-            doc['states']   = [doc['state']]
-            doc['commands'] = list()
+            doc['_id']     = doc['uid']
+            doc['type']    = 'pilot'
+            doc['control'] = 'pmgr'
+            doc['states']  = [doc['state']]
+            doc['cmd']     = list()
             bulk.insert(doc)
 
         try:
             res = bulk.execute()
             self._log.debug('bulk pilot insert result: %s', res)
             # FIXME: evaluate res
+
         except pymongo.errors.OperationFailure as e:
             self._log.exception('pymongo error: %s' % e.details)
-            raise RuntimeError('pymongo error: %s' % e.details)
+            raise RuntimeError ('pymongo error: %s' % e.details)
+
+
+    #--------------------------------------------------------------------------
+    #
+    def pilot_command(self, cmd, arg, pids):
+        """
+        send a command and arg to a set of pilots
+        """
+
+        if self.closed:
+            raise Exception('session is closed')
+
+        if not self._c:
+            raise Exception('session is disconnected ')
+
+        if not isinstance(pids, list):
+            pids = [pids]
+
+        try:
+            cmd_spec = {'cmd' : cmd, 'arg' : arg}
+            # FIXME: evaluate res
+            res = self._c.update({'type'  : 'pilot',
+                                  'uid'   : {'$in' : pids}},
+                                 {'$push' : {'cmd' : cmd_spec}},
+                                 multi = True)
+
+        except pymongo.errors.OperationFailure as e:
+            self._log.exception('pymongo error: %s' % e.details)
+            raise RuntimeError ('pymongo error: %s' % e.details)
 
 
     #--------------------------------------------------------------------------
@@ -323,11 +350,12 @@ class DBSession(object):
         bulk = self._c.initialize_ordered_bulk_op()
 
         for doc in unit_docs:
-            doc['_id']      = doc['uid']
-            doc['type']     = 'unit'
-            doc['control']  = 'umgr'
-            doc['states']   = [doc['state']]
-            doc['commands'] = list()
+            doc['_id']     = doc['uid']
+            doc['type']    = 'unit'
+            doc['control'] = 'umgr'
+            doc['states']  = [doc['state']]
+            doc['cmd']     = list()
+
             bulk.insert(doc)
 
         try:
@@ -337,6 +365,53 @@ class DBSession(object):
         except pymongo.errors.OperationFailure as e:
             self._log.exception('pymongo error: %s' % e.details)
             raise RuntimeError('pymongo error: %s' % e.details)
+
+    # --------------------------------------------------------------------------
+    #
+    def tailed_find(self, collection, pattern, fields, cb, cb_data=None):
+        """
+        open a collection in capped mode, and create a tailing find-cursor with
+        the given pattern on it.  For all returned documents, invoke the given
+        callback as:
+
+          cb(docs, cb_data=None)
+
+        where 'docs' is a list of None, one or more matching documents.
+        Specifically, the callback is also invoked when *no* document currently 
+        matches the pattern.  Documents are returned as partial docs, which only
+        contain the set of field names given.  If 'fields' is an empty list
+        though, then complete documents are returned.
+
+        This method is blocking, and will never return.  It is adviseable to
+        call it in a thread.
+        """
+        raise NotImplementedError('duh!')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def tailed_control(self, collection, control, pattern, cb, cb_data=None):
+        """
+        open a collection in capped mode, and create a tailing find-cursor on
+        it, where the find searches for the pattern:
+
+          pattern.extent({ 'control' : control + '_pending' })
+
+        For any matching document, the 'control' field is updated to 'control',
+        ie. the 'pending' postfix is removed.  The resulting documents are
+        passed to the given callback as
+
+          cb(docs, cb_data=None)
+
+        where 'docs' is a list of None, one or more matching documents.
+        Specifically, the callback is also invoked when *no* document currently
+        matches the pattern.  The documents are returned in full, ie. with all
+        available fields.
+
+        This method is blocking, and will never return.  It is adviseable to
+        call it in a thread.
+        """
+        raise NotImplementedError('duh!')
 
 
 # ------------------------------------------------------------------------------

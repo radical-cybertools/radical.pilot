@@ -1,4 +1,5 @@
 
+
 import os
 import sys
 import copy
@@ -17,13 +18,11 @@ from .misc       import hostip
 from .prof_utils import timestamp      as rpu_timestamp
 
 from .queue      import Queue          as rpu_Queue
-from .queue      import QUEUE_ZMQ      as rpu_QUEUE_ZMQ
 from .queue      import QUEUE_OUTPUT   as rpu_QUEUE_OUTPUT
 from .queue      import QUEUE_INPUT    as rpu_QUEUE_INPUT
 from .queue      import QUEUE_BRIDGE   as rpu_QUEUE_BRIDGE
 
 from .pubsub     import Pubsub         as rpu_Pubsub
-from .pubsub     import PUBSUB_ZMQ     as rpu_PUBSUB_ZMQ
 from .pubsub     import PUBSUB_PUB     as rpu_PUBSUB_PUB
 from .pubsub     import PUBSUB_SUB     as rpu_PUBSUB_SUB
 from .pubsub     import PUBSUB_BRIDGE  as rpu_PUBSUB_BRIDGE
@@ -87,6 +86,16 @@ class Controller(object):
 
         self._session = session
 
+        # we use a uid to uniquely identify message to and from bridges and
+        # components, and for logging/profiling.
+        self._uid   = '%s.ctrl' % cfg['owner']
+        self._owner = cfg['owner']
+
+        # get debugging, logging, profiling set up
+        self._debug = cfg.get('debug')
+        self._dh    = ru.DebugHelper(name=self.uid)
+        self._log   = self._session._get_logger(self._owner, level=self._debug)
+
         # we keep a copy of the cfg around, so that we can pass it on when
         # creating components.
         self._cfg = copy.deepcopy(cfg)
@@ -99,15 +108,11 @@ class Controller(object):
                 'heartbeat_interval' : cfg.get('heartbeat_interval'),
                 'heartbeat_timeout'  : cfg.get('heartbeat_timeout'),
         }
-
         # we also ceep the component information around, in case we need to
         # start any
         self._comp_cfg = copy.deepcopy(cfg.get('components', {}))
 
-        # we use a uid to uniquely identify message to and from bridges and
-        # components, and for logging/profiling.
-        self._uid   = '%s.ctrl' % cfg['owner']
-        self._owner = cfg['owner']
+        self._log.info('initialize %s', self.uid)
 
         # keep handles to bridges and components started by us, but also to
         # other things handed to us via 'add_watchables()' (such as sub-agents)
@@ -116,6 +121,9 @@ class Controller(object):
 
         # we will later subscribe to the ctrl pubsub -- keep a handle
         self._ctrl_sub = None
+
+        # control thread activities
+        self._term     = mt.Event()
 
         # set up for eventual heartbeat sending/receiving
         self._heartbeat_interval = self._ctrl_cfg.get('heartbeat_interval',  10)
@@ -157,14 +165,6 @@ class Controller(object):
                          rpc.AGENT_STAGING_OUTPUT_COMPONENT : rpa.Output
                          }
 
-        # get debugging, logging, profiling set up
-        self._debug = cfg.get('debug')
-        self._dh    = ru.DebugHelper(name=self.uid)
-        self._log   = self._session._get_logger(self.uid, self._debug)
-        self._prof  = self._session._get_profiler(self.uid)
-
-        self._log.info('initialize %s', self.uid)
-
         # complete the setup with bridge and component creation
         self._start_bridges()
         self._start_components()
@@ -191,7 +191,11 @@ class Controller(object):
 
       # ru.print_stacktrace()
 
+        # avoid races with watcher thread
+        self._term.set()
+
         self_thread = mt.current_thread()
+        self._log.debug('%s stopped', self.uid)
 
         if self._heartbeat_thread:
             self._log.debug('%s stop    hbeat', self.uid)
@@ -201,6 +205,8 @@ class Controller(object):
                 self._log.debug('%s join    hbeat', self.uid)
                 self._heartbeat_thread.join()
                 self._log.debug('%s joined  hbeat', self.uid)
+            else:
+                self._log.debug('%s stop as hbeat', self.uid)
 
         if self._watcher_thread:
             self._log.debug('%s stop    watch', self.uid)
@@ -210,6 +216,8 @@ class Controller(object):
                 self._log.debug('%s join    watch', self.uid)
                 self._watcher_thread.join()
                 self._log.debug('%s joined  watch', self.uid)
+            else:
+                self._log.debug('%s stop as watch', self.uid)
 
         # we first stop all components (and sub-agents), and only then tear down
         # the communication bridges.  That way, the bridges will be available
@@ -218,18 +226,21 @@ class Controller(object):
         for to_stop_list in [self._components_to_watch, self._bridges_to_watch]:
 
             for t in to_stop_list:
-                self._log.debug('%s stop    %s', self.uid, t)
+                self._log.debug('%s stop    %s', self.uid, t.name)
                 t.stop()
-                self._log.debug('%s stopped %s', self.uid, t)
+                self._log.debug('%s stopped %s', self.uid, t.name)
 
             for t in to_stop_list:
-                self._log.debug('%s join    %s', self.uid, t)
+                self._log.debug('%s join    %s', self.uid, t.name)
                 if t != self_thread:
                     t.join()
-                self._log.debug('%s joined  %s', self.uid, t)
+                self._log.debug('%s joined  %s', self.uid, t.name)
+
+        self._log.debug('%s stopped', self.uid)
 
         if not ru.is_main_thread():
             # only the main thread should survive
+            self._log.debug('%s exit thread', self.uid)
             sys.exit()
 
 
@@ -278,11 +289,9 @@ class Controller(object):
                 self._log.info('create bridge %s', bname)
             
                 if bname.endswith('queue'):
-                    bridge = rpu_Queue.create(self._session, rpu_QUEUE_ZMQ, 
-                                              bname, rpu_QUEUE_BRIDGE, bcfg)
+                    bridge = rpu_Queue(self._session, bname, rpu_QUEUE_BRIDGE, bcfg)
                 elif bname.endswith('pubsub'):
-                    bridge = rpu_Pubsub.create(self._session, rpu_PUBSUB_ZMQ, 
-                                               bname, rpu_PUBSUB_BRIDGE, bcfg)
+                    bridge = rpu_Pubsub(self._session, bname, rpu_PUBSUB_BRIDGE, bcfg)
                 else:
                     raise ValueError('unknown bridge type for %s' % bname)
 
@@ -338,9 +347,8 @@ class Controller(object):
         # messages, otherwise those messages can arrive before we are able to
         # get them.
         addr = self._ctrl_cfg['bridges'][rpc.CONTROL_PUBSUB]['addr_out']
-        self._ctrl_sub = rpu_Pubsub.create(self._session, rpu_PUBSUB_ZMQ, 
-                                           rpc.CONTROL_PUBSUB, rpu_PUBSUB_SUB, 
-                                           addr=addr)
+        self._ctrl_sub = rpu_Pubsub(self._session, rpc.CONTROL_PUBSUB, rpu_PUBSUB_SUB, 
+                                    self._ctrl_cfg, addr=addr)
         self._ctrl_sub.subscribe(rpc.CONTROL_PUBSUB)
 
         self._log.debug('start_bridges done')
@@ -389,6 +397,7 @@ class Controller(object):
                 # etc.
                 ccfg = copy.deepcopy(self._cfg)
                 ccfg['components'] = dict()  # avoid recursion
+                ccfg['cname']      = cname
                 ccfg['number']     = i
                 ccfg['owner']      = self._owner
 
@@ -429,7 +438,7 @@ class Controller(object):
         # Once control is passed to this controller, the callee is not supposed
         # to handle the goven things anymore
 
-        if not owner: 
+        if not owner:
             owner = self._owner
 
         if not isinstance(things, list):
@@ -446,7 +455,7 @@ class Controller(object):
         # messages on the control pubsub, for a certain time.  If we don't hear
         # back from them in time, we consider startup to have failed, and shut
         # down.
-        timeout = 30
+        timeout = 60
         start   = time.time()
 
         # we register 'alive' messages earlier.  Whenever an 'alive' message
@@ -478,7 +487,7 @@ class Controller(object):
 
                 # only look at interesting messages
                 if not arg['owner'] == owner:
-                    self._log.debug('unusable alive msg for %s' % arg['owner'])
+                    self._log.debug('unusable alive msg for %s (%s)', arg['owner'], owner)
                     break
 
                 sender = arg['sender']
@@ -528,6 +537,7 @@ class Controller(object):
         # things are alive -- we can start monitoring them.  We may have
         # done so before, so check
         if not self._watcher_thread:
+            self._log.debug('create watcher thread')
             self._watcher_term   = mt.Event()
             self._watcher_thread = mt.Thread(target=self._watcher,
                                              args=[self._watcher_term],
@@ -536,6 +546,8 @@ class Controller(object):
 
         # make sure the watcher picks up the right things
         self._components_to_watch += things
+
+        self._log.debug('controller startup completed')
 
 
     # --------------------------------------------------------------------------
@@ -547,7 +559,7 @@ class Controller(object):
         tear down this agent.
         """
 
-        while not term.is_set():
+        while not term.is_set() and not self._term.is_set():
 
           # self._log.debug('watching %s things' % len(to_watch))
           # self._log.debug('watching %s' % pprint.pformat(to_watch))
@@ -571,7 +583,7 @@ class Controller(object):
 
     # --------------------------------------------------------------------------
     #
-    def _heartbeat_sender(self, terminate):
+    def _heartbeat_sender(self, term):
 
         # we use a loop which runs quicker than self._heartbeat_interval would
         # make you think.  This way we can check more frequently for any
@@ -579,11 +591,11 @@ class Controller(object):
 
         heart = self._ctrl_cfg['heart']
         addr  = self._ctrl_cfg['bridges'][rpc.CONTROL_PUBSUB]['addr_in']
-        pub   = rpu_Pubsub.create(self._session, rpu_PUBSUB_ZMQ, 
-                                  rpc.CONTROL_PUBSUB, rpu_PUBSUB_PUB, addr=addr)
+        pub   = rpu_Pubsub(self._session, rpc.CONTROL_PUBSUB, rpu_PUBSUB_PUB,
+                           self._ctrl_cfg, addr=addr)
 
         last_heartbeat = 0.0  # we never sent a heartbeat before
-        while not terminate.is_set():
+        while not term.is_set() and not self._term.is_set():
 
             now = time.time()
             if last_heartbeat + self._heartbeat_interval < now:

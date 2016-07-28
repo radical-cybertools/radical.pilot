@@ -117,8 +117,17 @@ class Session(rs.Session):
             self._uid = ru.generate_id('rp.session',  mode=ru.ID_PRIVATE)
             ru.reset_id_counters(prefix='rp.session', reset_all_others=True)
 
-        self._logdir = self._cfg.get('logdir', '%s/%s' % (os.getcwd(), self._uid))
-        self._log    = self._get_logger('radical.pilot', level='DEBUG')
+        if not self._cfg.get('owner'):
+            self._cfg['owner'] = self._uid
+
+        if not self._cfg.get('debug'):
+            self._cfg['debug'] = 'DEBUG'
+
+        if not self._cfg.get('logdir'):
+            self._cfg['logdir'] = '%s/%s' % (os.getcwd(), self._uid)
+
+        self._logdir = self._cfg['logdir']
+        self._log    = self._get_logger(self._cfg['owner'], self._cfg['debug'])
 
 
         if not dburl: dburl = self._cfg.get('dburl')
@@ -129,8 +138,11 @@ class Session(rs.Session):
             # we forgive missing dburl on reconnect, but not otherwise
             raise RuntimeError("no database URL (set RADICAL_PILOT_DBURL)")  
 
+        self._dburl = ru.Url(dburl)
+
         if _connect:
-            self._dburl = ru.Url(dburl)
+
+            self._log.info("using database %s" % self._dburl)
 
             # if the database url contains a path element, we interpret that as
             # database name (without the leading slash)
@@ -142,11 +154,8 @@ class Session(rs.Session):
                     # really really need a db connection...
                     raise ValueError("incomplete DBURL '%s' no db name!" % self._dburl)
 
-
-        self._log.info("using database %s" % self._dburl)
-
         # initialize profiling
-        self.prof = self._get_profiler(self._uid)
+        self.prof = self._get_profiler(self._cfg['owner'])
 
         if self._reconnected:
             self.prof.prof('reconnect session', uid=self._uid)
@@ -180,7 +189,7 @@ class Session(rs.Session):
 
         # create/connect database handle
         try:
-            self._dbs = DBSession(sid=self.uid, dburl=self.dburl,
+            self._dbs = DBSession(sid=self.uid, dburl=self._dburl,
                                   cfg=self._cfg, logger=self._log, 
                                   connect=_connect)
 
@@ -223,9 +232,7 @@ class Session(rs.Session):
         # the controller explicit.  Once the controller is up, we merge the
         # bridge addresses etc. into the session config.
 
-        self._log.debug('=== create session controller')
         if not self._controller:
-            self._cfg['owner']      = self._uid  # session is always root
             self._cfg['session_id'] = self._uid
             self._cfg['dburl']      = str(self._dburl)
             self._controller = rpu.Controller(cfg=self._cfg, session=self)
@@ -360,12 +367,15 @@ class Session(rs.Session):
 
         # stop the controller
         if self._controller:
+            self._log.debug("session %s closes ctrl   %s", self._uid, self._controller.uid)
             self._controller.stop()  
+            self._log.debug("session %s closed ctrl   %s", self._uid, self._controller.uid)
 
         self.prof.prof("closing", msg=cleanup, uid=self._uid)
         if self._dbs:
+            self._log.debug("session %s closes db (%s)", self._uid, cleanup)
             self._dbs.close(delete=cleanup)
-        self._log.debug("session %s closed (delete=%s)", str(self._uid), cleanup)
+        self._log.debug("session %s closed (delete=%s)", self._uid, cleanup)
         self.prof.prof("closed", uid=self._uid)
         self.prof.close()
 
@@ -473,7 +483,7 @@ class Session(rs.Session):
         log files end up in a separate directory with the name of `session.uid`.
         """
 
-        log = ru.get_logger(name, '.', self._logdir, level)
+        log = ru.get_logger(name, target='.', level=level, path=self._logdir)
         log.info('radical.pilot        version: %s' % rp_version_detail)
 
         return log
@@ -705,6 +715,7 @@ class Session(rs.Session):
         for a given pilot dict, determine the global RP sandbox, based on the
         pilot's 'resource' attribute.
         """
+        # FIXME: this should get 'resource, schema=None' as parameters
 
         resource = pilot['description'].get('resource')
         schema   = pilot['description'].get('access_schema')
@@ -772,6 +783,7 @@ class Session(rs.Session):
     #
     def _get_session_sandbox(self, pilot):
 
+        # FIXME: this should get 'resource, schema=None' as parameters
 
         resource = pilot['description'].get('resource')
 
@@ -797,6 +809,7 @@ class Session(rs.Session):
     #
     def _get_pilot_sandbox(self, pilot):
 
+        # FIXME: this should get 'pid, resource, schema=None' as parameters
 
         pid = pilot['uid']
         with self._cache_lock:

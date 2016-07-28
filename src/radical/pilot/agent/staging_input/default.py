@@ -39,6 +39,8 @@ class Default(AgentStagingInputComponent):
     #
     def initialize_child(self):
 
+        self._pwd = os.getcwd()
+
         self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
                             rpc.AGENT_STAGING_INPUT_QUEUE, self.work)
 
@@ -54,6 +56,8 @@ class Default(AgentStagingInputComponent):
             units = [units]
 
         self.advance(units, rps.AGENT_STAGING_INPUT, publish=True, push=False)
+
+        ru.raise_on('work bulk')
 
         # we first filter out any units which don't need any input staging, and
         # advance them again as a bulk.  We work over the others one by one, and
@@ -75,7 +79,7 @@ class Default(AgentStagingInputComponent):
                 tgt    = ru.Url(entry['target'])
 
                 if action in [rpc.LINK, rpc.COPY, rpc.MOVE]:
-                    actionables.append([src, tgt, flags])
+                    actionables.append([src, tgt, action, flags])
 
             if actionables:
                 staging_units.append([unit, actionables])
@@ -95,13 +99,17 @@ class Default(AgentStagingInputComponent):
     #
     def _handle_unit(self, unit, actionables):
 
-        uid     = unit['uid']
-        sandbox = ru.Url(unit["sandbox"]).path
+        ru.raise_on('work unit')
+
+        uid = unit['uid']
+
+        # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
+        #       class definition.
+        sandbox = '%s/%s' % (self._pwd, uid)
 
         # we have actionables, thus we need sandbox and staging area
         # TODO: optimization: sandbox,staging_area might already exist
-        pilot_sandbox = ru.Url(self._cfg['pilot_sandbox']).path
-        staging_area  = os.path.join(pilot_sandbox, self._cfg['staging_area'])
+        staging_area = '%s/%s' % (self._pwd, self._cfg['staging_area'])
 
         self._prof.prof("create  sandbox", uid=uid, msg=sandbox)
         rpu.rec_makedir(sandbox)
@@ -113,7 +121,7 @@ class Default(AgentStagingInputComponent):
         self._prof.prof("created staging_area", uid=uid)
 
         # Loop over all transfer directives and execute them.
-        for src, tgt, flags in actionables:
+        for src, tgt, action, flags in actionables:
 
             self._prof.prof('agent staging in', msg=src, uid=uid)
 

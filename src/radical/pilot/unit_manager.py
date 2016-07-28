@@ -166,16 +166,18 @@ class UnitManager(rpu.Component):
     #
     def close(self):
         """
-        Shuts down the UnitManager.  This will cancel all units.
+        Shut down the UnitManager, and all umgr components.
         """
+
+        # we do not cancel units at this point, in case any component or pilot
+        # wants to continue to progress unit states, which should indeed be
+        # independent from the umgr life cycle.
 
         if self._closed:
             return
 
         self._log.debug("closing %s", self.uid)
         self._log.report.info('<<close unit manager')
-
-        self.cancel_units()
 
         self._terminate.set()
         self._controller.stop()
@@ -253,7 +255,7 @@ class UnitManager(rpu.Component):
 
         if not unit_cursor.count():
             # no units whatsoever...
-            self._log.info("units pulled:    0")
+            self._log.info(" === units pulled:    0")
             return False
 
         # update the units to avoid pulling them again next time.
@@ -265,16 +267,32 @@ class UnitManager(rpu.Component):
                                     'uid'   : {'$in'     : uids}},
                         document = {'$set'  : {'control' : 'umgr'}})
 
-        self._log.info("units pulled: %4d"   % len(units))
+        self._log.info(" === units pulled: %4d %s", len(units), [u['uid'] for u in units])
         self._prof.prof('get', msg="bulk size: %d" % len(units), uid=self.uid)
         for unit in units:
+
+            self._log.debug('\n\n=======================================')
+            self._log.debug(' === details %s: %s', unit['uid'], pprint.pformat(unit))
+            
+            # we need to make sure to have the correct state:
+            old = unit['state']
+            new = rps._unit_state_collapse(unit['states'])
+            self._log.debug(' === %s state: %s -> %s', unit['uid'], old, new)
+
+            if new == rps.UMGR_STAGING_OUTPUT:
+                self._log.debug(' === %s state: %s -> %s %s', unit['uid'], old, new, unit['states'])
+
+
+            unit['state'] = new
             unit['control'] = 'umgr'
             self._prof.prof('get', msg="bulk size: %d" % len(units), uid=unit['uid'])
+
+            self._log.debug('\n=======================================\n\n')
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline).  We don't publish the advance, since that
         # happened already on the agent side when the state was set.
-        self.advance(units, publish=True, push=True)
+        self.advance(units, publish=False, push=True)
 
         return True
 
@@ -318,10 +336,10 @@ class UnitManager(rpu.Component):
     #
     def _call_unit_callbacks(self, unit, state):
 
-        for cb_func, cb_data in self._callbacks[rpt.UNIT_STATE]:
+        for cb, cb_data in self._callbacks[rpt.UNIT_STATE]:
 
-            if cb_data: cb_func(unit, state, cb_data)
-            else      : cb_func(unit, state)
+            if cb_data: cb(unit, state, cb_data)
+            else      : cb(unit, state)
 
 
     # --------------------------------------------------------------------------
@@ -449,6 +467,7 @@ class UnitManager(rpu.Component):
         """
 
         # TODO: Implement 'drain'.
+        # NOTE: the actual removal of pilots from the scheduler is asynchron!
 
         if drain:
             raise RuntimeError("'drain' is not yet implemented")
@@ -456,28 +475,25 @@ class UnitManager(rpu.Component):
         if self._closed:
             raise RuntimeError("instance is already closed")
 
-        if not isinstance(pilots, list):
-            pilots = [pilots]
+        if not isinstance(pilot_ids, list):
+            pilot_ids = [pilot_ids]
 
-        if len(pilots) == 0:
+        if len(pilot_ids) == 0:
             raise ValueError('cannot remove no pilots')
 
-        self._log.report.info('<<add %d pilot(s)' % len(pilots))
+        self._log.report.info('<<add %d pilot(s)' % len(pilot_ids))
 
         with self._pilots_lock:
 
             # sanity check, and keep pilots around for inspection
-            for pilot in pilots:
-                pid = pilot.uid
+            for pid in pilot_ids:
                 if pid not in self._pilots:
                     raise ValueError('pilot %s not added' % pid)
                 del(self._pilots[pid])
 
-        pids = [pilot.uid for pilot in pilots]
-
         # publish to the command channel for the scheduler to pick up
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'remove_pilots',
-                                          'arg' : {'pids'  : pids, 
+                                          'arg' : {'pids'  : pilot_ids, 
                                                    'umgr'  : self.uid}})
         self._log.report.ok('>>ok\n')
 
@@ -757,7 +773,7 @@ class UnitManager(rpu.Component):
         #       state progression, we'll see state transitions after cancel.
         #       For non-final states that is not a problem, as it is equivalent
         #       with a state update message race, which our state collapse
-        #       mechanism accounts for.  For an eevntual non-canceled final
+        #       mechanism accounts for.  For an eventual non-canceled final
         #       state, we do get an invalid state transition.  That is also
         #       corrected eventually in the state collapse, but the point
         #       remains, that the state model is temporarily violated.  We
@@ -765,8 +781,9 @@ class UnitManager(rpu.Component):
         #
         #       The env variable 'RADICAL_PILOT_STRICT_CANCEL == True' will
         #       disable this optimization.
+        #
         # FIXME: the effect of the env var is not well tested
-        if os.environ.get('RADICAL_PILOT_STRICT_CANCEL', '').lower() != 'true':
+        if 'RADICAL_PILOT_STRICT_CANCEL' not in os.environ:
             with self._units_lock:
                 units = [self._units[uid] for uid  in uids ]
             unit_docs = [unit.as_dict()   for unit in units]
@@ -785,7 +802,7 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def register_callback(self, cb_func, metric=rpt.UNIT_STATE, cb_data=None):
+    def register_callback(self, cb, metric=rpt.UNIT_STATE, cb_data=None):
         """
         Registers a new callback function with the UnitManager.  Manager-level
         callbacks get called if the specified metric changes.  The default
@@ -794,7 +811,7 @@ class UnitManager(rpu.Component):
 
         All callback functions need to have the same signature::
 
-            def cb_func(obj, value, cb_data)
+            def cb(obj, value, cb_data)
 
         where ``object`` is a handle to the object that triggered the callback,
         ``value`` is the metric, and ``data`` is the data provided on
@@ -819,7 +836,7 @@ class UnitManager(rpu.Component):
             raise ValueError ("Metric '%s' is not available on the unit manager" % metric)
 
         with self._cb_lock:
-            self._callbacks[metric].append([cb_func, cb_data])
+            self._callbacks[metric].append([cb, cb_data])
 
 
 # ------------------------------------------------------------------------------

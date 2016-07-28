@@ -69,6 +69,23 @@ class RoundRobin(UMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
+    def update_pilots(self, pids):
+
+        # FIXME: we don't react on pilot state changes right now
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def update_units(self, uids):
+
+        # RR scheduling is not concerned about unit states
+        pass
+
+
+
+    # --------------------------------------------------------------------------
+    #
     def work(self, units):
 
         if not isinstance(units, list):
@@ -112,6 +129,7 @@ class RoundRobin(UMGRSchedulingComponent):
             # advance all units
             self.advance(units, rps.UMGR_STAGING_INPUT_PENDING, 
                          publish=True, push=True)
+
         
 
 # ------------------------------------------------------------------------------

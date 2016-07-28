@@ -48,7 +48,9 @@ class Default(UMGRStagingOutputComponent):
         if not isinstance(units, list):
             units = [units]
 
-        self.advance(units, rps.UMGR_STAGING_INPUT, publish=True, push=False)
+        for unit in units:
+            self._log.debug(" === work on %s in %s @ %s", unit['uid'], unit['state'], unit['control'])
+        self.advance(units, rps.UMGR_STAGING_OUTPUT, publish=True, push=False)
 
         # we first filter out any units which don't need any output staging, and
         # advance them again as a bulk.  We work over the others one by one, and
@@ -58,14 +60,6 @@ class Default(UMGRStagingOutputComponent):
         staging_units    = list()
 
         for unit in units:
-
-            # no matter if we perform any staging or not, we will push the full
-            # unit info to the DB on the next advance, as that will be a final
-            # state.
-            unit['$all']    = True
-            unit['control'] = None
-            unit['state']   = unit['target_state']
-            self.advance(unit, publish=True, push=True)
 
             # check if we have any staging directives to be enacted in this
             # component
@@ -87,6 +81,13 @@ class Default(UMGRStagingOutputComponent):
 
 
         if no_staging_units:
+
+            # nothing to stage -- transition into final state.
+            for unit in no_staging_units:
+                unit['$all']    = True
+                unit['control'] = None
+                unit['state']   = unit['target_state']
+
             self.advance(no_staging_units, publish=True, push=True)
 
         for unit,actionables in staging_units:
@@ -130,6 +131,7 @@ class Default(UMGRStagingOutputComponent):
         # all staging is done -- at this point the unit is final
         unit['$all']    = True
         unit['control'] = None
+        unit['state']   = unit['target_state']
         self.advance(unit, publish=True, push=True)
 
 

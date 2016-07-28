@@ -86,8 +86,15 @@ def expand_staging_directive(staging_directive):
             new_staging_directive.append(new_sd)
 
         elif isinstance(sd, dict):
-            # We detected a dict, will have to distinguish between single and multiple entries
 
+
+            # sanity check on dict syntax
+            valid_keys = ['source', 'target', 'action', 'flags', 'priority']
+            for k in sd:
+                if k not in valid_keys:
+                    raise ValueError('invalif entry "%s" on staging directive' % k)
+
+            # We detected a dict, will have to distinguish between single and multiple entries
             if 'action' in sd:
                 action = sd['action']
             else:

@@ -108,7 +108,7 @@ class ComputeUnit(object):
     #
     def __str__(self):
 
-        return str(self.as_dict())
+        return [self.uid, self.pilot, self.state]
 
 
     # --------------------------------------------------------------------------
@@ -151,10 +151,10 @@ class ComputeUnit(object):
             passed = passed[-1:]
 
         for state in passed:
-            for cb_func, cb_data in self._callbacks:
+            for cb, cb_data in self._callbacks:
                 self._state = state
-                if cb_data: cb_func(self, state, cb_data)
-                else      : cb_func(self, state)
+                if cb_data: cb(self, state, cb_data)
+                else      : cb(self, state)
 
             # also inform pmgr about state change, to collect any callbacks
             # it has registered globally
@@ -360,6 +360,17 @@ class ComputeUnit(object):
             * A URL (radical.utils.Url).
         """
 
+        # NOTE: The unit has a sandbox property, containing the full sandbox
+        #       path, which is used by the umgr to stage data back and forth.
+        #       However, the full path as visible from the umgr side might not
+        #       be what the agent is seeing, specifically in the case of
+        #       non-shared filesystems (OSG).  The agent thus uses
+        #       `$PWD/cu['uid']` as sandbox, with the assumption that this will
+        #       get mapped to whatever is here returned as sandbox URL.  
+        #
+        #       There is thus implicit knowledge shared between the RP client
+        #       and the RP agent on how the sandbox path is formed!
+
         return self._sandbox
 
 
@@ -379,25 +390,25 @@ class ComputeUnit(object):
 
     # --------------------------------------------------------------------------
     #
-    def register_callback(self, cb_func, cb_data=None):
+    def register_callback(self, cb, cb_data=None):
         """
         Registers a callback function that is triggered every time the
         unit's state changes.
 
         All callback functions need to have the same signature::
 
-            def cb_func(obj, state)
+            def cb(obj, state)
 
         where ``object`` is a handle to the object that triggered the callback
         and ``state`` is the new state of that object.  If 'cb_data' is given,
-        then the 'cb_func' signature changes to 
+        then the 'cb' signature changes to 
 
-            def cb_func(obj, state, cb_data)
+            def cb(obj, state, cb_data)
 
         and 'cb_data' are passed along.
 
         """
-        self._umgr.register_callback(self.uid, rpt.UNIT_STATE, cb_func, cb_data)
+        self._umgr.register_callback(self.uid, rpt.UNIT_STATE, cb, cb_data)
 
 
     # --------------------------------------------------------------------------

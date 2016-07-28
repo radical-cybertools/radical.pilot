@@ -7,7 +7,7 @@
     "heartbeat_interval" : 10,
 
     # time until death is declared on missing heartbeats
-    "heartbeat_timeout"  : 30,
+    "heartbeat_timeout"  : 300,
 
     "bridges" : {
         "log_pubsub"     : {"log_level" : "debug",

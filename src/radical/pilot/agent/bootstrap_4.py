@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import time
 import pprint
 import signal
 import setproctitle
@@ -21,7 +22,7 @@ from   .agent_n import Agent_n
 # ==============================================================================
 #
 # avoid undefined vars on finalization / signal handling
-def bootstrap_4(agent_name, agent_part):
+def bootstrap_4(agent_name):
     """
     This method continues where the bootstrapper left off, but will soon pass
     control to the Agent class which will spawn the functional components.
@@ -49,8 +50,6 @@ def bootstrap_4(agent_name, agent_part):
         pilot_id   = cfg['pilot_id']
         session_id = cfg['session_id']
 
-        assert(cfg['partition'] == agent_part)
-
         # set up a logger and profiler
         print "Agent config (%s):\n%s\n\n" % (agent_cfg, pprint.pformat(cfg))
 
@@ -58,6 +57,9 @@ def bootstrap_4(agent_name, agent_part):
         agent = Agent_n(cfg)
         agent.start()
         agent.join()
+        while True:
+            print 'xxx'
+            time.sleep(1)
 
     except SystemExit:
         print "Exit running %s" % agent_name

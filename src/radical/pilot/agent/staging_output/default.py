@@ -42,6 +42,8 @@ class Default(AgentStagingOutputComponent):
     #
     def initialize_child(self):
 
+        self._pwd = os.getcwd()
+
         self.register_input(rps.AGENT_STAGING_OUTPUT_PENDING, 
                             rpc.AGENT_STAGING_OUTPUT_QUEUE, self.work)
 
@@ -67,8 +69,11 @@ class Default(AgentStagingOutputComponent):
     #
     def _handle_unit(self, unit):
 
-        uid     = unit['uid']
-        sandbox = ru.Url(unit["sandbox"]).path
+        uid = unit['uid']
+
+        # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
+        #       class definition.
+        sandbox = '%s/%s' % (self._pwd, uid)
 
         ## parked from unit state checker: unit postprocessing
         if os.path.isfile(unit['stdout_file']):
@@ -90,9 +95,9 @@ class Default(AgentStagingOutputComponent):
                 unit['stderr'] += rpu.tail(txt)
 
         if 'RADICAL_PILOT_PROFILE' in os.environ:
-            if os.path.isfile("%s/PROF" % unit['sandbox']):
+            if os.path.isfile("%s/PROF" % sandbox):
                 try:
-                    with open("%s/PROF" % unit['sandbox'], 'r') as prof_f:
+                    with open("%s/PROF" % sandbox, 'r') as prof_f:
                         txt = prof_f.read()
                         for line in txt.split("\n"):
                             if line:
@@ -115,7 +120,7 @@ class Default(AgentStagingOutputComponent):
         #       don't need to advance those units anymore, but can make them
         #       final.
         if unit['target_state'] != rps.DONE:
-            self.advance(unit, unit['target_state'], publish=True, push=False)
+            self.advance(unit, state=unit['target_state'], publish=True, push=False)
             return
 
         # check if we have any staging directives to be enacted in this
@@ -135,8 +140,7 @@ class Default(AgentStagingOutputComponent):
 
             # we have actionables, thus we need staging area
             # TODO: optimization: staging_area might already exist
-            pilot_sandbox = ru.Url(self._cfg['pilot_sandbox']).path
-            staging_area  = os.path.join(pilot_sandbox, self._cfg['staging_area'])
+            staging_area = '%s/%s' % (self._pwd, self._cfg['staging_area'])
 
             self._prof.prof("create  staging_area", uid=uid, msg=staging_area)
             rpu.rec_makedir(staging_area)

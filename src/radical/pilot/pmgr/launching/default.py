@@ -6,21 +6,23 @@ __license__   = "MIT"
 import os
 import copy
 import math
+import time
 import pprint
 import shutil
 import tempfile
 import threading
 
-import subprocess as sp
+import subprocess           as sp
+import threading            as mt
 
 import saga                 as rs
 import saga.utils.pty_shell as rsup
 import radical.utils        as ru
 
-from .... import pilot     as rp
-from ...  import utils     as rpu
-from ...  import states    as rps
-from ...  import constants as rpc
+from .... import pilot      as rp
+from ...  import utils      as rpu
+from ...  import states     as rps
+from ...  import constants  as rpc
 
 from .base import PMGRLaunchingComponent
 
@@ -33,9 +35,10 @@ DEFAULT_VIRTENV       = '%(global_sandbox)s/ve'
 DEFAULT_VIRTENV_MODE  = 'update'
 DEFAULT_AGENT_CONFIG  = 'default'
 
-JOB_CHECK_INTERVAL    = 60  # seconds between runs of the job state check loop
-JOB_CHECK_MAX_MISSES  =  3  # number of times to find a job missing before
-                            # declaring it dead
+JOB_CANCEL_DELAY      = 120  # seconds between cancel signal and job kill
+JOB_CHECK_INTERVAL    =  60  # seconds between runs of the job state check loop
+JOB_CHECK_MAX_MISSES  =   3  # number of times to find a job missing before
+                             # declaring it dead
 
 LOCAL_SCHEME = 'file'
 BOOTSTRAPPER = "bootstrap_1.sh"
@@ -73,9 +76,9 @@ class Default(PMGRLaunchingComponent):
         self._mod_dir       = os.path.dirname(os.path.abspath(__file__))
         self._root_dir      = "%s/../../"   % self._mod_dir  
         self._conf_dir      = "%s/configs/" % self._root_dir 
-        
+
         # FIXME: make interval configurable
-        self.register_timed_cb(self._pilot_watcher_cb, timer=1.0)
+        self.register_timed_cb(self._pilot_watcher_cb, timer=10.0)
         
         # we listen for pilot cancel commands
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
@@ -88,18 +91,24 @@ class Default(PMGRLaunchingComponent):
     #
     def finalize_child(self):
 
+        self._log.debug('finalize child')
+        # avoid shutdown races:
+        
+        self.unregister_timed_cb(self._pilot_watcher_cb)
+        self.unregister_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
+
         with self._cache_lock:
-            for js in self._saga_js_cache.values():
+            for url,js in self._saga_js_cache.iteritems():
+                self._log.debug('close  js to %s', url)
                 js.close()
+                self._log.debug('closed js to %s', url)
             self._saga_js_cache.clear()
+        self._log.debug('finalized child')
 
 
     # --------------------------------------------------------------------------
     #
     def _pmgr_control_cb(self, topic, msg):
-
-        # wait for 'terminate' commands, but only accept those where 'src' is
-        # either myself, my session, or my owner
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -107,6 +116,12 @@ class Default(PMGRLaunchingComponent):
         self._log.debug('launcher got %s', msg)
 
         if cmd == 'cancel_pilots':
+
+            # on cancel_pilot requests, we forward the DB entries via MongoDB,
+            # by pushing a pilot update.  We also mark the pilot for
+            # cancelation, so that the pilot watcher can cancel the job after
+            # JOB_CANCEL_DELAY seconds, in case the pilot did not react on the
+            # command in time.
 
             pmgr = arg['pmgr']
             pids = arg['uids']
@@ -120,80 +135,15 @@ class Default(PMGRLaunchingComponent):
 
             self._log.info('received pilot_cancel command (%s)', pids)
 
-            pilots = list()
-            tc     = rs.task.Container()
+            # send the cancelation equest to the pilots
+            self._session._dbs.pilot_command('cancel_pilot', [], pids)
+
+            # recod time of request, so that forceful termination can happen
+            # after a certain delay
+            now = time.time()
             with self._pilots_lock:
-
                 for pid in pids:
-
-                    if pid not in self._pilots:
-                        self._log.error('unknown: %s', pid)
-                        raise ValueError('unknown pilot %s' % pid)
-
-                    pilots.append(self._pilots[pid]['pilot'])
-                    tc.add(self._pilots[pid]['job'])
-
-            tc.cancel()
-            tc.wait()
-
-            for pilot in pilots:
-
-                pid = pilot['uid']
-
-                # we don't want the watcher checking for this pilot anymore
-                with self._check_lock:
-                    self._checking.remove(pid)
-
-                # FIXME: where is my bulk?
-                out, err, log  = self._get_pilot_logs(pilot)
-                pilot['out']   = out
-                pilot['err']   = err
-                pilot['log']   = log
-                pilot['state'] = rps.CANCELED
-
-            self.advance(pilots, push=False, publish=True)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_pilot_logs(self, pilot):
-
-        s_out = None
-        s_err = None
-        s_log = None
-
-        # attempt to get stdout/stderr/log.  We only expect those if pilot was
-        # attempting launch at some point
-        # FIXME: check state
-        # FIXME: we have many different log files - should we fetch more? all?
-
-        MAX_IO_LOGLENGTH = 10240    # 10k should be enough for anybody...
-
-        try:
-            n_out = "%s/%s/%s" % (pilot['sandbox'], self._session.uid, 'agent.out')
-            f_out = rs.filesystem.File(n_out, session=self._session)
-            s_out = f_out.read()[-MAX_IO_LOGLENGTH:]
-            f_out.close ()
-        except Exception as e:
-            s_out = 'stdout is not available (%s)' % e
-
-        try:
-            n_err = "%s/%s/%s" % (pilot['sandbox'], self._session.uid, 'agent.err')
-            f_err = rs.filesystem.File(n_err, session=self._session)
-            s_err = f_err.read()[-MAX_IO_LOGLENGTH:]
-            f_err.close ()
-        except Exception as e:
-            s_err = 'stderr is not available (%s)' % e
-
-        try:
-            n_log = "%s/%s/%s" % (pilot['sandbox'], self._session.uid, 'agent.log')
-            f_log = rs.filesystem.File(n_log, session=self._session)
-            s_log = f_log.read()[-MAX_IO_LOGLENGTH:]
-            f_log.close ()
-        except Exception as e:
-            s_log = 'log is not available (%s)' % e
-
-        return s_out, s_err, s_log
+                    self._pilots[pid]['pilot']['cancel_requested'] = now
 
 
     # --------------------------------------------------------------------------
@@ -218,7 +168,7 @@ class Default(PMGRLaunchingComponent):
         # we don't want to lock our members all the time.  For that reason we
         # use a copy of the pilots_tocheck list and iterate over that, and only
         # lock other members when they are manipulated.
-
+        
         tc = rs.job.Container()
         with self._pilots_lock, self._check_lock:
 
@@ -233,29 +183,83 @@ class Default(PMGRLaunchingComponent):
         # to a caching of state information, and we thus have cache hits when
         # querying the pilots individually
 
-        pilots = list()
+        final_pilots = list()
         with self._pilots_lock, self._check_lock:
             for pid in self._checking:
                 state = self._pilots[pid]['job'].state
                 if state in [rs.job.DONE, rs.job.FAILED, rs.job.CANCELED]:
-                    pilots.append(self._pilots[pid]['pilot'])
+                    pilot = self._pilots[pid]['pilot']
+                    if state == rs.job.DONE    : pilot['state'] = rps.DONE
+                    if state == rs.job.FAILED  : pilot['state'] = rps.FAILED
+                    if state == rs.job.CANCELED: pilot['state'] = rps.CANCELED
+                    final_pilots.append(pilot)
 
-        if not pilots:
-            # no final pilots
+        if final_pilots:
+
+            for pilot in final_pilots:
+
+                with self._check_lock:
+                    # stop monitoring this pilot
+                    self._checking.remove(pilot['uid'])
+
+            self.advance(final_pilots, push=False, publish=True)
+
+        # all checks are done, final pilots are weeded out.  Now check if any
+        # pilot is scheduled for cancellation and is overdue, and kill it
+        # forcefully.
+        to_cancel  = list()
+        to_advance = list()
+        with self._pilots_lock:
+
+            for pid in self._pilots:
+
+                pilot   = self._pilots[pid]['pilot']
+                time_cr = pilot.get('cancel_requested')
+
+                # check if the pilot is final meanwhile
+                if pilot['state'] in rps.FINAL:
+                    continue
+
+                if time_cr and time_cr + JOB_CANCEL_DELAY < time.time():
+                    del(pilot['cancel_requested'])
+                    to_cancel.append(pid)
+
+        if not to_cancel:
             return
 
-        for pilot in pilots:
+        tc = rs.task.Container()
+        with self._pilots_lock:
 
-            out, err, log = self._get_pilot_logs(pilot)
-            pilot['out'] = out
-            pilot['err'] = err
-            pilot['log'] = log
+            for pid in to_cancel:
 
-            with self._check_lock:
-                # stop monitoring this pilot
-                self._checking.remove(pilot['uid'])
+                if pid not in self._pilots:
+                    self._log.error('unknown: %s', pid)
+                    raise ValueError('unknown pilot %s' % pid)
 
-        self.advance(pilots, rps.CANCELED, push=False, publish=True)
+                pilot = self._pilots[pid]['pilot']
+                job   = self._pilots[pid]['job']
+                to_advance.append(pilot)
+                tc.add(job)
+
+        tc.cancel()
+        tc.wait()
+
+        # we don't want the watcher checking for this pilot anymore
+        with self._check_lock:
+            for pid in to_cancel:
+                if pid in self._checking:
+                    self._checking.remove(pid)
+
+        # set canceled state
+        to_advance = list()
+        with self._pilots_lock:
+
+            for pid in to_cancel:
+
+                pilot = self._pilots[pid]['pilot']
+                to_advance.append(pilot)
+
+        self.advance(to_advance, state=rps.CANCELED, push=False, publish=True)
 
 
     # --------------------------------------------------------------------------
@@ -337,29 +341,34 @@ class Default(PMGRLaunchingComponent):
         rcfg = self._session.get_resource_config(resource, schema)
         sid  = self._session.uid
 
+        # we create a fake session_sandbox with all pilot_sandboxes in /tmp, and
+        # then tar it up.  Once we untar that tarball on the target machine, we
+        # should have all sandboxes and all files required to bootstrap the
+        # pilots
+        # FIXME: on untar, there is a race between multiple launcher components
+        #        within the same session toward the same target resource.
+        tmp_dir  = tempfile.mkdtemp(prefix='rp_agent_tar_dir')
+        tar_name = '%s.%s.tgz' % (sid, self.uid)
+        tar_tgt  = '%s/%s'     % (tmp_dir, tar_name)
+        tar_url  = rs.Url('file://localhost/%s' % tar_tgt)
+
+        # we need the session sandbox url, but that is (at least in principle)
+        # dependent on the schema to use for pilot startup.  So we confirm here
+        # that the bulk is consistent wrt. to the schema.
+        # FIXME: if it is not, it needs to be splitted into schema-specific
+        # sub-bulks
+        schema = pilots[0]['description'].get('access_schema')
+        for pilot in pilots[1:]:
+            assert(schema == pilot['description'].get('access_schema'))
+
+        session_sandbox = self._session._get_session_sandbox(pilots[0]).path
+
         ft_list = list()  # files to stage
         jd_list = list()  # jobs  to submit
         for pilot in pilots:
             info = self._prepare_pilot(resource, rcfg, pilot)
             ft_list += info['ft']
             jd_list.append(info['jd'])
-
-        # we create a fake session_sandbox with all pilot_sandboxes in /tmp, and
-        # then tar it up.  Once we untar that tarball on the target machine, we
-        # should have all sandboxes and all files required to bootstrap the
-        # pilots
-        # NOTE: on untar, there is a race between multiple launcher components
-        #       within the same session toward the same target resource.
-        tmp_dir  = tempfile.mkdtemp(prefix='rp_agent_tar_dir')
-        tar_name = '%s.%s.tgz' % (sid, self.uid)
-        tar_tgt  = '%s/%s'     % (tmp_dir, tar_name)
-        tar_url  = rs.Url('file://localhost/%s' % tar_tgt)
-
-        global_sandbox  = self._session._get_global_sandbox (pilot).path
-        session_sandbox = self._session._get_session_sandbox(pilot).path
-        pilot_sandbox   = self._session._get_pilot_sandbox  (pilot).path
-
-        # FIXME: pilot_sandbox differs per pilot!
 
         for ft in ft_list:
             src     = os.path.abspath(ft['src'])
@@ -369,7 +378,13 @@ class Default(PMGRLaunchingComponent):
 
             if not os.path.isdir('%s/%s' % (tmp_dir, tgt_dir)):
                 os.makedirs('%s/%s' % (tmp_dir, tgt_dir))
-            os.symlink(src, '%s/%s' % (tmp_dir, tgt))
+
+            if src == '/dev/null' :
+                # we want an empty file -- touch it (tar will refuse to 
+                # handle a symlink to /dev/null)
+                open('%s/%s' % (tmp_dir, tgt), 'a').close()
+            else:
+                os.symlink(src, '%s/%s' % (tmp_dir, tgt))
 
         # tar.  If any command fails, this will raise.
         cmd = "cd %s && tar zchf %s *" % (tmp_dir, tar_tgt)
@@ -407,30 +422,38 @@ class Default(PMGRLaunchingComponent):
         js_hop  = rcfg.get('job_manager_hop', js_ep)
         js_url  = rs.Url(js_hop)
 
+        # well, we actually don't need to talk to the lrms, but only need
+        # a shell on the headnode.  That seems true for all LRMSs we use right
+        # now.  So, lets convert the URL:
+        if '+' in js_url.scheme:
+            parts = js_url.scheme.split('+')
+            if   'ssh'    in parts: js_url.scheme = 'ssh'
+            elif 'gsissh' in parts: js_url.scheme = 'gsissh'
+            elif 'fork'   in parts: js_url.scheme = 'fork'
+
         with self._cache_lock:
-            if js_url in self._saga_js_cache:
-                js_tmp = self._saga_js_cache[js_url]
+            if  js_url in self._saga_js_cache:
+                js_tmp  = self._saga_js_cache[js_url]
             else:
-                js_tmp = rs.job.Service(js_url, session=self._session)
+                js_tmp  = rs.job.Service(js_url, session=self._session)
                 self._saga_js_cache[js_url] = js_tmp
-        cmd = "tar zmxvf %s/%s -C /" % (session_sandbox, tar_name)
+     ## cmd = "tar zmxvf %s/%s -C / ; rm -f %s" % \
+        cmd = "tar zmxvf %s/%s -C /" % \
+                (session_sandbox, tar_name)
         j = js_tmp.run_job(cmd)
         j.wait()
 
         self._log.debug('tar cmd : %s', cmd)
         self._log.debug('tar done: %s, %s, %s', j.state, j.stdout, j.stderr)
 
-        if js_ep == js_hop:
-            # we can use the same job service for pilot submission
-            js = js_tmp
-        else:
-            # we need a different js for actual job submission
-            with self._cache_lock:
-                if js_ep in self._saga_js_cache:
-                    js = self._saga_js_cache[js_ep]
-                else:
-                    js = rs.job.Service(js_ep, session=self._session)
-                    self._saga_js_cache[js_ep] = js
+        # look up or create JS for actual pilot submission.  This might result
+        # in the same JS, or not.
+        with self._cache_lock:
+            if js_ep in self._saga_js_cache:
+                js = self._saga_js_cache[js_ep]
+            else:
+                js = rs.job.Service(js_ep, session=self._session)
+                self._saga_js_cache[js_ep] = js
 
         # now that the scripts are in place and configured, 
         # we can launch the agent
@@ -451,7 +474,6 @@ class Default(PMGRLaunchingComponent):
 
             pilot = None
             for p in pilots:
-                self._log.debug(' === checking job name for %s:%s:%s', j.id, j.name, j.get_name())
                 if p['uid'] == j.name:
                     pilot = p
                     break
@@ -675,11 +697,20 @@ class Default(PMGRLaunchingComponent):
             queue = default_queue
 
         if  cleanup and isinstance (cleanup, bool) :
-            cleanup = 'luve'    #  l : log files
-                                #  u : unit work dirs
-                                #  v : virtualenv
-                                #  e : everything (== pilot sandbox)
-                                #
+            #  l : log files
+            #  u : unit work dirs
+            #  v : virtualenv
+            #  e : everything (== pilot sandbox)
+            if shared_filesystem:
+                cleanup = 'luve'
+            else:
+                # we cannot clean the sandbox from within the agent, as the hop
+                # staging would then fail, and we'd get nothing back.
+                # FIXME: cleanup needs to be done by the pmgr.launcher, or
+                #        someone else, really, after fetching all logs and 
+                #        profiles.
+                cleanup = 'luv'
+
             # we never cleanup virtenvs which are not private
             if virtenv_mode is not 'private' :
                 cleanup = cleanup.replace ('v', '')
@@ -695,8 +726,9 @@ class Default(PMGRLaunchingComponent):
         # cores can contain a partitioning specification like # 32:32:64 
         # (3 partitions with 32, 32 and 64 cores each), so we need to
         # derive the actual core count.
-        total_cores = 0
-        partitions  = 0
+        total_cores  = 0
+        n_partitions = 0
+        partitions   = list()
 
         # if cores_per_node is set (!= None), then we need to allocation full
         # nodes, and thus round up.  We need to do this for each partition, as
@@ -706,17 +738,22 @@ class Default(PMGRLaunchingComponent):
             cores_per_node = int(cores_per_node)
             new_cores      = ''
             for c in cores.split(':'):
-                part_cores   = int(cores_per_node
-                             * math.ceil(float(c)/cores_per_node))
-                total_cores += part_cores
-                new_cores   += '%d:' % part_cores
-                partitions  += 1
-            cores = new_cores[:-1]  # remove trailing ':'
+                part_cores    = int(cores_per_node
+                              * math.ceil(float(c)/cores_per_node))
+                total_cores  += part_cores
+                new_cores    += '%d:' % part_cores
+                partitions.append({
+                    'n'     : n_partitions, 
+                    'cores' : part_cores})
+                n_partitions += 1
         else:
             # otherwise, total cores is just the sum of the given partitions.
             for c in cores.split(':'):
                 total_cores += int(c)
-                partitions  += 1
+                partitions.append({
+                    'n'     : n_partitions, 
+                    'cores' : int(c)})
+                n_partitions  += 1
 
         # set mandatory args
         bootstrap_args  = ""
@@ -724,10 +761,11 @@ class Default(PMGRLaunchingComponent):
         bootstrap_args += " -p '%s'" % pid
         bootstrap_args += " -s '%s'" % sid
         bootstrap_args += " -m '%s'" % virtenv_mode
-        bootstrap_args += " -n '%d'" % partitions
+        bootstrap_args += " -n '%d'" % n_partitions
         bootstrap_args += " -r '%s'" % rp_version
         bootstrap_args += " -b '%s'" % python_dist
         bootstrap_args += " -v '%s'" % virtenv
+        bootstrap_args += " -y '%d'" % runtime
 
         # set optional args
         if lrms == "CCM":           bootstrap_args += " -c"
@@ -754,20 +792,6 @@ class Default(PMGRLaunchingComponent):
 
         ru.dict_merge(agent_cfg, agent_base_cfg, ru.PRESERVE)
 
-        # depending on the number of partitions, we want to massage the agent
-        # config a little.  At the moment, we simply consider the agent configs
-        # to apply identically to each partition, thus we replicate all
-        # sub-agent config session for all partitions
-        layout = copy.deepcopy(agent_cfg['agent_layout'])
-        agent_cfg['agent_layout'] = dict()
-        for sub_agent in layout:
-            agent_id = int(sub_agent.split('_', 1)[1])
-            for p in range(partitions):
-                agent_name = 'agent_%d_%s' % (p, agent_id)
-                agent_cfg['agent_layout'][agent_name] = layout[sub_agent]
-                agent_cfg['agent_layout'][agent_name]['partition'] = p
-
-        agent_cfg['cores']              = cores
         agent_cfg['debug']              = os.environ.get('RADICAL_PILOT_AGENT_VERBOSE', 
                                                          self._log.getEffectiveLevel())
         agent_cfg['lrms']               = lrms
@@ -775,7 +799,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['scheduler']          = agent_scheduler
         agent_cfg['runtime']            = runtime
         agent_cfg['pilot_id']           = pid
-        agent_cfg['logdir']             = pilot_sandbox
+        agent_cfg['logdir']             = '.'
         agent_cfg['pilot_sandbox']      = pilot_sandbox
         agent_cfg['session_sandbox']    = session_sandbox
         agent_cfg['global_sandbox']     = global_sandbox
@@ -787,19 +811,36 @@ class Default(PMGRLaunchingComponent):
         pilot['cfg'] = agent_cfg
 
         # ------------------------------------------------------------------
-        # Write agent config dict to a json file in pilot sandbox.
+        # Write agent config dicts to a json file in pilot sandbox, one per
+        # partition
+        for partition in partitions:
 
-        agent_cfg_name = 'agent.cfg'
-        cfg_tmp_handle, cfg_tmp_file = tempfile.mkstemp(prefix='rp.agent_cfg.')
-        os.close(cfg_tmp_handle)  # file exists now
+            agent_uid              = 'agent.%d' % partition['n']
 
-        # Convert dict to json file
-        self._log.debug("Write agent cfg to '%s'.", cfg_tmp_file)
-        ru.write_json(agent_cfg, cfg_tmp_file)
+            agent_cfg['cores']     = partition['cores']
+            agent_cfg['partition'] = partition['n']
+            agent_cfg['owner']     = agent_uid
 
-        ret['ft'].append({'src' : cfg_tmp_file, 
-                          'tgt' : '%s/%s' % (pilot_sandbox, agent_cfg_name),
-                          'rem' : True})  # purge the tmp file after packing
+            cfg_name = '%s.cfg' % agent_uid
+            cfg_tmp_handle, cfg_tmp_file = tempfile.mkstemp(prefix='rp.agent_cfg.')
+            os.close(cfg_tmp_handle)  # file exists now
+
+            # Convert dict to json file
+            self._log.debug("Write agent cfg to '%s'.", cfg_tmp_file)
+            ru.write_json(agent_cfg, cfg_tmp_file)
+
+            ret['ft'].append({'src' : cfg_tmp_file, 
+                              'tgt' : '%s/%s/%s' % (pilot_sandbox, agent_uid, cfg_name),
+                              'rem' : True})  # purge the tmp file after packing
+
+        # ----------------------------------------------------------------------
+        # we also touch the log and profile tarballs in the target pilot sandbox
+        ret['ft'].append({'src' : '/dev/null',
+                          'tgt' : '%s/%s' % (pilot_sandbox, '%s.log.tgz' % pid),
+                          'rem' : False})  # don't remove /dev/null
+        ret['ft'].append({'src' : '/dev/null',
+                          'tgt' : '%s/%s' % (pilot_sandbox, '%s.prof.tgz' % pid),
+                          'rem' : False})  # don't remove /dev/null
 
         # check if we have a sandbox cached for that resource.  If so, we have
         # nothing to do.  Otherwise we create the sandbox and stage the RP
@@ -851,7 +892,6 @@ class Default(PMGRLaunchingComponent):
             bootstrap_tgt = '%s/%s' % ('.', BOOTSTRAPPER)
 
         jd.name                  = pid
-        self._log.debug(' === set jd name to %s'% pid)
         jd.executable            = "/bin/bash"
         jd.arguments             = ['-l %s' % bootstrap_tgt, bootstrap_args]
         jd.working_directory     = pilot_sandbox
@@ -879,22 +919,25 @@ class Default(PMGRLaunchingComponent):
             jd.file_transfer.extend([
                 'site:%s/%s > %s' % (session_sandbox, BOOTSTRAPPER,   BOOTSTRAPPER),
                 'site:%s/%s > %s' % (pilot_sandbox,   agent_cfg_name, agent_cfg_name),
-                'site:%s/%s.log.tgz < %s.log.tgz' % (session_sandbox, pid, pid)
+                'site:%s/%s.log.tgz > %s.log.tgz' % (pilot_sandbox, pid, pid),
+                'site:%s/%s.log.tgz < %s.log.tgz' % (pilot_sandbox, pid, pid)
             ])
 
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                jd.file_transfer.extend([
+                    'site:%s/%s.prof.tgz > %s.prof.tgz' % (pilot_sandbox, pid, pid),
+                    'site:%s/%s.prof.tgz < %s.prof.tgz' % (pilot_sandbox, pid, pid)
+                ])
+
             for sdist in sdist_names:
-                jd.file_transfer.append(
-                    'site:%s/%s > %s' % (session_sandbox, sdist, sdist))
+                jd.file_transfer.extend([
+                    'site:%s/%s > %s' % (session_sandbox, sdist, sdist)
+                ])
 
             if stage_cacerts:
-                jd.file_transfer.append(
+                jd.file_transfer.extend([
                     'site:%s/%s > %s' % (session_sandbox, cc_name, cc_name)
-                )
-
-            if 'RADICAL_PILOT_PROFILE' in os.environ:
-                jd.file_transfer.append(
-                    'site:%s/%s.prof.tgz < %s.prof.tgz' % (session_sandbox, pid, pid)
-                )
+                ])
 
         self._log.debug("Bootstrap command line: %s %s" % (jd.executable, jd.arguments))
 
