@@ -94,7 +94,7 @@ class UnitManager(rpu.Component):
         self._rec_id      = 0       # used for session recording
 
         for m in rpt.UMGR_METRICS:
-            self._callbacks[m] = list()
+            self._callbacks[m] = dict()
 
         cfg = ru.read_json("%s/configs/umgr_%s.json" \
                 % (os.path.dirname(__file__),
@@ -178,6 +178,10 @@ class UnitManager(rpu.Component):
 
         self._log.debug("closing %s", self.uid)
         self._log.report.info('<<close unit manager')
+
+        # we don't want any callback invokations during shutdown
+        # FIXME: really?
+        self._callbacks = dict()
 
         self._terminate.set()
         self._controller.stop()
@@ -334,12 +338,15 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _call_unit_callbacks(self, unit, state):
+    def _call_unit_callbacks(self, unit_obj, state):
 
-        for cb, cb_data in self._callbacks[rpt.UNIT_STATE]:
+        for cb_name, cb_val in self._callbacks[rpt.UNIT_STATE].iteritems():
 
-            if cb_data: cb(unit, state, cb_data)
-            else      : cb(unit, state)
+            cb      = cb_val['cb']
+            cb_data = cb_val['cb_data']
+            
+            if cb_data: cb(unit_obj, state, cb_data)
+            else      : cb(unit_obj, state)
 
 
     # --------------------------------------------------------------------------
@@ -836,7 +843,39 @@ class UnitManager(rpu.Component):
             raise ValueError ("Metric '%s' is not available on the unit manager" % metric)
 
         with self._cb_lock:
-            self._callbacks[metric].append([cb, cb_data])
+            cb_name = cb.__name__
+            self._callbacks[metric][cb_name] = {'cb'      : cb, 
+                                                'cb_data' : cb_data}
+
+
+    # --------------------------------------------------------------------------
+    #
+    def unregister_callback(self, cb=None, metric=None):
+
+
+        if metric and metric not in rpt.UMGR_METRICS :
+            raise ValueError ("Metric '%s' is not available on the unit manager" % metric)
+
+        with self._cb_lock:
+
+            if not metric:
+                metrics = rpt.UMGR_METRICS
+            else:
+                metrics = [metric]
+
+            for metric in metrics:
+
+                if cb:
+                    to_delete = [cb.__name__]
+                else:
+                    to_delete = self._callbacks[metric].keys()
+
+                for cb_name in to_delete:
+
+                    if cb_name not in self._callbacks[metric]:
+                        raise ValueError("Callback '%s' is not registered" % cb_name)
+
+                    del(self._callbacks[metric][cb_name])
 
 
 # ------------------------------------------------------------------------------

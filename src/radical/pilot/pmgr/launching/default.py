@@ -35,7 +35,7 @@ DEFAULT_VIRTENV       = '%(global_sandbox)s/ve'
 DEFAULT_VIRTENV_MODE  = 'update'
 DEFAULT_AGENT_CONFIG  = 'default'
 
-JOB_CANCEL_DELAY      = 120  # seconds between cancel signal and job kill
+JOB_CANCEL_DELAY      = 12000# seconds between cancel signal and job kill
 JOB_CHECK_INTERVAL    =  60  # seconds between runs of the job state check loop
 JOB_CHECK_MAX_MISSES  =   3  # number of times to find a job missing before
                              # declaring it dead

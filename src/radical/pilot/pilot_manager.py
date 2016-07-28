@@ -88,7 +88,7 @@ class PilotManager(rpu.Component):
         self._rec_id      = 0       # used for session recording
 
         for m in rpt.PMGR_METRICS:
-            self._callbacks[m] = list()
+            self._callbacks[m] = dict()
 
 
         cfg = ru.read_json("%s/configs/pmgr_%s.json" \
@@ -153,6 +153,10 @@ class PilotManager(rpu.Component):
 
         self._log.debug("closing %s", self.uid)
         self._log.report.info('<<close pilot manager')
+
+        # we don't want any callback invokations during shutdown
+        # FIXME: really?
+        self._callbacks = dict()
 
         # If terminate is set, we cancel all pilots. 
         if terminate:
@@ -261,12 +265,15 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _call_pilot_callbacks(self, pilot_obj):
+    def _call_pilot_callbacks(self, pilot_obj, state):
 
-        for cb, cb_data in self._callbacks[rpt.PILOT_STATE]:
+        for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
+
+            cb      = cb_val['cb']
+            cb_data = cb_val['cb_data']
             
-            if cb_data: cb(pilot_obj, pilot_obj.state, cb_data)
-            else      : cb(pilot_obj, pilot_obj.state)
+            if cb_data: cb(pilot_obj, state, cb_data)
+            else      : cb(pilot_obj, state)
 
 
     # --------------------------------------------------------------------------
@@ -344,7 +351,6 @@ class PilotManager(rpu.Component):
                 self._pilots[pilot.uid] = pilot
 
             if self._session._rec:
-                import radical.utils as ru
                 ru.write_json(descr.as_dict(), "%s/%s.batch.%03d.json" \
                         % (self._session._rec, pilot.uid, self._rec_id))
             self._log.report.progress()
@@ -574,10 +580,41 @@ class PilotManager(rpu.Component):
         # FIXME: the signature should be (self, metrics, cb, cb_data)
 
         if metric not in rpt.PMGR_METRICS :
-            raise ValueError ("Metric '%s' is not available on the unit manager" % metric)
+            raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
 
         with self._cb_lock:
-            self._callbacks[metric].append([cb, cb_data])
+            cb_name = cb.__name__
+            self._callbacks[metric][cb_name] = {'cb'      : cb, 
+                                                'cb_data' : cb_data}
+
+
+    # --------------------------------------------------------------------------
+    #
+    def unregister_callback(self, cb, metric=rpt.PILOT_STATE):
+
+        if metric and metric not in rpt.UMGR_METRICS :
+            raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
+
+        with self._cb_lock:
+
+            if not metric:
+                metrics = rpt.PMGR_METRICS
+            else:
+                metrics = [metric]
+
+            for metric in metrics:
+
+                if cb:
+                    to_delete = [cb.__name__]
+                else:
+                    to_delete = self._callbacks[metric].keys()
+
+                for cb_name in to_delete:
+
+                    if cb_name not in self._callbacks[metric]:
+                        raise ValueError("Callback '%s' is not registered" % cb_name)
+
+                    del(self._callbacks[metric][cb_name])
 
 
 # ------------------------------------------------------------------------------

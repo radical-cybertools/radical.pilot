@@ -368,6 +368,12 @@ verify_install()
     fi
     echo ' ok'
 
+    if ! test -z "$RADICAL_DEBUG"
+    then
+        echo 'debug mode: install pudb'
+        pip install pudb || true
+    fi
+
     # FIXME: attempt to load all required modules
     modules='saga radical.utils pymongo hostlist netifaces setproctitle ntplib msgpack zmq'
     for m in $modules

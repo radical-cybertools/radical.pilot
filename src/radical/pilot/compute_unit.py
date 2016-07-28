@@ -15,6 +15,7 @@ from . import constants as rpc
 from . import types     as rpt
 
 from .staging_directives import expand_description
+from .staging_directives import TRANSFER, COPY, LINK, MOVE, STAGING_AREA
 
 
 # ------------------------------------------------------------------------------
@@ -68,10 +69,15 @@ class ComputeUnit(object):
         self._stderr        = None
         self._pilot         = None
         self._sandbox       = None
-        self._callbacks     = list()
+        self._callbacks     = dict()
+
+        for m in rpt.UMGR_METRICS:
+            self._callbacks[m] = dict()
 
         # we always invke the default state cb
-        self._callbacks.append([self._default_state_cb, None])
+        self._callbacks[rpt.UNIT_STATE][self._default_state_cb.__name__] = {
+                'cb'      : self._default_state_cb, 
+                'cb_data' : None}
 
         # sanity checks on description
         for check in ['cores']:
@@ -130,34 +136,43 @@ class ComputeUnit(object):
 
         # _update() calls can happen out of order -- it is up to *this* method
         # to make sure that the update results in a consistent state.
-        #
-        # FIXME: add sanity checks
+
+        assert(unit_dict['uid'] == self.uid)
 
         current = self.state
         target  = unit_dict['state']
 
         # we update all fields
-        for key,val in unit_dict.iteritems():
-            # FIXME: well, this is ugly...  we should maintain all state in
-            #        a dict.
-            if key in ['state', 'stdout', 'stderr', 'exit_code', 'pilot', 'sandbox']:
+        # FIXME: well, not all really :/
+        # FIXME: well, this is ugly...  we should maintain all state in
+        #        a dict.
+        for key in ['stdout', 'stderr', 'exit_code', 'pilot', 'sandbox']:
+
+            val = unit_dict.get(key, None)
+            if val:
                 setattr(self, "_%s" % key, val)
 
         new_state, passed = rps._unit_state_progress(current, target)
 
-        # replay all state transitions
         if new_state in [rps.CANCELED, rps.FAILED]:
             # don't replay intermediate states
             passed = passed[-1:]
 
+        # replay all state transitions
         for state in passed:
-            for cb, cb_data in self._callbacks:
+
+            for cb_name, cb_val in self._callbacks[rpt.UNIT_STATE].iteritems():
+
+                cb      = cb_val['cb']
+                cb_data = cb_val['cb_data']
+
+              # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, target, cb_name)
+                
                 self._state = state
                 if cb_data: cb(self, state, cb_data)
                 else      : cb(self, state)
 
-            # also inform pmgr about state change, to collect any callbacks
-            # it has registered globally
+            # ask umgr to invike any global callbacks
             self._umgr._call_unit_callbacks(self, state)
 
         # make sure we end up with the right state

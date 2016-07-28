@@ -6,7 +6,7 @@ __license__   = 'MIT'
 import os
 import sys
 
-os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
+# os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -22,6 +22,11 @@ import radical.utils as ru
 #------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
+
+    session = rp.Session()
+    l = ru.get_logger('radical.pilot', level='DEBUG')
+    l.debug('test')
+    sys.exit()
 
     # we use a reporter class for nicer output
     report = ru.LogReporter(name='radical.pilot')

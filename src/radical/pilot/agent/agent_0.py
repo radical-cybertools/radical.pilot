@@ -376,6 +376,9 @@ class Agent_0(rpu.Worker):
             if cmd == 'cancel_pilot':
                 self._log.info('cancel pilot cmd')
                 self._final_cause = 'cancel'
+        
+              # ru.attach_pudb(logger=self._log)
+
                 self.stop()
 
             elif cmd == 'cancel_unit':
@@ -416,7 +419,6 @@ class Agent_0(rpu.Worker):
         unit_cursor = self._session._dbs._c.find(spec = {'type'    : 'unit',
                                                          'pilot'   : self._pid,
                                                          'control' : 'agent_pending'})
-
         if not unit_cursor.count():
             # no units whatsoever...
             self._log.info("units pulled:    0")
