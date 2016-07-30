@@ -50,14 +50,14 @@
         },
 
         "xsede.stampede" : {
-            "project"  : "TG-TRA100001S:XSEDE_2016_1",
+            "project"  : "TG-MCB090174",
             "queue"    : "development",
             "schema"   : "gsissh",
             "cores"    : 16
         },
 
         "xsede.comet"  : {
-            "project"  : "uic157:XSEDE16Mats",
+            "project"  : "TG-MCB090174",
             "queue"    : "compute",
             "schema"   : "gsissh",
             "cores"    : 64
