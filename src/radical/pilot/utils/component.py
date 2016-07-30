@@ -271,11 +271,10 @@ class Component(mp.Process):
 
         if last > tout:
             self._log.error('heartbeat check failed (%s / %s)', last, tout)
-            ru.cancel_main_thread()
+            ru.cancel_main_thread('usr2')
 
-        else:
-            pass
-          # self._log.debug('heartbeat check ok (%s / %s)', last, tout)
+      # else:
+      #     self._log.debug('heartbeat check ok (%s / %s)', last, tout)
 
         return False # always sleep
 
@@ -295,61 +294,36 @@ class Component(mp.Process):
     #
     @property
     def cfg(self):
-
         return copy.deepcopy(self._cfg)
 
-
-    # --------------------------------------------------------------------------
-    #
     @property
     def session(self):
         return self._session
 
-
-    # --------------------------------------------------------------------------
-    #
     @property
     def uid(self):
         return self._uid
 
-
-    # --------------------------------------------------------------------------
-    #
     @property
     def owner(self):
         return self._owner
 
-
-    # --------------------------------------------------------------------------
-    #
     @property
     def name(self):
         return self._name
 
-
-    # --------------------------------------------------------------------------
-    #
     @property
     def ctype(self):
         return self._ctype
 
-
-    # --------------------------------------------------------------------------
-    #
     @property
     def is_parent(self):
         return self._is_parent
 
-
-    # --------------------------------------------------------------------------
-    #
     @property
     def is_child(self):
         return not self.is_parent
 
-
-    # --------------------------------------------------------------------------
-    #
     @property
     def has_child(self):
         return self.is_parent and self.pid
@@ -364,6 +338,7 @@ class Component(mp.Process):
         child process, after start().
         """
         self._log.debug('initialize_common (NOOP)')
+
 
     # --------------------------------------------------------------------------
     #
@@ -395,6 +370,7 @@ class Component(mp.Process):
 
         self._prof.prof('initialize', uid=self.uid)
         self._log.info('initialize %s',   self.uid)
+        self._log.info('cfg: %s', pprint.pformat(self._cfg))
 
         # all components need at least be able to talk to a control pubsub
         assert('bridges' in self._cfg)
@@ -431,9 +407,6 @@ class Component(mp.Process):
         self._uid        = self._parent_uid
         self._parent_uid = None
 
-        # initialize state
-        self._initialize_common()
-
         # give any derived class the opportunity to perform initialization in
         # the parent context
         self.initialize_parent()
@@ -464,18 +437,6 @@ class Component(mp.Process):
         """
 
         time.sleep(1)
-
-        # we don't have a child, we *are* the child
-        self._is_parent = False
-        self._child_uid = None
-
-        # set process name
-        spt.setproctitle('rp.%s' % self.uid)
-
-        # initialize state
-        self._initialize_common()
-
-        self._log.info('cfg: %s' % pprint.pformat(self._cfg))
 
         # give any derived class the opportunity to perform initialization in
         # the child context
@@ -572,7 +533,22 @@ class Component(mp.Process):
         self_thread     = mt.current_thread()
 
         # call finalizer of deriving classes
+
+        # ----------------------------------------------------------------------
+        # reverse order from _initialize_common
+        #
         self.finalize_common()
+
+        self.unregister_timed_cb(self._profile_flush_cb)
+        self.unregister_timed_cb(self._thread_watcher_cb)
+
+        self.unregister_publisher(rpc.LOG_PUBSUB)
+        self.unregister_publisher(rpc.STATE_PUBSUB)
+        self.unregister_publisher(rpc.CONTROL_PUBSUB)
+        #
+        # ----------------------------------------------------------------------
+      
+
 
         # signal all threads to terminate
         for s in self._subscribers:
@@ -617,7 +593,7 @@ class Component(mp.Process):
         should be used to tear down component state after things have been
         processed.
         """
-        self._log.debug('finalize_common (NOOP)')
+        self._log.debug('TERM : %s finalize_common (NOOP)', self.uid)
 
         # FIXME: finaliers should unrergister all callbacks/idlers/subscribers
 
@@ -626,12 +602,12 @@ class Component(mp.Process):
     #
     def _finalize_parent(self):
 
-        self._log.debug('_finalize_parent')
+        self._log.debug('TERM : %s _finalize_parent', self.uid)
 
         self.finalize_parent()
         self._finalize_common()
 
-        self._log.debug('_finalize_parent done')
+        self._log.debug('TERM : %s _finalize_parent done', self.uid)
 
 
     # --------------------------------------------------------------------------
@@ -642,7 +618,7 @@ class Component(mp.Process):
         the context of the parent process, upon stop(), and should be used to
         tear down component state after things have been processed.
         """
-        self._log.debug('finalize_parent (NOOP)')
+        self._log.debug('TERM : %s finalize_parent (NOOP)', self.uid)
 
 
     # --------------------------------------------------------------------------
@@ -652,22 +628,22 @@ class Component(mp.Process):
         # FIXME: revert actions from _initialize_child
 
         try:
-            self._log.debug('_finalize_child')
+            self._log.debug('TERM : %s _finalize_child', self.uid)
 
             self.finalize_child()
             self._finalize_common()
 
         except Exception as e:
-            self._log.warn('%s error %s [%s]', self.uid, e, type(e))
+            self._log.warn('TERM : %s error %s [%s]', self.uid, e, type(e))
        
         except SystemExit:
-            self._log.warn('%s exit', self.uid)
+            self._log.warn('TERM : %s exit', self.uid)
 
         except KeyboardInterrupt:
-            self._log.warn('%s intr', self.uid)
+            self._log.warn('TERM : %s intr', self.uid)
        
         finally:
-            self._log.debug('_finalize_child done')
+            self._log.debug('TERM : %s _finalize_child done', self.uid)
 
 
     # --------------------------------------------------------------------------
@@ -678,7 +654,7 @@ class Component(mp.Process):
         the context of the child process, upon stop(), and should be used to
         tear down component state after things have been processed.
         """
-        self._log.debug('finalize_child (NOOP)')
+        self._log.debug('TERM : %s finalize_child (NOOP)', self.uid)
 
 
     # --------------------------------------------------------------------------
@@ -696,8 +672,10 @@ class Component(mp.Process):
             pid = fork()
 
             if pid:
+                self._initialize_common()
                 self._initialize_parent()
             else:
+                self._initialize_common()
                 self._initialize_child()
                 run()
 
@@ -705,6 +683,7 @@ class Component(mp.Process):
         fork itself (that happens in the base class).  So we do:
 
         def run():
+            self._initialize_common()
             self._initialize_child()
             ...
 
@@ -719,17 +698,18 @@ class Component(mp.Process):
         if spawn:
             self._parent_uid = self._uid
             self._child_uid  = self._uid + '.child'
-            self._uid        = self._child_uid
             mp.Process.start(self)  # fork happens here
         else:
             self._parent_uid = self._uid
             self._child_uid  = None
 
-
         try:
             # this is now the parent process context
+            self._initialize_common()
             self._initialize_parent()
         except Exception as e:
+            # FIXME we might have no self._log here
+            self._log.debug('TERM : %s except in start', self.uid)
             ru.cancel_main_thread()
             raise
 
@@ -739,17 +719,26 @@ class Component(mp.Process):
     def stop(self):
         """
         Shut down the process hosting the event loop.  If the parent calls
-        stop(), the child is simply terminated (no child finalizers are
-        called).  If the child calls stop() itself, child finalizers are called
-        before calling exit.
+        stop(), the child is terminated, and the child process is responsible
+        for finilization in its own scope: when the child calls stop() itself, 
+        child finalizers are called before exit.  The child thus catches the
+        termoination signal.
 
         stop() can be called multiple times, and can be called from the
-        MainThread, or from sub thread (such as callback invocations) -- but it
-        should notes that, if called from a callback, it may not always be able
-        to tear down all threads, specifically not the callback thread itself
-        and the MainThread.  Safest is calling it once from each the parent's
-        and child's MainThread.  Since the finalizers are only called on the
-        first invocation to stop(), finalizers can happen in callback threads!
+        MainThread, or from any sub thread (such as callbacks).  The
+        finalizers are only called in the MainThread, so only once any subthread
+        originating termination has been communicated to the MainThread.
+
+        It is in general important that all finalization steps are executed in
+        reverse order of their initialization -- any deviation from that scheme
+        should be carefully evaluated.  This specifically holds for the
+        overloaded methods:
+
+            - initialize_common / finalize_common
+            - initialize_parent / finalize_parent
+            - initialize_child  / finalize_child
+
+        but also for their private counterparts defined in this base class.
 
         stop() basically performs:
 
@@ -762,9 +751,9 @@ class Component(mp.Process):
                 sys.exit()
         """
 
-        self._log.debug('stop %s (%s : %s : %s) [%s]' % (self.uid, os.getpid(),
+        self._log.debug('TERM : stop %s (%s : %s : %s) [%s]', self.uid, os.getpid(),
                         self.pid, mt.current_thread().name,
-                        ru.get_caller_name()))
+                        ru.get_caller_name())
 
         # avoid races with any idle checkers
         # FIXME: that is useless w/o actually joining them
@@ -776,7 +765,7 @@ class Component(mp.Process):
 
             # signal the child -- if one exists
             if self.has_child:
-                self._log.info("stop    %s" % self.pid)
+                self._log.info("TERM stop    %s (child)", self.pid)
                 
                 # The mp stop can race with internal process termination.  We catch the
                 # respective OSError here.
@@ -789,18 +778,18 @@ class Component(mp.Process):
                 try:
                     self.terminate()
                 except OSError as e:
-                    self._log.warn('%s stop: child is gone', self.uid)
+                    self._log.warn('TERM : %s stop: child is gone', self.uid)
                 except AttributeError as e:
-                    self._log.warn('%s stop: popen is gone', self.uid)
+                    self._log.warn('TERM : %s stop: popen is gone', self.uid)
 
-                self._log.info("stopped %s" % self.pid)
-                self._log.info("join    %s" % self.pid)
+                self._log.info("TERM : stopped %s" % self.pid)
+                self._log.info("TERM : join    %s" % self.pid)
                 self.join()
-                self._log.info("joined  %s" % self.pid)
+                self._log.info("TERM : joined  %s" % self.pid)
 
             self._finalize_parent()
 
-            self._log.debug('stop as parent (return)')
+            self._log.debug('TERM : stop as parent (return)')
             return
 
         else:
@@ -809,7 +798,7 @@ class Component(mp.Process):
             # the child exits here.  This is caught in the run loop, which will
             # then call the finalizers in the finally clause, before calling
             # stop() itself, then to exit the main thread.
-            self._log.debug('stop as child (exit)')
+            self._log.debug('TERM : stop as child (exit)')
             sys.exit()
 
 
@@ -844,14 +833,14 @@ class Component(mp.Process):
             # we only really join when the component child process has been started
             # this is basically a wait(2) on the child pid.
             if self.pid:
-                self._log.debug('%s join   (%s)', self.uid, self.pid)
+                self._log.debug('TERM : %s join   (%s)', self.uid, self.pid)
                 mp.Process.join(self, timeout)
-                self._log.debug('%s joined (%s)', self.uid, self.pid)
+                self._log.debug('TERM : %s joined (%s)', self.uid, self.pid)
             else:
-                self._log.warn('skip join for %s: no child', self.uid)
+                self._log.warn('TERM : skip join for %s: no child', self.uid)
 
         except AssertionError as e:
-            self._log.warn('ignored assertion error on join')
+            self._log.warn('TERM : ignored assertion error on join')
 
         # let callee know if child has been joined
         return (not self.is_alive())
@@ -916,6 +905,8 @@ class Component(mp.Process):
         # be responsible for multiple states
         for state in states:
 
+            self._log.debug('START: %s register input %s: %s', self.uid, state, name)
+
             if state in self._workers:
                 self._log.warn("%s replaces worker for %s (%s)" \
                         % (self.uid, state, self._workers[state]))
@@ -942,6 +933,7 @@ class Component(mp.Process):
         self._log.debug('unregistered input %s', name)
 
         for state in states:
+            self._log.debug('TERM : %s unregister input %s: %s', self.uid, state, name)
             if state not in self._workers:
                 raise ValueError('worker %s not registered for %s' % worker.__name__, state)
             del(self._workers[state])
@@ -969,6 +961,8 @@ class Component(mp.Process):
             states = [states]
 
         for state in states:
+
+            self._log.debug('START: %s register output %s', self.uid, state)
 
             # we want a *unique* output queue for each state.
             if state in self._outputs:
@@ -1002,6 +996,7 @@ class Component(mp.Process):
             states = [states]
 
         for state in states:
+            self._log.debug('TERM : %s unregister output %s', self.uid, state)
             if not state in self._outputs:
                 raise ValueError('state %s hasno output to unregister' % state)
             del(self._outputs[state])
@@ -1019,6 +1014,7 @@ class Component(mp.Process):
         """
 
         name = "%s.idler.%s" % (self.uid, cb.__name__)
+        self._log.debug('START: %s register idler %s', self.uid, name)
 
         with self._cb_lock:
             if name in self._idlers:
@@ -1050,7 +1046,9 @@ class Component(mp.Process):
                     if to:
                         time.sleep(0.1)
             except Exception as e:
-                self._log.exception("idler failed %s", mt.current_thread().name)
+                self._log.exception("TERM : %s idler failed %s", self.uid, mt.current_thread().name)
+            finally:
+                self._log.exception("TERM : %s idler final %s", self.uid, mt.current_thread().name)
         # ----------------------------------------------------------------------
 
         # create a idler thread
@@ -1075,6 +1073,7 @@ class Component(mp.Process):
         """
 
         name = "%s.idler.%s" % (self.uid, cb.__name__)
+        self._log.debug('TERM : %s unregister idler %s', self.uid, name)
 
         with self._cb_lock:
             if name not in self._idlers:
@@ -1085,7 +1084,7 @@ class Component(mp.Process):
             entry['thread'].join()
             del(self._idlers[name])
 
-        self._log.debug("unregistered idler %s", name)
+        self._log.debug("TERM : %s unregistered idler %s", self.uid, name)
 
 
     # --------------------------------------------------------------------------
@@ -1097,12 +1096,14 @@ class Component(mp.Process):
         """
 
         if pubsub in self._publishers:
-            raise ValueError('publisher for %s already regisgered' % pubsub)
+            raise ValueError('publisher for %s already registered' % pubsub)
 
         # get address for pubsub
         if not pubsub in self._cfg['bridges']:
             self._log.error('no addr: %s' % pprint.pformat(self._cfg['bridges']))
             raise ValueError('no bridge known for pubsub channel %s' % pubsub)
+
+        self._log.debug('START: %s register publisher %s', self.uid, pubsub)
 
         addr = self._cfg['bridges'][pubsub]['addr_in']
         self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
@@ -1122,6 +1123,8 @@ class Component(mp.Process):
 
         if pubsub not in self._publishers:
             raise ValueError('publisher for %s is not registered' % pubsub)
+
+        self._log.debug('TERM : %s unregister publisher %s', self.uid, pubsub)
 
         del(self._publishers[pubsub])
         self._log.debug('unregistered publisher %s', pubsub)
@@ -1148,6 +1151,7 @@ class Component(mp.Process):
         """
 
         name = "%s.subscriber.%s" % (self.uid, cb.__name__)
+        self._log.debug('START: %s unregister subscriber %s', self.uid, name)
 
         # get address for pubsub
         if not pubsub in self._cfg['bridges']:
@@ -1215,6 +1219,7 @@ class Component(mp.Process):
         """
 
         name = "%s.subscriber.%s" % (self.uid, cb.__name__)
+        self._log.debug('TERM : %s unregister subscriber %s', self.uid, name)
 
         with self._cb_lock:
             if name not in self._subscribers:
@@ -1235,13 +1240,13 @@ class Component(mp.Process):
         for s in self._subscribers:
             t = self._subscribers[s]['thread']
             if not t.is_alive() and not self._term.is_set():
-                self._log.error('subscriber %s died', t.name)
+                self._log.error('TERM : %s subscriber %s died', self.uid, t.name)
                 ru.cancel_main_thread()
 
         for i in self._idlers:
             t = self._idlers[i]['thread']
             if not t.is_alive() and not self._term.is_set():
-                self._log.error('idler %s died', t.name)
+                self._log.error('TERM : %s idler %s died', self.uid, t.name)
                 ru.cancel_main_thread()
 
 
@@ -1262,9 +1267,17 @@ class Component(mp.Process):
         signal.signal(signal.SIGUSR2, _sigusr2_handler)
 
         try:
+            # we don't have a child, we *are* the child
+            self._is_parent = False
+            self._uid       = self._child_uid
+
+            spt.setproctitle('rp.%s' % self.uid)
 
             # this is now the child process context
+            self._initialize_common()
             self._initialize_child()
+
+            self._log.error('START: %s run', self.uid)
 
             # The main event loop will repeatedly iterate over all input
             # channels.  It can only be terminated by
@@ -1355,20 +1368,25 @@ class Component(mp.Process):
             # we could in principle detect the latter within the loop -- - but
             # since we don't know what to do with the things it operated on, we
             # don't bother...
+            self._log.error('TERM : %s run exception (%s)', self.uid, e)
             self._log.exception('loop exception')
         
         except SystemExit:
             # normal shutdown from self.()stop()
+            self._log.error('TERM : %s run exit', self.uid)
             self._log.info("loop exit")
         
         except KeyboardInterrupt:
             # a thread caused this by calling ru.cancel_main_thread()
+            self._log.error('TERM : %s run intr', self.uid)
             self._log.info("loop intr")
         
         finally:
+            self._log.error('TERM : %s run final', self.uid)
             self._log.info('loop stops')
             self._finalize_child()
             self.stop()
+            self._log.error('TERM : %s run finalled', self.uid)
 
 
     # --------------------------------------------------------------------------

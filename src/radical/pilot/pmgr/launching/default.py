@@ -35,7 +35,7 @@ DEFAULT_VIRTENV       = '%(global_sandbox)s/ve'
 DEFAULT_VIRTENV_MODE  = 'update'
 DEFAULT_AGENT_CONFIG  = 'default'
 
-JOB_CANCEL_DELAY      = 120  # seconds between cancel signal and job kill
+JOB_CANCEL_DELAY      = 12000# seconds between cancel signal and job kill
 JOB_CHECK_INTERVAL    =  60  # seconds between runs of the job state check loop
 JOB_CHECK_MAX_MISSES  =   3  # number of times to find a job missing before
                              # declaring it dead
@@ -430,11 +430,20 @@ class Default(PMGRLaunchingComponent):
         js_hop  = rcfg.get('job_manager_hop', js_ep)
         js_url  = rs.Url(js_hop)
 
+        # well, we actually don't need to talk to the lrms, but only need
+        # a shell on the headnode.  That seems true for all LRMSs we use right
+        # now.  So, lets convert the URL:
+        if '+' in js_url.scheme:
+            parts = js_url.scheme.split('+')
+            if   'ssh'    in parts: js_url.scheme = 'ssh'
+            elif 'gsissh' in parts: js_url.scheme = 'gsissh'
+            elif 'fork'   in parts: js_url.scheme = 'fork'
+
         with self._cache_lock:
-            if js_url in self._saga_js_cache:
-                js_tmp = self._saga_js_cache[js_url]
+            if  js_url in self._saga_js_cache:
+                js_tmp  = self._saga_js_cache[js_url]
             else:
-                js_tmp = rs.job.Service(js_url, session=self._session)
+                js_tmp  = rs.job.Service(js_url, session=self._session)
                 self._saga_js_cache[js_url] = js_tmp
      ## cmd = "tar zmxvf %s/%s -C / ; rm -f %s" % \
         cmd = "tar zmxvf %s/%s -C /" % \
@@ -445,17 +454,14 @@ class Default(PMGRLaunchingComponent):
         self._log.debug('tar cmd : %s', cmd)
         self._log.debug('tar done: %s, %s, %s', j.state, j.stdout, j.stderr)
 
-        if js_ep == js_hop:
-            # we can use the same job service for pilot submission
-            js = js_tmp
-        else:
-            # we need a different js for actual job submission
-            with self._cache_lock:
-                if js_ep in self._saga_js_cache:
-                    js = self._saga_js_cache[js_ep]
-                else:
-                    js = rs.job.Service(js_ep, session=self._session)
-                    self._saga_js_cache[js_ep] = js
+        # look up or create JS for actual pilot submission.  This might result
+        # in the same JS, or not.
+        with self._cache_lock:
+            if js_ep in self._saga_js_cache:
+                js = self._saga_js_cache[js_ep]
+            else:
+                js = rs.job.Service(js_ep, session=self._session)
+                self._saga_js_cache[js_ep] = js
 
         # now that the scripts are in place and configured, 
         # we can launch the agent

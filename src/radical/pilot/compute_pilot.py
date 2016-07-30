@@ -70,11 +70,16 @@ class ComputePilot(object):
         self._stdout        = None
         self._stderr        = None
         self._sandbox       = None
-        self._callbacks     = list()
+        self._callbacks     = dict()
         self._exit_on_error = self._descr.get('exit_on_error')
 
+        for m in rpt.PMGR_METRICS:
+            self._callbacks[m] = dict()
+
         # we always invke the default state cb
-        self._callbacks.append([self._default_state_cb, None])
+        self._callbacks[rpt.PILOT_STATE][self._default_state_cb.__name__] = {
+                'cb'      : self._default_state_cb, 
+                'cb_data' : None}
 
         # sanity checks on description
         for check in ['resource', 'cores', 'runtime']:
@@ -102,11 +107,6 @@ class ComputePilot(object):
 
         self._log.info("[Callback]: pilot %s state: %s.", self.uid, self.state)
 
-        # for final states, we fetch profiles and logs into the session tree
-        if state in rps.FINAL:
-            self._log.info("pilot is final [%s]: fetching profiles from %s", 
-                    state, pilot.sandbox)
-
 
     # --------------------------------------------------------------------------
     #
@@ -128,42 +128,57 @@ class ComputePilot(object):
         Return True if state changed, False otherwise
         """
 
+        # _update() calls can happen out of order -- it is up to *this* method
+        # to make sure that the update results in a consistent state.
+        # FIXME: this is now duplicated in pmgr
+
         assert(pilot_dict['uid'] == self.uid)
 
-        # callee (pmgr) will make sure that state transitions are valid and
-        # continuous
         current = self.state
         target  = pilot_dict['state']
 
         # we update all fields
         # FIXME: well, not all really :/
+        # FIXME: well, this is ugly...  we should maintain all state in
+        #        a dict.
         for key in ['sandbox', 'stdout', 'stderr']:
 
             val = pilot_dict.get(key, None)
-
             if val:
                 setattr(self, "_%s" % key, val)
 
+        new_state, passed = rps._pilot_state_progress(current, target)
 
-        # make sure we end up with the right state
-        self._state = target
+        if new_state in [rps.CANCELED, rps.FAILED]:
+            # don't replay intermediate states
+            passed = passed[-1:]
 
-        if current != target:
+        # replay all state transitions
+        for state in passed:
 
-            for cb, cb_data in self._callbacks:
-            
-              # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, target, cb.__name__)
+            for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
+
+                cb      = cb_val['cb']
+                cb_data = cb_val['cb_data']
+
+              # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, target, cb_name)
                 
-                if cb_data: cb(self, target, cb_data)
-                else      : cb(self, target)
+                self._state = state
+                if cb_data: cb(self, state, cb_data)
+                else      : cb(self, state)
 
             # ask pmgr to invike any global callbacks
-            self._pmgr._call_pilot_callbacks(self)
+            self._pmgr._call_pilot_callbacks(self, state)
 
+        # make sure we end up with the right state
+        self._state = new_state
 
         # this should be the last cb invoked on state changes
         if self.state == rps.FAILED and self._exit_on_error:
             self._default_error_cb()
+
+        if passed: return True
+        else     : return False
 
 
     # --------------------------------------------------------------------------
@@ -359,7 +374,7 @@ class ComputePilot(object):
 
     # --------------------------------------------------------------------------
     #
-    def register_callback(self, cb, cb_data=None):
+    def register_callback(self, cb, metric=rpt.PILOT_STATE, cb_data=None):
         """
         Registers a callback function that is triggered every time the
         pilot's state changes.
@@ -377,7 +392,41 @@ class ComputePilot(object):
         and 'cb_data' are passed along.
 
         """
-        self._callbacks.append([cb, cb_data])
+        if metric not in rpt.PMGR_METRICS :
+            raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
+
+        cb_name = cb.__name__
+        self._callbacks[metric][cb_name] = {'cb'      : cb, 
+                                            'cb_data' : cb_data}
+
+
+    # --------------------------------------------------------------------------
+    #
+    def unregister_callback(self, cb, metric=rpt.PILOT_STATE):
+
+        if metric and metric not in rpt.UMGR_METRICS :
+            raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
+
+        with self._cb_lock:
+
+            if not metric:
+                metrics = rpt.PMGR_METRICS
+            else:
+                metrics = [metric]
+
+            for metric in metrics:
+
+                if cb:
+                    to_delete = [cb.__name__]
+                else:
+                    to_delete = self._callbacks[metric].keys()
+
+                for cb_name in to_delete:
+
+                    if cb_name not in self._callbacks[metric]:
+                        raise ValueError("Callback '%s' is not registered" % cb_name)
+
+                    del(self._callbacks[metric][cb_name])
 
 
     # --------------------------------------------------------------------------

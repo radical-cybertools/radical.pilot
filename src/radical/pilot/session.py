@@ -127,6 +127,7 @@ class Session(rs.Session):
             self._cfg['logdir'] = '%s/%s' % (os.getcwd(), self._uid)
 
         self._logdir = self._cfg['logdir']
+        print        self._cfg['owner'], self._cfg['debug']
         self._log    = self._get_logger(self._cfg['owner'], self._cfg['debug'])
 
 
