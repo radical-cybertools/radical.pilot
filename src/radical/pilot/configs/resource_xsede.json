@@ -305,7 +305,7 @@
         "python_dist"                 : "default"
     },
 
-    "comet": {
+    "comet_ssh": {
         "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
@@ -343,7 +343,7 @@
         "python_dist"                 : "default"
     },
 
-    "comet_orte": {
+    "comet": {
         "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
@@ -371,7 +371,8 @@
         "pre_bootstrap_1"             : [
             "module use --append /home/marksant/privatemodules",
             "module load python",
-            "module load openmpi/STATIC"
+            "module load openmpi",
+            "module load mpi4py"
         ],
         "pre_bootstrap_2"             : [
             "export PATH=$PATH",

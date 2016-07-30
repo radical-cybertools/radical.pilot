@@ -785,7 +785,10 @@ class PilotLauncherWorker(threading.Thread):
                         msg = "Submitting SAGA job with description: %s" % str(jd.as_dict())
                         logentries.append(Logentry (msg, logger=logger.debug))
 
-                        pilotjob = js.create_job(jd)
+                        try:
+                            pilotjob = js.create_job(jd)
+                        except saga.BadParameter as e:
+                            raise ValueError('Pilot submission to %s failed: %s' % (resource_key, e))
                         pilotjob.run()
 
                         # Clean up agent config file and dir after submission

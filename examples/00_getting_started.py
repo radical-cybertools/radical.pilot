@@ -6,7 +6,8 @@ __license__   = 'MIT'
 import os
 import sys
 
-os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
+verbose  = os.environ.get('RADICAL_PILOT_VERBOSE', 'REPORT')
+os.environ['RADICAL_PILOT_VERBOSE'] = verbose
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -24,7 +25,7 @@ import radical.utils as ru
 if __name__ == '__main__':
 
     # we use a reporter class for nicer output
-    report = ru.LogReporter(name='radical.pilot')
+    report = ru.LogReporter(name='radical.pilot', level=verbose)
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
@@ -118,7 +119,7 @@ if __name__ == '__main__':
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.
         report.header('finalize')
-        session.close()
+        session.close(cleanup=False)
 
     report.header()
 
