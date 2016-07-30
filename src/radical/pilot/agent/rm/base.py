@@ -19,6 +19,7 @@ RM_NAME_SGE         = 'SGE'
 RM_NAME_SLURM       = 'SLURM'
 RM_NAME_TORQUE      = 'TORQUE'
 RM_NAME_YARN        = 'YARN'
+RM_NAME_SPARK       = 'SPARK'
 
 
 
@@ -198,7 +199,8 @@ class LRMS(object):
         from .sge         import SGE        
         from .slurm       import Slurm      
         from .torque      import Torque     
-        from .yarn        import Yarn       
+        from .yarn        import Yarn      
+        from .spark       import Spark       
 
         # Make sure that we are the base-class!
         if cls != LRMS:
@@ -214,7 +216,8 @@ class LRMS(object):
                 RM_NAME_SGE         : SGE,
                 RM_NAME_SLURM       : Slurm,
                 RM_NAME_TORQUE      : Torque,
-                RM_NAME_YARN        : Yarn
+                RM_NAME_YARN        : Yarn,
+                RM_NAME_SPARK       : Spark
             }[name]
             return impl(cfg, logger)
 
