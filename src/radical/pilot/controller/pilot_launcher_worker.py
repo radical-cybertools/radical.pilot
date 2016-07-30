@@ -38,7 +38,6 @@ DEFAULT_RP_VERSION    = 'local'
 DEFAULT_VIRTENV       = '%(global_sandbox)s/ve'
 DEFAULT_VIRTENV_MODE  = 'update'
 DEFAULT_AGENT_CONFIG  = 'default'
-DEFAULT_PYTHON_DIST   = 'default'
 
 # ----------------------------------------------------------------------------
 #
@@ -409,8 +408,8 @@ class PilotLauncherWorker(threading.Thread):
                         cores_per_node          = resource_cfg.get ('cores_per_node')
                         shared_filesystem       = resource_cfg.get ('shared_filesystem', True)
                         health_check            = resource_cfg.get ('health_check', True)
-                        python_dist             = resource_cfg.get ('python_dist', DEFAULT_PYTHON_DIST)
-
+                        python_dist             = resource_cfg.get ('python_dist')
+                        
 
                         # Agent configuration that is not part of the public API.
                         # The agent config can either be a config dict, or
@@ -615,6 +614,7 @@ class PilotLauncherWorker(threading.Thread):
 
                         # ------------------------------------------------------
                         # sanity checks
+                        if not python_dist        : raise RuntimeError("missing python distribution")
                         if not agent_spawner      : raise RuntimeError("missing agent spawner")
                         if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
                         if not lrms               : raise RuntimeError("missing LRMS")
@@ -788,8 +788,9 @@ class PilotLauncherWorker(threading.Thread):
                         pilotjob = js.create_job(jd)
                         pilotjob.run()
 
-                        # Clean up agent config file after submission
+                        # Clean up agent config file and dir after submission
                         os.unlink(cfg_tmp_file)
+                        os.rmdir(cfg_tmp_dir)
 
                         # do a quick error check
                         if pilotjob.state == saga.FAILED:
