@@ -61,7 +61,7 @@ VIRTENV_IS_ACTIVATED=FALSE
 VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces setproctitle"
 
 # before we change anything else in the pilot environment, we safe a couple of
-# env vars to bve able to re-create a close-to-pristine env for unit execution.
+# env vars to later re-create a close-to-pristine env for unit execution.
 _OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
 _OLD_VIRTUAL_PYTHONHOME="$PYTHONHOME"
 _OLD_VIRTUAL_PATH="$PATH"
@@ -1176,6 +1176,9 @@ pre_bootstrap_1()
         echo "#ABORT"
         exit 1
     fi
+
+    # we also want pre_bootstrap_1 commands re-enacted during pre_bootstrap_2
+    pre_bootstrap_2 "$cmd"
 }
 
 # -------------------------------------------------------------------------------
