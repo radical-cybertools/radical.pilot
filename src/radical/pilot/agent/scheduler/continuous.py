@@ -54,6 +54,34 @@ class Continuous(AgentSchedulingComponent):
                 'cores': [rpc.FREE for _ in range(0, self._lrms_cores_per_node)]
             })
 
+        free_cores = len(self._lrms_node_list) * self._lrms_cores_per_node
+
+        # default partition setup:
+        parts = {'default' : 'max'}
+
+        # partition overloading from config
+        if 'scheduler' in self._cfg:
+            if 'partitions' in self._cfg['scheduler']:
+                parts = self._cfg['scheduler']['partitions']
+
+        self._partitions = dict()
+        taken = 0
+
+        # first collect all partitions where an exact node count id given
+        for p in parts:
+            if isinstance(parts[p], int):
+                self._partitions[p] = parts[p]
+                free_cores         -= parts[p]
+
+        # then assign any leftover cores to a 'max' partition, if one is given.
+        # Use 'defaut' per default
+        for p in parts:
+            if isinstance(parts[p], basestring) and parts[p] = 'max':
+                if not free_cores:
+                    raise ValueError('no free cores left for max partition')
+                self._partitions = free_cores
+                free_cores       = 0
+
 
     # --------------------------------------------------------------------------
     #

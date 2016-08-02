@@ -21,6 +21,13 @@
     # time between checks of internal state and commands from mothership (seconds)
     "heartbeat_interval"   : 10,
 
+    "scheduler" : {
+        "partitions" : {
+            "monitor" : 1, 
+            "bot"     : "max"  # all remaining cores
+        }
+    },
+
     "agent_layout" : {
         "agent_0"   : {
             "target"     : "local",

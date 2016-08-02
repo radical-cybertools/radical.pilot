@@ -30,6 +30,7 @@ CLEANUP                = 'cleanup'
 STDOUT                 = 'stdout'
 STDERR                 = 'stderr'
 RESTARTABLE            = 'restartable'
+SCHEDULER_HINT         = 'scheduler_hint'
 
 # ------------------------------------------------------------------------------
 #
@@ -144,6 +145,7 @@ class ComputeUnitDescription(attributes.Attributes) :
         self._attributes_register(POST_EXEC,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(RESTARTABLE,      None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(CLEANUP,          None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(SCHEDULER_HINT,   None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
       # self._attributes_register(START_TIME,       None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
       # self._attributes_register(RUN_TIME,         None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
@@ -186,6 +188,7 @@ class ComputeUnitDescription(attributes.Attributes) :
         self.set_attribute (MPI,           False)
         self.set_attribute (RESTARTABLE,   False)
         self.set_attribute (CLEANUP,       False)
+        self.set_attribute (SCHEDULER_HINT,False)
 
         # apply initialization dict
         if from_dict:
