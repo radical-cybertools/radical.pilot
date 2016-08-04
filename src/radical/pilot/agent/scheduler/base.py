@@ -37,7 +37,7 @@ class AgentSchedulingComponent(rpu.Component):
 
 
     # --------------------------------------------------------------------------
-    #
+    #m_requested
     def initialize_child(self):
 
       # self.declare_input (rps.AGENT_SCHEDULING_PENDING, rpc.AGENT_SCHEDULING_QUEUE)

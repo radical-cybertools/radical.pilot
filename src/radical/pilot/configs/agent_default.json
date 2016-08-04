@@ -24,7 +24,7 @@
     "scheduler" : {
         "partitions" : {
             "monitor" : 1, 
-            "bot"     : "max"  # all remaining cores
+            "bot"     : "max"
         }
     },
 

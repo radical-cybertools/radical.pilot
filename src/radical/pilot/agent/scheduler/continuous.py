@@ -8,6 +8,7 @@ import radical.utils as ru
 from ... import utils     as rpu
 from ... import states    as rps
 from ... import constants as rpc
+from ...utils import logger
 
 from .base import AgentSchedulingComponent
 
@@ -97,7 +98,6 @@ class Continuous(AgentSchedulingComponent):
                 if core_idx == cpn:
                     node_idx += 1
                     core_idx  = 0
-
 
         for pname, part in self._partitions.iteritems():
             for node in part['nodes']:
