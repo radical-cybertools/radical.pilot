@@ -31,7 +31,7 @@ class AgentSchedulingComponent(rpu.Component):
     def __init__(self, cfg):
 
         self.slots = None
-        self._lrms  = None
+        self._lrms = None
 
         rpu.Component.__init__(self, rpc.AGENT_SCHEDULING_COMPONENT, cfg)
 
@@ -61,14 +61,15 @@ class AgentSchedulingComponent(rpu.Component):
         # all components use the command channel for control messages
         self.declare_publisher ('command',    rpc.AGENT_COMMAND_PUBSUB)
 
-        # we declare a clone and a drop callback, so that cores can be assigned
-        # to clones, and can also be freed again.
-        self.declare_clone_cb(self.clone_cb)
-        self.declare_drop_cb (self.drop_cb)
+     #  NOTE: the cloning mechanism breaks due to the partitioning
+     #  # we declare a clone and a drop callback, so that cores can be assigned
+     #  # to clones, and can also be freed again.
+     #  self.declare_clone_cb(self.clone_cb)
+     #  self.declare_drop_cb (self.drop_cb)
 
-        # when cloning, we fake scheduling via round robin over all cores.
-        # These indexes keeps track of the last used core.
-        self._clone_slot_idx = 0
+     #  # when cloning, we fake scheduling via round robin over all cores.
+     #  # These indexes keeps track of the last used core.
+     #  self._clone_slot_idx = 0
 
         # The scheduler needs the LRMS information which have been collected
         # during agent startup.  We dig them out of the config at this point.
@@ -147,7 +148,7 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _allocate_slot(self, cores_requested):
+    def _allocate_slot(self, cu):
         raise NotImplementedError("_allocate_slot() not implemented for Scheduler '%s'." % self._cname)
 
 
@@ -174,7 +175,7 @@ class AgentSchedulingComponent(rpu.Component):
 
             # schedule this unit, and receive an opaque handle that has meaning to
             # the LRMS, Scheduler and LaunchMethod.
-            cu['opaque_slots'] = self._allocate_slot(cu['description']['cores'])
+            cu['opaque_slots'] = self._allocate_slot(cu)
 
         if not cu['opaque_slots']:
             # signal the CU remains unhandled

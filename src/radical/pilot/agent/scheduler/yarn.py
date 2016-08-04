@@ -96,11 +96,14 @@ class Yarn(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _allocate_slot(self, cores_requested,mem_requested):
+    def _allocate_slot(self, cu):
         """
         In this implementation it checks if the number of cores and memory size
         that exist in the YARN cluster are enough for an application to fit in it.
         """
+
+        cores_requested = cu['description']['cores']
+        mem_requested   = cu['description']['memory']
 
         #-----------------------------------------------------------------------
         # If the application requests resources that exist in the cluster, not
