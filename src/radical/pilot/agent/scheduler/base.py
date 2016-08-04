@@ -87,6 +87,7 @@ class AgentSchedulingComponent(rpu.Component):
         self._configure()
 
         # communicate successful startup
+        self._log.debug('send alive: %s', self.cname)
         self.publish('command', {'cmd' : 'alive',
                                  'arg' : self.cname})
 
