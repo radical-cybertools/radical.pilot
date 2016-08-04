@@ -156,7 +156,8 @@ class PilotManager(rpu.Component):
 
         # we don't want any callback invokations during shutdown
         # FIXME: really?
-        self._callbacks = dict()
+        for m in rpt.PMGR_METRICS:
+            self._callbacks[m] = dict()
 
         # If terminate is set, we cancel all pilots. 
         if terminate:
