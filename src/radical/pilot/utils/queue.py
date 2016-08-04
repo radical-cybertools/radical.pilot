@@ -151,9 +151,9 @@ class Queue(object):
         self._qname  = qname
         self._role   = role
         self._addr   = address
-        self._debug  = True
+        self._debug  = False
         self._name   = "queue.%s.%s" % (self._qname, self._role)
-        self._log    = ru.get_logger('rp.bridges', target="%s.log" % self._name, level='DEBUG')
+        self._log    = ru.get_logger('rp.bridges', target="%s.log" % self._name)
 
         if not self._addr:
             self._addr = 'tcp://*:*'
@@ -509,7 +509,7 @@ class QueueZMQ(Queue):
         if not self._role == QUEUE_INPUT:
             raise RuntimeError("queue %s (%s) can't put()" % (self._qname, self._role))
 
-        self._log.debug("-> %s", pprint.pformat(msg))
+      # self._log.debug("-> %s", pprint.pformat(msg))
         _uninterruptible(self._q.send_json, msg)
 
 
@@ -523,7 +523,7 @@ class QueueZMQ(Queue):
         _uninterruptible(self._q.send, 'request')
 
         msg = _uninterruptible(self._q.recv_json)
-        self._log.debug("<- %s", pprint.pformat(msg))
+      # self._log.debug("<- %s", pprint.pformat(msg))
         return msg
 
 
@@ -553,7 +553,7 @@ class QueueZMQ(Queue):
             if _uninterruptible(self._q.poll, flags=zmq.POLLIN, timeout=timeout):
                 msg = _uninterruptible(self._q.recv_json)
                 self._requested = False
-                self._log.debug("<< %s", pprint.pformat(msg))
+              # self._log.debug("<< %s", pprint.pformat(msg))
                 return msg
 
             else:

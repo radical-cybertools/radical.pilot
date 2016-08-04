@@ -75,9 +75,9 @@ class Pubsub(object):
         self._channel    = channel
         self._role       = role
         self._addr       = address
-        self._debug      = True
+        self._debug      = False
         self._name       = "pubsub.%s.%s" % (self._channel, self._role)
-        self._log        = ru.get_logger('rp.bridges', target="%s.log" % self._name, level='DEBUG')
+        self._log        = ru.get_logger('rp.bridges', target="%s.log" % self._name)
         self._bridge_in  = None           # bridge input  addr
         self._bridge_out = None           # bridge output addr
 
@@ -278,7 +278,7 @@ class PubsubZMQ(Pubsub):
                             else:
                                 msg = _uninterruptible(_in.recv, flags=zmq.NOBLOCK)
                                 _uninterruptible(_out.send, msg)
-                            self._log.debug("-> %s", msg)
+                          # self._log.debug("-> %s", msg)
 
 
                         if _out in _socks:
@@ -288,7 +288,7 @@ class PubsubZMQ(Pubsub):
                             else:
                                 msg = _uninterruptible(_out.recv)
                                 _uninterruptible(_in.send, msg)
-                            self._log.debug("<- %s", msg)
+                          # self._log.debug("<- %s", msg)
 
                 except Exception as e:
                     self._log.exception('bridge error: %s', e)
@@ -351,7 +351,7 @@ class PubsubZMQ(Pubsub):
 
         topic = topic.replace(' ', '_')
 
-        self._log.debug("~~ %s", topic)
+      # self._log.debug("~~ %s", topic)
         _uninterruptible(self._q.setsockopt, zmq.SUBSCRIBE, topic)
 
 
@@ -366,11 +366,11 @@ class PubsubZMQ(Pubsub):
         data = json.dumps(msg)
 
         if _USE_MULTIPART:
-            self._log.debug("-> %s", str([topic, data]))
+          # self._log.debug("-> %s", str([topic, data]))
             _uninterruptible(self._q.send_multipart, [topic, data])
 
         else:
-            self._log.debug("-> %s %s", topic, data)
+          # self._log.debug("-> %s %s", topic, data)
             _uninterruptible(self._q.send, "%s %s" % (topic, data))
 
 
@@ -389,7 +389,7 @@ class PubsubZMQ(Pubsub):
             topic, data = raw.split(' ', 1)
 
         msg = json.loads(data)
-        self._log.debug("<- %s", str([topic, pprint.pformat(msg)]))
+      # self._log.debug("<- %s", str([topic, pprint.pformat(msg)]))
         return [topic, msg]
 
 
