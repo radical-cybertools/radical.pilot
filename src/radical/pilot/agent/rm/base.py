@@ -326,8 +326,10 @@ class LRMS(object):
           
             ip = info[AF_INET][0].get('addr')
             logger.debug('check iface %s: ip is %s', iface, ip)
+            if ip:
+                return ip
 
-        return ip
+        raise RuntimeError('could not determine ip addresses on %s' % preflist)
 
 
 # ------------------------------------------------------------------------------
