@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
         # read the config used for resource details
         report.info('read config')
-        config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
+        config = ru.read_json('%s/../config.json' % os.path.dirname(os.path.abspath(__file__)))
         report.ok('>>ok\n')
 
         report.header('submit pilots')
@@ -92,6 +92,8 @@ if __name__ == '__main__':
             if i==1:
                 print 'setting scheduler CU'
                 cud.scheduler_hint = {'partition' : 'monitor'}
+            else:
+                cud.scheduler_hint = {'partition' : 'bot'}
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')

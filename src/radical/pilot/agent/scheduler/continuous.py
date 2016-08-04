@@ -8,7 +8,6 @@ import radical.utils as ru
 from ... import utils     as rpu
 from ... import states    as rps
 from ... import constants as rpc
-from ...utils import logger
 
 from .base import AgentSchedulingComponent
 
@@ -42,8 +41,8 @@ class Continuous(AgentSchedulingComponent):
         # first determine the partition configuration, and determine how many
         # cores go into each partition.
         if  'scheduler'  in self._cfg and \
-            'partitions' in self._cfg['scheduler']:
-            parts = self._cfg['scheduler']['partitions']
+            'partitions' in self._cfg['agent_scheduler_cfg']:
+            parts = self._cfg['agent_scheduler_cfg']['partitions']
         else:
             # default partition setup:
             parts = {'default' : 'max'}
@@ -63,7 +62,9 @@ class Continuous(AgentSchedulingComponent):
             if isinstance(parts[p], basestring) and parts[p] == 'max':
                 if not free_cores:
                     raise ValueError('no free cores left for max partition')
-                self._partitions[p] = free_cores
+                self._partitions[p] = {'size'  : free_cores,
+                                       'nodes' : dict(),
+                                       'slots' : list()}
                 free_cores          = 0
 
         # Slots represents the internal process management structure.
@@ -101,10 +102,12 @@ class Continuous(AgentSchedulingComponent):
 
         for pname, part in self._partitions.iteritems():
             for node in part['nodes']:
-                self._partitions[pname] = {
+                self._partitions[pname]['slots'].append({
                     'node' : node,
                     'cores': part['nodes'][node]
-                }
+                })
+            del(part['nodes'])
+                
 
         import pprint
         self._log.debug('partitions: %s', pprint.pformat(self._partitions))
@@ -117,7 +120,7 @@ class Continuous(AgentSchedulingComponent):
         """
 
         slot_matrix = ""
-        for part in self._partitions:
+        for pname,part in self._partitions.iteritems():
             for slot in part['slots']:
                 slot_matrix += "|"
                 for core in slot['cores']:
@@ -137,7 +140,7 @@ class Continuous(AgentSchedulingComponent):
         cud = cu['description']
 
         cores = cud['cores']
-        hints = cu['description'].get('scheduler_hints', {})
+        hints = cu['description'].get('scheduler_hint', {})
         pname = hints.get('partition', 'default')
 
         # TODO: single_node should be enforced for e.g. non-message passing
@@ -185,7 +188,7 @@ class Continuous(AgentSchedulingComponent):
 
         # TODO: This assumes all hosts have the same number of cores
         first_slot = task_slots[0]
-        slots      = self._partitions[pname]
+        slots      = self._partitions[pname]['slots']
 
         # Get the host and the core part
         [first_slot_host, first_slot_core] = first_slot.split(':')
@@ -243,7 +246,7 @@ class Continuous(AgentSchedulingComponent):
     #
     def _find_slots_single_cont(self, cores_requested, pname):
 
-        slots = self._partitions[pname]
+        slots = self._partitions[pname]['slots']
 
         for slot in slots:
             slot_node  = slot['node']
@@ -267,7 +270,7 @@ class Continuous(AgentSchedulingComponent):
     #
     def _find_slots_multi_cont(self, cores_requested, pname):
 
-        slots = self._partitions[pname]
+        slots = self._partitions[pname]['slots']
 
         # Convenience aliases
         cores_per_node = self._lrms_cores_per_node
@@ -339,15 +342,12 @@ class Continuous(AgentSchedulingComponent):
     #
     def _change_slot_states(self, task_slots, pname, new_state):
 
-        slots = self._partitions[pname]
+        slots = self._partitions[pname]['slots']
 
         # Convenience alias
         all_slots = slots
 
-        # logger.debug("change_slot_states: unit slots: %s", task_slots)
-
         for slot in task_slots:
-            # logger.debug("change_slot_states: slot content: %s", slot)
             # Get the node and the core part
             [slot_node, slot_core] = slot.split(':')
             # Find the entry in the the all_slots list
