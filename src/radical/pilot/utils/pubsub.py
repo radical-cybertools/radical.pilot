@@ -77,7 +77,7 @@ class Pubsub(object):
         self._addr       = address
         self._debug      = True
         self._name       = "pubsub.%s.%s" % (self._channel, self._role)
-        self._log        = ru.get_logger('rp.bridges', target="%s.log" % self._name)
+        self._log        = ru.get_logger('rp.bridges', target="%s.log" % self._name, level='DEBUG')
         self._bridge_in  = None           # bridge input  addr
         self._bridge_out = None           # bridge output addr
 

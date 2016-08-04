@@ -153,7 +153,7 @@ class Queue(object):
         self._addr   = address
         self._debug  = True
         self._name   = "queue.%s.%s" % (self._qname, self._role)
-        self._log    = ru.get_logger('rp.bridges', target="%s.log" % self._name)
+        self._log    = ru.get_logger('rp.bridges', target="%s.log" % self._name, level='DEBUG')
 
         if not self._addr:
             self._addr = 'tcp://*:*'
