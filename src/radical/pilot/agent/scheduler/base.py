@@ -37,7 +37,7 @@ class AgentSchedulingComponent(rpu.Component):
 
 
     # --------------------------------------------------------------------------
-    #
+    #m_requested
     def initialize_child(self):
 
       # self.declare_input (rps.AGENT_SCHEDULING_PENDING, rpc.AGENT_SCHEDULING_QUEUE)
@@ -147,7 +147,7 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _allocate_slot(self, cores_requested):
+    def _allocate_slot(self, cores_requested, unit_type):
         raise NotImplementedError("_allocate_slot() not implemented for Scheduler '%s'." % self._cname)
 
 
@@ -174,7 +174,7 @@ class AgentSchedulingComponent(rpu.Component):
 
             # schedule this unit, and receive an opaque handle that has meaning to
             # the LRMS, Scheduler and LaunchMethod.
-            cu['opaque_slots'] = self._allocate_slot(cu['description']['cores'])
+            cu['opaque_slots'] = self._allocate_slot(cu['description']['cores'], cu['description']['scheduler_hint'])
 
         if not cu['opaque_slots']:
             # signal the CU remains unhandled

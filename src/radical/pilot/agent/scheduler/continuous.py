@@ -8,6 +8,7 @@ import radical.utils as ru
 from ... import utils     as rpu
 from ... import states    as rps
 from ... import constants as rpc
+from ...utils import logger
 
 from .base import AgentSchedulingComponent
 
@@ -67,6 +68,9 @@ class Continuous(AgentSchedulingComponent):
         self._partitions = dict()
         taken = 0
 
+        # Does not print the expected cfg file
+        #logger.info('VKA: from cont, parts: {0}, config: {1}'.format(parts, self._cfg))
+
         # first collect all partitions where an exact node count id given
         for p in parts:
             if isinstance(parts[p], int):
@@ -76,7 +80,7 @@ class Continuous(AgentSchedulingComponent):
         # then assign any leftover cores to a 'max' partition, if one is given.
         # Use 'defaut' per default
         for p in parts:
-            if isinstance(parts[p], basestring) and parts[p] = 'max':
+            if (isinstance(parts[p], basestring) and parts[p]) == 'max':
                 if not free_cores:
                     raise ValueError('no free cores left for max partition')
                 self._partitions = free_cores
@@ -104,7 +108,7 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _allocate_slot(self, cores_requested):
+    def _allocate_slot(self, cores_requested, unit_type):
 
         # TODO: single_node should be enforced for e.g. non-message passing
         #       tasks, but we don't have that info here.

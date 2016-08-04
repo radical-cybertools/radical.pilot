@@ -77,7 +77,7 @@ class Torus(AgentSchedulingComponent):
     # Currently only implements full-node allocation, so core count must
     # be a multiple of cores_per_node.
     #
-    def _allocate_slot(self, cores_requested):
+    def _allocate_slot(self, cores_requested, unit_type):
 
         block = self._lrms.torus_block
         sub_block_shape_table = self._lrms.shape_table
