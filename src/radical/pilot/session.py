@@ -27,7 +27,7 @@ from .exceptions      import PilotException
 from .db              import Session as dbSession
 
 
-default_dburl = 'mongodb://rp:rp@ds015335.mlab.com:15335/rp'
+default_dburl = 'mongodb://h2ologin3:27017/rp'
 
 # ------------------------------------------------------------------------------
 #
