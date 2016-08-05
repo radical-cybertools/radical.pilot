@@ -92,6 +92,10 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
+            cud.pre_exec = [
+                "module use --append /projects/sciteam/gkd/modules",
+                "module load mpi4py"
+            ]
             cud.executable     = 'python'
             cud.arguments      = [helloworld_mpi_bin ]
             cud.input_staging  = [helloworld_mpi_path]
