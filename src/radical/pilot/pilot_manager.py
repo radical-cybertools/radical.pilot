@@ -250,13 +250,18 @@ class PilotManager(rpu.Component):
         with self._pilots_lock:
 
             if pid not in self._pilots:
+              # print 'unknown pilot %s' % pid
                 return False
 
             # only update on state changes
             current = self._pilots[pid].state
             target, passed = rps._pilot_state_progress(current, pilot_dict['state'])
+          # print '%s current: %s' % (pid, current)
+          # print '%s target : %s' % (pid, target )
+          # print '%s passed : %s' % (pid, passed )
 
             for s in passed:
+              # print '%s advance: %s' % (pid, s )
                 # we got state from either pubsub or DB, so don't publish again.
                 # we also don't need to maintain bulks for that reason.
                 pilot_dict['state'] = s
