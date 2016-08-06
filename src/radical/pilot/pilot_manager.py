@@ -215,7 +215,7 @@ class PilotManager(rpu.Component):
         pilot_dicts = self._session._dbs.get_pilots(pmgr_uid=self.uid)
 
         for pilot_dict in pilot_dicts:
-            self._update_pilot(pilot_dict)
+            self._update_pilot(pilot_dict, publish=True)
 
 
     # --------------------------------------------------------------------------
@@ -241,7 +241,7 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _update_pilot(self, pilot_dict):
+    def _update_pilot(self, pilot_dict, publish=False):
 
         pid = pilot_dict['uid']
 
@@ -261,7 +261,7 @@ class PilotManager(rpu.Component):
                 # we also don't need to maintain bulks for that reason.
                 pilot_dict['state'] = s
                 self._pilots[pid]._update(pilot_dict)
-                self.advance(pilot_dict, s, publish=False, push=False)
+                self.advance(pilot_dict, s, publish=publish, push=False)
 
 
     # --------------------------------------------------------------------------
