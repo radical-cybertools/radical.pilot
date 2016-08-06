@@ -16,7 +16,7 @@
 
         "ncsa.bw_local" : {
             "project"  : null,
-            "queue"    : "debug",
+            "queue"    : null,
             "schema"   : null,
             "cores"    : 64
         },
