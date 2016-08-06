@@ -23,8 +23,7 @@
 
     "agent_scheduler_cfg" : {
         "partitions" : {
-            "monitor" : 1, 
-            "bot"     : "max"
+            "monitor" : 1
         }
     },
 

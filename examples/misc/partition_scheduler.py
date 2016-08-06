@@ -93,7 +93,8 @@ if __name__ == '__main__':
                 print 'setting scheduler CU'
                 cud.scheduler_hint = {'partition' : 'monitor'}
             else:
-                cud.scheduler_hint = {'partition' : 'bot'}
+                pass
+               #cud.scheduler_hint = {'partition' : 'bot'}
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')

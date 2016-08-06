@@ -43,9 +43,6 @@ class Continuous(AgentSchedulingComponent):
         if  'scheduler'  in self._cfg and \
             'partitions' in self._cfg['agent_scheduler_cfg']:
             parts = self._cfg['agent_scheduler_cfg']['partitions']
-        else:
-            # default partition setup:
-            parts = {'default' : 'max'}
 
 
         # first collect all partitions where an exact node count id given
@@ -57,7 +54,6 @@ class Continuous(AgentSchedulingComponent):
                                        'slots' : list()}
 
         # then assign any leftover cores to a 'max' partition, if one is given.
-        # Use 'defaut' per default
         for p in parts:
             if isinstance(parts[p], basestring) and parts[p] == 'max':
                 if not free_cores:
@@ -65,7 +61,13 @@ class Continuous(AgentSchedulingComponent):
                 self._partitions[p] = {'size'  : free_cores,
                                        'nodes' : dict(),
                                        'slots' : list()}
-                free_cores          = 0
+                free_cores = 0
+
+        # we always add a 'default' partition for the remaining cores -- even if
+        # it might empty
+        self._partitions['_default'] = {'size'  : free_cores,
+                                        'nodes' : dict(),
+                                        'slots' : list()}
 
         # Slots represents the internal process management structure.
         # The structure is as follows:
@@ -142,9 +144,9 @@ class Continuous(AgentSchedulingComponent):
         cores = cud['cores']
         hints = cu['description'].get('scheduler_hint')
         if hints:
-            pname = hints.get('partition', 'default')
+            pname = hints.get('partition', '_default')
         else:
-            pname = 'default'
+            pname = '_default'
 
         # TODO: single_node should be enforced for e.g. non-message passing
         #       tasks, but we don't have that info here.
