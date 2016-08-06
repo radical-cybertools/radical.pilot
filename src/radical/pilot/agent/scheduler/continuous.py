@@ -140,8 +140,11 @@ class Continuous(AgentSchedulingComponent):
         cud = cu['description']
 
         cores = cud['cores']
-        hints = cu['description'].get('scheduler_hint', {})
-        pname = hints.get('partition', 'default')
+        hints = cu['description'].get('scheduler_hint')
+        if hints:
+            pname = hints.get('partition', 'default')
+        else:
+            pname = 'default'
 
         # TODO: single_node should be enforced for e.g. non-message passing
         #       tasks, but we don't have that info here.
