@@ -5,10 +5,9 @@
 RADICAL-Pilot - Overview
 ************************
 
-This section will provide a conceptual overview about RADICAL-Pilot (RP).  You
-will learn what problems RP tries to solve -- and importantly also what problems
-it will *not* solve.  You will also be introduced to some vocabulary, and the
-overall RP architecture and operation.  
+This section provides a conceptual overview about RADICAL-Pilot (RP).  You will
+learn what problems RP aims to solve for you.  You will also be introduced to
+some vocabulary, and the overall RP architecture and operation.
 
 We will keep the information on a very general level, and will avoid any details
 which will not contribute to the user experience.  Having said that, feel free
@@ -39,7 +38,7 @@ behalf, and which executes sequences of ``ComputeUnits`` on that resource slice.
 
 RP applications will, in general, first define a set of such pilots, ie. the set
 of target resources, the size of the resource slice to manage, etc), and then
-submit those pilots to the resources.  Once the pilots are active, the
+submit those pilots to the resources.  Once the pilots are defined, the
 application can send them ``ComputeUnits`` (see below) for execution.
 
 .. image:: architecture.png
