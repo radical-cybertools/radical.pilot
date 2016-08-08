@@ -49,6 +49,13 @@
 #
 # Known remaining problems:
 #
+#   - only one: this doesn't work reliably.
+#     https://bugs.python.org/issue21895 + 
+#     "You will have to make sure that your main thread never blocks in
+#     a non-interruptible call. In python 2.7, join is not interuptable."
+#     which means that, when we get races on process and thread termination,
+#     and one signal arrives during a join, we get hung up.
+#
 #
 # ------------------------------------------------------------------------------
 
