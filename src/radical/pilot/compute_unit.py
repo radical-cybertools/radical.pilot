@@ -6,6 +6,7 @@ __license__   = "MIT"
 import os
 import copy
 import time
+import threading
 
 import radical.utils as ru
 
@@ -70,6 +71,7 @@ class ComputeUnit(object):
         self._pilot         = None
         self._sandbox       = None
         self._callbacks     = dict()
+        self._cb_lock       = threading.RLock()
 
         for m in rpt.UMGR_METRICS:
             self._callbacks[m] = dict()
@@ -161,19 +163,21 @@ class ComputeUnit(object):
         # replay all state transitions
         for state in passed:
 
-            for cb_name, cb_val in self._callbacks[rpt.UNIT_STATE].iteritems():
+            with self._cb_lock:
 
-                cb      = cb_val['cb']
-                cb_data = cb_val['cb_data']
+                for cb_name, cb_val in self._callbacks[rpt.UNIT_STATE].iteritems():
 
-              # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, target, cb_name)
-                
-                self._state = state
-                if cb_data: cb(self, state, cb_data)
-                else      : cb(self, state)
+                    cb      = cb_val['cb']
+                    cb_data = cb_val['cb_data']
 
-            # ask umgr to invike any global callbacks
-            self._umgr._call_unit_callbacks(self, state)
+                  # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, target, cb_name)
+
+                    self._state = state
+                    if cb_data: cb(self, state, cb_data)
+                    else      : cb(self, state)
+
+                # ask umgr to invike any global callbacks
+                self._umgr._call_unit_callbacks(self, state)
 
         # make sure we end up with the right state
         self._state = new_state
@@ -188,7 +192,7 @@ class ComputeUnit(object):
         """
         Returns a Python dictionary representation of the object.
         """
-        
+
         ret = {
             'type':        'unit',
             'umgr':        self.umgr.uid,

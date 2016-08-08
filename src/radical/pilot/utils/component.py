@@ -1277,7 +1277,7 @@ class Component(mp.Process):
             self._initialize_common()
             self._initialize_child()
 
-            self._log.error('START: %s run', self.uid)
+            self._log.debug('START: %s run', self.uid)
 
             # The main event loop will repeatedly iterate over all input
             # channels.  It can only be terminated by

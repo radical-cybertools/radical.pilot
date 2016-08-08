@@ -90,7 +90,6 @@ class PilotManager(rpu.Component):
         for m in rpt.PMGR_METRICS:
             self._callbacks[m] = dict()
 
-
         cfg = ru.read_json("%s/configs/pmgr_%s.json" \
                 % (os.path.dirname(__file__),
                    os.environ.get('RADICAL_PILOT_PMGR_CFG', 'default')))
@@ -156,8 +155,9 @@ class PilotManager(rpu.Component):
 
         # we don't want any callback invokations during shutdown
         # FIXME: really?
-        for m in rpt.PMGR_METRICS:
-            self._callbacks[m] = dict()
+        with self._cb_lock:
+            for m in rpt.PMGR_METRICS:
+                self._callbacks[m] = dict()
 
         # If terminate is set, we cancel all pilots. 
         if terminate:
@@ -268,13 +268,14 @@ class PilotManager(rpu.Component):
     #
     def _call_pilot_callbacks(self, pilot_obj, state):
 
-        for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
+        with self._cb_lock:
+            for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
 
-            cb      = cb_val['cb']
-            cb_data = cb_val['cb_data']
-            
-            if cb_data: cb(pilot_obj, state, cb_data)
-            else      : cb(pilot_obj, state)
+                cb      = cb_val['cb']
+                cb_data = cb_val['cb_data']
+                
+                if cb_data: cb(pilot_obj, state, cb_data)
+                else      : cb(pilot_obj, state)
 
 
     # --------------------------------------------------------------------------
@@ -596,12 +597,14 @@ class PilotManager(rpu.Component):
         if metric and metric not in rpt.UMGR_METRICS :
             raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
 
-        with self._cb_lock:
+        if not metric:
+            metrics = rpt.PMGR_METRICS
+        elif isinstance(metric, list):
+            metrics =  metric
+        else:
+            metrics = [metric]
 
-            if not metric:
-                metrics = rpt.PMGR_METRICS
-            else:
-                metrics = [metric]
+        with self._cb_lock:
 
             for metric in metrics:
 

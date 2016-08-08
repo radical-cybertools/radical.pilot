@@ -8,6 +8,7 @@ import sys
 import copy
 import time
 import saga
+import threading
 
 import radical.utils as ru
 
@@ -71,6 +72,7 @@ class ComputePilot(object):
         self._stderr        = None
         self._sandbox       = None
         self._callbacks     = dict()
+        self._cb_lock       = threading.RLock()
         self._exit_on_error = self._descr.get('exit_on_error')
 
         for m in rpt.PMGR_METRICS:
@@ -167,19 +169,21 @@ class ComputePilot(object):
         # replay all state transitions
         for state in passed:
 
-            for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
+            with self._cb_lock:
 
-                cb      = cb_val['cb']
-                cb_data = cb_val['cb_data']
+                for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
 
-              # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, target, cb_name)
-                
-                self._state = state
-                if cb_data: cb(self, state, cb_data)
-                else      : cb(self, state)
+                    cb      = cb_val['cb']
+                    cb_data = cb_val['cb_data']
 
-            # ask pmgr to invike any global callbacks
-            self._pmgr._call_pilot_callbacks(self, state)
+                  # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, target, cb_name)
+
+                    self._state = state
+                    if cb_data: cb(self, state, cb_data)
+                    else      : cb(self, state)
+
+                # ask pmgr to invike any global callbacks
+                self._pmgr._call_pilot_callbacks(self, state)
 
         # make sure we end up with the right state
         self._state = new_state
@@ -406,9 +410,10 @@ class ComputePilot(object):
         if metric not in rpt.PMGR_METRICS :
             raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
 
-        cb_name = cb.__name__
-        self._callbacks[metric][cb_name] = {'cb'      : cb, 
-                                            'cb_data' : cb_data}
+        with self._cb_lock:
+            cb_name = cb.__name__
+            self._callbacks[metric][cb_name] = {'cb'      : cb, 
+                                                'cb_data' : cb_data}
 
 
     # --------------------------------------------------------------------------
@@ -418,12 +423,14 @@ class ComputePilot(object):
         if metric and metric not in rpt.UMGR_METRICS :
             raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
 
-        with self._cb_lock:
+        if not metric:
+            metrics = rpt.PMGR_METRICS
+        elif isinstance(metric, list):
+            metrics =  metric
+        else:
+            metrics = [metric]
 
-            if not metric:
-                metrics = rpt.PMGR_METRICS
-            else:
-                metrics = [metric]
+        with self._cb_lock:
 
             for metric in metrics:
 
