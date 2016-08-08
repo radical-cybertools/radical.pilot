@@ -5,6 +5,14 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.42 Release                                                          2016-08-09
+--------------------------------------------------------------------------------
+
+  - change examples to use 2 cores on localhost 
+  - Iterate documentation
+  - Manual cherry pick fix for getip. 
+
+
 0.41 Release                                                          2016-07-15
 --------------------------------------------------------------------------------
 
