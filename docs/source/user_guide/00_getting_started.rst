@@ -5,7 +5,7 @@
 Getting Started
 ***************
 
-In this section we will walk you through an example of a basic application that uses RP. 
+In this section we will walk you through the basics of using  RP. 
 After you have worked through this chapter, you will understand how to
 launch a local Pilot and use a UnitManager to schedule and run
 ComputeUnits (tasks) on it.
@@ -19,23 +19,23 @@ ComputeUnits (tasks) on it.
 
 You can download the basic :download:`00_getting_started.py
 <../../../examples/00_getting_started.py>`.  The text below will explain the
-most important code sections, and at the end show the expected output
-from the example's execution.  Please look carefully at the code comments --
+most important code sections, and at the end shows the expected output
+from the execution of the example.  Please look carefully at the code comments as
 they explain some aspects of the code which are not explicitly covered in the
 text below.  
 
 Loading the RP Module, Follow the Application Execution
 -------------------------------------------------------
 
-In order to use RADICAL-Pilot in your Python application, you need to import the
-``radical.pilot`` module (we use the `rp` abbreviation for the module name):
+In order to use RADICAL-Pilot, you need to import the ``radical.pilot`` module (we use the `rp` abbreviation for the module name) 
+in your Python script or application:
 
 .. code-block:: python
 
     import radical.pilot as rp
 
 
-All example application scripts used in this user guide use the `LogReporter`
+All example scripts used in this user guide use the `LogReporter`
 facility (of RADICAL-Utils) to print runtime and progress information.  You can
 control that output with the `RADICAL_PILOT_VERBOSE` variable, which can be set
 to the normal Python logging levels, and to the value `REPORT` to obtain well
@@ -59,7 +59,7 @@ Creating a Session
 
 A :class:`radical.pilot.Session` is the root object for all other objects in
 RADICAL- Pilot.  :class:`radical.pilot.PilotManager` and
-:class:`radical.pilot.UnitManager` instances are always attached to a session,
+:class:`radical.pilot.UnitManager` instances are always attached to a Session,
 and their lifetime is controlled by the session.
 
 A Session also encapsulates the connection(s) to a backend `MongoDB
@@ -84,8 +84,8 @@ variable.
    out the database entries of the session.
 
 
-Creating ComputePilots
-----------------------
+Creating ComputePilots (or just Pilots)
+---------------------------------------
 
 A :class:`radical.pilot.ComputePilot` is responsible for ComputeUnit execution.
 ComputePilots can be launched either locally or remotely, and they can manage
@@ -93,7 +93,7 @@ a single node or a large number of nodes on a cluster.
 
 Pilots are created via a :class:`radical.pilot.PilotManager`, by passing
 a :class:`radical.pilot.ComputePilotDescription`.  The most important elements
-of that description are
+of the ComputePilot description are
 
     * `resource`: a label which specifies the target resource to run the pilot
       on, ie. the location of the pilot;
@@ -175,9 +175,9 @@ Our basic example creates 128 ComputeUnits which each run `/bin/date`:
             cuds.append(cud)
 
 
-Compute units are executed by pilots.  The `:class:radical.pilot.UnitManager`
-class is responsible for routing Compute Units from the application to the
-available pilots.  That Unit manager accepts ComputeUnitDescriptions as we
+ComputeUnits are executed by pilots.  The `:class:radical.pilot.UnitManager`
+class is responsible for routing ComputeUnits from the application to the
+available pilots.  The UnitManager accepts ComputeUnitDescriptions as we
 created above and assigns them, according to some scheduling algorithm, to the
 set of available pilots for execution:
 
