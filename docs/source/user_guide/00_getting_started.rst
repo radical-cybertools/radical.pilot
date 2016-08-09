@@ -5,9 +5,9 @@
 Getting Started
 ***************
 
-In this section we will walk the reader through the most basic RP application
-example.  After you have worked through this chapter, you will understand how to
-launch a local ComputePilot and use a UnitManager to schedule and run
+In this section we will walk you through an example of a basic application that uses RP. 
+After you have worked through this chapter, you will understand how to
+launch a local Pilot and use a UnitManager to schedule and run
 ComputeUnits (tasks) on it.
 
 .. note:: The reader is assumed to be familiar with the general RP concepts as
