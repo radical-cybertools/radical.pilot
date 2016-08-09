@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
-    session = rp.Session(database_url=os.environ.get('RADICAL_PILOT_DBURL'))
+    session = rp.Session()
     print "session id: %s" % session.uid
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
@@ -80,8 +80,8 @@ if __name__ == "__main__":
         # http://radicalpilot.readthedocs.org/en/latest/machconf.html#preconfigured-resources
         # 
         pdesc = rp.ComputePilotDescription ()
-        pdesc.resource = "local.localhost"  # this is a "label", not a hostname
-        pdesc.cores    =  1
+        pdesc.resource = "ncsa.bw_local"  # this is a "label", not a hostname
+        pdesc.cores    = 64
         pdesc.runtime  = 10    # minutes
         pdesc.cleanup  = True  # clean pilot sandbox and database entries
 
