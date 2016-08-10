@@ -80,8 +80,8 @@ if __name__ == "__main__":
         # http://radicalpilot.readthedocs.org/en/latest/machconf.html#preconfigured-resources
         # 
         pdesc = rp.ComputePilotDescription ()
-        pdesc.resource = "ncsa.bw_local"  # this is a "label", not a hostname
-        pdesc.cores    = 64
+        pdesc.resource = <RESOURCE_LABEL>  # this is a "label", not a hostname
+        pdesc.cores    = <PILOT_CORES>
         pdesc.runtime  = 10    # minutes
         pdesc.cleanup  = True  # clean pilot sandbox and database entries
 
@@ -103,7 +103,7 @@ if __name__ == "__main__":
         print "Registering Compute Pilot with Unit Manager ..."
         umgr.add_pilots(pilot)
 
-        NUMBER_JOBS  = 10 # the total number of cus to run
+        NUMBER_JOBS  = <BAG_SIZE> # the total number of cus to run
 
         # create CU descriptions
         cudesc_list = []
@@ -114,7 +114,7 @@ if __name__ == "__main__":
             cudesc.executable  = "/bin/echo"
             cudesc.arguments   = ['I am CU number $CU_NO']
             cudesc.environment = {'CU_NO': i}
-            cudesc.cores       = 1
+            cudesc.cores       = <CU_CORES>
             # -------- END USER DEFINED CU DESCRIPTION --------- #
 
             cudesc_list.append(cudesc)
