@@ -75,10 +75,10 @@ if __name__ == "__main__":
         # and your username on that resource is different from the username 
         # on your local machine. 
         #
-        c = rp.Context('userpass')
+        #c = rp.Context('userpass')
         #c.user_id = "tutorial_X"
         #c.user_pass = "PutYourPasswordHere"
-        session.add_context(c)
+        #session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         print "Initializing Pilot Manager ..."
@@ -102,9 +102,9 @@ if __name__ == "__main__":
         # http://radicalpilot.readthedocs.org/en/latest/machconf.html#preconfigured-resources
         # 
         pdesc = rp.ComputePilotDescription ()
-        pdesc.resource = "local.localhost"  # NOTE: This is a "label", not a hostname
+        pdesc.resource = "ncsa.bw_local"  # NOTE: This is a "label", not a hostname
         pdesc.runtime  = 10 # minutes
-        pdesc.cores    = 1
+        pdesc.cores    = 64
         pdesc.cleanup  = True
 
         # submit the pilot.
@@ -126,19 +126,19 @@ if __name__ == "__main__":
         print "Registering Compute Pilot with Unit Manager ..."
         umgr.add_pilots(pilot)
 
-        NUMBER_JOBS  = 2 # the total number of CUs to chain
+        number_couples = <NUMBER_COUPLES> # the total number of couples to run
 
         # submit A cus to pilot job
         cudesc_list_A = []
-        for idx in range(NUMBER_JOBS):
+        for idx in range(number_couples):
 
-            # -------- BEGIN USER DEFINED CU 1 DESCRIPTION --------- #
+            # -------- BEGIN USER DEFINED CU A DESCRIPTION --------- #
             cudesc = rp.ComputeUnitDescription()
             cudesc.environment = {"CU_LIST": "A", "CU_NO": "%02d" % idx}
             cudesc.executable  = "/bin/echo"
             cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
-            cudesc.cores       = 1
-            # -------- END USER DEFINED CU 1 DESCRIPTION --------- #
+            cudesc.cores       = <CU_A_CORES>
+            # -------- END USER DEFINED CU A DESCRIPTION --------- #
 
             cudesc_list_A.append(cudesc)
 
@@ -150,15 +150,15 @@ if __name__ == "__main__":
 
         # submit B cus to pilot job
         cudesc_list_B = []
-        for idx in range(NUMBER_JOBS):
+        for idx in range(number_couples):
 
-            # -------- BEGIN USER DEFINED CU 2 DESCRIPTION --------- #
+            # -------- BEGIN USER DEFINED CU B DESCRIPTION --------- #
             cudesc = rp.ComputeUnitDescription()
             cudesc.environment = {"CU_LIST": "B", "CU_NO": "%02d" % idx}
             cudesc.executable  = "/bin/echo"
             cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
-            cudesc.cores       = 1
-            # -------- END USER DEFINED CU 2 DESCRIPTION --------- #
+            cudesc.cores       = <CU_B_CORES>
+            # -------- END USER DEFINED CU B DESCRIPTION --------- #
 
             cudesc_list_B.append(cudesc)
 
@@ -178,15 +178,15 @@ if __name__ == "__main__":
         # submit 'C' tasks to pilot job. each 'C' task takes the output of
         # an 'A' and a 'B' task and puts them together.
         cudesc_list_C = []
-        for idx in range(NUMBER_JOBS):
+        for idx in range(number_couples):
 
-            # -------- BEGIN USER DEFINED CU 3 DESCRIPTION --------- #
+            # -------- BEGIN USER DEFINED CU C DESCRIPTION --------- #
             cudesc = rp.ComputeUnitDescription()
             cudesc.environment = {"CU_SET": "C", "CU_NO": "%02d" % idx}
             cudesc.executable  = "/bin/echo"
             cudesc.arguments   = ['"$CU_SET CU with id $CU_NO"']
-            cudesc.cores       = 1
-            # -------- END USER DEFINED CU 3 DESCRIPTION --------- #
+            cudesc.cores       = <CU_C_CORES>
+            # -------- END USER DEFINED CU C DESCRIPTION --------- #
 
             cudesc_list_C.append(cudesc)
 
