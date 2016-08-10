@@ -5,10 +5,10 @@
 Getting Started
 ***************
 
-In this section we will walk the reader through the most basic RP application
-example.  After you have worked through this chapter, you will understand how to
-launch a local ``ComputePilot`` and use a ``UnitManager`` to schedule and run
-``ComputeUnits`` (tasks) on it.
+In this section we will walk you through the basics of using  RP.  After you
+have worked through this chapter, you will understand how to launch a local
+``ComputePilot`` and use a ``UnitManager`` to schedule and run ``ComputeUnits``
+(tasks) on it.
 
 .. note:: The reader is assumed to be familiar with the general RP concepts as
           described in :ref:`chapter_overview` for reference.
@@ -17,28 +17,31 @@ launch a local ``ComputePilot`` and use a ``UnitManager`` to schedule and run
           RADICAL-Pilot, and also configured access to the resources you intent
           to use for the examples (see chapter :ref:`chapter_installation`).
 
+.. note:: We colloquially refer to ``ComputePilot`` as `pilot`, and to
+          ``ComputeUnit`` as `unit`.
+
 You can download the basic :download:`00_getting_started.py
 <../../../examples/00_getting_started.py>`.  The text below will explain the
-most important code sections, and at the end show the expected output
-from the example's execution.  Please look carefully at the code comments --
+most important code sections, and at the end shows the expected output
+from the execution of the example.  Please look carefully at the code comments as
 they explain some aspects of the code which are not explicitly covered in the
 text below.  
 
 Loading the RP Module, Follow the Application Execution
 -------------------------------------------------------
 
-In order to use RADICAL-Pilot in your Python application, you need to import the
-``radical.pilot`` module (we use the ``rp`` abbreviation for the module name):
+In order to use RADICAL-Pilot, you need to import the ``radical.pilot`` module (we use the `rp` abbreviation for the module name) 
+in your Python script or application:
 
 .. code-block:: python
 
     import radical.pilot as rp
 
 
-All example application scripts used in this user guide use the ``LogReporter``
-facility (of ``RADICAL-Utils``) to print runtime and progress information.  You can
+All example scripts used in this user guide use the ``LogReporter``
+facility (of RADICAL-Utils) to print runtime and progress information.  You can
 control that output with the ``RADICAL_PILOT_VERBOSE`` variable, which can be set
-to the normal Python logging levels, and to the value `REPORT` to obtain well
+to the normal Python logging levels, and to the value ``REPORT`` to obtain well
 formatted output.  We assume the ``REPORT`` setting to be used when referencing
 any output in this chapter.
 
@@ -59,7 +62,7 @@ Creating a Session
 
 A :class:`radical.pilot.Session` is the root object for all other objects in
 RADICAL- Pilot.  :class:`radical.pilot.PilotManager` and
-:class:`radical.pilot.UnitManager` instances are always attached to a session,
+:class:`radical.pilot.UnitManager` instances are always attached to a Session,
 and their lifetime is controlled by the session.
 
 A Session also encapsulates the connection(s) to a backend `MongoDB
@@ -88,12 +91,12 @@ Creating ComputePilots
 ----------------------
 
 A :class:`radical.pilot.ComputePilot` is responsible for ``ComputeUnit`` execution.
-``ComputePilots`` (or short: pilot) can be launched either locally or remotely, and 
+Pilots can be launched either locally or remotely, and 
 they can manage a single node or a large number of nodes on a cluster.
 
 Pilots are created via a :class:`radical.pilot.PilotManager`, by passing
 a :class:`radical.pilot.ComputePilotDescription`.  The most important elements
-of that description are
+of the ``ComputePilotDescription`` are
 
     * `resource`: a label which specifies the target resource to run the pilot
       on, ie. the location of the pilot;
@@ -151,7 +154,7 @@ Submitting ComputeUnits
 
 After you have launched a pilot, you can now generate
 :class:`radical.pilot.ComputeUnit`  objects for the pilot to execute. You
-can think of a ``ComputeUnit`` (or short: unit) as something very similar to an operating system
+can think of a ``ComputeUnit`` as something very similar to an operating system
 process that consists of an ``executable``, a list of ``arguments``, and an
 ``environment`` along with some runtime requirements.
 
@@ -175,12 +178,12 @@ Our basic example creates 128 units which each run `/bin/date`:
             cuds.append(cud)
 
 
-Compute units are executed by pilots.  The `:class:radical.pilot.UnitManager`
-class is responsible for routing the units from the application to the
-available pilots.  That Unit manager accepts ``ComputeUnitDescriptions`` as we
+Units are executed by pilots.  The `:class:radical.pilot.UnitManager`
+class is responsible for routing those units from the application to the
+available pilots.  The ``UnitManager`` accepts ``ComputeUnitDescriptions`` as we
 created above and assigns them, according to some scheduling algorithm, to the
-set of available pilots for execution (pilots are made available to a Unit
-manager via the ``add_pilot`` call):
+set of available pilots for execution (pilots are made available to a 
+``UnitManager`` via the ``add_pilot`` call):
 
 .. code-block:: python
 
