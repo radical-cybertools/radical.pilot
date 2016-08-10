@@ -126,16 +126,16 @@ if __name__ == "__main__":
         print "Registering Compute Pilot with Unit Manager ..."
         umgr.add_pilots(pilot)
 
-        NUMBER_JOBS  = 10 # the total number of cus to run
+        number_chains = <NUMBER_CHAINS> # the total number of chains
 
         # submit A cus to pilot job
         cudesc_list_A = []
-        for i in range(NUMBER_JOBS):
+        for i in range(number_chains):
 
             # -------- BEGIN USER DEFINED CU A_n DESCRIPTION --------- #
             cudesc = rp.ComputeUnitDescription()
             cudesc.environment = {"CU_LIST": "A", "CU_NO": "%02d" % i}
-            cudesc.executable  = "/bin/echo"
+            cudesc.executable  = <CU_A_EXECUTABLE>
             cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
             cudesc.cores       = 1
             # -------- END USER DEFINED CU A_n DESCRIPTION --------- #
@@ -166,7 +166,7 @@ if __name__ == "__main__":
                 # -------- BEGIN USER DEFINED CU B_n DESCRIPTION --------- #
                 cudesc = rp.ComputeUnitDescription()
                 cudesc.environment = {'CU_LIST': 'B', 'CU_NO': "%02d" % idx}
-                cudesc.executable  = '/bin/echo'
+                cudesc.executable  = <CU_B_EXECUTABLE>
                 cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
                 cudesc.cores       = 1
                 # -------- END USER DEFINED CU B_n DESCRIPTION --------- #
