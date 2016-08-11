@@ -50,11 +50,7 @@
             "module use --append /projects/sciteam/gkd/modules",
             "module load openmpi"
         ],
-        "pre_bootstrap_2"             : [
-            "export HOME=$HOME",
-            "export PATH=$PATH",
-            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
-        ],
+        "pre_bootstrap_2"             : ["export HOME=$HOME"],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
@@ -89,11 +85,7 @@
             "module use --append /projects/sciteam/gkd/modules",
             "module load openmpi"
         ],
-        "pre_bootstrap_2"             : [
-            "export HOME=$HOME",
-            "export PATH=$PATH",
-            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
-        ],
+        "pre_bootstrap_2"             : ["export HOME=$HOME"],
         "default_remote_workdir"      : "/scratch/training/$USER",
         "valid_roots"                 : ["/scratch/training"],
         "rp_version"                  : "installed",
@@ -126,9 +118,7 @@
             "module load ccm"
         ],
         "pre_bootstrap_2"             : [
-            "export HOME=$HOME",
-            "export PATH=$PATH",
-            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+            "export HOME=$HOME"
         ],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
@@ -139,3 +129,4 @@
         "python_dist"                 : "default"
     }
 }
+

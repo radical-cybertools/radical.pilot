@@ -14,6 +14,13 @@
             "cores"    : 64
         },
 
+        "ncsa.bw_local" : {
+            "project"  : null,
+            "queue"    : "debug",
+            "schema"   : null,
+            "cores"    : 64
+        },
+
         "ncsa.bw_ccm" : {
             "project"  : "gkd",
             "queue"    : "debug",
