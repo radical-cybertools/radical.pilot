@@ -1176,24 +1176,6 @@ pre_bootstrap_1()
         echo "#ABORT"
         exit 1
     fi
-
-  # We want the sub-agents to see the same environment as the main agent.  In
-  # order to ensure this, we can re-run all prep_bootstrap_1 comands as
-  # pre_bootstrap_2, which is in the process scope of the SAs.
-  #
-  # The drawback here is that it expects those commands to actually work ok in
-  # that scope -- which is not always guaranteed.  For example, a `module load`
-  # command might work differently on a compute node than on a head node.
-  #
-  # So we will not use this mechanism for now, but leave this comment in case
-  # this becomes relevant again at some point.  For now, the approach is:
-  #
-  #  - run all pre_bootstrap_1 commands
-  #  - copy PATH and LD_LIBRARY_PATH
-  #  - apply those copies in bootstrap_2.sh *before* sourcing the virtualenv
-  #  - run any pre_bootstrap_2 commands *after* soucring the virtrualenv
-  #
-  # pre_bootstrap_2 "$cmd"
 }
 
 # -------------------------------------------------------------------------------
