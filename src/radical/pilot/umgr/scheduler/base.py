@@ -104,31 +104,33 @@ class UMGRSchedulingComponent(rpu.Component):
     #
     def _base_state_cb(self, topic, msg):
 
-        # the base class will keep track of pilot and unit state changes.
+        # the base class will keep track of pilot state changes and updates
+        # self._pilots accordingly.  Unit state changes will be ignored -- if
+        # a scheduler needs to keep track of those, it will need to add its own
+        # callback.
         
         cmd = msg.get('cmd')
         arg = msg.get('arg')
 
         self._log.info('scheduler state_cb: %s', cmd)
-        self._log.debug(' === base state cb: %s' % cmd)
+      # self._log.debug(' === base state cb: %s' % cmd)
 
         # FIXME: get cmd string consistent throughout the code
         if cmd not in ['update', 'state_update']:
-            self._log.debug(' === base state cb: ignore %s' % cmd)
+          # self._log.debug(' === base state cb: ignore %s' % cmd)
             self._log.debug('ignore cmd %s', cmd)
             return
 
         if not isinstance(arg, list): things = [arg]
         else                        : things =  arg
 
-        for thing in things:
-            self._log.debug(' === base state cb: thing %s [%s]', thing['uid'], thing.get('state'))
+      # self._log.debug(' === base state cb: things %s' % things)
 
         pilots = [t for t in things if t['type'] == 'pilot']
         units  = [t for t in things if t['type'] == 'unit' ]
 
-      # self._log.debug('update pilots %s', [p['uid'] for p in pilots])
-      # self._log.debug('update units  %s', [u['uid'] for u in units])
+        self._log.debug('update pilots %s', [p['uid'] for p in pilots])
+        self._log.debug('update units  %s', [u['uid'] for u in units])
 
       # self._log.debug(' === base state cb: update  pilots: %s' % [p['uid'] for p in pilots])
         self._update_pilot_states(pilots)
@@ -144,7 +146,7 @@ class UMGRSchedulingComponent(rpu.Component):
 
         self._log.debug('update pilot states for %s', [p['uid'] for p in pilots])
 
-        self._log.debug(' === update pilot states for %s' % ([p['uid'] for p in pilots]))
+      # self._log.debug(' === update pilot states for %s' % ([p['uid'] for p in pilots]))
 
         if not pilots:
             return
@@ -171,15 +173,15 @@ class UMGRSchedulingComponent(rpu.Component):
                 target, passed = rps._pilot_state_progress(current, target) 
 
                 if current != target:
-                    self._log.debug(' === %s: %s -> %s' % (pid,  current, target))
+                  # self._log.debug(' === %s: %s -> %s' % (pid,  current, target))
                     to_update.append(pid)
                     self._pilots[pid]['state'] = target
                     self._log.debug('update pilot state: %s -> %s', current, passed)
 
-        self._log.debug(' === to update: %s' % to_update)
+      # self._log.debug(' === to update: %s' % to_update)
         if to_update:
             self.update_pilots(to_update)
-        self._log.debug(' === updated  : %s' % to_update)
+      # self._log.debug(' === updated  : %s' % to_update)
 
 
     # --------------------------------------------------------------------------

@@ -230,24 +230,14 @@ class UnitManager(rpu.Component):
         # FIXME: we also pull for dead units.  That is not efficient...
         # FIXME: this needs to be converted into a tailed cursor in the update
         #        worker
-        units      = self._session._dbs.get_units(umgr_uid=self.uid)
-        to_publish = list()
+        units  = self._session._dbs.get_units(umgr_uid=self.uid)
+        action = False
 
         for unit in units:
-            self._log.debug(" === unit  fetched: %s %s", unit['uid'], unit['state'])
             if self._update_unit(unit['uid'], unit):
-                to_publish.append(unit)
+                action = True
 
-        # publish state updates
-        if to_publish:
-            # NOTE that this will only publish the resulting state, not
-            # intermediate states!
-            self.advance(units, publish=True, push=False)
-            return True
-
-        else:
-            # nothing happened - idle for a bit
-            return False
+        return action
 
 
     #---------------------------------------------------------------------------
@@ -285,20 +275,28 @@ class UnitManager(rpu.Component):
         self._prof.prof('get', msg="bulk size: %d" % len(units), uid=self.uid)
         for unit in units:
 
-            self._log.debug(" === unit  pulled: %s %s", unit['uid'], unit['state'])
-            self._update_unit(unit['uid'], unit)
-
+            self._log.debug('\n\n=======================================')
+            self._log.debug(' === details %s: %s', unit['uid'], pprint.pformat(unit))
+            
             # we need to make sure to have the correct state:
             old = unit['state']
             new = rps._unit_state_collapse(unit['states'])
+            self._log.debug(' === %s state: %s -> %s', unit['uid'], old, new)
+
+            if new == rps.UMGR_STAGING_OUTPUT:
+                self._log.debug(' === %s state: %s -> %s %s', unit['uid'], old, new, unit['states'])
+
 
             unit['state'] = new
             unit['control'] = 'umgr'
             self._prof.prof('get', msg="bulk size: %d" % len(units), uid=unit['uid'])
 
+            self._log.debug('\n=======================================\n\n')
+
         # now we really own the CUs, and can start working on them (ie. push
-        # them into the pipeline).
-        self.advance(units, publish=True, push=True)
+        # them into the pipeline).  We don't publish the advance, since that
+        # happened already on the agent side when the state was set.
+        self.advance(units, publish=False, push=True)
 
         return True
 
@@ -331,7 +329,11 @@ class UnitManager(rpu.Component):
             if uid not in self._units:
                 return False
 
-            return self._units[uid]._update(unit_dict)
+            # only update on state changes
+            if self._units[uid].state != unit_dict['state']:
+                return self._units[uid]._update(unit_dict)
+            else:
+                return False
 
 
     # --------------------------------------------------------------------------

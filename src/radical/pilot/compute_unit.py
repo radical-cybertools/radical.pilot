@@ -142,9 +142,6 @@ class ComputeUnit(object):
         current = self.state
         target  = unit_dict['state']
 
-        if current == target:
-            return
-
         # we update all fields
         # FIXME: well, not all really :/
         # FIXME: well, this is ugly...  we should maintain all state in
