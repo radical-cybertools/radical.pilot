@@ -148,7 +148,7 @@ class Backfilling(UMGRSchedulingComponent):
         
                 uid   = unit['uid']
                 state = unit['state']
-                pid   = unit.get('pilot')
+                pid   = unit.get('pilot', '')
 
                 self._log.debug(' === update  unit: %s [%s] [%s]',  uid, pid, state)
 

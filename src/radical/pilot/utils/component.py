@@ -1338,7 +1338,7 @@ class Component(mp.Process):
                                         self._cancel_list.remove(uid)
                                     to_cancel.append(thing)
 
-                                self._log.debug('got %s (%s)', ttype, thing)
+                                self._log.debug('got %s (%s)', ttype, uid)
                                 self._prof.prof(event='get', state=state, uid=uid, msg=input.name)
                                 self._prof.prof(event='work start', state=state, uid=uid)
 
