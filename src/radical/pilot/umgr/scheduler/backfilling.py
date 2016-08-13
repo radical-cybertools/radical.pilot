@@ -177,15 +177,13 @@ class Backfilling(UMGRSchedulingComponent):
                     self._log.error('bf: unit %s on %s inconsistent', uid, pid)
                     raise RuntimeError('inconsistent scheduler state')
 
-
-              # self._log.debug(' === upd unit  %s [%s]' % (uid, state))
                 if  rps._unit_state_value(state) > \
                     rps._unit_state_value(rps.AGENT_EXECUTING):
                     # this unit is now considered done
                     info['done'].append(uid)
                     info['used'] -= unit['description']['cores']
                     reschedule = True
-                  # self._log.debug(' === upd unit  %s -  schedule' % uid)
+                    self._log.debug(' === upd unit  %s -  schedule (used: %s)', uid, info['used'])
 
                     if info['used'] < 0:
                         self._log.error('bf: pilot %s inconsistent', pid)

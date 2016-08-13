@@ -134,52 +134,39 @@ class ComputeUnit(object):
         Return True if state changed, False otherwise
         """
 
-        # _update() calls can happen out of order -- it is up to *this* method
-        # to make sure that the update results in a consistent state.
-
         assert(unit_dict['uid'] == self.uid)
 
+        # NOTE: this method relies on state updates to arrive in order, and
+        #       without gaps.
         current = self.state
         target  = unit_dict['state']
 
+        if target not in [rps.FAILED, rps.CANCELED]:
+            assert(rps._unit_state_value(target) - rps._unit_state_value(current) == 1)
+
+
         # we update all fields
         # FIXME: well, not all really :/
-        # FIXME: well, this is ugly...  we should maintain all state in
-        #        a dict.
-        for key in ['stdout', 'stderr', 'exit_code', 'pilot', 'sandbox']:
+        # FIXME: setattr is ugly...  we should maintain all state in a dict.
+        for key in ['state', 'stdout', 'stderr', 'exit_code', 'pilot', 'sandbox']:
 
             val = unit_dict.get(key, None)
             if val:
                 setattr(self, "_%s" % key, val)
 
-        new_state, passed = rps._unit_state_progress(current, target)
+        # invoke unit specific callbacks
+        for cb_name, cb_val in self._callbacks[rpt.UNIT_STATE].iteritems():
 
-        if new_state in [rps.CANCELED, rps.FAILED]:
-            # don't replay intermediate states
-            passed = passed[-1:]
+            cb      = cb_val['cb']
+            cb_data = cb_val['cb_data']
 
-        # replay all state transitions
-        for state in passed:
+          # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, self.state, cb_name)
+            
+            if cb_data: cb(self, self.state, cb_data)
+            else      : cb(self, self.state)
 
-            for cb_name, cb_val in self._callbacks[rpt.UNIT_STATE].iteritems():
-
-                cb      = cb_val['cb']
-                cb_data = cb_val['cb_data']
-
-              # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, target, cb_name)
-                
-                self._state = state
-                if cb_data: cb(self, state, cb_data)
-                else      : cb(self, state)
-
-            # ask umgr to invike any global callbacks
-            self._umgr._call_unit_callbacks(self, state)
-
-        # make sure we end up with the right state
-        self._state = new_state
-
-        if passed: return True
-        else     : return False
+        # ask umgr to invoke any global callbacks
+        self._umgr._call_unit_callbacks(self, self.state)
 
 
     # --------------------------------------------------------------------------
