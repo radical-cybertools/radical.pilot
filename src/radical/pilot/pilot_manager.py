@@ -215,7 +215,7 @@ class PilotManager(rpu.Component):
         pilot_dicts = self._session._dbs.get_pilots(pmgr_uid=self.uid)
 
         for pilot_dict in pilot_dicts:
-            self._update_pilot(pilot_dict)
+            self._update_pilot(pilot_dict, publish=True)
 
 
     # --------------------------------------------------------------------------
@@ -234,34 +234,50 @@ class PilotManager(rpu.Component):
 
         for thing in things:
 
-            if thing['type'] == 'pilot':
+            if 'type' in thing and thing['type'] == 'pilot':
 
-                self._update_pilot(thing)
+                # we got the state update from the state callback - don't
+                # publish it again
+                self._update_pilot(thing, publish=False)
 
 
     # --------------------------------------------------------------------------
     #
-    def _update_pilot(self, pilot_dict):
+    def _update_pilot(self, pilot_dict, publish=False):
+
+        # FIXME: this is breaking the bulk!
 
         pid = pilot_dict['uid']
 
-        # we don't care about pilots we don't know
-        # otherwise get old state
         with self._pilots_lock:
 
+            # we don't care about pilots we don't know
             if pid not in self._pilots:
+              # print 'unknown pilot %s' % pid
                 return False
 
             # only update on state changes
             current = self._pilots[pid].state
-            target, passed = rps._pilot_state_progress(current, pilot_dict['state'])
+            target  = pilot_dict['state']
+            if current == target:
+                return
+
+            target, passed = rps._pilot_state_progress(current, target)
+          # print '%s current: %s' % (pid, current)
+          # print '%s target : %s' % (pid, target )
+          # print '%s passed : %s' % (pid, passed )
+
+            if target in [rps.CANCELED, rps.FAILED]:
+                # don't replay intermediate states
+                passed = passed[-1:]
 
             for s in passed:
+              # print '%s advance: %s' % (pid, s )
                 # we got state from either pubsub or DB, so don't publish again.
                 # we also don't need to maintain bulks for that reason.
                 pilot_dict['state'] = s
                 self._pilots[pid]._update(pilot_dict)
-                self.advance(pilot_dict, s, publish=False, push=False)
+                self.advance(pilot_dict, s, publish=publish, push=False)
 
 
     # --------------------------------------------------------------------------

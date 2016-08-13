@@ -141,59 +141,39 @@ class ComputePilot(object):
         Return True if state changed, False otherwise
         """
 
-        # _update() calls can happen out of order -- it is up to *this* method
-        # to make sure that the update results in a consistent state.
-        # FIXME: this is now duplicated in pmgr
-
         assert(pilot_dict['uid'] == self.uid)
 
+        # NOTE: this method relies on state updates to arrive in order, and
+        #       without gaps.
         current = self.state
         target  = pilot_dict['state']
 
+        if target not in [rps.FAILED, rps.CANCELED]:
+            assert(rps._pilot_state_value(target) - rps._pilot_state_value(current) == 1)
+
+
         # we update all fields
         # FIXME: well, not all really :/
-        # FIXME: well, this is ugly...  we should maintain all state in
-        #        a dict.
-        for key in ['sandbox', 'stdout', 'stderr']:
+        # FIXME: setattr is ugly...  we should maintain all state in a dict.
+        for key in ['state', 'sandbox', 'stdout', 'stderr']:
 
             val = pilot_dict.get(key, None)
             if val:
                 setattr(self, "_%s" % key, val)
 
-        new_state, passed = rps._pilot_state_progress(current, target)
+        # invoke pilot specific callbacks
+        for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
 
-        if new_state in [rps.CANCELED, rps.FAILED]:
-            # don't replay intermediate states
-            passed = passed[-1:]
+            cb      = cb_val['cb']
+            cb_data = cb_val['cb_data']
 
-        # replay all state transitions
-        for state in passed:
+          # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, self.state, cb_name)
+            
+            if cb_data: cb(self, self.state, cb_data)
+            else      : cb(self, self.state)
 
-            with self._cb_lock:
-
-                for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
-
-                    cb      = cb_val['cb']
-                    cb_data = cb_val['cb_data']
-
-                  # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, target, cb_name)
-
-                    self._state = state
-                    if cb_data: cb(self, state, cb_data)
-                    else      : cb(self, state)
-
-                # ask pmgr to invike any global callbacks
-                self._pmgr._call_pilot_callbacks(self, state)
-
-        # make sure we end up with the right state
-        self._state = new_state
-
-        # this should be the last cb invoked on state changes
-        if self.state == rps.FAILED and self._exit_on_error:
-            self._default_error_cb()
-
-        if passed: return True
-        else     : return False
+        # ask pmgr to invoke any global callbacks
+        self._pmgr._call_pilot_callbacks(self, self.state)
 
 
     # --------------------------------------------------------------------------
