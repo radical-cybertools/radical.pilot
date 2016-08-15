@@ -168,6 +168,8 @@ class Default(PMGRLaunchingComponent):
         # we don't want to lock our members all the time.  For that reason we
         # use a copy of the pilots_tocheck list and iterate over that, and only
         # lock other members when they are manipulated.
+
+        ru.raise_on('pilot_watcher_cb')
         
         tc = rs.job.Container()
         with self._pilots_lock, self._check_lock:
