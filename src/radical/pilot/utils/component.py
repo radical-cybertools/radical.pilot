@@ -1338,7 +1338,7 @@ class Component(mp.Process):
                                         self._cancel_list.remove(uid)
                                     to_cancel.append(thing)
 
-                                self._log.debug('got %s (%s)', ttype, thing)
+                                self._log.debug('got %s (%s)', ttype, uid)
                                 self._prof.prof(event='get', state=state, uid=uid, msg=input.name)
                                 self._prof.prof(event='work start', state=state, uid=uid)
 
@@ -1423,6 +1423,9 @@ class Component(mp.Process):
 
         self._log.debug(' === advance bulk size: %s', len(things))
 
+        target = state
+        state  = None
+
         # assign state, sort things by state
         buckets = dict()
         for thing in things:
@@ -1433,13 +1436,13 @@ class Component(mp.Process):
             if ttype not in ['unit', 'pilot']:
                 raise TypeError("thing has unknown type (%s)" % uid)
 
-            if state:
+            if target:
                 # state advance done here
-                thing['state'] = state
-            else:
-                # state advance happened before
-                state = thing['state']
+                thing['state'] = target
 
+            state = thing['state']
+
+            self._log.debug(' === advance bulk size: %s', len(things))
             self._prof.prof('advance', uid=uid, state=state, timestamp=timestamp)
 
             if not state in buckets:
@@ -1486,10 +1489,12 @@ class Component(mp.Process):
             # now we can push the buckets as bulks
             for state,things in buckets.iteritems():
 
+                self._log.debug(" === bucket: %s : %s", state, [t['uid'] for t in things])
+
                 if state in rps.FINAL:
                     # things in final state are dropped
-                  # for thing in things:
-                  #     self._log.debug('%s %s ===| %s' % ('push', thing['uid'], thing['state']))
+                    for thing in things:
+                        self._log.debug('push %s ===| %s', thing['uid'], thing['state'])
                     continue
 
                 if state not in self._outputs:
@@ -1511,7 +1516,7 @@ class Component(mp.Process):
                 # push the thing down the drain
                 # FIXME: we should assert that the things are in a PENDING state.
                 #        Better yet, enact the *_PENDING transition right here...
-              # self._log.debug(' === put bulk %s: %s', state, len(things))
+                self._log.debug(' === put bulk %s: %s', state, len(things))
                 output.put(things)
 
                 ts = rpu_timestamp()
@@ -1521,8 +1526,11 @@ class Component(mp.Process):
                     if '$all' in thing:
                         del(thing['$all'])
 
-                    self._log.debug('%s %s ---> %s' % ('push', thing['uid'], state))
-                    self._prof.prof('put', uid=thing['uid'], state=state,
+                    uid   = thing['uid']
+                    state = thing['state']
+
+                    self._log.debug('push %s ---> %s', uid, state)
+                    self._prof.prof('put', uid=uid, state=state,
                             msg=output.name, timestamp=ts)
 
 
