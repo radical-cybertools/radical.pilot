@@ -1541,7 +1541,7 @@ else
     BS_SHELL='/bin/sh'
 fi
 
-(cat <<EOT
+cat > bootstrap_2.sh <<EOT
 #!$BS_SHELL
 
 # some inspection for logging
@@ -1580,8 +1580,6 @@ $PREBOOTSTRAP2_EXPANDED
 exec $AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
 
 EOT
-
-)> bootstrap_2.sh
 chmod 0755 bootstrap_2.sh
 # ------------------------------------------------------------------------------
 
@@ -1617,11 +1615,38 @@ profile_event 'agent start'
 # start the master agent instance (zero)
 profile_event 'sync rel' 'agent start'
 
-timeout $RUNTIME \
-        ./bootstrap_2.sh 'agent_0'    \
-            1>agent_0.bootstrap_2.out \
-            2>agent_0.bootstrap_2.err
+# I am ashamed that we have to resort to this -- lets hope it's temporary...
+cat > packer.sh <<EOT
+#!/bin/sh
+
+PROFILES_TARBALL="$PILOT_ID.prof.tgz"
+LOGFILES_TARBALL="$PILOT_ID.log.tgz"
+
+echo "start packing profiles / logfiles [\$(date)]"
+while ! test -e exit.signal
+do
+    echo "check packing profiles / logfiles [\$(date)]"
+    tar -czf "\$PROFILES_TARBALL.tmp" *.prof || true
+    mv       "\$PROFILES_TARBALL.tmp" "\$PROFILES_TARBALL"
+    tar -czf "\$LOGFILES_TARBALL.tmp" *.{log,out,err,cfg} || true
+    mv       "\$LOGFILES_TARBALL.tmp" "\$LOGFILES_TARBALL"
+    ls -l *.tgz
+    sleep 10
+done
+echo "stop  packing profiles / logfiles [\$(date)]"
+EOT
+chmod 0755 packer.sh
+./packer.sh 2>&1 >> bootstrap_1.out &
+PACKER_ID=$!
+
+
+./bootstrap_2.sh 'agent_0'    \
+               1> agent_0.bootstrap_2.out \
+               2> agent_0.bootstrap_2.err
 AGENT_EXITCODE=$?
+
+# stop the packer
+touch exit.signal
 
 profile_event 'cleanup start'
 
@@ -1682,7 +1707,7 @@ then
     echo "#"
     echo "# Tarring profiles ..."
     PROFILES_TARBALL="$PILOT_ID.prof.tgz"
-    tar -czf $PROFILES_TARBALL *.prof
+    tar -czf $PROFILES_TARBALL *.prof || true
     ls -l $PROFILES_TARBALL
     echo "#"
     echo "# -------------------------------------------------------------------"
@@ -1697,7 +1722,7 @@ then
     echo "#"
     echo "# Tarring logfiles ..."
     LOGFILES_TARBALL="$PILOT_ID.log.tgz"
-    tar -czf $LOGFILES_TARBALL *.{log,out,err,cfg}
+    tar -czf $LOGFILES_TARBALL *.{log,out,err,cfg} || true
     ls -l $LOGFILES_TARBALL
     echo "#"
     echo "# -------------------------------------------------------------------"
