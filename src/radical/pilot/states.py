@@ -41,7 +41,7 @@ def _pilot_state_value(s):
     return _pilot_state_values[s] 
 
 
-def _pilot_state_progress(current, target):
+def _pilot_state_progress(pid, current, target):
     """
     See documentation of 'unit_state_progress' below.
     """
@@ -53,7 +53,7 @@ def _pilot_state_progress(current, target):
 
     if current in FINAL and target != current:
         if target in FINAL:
-            raise ValueError('invalid transition %s -> %s' % (current, target))
+            raise ValueError('invalid transition for %s: %s -> %s' % (pid, current, target))
 
     cur = _pilot_state_values[current]
     tgt = _pilot_state_values[target]
@@ -137,7 +137,7 @@ def _unit_state_value(s):
     return _unit_state_values[s] 
 
 
-def _unit_state_progress(current, target):
+def _unit_state_progress(uid, current, target):
     """
     This method will ensure a unit state progression in sync with the state
     model defined above.  It will return a tuple: [new_state, passed_states]
@@ -182,7 +182,7 @@ def _unit_state_progress(current, target):
 
     if current in FINAL:
         if target in FINAL:
-            raise ValueError('invalid transition %s -> %s' % (current, target))
+            raise ValueError('invalid transition for %s: %s -> %s' % (uid, current, target))
 
     cur = _unit_state_values[current]
     tgt = _unit_state_values[target]

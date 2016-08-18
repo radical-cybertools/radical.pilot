@@ -154,44 +154,48 @@ class Backfilling(UMGRSchedulingComponent):
                 self._log.debug(' === update  unit: %s [%s] [%s]',  uid, pid, state)
 
                 if not pid:
-                  # self._log.debug(' === upd unit  %s no pilot' % uid)
+                    self._log.debug(' === upd unit  %s no pilot' % uid)
                     # we are not interested in state updates for unscheduled
                     # units
                     continue
 
                 if not pid in self._pilots:
-                  # self._log.debug(' === upd unit  %s not handled' % uid)
+                    self._log.debug(' === upd unit  %s not handled' % uid)
                     # we don't handle the pilot of this unit
                     continue
 
                 info = self._pilots[pid]['info']
 
                 if uid in info['done']:
-                  # self._log.debug(' === upd unit  %s in done' % uid)
+                    self._log.debug(' === upd unit  %s in done' % uid)
                     # we don't need further state udates
                     continue
 
+                if  rps._unit_state_value(state) <= \
+                    rps._unit_state_value(rps.AGENT_EXECUTING):
+                    self._log.debug(' === upd unit  %s too early' % uid)
+                    continue
+
                 if not uid in info['units']:
-                  # self._log.debug(' === upd unit  %s not in units' % uid)
+                    self._log.debug(' === upd unit  %s not in units' % uid)
                     # this contradicts the unit's assignment
                     self._log.error('bf: unit %s on %s inconsistent', uid, pid)
                     raise RuntimeError('inconsistent scheduler state')
 
-                if  rps._unit_state_value(state) > \
-                    rps._unit_state_value(rps.AGENT_EXECUTING):
-                    # this unit is now considered done
-                    info['done'].append(uid)
-                    info['used'] -= unit['description']['cores']
-                    reschedule = True
-                    self._log.debug(' === upd unit  %s -  schedule (used: %s)', uid, info['used'])
+                # this unit is now considered done
+                info['done'].append(uid)
+                info['used'] -= unit['description']['cores']
+                reschedule = True
+                self._log.debug(' === upd unit  %s -  schedule (used: %s)', uid, info['used'])
 
-                    if info['used'] < 0:
-                        self._log.error('bf: pilot %s inconsistent', pid)
-                        raise RuntimeError('inconsistent scheduler state')
+                if info['used'] < 0:
+                    self._log.error('bf: pilot %s inconsistent', pid)
+                    raise RuntimeError('inconsistent scheduler state')
+
 
         # if any pilot state was changed, consider new units for scheduling
         if reschedule:
-          # self._log.debug(' === upd units -> schedule')
+            self._log.debug(' === upd units -> schedule')
             self._schedule_units()
 
 

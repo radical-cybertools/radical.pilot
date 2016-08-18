@@ -262,7 +262,7 @@ class PilotManager(rpu.Component):
             if current == target:
                 return
 
-            target, passed = rps._pilot_state_progress(current, target)
+            target, passed = rps._pilot_state_progress(pid, current, target)
           # print '%s current: %s' % (pid, current)
           # print '%s target : %s' % (pid, target )
           # print '%s passed : %s' % (pid, passed )
