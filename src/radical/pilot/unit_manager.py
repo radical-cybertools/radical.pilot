@@ -181,7 +181,8 @@ class UnitManager(rpu.Component):
 
         # we don't want any callback invokations during shutdown
         # FIXME: really?
-        self._callbacks = dict()
+        with self._cb_lock:
+            self._callbacks = dict()
 
         self._terminate.set()
         self._controller.stop()
@@ -226,18 +227,15 @@ class UnitManager(rpu.Component):
 
         # pull all unit states from the DB, and compare to the states we know
         # about.  If any state changed, update the unit instance and issue
-        # notification callbacks as needed
+        # notification callbacks as needed.
         # FIXME: we also pull for dead units.  That is not efficient...
         # FIXME: this needs to be converted into a tailed cursor in the update
         #        worker
         units  = self._session._dbs.get_units(umgr_uid=self.uid)
-        action = False
 
         for unit in units:
-            if self._update_unit(unit['uid'], unit):
-                action = True
-
-        return action
+            self._log.debug(" === state pulled %s: %s", unit['uid'], unit['state'])
+            self._update_unit(unit, publish=True)
 
 
     #---------------------------------------------------------------------------
@@ -285,9 +283,7 @@ class UnitManager(rpu.Component):
             new = rps._unit_state_collapse(unit['states'])
             self._log.debug(' === %s state: %s -> %s', unit['uid'], old, new)
 
-            if new == rps.UMGR_STAGING_OUTPUT:
-                self._log.debug(' === %s state: %s -> %s %s', unit['uid'], old, new, unit['states'])
-
+            self._log.debug(" === unit  pulled %s: %s / %s", unit['uid'], old, new)
 
             unit['state'] = new
             unit['control'] = 'umgr'
@@ -296,9 +292,8 @@ class UnitManager(rpu.Component):
             self._log.debug('\n=======================================\n\n')
 
         # now we really own the CUs, and can start working on them (ie. push
-        # them into the pipeline).  We don't publish the advance, since that
-        # happened already on the agent side when the state was set.
-        self.advance(units, publish=False, push=True)
+        # them into the pipeline).
+        self.advance(units, publish=True, push=True)
 
         return True
 
@@ -307,48 +302,75 @@ class UnitManager(rpu.Component):
     #
     def _state_sub_cb(self, topic, msg):
 
-        if isinstance(msg, list): things =  msg
-        else                    : things = [msg]
+        cmd = msg.get('cmd')
+        arg = msg.get('arg')
+
+        if cmd != 'update':
+            self._log.debug('ignore state cb msg with cmd %s', cmd)
+            return
+
+        if isinstance(arg, list): things =  arg
+        else                    : things = [arg]
 
         for thing in things:
 
             if 'type' in thing and thing['type'] == 'unit':
 
-                uid   = thing["uid"]
-                state = thing["state"]
-
-                self._update_unit(uid, {'state' : state})
+                # we got the state update from the state callback - don't
+                # publish it again
+                self._update_unit(thing, publish=False)
 
 
     # --------------------------------------------------------------------------
     #
-    def _update_unit(self, uid, unit_dict):
+    def _update_unit(self, unit_dict, publish=False):
 
-        # we don't care about units we don't know
-        # otherwise get old state
+        # FIXME: this is breaking the bulk!
+
+        uid = unit_dict['uid']
+
         with self._units_lock:
 
+            # we don't care about units we don't know
             if uid not in self._units:
+              # print 'unknown unit %s' % uid
                 return False
 
             # only update on state changes
-            if self._units[uid].state != unit_dict['state']:
-                return self._units[uid]._update(unit_dict)
-            else:
-                return False
+            current = self._units[uid].state
+            target  = unit_dict['state']
+            if current == target:
+                return
+
+            self._log.debug(' === unit %s current: %s', uid, current)
+            self._log.debug(' === unit %s target : %s', uid, target)
+            target, passed = rps._unit_state_progress(current, target)
+            self._log.debug(' === unit %s target : %s', uid, target)
+            self._log.debug(' === unit %s passed : %s', uid, passed)
+
+            if target in [rps.CANCELED, rps.FAILED]:
+                # don't replay intermediate states
+                passed = passed[-1:]
+
+            for s in passed:
+              # print '%s advance: %s' % (uid, s )
+                unit_dict['state'] = s
+                self._units[uid]._update(unit_dict)
+                self.advance(unit_dict, s, publish=publish, push=False)
 
 
     # --------------------------------------------------------------------------
     #
     def _call_unit_callbacks(self, unit_obj, state):
 
-        for cb_name, cb_val in self._callbacks[rpt.UNIT_STATE].iteritems():
+        with self._cb_lock:
+            for cb_name, cb_val in self._callbacks[rpt.UNIT_STATE].iteritems():
 
-            cb      = cb_val['cb']
-            cb_data = cb_val['cb_data']
-            
-            if cb_data: cb(unit_obj, state, cb_data)
-            else      : cb(unit_obj, state)
+                cb      = cb_val['cb']
+                cb_data = cb_val['cb_data']
+                
+                if cb_data: cb(unit_obj, state, cb_data)
+                else      : cb(unit_obj, state)
 
 
     # --------------------------------------------------------------------------
@@ -858,12 +880,14 @@ class UnitManager(rpu.Component):
         if metric and metric not in rpt.UMGR_METRICS :
             raise ValueError ("Metric '%s' is not available on the unit manager" % metric)
 
-        with self._cb_lock:
+        if not metric:
+            metrics = rpt.UMGR_METRICS
+        elif isinstance(metric, list):
+            metrics = metric
+        else:
+            metrics = [metric]
 
-            if not metric:
-                metrics = rpt.UMGR_METRICS
-            else:
-                metrics = [metric]
+        with self._cb_lock:
 
             for metric in metrics:
 

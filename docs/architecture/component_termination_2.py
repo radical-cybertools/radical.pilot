@@ -21,11 +21,52 @@
 #     either not handle `SIGINT`, or to find an alternative approach to thread
 #     termination handling.
 #
+#   - https://bugs.python.org/issue21895
+#     several methods in python are not signal-interruptible, including
+#     thread.join() and socket.select().  The reason is that those calls map to
+#     libc level calls, but the CPython C-level signal handler is *not* directly
+#     invoking the Python level signal handlers, but only sets a flag for later
+#     handling.  That handling is supposed to happen at bytecode boundaries, ie.
+#     after the any libc-call returns.
+#
+#     That could be circumvented by always using libc call equivalents with
+#     a timeout.  Alas, that is not always possible -- for example, join() does
+#     not have a timeout parameter.
+#
+#   - http://bugs.python.org/issue1856
+#     sys.exit can segfault Python if daemon threads are active.  This is fixed 
+#     in python3, but will not be backported to 2.x, because...
+#
+#   - http://bugs.python.org/issue21963
+#     ... it would hang up for daemon threads which don't ever re-acquire the
+#     GIL.  That is not an issue for us - but alas, no backport thus.  So, we
+#     need to make sure our watcher threads (which are daemons) terminate 
+#     on their own.
+#
+#
+# Not errors, but expected behavior which makes life difficult:
+#
+#   - https://joeshaw.org/python-daemon-threads-considered-harmful/
+#     Python's daemon threads can still be alive while the interpreter shuts
+#     down.  The shutdown will remove all loaded modules -- which will lead to
+#     the dreaded 
+#       'AttributeError during shutdown -- can likely be ignored'
+#     exceptions.  There seems no clean solution for that, but we can try to
+#     catch & discard the exception in the watchers main loop (which possibly
+#     masks real errors though).
+#
+#   - mp.join() can miss starting child processes:
+#     When start() is called, join can be called immediately after.  At that
+#     point, the child may, however, not yet be alive, and join would *silently*
+#     return immediately.  If between that failed join and process termination
+#     the child process *actually* comes up, the process termination will hang,
+#     as the child has not been waited upon.
+#
 # This code demonstrates a workaround for those issues, and serves as a test for
 # the general problem space.
 #
-#   - main() creates 2 processes
-#   - each of the processes creates 2 threads: a worker and a watcher 
+#   - main() creates 3 processes
+#   - each of the processes creates 3 threads: 2 workers and a watcher 
 #     (watching the worker)
 #   - main() additionally creates a thread which watches process 2
 #
@@ -35,27 +76,62 @@
 #                2: process 0, ProcessWatcherThread
 #     - child 1: 3: process 1, MainThread
 #                4: process 1, WorkerThread
-#                5: process 1, ThreadWatcherThread
+#                -: process 1, WorkerThread
+#                6: process 1, ThreadWatcherThread
 #     - child 2: -: process 2, MainThread
 #                -: process 2, WorkerThread
+#                -: process 2, WorkerThread
 #                -: process 2, ThreadWatcherThread
+#     - child 3: -: process 3, MainThread
+#                -: process 3, WorkerThread
+#                -: process 3, WorkerThread
+#                -: process 3, ThreadWatcherThread
 #
-# We create 8 test cases, for each of the resulting entities, where for each
+# We create 6 test cases, for each of the resulting entities, where for each
 # case the respective entity will raise a RuntimeError.  The expected result is
 # that the Exception is caught, and shutdown progresses up the hierarchy,
 # leading to a clean shutdown of main, with no left over prcesses or threads,
 # and which each process/thread logging its clean termination.
 #
+# The used approach is as follows:
 #
-# Known remaining problems:
+#  - any entity which creates other entities must watch those, by pulling state 
+#    of the child entities, in a separate watcher thread.
+#  - that separate watcher thread will inform the parent via
+#    `ru.cancel_main_thread()` about failing children, which will raise
+#    a `KeyboardInterrupt` exception in the main thread.
+#  - that exception must be caught, leading to termination of the parent
+#    component
+#  - the watcher thread must not be waited upon, and thus will be a daemonized
+#    thread.  The watcher will thus also watch the main thread:
+#        for i in mt.enumerate():
+#            if i.name == "MainThread":
+#                if not i.is_alive():
+#                    self._log.info('main thread gone - terminate')
+#                    sys.exit(-1)
+#    The watcher will further shut down when
+#      - self._term is set
+#      - it has nothing to watch anymore
+#    The latter is somewhat cumbersome to handle, as the component needs to keep
+#    track of the number of watchables and needs to possibly restart the watcher,
+#    but whatever.
+#  - all termination is downstream and process-local.  In other words,
+#    any component which encounters an error will 
+#    - terminate its child threads   (if any), excluding the watcher thread
+#    - terminate its child processes (if any), by sending a `TERM` signal (15)
+#    - terminate itself, by calling `sys.exit(1)`
+#    - *not* attempt to otherwise communicate its termination to the entity
+#      which created it.
 #
-#   - only one: this doesn't work reliably.
-#     https://bugs.python.org/issue21895 + 
-#     "You will have to make sure that your main thread never blocks in
-#     a non-interruptible call. In python 2.7, join is not interuptable."
-#     which means that, when we get races on process and thread termination,
-#     and one signal arrives during a join, we get hung up.
-#
+#  - SIGCHILD *can not* be used to signal child process termination, because of 
+#    the Python bugs listed above.
+#  - signals *can not* be used in general to actively communicate error 
+#    conditions to parents, for the same reaons.
+#  - SIGTERM is used to communicate termination to *child* processes -- python
+#    promises to *eventually* invoke signal handlers in the child's main thread.
+#    Thus terminated children must be waited for, to avoid zombies.  A wait
+#    timeout and subsequend `SIGKILL` (9) is appropriate.
+#  - daemon threads *can not* be expected to die on sys.exit()
 #
 # ------------------------------------------------------------------------------
 
@@ -77,18 +153,7 @@ dh = ru.DebugHelper()
 
 # ------------------------------------------------------------------------------
 #
-def sigterm_handler(signum, frame):
-    print 'sigterm handler %s' % os.getpid()
-    raise RuntimeError('sigterm')
-
-def sigusr2_handler(signum, frame):
-    print 'sigusr2 handler %s' % os.getpid()
-    raise RuntimeError('sigusr2')
-
-
-# ------------------------------------------------------------------------------
-#
-SLEEP    = 0
+SLEEP    = 1
 RAISE_ON = 3
 
 
@@ -148,9 +213,15 @@ class WorkerThread(mt.Thread):
 #
 class WatcherThread(mt.Thread):
 
-    # all entities which use a watcher thread MUST install a signal handler for
-    # SIGUSR2, as we'll use that signal to communicate error conditions to the
+    # All entities which use a watcher thread MUST except KeyboardInterrupt, 
+    # as we'll use that signal to communicate error conditions to the
     # main thread.
+    #
+    # The watcher thread is a daemon thread: it must not be joined.  We thus
+    # overload join() and disable it.
+    #
+    # To avoid races and locks during termination, we frequently check if the
+    # MainThread is still alive, and terminate otherwise
     
     def __init__(self, to_watch, num, pnum, tnum):
 
@@ -162,17 +233,37 @@ class WatcherThread(mt.Thread):
         self.tid      = mt.currentThread().ident 
         self.uid      = "w.%d.%s %8d.%s" % (self.pnum, self.tnum, self.pid, self.tid)
         self.term     = mt.Event()
+
+        self.main     = None
+        for t in mt.enumerate():
+             if t.name == "MainThread":
+                 self.main = t
+
+        if not self.main:
+            raise RuntimeError('%s could not find main thread' % self.uid)
         
         mt.Thread.__init__(self, name=self.uid)
+        self.daemon = True  # this is a daemon thread
 
         print '%s create' % self.uid
 
 
+    # --------------------------------------------------------------------------
+    #
     def stop(self):
 
         self.term.set()
 
 
+    # --------------------------------------------------------------------------
+    #
+    def join(self):
+
+        print '%s: join ignored' % self.uid
+
+
+    # --------------------------------------------------------------------------
+    #
     def run(self):
 
         try:
@@ -191,29 +282,31 @@ class WatcherThread(mt.Thread):
                     print "5"
                     ru.raise_on(self.uid, RAISE_ON)
 
+                # check watchables
                 for thing in self.to_watch:
                     if thing.is_alive():
                         print '%s event: thing %s is alive' % (self.uid, thing.uid)
                     else:
                         print '%s event: thing %s has died' % (self.uid, thing.uid)
-                        ru.cancel_main_thread('usr2')
-                        raise RuntimeError('thing %s has died - assert' % thing.uid)
+                        ru.cancel_main_thread()
+                        assert(False) # we should never get here
+
+                # check MainThread
+                if not self.main.is_alive():
+                    print '%s: main thread gone - terminate' % self.uid
+                    self.stop()
 
             print '%s stop' % self.uid
 
 
         except Exception as e:
             print '%s error %s [%s]' % (self.uid, e, type(e))
-            ru.cancel_main_thread('usr2')
+            ru.cancel_main_thread()
        
         except SystemExit:
             print '%s exit' % (self.uid)
-            # do *not* cancel main thread here!  We get here 
-           #ru.cancel_main_thread('usr2')
-       
-        except KeyboardInterrupt:
-            print '%s intr' % (self.uid)
-            ru.cancel_main_thread('usr2')
+            # do *not* cancel main thread here!  We get here after the cancel
+            # signal has been sent in the main loop above
        
         finally:
             print '%s final' % (self.uid)
@@ -225,11 +318,11 @@ class ProcessWorker(mp.Process):
     
     def __init__(self, num, pnum):
 
-        self.num  = num
-        self.pnum = pnum
-        self.ospid= os.getpid() 
-        self.tid  = mt.currentThread().ident 
-        self.uid  = "p.%d.%s %8s.%s" % (self.pnum, 0, self.ospid, self.tid)
+        self.num   = num
+        self.pnum  = pnum
+        self.ospid = os.getpid() 
+        self.tid   = mt.currentThread().ident 
+        self.uid   = "p.%d.%s %8s.%s" % (self.pnum, 0, self.ospid, self.tid)
 
         print '%s create' % (self.uid)
 
@@ -239,45 +332,56 @@ class ProcessWorker(mp.Process):
         self.watcher = None
 
 
+    # --------------------------------------------------------------------------
+    #
     def join(self):
 
-        # Due to the overloaded stop, we may seen situations where the child
+        # Due to the overloaded stop, we may see situations where the child
         # process pid is not known anymore, and an assertion in the mp layer
-        # gets triggered.  We catch that assertion and assume the join
+        # gets triggered.  We except that assertion and assume the join
         # completed.
+        #
+        # NOTE: the except can mask actual errors
 
         try:
-            # A starts processes B and C, and passes the handles on to a watcher
-            # thread D.  There seems no guarantee that C has created a child
-            # when any of A, B and D can fail and trigger the termination
-            # sequence.  A `C.stop()/C.join()` will then *silently* fail, since
-            # `C.start()` has been called, but no child process exists.  This
-            # might be a race in the core Python process management?
-            #
-            # Either way, termination will actually complete -- but if the child
-            # process comes up in that time point, it will be unaware of the
-            # termination, and will continue to exist.  Termination of A will
-            # then hang indefinitely, as C.child is never joined.
+            # when start() is called, join can be called immediately after.  At
+            # that point, the child may, however, not yet be alive, and join
+            # would *silently* return immediately.  If between that failed join
+            # and process termination the child process *actually* comes up, the
+            # process termination will hang, as the child has not been waited
+            # upon.
             #
             # We thus use a timeout on join, and, when the child did not appear
             # then, attempt to terminate it again.
+            #
+            # TODO: choose a sensible timeout.  Hahahaha...
 
             print '%s join: child join %s' % (self.uid, self.pid)
             mp.Process.join(self, timeout=1)
-            if self.is_alive():
+
+            # give child some time to come up in case the join
+            # was racing with creation
+            time.sleep(1)  
+
+            if self.is_alive(): 
+                # we still (or suddenly) have a living child - kill/join again
                 self.stop()
                 mp.Process.join(self, timeout=1)
+
             if self.is_alive():
                 raise RuntimeError('Cannot kill child %s' % self.pid)
                 
-            return
             print '%s join: child joined' % (self.uid)
+
         except AssertionError as e:
-            print '%s join: failed' % (self.uid)
+            print '%s join: ignore race' % (self.uid)
 
 
-
+    # --------------------------------------------------------------------------
+    #
     def stop(self):
+
+        # we terminate all threads and processes here.
 
         # The mp stop can race with internal process termination.  We catch the
         # respective OSError here.
@@ -286,46 +390,62 @@ class ProcessWorker(mp.Process):
         # gone through.  I suspect that this is a race between the process
         # object finalization and internal process termination.  We catch the
         # respective AttributeError, caused by `self._popen` being unavailable.
+        #
+        # NOTE: both excepts can mask actual errors
 
         try:
-            self.terminate()
-            print '%s stop: child terminated' % (self.uid)
+            # only terminate child if it exists -- but there is a race between
+            # check and signalling anyway...
+            if self.is_alive():
+                self.terminate()  # this sends SIGTERM to the child process
+                print '%s stop: child terminated' % (self.uid)
+
         except OSError as e:
             print '%s stop: child already gone' % (self.uid)
+
         except AttributeError as e:
             print '%s stop: popen module is gone' % (self.uid)
 
 
-
+    # --------------------------------------------------------------------------
+    #
     def run(self):
 
-        # We can't catch SIGINT, for the reasons discussed in the introduction.
-        # With the default SIGINT handler, SIGINT can hit in unexpected places,
-        # mostly when thread termination and process termination race.  Thus we
-        # can't use SIGINT at all.
-        # 
-        # We can, however, use a different signal to communicate termination
-        # requests from sub-threads to the main thread.  Here we use `SIGUSR2`
-        # (`SIGUSR1` is reserved for debugging purposes in the radical stack).
+        # We can't catch signals from child processes and threads, so we only
+        # look out for SIGTERM signals from the parent process.  Upon receiving
+        # such, we'll stop.
         #
-        # We also install a `SIGTERM` handler, to initiate orderly shutdown on
-        # system termination signals.
-        #
-        signal.signal(signal.SIGTERM, sigterm_handler)
-        signal.signal(signal.SIGUSR2, sigusr2_handler)
+        # We also start a watcher (WatcherThread) which babysits all spawned
+        # threads and processes, an which will also call stop() on any problems.
+        # This should then trickle up to the parent, who will also have
+        # a watcher checking on us.
 
-        self.ospid  = os.getpid() 
-        self.tid  = mt.currentThread().ident 
-        self.uid  = "p.%d.0 %8d.%s" % (self.pnum, self.ospid, self.tid)
+        self.ospid = os.getpid() 
+        self.tid   = mt.currentThread().ident 
+        self.uid   = "p.%d.0 %8d.%s" % (self.pnum, self.ospid, self.tid)
 
         try:
+            # ------------------------------------------------------------------
+            def sigterm_handler(signum, frame):
+                # on sigterm, we invoke stop(), which will exit.
+                # Python should (tm) give that signal to the main thread.  
+                # If not, we lost.
+                assert(mt.currentThread().name == 'MainThread')
+                self.stop()
+            # ------------------------------------------------------------------
+            signal.signal(signal.SIGTERM, sigterm_handler)
+
             print '%s start' % self.uid
 
             # create worker thread
-            self.worker = WorkerThread(self.num, self.pnum, 0)
-            self.worker.start()
+            self.worker1 = WorkerThread(self.num, self.pnum, 0)
+            self.worker1.start()
      
-            self.watcher = WatcherThread([self.worker], self.num, self.pnum, 1)
+            self.worker2 = WorkerThread(self.num, self.pnum, 0)
+            self.worker2.start()
+     
+            self.watcher = WatcherThread([self.worker1, self.worker2], 
+                                          self.num, self.pnum, 1)
             self.watcher.start()
 
             while True:
@@ -337,7 +457,6 @@ class ProcessWorker(mp.Process):
 
             print '%s stop' % self.uid
 
-
         except Exception as e:
             print '%s error %s [%s]' % (self.uid, e, type(e))
        
@@ -348,9 +467,14 @@ class ProcessWorker(mp.Process):
             print '%s intr' % (self.uid)
        
         finally:
-            self.finalize()
+            # we came here either due to errors in run(), KeyboardInterrupt from
+            # the WatcherThread, or clean exit.  Either way, we stop all
+            # children.
+            self.stop()
 
 
+    # --------------------------------------------------------------------------
+    #
     def finalize(self):
 
         # the finally clause of run() can again be interrupted!  We thus move
@@ -405,9 +529,6 @@ def main(num):
 
     # *always* install SIGTERM and SIGINT handlers, which will translate those
     # signals into exceptable exceptions.
-
-    signal.signal(signal.SIGTERM, sigterm_handler)
-    signal.signal(signal.SIGUSR2, sigusr2_handler)
 
     watcher = None
     p1      = None

@@ -90,7 +90,6 @@ class PilotManager(rpu.Component):
         for m in rpt.PMGR_METRICS:
             self._callbacks[m] = dict()
 
-
         cfg = ru.read_json("%s/configs/pmgr_%s.json" \
                 % (os.path.dirname(__file__),
                    os.environ.get('RADICAL_PILOT_PMGR_CFG', 'default')))
@@ -156,7 +155,9 @@ class PilotManager(rpu.Component):
 
         # we don't want any callback invokations during shutdown
         # FIXME: really?
-        self._callbacks = dict()
+        with self._cb_lock:
+            for m in rpt.PMGR_METRICS:
+                self._callbacks[m] = dict()
 
         # If terminate is set, we cancel all pilots. 
         if terminate:
@@ -214,7 +215,7 @@ class PilotManager(rpu.Component):
         pilot_dicts = self._session._dbs.get_pilots(pmgr_uid=self.uid)
 
         for pilot_dict in pilot_dicts:
-            self._update_pilot(pilot_dict)
+            self._update_pilot(pilot_dict, publish=True)
 
 
     # --------------------------------------------------------------------------
@@ -232,49 +233,66 @@ class PilotManager(rpu.Component):
         else                    : things = [arg]
 
         for thing in things:
-            if thing['type'] == 'pilot':
-                self._update_pilot(thing)
+
+            if 'type' in thing and thing['type'] == 'pilot':
+
+                # we got the state update from the state callback - don't
+                # publish it again
+                self._update_pilot(thing, publish=False)
 
 
     # --------------------------------------------------------------------------
     #
-    def _update_pilot(self, pilot_dict, advance=True):
+    def _update_pilot(self, pilot_dict, publish=False):
+
+        # FIXME: this is breaking the bulk!
 
         pid   = pilot_dict['uid']
         state = pilot_dict['state']
 
-        # we don't care about pilots we don't know
-        # otherwise get old state
         with self._pilots_lock:
 
+            # we don't care about pilots we don't know
             if pid not in self._pilots:
+              # print 'unknown pilot %s' % pid
                 return False
 
             # only update on state changes
             current = self._pilots[pid].state
-            target, passed = rps._pilot_state_progress(current, pilot_dict['state'])
+            target  = pilot_dict['state']
+            if current == target:
+                return
+
+            target, passed = rps._pilot_state_progress(current, target)
+          # print '%s current: %s' % (pid, current)
+          # print '%s target : %s' % (pid, target )
+          # print '%s passed : %s' % (pid, passed )
+
+            if target in [rps.CANCELED, rps.FAILED]:
+                # don't replay intermediate states
+                passed = passed[-1:]
 
             for s in passed:
+              # print '%s advance: %s' % (pid, s )
                 # we got state from either pubsub or DB, so don't publish again.
                 # we also don't need to maintain bulks for that reason.
                 pilot_dict['state'] = s
                 self._pilots[pid]._update(pilot_dict)
-
-                if advance:
-                    self.advance(pilot_dict, s, publish=False, push=False)
+                self.advance(pilot_dict, s, publish=publish, push=False)
 
 
     # --------------------------------------------------------------------------
     #
     def _call_pilot_callbacks(self, pilot_obj, state):
 
-        for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
+        with self._cb_lock:
+            for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
 
-            cb      = cb_val['cb']
-            cb_data = cb_val['cb_data']
-            
-            if cb_data: cb(pilot_obj, state, cb_data)
-            else      : cb(pilot_obj, state)
+                cb      = cb_val['cb']
+                cb_data = cb_val['cb_data']
+                
+                if cb_data: cb(pilot_obj, state, cb_data)
+                else      : cb(pilot_obj, state)
 
 
     # --------------------------------------------------------------------------
@@ -605,12 +623,14 @@ class PilotManager(rpu.Component):
         if metric and metric not in rpt.UMGR_METRICS :
             raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
 
-        with self._cb_lock:
+        if not metric:
+            metrics = rpt.PMGR_METRICS
+        elif isinstance(metric, list):
+            metrics =  metric
+        else:
+            metrics = [metric]
 
-            if not metric:
-                metrics = rpt.PMGR_METRICS
-            else:
-                metrics = [metric]
+        with self._cb_lock:
 
             for metric in metrics:
 
