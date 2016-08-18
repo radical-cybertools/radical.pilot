@@ -110,27 +110,38 @@ class RoundRobin(UMGRSchedulingComponent):
                     self._wait_pool += units
                     return
 
+            units_ok = list()
+            units_fail = list()
+
             for unit in units:
 
-                # determine target pilot for unit
-                if self._idx >= len(self._pids):
-                    self._idx = 0
+                try:
+                    # determine target pilot for unit
+                    if self._idx >= len(self._pids):
+                        self._idx = 0
 
-                pid   = self._pids[self._idx]
-                pilot = self._pilots[pid]['pilot']
+                    pid   = self._pids[self._idx]
+                    pilot = self._pilots[pid]['pilot']
 
-                self._idx += 1
+                    self._idx += 1
 
-                # we assign the unit to the pilot.
-                # this is also a good opportunity to determine the unit sandbox
-                unit['pilot']   = pid
-                unit['sandbox'] = self._session._get_unit_sandbox(unit, pilot)
+                    # we assign the unit to the pilot.
+                    # this is also a good opportunity to determine the unit sandbox
+                    unit['pilot']   = pid
+                    unit['sandbox'] = self._session._get_unit_sandbox(unit, pilot)
+
+                    units_ok.append(unit)
+
+                except Exception as e:
+                    self._log.exception('unit schedule preparation failed')
+                    units_fail.append(unit)
     
+
             # advance all units
-            self.advance(units, rps.UMGR_STAGING_INPUT_PENDING, 
+            self.advance(units_fail, rps.FAILED, publish=True, push=False)
+            self.advance(units_ok,   rps.UMGR_STAGING_INPUT_PENDING, 
                          publish=True, push=True)
 
-        
 
 # ------------------------------------------------------------------------------
 

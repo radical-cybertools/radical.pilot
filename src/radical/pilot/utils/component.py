@@ -1048,7 +1048,7 @@ class Component(mp.Process):
             except Exception as e:
                 self._log.exception("TERM : %s idler failed %s", self.uid, mt.current_thread().name)
             finally:
-                self._log.exception("TERM : %s idler final %s", self.uid, mt.current_thread().name)
+                self._log.debug("TERM : %s idler final %s", self.uid, mt.current_thread().name)
         # ----------------------------------------------------------------------
 
         # create a idler thread

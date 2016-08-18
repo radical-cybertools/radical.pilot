@@ -36,6 +36,14 @@ _pilot_state_values = {
         FAILED                 :  5,
         CANCELED               :  5}
 _pilot_state_inv   = {v: k for k, v in _pilot_state_values.iteritems()}
+_pilot_state_inv_full = dict()
+for s,v in _pilot_state_values.iteritems():
+    if v in _pilot_state_inv_full:
+        if not isinstance(_pilot_state_inv_full[v], list):
+            _pilot_state_inv_full[v] = [_pilot_state_inv_full[v]]
+        _pilot_state_inv_full[v].append(s)
+    else:
+        _pilot_state_inv_full[v] = s
 
 def _pilot_state_value(s):
     return _pilot_state_values[s] 
@@ -131,7 +139,15 @@ _unit_state_values = {
         DONE                         : 15,
         FAILED                       : 15,
         CANCELED                     : 15}
-_unit_state_inv   = {v: k for k, v in _unit_state_values.iteritems()}
+_unit_state_inv = {v: k for k, v in _unit_state_values.iteritems()}
+_unit_state_inv_full = dict()
+for s,v in _unit_state_values.iteritems():
+    if v in _unit_state_inv_full:
+        if not isinstance(_unit_state_inv_full[v], list):
+            _unit_state_inv_full[v] = [_unit_state_inv_full[v]]
+        _unit_state_inv_full[v].append(s)
+    else:
+        _unit_state_inv_full[v] = s
 
 def _unit_state_value(s):
     return _unit_state_values[s] 

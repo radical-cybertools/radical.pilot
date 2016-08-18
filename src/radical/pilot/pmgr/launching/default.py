@@ -168,6 +168,8 @@ class Default(PMGRLaunchingComponent):
         # we don't want to lock our members all the time.  For that reason we
         # use a copy of the pilots_tocheck list and iterate over that, and only
         # lock other members when they are manipulated.
+
+        ru.raise_on('pilot_watcher_cb')
         
         tc = rs.job.Container()
         with self._pilots_lock, self._check_lock:
@@ -288,11 +290,19 @@ class Default(PMGRLaunchingComponent):
 
             for schema in buckets[resource]:
 
-                pilots = buckets[resource][schema]
-                pids   = [p['uid'] for p in pilots]
-                self._log.info("Launching pilots on %s: %s", resource, pids)
-                               
-                self._start_pilot_bulk(resource, schema, pilots)
+                try:
+                    pilots = buckets[resource][schema]
+                    pids   = [p['uid'] for p in pilots]
+                    self._log.info("Launching pilots on %s: %s", resource, pids)
+                                   
+                    self._start_pilot_bulk(resource, schema, pilots)
+        
+                    self.advance(pilots, rps.PMGR_ACTIVE_PENDING, push=False, publish=True)
+
+
+                except Exception as e:
+                    self._log.exception('bulk launch failed')
+                    self.advance(pilots, rps.FAILED, push=False, publish=True)
 
 
     # --------------------------------------------------------------------------
@@ -501,8 +511,6 @@ class Default(PMGRLaunchingComponent):
             # make sure we watch that pilot
             with self._check_lock:
                 self._checking.append(pid)
-
-        self.advance(pilots, rps.PMGR_ACTIVE_PENDING, push=False, publish=True)
 
 
     # --------------------------------------------------------------------------

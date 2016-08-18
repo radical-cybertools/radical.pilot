@@ -6,6 +6,7 @@ __license__   = "MIT"
 import os
 import copy
 import time
+import threading
 
 import radical.utils as ru
 
@@ -70,6 +71,7 @@ class ComputeUnit(object):
         self._pilot         = None
         self._sandbox       = None
         self._callbacks     = dict()
+        self._cb_lock       = threading.RLock()
 
         for m in rpt.UMGR_METRICS:
             self._callbacks[m] = dict()
@@ -91,6 +93,7 @@ class ComputeUnit(object):
         # If staging directives exist, expand them
         expand_description(self._descr)
 
+        self._umgr.advance(self.as_dict(), rps.NEW, publish=False, push=False)
 
     # --------------------------------------------------------------------------
     #
@@ -175,7 +178,7 @@ class ComputeUnit(object):
         """
         Returns a Python dictionary representation of the object.
         """
-        
+
         ret = {
             'type':        'unit',
             'umgr':        self.umgr.uid,

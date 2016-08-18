@@ -90,7 +90,6 @@ class PilotManager(rpu.Component):
         for m in rpt.PMGR_METRICS:
             self._callbacks[m] = dict()
 
-
         cfg = ru.read_json("%s/configs/pmgr_%s.json" \
                 % (os.path.dirname(__file__),
                    os.environ.get('RADICAL_PILOT_PMGR_CFG', 'default')))
@@ -156,8 +155,9 @@ class PilotManager(rpu.Component):
 
         # we don't want any callback invokations during shutdown
         # FIXME: really?
-        for m in rpt.PMGR_METRICS:
-            self._callbacks[m] = dict()
+        with self._cb_lock:
+            for m in rpt.PMGR_METRICS:
+                self._callbacks[m] = dict()
 
         # If terminate is set, we cancel all pilots. 
         if terminate:
@@ -247,7 +247,8 @@ class PilotManager(rpu.Component):
 
         # FIXME: this is breaking the bulk!
 
-        pid = pilot_dict['uid']
+        pid   = pilot_dict['uid']
+        state = pilot_dict['state']
 
         with self._pilots_lock:
 
@@ -284,13 +285,14 @@ class PilotManager(rpu.Component):
     #
     def _call_pilot_callbacks(self, pilot_obj, state):
 
-        for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
+        with self._cb_lock:
+            for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
 
-            cb      = cb_val['cb']
-            cb_data = cb_val['cb_data']
-            
-            if cb_data: cb(pilot_obj, state, cb_data)
-            else      : cb(pilot_obj, state)
+                cb      = cb_val['cb']
+                cb_data = cb_val['cb_data']
+                
+                if cb_data: cb(pilot_obj, state, cb_data)
+                else      : cb(pilot_obj, state)
 
 
     # --------------------------------------------------------------------------
@@ -359,9 +361,10 @@ class PilotManager(rpu.Component):
         pilots     = list()
         pilot_docs = list()
         for descr in descriptions :
-            pilot = ComputePilot.create(pmgr=self, descr=descr)
+            pilot = ComputePilot(pmgr=self, descr=descr)
             pilots.append(pilot)
-            pilot_docs.append(pilot.as_dict())
+            pilot_doc = pilot.as_dict()
+            pilot_docs.append(pilot_doc)
 
             # keep pilots around
             with self._pilots_lock:
@@ -372,6 +375,11 @@ class PilotManager(rpu.Component):
                         % (self._session._rec, pilot.uid, self._rec_id))
             self._log.report.progress()
 
+        # FIXME: we should use update_pilot(), but that will not trigger an
+        #        advance, since the state did not change.  We would then miss
+        #        the profile entry for the advance to NEW...
+        self.advance(pilot_docs, state=rps.NEW, publish=False, push=False)
+
         if self._session._rec:
             self._rec_id += 1
 
@@ -380,7 +388,10 @@ class PilotManager(rpu.Component):
 
         # Only after the insert can we hand the pilots over to the next
         # components (ie. advance state).
-        self.advance(pilot_docs, rps.PMGR_LAUNCHING_PENDING, publish=True, push=True)
+        for pd in pilot_docs:
+            pd['state'] = rps.PMGR_LAUNCHING_PENDING
+            self._update_pilot(pd, advance=False)
+        self.advance(pilot_docs, publish=True, push=True)
 
         self._log.report.ok('>>ok\n')
 
@@ -612,12 +623,14 @@ class PilotManager(rpu.Component):
         if metric and metric not in rpt.UMGR_METRICS :
             raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
 
-        with self._cb_lock:
+        if not metric:
+            metrics = rpt.PMGR_METRICS
+        elif isinstance(metric, list):
+            metrics =  metric
+        else:
+            metrics = [metric]
 
-            if not metric:
-                metrics = rpt.PMGR_METRICS
-            else:
-                metrics = [metric]
+        with self._cb_lock:
 
             for metric in metrics:
 

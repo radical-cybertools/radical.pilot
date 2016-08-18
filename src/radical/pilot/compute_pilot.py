@@ -8,6 +8,7 @@ import sys
 import copy
 import time
 import saga
+import threading
 
 import radical.utils as ru
 
@@ -71,6 +72,7 @@ class ComputePilot(object):
         self._stderr        = None
         self._sandbox       = None
         self._callbacks     = dict()
+        self._cb_lock       = threading.RLock()
         self._exit_on_error = self._descr.get('exit_on_error')
 
         for m in rpt.PMGR_METRICS:
@@ -85,17 +87,6 @@ class ComputePilot(object):
         for check in ['resource', 'cores', 'runtime']:
             if not self._descr.get(check):
                 raise ValueError("ComputePilotDescription needs '%s'" % check)
-
-
-    # -------------------------------------------------------------------------
-    #
-    @staticmethod
-    def create(pmgr, descr):
-        """ 
-        PRIVATE: Create a new compute pilot (in NEW state)
-        """
-
-        return ComputePilot(pmgr=pmgr, descr=descr)
 
 
     # --------------------------------------------------------------------------
@@ -388,9 +379,10 @@ class ComputePilot(object):
         if metric not in rpt.PMGR_METRICS :
             raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
 
-        cb_name = cb.__name__
-        self._callbacks[metric][cb_name] = {'cb'      : cb, 
-                                            'cb_data' : cb_data}
+        with self._cb_lock:
+            cb_name = cb.__name__
+            self._callbacks[metric][cb_name] = {'cb'      : cb, 
+                                                'cb_data' : cb_data}
 
 
     # --------------------------------------------------------------------------
@@ -400,12 +392,14 @@ class ComputePilot(object):
         if metric and metric not in rpt.UMGR_METRICS :
             raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
 
-        with self._cb_lock:
+        if not metric:
+            metrics = rpt.PMGR_METRICS
+        elif isinstance(metric, list):
+            metrics =  metric
+        else:
+            metrics = [metric]
 
-            if not metric:
-                metrics = rpt.PMGR_METRICS
-            else:
-                metrics = [metric]
+        with self._cb_lock:
 
             for metric in metrics:
 

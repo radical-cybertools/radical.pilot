@@ -181,7 +181,8 @@ class UnitManager(rpu.Component):
 
         # we don't want any callback invokations during shutdown
         # FIXME: really?
-        self._callbacks = dict()
+        with self._cb_lock:
+            self._callbacks = dict()
 
         self._terminate.set()
         self._controller.stop()
@@ -240,6 +241,8 @@ class UnitManager(rpu.Component):
     #---------------------------------------------------------------------------
     #
     def _unit_pull_cb(self):
+
+        self._log.info(" === units pulled: ?")
 
         # pull units those units from the agent which are about to get back
         # under umgr control, and push them into the respective queues
@@ -360,13 +363,14 @@ class UnitManager(rpu.Component):
     #
     def _call_unit_callbacks(self, unit_obj, state):
 
-        for cb_name, cb_val in self._callbacks[rpt.UNIT_STATE].iteritems():
+        with self._cb_lock:
+            for cb_name, cb_val in self._callbacks[rpt.UNIT_STATE].iteritems():
 
-            cb      = cb_val['cb']
-            cb_data = cb_val['cb_data']
-            
-            if cb_data: cb(unit_obj, state, cb_data)
-            else      : cb(unit_obj, state)
+                cb      = cb_val['cb']
+                cb_data = cb_val['cb_data']
+                
+                if cb_data: cb(unit_obj, state, cb_data)
+                else      : cb(unit_obj, state)
 
 
     # --------------------------------------------------------------------------
@@ -876,12 +880,14 @@ class UnitManager(rpu.Component):
         if metric and metric not in rpt.UMGR_METRICS :
             raise ValueError ("Metric '%s' is not available on the unit manager" % metric)
 
-        with self._cb_lock:
+        if not metric:
+            metrics = rpt.UMGR_METRICS
+        elif isinstance(metric, list):
+            metrics = metric
+        else:
+            metrics = [metric]
 
-            if not metric:
-                metrics = rpt.UMGR_METRICS
-            else:
-                metrics = [metric]
+        with self._cb_lock:
 
             for metric in metrics:
 
