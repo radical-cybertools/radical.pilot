@@ -243,7 +243,7 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _update_pilot(self, pilot_dict, publish=False):
+    def _update_pilot(self, pilot_dict, publish=False, advance=True):
 
         # FIXME: this is breaking the bulk!
 
@@ -278,7 +278,8 @@ class PilotManager(rpu.Component):
                 # we also don't need to maintain bulks for that reason.
                 pilot_dict['state'] = s
                 self._pilots[pid]._update(pilot_dict)
-                self.advance(pilot_dict, s, publish=publish, push=False)
+                if advance:
+                    self.advance(pilot_dict, s, publish=publish, push=False)
 
 
     # --------------------------------------------------------------------------
