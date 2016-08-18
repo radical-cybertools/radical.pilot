@@ -50,11 +50,7 @@
             "module use --append /projects/sciteam/gkd/modules",
             "module load openmpi"
         ],
-        "pre_bootstrap_2"             : [
-            "export HOME=$HOME",
-            "export PATH=$PATH",
-            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
-        ],
+        "pre_bootstrap_2"             : ["export HOME=$HOME"],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
@@ -89,11 +85,7 @@
             "module use --append /projects/sciteam/gkd/modules",
             "module load openmpi"
         ],
-        "pre_bootstrap_2"             : [
-            "export HOME=$HOME",
-            "export PATH=$PATH",
-            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
-        ],
+        "pre_bootstrap_2"             : ["export HOME=$HOME"],
         "default_remote_workdir"      : "/scratch/training/$USER",
         "valid_roots"                 : ["/scratch/training"],
         "rp_version"                  : "installed",
@@ -121,14 +113,20 @@
         "mpi_launch_method"           : "MPIRUN",
         "pre_bootstrap_1"             :
         [
-          "module load bw-python",
-          "module load ccm"
+            "module switch PrgEnv-cray PrgEnv-gnu",
+            "module load bwpy",
+            "module load ccm"
+        ],
+        "pre_bootstrap_2"             : [
+            "export HOME=$HOME"
         ],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_bw",
         "virtenv_mode"                : "create",
+        "stage_cacerts"               : "True",
         "python_dist"                 : "default"
     }
 }
+

@@ -137,6 +137,10 @@ class ABDS(AgentExecutingComponent):
         if old_path:
             new_env['PATH'] = old_path
 
+        old_ppath = new_env.pop('_OLD_VIRTUAL_PYTHONPATH', None)
+        if old_ppath:
+            new_env['PYTHONPATH'] = old_ppath
+
         old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
         if old_home:
             new_env['PYTHON_HOME'] = old_home
@@ -164,7 +168,7 @@ class ABDS(AgentExecutingComponent):
     #
     def work(self, cu):
 
-        self.advance(cu, rps.ALLOCATING, publish=True, push=False)
+        self.advance(cu, rps.EXECUTING_PENDING, publish=True, push=False)
 
 
         try:
@@ -398,7 +402,7 @@ class ABDS(AgentExecutingComponent):
             # This code snippet reads the YARN application report file and if
             # the application is RUNNING it update the state of the CU with the
             # right time stamp. In any other case it works as it was.
-            if cu['state']==rps.ALLOCATING \
+            if cu['state']==rps.EXECUTING_PENDING \
                and os.path.isfile(cu['workdir']+'/YarnApplicationReport.log'):
 
                 yarnreport=open(cu['workdir']+'/YarnApplicationReport.log','r')

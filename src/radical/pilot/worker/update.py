@@ -78,7 +78,7 @@ class Update(rpu.Worker):
     def _ordered_update(self, cu, state, timestamp=None):
         """
         The update worker can receive states for a specific unit in any order.
-        If states are pushed straight to theh DB, the state attribute of a unit
+        If states are pushed straight to the DB, the state attribute of a unit
         may not reflect the actual state.  This should be avoided by re-ordering
         on the client side DB consumption -- but until that is implemented we
         enforce ordered state pushes to MongoDB.  We do it like this:
@@ -86,7 +86,7 @@ class Update(rpu.Worker):
           - for each unit arriving in the update worker
             - check if new state is final
               - yes: push update, but never push any update again (only update
-                hist)
+                state history)
               - no:
                 check if all expected earlier states are pushed already
                 - yes: push this state also
@@ -158,21 +158,22 @@ class Update(rpu.Worker):
         # check if we have any consecutive list beyond 'last' in unsent
         cache['unsent'].append(state)
       # self._log.debug(" === lst %s: %s %s" % (uid, cache['last'], cache['unsent']))
-        state = None
+        new_state = None
         for i in range(s2i[cache['last']]+1, s2i[s_max]):
           # self._log.debug(" === chk %s: %s in %s" % (uid, i2s[i], cache['unsent']))
             if i2s[i] in cache['unsent']:
-                state = i2s[i]
+                new_state = i2s[i]
                 cache['unsent'].remove(i2s[i])
-              # self._log.debug(" === uns %s: %s" % (uid, state))
+              # self._log.debug(" === uns %s: %s" % (uid, new_state))
             else:
-              # self._log.debug(" === brk %s: %s" % (uid, state))
+              # self._log.debug(" === brk %s: %s" % (uid, new_state))
                 break
 
-        # the max of the consecutive list is set in te update dict...
-        if state:
-          # self._log.debug(" === set %s: %s" % (uid, state))
+        if new_state:
+          # self._log.debug(" === new %s: %s" % (uid, new_state))
+            state = new_state
             cache['last'] = state
+          # self._log.debug(" === set %s: %s" % (uid, state))
             update_dict['$set'] = {'state': state}
 
         # record if final state is sent
@@ -247,6 +248,9 @@ class Update(rpu.Worker):
         uid       = cu['_id']
         state     = cu.get('state')
         timestamp = cu.get('state_timestamp', rpu.timestamp())
+
+        if 'clone' in uid:
+            return
 
         self._prof.prof('get', msg="update unit state to %s" % state, uid=uid)
 

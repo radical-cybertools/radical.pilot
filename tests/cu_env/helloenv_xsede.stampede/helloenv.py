@@ -11,11 +11,6 @@ os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
 import radical.pilot as rp
 import radical.utils as ru
 
-FLOPS     = 1 * 1000 * 1000 * 1000
-BYTES_IN  = 1 * 1000 * 1000  # not yet used
-BYTES_OUT = 1 * 1000 * 1000  # not yet used
-BYTES_MEM = 1 * 1000 * 1000  # not yet used
-
 
 # ------------------------------------------------------------------------------
 #
@@ -32,9 +27,7 @@ if __name__ == '__main__':
     report = ru.LogReporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
 
-    # use the resource specified as argument, fall back to localhost
-    if len(sys.argv) >= 2  : resources = sys.argv[1:]
-    else                   : resources = ['local.localhost']
+    resource = 'xsede.stampede'
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -46,11 +39,6 @@ if __name__ == '__main__':
     # clause...
     try:
 
-        # read the config used for resource details
-        report.info('read config')
-        config = ru.read_json('%s/../config.json' % os.path.dirname(os.path.abspath(__file__)))
-        report.ok('>>ok\n')
-
         report.header('submit pilots')
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -58,51 +46,29 @@ if __name__ == '__main__':
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
-        pdescs = list()
-        for resource in resources:
-            pd_init = {
-                    'resource'      : resource,
-                    'cores'         : 64,  # pilot size
-                    'runtime'       : 15,  # pilot runtime (min)
-                    'exit_on_error' : True,
-                    'project'       : config[resource]['project'],
-                    'queue'         : config[resource]['queue'],
-                    'access_schema' : config[resource]['schema']
-                    }
-            pdescs.append(rp.ComputePilotDescription(pd_init))
+        pd_init = {
+                'resource'      : resource,
+                'cores'         : 16,  # pilot size
+                'runtime'       : 15,  # pilot runtime (min)
+                'exit_on_error' : True,
+                'project'       : "TG-MCB090174",
+                }
+        pdesc = rp.ComputePilotDescription(pd_init)
 
-        # Launch the pilots.
-        pilots = pmgr.submit_pilots(pdescs)
+        # Launch the pilot.
+        pilot = pmgr.submit_pilots(pdesc)
 
 
-        report.header('submit synapse installer unit')
+        report.header('submit units')
 
         # Register the ComputePilot in a UnitManager object.
         umgr = rp.UnitManager(session=session)
-        umgr.add_pilots(pilots)
-
-        # we create one pseudo unit which installs radical.synapse in the pilot
-        # ve
-        cud = rp.ComputeUnitDescription()
-        cud.pre_exec    = ["unset PYTHONPATH",
-                           "virtualenv /tmp/rp_synapse_ve_$USER",
-                           ". /tmp/rp_synapse_ve_$USER/bin/activate",
-                           "pip install --upgrade radical.synapse"]
-        cud.executable  = "radical-synapse-version"
-        cud.post_exec   = ["python -c 'import radical.synapse as ry; print ry.__file__'"]
-        cud.cores       = 1
-
-        cu = umgr.submit_units(cud)
-        umgr.wait_units(cu.uid)
-        assert(cu.state == rp.DONE)
-
-
-        report.header('submit synapse workload units')
+        umgr.add_pilots(pilot)
 
         # Create a workload of ComputeUnits.
-        # Each compute unit reports the id of the pilot it runs on.
+        # Each compute unit runs '/bin/date'.
 
-        n = 128   # number of units to run
+        n = 2   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -111,10 +77,9 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.pre_exec       = ["unset PYTHONPATH",
-                                  ". /tmp/rp_synapse_ve_$USER/bin/activate"]
-            cud.executable     = "radical-synapse-sample"
-            cud.arguments      = ("-m sample -f %s -s 1" % (FLOPS)).split()
+            cud.pre_exec   = ['module load netcdf']
+            cud.executable = 'echo'
+            cud.arguments  = ['$TACC_NETCDF_INC']
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -127,13 +92,11 @@ if __name__ == '__main__':
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
-    
-        report.info('\n')
-        for unit in units:
-            report.plain('  * %s: %s, exit: %3s\n' \
-                    % (unit.uid, unit.state[:4], 
-                        unit.exit_code))
 
+        for unit in units:
+            print '%s : %s : %s' % (unit.uid, unit.state, unit.stdout)
+            assert('netcdf' in unit.stdout)
+    
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
