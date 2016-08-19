@@ -254,7 +254,6 @@ class PilotManager(rpu.Component):
 
             # we don't care about pilots we don't know
             if pid not in self._pilots:
-              # print 'unknown pilot %s' % pid
                 return False
 
             # only update on state changes
@@ -292,8 +291,11 @@ class PilotManager(rpu.Component):
                 cb      = cb_val['cb']
                 cb_data = cb_val['cb_data']
                 
+              # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, self.state, cb_name)
+
                 if cb_data: cb(pilot_obj, state, cb_data)
                 else      : cb(pilot_obj, state)
+          # print ' ~~~~ done PCBS'
 
 
     # --------------------------------------------------------------------------
