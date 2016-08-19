@@ -82,7 +82,7 @@ class PilotManager(rpu.Component):
         self._pilots      = dict()
         self._pilots_lock = threading.RLock()
         self._callbacks   = dict()
-        self._cb_lock     = threading.RLock()
+        self._pcb_lock    = threading.RLock()
         self._terminate   = threading.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
@@ -155,7 +155,7 @@ class PilotManager(rpu.Component):
 
         # we don't want any callback invokations during shutdown
         # FIXME: really?
-        with self._cb_lock:
+        with self._pcb_lock:
             for m in rpt.PMGR_METRICS:
                 self._callbacks[m] = dict()
 
@@ -286,7 +286,7 @@ class PilotManager(rpu.Component):
     #
     def _call_pilot_callbacks(self, pilot_obj, state):
 
-        with self._cb_lock:
+        with self._pcb_lock:
             for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
 
                 cb      = cb_val['cb']
@@ -376,6 +376,7 @@ class PilotManager(rpu.Component):
                         % (self._session._rec, pilot.uid, self._rec_id))
             self._log.report.progress()
 
+        # initial state advance to 'NEW'
         # FIXME: we should use update_pilot(), but that will not trigger an
         #        advance, since the state did not change.  We would then miss
         #        the profile entry for the advance to NEW...
@@ -611,7 +612,7 @@ class PilotManager(rpu.Component):
         if metric not in rpt.PMGR_METRICS :
             raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
 
-        with self._cb_lock:
+        with self._pcb_lock:
             cb_name = cb.__name__
             self._callbacks[metric][cb_name] = {'cb'      : cb, 
                                                 'cb_data' : cb_data}
@@ -631,7 +632,7 @@ class PilotManager(rpu.Component):
         else:
             metrics = [metric]
 
-        with self._cb_lock:
+        with self._pcb_lock:
 
             for metric in metrics:
 
