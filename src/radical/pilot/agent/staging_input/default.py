@@ -135,6 +135,19 @@ class Default(AgentStagingInputComponent):
 
                 self._log.info("Going to '%s' %s to %s", directive['action'], source, abs_target)
 
+                # For local files, check for existence first
+                if directive['action'] in [rpc.LINK, rpc.COPY, rpc.MOVE]:
+                    if not os.path.isfile(source):
+                        # check if NON_FATAL flag is set, in that case ignore
+                        # missing files
+                        if rpc.NON_FATAL in directive['flags']:
+                            self._log.warn("Ignoring that source %s does not exists.", source)
+                            continue
+                        else:
+                            log_message = "Source %s does not exists." % source
+                            self._log.error(log_message)
+                            raise Exception(log_message)
+
                 if   directive['action'] == rpc.LINK: os.symlink     (source, abs_target)
                 elif directive['action'] == rpc.COPY: shutil.copyfile(source, abs_target)
                 elif directive['action'] == rpc.MOVE: shutil.move    (source, abs_target)
