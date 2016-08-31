@@ -28,7 +28,7 @@ _info_pending = {
 
 _info_premature_final = {
         'Failed'   : '_fail',
-        'Canceled'   : '_canc'
+        'Canceled' : '_canc'
 }
 
 _info_states = [

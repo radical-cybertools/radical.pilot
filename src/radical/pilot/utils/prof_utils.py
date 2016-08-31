@@ -354,6 +354,7 @@ def combine_profiles(profs):
         t_host[host_id] = t_off
 
 
+    unsynced = set()
     for pname, prof in profs.iteritems():
 
         if not len(prof):
@@ -367,7 +368,7 @@ def combine_profiles(profs):
         if host_id in t_host:
             t_off   = t_host[host_id]
         else:
-            print 'WARNING: no time offset for %s' % host_id
+            unsynced.add(host_id)
             t_off = 0.0
 
         t_0 = prof[0]['time']
@@ -398,6 +399,9 @@ def combine_profiles(profs):
     # sort by time and return
     p_glob = sorted(p_glob[:], key=lambda k: k['time']) 
 
+    if unsynced:
+        print 'unsynced hosts: %s' % list(unsynced)
+
     return p_glob
 
 
@@ -420,10 +424,13 @@ def clean_profile(profile, sid):
     entities = dict()  # things which have a uid
 
     for event in profile:
+
         uid   = event['uid']
         state = event['state']
         time  = event['time']
         name  = event['event']
+
+        del(event['event'])
 
         # we derive entity_type from the uid -- but funnel 
         # some cases into the session
@@ -451,26 +458,36 @@ def clean_profile(profile, sid):
             assert(state)
             assert(uid)
 
-            event['event_name']  = 'state'
+            event['event_type'] = 'state'
+            skip = False
 
             if state in rps.FINAL:
 
                 # a final state will cancel any previoud CANCELED state
                 if rps.CANCELED in entities[uid]['states']:
-                   del (entities[uid]['states'][rps.CANCELED])
+                    del (entities[uid]['states'][rps.CANCELED])
+
+                # vice-versa, we will not add CANCELED if a final
+                # state already exists:
+                if state == rps.CANCELED:
+                    if any([s in entities[uid]['states'] 
+                        for s in rps.FINAL]):
+                        skip = True
+                        continue
 
             if state in entities[uid]['states']:
                 # ignore duplicated recordings of state transitions
+                skip = True
                 continue
               # raise ValueError('double state (%s) for %s' % (state, uid))
 
-            entities[uid]['states'][state] = event
+            if not skip:
+                entities[uid]['states'][state] = event
 
         else:
             # FIXME: define different event types (we have that somewhere)
-            event['event_name'] = 'event'
-
-        entities[uid]['events'].append(event)
+            event['event_type'] = 'event'
+            entities[uid]['events'].append(event)
 
 
     # we have evaluated, cleaned and sorted all events -- now we recreate
