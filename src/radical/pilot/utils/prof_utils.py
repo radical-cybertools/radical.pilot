@@ -507,14 +507,15 @@ def clean_profile(profile, sid):
 
 # ------------------------------------------------------------------------------
 #
-def get_session_profile(sid):
+def get_session_profile(sid, src=None):
     
-    profdir = '%s/%s/' % (os.getcwd(), sid)
+    if not src:
+        src = "%s/%s" % (os.getcwd(), sid)
 
-    if os.path.exists(profdir):
+    if os.path.exists(src):
         # we have profiles locally
-        profiles  = glob.glob("%s/*.prof"   % profdir)
-        profiles += glob.glob("%s/*/*.prof" % profdir)
+        profiles  = glob.glob("%s/*.prof"   % src)
+        profiles += glob.glob("%s/*/*.prof" % src)
     else:
         # need to fetch profiles
         from .session import fetch_profiles
