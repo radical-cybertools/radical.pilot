@@ -18,10 +18,10 @@ FINAL    = [DONE, FAILED, CANCELED]
 #
 # pilot states
 #
-PMGR_LAUNCHING_PENDING = 'LAUNCHING_PENDING'
-PMGR_LAUNCHING         = 'LAUNCHING'
-PMGR_ACTIVE_PENDING    = 'ACTIVE_PENDING'
-PMGR_ACTIVE            = 'ACTIVE'
+PMGR_LAUNCHING_PENDING = 'PMGR_LAUNCHING_PENDING'
+PMGR_LAUNCHING         = 'PMGR_LAUNCHING'
+PMGR_ACTIVE_PENDING    = 'PMGR_ACTIVE_PENDING'
+PMGR_ACTIVE            = 'PMGR_ACTIVE'
 
 # assign numeric values to states to support state ordering operations
 # ONLY final state get the same values.
