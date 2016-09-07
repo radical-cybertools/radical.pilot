@@ -145,11 +145,15 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
         # We now have a local tarball
         if tarball_available:
             log.info("Extract tarball %s to '%s'.", ftgt.path, tgt_url.path)
-            tarball = tarfile.open(ftgt.path, mode='r:gz')
-            tarball.extractall("%s/%s" % (tgt_url.path, pilot['uid']))
+            try:
+                tarball = tarfile.open(ftgt.path, mode='r:gz')
+                tarball.extractall("%s/%s" % (tgt_url.path, pilot['uid']))
 
-            profiles = glob.glob("%s/%s/*.prof" % (tgt_url.path, pilot['uid']))
-            ret.extend(profiles)
+                profiles = glob.glob("%s/%s/*.prof" % (tgt_url.path, pilot['uid']))
+                ret.extend(profiles)
+            except Exception as e:
+                log.warn('could not extract tarball %s [%s]', ftgt.path, e)
+                print 'skip %s [%s]' % (ftgt.path, e)
 
             # If extract succeeded, no need to fetch individual profiles
             continue
