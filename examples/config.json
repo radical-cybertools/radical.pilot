@@ -80,7 +80,8 @@
         "xsede.wrangler" : {
             "project"  : "TG-MCB090174",
             "queue"    : "debug",
-            "schema"   : null
+            "schema"   : null,
+            "cores"    : 24
         },
 
         "xsede.comet"  : {
