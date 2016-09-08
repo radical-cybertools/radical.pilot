@@ -38,8 +38,6 @@
             "export HOME=$HOME",
             # TODO: investigate PYTHONHOME further
             "export PYTHONHOME=/lustre/atlas2/csc168/scratch/marksant1/radical.pilot.sandbox/ve_titan",
-            "export PATH=$PATH",
-            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH",
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
         ],

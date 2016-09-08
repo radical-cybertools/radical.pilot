@@ -5,6 +5,45 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.42 Release                                                          2016-08-09
+--------------------------------------------------------------------------------
+
+  - change examples to use 2 cores on localhost 
+  - Iterate documentation
+  - Manual cherry pick fix for getip. 
+
+
+0.41 Release                                                          2016-07-15
+--------------------------------------------------------------------------------
+
+  - address some of error messages and type checks 
+  - add scheduler documentation simplify interpretation of BF oversubscription fix a log message 
+  - fix logging problem reported by Ming and Vivek 
+  - global default url, sync profile/logfile/db fetching tools 
+  - make staging path resilient against cwd changes 
+  - Switch SSH and ORTE for Comet
+  - sync session cleanup tool with rpu 
+  - update allocation IDs 
+
+
+0.40.4 Release                                                        2016-05-18
+--------------------------------------------------------------------------------
+
+  - point release with more tutorial configurations
+
+
+0.40.3 Release                                                        2016-05-17
+--------------------------------------------------------------------------------
+
+  - point release with tutorial configurations
+
+
+0.40.2 Release                                                        2016-05-13
+--------------------------------------------------------------------------------
+
+  - hotfix to fix vnode parsing on archer
+
+
 0.40.1 Release                                                        2016-02-11
 --------------------------------------------------------------------------------
 
@@ -485,5 +524,4 @@ API Changes:
 
 
 --------------------------------------------------------------------------------
-
 
