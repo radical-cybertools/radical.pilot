@@ -71,6 +71,7 @@ TRANSFER = 'Transfer' # saga remote transfer TODO: This might just be a special 
 #
 CREATE_PARENTS = 'CreateParents'  # Create parent directories while writing file
 SKIP_FAILED    = 'SkipFailed'     # Don't stage out files if tasks failed
+NON_FATAL      = 'NonFatal'       # Don't fail the CU if input is missing
 
 #
 # Defaults
