@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.43.1 Release                                                        2016-09-09
+--------------------------------------------------------------------------------
+
+  - hotfix: fix netifaces to version 0.10.4 to avoid trouble on BlueWaters
+
+
 0.43 Release                                                          2016-09-08
 --------------------------------------------------------------------------------
 
