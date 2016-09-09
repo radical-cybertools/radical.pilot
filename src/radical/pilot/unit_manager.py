@@ -344,7 +344,7 @@ class UnitManager(rpu.Component):
 
             self._log.debug(' === unit %s current: %s', uid, current)
             self._log.debug(' === unit %s target : %s', uid, target)
-            target, passed = rps._unit_state_progress(current, target)
+            target, passed = rps._unit_state_progress(uid, current, target)
             self._log.debug(' === unit %s target : %s', uid, target)
             self._log.debug(' === unit %s passed : %s', uid, passed)
 

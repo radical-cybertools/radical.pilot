@@ -1541,7 +1541,7 @@ else
     BS_SHELL='/bin/sh'
 fi
 
-(cat <<EOT
+cat > bootstrap_2.sh <<EOT
 #!$BS_SHELL
 
 # some inspection for logging
@@ -1580,8 +1580,6 @@ $PREBOOTSTRAP2_EXPANDED
 exec $AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
 
 EOT
-
-)> bootstrap_2.sh
 chmod 0755 bootstrap_2.sh
 # ------------------------------------------------------------------------------
 
@@ -1617,11 +1615,84 @@ profile_event 'agent start'
 # start the master agent instance (zero)
 profile_event 'sync rel' 'agent start'
 
-timeout $RUNTIME \
-        ./bootstrap_2.sh 'agent_0'    \
-            1>agent_0.bootstrap_2.out \
-            2>agent_0.bootstrap_2.err
+# # I am ashamed that we have to resort to this -- lets hope it's temporary...
+# cat > packer.sh <<EOT
+# #!/bin/sh
+# 
+# PROFILES_TARBALL="$PILOT_ID.prof.tgz"
+# LOGFILES_TARBALL="$PILOT_ID.log.tgz"
+# 
+# echo "start packing profiles / logfiles [\$(date)]"
+# while ! test -e exit.signal
+# do
+#     
+#     if test -z "\$(ls *.prof )"
+#     then 
+#         echo "skip  packing profiles [\$(date)]"
+#     else
+#         echo "check packing profiles [\$(date)]"
+#         mkdir prof/
+#         cp  *.prof prof/
+#         tar -czf "\$PROFILES_TARBALL.tmp" prof/ || true
+#         mv       "\$PROFILES_TARBALL.tmp" "\$PROFILES_TARBALL"
+#         rm -rf prof/
+#     fi
+# 
+# 
+#     # we always have a least the cfg file
+#     if true
+#     then
+#         echo "check packing logfiles [\$(date)]"
+#         mkdir log/
+#         cp  *.log *.out *.err *,cfg log/
+#         tar -czf "\$LOGFILES_TARBALL.tmp" log/ || true
+#         mv       "\$LOGFILES_TARBALL.tmp" "\$LOGFILES_TARBALL"
+#         rm -rf log/
+#     fi
+# 
+#     ls -l *.tgz
+#     sleep 10
+# done
+# echo "stop  packing profiles / logfiles [\$(date)]"
+# EOT
+# chmod 0755 packer.sh
+# ./packer.sh 2>&1 >> bootstrap_1.out &
+# PACKER_ID=$!
+
+
+./bootstrap_2.sh 'agent_0'    \
+               1> agent_0.bootstrap_2.out \
+               2> agent_0.bootstrap_2.err &
+AGENT_PID=$!
+while true
+do
+    sleep 1
+    if kill -0 $AGENT_PID
+    then 
+        if test -e "./killme.signal"
+        then
+            echo "send SIGTERM to $AGENT_PID"
+            kill -15 $AGENT_PID
+            sleep  5
+            echo "send SIGKILL to $AGENT_PID"
+            kill  -9 $AGENT_PID
+            break
+        fi
+    else 
+        echo "agent $AGENT_PID is gone"
+        break
+    fi
+done
+
+# collect process and exit code
+echo "agent $AGENT_PID is final"
+wait $AGENT_PID
 AGENT_EXITCODE=$?
+echo "agent $AGENT_PID is final ($AGENT_EXITCODE)"
+
+# # stop the packer.  We don't want to just kill it, as that might leave us with
+# # corrupted tarballs...
+# touch exit.signal
 
 profile_event 'cleanup start'
 
@@ -1682,7 +1753,7 @@ then
     echo "#"
     echo "# Tarring profiles ..."
     PROFILES_TARBALL="$PILOT_ID.prof.tgz"
-    tar -czf $PROFILES_TARBALL *.prof
+    tar -czf $PROFILES_TARBALL *.prof || true
     ls -l $PROFILES_TARBALL
     echo "#"
     echo "# -------------------------------------------------------------------"
@@ -1697,7 +1768,7 @@ then
     echo "#"
     echo "# Tarring logfiles ..."
     LOGFILES_TARBALL="$PILOT_ID.log.tgz"
-    tar -czf $LOGFILES_TARBALL *.{log,out,err,cfg}
+    tar -czf $LOGFILES_TARBALL *.{log,out,err,cfg} || true
     ls -l $LOGFILES_TARBALL
     echo "#"
     echo "# -------------------------------------------------------------------"
@@ -1706,7 +1777,7 @@ fi
 echo
 echo "# -------------------------------------------------------------------"
 echo "#"
-echo "# Done, exiting!"
+echo "# Done, exiting ($AGENT_EXITCODE)"
 echo "#"
 echo "# -------------------------------------------------------------------"
 

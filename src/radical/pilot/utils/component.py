@@ -1180,7 +1180,7 @@ class Component(mp.Process):
                         if not isinstance(msg,list):
                             msg = [msg]
                         for m in msg:
-                            self._log.debug("<= %s:%s: %s", self.uid, callback.__name__, topic)
+                          # self._log.debug("<= %s:%s: %s", self.uid, callback.__name__, topic)
                             with self._cb_lock:
                                 if callback_data != None:
                                     callback(topic=topic, msg=m, cb_data=callback_data)
@@ -1421,7 +1421,7 @@ class Component(mp.Process):
         if not isinstance(things, list):
             things = [things]
 
-        self._log.debug(' === advance bulk size: %s', len(things))
+        self._log.debug(' === advance bulk size: %s [%s, %s]', len(things), push, publish)
 
         target = state
         state  = None
@@ -1442,7 +1442,7 @@ class Component(mp.Process):
 
             state = thing['state']
 
-            self._log.debug(' === advance bulk size: %s', len(things))
+            self._log.debug(' === advance bulk: %s [%s]', uid, len(things))
             self._prof.prof('advance', uid=uid, state=state, timestamp=timestamp)
 
             if not state in buckets:

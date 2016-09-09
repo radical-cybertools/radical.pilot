@@ -376,6 +376,8 @@ class Agent_0(rpu.Worker):
             if cmd == 'cancel_pilot':
                 self._log.info('cancel pilot cmd')
                 self._final_cause = 'cancel'
+                with open('./killme.signal', 'w+') as f:
+                    f.write('cancel pilot cmd received\n')
         
               # ru.attach_pudb(logger=self._log)
 

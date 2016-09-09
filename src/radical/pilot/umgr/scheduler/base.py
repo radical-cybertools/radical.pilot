@@ -170,7 +170,7 @@ class UMGRSchedulingComponent(rpu.Component):
                 current = self._pilots[pid]['state']
 
                 # enforce state model order
-                target, passed = rps._pilot_state_progress(current, target) 
+                target, passed = rps._pilot_state_progress(pid, current, target) 
 
                 if current != target:
                   # self._log.debug(' === %s: %s -> %s' % (pid,  current, target))
