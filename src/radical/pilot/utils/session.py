@@ -305,13 +305,18 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
         # We now have a local tarball
         if tarball_available:
             log.debug("Extract tarball %s to %s", ftgt.path, tgt_url.path)
-            tarball = tarfile.open(ftgt.path)
-            tarball.extractall("%s/%s" % (tgt_url.path, pilot['uid']))
 
-            logfiles = glob.glob("%s/%s/*.log" % (tgt_url.path, pilot['uid']))
-            log.info("tarball %s extracted to '%s/%s/'.", 
-                    ftgt.path, tgt_url.path, pilot['uid'])
-            ret.extend(logfiles)
+            try:
+                tarball = tarfile.open(ftgt.path)
+                tarball.extractall("%s/%s" % (tgt_url.path, pilot['uid']))
+
+                logfiles = glob.glob("%s/%s/*.log" % (tgt_url.path, pilot['uid']))
+                log.info("tarball %s extracted to '%s/%s/'.", 
+                        ftgt.path, tgt_url.path, pilot['uid'])
+                ret.extend(logfiles)
+            except Exception as e:
+                log.warn('could not extract tarball %s [%s]', ftgt.path, e)
+                print 'skip %s [%s]' % (ftgt.path, e)
 
             # If extract succeeded, no need to fetch individual logfiles
             continue
