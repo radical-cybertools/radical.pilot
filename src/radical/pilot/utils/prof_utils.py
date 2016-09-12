@@ -561,55 +561,55 @@ def get_session_description(sid, src=None, dburl=None):
     ret['entities'] = dict()
 
     tree      = dict()
-    tree[sid] = {'uid'   : sid,
-                 'etype' : 'session',
-                 'cfg'   : json['session']['cfg'],
-                 'has'   : ['umgr', 'pmgr', 'pilot', 'unit'],
-                 'umgr'  : list(),
-                 'pmgr'  : list()
+    tree[sid] = {'uid'      : sid,
+                 'etype'    : 'session',
+                 'cfg'      : json['session']['cfg'],
+                 'has'      : ['umgr', 'pmgr'],
+                 'children' : list()
                 }
 
     for pmgr in sorted(json['pmgr'], key=lambda k: k['uid']):
         uid = pmgr['uid']
-        tree[sid]['pmgr'].append(uid)
-        tree[uid] = {'uid'   : uid,
-                     'etype' : 'pmgr',
-                     'cfg'   : pmgr['cfg'],
-                     'has'   : ['pilot'],
-                     'pilot' : list()
+        tree[sid]['children'].append(uid)
+        tree[uid] = {'uid'      : uid,
+                     'etype'    : 'pmgr',
+                     'cfg'      : pmgr['cfg'],
+                     'has'      : ['pilot'],
+                     'children' : list()
                     }
 
     for umgr in sorted(json['umgr'], key=lambda k: k['uid']):
         uid = umgr['uid']
-        tree[sid]['umgr'].append(uid)
-        tree[uid] = {'uid'   : uid,
-                     'etype' : 'umgr',
-                     'cfg'   : umgr['cfg'],
-                     'has'   : ['unit'],
-                     'unit' : list()
+        tree[sid]['children'].append(uid)
+        tree[uid] = {'uid'      : uid,
+                     'etype'    : 'umgr',
+                     'cfg'      : umgr['cfg'],
+                     'has'      : ['unit'],
+                     'children' : list()
                     }
 
     for pilot in sorted(json['pilot'], key=lambda k: k['uid']):
         uid  = pilot['uid']
         pmgr = pilot['pmgr']
-        tree[pmgr]['pilot'].append(uid)
-        tree[uid] = {'uid'   : uid,
-                     'etype' : 'pilot',
-                     'cfg'   : pilot['cfg'],
-                     'has'   : ['unit'],
-                     'unit' : list()
+        tree[pmgr]['children'].append(uid)
+        tree[uid] = {'uid'      : uid,
+                     'etype'    : 'pilot',
+                     'cfg'      : pilot['cfg'],
+                     'has'      : ['unit'],
+                     'children' : list()
                     }
 
     for unit in sorted(json['unit'], key=lambda k: k['uid']):
         uid  = unit['uid']
         pid  = unit['umgr']
         umgr = unit['pilot']
-        tree[pid ]['unit'].append(uid)
-        tree[umgr]['unit'].append(uid)
-        tree[uid] = {'uid'   : uid,
-                     'etype' : 'unit',
-                     'cfg'   : unit['description'],
-                     'has'   : [],
+        tree[pid ]['children'].append(uid)
+        tree[umgr]['children'].append(uid)
+        tree[uid] = {'uid'      : uid,
+                     'etype'    : 'unit',
+                     'cfg'      : unit['description'],
+                     'has'      : list(),
+                     'children' : list()
                     }
 
     ret['tree'] = tree
