@@ -353,6 +353,19 @@ def combine_profiles(profs):
 
         t_host[host_id] = t_off
 
+    # FIXME: this should be removed once #1117 is fixed
+    for pname, prof in profs.iteritems():
+        i=0
+        l=len(prof)
+        while i<l:
+            if prof[i]['time'] == 1.0:
+                if i < l-1:
+                    prof[i]['time'] = prof[i+1]['time']
+                elif i > 0:
+                    prof[i]['time'] = prof[i-1]['time']
+                else:
+                    prof[i]['time'] = t_0
+            i += 1
 
     unsynced = set()
     for pname, prof in profs.iteritems():
