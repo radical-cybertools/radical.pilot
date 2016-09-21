@@ -413,6 +413,15 @@ class UnitManager(object):
         if len(unit_descriptions) == 0:
             raise ValueError('cannot submit no unit descriptions')
 
+        for ud in unit_descriptions:
+
+            if float(ud.cores) != int(ud.cores):
+                error_msg = "ComputeUnittDescription 'cores' must be integer."
+                raise BadParameter(error_msg)
+
+            if int(ud.cores) <= 0:
+                error_msg = "ComputeUnittDescription 'cores' must be positive."
+                raise BadParameter(error_msg)
 
         logger.report.info('<<submit %d unit(s)\n\t' % len(unit_descriptions))
 

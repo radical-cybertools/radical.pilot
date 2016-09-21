@@ -4,15 +4,15 @@
 Chained Tasks
 *************
 
-What if you had two different executables to run? What if this second set of
-executables had some dependencies on data from A? Can you use one RADICAL-Pilot
-to run both jobs? Yes!
+What if you had two different executables -- A and B, to run? What if this second set of
+executables (B) had some dependencies on data from the first set (A)? Can you use one RADICAL-Pilot
+to run both set jobs? Yes!
 
 The example below submits a set of echo jobs (set A) using RADICAL-Pilot, and
 for every successful job (with state ``DONE``), it submits another job (set B)
 to the same Pilot-Job.
 
-We can think of this as A is comprised of subjobs {a1,a2,a3}, while B is
+We can think of  A is being comprised of subjobs {a1,a2,a3}, while B is
 comprised of subjobs {b1,b2,b3}. Rather than wait for each subjob {a1},{a2},{a3}
 to complete, {b1} can run as soon as {a1} is complete, or {b1} can run as soon
 as a slot becomes available – i.e. {a2} could finish before {a1}.
