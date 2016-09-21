@@ -14,10 +14,25 @@
             "cores"    : 64
         },
 
+        "ncsa.bw_local" : {
+            "project"  : null,
+            "queue"    : "debug",
+            "schema"   : null,
+            "cores"    : 64
+        },
+
         "ncsa.bw_ccm" : {
             "project"  : "gkd",
             "queue"    : "debug",
-            "schema"   : "gsissh"
+            "schema"   : "gsissh",
+            "cores"    : 64
+        },
+
+        "ncsa.bw_local" : {
+            "project"  : null,
+            "queue"    : "debug",
+            "schema"   : null,
+            "cores"    : 64
         },
 
         "nersc.edison" : {
@@ -58,27 +73,28 @@
         "xsede.stampede" : {
             "project"  : "TG-MCB090174",
             "queue"    : "development",
-            "schema"   : "gsissh",
+            "schema"   : "ssh",
             "cores"    : 16
         },
 
         "xsede.wrangler" : {
             "project"  : "TG-MCB090174",
             "queue"    : "debug",
-            "schema"   : null
+            "schema"   : null,
+            "cores"    : 24
         },
 
         "xsede.comet"  : {
             "project"  : "TG-MCB090174",
             "queue"    : "compute",
-            "schema"   : "gsissh",
+            "schema"   : "ssh",
             "cores"    : 64
         },
 
         "xsede.gordon" : {
-            "project"  : null,
+            "project"  : "unc100",
             "queue"    : "normal",
-            "schema"   : null,
+            "schema"   : "gsissh",
             "cores"    : 64
         },
 
