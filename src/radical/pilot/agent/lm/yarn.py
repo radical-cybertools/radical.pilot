@@ -384,7 +384,11 @@ class Yarn(LaunchMethod):
             for InputFile in cud['input_staging']:
                 scp_input_files+='%s/%s '%(work_dir,InputFile['target'])
             scp_input_files+='"'
+            print_str+="echo 'start=""`date +%s.%3N`""'>>ExecScript.sh\n"
             print_str+="echo 'scp $YarnUser@%s:%s .'>>ExecScript.sh\n"%(client_node,scp_input_files)
+            print_str+="echo 'stop=""`date +%s.%3N`""'>>ExecScript.sh\n"
+            print_str+="echo 'time_spent=""$(echo ""$stop - $start"" | bc)""'>>ExecScript.sh\n"
+            print_str+="echo 'echo $time_spent >>Yprof'>>ExecScript.sh\n"
 
         if cud['pre_exec']:
             pre_exec_string = ''
@@ -401,13 +405,17 @@ class Yarn(LaunchMethod):
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
         print_str+="echo '# Creating Executing Command'>>ExecScript.sh\n"
-        
+        print_str+="echo 'start=""`date +%s.%3N`""'>>ExecScript.sh\n"
         print_str+="echo '%s %s 1>Ystdout 2>Ystderr'>>ExecScript.sh\n"%(cud['executable'],task_argstr)
+        print_str+="echo 'stop=""`date +%s.%3N`""'>>ExecScript.sh\n"
+        print_str+="echo 'time_spent=""$(echo ""$stop - $start"" | bc)""'>>ExecScript.sh\n"
+        print_str+="echo 'echo $time_spent >>Yprof'>>ExecScript.sh\n"
 
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
         print_str+="echo '# Staging Output Files'>>ExecScript.sh\n"
+        print_str+="echo 'start=""`date +%s.%3N`""'>>ExecScript.sh\n"
         print_str+="echo 'YarnUser=$(whoami)'>>ExecScript.sh\n"
         scp_output_files='Ystderr Ystdout'
 
@@ -415,6 +423,10 @@ class Yarn(LaunchMethod):
             for OutputFile in cud['output_staging']:
                 scp_output_files+=' %s'%(OutputFile['source'])
         print_str+="echo 'scp -v %s $YarnUser@%s:%s'>>ExecScript.sh\n"%(scp_output_files,client_node,work_dir)
+        print_str+="echo 'stop=""`date +%s.%3N`""'>>ExecScript.sh\n"
+        print_str+="echo 'time_spent=""$(echo ""$stop - $start"" | bc)""'>>ExecScript.sh\n"
+        print_str+="echo 'echo $time_spent >>Yprof'>>ExecScript.sh\n"
+        print_str+="echo 'scp -v Yprof $YarnUser@%s:%s'>>ExecScript.sh\n"%(client_node,work_dir)
 
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo ''>>ExecScript.sh\n"
@@ -444,7 +456,7 @@ class Yarn(LaunchMethod):
 
         yarn_command = '%s -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
                        ' com.radical.pilot.Client -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
-                       ' -shell_script ExecScript.sh %s %s -service_url %s\ncat Ystdout' % (self.launch_command,
+                       ' -shell_script ExecScript.sh %s %s -service_url %s' % (self.launch_command,
                         env_string, ncores_string,service_url)
 
         self._log.debug("Yarn Command %s"%yarn_command)

@@ -278,6 +278,7 @@ class ABDS(AgentExecutingComponent):
             launch_script.write("# The command to run\n")
             launch_script.write("%s\n" % launch_command)
             launch_script.write("RETVAL=$?\n")
+            launch_script.write("\ncat Ystdout\n")
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 launch_script.write("echo script after_exec `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
