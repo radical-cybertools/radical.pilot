@@ -10,17 +10,7 @@ import radical.pilot       as rp
 import radical.pilot.utils as rpu
 
 
-_DEFAULT_DBURL = 'mongodb://user:password@localhost:27017/radicalpilot/'
-_DEFAULT_DBURL = 'mongodb://user:password@ec2-184-72-89-141.compute-1.amazonaws.com:27017/radicalpilot/'
-
-if  'RADICAL_PILOT_DBURL' in os.environ :
-    _DEFAULT_DBURL = os.environ['RADICAL_PILOT_DBURL']
-
-_DEFAULT_DBURL = ru.Url (_DEFAULT_DBURL)
-if  not _DEFAULT_DBURL.path or '/' == _DEFAULT_DBURL.path :
-    _DEFAULT_DBURL.path = 'radicalpilot'
-
-_DEFAULT_DBURL = str(_DEFAULT_DBURL)
+dburl = os.environ.get('RADICAL_PILOT_DBURL', rp.default_dburl)
 
 # ------------------------------------------------------------------------------
 #
@@ -128,16 +118,16 @@ def list_sessions (db, dbname, age, session) :
     if  session :
         sids.append (session)
     else :
-        sids = rpu.get_session_ids (db[dbname])
+        sids = rpu.get_session_ids (db)
 
     if not sids :
         print 'no matching session in database at %s' % url
-        return
+        return []
 
     session_ids = list()
     for sid in sids :
 
-        docs = rpu.get_session_docs (db[dbname], sid)
+        docs = rpu.get_session_docs (db, sid)
         if  not docs or \
             not 'session' in docs or \
             not 'created' in docs['session'] :
@@ -169,14 +159,13 @@ def list_sessions (db, dbname, age, session) :
 def purge_sessions (db, dbname, age, session) :
 
     session_ids = list_sessions (db, dbname, age, session)
-    database    = db[dbname]
 
     for sid in session_ids :
-        database.drop_collection ("%s"    % sid)
-        database.drop_collection ("%s.p"  % sid)
-        database.drop_collection ("%s.pm" % sid)
-        database.drop_collection ("%s.um" % sid)
-        database.drop_collection ("%s.cu" % sid)
+        db.drop_collection ("%s"    % sid)
+        db.drop_collection ("%s.p"  % sid)
+        db.drop_collection ("%s.pm" % sid)
+        db.drop_collection ("%s.um" % sid)
+        db.drop_collection ("%s.cu" % sid)
         print 'purged session %s' % sid
 
 
@@ -230,7 +219,7 @@ if __name__ == '__main__' :
         usage ("No mode specified")
 
     if  not options.url : 
-        options.url = _DEFAULT_DBURL 
+        options.url = dburl
 
 
     mode    = options.mode 
@@ -238,7 +227,7 @@ if __name__ == '__main__' :
     session = options.session
     age     = options.age
 
-    mongo, db, dbname, cname, pname = ru.mongodb_connect (str(url), _DEFAULT_DBURL)
+    mongo, db, dbname, cname, pname = ru.mongodb_connect (url, dburl)
 
     print "modes   : %s" % mode
     print "db url  : %s" % url

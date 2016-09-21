@@ -15,7 +15,7 @@ from .exceptions import *
 
 # ------------------------------------------------------------------------------
 # import API
-from .session                   import Session 
+from .session                   import Session, default_dburl
 from .context                   import Context
 
 from .unit_manager              import UnitManager

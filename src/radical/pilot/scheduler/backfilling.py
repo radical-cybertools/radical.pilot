@@ -23,7 +23,7 @@ from .interface import Scheduler
 
 # to reduce roundtrips, we can oversubscribe a pilot, and schedule more units
 # than it can immediately execute.  Value is in %.
-OVERSUBSCRIPTION_RATE = 0
+OVERSUBSCRIPTION_RATE = os.environ.get('RADICAL_PILOT_BF_OVERSUBSCRIPTION', 100)
 
 # -----------------------------------------------------------------------------
 # 
@@ -302,8 +302,9 @@ class BackfillingScheduler(Scheduler):
             self.pilots[pid]['resource'] = pilot.resource
             self.pilots[pid]['sandbox']  = pilot.sandbox
 
-            if  OVERSUBSCRIPTION_RATE :
-                self.pilots[pid]['caps'] += int(OVERSUBSCRIPTION_RATE * pilot.description.cores / 100.0)
+            self.pilots[pid]['caps'] += int((100+OVERSUBSCRIPTION_RATE) \
+                                            * pilot.description.cores   \
+                                            / 100.0)
 
             # make sure we register callback only once per pmgr
             pmgr = pilot.pilot_manager

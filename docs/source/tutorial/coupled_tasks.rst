@@ -4,8 +4,8 @@
 Coupled Tasks
 *************
 
-The script provides a simple workflow which submit a set of tasks A and tasks B
-and wait until they are completed and then submits set of tasks C. It
+The script is a simple workflow which submits a set of tasks A and set of tasks B
+and waits until they are completed before submiting a set of tasks C. It
 demonstrates synchronization mechanisms provided by the Pilot-API. This example
 is useful if a task in C has dependencies on some of the output generated
 from tasks in A and B.
