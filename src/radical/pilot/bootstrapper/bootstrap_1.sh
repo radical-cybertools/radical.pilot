@@ -60,6 +60,18 @@ VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
 VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces setproctitle"
 
+# before we change anything else in the pilot environment, we safe a couple of
+# env vars to later re-create a close-to-pristine env for unit execution.
+_OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
+_OLD_VIRTUAL_PYTHONHOME="$PYTHONHOME"
+_OLD_VIRTUAL_PATH="$PATH"
+_OLD_VIRTUAL_PS1="$PS1"
+
+export _OLD_VIRTUAL_PYTHONPATH
+export _OLD_VIRTUAL_PYTHONHOME
+export _OLD_VIRTUAL_PATH
+export _OLD_VIRTUAL_PS1
+
 
 # ------------------------------------------------------------------------------
 #
@@ -717,10 +729,6 @@ virtenv_activate()
     RP_MOD_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$virtenv|$virtenv/rp_install|"`
     VE_PYTHONPATH="$PYTHONPATH"
 
-    # before we change PYTHONPATH, we keep the original for later use in CU
-    # environment settings
-    _OLD_VIRTUAL_PYTHONPATH=$PYTHONPATH
-
     # NOTE: this should not be necessary, but we explicit set PYTHONPATH to
     #       include the VE module tree, because some systems set a PYTHONPATH on
     #       'module load python', and that would supersede the VE module tree,
@@ -1221,6 +1229,18 @@ while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x" OPTION; do
     esac
 done
 
+# At this point, all pre_bootstrap_1 commands have been executed.  We copy the
+# resulting PATH and LD_LIBRARY_PATH, and apply that in bootstrap_2.sh, so that
+# the sub-agents start off with the same env (or at least the relevant parts of
+# it).
+#
+# This assumes that the env is actually transferrable.  If that assumption
+# breaks at some point, we'll have to either only transfer the incremental env
+# changes, or reconsider the approach to pre_bootstrap_x commands altogether --
+# see comment in the pre_bootstrap_1 function.
+PB1_PATH="$PATH"
+PB1_LDLB="$LD_LIBRARY_PATH"
+
 # FIXME: By now the pre_process rules are already performed.
 #        We should split the parsing and the execution of those.
 #        "bootstrap start" is here so that $PILOTID is known.
@@ -1299,13 +1319,6 @@ rehash "$PYTHON"
 virtenv_setup    "$PILOTID" "$VIRTENV" "$VIRTENV_MODE" "$PYTHON_DIST"
 virtenv_activate "$VIRTENV" "$PYTHON_DIST"
 
-# Export the variables related to virtualenv,
-# so that we can disable the virtualenv for the cu.
-export _OLD_VIRTUAL_PATH
-export _OLD_VIRTUAL_PYTHONPATH
-export _OLD_VIRTUAL_PYTHONHOME
-export _OLD_VIRTUAL_PS1
-
 # ------------------------------------------------------------------------------
 # launch the radical agent
 #
@@ -1334,13 +1347,7 @@ else
 fi
 
 
-# TODO: Can this be generalized with our new split-agent now?
-if test -z "$CCM"
-then
-    AGENT_CMD="$PYTHON $PILOT_SCRIPT"
-else
-    AGENT_CMD="ccmrun $PYTHON $PILOT_SCRIPT"
-fi
+AGENT_CMD="$PYTHON $PILOT_SCRIPT"
 
 verify_rp_install
 
@@ -1396,6 +1403,10 @@ hostname
 
 # make sure we use the correct sandbox
 cd $SANDBOX
+
+# apply some env settings as stored after running pre_bootstrap_1 commands
+export PATH="$PB1_PATH"
+export LD_LIBRARY_PATH="$PB1_LDLB"
 
 # activate virtenv
 if test "$PYTHON_DIST" = "anaconda"
@@ -1463,7 +1474,13 @@ profile_event 'agent start'
 
 # start the master agent instance (zero)
 profile_event 'sync rel' 'agent start'
+
+# TODO: Can this be generalized with our new split-agent now?
+if test -z "$CCM"; then
 ./bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
+else
+ccmrun ./bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
+fi
 
 AGENT_EXITCODE=$?
 

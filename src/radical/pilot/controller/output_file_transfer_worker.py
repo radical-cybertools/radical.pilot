@@ -156,7 +156,8 @@ class OutputFileTransferWorker(threading.Thread):
                                 output_file.close()
                             except Exception as e:
                                 logger.exception(e)
-                                raise Exception("copy failed(%s)" % e.message)
+                                raise Exception("output stagingfor %s failed: %s" \
+                                                % (compute_unit_id, e))
 
                         # If the CU was canceled we can skip the remainder of this loop,
                         # and return to the CU loop
