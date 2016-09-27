@@ -126,6 +126,12 @@
 #       I leave the code below as-is though, for the time being, to remind 
 #       myself of better times, when there was hope... :P
 #
+# NOTE: For some GIL details, see http://www.dabeaz.com/python/GIL.pdf
+#       This focuses on performance, but contains some details relevant to
+#       signal handling.  Note this is from 2009, mentions that  GIL management
+#       has not changed for the past 10 years.  It has not changed by now
+#       either, FWIW.
+#
 # ------------------------------------------------------------------------------
 #
 # This code demonstrates a workaround for those issues, and serves as a test for
