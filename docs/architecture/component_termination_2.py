@@ -100,7 +100,27 @@
 #     the child process *actually* comes up, the process termination will hang,
 #     as the child has not been waited upon.
 #
-# NOTE: the code below does *not* demonstrate a workaround for all issues, just
+#   - we actually can't really use fork() either, unless it is *immediately* (as
+#     in *first call*) followed by an exec, because core python modules don't
+#     free locks on fork.  We monkeypatch the logging module though and also
+#     ensure unlock at-fork for our own stack, but the problem remains (zmq
+#     comes to mind).
+#     This problem could be addressed - but this is useless unless the other
+#     problems are addressed, too (the problem applies to process-bootstrapping
+#     only, and is quite easy to distinguish from other bugs / races).
+#
+#
+# Bottom line:
+#
+#   - we can't use
+#     - signal handlers which raise exceptions
+#     - exception injects into other threads
+#     - thread.interrupt_main() in combination with SIGINT(CTRL-C)
+#     - daemon threads
+#     - multiprocessing with a method target
+#
+#
+# NOTE: The code below does *not* demonstrate a workaround for all issues, just
 #       for some of them.  At this point, I am not aware of a clean (ie.
 #       reliable) approach to thread and process termination with cpython.
 #       I leave the code below as-is though, for the time being, to remind 
