@@ -357,7 +357,7 @@ class Default(PMGRLaunchingComponent):
         # pilots
         # FIXME: on untar, there is a race between multiple launcher components
         #        within the same session toward the same target resource.
-        tmp_dir  = tempfile.mkdtemp(prefix='rp_agent_tar_dir')
+        tmp_dir  = os.path.abspath(tempfile.mkdtemp(prefix='rp_agent_tar_dir'))
         tar_name = '%s.%s.tgz' % (sid, self.uid)
         tar_tgt  = '%s/%s'     % (tmp_dir, tar_name)
         tar_url  = rs.Url('file://localhost/%s' % tar_tgt)
@@ -373,6 +373,11 @@ class Default(PMGRLaunchingComponent):
 
         session_sandbox = self._session._get_session_sandbox(pilots[0]).path
 
+        # we will create the session sandbox before we untar, so we can use that
+        # as workdir, and pack all paths relative to that session sandbox.  That
+        # implies that we have to recheck that all URLs in fact do point into
+        # the session sandbox.
+
         ft_list = list()  # files to stage
         jd_list = list()  # jobs  to submit
         for pilot in pilots:
@@ -382,9 +387,12 @@ class Default(PMGRLaunchingComponent):
 
         for ft in ft_list:
             src     = os.path.abspath(ft['src'])
-            tgt     = os.path.normpath(ft['tgt'])
+            tgt     = os.path.relpath(os.path.normpath(ft['tgt']), session_sandbox)
             src_dir = os.path.dirname(src)
             tgt_dir = os.path.dirname(tgt)
+
+            if tgt_dir.startswith('..'):
+                raise ValueError('staging target %s outside of pilot sandbox' % ft['tgt'])
 
             if not os.path.isdir('%s/%s' % (tmp_dir, tgt_dir)):
                 os.makedirs('%s/%s' % (tmp_dir, tgt_dir))
@@ -448,8 +456,8 @@ class Default(PMGRLaunchingComponent):
                 js_tmp  = rs.job.Service(js_url, session=self._session)
                 self._saga_js_cache[js_url] = js_tmp
      ## cmd = "tar zmxvf %s/%s -C / ; rm -f %s" % \
-        cmd = "tar zmxvf %s/%s -C /" % \
-                (session_sandbox, tar_name)
+        cmd = "tar zmxvf %s/%s -C %s" % \
+                (session_sandbox, tar_name, session_sandbox)
         j = js_tmp.run_job(cmd)
         j.wait()
 
