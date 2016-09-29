@@ -125,9 +125,16 @@
             "cores"    : 64
         },
 
-        "ornl.titan"   : {
-            "project"  : "csc168",
-            "queue"    : "batch",
+        "ornl.titan_aprun" : {
+            "project"  : "BIP103",
+            "queue"    : "debug",
+            "schema"   : "local",
+            "cores"    : 64
+        },
+
+        "ornl.titan_orte" : {
+            "project"  : "BIP103",
+            "queue"    : "debug",
             "schema"   : "local",
             "cores"    : 64
         },
