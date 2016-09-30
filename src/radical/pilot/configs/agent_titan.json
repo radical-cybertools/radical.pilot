@@ -11,8 +11,8 @@
         "agent_1"   : {
             "target"     : "node",
             "components" : {
-                "AgentExecutingComponent"     : 1,
-                "AgentStagingOutputComponent" : 1
+                "AgentStagingInputComponent"  : 1,
+                "AgentSchedulingComponent"    : 1
             }
         },
         "agent_2"   : {
