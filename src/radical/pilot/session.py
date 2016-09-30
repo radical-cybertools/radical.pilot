@@ -276,8 +276,8 @@ class Session(rs.Session):
                 self._log.info("Load resource configurations from %s" % config_file)
                 rcs = ResourceConfig.from_file(config_file)
             except Exception as e:
-                self._log.error("skip config file %s: %s" % (config_file, e))
-                continue
+                self._log.exception("skip config file %s: %s" % (config_file, e))
+                raise RuntimeError('config error (%s) - abort' % e)
 
             for rc in rcs:
                 self._log.info("Load resource configurations for %s" % rc)
@@ -291,8 +291,8 @@ class Session(rs.Session):
             try:
                 rcs = ResourceConfig.from_file(config_file)
             except Exception as e:
-                self._log.error("skip config file %s: %s" % (config_file, e))
-                continue
+                self._log.exception("skip config file %s: %s" % (config_file, e))
+                raise RuntimeError('config error (%s) - abort' % e)
 
             for rc in rcs:
                 self._log.info("Load resource configurations for %s" % rc)
