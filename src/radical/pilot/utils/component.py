@@ -505,12 +505,14 @@ class Component(mp.Process):
         # it exists, parent otherwise.
         if self.is_parent and not self.has_child:
             self._log.debug('parent sends alive')
+            self._log.debug('msg [%s] : %s [parent]', self.uid, self.owner)
             self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
                                               'arg' : {'sender' : self.uid,
                                                        'owner'  : self.owner, 
                                                        'src'    : 'parent'}})
         elif self.is_child:
             self._log.debug('child sends alive')
+            self._log.debug('msg [%s] : %s [child]', self.uid, self.owner)
             self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
                                               'arg' : {'sender' : self.uid,
                                                        'owner'  : self.owner, 
