@@ -1,0 +1,72 @@
+
+{
+    "staging_area"         : "staging_area",
+    "staging_schema"       : "staging",
+    "max_io_loglength"     : 1024,
+    "bulk_collection_time" : 1.0,
+    "db_poll_sleeptime"    : 1.0,
+    "heartbeat_interval"   : 10,
+    "network_interface"    : "ipogif0",
+
+    "agent_layout": {
+        "agent_0": {
+            "target": "local",
+            "sub_agents": ["agent_1", "agent_2"],
+            "pull_units": true,
+            "bridges" : {
+                "agent_staging_input_queue"  : { "log_level" : "off",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 1},
+                "agent_scheduling_queue"     : { "log_level" : "off",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 1},
+                "agent_executing_queue"      : { "log_level" : "off",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 1},
+                "agent_staging_output_queue" : { "log_level" : "off",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 1},
+
+                "agent_unschedule_pubsub"    : {"log_level" : "off"},
+                "agent_reschedule_pubsub"    : {"log_level" : "off"},
+
+                "control_pubsub"             : {"log_level" : "off"},
+                "state_pubsub"               : {"log_level" : "off"}
+            }
+        },
+
+        "agent_1": {
+            "target": "node",
+            "components": {
+                "UpdateWorker"                : 1,
+                "AgentStagingInputComponent"  : 1,
+                "AgentStagingOutputComponent" : 1
+            }
+        },
+        "agent_2": {
+            "target": "node",
+            "components": {
+                "AgentSchedulingComponent": 1,
+                "AgentExecutingComponent" : 1
+            }
+        }
+    },
+
+    "clone" : {
+        "AgentWorker"                 : {"input" : 1, "output" : 1024},
+        "AgentStagingInputComponent"  : {"input" : 1, "output" : 1},
+        "AgentSchedulingComponent"    : {"input" : 1, "output" : 1},
+        "AgentExecutingComponent"     : {"input" : 1, "output" : 1},
+        "AgentStagingOutputComponent" : {"input" : 1, "output" : 1}
+    },
+
+    "drop" : {
+        "AgentWorker"                 : {"input" : 0, "output" : 0},
+        "AgentStagingInputComponent"  : {"input" : 0, "output" : 0},
+        "AgentSchedulingComponent"    : {"input" : 0, "output" : 0},
+        "AgentExecutingComponent"     : {"input" : 0, "output" : 0},
+        "AgentStagingOutputComponent" : {"input" : 0, "output" : 1}
+    }
+}
+
+
