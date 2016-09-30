@@ -507,12 +507,14 @@ class Component(mp.Process):
             self._log.debug('parent sends alive')
             self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
                                               'arg' : {'sender' : self.uid,
-                                                       'owner'  : self.owner}})
+                                                       'owner'  : self.owner, 
+                                                       'src'    : 'parent'}})
         elif self.is_child:
             self._log.debug('child sends alive')
             self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
                                               'arg' : {'sender' : self.uid,
-                                                       'owner'  : self.owner}})
+                                                       'owner'  : self.owner, 
+                                                       'src'    : 'child'}})
         else:
             self._log.debug('no alive sent (%s : %s : %s)', self.is_child,
                     self.has_child, self.is_parent)

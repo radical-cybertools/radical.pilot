@@ -74,7 +74,8 @@ class Agent_n(rpu.Worker):
         self._prof.prof('setup done - send alive', uid=self._uid)
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
                                           'arg' : {'sender' : self._uid, 
-                                                   'owner'  : self._owner}})
+                                                   'owner'  : self._owner, 
+                                                   'src'    : 'agent'}})
 
 
     # --------------------------------------------------------------------------
