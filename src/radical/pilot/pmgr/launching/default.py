@@ -445,9 +445,10 @@ class Default(PMGRLaunchingComponent):
         # now.  So, lets convert the URL:
         if '+' in js_url.scheme:
             parts = js_url.scheme.split('+')
-            if   'ssh'    in parts: js_url.scheme = 'ssh'
-            elif 'gsissh' in parts: js_url.scheme = 'gsissh'
-            elif 'fork'   in parts: js_url.scheme = 'fork'
+            if 'gsissh' in parts: js_url.scheme = 'gsissh'
+            elif  'ssh' in parts: js_url.scheme = 'ssh'
+        else:
+            js_url.scheme = 'fork'
 
         with self._cache_lock:
             if  js_url in self._saga_js_cache:
