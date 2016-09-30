@@ -709,7 +709,7 @@ class Component(mp.Process):
             self._initialize_parent()
         except Exception as e:
             # FIXME we might have no self._log here
-            self._log.debug('TERM : %s except in start', self.uid)
+            self._log.exception('TERM : %s except in start', self.uid)
             ru.cancel_main_thread()
             raise
 
