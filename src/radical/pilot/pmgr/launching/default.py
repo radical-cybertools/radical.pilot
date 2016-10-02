@@ -448,7 +448,10 @@ class Default(PMGRLaunchingComponent):
             if 'gsissh' in parts: js_url.scheme = 'gsissh'
             elif  'ssh' in parts: js_url.scheme = 'ssh'
         else:
-            js_url.scheme = 'fork'
+            # In the non-combined '+' case we need to distinguish between
+            # a url that was the result of a hop or a local lrms.
+            if js_url.scheme not in ['ssh', 'gsissh']:
+                js_url.scheme = 'fork'
 
         with self._cache_lock:
             if  js_url in self._saga_js_cache:
