@@ -115,13 +115,17 @@ if __name__ == "__main__":
 
         # we submit one compute unit which will just fail
         cud = rp.ComputeUnitDescription()
-        cud.executable = '/bin/fail'
+        cud.executable = '/bin/date'
+
+        cuds=list()
+        for i in range(100):
+            cuds.append(cud)
 
         # submit the unit...
-        cu = umgr.submit_units(cud)
+        cus = umgr.submit_units(cuds)
 
         # ...and wait for it's successfull 'completion', ie. forever
-        state = umgr.wait_units (state=[rp.DONE])
+        state = umgr.wait_units (state=rp.FINAL)
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
