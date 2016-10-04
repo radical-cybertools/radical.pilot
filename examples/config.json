@@ -51,7 +51,7 @@
     "xsede.stampede" : {
         "project"  : "TG-MCB090174",
         "queue"    : "development",
-        "schema"   : null
+        "schema"   : "gsissh"
     },
 
     "xsede.comet"  : {
