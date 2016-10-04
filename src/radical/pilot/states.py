@@ -74,6 +74,26 @@ LAUNCHING                    = 'Launching'
 PENDING_ACTIVE               = 'PendingActive'
 ACTIVE                       = 'Active'
 
+pilot_state_value = {
+    NEW                          :  1,
+    PENDING_LAUNCH               :  2,
+    LAUNCHING                    :  3,
+    PENDING_ACTIVE               :  4,
+    ACTIVE                       :  5,
+    DONE                         :  6,
+    FAILED                       :  6,
+    CANCELED                     :  6
+    }
+
+pilot_state_by_value = {
+     1 : NEW                          ,
+     2 : PENDING_LAUNCH               ,
+     3 : LAUNCHING                    ,
+     4 : PENDING_ACTIVE               ,
+     5 : ACTIVE                       ,
+     6 : FINAL
+    }
+
 # -----------------------------------------------------------------------------
 # ComputeUnit States
 UNSCHEDULED                  = 'Unscheduled'
@@ -87,6 +107,7 @@ ALLOCATING_PENDING           = 'AllocatingPending'
 ALLOCATING                   = 'Allocating'
 EXECUTING_PENDING            = 'ExecutingPending'
 EXECUTING                    = 'Executing'
+AGENT_EXECUTING              = 'Executing'
 AGENT_STAGING_OUTPUT_PENDING = 'AgentStagingOutputPending'
 AGENT_STAGING_OUTPUT         = 'AgentStagingOutput'
 PENDING_OUTPUT_STAGING       = 'PendingOutputStaging'
@@ -131,4 +152,5 @@ unit_state_by_value = {
     13 : AGENT_STAGING_OUTPUT         ,
     14 : PENDING_OUTPUT_STAGING       ,
     15 : STAGING_OUTPUT               ,
+    16 : FINAL
     }

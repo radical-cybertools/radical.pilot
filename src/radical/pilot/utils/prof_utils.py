@@ -562,6 +562,29 @@ def get_session_description(sid, src=None, dburl=None):
     ftmp = fetch_json(sid=sid, dburl=dburl, tgt=src, skip_existing=True)
     json = ru.read_json(ftmp)
 
+
+    # make sure we have uids
+    def fix_json(json):
+        def fix_uids(json):
+            if isinstance(json, list):
+                for elem in json:
+                    fix_uids(elem)
+            elif isinstance(json, dict):
+                if 'unitmanager' in json and 'umgr' not in json:
+                    json['umgr'] = json['unitmanager']
+                if 'pilotmanager' in json and 'pmgr' not in json:
+                    json['pmgr'] = json['pilotmanager']
+                if '_id' in json and 'uid' not in json:
+                    json['uid'] = json['_id']
+                    if not 'cfg' in json:
+                        json['cfg'] = dict()
+                for k,v in json.iteritems():
+                    fix_uids(v)
+        fix_uids(json)
+    fix_json(json)
+
+    ru.write_json(json, '/tmp/t.json')
+
     assert(sid == json['session']['uid'])
 
     ret             = dict()
@@ -570,7 +593,7 @@ def get_session_description(sid, src=None, dburl=None):
     tree      = dict()
     tree[sid] = {'uid'      : sid,
                  'etype'    : 'session',
-                 'cfg'      : json['session']['cfg'],
+               # 'cfg'      : json['session']['cfg'],
                  'has'      : ['umgr', 'pmgr'],
                  'children' : list()
                 }
@@ -580,7 +603,7 @@ def get_session_description(sid, src=None, dburl=None):
         tree[sid]['children'].append(uid)
         tree[uid] = {'uid'      : uid,
                      'etype'    : 'pmgr',
-                     'cfg'      : pmgr['cfg'],
+                   # 'cfg'      : pmgr['cfg'],
                      'has'      : ['pilot'],
                      'children' : list()
                     }
@@ -590,7 +613,7 @@ def get_session_description(sid, src=None, dburl=None):
         tree[sid]['children'].append(uid)
         tree[uid] = {'uid'      : uid,
                      'etype'    : 'umgr',
-                     'cfg'      : umgr['cfg'],
+               #     'cfg'      : umgr['cfg'],
                      'has'      : ['unit'],
                      'children' : list()
                     }
@@ -601,7 +624,7 @@ def get_session_description(sid, src=None, dburl=None):
         tree[pmgr]['children'].append(uid)
         tree[uid] = {'uid'      : uid,
                      'etype'    : 'pilot',
-                     'cfg'      : pilot['cfg'],
+               #     'cfg'      : pilot['cfg'],
                      'has'      : ['unit'],
                      'children' : list()
                     }
@@ -614,22 +637,25 @@ def get_session_description(sid, src=None, dburl=None):
         tree[umgr]['children'].append(uid)
         tree[uid] = {'uid'      : uid,
                      'etype'    : 'unit',
-                     'cfg'      : unit['description'],
+               #     'cfg'      : unit['description'],
                      'has'      : list(),
                      'children' : list()
                     }
 
     ret['tree'] = tree
 
+    import pprint, sys
+    pprint.pprint(tree)
+
     ret['entities']['pilot'] = {
-            'state_model'  : rps._pilot_state_values,
-            'state_values' : rps._pilot_state_inv_full,
+            'state_model'  : rps.pilot_state_by_value,
+            'state_values' : rps.pilot_state_value,
             'event_model'  : dict(),
             }
 
     ret['entities']['unit'] = {
-            'state_model'  : rps._unit_state_values,
-            'state_values' : rps._unit_state_inv_full,
+            'state_model'  : rps.unit_state_by_value,
+            'state_values' : rps.unit_state_value,
             'event_model'  : dict(),
             }
 
@@ -640,7 +666,6 @@ def get_session_description(sid, src=None, dburl=None):
             }
 
     ret['config'] = dict() # magic to get session config goes here
-
 
     return ret
 
