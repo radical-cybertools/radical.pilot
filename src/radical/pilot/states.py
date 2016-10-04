@@ -64,6 +64,8 @@ CANCELING                    = 'Canceling'
 CANCELED                     = 'Canceled'
 FAILED                       = 'Failed'
 PENDING                      = 'Pending'
+INITIAL                      = [NEW]
+FINAL                        = [DONE, FAILED, CANCELED]
 
 # -----------------------------------------------------------------------------
 # ComputePilot States
