@@ -494,11 +494,11 @@ class Session(rs.Session):
     #
     def _get_profiler(self, name, level=None):
         """
-        This is a thin wrapper around `rpu.Profiler()` which makes sure that
+        This is a thin wrapper around `ru.Profiler()` which makes sure that
         profiles end up in a separate directory with the name of `session.uid`.
         """
 
-        return rpu.Profiler(name, path=self._logdir)
+        return ru.Profiler(name, path=self._logdir)
 
 
     # --------------------------------------------------------------------------

@@ -6,13 +6,13 @@ __license__   = "MIT"
 import os 
 import copy
 import saga
+import time
 import gridfs
 import pprint
 import pymongo
-import radical.utils     as ru
+import radical.utils  as ru
 
-from .. import utils     as rpu
-from .. import states    as rps
+from .. import states as rps
 
 
 #-----------------------------------------------------------------------------
@@ -39,7 +39,7 @@ class DBSession(object):
         self._log        = logger
         self._mongo      = None
         self._db         = None
-        self._created    = rpu.timestamp()
+        self._created    = time.time()
         self._connected  = None
         self._closed     = None
         self._c          = None
@@ -54,7 +54,7 @@ class DBSession(object):
         if not self._mongo or not self._db:
             raise RuntimeError('Could not connect to database at %s' % dburl)
 
-        self._connected = rpu.timestamp()
+        self._connected = time.time()
 
         self._c = self._db[sid] # creates collection (lazily)
 
@@ -87,7 +87,7 @@ class DBSession(object):
             doc = docs[0]
             self._can_delete = False
             self._created    = doc['created']
-            self._connected  = rpu.timestamp()
+            self._connected  = time.time()
 
             # FIXME: get bridge addresses from DB?  If not, from where?
 
@@ -158,7 +158,7 @@ class DBSession(object):
         if self.closed:
             raise RuntimeError('No active session.')
 
-        self._closed = rpu.timestamp()
+        self._closed = time.time()
 
         # only the Session which created the collection can delete it!
         if delete and self._can_remove:
@@ -168,7 +168,7 @@ class DBSession(object):
         if self._mongo:
             self._mongo.close()
 
-        self._closed = rpu.timestamp()
+        self._closed = time.time()
         self._c = None
 
 

@@ -377,7 +377,7 @@ class Popen(AgentExecutingComponent) :
 
             # poll subprocess object
             exit_code = cu['proc'].poll()
-            now       = rpu.timestamp()
+            now       = time.time()
 
             if exit_code is None:
                 # Process is still running

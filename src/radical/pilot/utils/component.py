@@ -14,9 +14,6 @@ import radical.utils   as ru
 from ..          import constants      as rpc
 from ..          import states         as rps
 
-from .misc       import hostip
-from .prof_utils import timestamp      as rpu_timestamp
-
 from .queue      import Queue          as rpu_Queue
 from .queue      import QUEUE_OUTPUT   as rpu_QUEUE_OUTPUT
 from .queue      import QUEUE_INPUT    as rpu_QUEUE_INPUT
@@ -1416,7 +1413,7 @@ class Component(mp.Process):
         """
 
         if not timestamp:
-            timestamp = rpu_timestamp()
+            timestamp = time.time()
 
         if not isinstance(things, list):
             things = [things]
@@ -1471,7 +1468,7 @@ class Component(mp.Process):
                                        'state' : state})
 
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'update', 'arg': to_publish})
-            ts = rpu_timestamp()
+            ts = time.time()
             for thing in things:
                 self._prof.prof('publish', uid=thing['uid'], state=thing['state'], timestamp=ts)
 
@@ -1519,7 +1516,7 @@ class Component(mp.Process):
                 self._log.debug(' === put bulk %s: %s', state, len(things))
                 output.put(things)
 
-                ts = rpu_timestamp()
+                ts = time.time()
                 for thing in things:
                     
                     # never carry $all across component boundaries!

@@ -202,7 +202,7 @@ class Update(rpu.Worker):
             uid       = thing['uid']
             ttype     = thing['type']
             state     = thing['state']
-            timestamp = thing.get('state_timestamp', rpu.timestamp())
+            timestamp = thing.get('state_timestamp', time.time())
 
             if 'clone' in uid:
                 # we don't push clone states to DB
