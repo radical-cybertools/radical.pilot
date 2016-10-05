@@ -93,8 +93,8 @@ class Popen(AgentExecutingComponent) :
         if self._cfg.get('export_to_cu'):
             with open('env.orig', 'r') as f:
                 for line in f.readlines():
-                    self._log.debug('env line: %s', line)
-                    if ':' in line:
+                    self._log.debug('env line: %s', line.strip())
+                    if '=' in line:
                         k,v = line.split('=', 1)
                         key = k.strip()
                         val = v.strip()
