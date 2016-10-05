@@ -89,20 +89,15 @@ class Popen(AgentExecutingComponent) :
         # if we need to transplant any original env into the CU, we dig the
         # respective keys from the dump the bootstrapper made
         self._env_cu_export = dict()
-        self._log.debug('env export: %s', self._cfg.get('export_to_cu')) 
         if self._cfg.get('export_to_cu'):
             with open('env.orig', 'r') as f:
                 for line in f.readlines():
-                    self._log.debug('env line: %s', line.strip())
                     if '=' in line:
                         k,v = line.split('=', 1)
                         key = k.strip()
                         val = v.strip()
                         if key in self._cfg['export_to_cu']:
-                            self._log.debug('env key : %s:%s', k, v) 
                             self._env_cu_export[key] = val
-        else:
-            self._log.debug('no env check %s')
 
 
     # --------------------------------------------------------------------------
