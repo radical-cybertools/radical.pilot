@@ -409,6 +409,7 @@ class PilotLauncherWorker(threading.Thread):
                         shared_filesystem       = resource_cfg.get ('shared_filesystem', True)
                         health_check            = resource_cfg.get ('health_check', True)
                         python_dist             = resource_cfg.get ('python_dist')
+                        cu_tmp                  = resource_cfg.get ('cu_tmp')
                         
 
                         # Agent configuration that is not part of the public API.
@@ -677,6 +678,7 @@ class PilotLauncherWorker(threading.Thread):
                         agent_cfg_dict['session_id']         = session_id
                         agent_cfg_dict['agent_launch_method']= agent_launch_method
                         agent_cfg_dict['task_launch_method'] = task_launch_method
+                        agent_cfg_dict['cu_tmp']             = cu_tmp
                         if mpi_launch_method:
                             agent_cfg_dict['mpi_launch_method']  = mpi_launch_method
                         if cores_per_node:
