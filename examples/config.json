@@ -73,7 +73,7 @@
         "xsede.stampede" : {
             "project"  : "TG-MCB090174",
             "queue"    : "development",
-            "schema"   : "ssh",
+            "schema"   : "gsissh",
             "cores"    : 16
         },
 

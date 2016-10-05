@@ -1203,7 +1203,9 @@ echo "# bootstrap_1 started as     : '$0 $@'"
 echo "# Environment of bootstrap_1 process:"
 echo "#"
 echo "#"
-env | sort
+echo "# -------------------------------------------------------------------"
+
+env | sort | grep '=' | tee env.orig
 echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
