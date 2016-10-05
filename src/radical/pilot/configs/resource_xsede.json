@@ -31,14 +31,11 @@
         "pre_bootstrap_1"             : ["module purge",
                                          "module load TACC",
                                          "module load intel/15.0.2",
-                                         "module load python/2.7.9",
+                                         "module load python/2.7.12",
                                          "module unload xalt",
                                          # Load ICC license so we can build during bootstrap
                                          "source ~train00/ssi_sourceme",
                                          "export TACC_DELETE_FILES=TRUE"
-                                        ],
-        "pre_bootstrap_2"             : ["export PATH=$PATH",
-                                         "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
                                         ],
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
@@ -85,9 +82,6 @@
                                          "source ~train00/ssi_sourceme",
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
-        "pre_bootstrap_2"             : ["export PATH=$PATH",
-                                         "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
-                                        ],
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
@@ -126,9 +120,6 @@
         "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap_1"             : ["module load python/2.7.9",
                                          "export TACC_DELETE_FILES=TRUE"
-                                        ],
-        "pre_bootstrap_2"             : ["export PATH=$PATH",
-                                         "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
                                         ],
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/work", "$WORK", "$DATA"],
@@ -487,7 +478,7 @@
         "python_dist"                 : "default"
     },
 
-    "comet": {
+    "comet_ssh": {
         "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
@@ -512,10 +503,6 @@
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap_1"             : ["module load python"],
-        "pre_bootstrap_2"             : [
-            "export PATH=$PATH",
-            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
-        ],
         #"default_remote_workdir"      : "/oasis/scratch/comet/$USER/temp_project",
         #"valid_roots"                 : ["/oasis/scratch/comet"],
         "valid_roots"                 : ["/home"],
@@ -525,7 +512,7 @@
         "python_dist"                 : "default"
     },
 
-    "comet_orte": {
+    "comet": {
         "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
@@ -553,11 +540,8 @@
         "pre_bootstrap_1"             : [
             "module use --append /home/marksant/privatemodules",
             "module load python",
-            "module load openmpi/STATIC"
-        ],
-        "pre_bootstrap_2"             : [
-            "export PATH=$PATH",
-            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+            "module load openmpi",
+            "module load mpi4py"
         ],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",

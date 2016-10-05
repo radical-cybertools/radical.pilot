@@ -8,6 +8,7 @@ import radical.utils       as ru
 import radical.pilot       as rp
 import radical.pilot.utils as rpu
 
+_DEFAULT_DBURL = 'mongodb://rp:rp@ds015335.mlab.com:15335/rp'
 
 # ------------------------------------------------------------------------------
 #
@@ -22,16 +23,16 @@ def usage(msg=None, noexit=False):
 
       options :
 
-          sid : session ID for which to fetch profiles
-          -c  : location from where to fetch the client profiles
+          sid : session ID for which to fetch logfiles
+          -c  : location from where to fetch the client logfiles
                 This defaults to $PWD
           -a  : alternative agent sandbox access method (scheme://host)
-          -t  : target dir to fetch profiles to
+          -t  : target dir to fetch logfiles to
                 A sub-dir <sid>/ will be created there.
                 This defaults to $PWD
           -d  : mongodb URL to fetch session info
                 Those infos are used to get the pilot locations from where the
-                profiles are to be fetched.
+                logfiles are to be fetched.
                 This defaults to $RADICAL_PILOT_DBURL, which is currently set to
                 %s.
           -s  : skip existing files
@@ -81,15 +82,15 @@ if __name__ == '__main__':
     if not options.skip:
         options.skip = False
 
-    sid = args[0]
+    sid    = args[0]
     client = options.client
     target = options.target
-    dburl = options.dburl
+    dburl  = options.dburl
     access = options.access
-    skip = options.skip
+    skip   = options.skip
 
     target += '/%s' % sid
 
-    rpu.fetch_profiles(sid=sid, dburl=dburl, client=client, tgt=target, access=access, skip_existing=skip)
+    rpu.fetch_logfiles(sid=sid, dburl=dburl, client=client, tgt=target, access=access, skip_existing=skip)
 
 # ------------------------------------------------------------------------------

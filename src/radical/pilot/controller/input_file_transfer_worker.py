@@ -186,7 +186,8 @@ class InputFileTransferWorker(threading.Thread):
                                 saga_dir.copy(input_file_url, target, flags=copy_flags)
                             except Exception as e:
                                 logger.exception(e)
-                                raise Exception("copy failed(%s)" % e.message)
+                                raise Exception("input staging for %s failed: %s" \
+                                                % (compute_unit_id, e))
 
                         # If this CU was canceled we can skip the remainder of this loop,
                         # to process more CUs.
