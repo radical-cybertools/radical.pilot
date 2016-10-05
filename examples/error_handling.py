@@ -115,7 +115,7 @@ if __name__ == "__main__":
 
         # we submit one compute unit which will just fail
         cud = rp.ComputeUnitDescription()
-        cud.executable = '/bin/date'
+        cud.executable = '/bin/fail'
 
         cuds=list()
         for i in range(100):
