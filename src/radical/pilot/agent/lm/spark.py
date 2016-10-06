@@ -82,20 +82,20 @@ class Spark(LaunchMethod):
             except  Exception as e:
                 raise RuntimeError("Scala wasn't installed properly. Please try again. %s " % e )
 
-        if lrms.node_list[0]!='localhost':
-            hostname = subprocess.check_output('/bin/hostname').split(lrms.node_list[0])[1].split('\n')[0]
+        #if lrms.node_list[0]!='localhost':
+        #    hostname = subprocess.check_output('/bin/hostname').split(lrms.node_list[0])[1].split('\n')[0]
 
-        else:
-            hostname = ''
+        #else:
+        #    hostname = ''
 
         spark_conf_slaves = open(spark_home+"/conf/slaves",'w')
 
         if len(lrms.node_list) == 1:
-            spark_conf_slaves.write(lrms.node_list[0]+hostname)
+            spark_conf_slaves.write(lrms.node_list[0])#+hostname)
             spark_conf_slaves.write('\n')
         else:
             for nodename in lrms.node_list[1:]:
-                spark_conf_slaves.write(nodename+hostname)
+                spark_conf_slaves.write(nodename)   # +hostname)
                 spark_conf_slaves.write('\n')
 
         spark_conf_slaves.close()
