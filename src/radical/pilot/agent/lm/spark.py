@@ -5,7 +5,6 @@ __license__   = "MIT"
 
 import os
 import subprocess
-import urllib
 import sys
 import socket
 import random
@@ -32,36 +31,22 @@ class Spark(LaunchMethod):
     #
     @classmethod
     def lrms_config_hook(cls, name, cfg, lrms, logger):
-        """
-        FIXME: this config hook will inspect the LRMS nodelist and, if needed,
-               will start the SPARK cluster on node[0].
-        """
+        
         import radical.utils as ru
 
-        logger.info('Hook called by SPARK LRMS with the name %s'%lrms.name)
-
-        spark_home = None   
-        # Here are the necessary commands to start the cluster.
-            
-        VERSION = "1.5.2"
-        SPARK_DOWNLOAD_URL= "http://d3kbcqa49mib13.cloudfront.net/spark-1.5.2-bin-hadoop2.6.tgz" #prebuilt
-        #Download the tar file
-        opener = urllib.FancyURLopener({})
-        download_destination = os.path.join(os.getcwd(),"spark-" + VERSION + ".tar.gz")
-        logger.info("Download: %s to %s",SPARK_DOWNLOAD_URL, download_destination,)
-        opener.retrieve(SPARK_DOWNLOAD_URL, download_destination)
-        spark_tar = "spark-" + VERSION + ".tar.gz"
-        if not os.path.isfile(spark_tar):
-            raise RuntimeError("Spark wasn't downloaded properly. Please try again")
-
-        try:
-        	subprocess.check_call("tar -xzf" + spark_tar + "; rm " + spark_tar ) #untar and delete tarball 
-        	subprocess.check_call("mv spark-1.5.2-bin-hadoop2.6 spark-1.5.2")
-        except  Exception as e:
-        	raise RuntimeError("Scala wasn't installed properly. Please try again. %s " % e )
-
-        spark_home = os.getcwd() + '/spark-' + VERSION
-
+        if not os.environ['SPARK_HOME']:
+	        logger.info("Downloading Apache Spark..")
+	        try:    
+		        VERSION = "1.5.2"
+		        subprocess.check_call("wget http://d3kbcqa49mib13.cloudfront.net/spark-1.5.2-bin-hadoop2.6.tgz".split())
+		        subprocess.check_call('tar -xzf spark-1.5.2-bin-hadoop2.6.tgz'.split())
+		        subprocess.check_call(("mv spark-1.5.2-bin-hadoop2.6 spark-" + VERSION).split())
+	        except  Exception as e:
+	        	raise RuntimeError("Spark wasn't installed properly. Please try again. %s " % e )
+	        spark_home = os.getcwd() + '/spark-' + VERSION
+	    else:
+	    	spark_home = os.environ['SPARK_HOME']
+        
         #-------------------------------------------------------------------
         platform_os = sys.platform
         java_home = os.environ.get('JAVA_HOME')
@@ -90,14 +75,12 @@ class Spark(LaunchMethod):
         if not scala_home:
         	try:
                 subprocess.check_call('cd')
-                subprocess.check_call('wget http://www.scala-lang.org/files/archive/scala-2.10.4.tgz')
-                subprocess.check_call('tar -xvf scala-2.10.4.tgz ; cd scala-2.10.4 ; export PATH=`pwd`/bin:$PATH; export SCALA_HOME=`pwd`')
-                subprocess.system('rm scala-2.10.4.tgz')
-                scala_home = os.getcwd() + '/scala-2.10.4'
-                subprocess.system('cd')
+                subprocess.check_call('wget http://www.scala-lang.org/files/archive/scala-2.10.4.tgz'.split())
+                subprocess.check_call('tar -xvf scala-2.10.4.tgz'.split())  #; cd scala-2.10.4 ; export PATH=`pwd`/bin:$PATH; export SCALA_HOME=`pwd`')
+                subprocess.check_call('rm scala-2.10.4.tgz'.split())
+                scala_home = os.getcwd() + '/scala-2.10.4' 
             except  Exception as e:
             	raise RuntimeError("Scala wasn't installed properly. Please try again. %s " % e )
-
 
         if lrms.node_list[0]!='localhost':
             hostname = subprocess.check_output('/bin/hostname').split(lrms.node_list[0])[1].split('\n')[0]
@@ -144,14 +127,14 @@ class Spark(LaunchMethod):
         spark_env_file.write('export JAVA_HOME=' + java_home + "\n")
         spark_env_file.write('export SPARK_LOG_DIR='+os.getcwd()+'/spark-logs'+'\n')
         spark_env_file.write('export PYSPARK_PYTHON='+python+'\n')
-
         spark_env_file.close()
 
 
         #### Start spark Cluster
-        spark_start = subprocess.check_output(spark_home + '/sbin/start-all.sh')
-        if 'Error' in spark_start:
-            raise RuntimeError("Spark Cluster failed to start: %s" % spark_start)
+        try:
+        	subprocess.check_output(spark_home + '/sbin/start-all.sh')
+        except Exception as e:
+            raise RuntimeError("Spark Cluster failed to start: %s" % e)
         
         logger.info('Start Spark Cluster')
         launch_command = spark_home +'/bin'
@@ -235,14 +218,6 @@ class Spark(LaunchMethod):
         client_node = opaque_slots['lm_info']['nodename']
         #spark_home = opaque_slots['lm_info']['spark_home']
 
-        # spark_logs = os.path.dirname(spark_home) + '/spark-logs'
-        # for filename in os.listdir(spark_logs):
-        #     f = subprocess.Popen(['tail','-F',filename],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-        #     line = f.stdout.readline()
-        #     for line in lines:
-        #         if line.find('ERROR'):
-        #             if not line.find('SIGTERM'):
-        #                 raise RuntimeError("CU failed to execute: " + line + "\n" + "Check: "+ spark_logs + filename + "\n")
 
 
         if task_env:
