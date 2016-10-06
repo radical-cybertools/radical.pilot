@@ -34,7 +34,7 @@ class Spark(LaunchMethod):
         
         import radical.utils as ru
 
-        if not os.environ['SPARK_HOME']:
+        if not os.environ.get('SPARK_HOME'):
 	        logger.info("Downloading Apache Spark..")
 	        try:    
 		        VERSION = "1.5.2"
@@ -210,13 +210,7 @@ class Spark(LaunchMethod):
                     % (self.name, opaque_slots))
 
 
-        # if 'nodename' not in opaque_slots['lm_info']:
-        #     raise RuntimeError('nodename not in lm_info for %s: %s' \
-        #             % (self.name, opaque_slots))
-
         master_ip   = opaque_slots['lm_info']['master_ip']
-        #client_node = opaque_slots['lm_info']['nodename']
-        #spark_home = opaque_slots['lm_info']['spark_home']
 
 
 
