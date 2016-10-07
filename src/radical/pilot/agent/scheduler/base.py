@@ -18,6 +18,7 @@ SCHEDULER_NAME_CONTINUOUS   = "CONTINUOUS"
 SCHEDULER_NAME_SCATTERED    = "SCATTERED"
 SCHEDULER_NAME_TORUS        = "TORUS"
 SCHEDULER_NAME_YARN         = "YARN"
+SCHEDULER_NAME_SPARK        = "SPARK"
 
 
 # ==============================================================================
@@ -117,13 +118,15 @@ class AgentSchedulingComponent(rpu.Component):
         from .scattered  import Scattered
         from .torus      import Torus
         from .yarn       import Yarn
+        from .spark       import Spark
 
         try:
             impl = {
                 SCHEDULER_NAME_CONTINUOUS : Continuous,
                 SCHEDULER_NAME_SCATTERED  : Scattered,
                 SCHEDULER_NAME_TORUS      : Torus,
-                SCHEDULER_NAME_YARN       : Yarn
+                SCHEDULER_NAME_YARN       : Yarn,
+                SCHEDULER_NAME_SPARK      : Spark
             }[name]
 
             impl = impl(cfg)
