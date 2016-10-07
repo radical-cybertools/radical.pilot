@@ -72,14 +72,14 @@
         "xsede.supermic" : {
             "project"  : "TG-CCR140028",
             "queue"    : "workq",
-            "schema"   : null,
+            "schema"   : "gsissh",
             "cores"    : 64
         },
 
         "xsede.stampede" : {
             "project"  : "TG-MCB090174",
             "queue"    : "development",
-            "schema"   : "ssh",
+            "schema"   : "gsissh",
             "cores"    : 16
         },
 
