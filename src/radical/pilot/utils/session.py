@@ -104,7 +104,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
           # print "Overriding remote sandbox: %s" % sandbox_url
 
-        sandbox  = saga.filesystem.Directory (sandbox_url, session=session)
+        sandbox = saga.filesystem.Directory (sandbox_url, session=session)
 
         # Try to fetch a tarball of profiles, so that we can get them all in one (SAGA) go!
         PROFILES_TARBALL = '%s.prof.tgz' % pilot['uid']
@@ -163,19 +163,23 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
         for prof in profiles:
 
-            ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['uid'], prof))
-            ret.append("%s" % ftgt.path)
+            try:
 
-            if skip_existing and os.path.isfile(ftgt.path) \
-                             and os.stat(ftgt.path).st_size > 0:
+                ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['uid'], prof))
 
-                logger.report.info("\t- %s\n" % str(prof).split('/')[-1])
-                continue
+                if skip_existing and os.path.isfile(ftgt.path) \
+                                 and os.stat(ftgt.path).st_size > 0:
+                    logger.report.info("\t- %s\n" % str(prof).split('/')[-1])
 
-            logger.report.info("\t+ %s\n" % str(prof).split('/')[-1])
-            prof_file = saga.filesystem.File("%s%s" % (sandbox_url, prof), session=session)
-            prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
-            prof_file.close()
+                else:
+                    logger.report.info("\t+ %s\n" % str(prof).split('/')[-1])
+                    prof_file = saga.filesystem.File("%s%s" % (sandbox_url, prof), session=session)
+                    prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
+                    prof_file.close()
+
+                ret.append("%s" % ftgt.path)
+            except Exception as e:
+                logger.error('skip %s [%s]' % (ftgt, e))
 
     return ret
 
