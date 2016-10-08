@@ -90,6 +90,10 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
     for pilot in pilots:
 
+        if not 'uid' in pilot:
+            pilot['uid'] = pilot.get('_id')
+
+
         log.debug("processing pilot '%s'", pilot['uid'])
 
         sandbox_url = saga.Url(pilot['sandbox'])
@@ -159,7 +163,11 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
             continue
 
         # If we dont have a tarball (for whichever reason), fetch individual profiles
-        profiles = sandbox.list('*.prof')
+        try:
+            profiles = sandbox.list('*.prof')
+        except Exception as e:
+            logger.error('cannot list profiles in %s [%s]' % (sandbox.url, e))
+            profiles = []
 
         for prof in profiles:
 
