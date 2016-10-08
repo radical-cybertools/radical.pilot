@@ -93,7 +93,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
         if not 'uid' in pilot:
             pilot['uid'] = pilot.get('_id')
 
-
+        logger.report.info("+ %s [%s]\n" % (pilot['uid'], pilot['description']['resource']))
         log.debug("processing pilot '%s'", pilot['uid'])
 
         sandbox_url = saga.Url(pilot['sandbox'])
