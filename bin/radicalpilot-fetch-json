@@ -1,0 +1,102 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import pprint
+import datetime
+import pymongo
+import radical.utils       as ru
+import radical.pilot       as rp
+import radical.pilot.utils as rpu
+
+
+_DEFAULT_DBURL = 'mongodb://user:password@localhost:27017/radicalpilot/'
+_DEFAULT_DBURL = 'mongodb://user:password@ec2-184-72-89-141.compute-1.amazonaws.com:27017/radicalpilot/'
+
+if  'RADICAL_PILOT_DBURL' in os.environ:
+    _DEFAULT_DBURL = os.environ['RADICAL_PILOT_DBURL']
+
+_DEFAULT_DBURL = ru.Url(_DEFAULT_DBURL)
+if  not _DEFAULT_DBURL.path or '/' == _DEFAULT_DBURL.path:
+    _DEFAULT_DBURL.path = 'radicalpilot'
+
+_DEFAULT_DBURL = str(_DEFAULT_DBURL)
+
+# ------------------------------------------------------------------------------
+#
+def usage(msg=None, noexit=False):
+
+    if  msg:
+        print "\n      Error: %s" % msg
+
+    print """
+      usage      : %s [-d <dburl>] [-s <sid>]
+
+      options :
+        -s <sid> : fetch json for given session ID
+        -d <url> : use given database URL instead of default (%s).
+
+""" % (sys.argv[0], sys.argv[0], _DEFAULT_DBURL)
+
+    if msg:
+        sys.exit(1)
+
+    if not noexit:
+        sys.exit(0)
+
+
+# ------------------------------------------------------------------------------
+#
+def export_sessions(db, dbname, sid):
+
+    print "export session %s.json" % sid
+    docs = rpu.get_session_docs(db, sid)
+    ru.write_json(docs, "%s.json" % sid)
+
+
+# ------------------------------------------------------------------------------
+# 
+def parse_commandline():
+
+    return options
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__':
+
+    import optparse
+    parser = optparse.OptionParser(add_help_option=False)
+
+    parser.add_option('-s', '--session', dest='session')
+    parser.add_option('-d', '--dburl',   dest='url')
+    parser.add_option('-h', '--help',    dest='help', action="store_true")
+
+    options, args = parser.parse_args()
+
+    if  args:
+        usage("Too many arguments (%s)" % args)
+
+    if not options.session:
+        usage('missing session ID')
+
+    if  options.help:
+        usage()
+
+    if  not options.url: 
+        options.url = _DEFAULT_DBURL 
+
+    url = options.url
+    sid = options.session
+
+    mongo, db, dbname, cname, pname = ru.mongodb_connect(str(url), _DEFAULT_DBURL)
+
+    print "db url  : %s" % url
+    print "session : %s" % sid
+
+    export_sessions(db, dbname, sid) 
+
+    mongo.disconnect()
+
+# ------------------------------------------------------------------------------
+
