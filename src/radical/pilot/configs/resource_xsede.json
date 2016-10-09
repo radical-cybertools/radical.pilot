@@ -7,8 +7,8 @@
         "mandatory_args"              : ["project"],
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://stampede.tacc.utexas.edu/"
+            "job_manager_endpoint"    : "slurm+gsissh://stampede.tacc.utexas.edu:2222/",
+            "filesystem_endpoint"     : "gsisftp://stampede.tacc.utexas.edu:2222/"
         },
         "gsissh"                      :
         {
@@ -593,8 +593,8 @@
         "notes"                       : "Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.",
         "schemas"                     : ["ssh", "gsissh"],
         "ssh"                         : {
-            "job_manager_endpoint"    : "torque+ssh://supermic.cct-lsu.xsede.org",
-            "filesystem_endpoint"     : "sftp://supermic.cct-lsu.xsede.org/"
+            "job_manager_endpoint"    : "torque+gsissh://supermic.cct-lsu.xsede.org:2222/",
+            "filesystem_endpoint"     : "gsisftp://supermic.cct-lsu.xsede.org:2222/"
         },
         "gsissh"                      : {
             "job_manager_endpoint"    : "torque+gsissh://supermic.cct-lsu.xsede.org",
