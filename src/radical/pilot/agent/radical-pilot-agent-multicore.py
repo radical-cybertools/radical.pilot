@@ -576,9 +576,9 @@ def bootstrap_3():
             write_sub_configs(cfg, bridges, nodeip, log)
 
             # Store some runtime information into the session
-            if 'version_info' in lrms.lm_info:
-                mongo_p.update({"_id": pilot_id},
-                               {"$set": {"lm_info": lrms.lm_info['version_info']}})
+            mongo_p.update({"_id": pilot_id},
+                           {"$set": {"lm_info"  : lrms.lm_info.get('version_info'),
+                                     "lm_detail": lrms.lm_info.get('lm_detail')}})
 
         # we now have correct bridge addresses added to the agent_0.cfg, and all
         # other agents will have picked that up from their config files -- we
