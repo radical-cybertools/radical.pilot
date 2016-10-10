@@ -6,7 +6,7 @@ __license__   = 'MIT'
 import os
 import sys
 
-verbose  = os.environ.get('RADICAL_PILOT_VERBOSE', 'DEBUG')
+verbose  = os.environ.get('RADICAL_PILOT_VERBOSE', 'REPORT')
 os.environ['RADICAL_PILOT_VERBOSE'] = verbose
 
 import radical.pilot as rp
@@ -88,9 +88,9 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.pre_exec    = ['module load netcfd']
-            cud.executable  = 'module'
-            cud.arguments   = ['list']
+            cud.pre_exec    = ['export TEST=jabberwocky']
+            cud.executable  = '/bin/echo'
+            cud.arguments   = ['$RP_UNIT_ID greets $TEST']
 
             cuds.append(cud)
             report.progress()
