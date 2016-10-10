@@ -64,6 +64,8 @@ CANCELING                    = 'Canceling'
 CANCELED                     = 'Canceled'
 FAILED                       = 'Failed'
 PENDING                      = 'Pending'
+INITIAL                      = [NEW]
+FINAL                        = [DONE, FAILED, CANCELED]
 
 # -----------------------------------------------------------------------------
 # ComputePilot States
@@ -90,3 +92,43 @@ AGENT_STAGING_OUTPUT         = 'AgentStagingOutput'
 PENDING_OUTPUT_STAGING       = 'PendingOutputStaging'
 STAGING_OUTPUT               = 'StagingOutput'
 
+
+unit_state_value = {
+    NEW                          :  1,
+    UNSCHEDULED                  :  2,
+    SCHEDULING                   :  3,
+    PENDING_INPUT_STAGING        :  4,
+    STAGING_INPUT                :  5,
+    AGENT_STAGING_INPUT_PENDING  :  6,
+    AGENT_STAGING_INPUT          :  7,
+    ALLOCATING_PENDING           :  8,
+    ALLOCATING                   :  9,
+    PENDING_EXECUTION            : 10,
+    EXECUTING_PENDING            : 10,
+    EXECUTING                    : 11,
+    AGENT_STAGING_OUTPUT_PENDING : 12,
+    AGENT_STAGING_OUTPUT         : 13,
+    PENDING_OUTPUT_STAGING       : 14,
+    STAGING_OUTPUT               : 15,
+    DONE                         : 16,
+    FAILED                       : 16,
+    CANCELED                     : 16,
+    }
+
+unit_state_by_value = {
+     1 : NEW                          ,
+     2 : UNSCHEDULED                  ,
+     3 : SCHEDULING                   ,
+     4 : PENDING_INPUT_STAGING        ,
+     5 : STAGING_INPUT                ,
+     6 : AGENT_STAGING_INPUT_PENDING  ,
+     7 : AGENT_STAGING_INPUT          ,
+     8 : ALLOCATING_PENDING           ,
+     9 : ALLOCATING                   ,
+    10 : EXECUTING_PENDING            ,
+    11 : EXECUTING                    ,
+    12 : AGENT_STAGING_OUTPUT_PENDING ,
+    13 : AGENT_STAGING_OUTPUT         ,
+    14 : PENDING_OUTPUT_STAGING       ,
+    15 : STAGING_OUTPUT               ,
+    }
