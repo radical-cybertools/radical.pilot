@@ -262,6 +262,8 @@ setup_args = {
     'package_dir'        : {'': 'src'},
     'scripts'            : ['bin/radicalpilot-bson2json',
                             'bin/radicalpilot-fetch-profiles',
+                            'bin/radicalpilot-fetch-logfiles',
+                            'bin/radicalpilot-fetch-json',
                             'bin/radicalpilot-inspect',
                             'bin/radicalpilot-version',
                             'bin/radicalpilot-close-session',
