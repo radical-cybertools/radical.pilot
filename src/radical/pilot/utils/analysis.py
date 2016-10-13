@@ -79,6 +79,7 @@ _info_entries = [
     ('ace_outerr',      'AgentExecuting',         'command',   'stdout and stderr files created'),
     ('aec_handover',    'AgentExecuting',         'spawn',     'spawning passed to pty'),
     ('aec_handover',    'AgentExecuting',         'spawn',     'spawning passed to popen'),
+    ('aec_handover',    'AgentExecuting',         'spawn',     'spawning passed to orte'),
     ('aec_end',         'AgentExecuting',         'final',     ''),
 
     ('aec_pickup',      'AgentExecuting',         'passed',    'ExecWatcher picked up unit'),
