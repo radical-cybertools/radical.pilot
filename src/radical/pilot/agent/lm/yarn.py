@@ -97,7 +97,7 @@ class Yarn(LaunchMethod):
                 mapred_site_file.write(line)
             mapred_site_file.close()
 
-         def config_yarn_site(cores,nodelist,hostname):
+        def config_yarn_site(cores,nodelist,hostname):
 
             yarn_site_file = open(os.getcwd()+'/hadoop/etc/hadoop/yarn-site.xml','r')
             lines = yarn_site_file.readlines()
@@ -161,16 +161,16 @@ class Yarn(LaunchMethod):
             scheduler_file.close()
 
             for line in lines:
-              if line.startswith('    <value>org.apache.hadoop.yarn.util.resource.'):
-                new_line='    <value>org.apache.hadoop.yarn.util.resource.'+'DefaultResourceCalculator</value>\n'
-                lines[lines.index(line)]=new_line
-              elif line.startswith('    <name>yarn.scheduler.capacity.maximum-am-resource-percent</name>'):
-                new_line='    <value>1</value>\n'
-                lines[lines.index(line)+1]=new_line
+                if line.startswith('    <value>org.apache.hadoop.yarn.util.resource.'):
+                    new_line='    <value>org.apache.hadoop.yarn.util.resource.'+'DefaultResourceCalculator</value>\n'
+                    lines[lines.index(line)]=new_line
+                elif line.startswith('    <name>yarn.scheduler.capacity.maximum-am-resource-percent</name>'):
+                    new_line='    <value>1</value>\n'
+                    lines[lines.index(line)+1]=new_line
                         
             scheduler_file=open(os.getcwd()+'/hadoop/etc/hadoop/capacity-scheduler.xml','w')
             for line in lines:
-              scheduler_file.write(line)
+                scheduler_file.write(line)
             
             scheduler_file.close()
 
@@ -187,13 +187,6 @@ class Yarn(LaunchMethod):
             launch_command = cls._which('yarn')
 
         else:
-            # Here are the necessary commands to start the cluster.
-            if lrms.node_list[0] == 'localhost':
-                #Download the tar file
-                node_name = lrms.node_list[0]
-                stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.0/hadoop-2.6.0.tar.gz")
-                stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
-            else:
             # Here are the necessary commands to start the cluster.
             if lrms.node_list[0] == 'localhost':
                 #Download the tar file
@@ -243,7 +236,6 @@ class Yarn(LaunchMethod):
             hadoop_env_file.close()
 
             host=node_name.split(lrms.node_list[0])[1]
-
 
             config_core_site(node_name)
             config_hdfs_site(lrms.node_list)
