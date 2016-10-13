@@ -139,6 +139,9 @@ class AgentSchedulingComponent(rpu.Component):
         CU off to the ExecutionWorker.
         """
 
+        # Get timestamp to use for recording a successful scheduling attempt
+        before_ts = rpu.prof_utils.timestamp()
+
         # needs to be locked as we try to acquire slots, but slots are freed
         # in a different thread.  But we keep the lock duration short...
         with self._slot_lock :
@@ -152,6 +155,7 @@ class AgentSchedulingComponent(rpu.Component):
             return False
 
         # got an allocation, go off and launch the process
+        self._prof.prof('schedule', msg="try", uid=cu['uid'], timestamp=before_ts)
         self._prof.prof('schedule', msg="allocated", uid=cu['uid'])
         self._log.info("slot status after allocated  : %s" % self.slot_status ())
 

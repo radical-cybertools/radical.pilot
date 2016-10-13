@@ -67,6 +67,7 @@ _info_entries = [
     ('usoc_get_u',      'OutputFileTransfer',     'advance',   'StagingOutput'),
     ('usoc_adv_u',      'OutputFileTransfer',     'advance',   'Done'),
 
+    ('asc_try',         'AgentScheduling',        'schedule',  'try'),
     ('asc_allocated',   'AgentScheduling',        'schedule',  'allocated'),
     ('asc_alloc_nok',   'AgentScheduling',        'schedule',  'allocation failed'),
     ('asc_alloc_ok',    'AgentScheduling',        'schedule',  'allocation succeeded'),
