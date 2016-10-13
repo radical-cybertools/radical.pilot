@@ -28,7 +28,7 @@ class Yarn(LaunchMethod):
     def lrms_config_hook(cls, name, cfg, lrms, logger):
         """
         FIXME: this config hook will inspect the LRMS nodelist and, if needed,
-               will start the YRN cluster on node[0].
+               will start the YARN cluster on node[0].
         """
 
         logger.info('Hook called by YARN LRMS with the name %s'%lrms.name)
@@ -97,16 +97,55 @@ class Yarn(LaunchMethod):
                 mapred_site_file.write(line)
             mapred_site_file.close()
 
-        def config_yarn_site():
+         def config_yarn_site(cores,nodelist,hostname):
 
             yarn_site_file = open(os.getcwd()+'/hadoop/etc/hadoop/yarn-site.xml','r')
             lines = yarn_site_file.readlines()
             yarn_site_file.close()
 
+            free_mem_str=subprocess.check_output(['grep','MemTotal','/proc/meminfo'])
+            total_free_mem=int(free_mem_str.split()[1])/1048
+
+            if nodelist.__len__() == 1:
+                cores_used = cores/2
+                total_mem = total_free_mem*0.75
+            else:
+                cores_used = cores*(nodelist.__len__()-1)
+                total_mem = total_free_mem*(nodelist.__len__()-1)
+
             prop_str  = ' <property>\n'
             prop_str += '  <name>yarn.nodemanager.aux-services</name>\n'
             prop_str += '    <value>mapreduce_shuffle</value>\n'
             prop_str += ' </property>\n'
+
+            prop_str += ' <property>\n'
+            prop_str += '  <name>yarn.scheduler.maximum-allocation-mb</name>\n'
+            prop_str += '   <value>2048</value>\n'
+            prop_str += ' </property>\n'
+
+            prop_str += ' <property>\n'
+            prop_str += '  <name>yarn.resourcemanager.hostname</name>\n'
+            prop_str += '   <value>%s</value>\n'%(nodelist[0]+hostname)
+            prop_str += ' </property>\n'
+
+            prop_str += ' <property>\n'
+            prop_str += '  <name>yarn.nodemanager.resource.cpu-vcores</name>\n'
+            prop_str += '   <value>%d</value>\n'%cores_used
+            prop_str += ' </property>\n'
+
+            prop_str += ' <property>\n'
+            prop_str += '  <name>yarn.nodemanager.resource.memory-mb</name>\n'
+            prop_str += '   <value>%d</value>\n'%total_mem
+            prop_str += ' </property>\n'
+
+            if nodelist.__len__()!=1:
+                slaves = open(os.getcwd()+'/hadoop/etc/hadoop/slaves','w')
+                for node in nodelist[1:]:
+                    slaves.write('%s\n'%(node+hostname))
+                slaves.close()
+                master = open(os.getcwd()+'/hadoop/etc/hadoop/masters','w')
+                master.write('%s\n'%(nodelist[0]+hostname))
+                master.close()
 
             lines.insert(-1,prop_str)
 
@@ -114,6 +153,24 @@ class Yarn(LaunchMethod):
             for line in lines:
                 yarn_site_file.write(line)
             yarn_site_file.close()
+
+            scheduler_file=open(os.getcwd()+'/hadoop/etc/hadoop/capacity-scheduler.xml','r')
+            lines=scheduler_file.readlines()
+            scheduler_file.close()
+
+            for line in lines:
+              if line.startswith('    <value>org.apache.hadoop.yarn.util.resource.'):
+                new_line='    <value>org.apache.hadoop.yarn.util.resource.'+'DefaultResourceCalculator</value>\n'
+                lines[lines.index(line)]=new_line
+              elif line.startswith('    <name>yarn.scheduler.capacity.maximum-am-resource-percent</name>'):
+                new_line='    <value>1</value>\n'
+                lines[lines.index(line)+1]=new_line
+                        
+            scheduler_file=open(os.getcwd()+'/hadoop/etc/hadoop/capacity-scheduler.xml','w')
+            for line in lines:
+              scheduler_file.write(line)
+            
+            scheduler_file.close()
 
         # If the LRMS used is not YARN the namenode url is going to be
         # the first node in the list and the port is the default one, else
@@ -135,6 +192,13 @@ class Yarn(LaunchMethod):
                 stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.0/hadoop-2.6.0.tar.gz")
                 stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
             else:
+            # Here are the necessary commands to start the cluster.
+            if lrms.node_list[0] == 'localhost':
+                #Download the tar file
+                node_name = lrms.node_list[0]
+                stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.0/hadoop-2.6.0.tar.gz")
+                stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
+            else:
                 node = subprocess.check_output('/bin/hostname')
                 logger.info('Entered Else creation')
                 node_name = node.split('\n')[0]
@@ -142,10 +206,6 @@ class Yarn(LaunchMethod):
                 stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
                 # TODO: Decide how the agent will get Hadoop tar ball.
 
-                # this was formerly
-                #   def set_env_vars():
-                # but we are in a class method, and don't have self -- and we don't need
-                # it anyway...
 
             hadoop_home        = os.getcwd() + '/hadoop'
             hadoop_install     = hadoop_home
@@ -160,7 +220,12 @@ class Yarn(LaunchMethod):
             # Solution to find Java's home folder:
             # http://stackoverflow.com/questions/1117398/java-home-directory
 
-            jpos = subprocess.check_output(['readlink','-f', '/usr/bin/java']).split('bin')
+            java = subprocess.check_output(['which','java'])
+            if java != '/usr/bin/java':
+                jpos=java.split('bin')
+            else:
+                jpos = subprocess.check_output(['readlink','-f', '/usr/bin/java']).split('bin')
+
             if jpos[0].find('jre') != -1:
                 java_home = jpos[0][:jpos[0].find('jre')]
             else:
@@ -175,12 +240,13 @@ class Yarn(LaunchMethod):
                 hadoop_env_file.write(line)
             hadoop_env_file.close()
 
-            # set_env_vars() ended here
+            host=node_name.split(lrms.node_list[0])[1]
+
 
             config_core_site(node_name)
             config_hdfs_site(lrms.node_list)
             config_mapred_site()
-            config_yarn_site()
+            config_yarn_site(lrms.cores_per_node,lrms.node_list,host)
 
             logger.info('Start Formatting DFS')
             namenode_format = os.system(hadoop_home + '/bin/hdfs namenode -format -force')
