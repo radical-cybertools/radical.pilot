@@ -50,22 +50,25 @@ class Shell(AgentExecutingComponent):
         # Mimic what virtualenv's "deactivate" would do
         self._deactivate = "# deactivate pilot virtualenv\n"
 
-        old_path = os.environ.get('_OLD_VIRTUAL_PATH',       None)
-        old_home = os.environ.get('_OLD_VIRTUAL_PYTHONHOME', None)
-        old_ps1  = os.environ.get('_OLD_VIRTUAL_PS1',        None)
+        old_path  = os.environ.get('_OLD_VIRTUAL_PATH',       None)
+        old_ppath = os.environ.get('_OLD_VIRTUAL_PYTHONPATH', None)
+        old_home  = os.environ.get('_OLD_VIRTUAL_PYTHONHOME', None)
+        old_ps1   = os.environ.get('_OLD_VIRTUAL_PS1',        None)
 
-        if old_path: self._deactivate += 'export PATH="%s"\n'        % old_path
-        if old_home: self._deactivate += 'export PYTHON_HOME="%s"\n' % old_home
-        if old_ps1:  self._deactivate += 'export PS1="%s"\n'         % old_ps1
+        if old_ppath: self._deactivate += 'export PATH="%s"\n'        % old_ppath
+        if old_path : self._deactivate += 'export PYTHONPATH="%s"\n'  % old_path
+        if old_home : self._deactivate += 'export PYTHON_HOME="%s"\n' % old_home
+        if old_ps1  : self._deactivate += 'export PS1="%s"\n'         % old_ps1
 
         self._deactivate += 'unset VIRTUAL_ENV\n\n'
 
         # FIXME: we should not alter the environment of the running agent, but
         #        only make sure that the CU finds a pristine env.  That also
         #        holds for the unsetting below -- AM
-        if old_path: os.environ['PATH']        = old_path
-        if old_home: os.environ['PYTHON_HOME'] = old_home
-        if old_ps1:  os.environ['PS1']         = old_ps1
+        if old_path : os.environ['PATH']        = old_path
+        if old_ppath: os.environ['PYTHONPATH']  = old_ppath
+        if old_home : os.environ['PYTHON_HOME'] = old_home
+        if old_ps1  : os.environ['PS1']         = old_ps1
 
         if 'VIRTUAL_ENV' in os.environ :
             del(os.environ['VIRTUAL_ENV'])

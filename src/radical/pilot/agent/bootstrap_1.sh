@@ -845,6 +845,10 @@ virtenv_activate()
     RP_MOD_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$virtenv|$virtenv/rp_install|"`
     VE_PYTHONPATH="$PYTHONPATH"
 
+    # before we change PYTHONPATH, we keep the original for later use in CU
+    # environment settings
+    _OLD_VIRTUAL_PYTHONPATH=$PYTHONPATH
+
     # NOTE: this should not be necessary, but we explicit set PYTHONPATH to
     #       include the VE module tree, because some systems set a PYTHONPATH on
     #       'module load python', and that would supersede the VE module tree,
@@ -1454,6 +1458,7 @@ virtenv_activate "$VIRTENV" "$PYTHON_DIST"
 # Export the variables related to virtualenv,
 # so that we can disable the virtualenv for the cu.
 export _OLD_VIRTUAL_PATH
+export _OLD_VIRTUAL_PYTHONPATH
 export _OLD_VIRTUAL_PYTHONHOME
 export _OLD_VIRTUAL_PS1
 
