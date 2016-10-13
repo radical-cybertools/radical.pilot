@@ -160,8 +160,9 @@ class ABDS(AgentExecutingComponent):
         self.advance(units, rps.ALLOCATING, publish=True, push=False)
 
         for unit in units:
-
             self._handle_unit(unit)
+
+        self.advance(cu, rps.EXECUTING_PENDING, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -409,8 +410,8 @@ class ABDS(AgentExecutingComponent):
             # This code snippet reads the YARN application report file and if
             # the application is RUNNING it update the state of the CU with the
             # right time stamp. In any other case it works as it was.
-            logfile = '%s/YarnApplicationReport.log' % sandbox
-            if cu['state'] == rps.ALLOCATING and os.path.isfile(logfile):
+            if cu['state']==rps.EXECUTING_PENDING \
+               and os.path.isfile(cu['workdir']+'/YarnApplicationReport.log'):
 
                 yarnreport = open(logfile,'r')
                 report_contents = yarnreport.readlines()
