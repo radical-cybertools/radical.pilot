@@ -6,7 +6,7 @@ from ..states import *
 info_names = {
         'AgentWorker'                 : 'awo',
         'AgentStagingInputComponent'  : 'asic',
-        'SchedulerContinuous'         : 'asc',  # agent scheduler component
+        'AgentSchedulingComponent'    : 'asc',
         'AgentExecutingComponent'     : 'aec',
         'AgentStagingOutputComponent' : 'asoc',
         'session'                     : 'mod'
@@ -67,12 +67,11 @@ _info_entries = [
     ('usoc_get_u',      'OutputFileTransfer',     'advance',   'StagingOutput'),
     ('usoc_adv_u',      'OutputFileTransfer',     'advance',   'Done'),
 
-    # FIXME: the names below will break for other schedulers
-    ('asc_allocated',   'SchedulerContinuous',    'schedule',  'allocated'),
-    ('asc_alloc_nok',   'SchedulerContinuous',    'schedule',  'allocation failed'),
-    ('asc_alloc_ok',    'SchedulerContinuous',    'schedule',  'allocation succeeded'),
-    ('asc_unqueue',     'SchedulerContinuous',    'unqueue',   're-allocation done'),
-    ('asc_released',    'SchedulerContinuous',    'unschedule','released'),
+    ('asc_allocated',   'AgentScheduling',        'schedule',  'allocated'),
+    ('asc_alloc_nok',   'AgentScheduling',        'schedule',  'allocation failed'),
+    ('asc_alloc_ok',    'AgentScheduling',        'schedule',  'allocation succeeded'),
+    ('asc_unqueue',     'AgentScheduling',        'unqueue',   're-allocation done'),
+    ('asc_released',    'AgentScheduling',        'unschedule','released'),
 
     ('aec_launch',      'AgentExecuting',         'exec',      'unit launch'),
     ('aec_spawn',       'AgentExecuting',         'spawn',     'unit spawn'),
