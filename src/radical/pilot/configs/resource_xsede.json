@@ -129,9 +129,9 @@
                                         ],
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/work", "$WORK", "$DATA"],
-        "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_wrangler",
-        "virtenv_mode"                : "create",
+        "rp_version"                  : "installed",
+        "virtenv"                     : "/work/03170/tg824689/wrangler/ve_wrangler",
+        "virtenv_mode"                : "use",
         "python_dist"                 : "default"
     },
 

@@ -1,5 +1,6 @@
 
 {
+<<<<<<< HEAD
     "local.localhost" : {
         "project"  : null,
         "queue"    : null,
@@ -84,6 +85,12 @@
         "schema"   : null
     },
 
+    "xsede.wrangler" : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "debug",
+        "schema"   : null
+    },
+
     "futuregrid.india" : {
         "project"  : null,
         "queue"    : null,
@@ -113,14 +120,17 @@
         "queue"    : "shared",
         "schema"   : "ssh"
     },
+
     "osg.xsede-virt-clust" : {
         "project"  : "TG-CCR140028", 
         "queue"    : null,
         "schema"   : "gsissh"
     },
+
     "osg.connect" : {
         "project"  : "RADICAL",
         "queue"    : null,
         "schema"   : "ssh"
     }
+
 }
