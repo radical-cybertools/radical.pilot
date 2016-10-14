@@ -1486,13 +1486,7 @@ PILOT_SCRIPT=`which radical-pilot-agent`
 # Verify it
 verify_install
 
-# TODO: Can this be generalized with our new split-agent now?
-if test -z "$CCM"
-then
-    AGENT_CMD="$PYTHON $PILOT_SCRIPT"
-else
-    AGENT_CMD="ccmrun $PYTHON $PILOT_SCRIPT"
-fi
+AGENT_CMD="$PYTHON $PILOT_SCRIPT"
 
 verify_rp_install
 
@@ -1620,6 +1614,7 @@ profile_event 'agent start'
 # start the master agent instance (zero)
 profile_event 'sync rel' 'agent start'
 
+
 # # I am ashamed that we have to resort to this -- lets hope it's temporary...
 # cat > packer.sh <<EOT
 # #!/bin/sh
@@ -1664,11 +1659,18 @@ profile_event 'sync rel' 'agent start'
 # ./packer.sh 2>&1 >> bootstrap_1.out &
 # PACKER_ID=$!
 
-
-./bootstrap_2.sh 'agent_0'    \
-               1> agent_0.bootstrap_2.out \
-               2> agent_0.bootstrap_2.err &
+# TODO: Can this be generalized with our new split-agent now?
+if test -z "$CCM"; then
+    ./bootstrap_2.sh 'agent_0'    \
+                   1> agent_0.bootstrap_2.out \
+                   2> agent_0.bootstrap_2.err &
+else
+    ccmrun ./bootstrap_2.sh 'agent_0'    \
+                   1> agent_0.bootstrap_2.out \
+                   2> agent_0.bootstrap_2.err &
+fi
 AGENT_PID=$!
+
 while true
 do
     sleep 1
