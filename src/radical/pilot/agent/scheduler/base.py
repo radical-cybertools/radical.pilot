@@ -30,7 +30,7 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def __init__(self, cfg, session):
 
-        self._slots = None
+        self.slots = None
         self._lrms  = None
 
         self._uid = ru.generate_id('agent.scheduling.%(counter)s', ru.ID_CUSTOM)
