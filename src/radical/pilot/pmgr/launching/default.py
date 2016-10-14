@@ -600,16 +600,25 @@ class Default(PMGRLaunchingComponent):
         elif isinstance(agent_config, basestring):
             try:
                 if os.path.exists(agent_config):
-                    # try to open as file name
-                    self._log.info("Read agent config file: %s" % agent_config)
-                    agent_cfg = ru.read_json(agent_config)
+                    agent_cfg_file = agent_config
+
                 else:
                     # otherwise interpret as a config name
-                    # FIXME: load in session just like resource
-                    #        configs, including user level overloads
                     agent_cfg_file = os.path.join(self._conf_dir, "agent_%s.json" % agent_config)
-                    self._log.info("Read agent config file: %s" % agent_cfg_file)
-                    agent_cfg = ru.read_json(agent_cfg_file)
+
+                self._log.info("Read agent config file: %s",  agent_cfg_file)
+                agent_cfg = ru.read_json(agent_cfg_file)
+
+                # no matter how we read the config file, we
+                # allow for user level overload
+                user_cfg_file = '%s/.radical/pilot/config/%s' \
+                              % (os.environ['HOME'], os.path.basename(agent_cfg_file))
+
+                if os.path.exists(user_cfg_file):
+                    logger.info("merging user config: %s" % user_cfg_file)
+                    user_cfg = ru.read_json(user_cfg_file)
+                    ru.dict_merge (agent_cfg, user_cfg, policy='overwrite')
+
             except Exception as e:
                 self._log.exception("Error reading agent config file: %s" % e)
                 raise
