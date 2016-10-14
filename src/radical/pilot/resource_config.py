@@ -242,7 +242,7 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(STAGE_CACERTS          ,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(SHARED_FILESYSTEM      ,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(HEALTH_CHECK           ,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(PYTHON_DISTRIBUTION    .  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(PYTHON_DISTRIBUTION    ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
         self['label'] = label
 
