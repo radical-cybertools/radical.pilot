@@ -71,6 +71,9 @@ def profile_analysis(sid):
     print uf[uf['uid'] == 'unit.000001']
     print list(pf['event'])
 
+    tmp = uf[uf['uid'] == 'unit.000001'].dropna()
+    print tmp[['time', 'uid', 'state', 'state_from']]
+
     # add a columns 'rate_out' which contains the rate (1/s) of the event
     # 'advance to state STAGING_OUTPUT'
     print '---------------'
