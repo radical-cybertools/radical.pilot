@@ -326,6 +326,7 @@ class Shell(AgentExecutingComponent):
         env  += 'export RP_GTOD="%s"\n'       % cu['gtod']
         env  += 'export RP_PROF="%s"\n'       % cu['workdir']
         env  += '\n'
+        env  += '\ntouch $RP_PROF\n'
 
         if  cu['workdir'] :
             cwd  += "\n# CU workdir\n"

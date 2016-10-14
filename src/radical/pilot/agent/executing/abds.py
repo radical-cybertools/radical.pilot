@@ -230,9 +230,9 @@ class ABDS(AgentExecutingComponent):
             env_string += 'export RP_GTOD="%s"\n'       % cu['gtod']
             env_string += 'export RP_PROF="%s/PROF"\n'  % cu['workdir']
             launch_script.write('\n# Environment variables\n%s\n' % env_string)
+            launch_script.write('\ntouch $RP_PROF\n')
 
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                # time,name,uid,state,event,msg
                 launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,start_script," >> $RP_PROF\n' %  \
                                     (cu['_id'], rps.EXECUTING))
             launch_script.write('\n# Change to working directory for unit\ncd %s\n' % cu['workdir'])

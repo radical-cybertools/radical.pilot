@@ -224,6 +224,7 @@ class Popen(AgentExecutingComponent) :
           # for key,val in self._cu_environment.iteritems():
           #     env_string += " %s='%s'"      % (key, val)
             launch_script.write('\n# Environment variables\n%s\n' % env_string)
+            launch_script.write('\ntouch $RP_PROF\n')
 
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,start_script," >> $RP_PROF\n' %  \
