@@ -74,8 +74,6 @@ def get_session_docs(db, sid, cache=None, cachedir=None) :
         # continue w/o cache
         sys.stderr.write ("warning: cannot read session cache at %s (%s)\n" % (cache, e))
 
-    print db
-
 
     # cache not used or not found -- go to db
     json_data = dict()
