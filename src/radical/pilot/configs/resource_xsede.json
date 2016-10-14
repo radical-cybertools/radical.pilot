@@ -403,32 +403,6 @@
         "virtenv"                     : "%(global_sandbox)s/ve_supermic",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
-    },
-    "darter_aprun": {
-        "description"                 : "Darter is a Cray XC30 system with an Aries interconnect and a Lustre storage system, that provide both high scalability and sustained performance. The Darter supercomputer has a peak performance of 240.9 Tflops (1012 floating point operations per second). (https://portal.xsede.org/nics-darter)",
-        "notes"                       : "Primary access through GSISSH.",
-        "schemas"                     : ["gsissh"],
-        "gsissh"                      : {
-            "job_manager_endpoint"    : "torque+gsissh://gsissh.darter.nics.xsede.org",
-            "filesystem_endpoint"     : "gsisftp://gsissh.darter.nics.xsede.org/"
-        },
-        "default_queue"               : "batch",
-        "cores_per_node"              : "16",
-        "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "APRUN",
-        "task_launch_method"          : "APRUN",
-        "mpi_launch_method"           : "APRUN",
-        "pre_bootstrap_1"             : ["module load python"],
-        #"pre_bootstrap_2"             : ["export TMPDIR=/var/tmp"],
-        "default_remote_workdir"      : "/lustre/medusa/$USER",
-        "valid_roots"                 : ["/lustre"],
-        "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_darter",
-        "virtenv_mode"                : "create",
-        "python_dist"                 : "default"
     }
 }
 
