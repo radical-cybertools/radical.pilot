@@ -703,7 +703,7 @@ class PilotLauncherWorker(threading.Thread):
 
                         # Close and remove agent config file and remove directory
                         os.close(cfg_tmp_handle)
-                        os.remove(cfg_tmp_handle)
+                        os.remove(cfg_tmp_file)
                         os.rmdir(cfg_tmp_dir)
 
                         # ------------------------------------------------------
