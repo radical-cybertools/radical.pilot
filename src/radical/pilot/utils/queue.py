@@ -30,12 +30,6 @@ _BRIDGE_TIMEOUT  =     1  # how long to wait for bridge startup
 _LINGER_TIMEOUT  =   250  # ms to linger after close
 _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
 
-<<<<<<< HEAD
-=======
-_BRIDGE_TIMEOUT  =      1  # how long to wait for bridge startup
-_LINGER_TIMEOUT  =    250  # ms to linger after close
-_HIGH_WATER_MARK =      0  # number of bytes to buffer before dropping
->>>>>>> aa63e5b
 
 # --------------------------------------------------------------------------
 #
@@ -195,69 +189,8 @@ class Queue(mp.Process):
                 raise RuntimeError('wildcard port (*) required for bridge addresses (%s)' \
                                 % self._addr)
 
-<<<<<<< HEAD
             self._pqueue = mp.Queue()
             self.start()
-=======
-            # ------------------------------------------------------------------
-            def _bridge(addr, pqueue):
-
-                try:
-                    import setproctitle as spt
-                    spt.setproctitle('radical.pilot %s' % self._name)
-                except Exception as e:
-                    pass
-
-                try:
-                    # reset signal handlers to their default
-                    signal.signal(signal.SIGINT,  signal.SIG_DFL)
-                    signal.signal(signal.SIGTERM, signal.SIG_DFL)
-                    signal.signal(signal.SIGALRM, signal.SIG_DFL)
-
-                    self._log.info('start bridge %s on %s', self._name, addr)
-
-                    # FIXME: should we cache messages coming in at the pull/push 
-                    #        side, so as not to block the push end?
-
-                    ctx = zmq.Context()
-                    _in = ctx.socket(zmq.PULL)
-                    _in.linger = _LINGER_TIMEOUT
-                    _in.hwm    = _HIGH_WATER_MARK
-                    _in.bind(addr)
-
-                    _out = ctx.socket(zmq.REP)
-                    _out.linger = _LINGER_TIMEOUT
-                    _out.hwm    = _HIGH_WATER_MARK
-                    _out.bind(addr)
-
-                    # communicate the bridge ports to the parent process
-                    _in_port  =  _in.getsockopt(zmq.LAST_ENDPOINT)
-                    _out_port = _out.getsockopt(zmq.LAST_ENDPOINT)
-
-                    pqueue.put([_in_port, _out_port])
-
-                    self._log.info('bound bridge %s to %s : %s', self._name, _in_port, _out_port)
-
-                    # start polling for messages
-                    _poll = zmq.Poller()
-                    _poll.register(_out, zmq.POLLIN)
-
-                    while True:
-
-                        events = dict(_uninterruptible(_poll.poll, 1000)) # timeout in ms
-
-                        if _out in events:
-                            req = _uninterruptible(_out.recv)
-                            _uninterruptible(_out.send_json, _uninterruptible(_in.recv_json))
-
-                except Exception as e:
-                    self._log.exception('bridge error: %s', e)
-            # ------------------------------------------------------------------
-
-            pqueue   = mp.Queue()
-            self._p  = mp.Process(target=_bridge, args=[self._addr, pqueue])
-            self._p.start()
->>>>>>> aa63e5b
 
             try:
                 self._bridge_in, self._bridge_out = self._pqueue.get(True, _BRIDGE_TIMEOUT)
