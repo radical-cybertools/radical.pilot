@@ -243,8 +243,12 @@ class Yarn(LaunchMethod):
             namenode_format = os.system(hadoop_home + '/bin/hdfs namenode -format -force')
             logger.info('DFS Formatted. Starting DFS.')
             logger.info('Starting YARN')
-            yarn_start = os.system(hadoop_home + '/sbin/start-all.sh')
-            logger.info('Started YARN')
+            yarn_start = subprocess.check_output([hadoop_home + '/sbin/start-all.sh'])
+            if 'Error' in yarn_start:
+                raise RuntimeError('Unable to start YARN cluster: %s' \
+                    % (yarn_start))
+            else:
+                logger.info('Started YARN')
 
             #-------------------------------------------------------------------
             # Creating user's HDFS home folder
