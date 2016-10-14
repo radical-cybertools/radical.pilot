@@ -111,8 +111,8 @@ class Yarn(LaunchMethod):
                 cores_used = cores/2
                 total_mem = total_free_mem*0.75
             else:
-                cores_used = cores*(nodelist.__len__()-1)
-                total_mem = total_free_mem*(nodelist.__len__()-1)
+                cores_used = cores*(len(nodelist)-1)
+                total_mem = total_free_mem*(len(nodelist)-1)
                 slaves = open(os.getcwd()+'/hadoop/etc/hadoop/slaves','w')
                 for node in nodelist[1:]:
                     slaves.write('%s\n'%(node+hostname))
