@@ -483,5 +483,6 @@ class ComputeUnit(object):
         
         self._umgr.cancel_units(self.uid)
 
+
 # ------------------------------------------------------------------------------
 

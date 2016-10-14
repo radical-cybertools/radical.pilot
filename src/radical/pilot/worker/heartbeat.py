@@ -51,5 +51,6 @@ class Heartbeat(Worker):
         self._runtime       = self._cfg.get('runtime')
         self._starttime     = time.time()
 
+
 # ------------------------------------------------------------------------------
 
