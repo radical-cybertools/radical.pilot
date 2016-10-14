@@ -105,7 +105,7 @@ class Default(AgentStagingOutputComponent):
 
                 cu['stderr'] += rpu.tail(txt)
 
-        if 'RADICAL_PILOT_PROFILE' in os.environ:
+        if os.path.isfile("%s/PROF" % cu['workdir']):
             try:
                 with open("%s/PROF" % cu['workdir'], 'r') as prof_f:
                     txt = prof_f.read()
