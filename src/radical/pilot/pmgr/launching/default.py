@@ -715,6 +715,7 @@ class Default(PMGRLaunchingComponent):
 
         # ------------------------------------------------------------------
         # sanity checks
+        if not python_dist        : raise RuntimeError("missing python distribution")
         if not agent_spawner      : raise RuntimeError("missing agent spawner")
         if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
         if not lrms               : raise RuntimeError("missing LRMS")
