@@ -388,12 +388,9 @@ class Yarn(LaunchMethod):
 
         if cud['pre_exec']:
             pre_exec_string = ''
-            if isinstance(cud['pre_exec'], list):
-                for elem in cud['pre_exec']:
-                    pre_exec_string += '%s;' % elem
-            else:
-                pre_exec_string += '%s;' % cud['pre_exec']
-            pre_exec_string=''
+            for elem in cud['pre_exec']:
+                pre_exec_string += '%s;' % elem
+            pre_exec_string+=''
             print_str+="echo ''>>ExecScript.sh\n"
             print_str+="echo ''>>ExecScript.sh\n"
             print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
