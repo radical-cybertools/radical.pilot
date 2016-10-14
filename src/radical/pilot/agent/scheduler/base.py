@@ -54,25 +54,8 @@ class AgentSchedulingComponent(rpu.Component):
         self.register_subscriber(rpc.AGENT_UNSCHEDULE_PUBSUB, self.unschedule_cb)
 
         # we create a pubsub pair for reschedule trigger
-<<<<<<< HEAD
         self.register_publisher (rpc.AGENT_RESCHEDULE_PUBSUB)
         self.register_subscriber(rpc.AGENT_RESCHEDULE_PUBSUB, self.reschedule_cb)
-=======
-        self.declare_publisher ('reschedule', rpc.AGENT_RESCHEDULE_PUBSUB)
-        self.declare_subscriber('reschedule', rpc.AGENT_RESCHEDULE_PUBSUB, self.reschedule_cb)
-
-        # all components use the command channel for control messages
-        self.declare_publisher ('command',    rpc.AGENT_COMMAND_PUBSUB)
-
-        # we declare a clone and a drop callback, so that cores can be assigned
-        # to clones, and can also be freed again.
-        self.declare_clone_cb(self.clone_cb)
-        self.declare_drop_cb (self.drop_cb)
-
-        # when cloning, we fake scheduling via round robin over all cores.
-        # These indexes keeps track of the last used core.
-        self._clone_slot_idx = 0
->>>>>>> aa9b586
 
         # The scheduler needs the LRMS information which have been collected
         # during agent startup.  We dig them out of the config at this point.

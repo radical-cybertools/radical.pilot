@@ -139,14 +139,10 @@ class Session(rs.Session):
             # we forgive missing dburl on reconnect, but not otherwise
             raise RuntimeError("no database URL (set RADICAL_PILOT_DBURL)")  
 
+        self._dburl = ru.Url(dburl)
+
         # ----------------------------------------------------------------------
         # create new session
-        self._dburl = ru.Url(dburl)
-        self._dbs       = None
-        self._uid       = None
-        self._connected = None
-        self._dburl     = None
-
         if _connect:
             self._log.info("using database %s" % self._dburl)
 
@@ -195,7 +191,7 @@ class Session(rs.Session):
 
         # create/connect database handle
         try:
-            self._dbs = DBSession(sid=self.uid, dburl=self._dburl,
+            self._dbs = DBSession(sid=self.uid, dburl=str(self._dburl),
                                   cfg=self._cfg, logger=self._log, 
                                   connect=_connect)
 
