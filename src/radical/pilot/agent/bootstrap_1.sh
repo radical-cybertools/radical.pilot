@@ -74,6 +74,18 @@ VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
 VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces setproctitle msgpack-python"
 
+# before we change anything else in the pilot environment, we safe a couple of
+# env vars to bve able to re-create a close-to-pristine env for unit execution.
+_OLD_VIRTUAL_PYTHONPATH=$"PYTHONPATH"
+_OLD_VIRTUAL_PYTHONHOME=$"PYTHONHOME"
+_OLD_VIRTUAL_PATH=$"PATH"
+_OLD_VIRTUAL_PS1=$"PS1"
+
+export _OLD_VIRTUAL_PYTHONPATH
+export _OLD_VIRTUAL_PYTHONHOME
+export _OLD_VIRTUAL_PATH
+export _OLD_VIRTUAL_PS1
+
 
 # ------------------------------------------------------------------------------
 #
@@ -776,15 +788,6 @@ virtenv_activate()
         return
     fi
 
-    # before we change python related settings, we keep a copy for later CU
-    # environments
-    # TODO: should we do this before even running the pre_execs?
-    _OLD_VIRTUAL_PYTHONPATH=$"PYTHONPATH"
-    _OLD_VIRTUAL_PYTHONHOME=$"PYTHONHOME"
-    _OLD_VIRTUAL_PATH=$"PATH"
-    _OLD_VIRTUAL_PS1=$"PS1"
-
-
     if test "$python_dist" = "anaconda"
     then
         source activate $virtenv/
@@ -1459,13 +1462,6 @@ rehash "$PYTHON"
 # ready to setup the virtenv
 virtenv_setup    "$PILOT_ID" "$VIRTENV" "$VIRTENV_MODE" "$PYTHON_DIST"
 virtenv_activate "$VIRTENV" "$PYTHON_DIST"
-
-# Export the variables related to virtualenv,
-# so that we can disable the virtualenv for the cu.
-export _OLD_VIRTUAL_PATH
-export _OLD_VIRTUAL_PYTHONPATH
-export _OLD_VIRTUAL_PYTHONHOME
-export _OLD_VIRTUAL_PS1
 
 # ------------------------------------------------------------------------------
 # launch the radical agent
