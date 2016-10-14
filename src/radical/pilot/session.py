@@ -141,7 +141,7 @@ class Session (saga.Session):
                 ru.reset_id_counters(prefix=['pmgr', 'umgr', 'pilot', 'unit', 'unit.%(counter)06d'])
 
             # initialize profiling
-            self.prof = Profiler('%s' % uid)
+            self.prof = ru.Profiler('%s' % uid)
             self.prof.prof('start session', uid=uid)
 
             logger.report.info ('<<new session: ')

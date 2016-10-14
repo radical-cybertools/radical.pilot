@@ -19,7 +19,6 @@ import radical.utils as ru
 
 from ..states    import *
 from ..utils     import logger
-from ..utils     import timestamp
 from ..context   import Context
 from ..logentry  import Logentry
 
@@ -206,7 +205,7 @@ class PilotLauncherWorker(threading.Thread):
 
             if  pilot_failed :
                 out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
-                ts = timestamp()
+                ts = time.time()
                 pilot_col.update(
                     {"_id"  : pilot_id,
                      "state": {"$ne"     : DONE}},
@@ -236,7 +235,7 @@ class PilotLauncherWorker(threading.Thread):
                 # FIXME: this should only be done if the state is not yet
                 # done...
                 out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
-                ts = timestamp()
+                ts = time.time()
                 pilot_col.update(
                     {"_id"  : pilot_id,
                      "state": {"$ne"     : DONE}},
@@ -312,7 +311,7 @@ class PilotLauncherWorker(threading.Thread):
                     #       pending pilots.  In practice we only ever use one
                     #       pmgr though, and its during its shutdown that we get
                     #       here...
-                    ts = timestamp()
+                    ts = time.time()
                     compute_pilot = pilot_col.find_and_modify(
                         query={"pilotmanager": self.pilot_manager_id,
                                "state" : PENDING_LAUNCH},
@@ -333,7 +332,7 @@ class PilotLauncherWorker(threading.Thread):
                 # state to pending, otherwise to failed.
                 compute_pilot = None
 
-                ts = timestamp()
+                ts = time.time()
                 compute_pilot = pilot_col.find_and_modify(
                     query={"pilotmanager": self.pilot_manager_id,
                            "state" : PENDING_LAUNCH},
@@ -815,7 +814,7 @@ class PilotLauncherWorker(threading.Thread):
                             log_dicts.append (le.as_dict())
 
                         # Update the Pilot's state to 'PENDING_ACTIVE' if SAGA job submission was successful.
-                        ts = timestamp()
+                        ts = time.time()
                         ret = pilot_col.update(
                             {"_id"  : pilot_id,
                              "state": LAUNCHING},
@@ -845,7 +844,7 @@ class PilotLauncherWorker(threading.Thread):
                     except Exception as e:
                         # Update the Pilot's state 'FAILED'.
                         out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
-                        ts = timestamp()
+                        ts = time.time()
 
                         # FIXME: we seem to be unable to bson/json handle saga
                         # log messages containing an '#'.  This shows up here.

@@ -10,7 +10,6 @@ import threading
 
 from ..states import * 
 from ..utils  import logger
-from ..utils  import timestamp
 from ..staging_directives import CREATE_PARENTS
 
 IDLE_TIME  = 1.0  # seconds to sleep after idle cycles
@@ -78,7 +77,7 @@ class OutputFileTransferWorker(threading.Thread):
                 # FIXME: this method is not bulkable.  See agent pulling for
                 #        units for an approach to split the call into two bulkable 
                 #        ones.
-                ts = timestamp()
+                ts = time.time()
                 compute_unit = um_col.find_and_modify(
                     query={"unitmanager": self.unit_manager_id,
                            "state"      : PENDING_OUTPUT_STAGING,
@@ -165,7 +164,7 @@ class OutputFileTransferWorker(threading.Thread):
                             continue
 
                         # Update the CU's state to 'DONE'.
-                        ts = timestamp()
+                        ts = time.time()
                         log_message = "Output transfer completed."
                         um_col.update({'_id': compute_unit_id}, {
                             '$set': {'state': DONE},
@@ -179,7 +178,7 @@ class OutputFileTransferWorker(threading.Thread):
 
                     except Exception as e :
                         # Update the CU's state to 'FAILED'.
-                        ts = timestamp()
+                        ts = time.time()
                         log_message = "Output transfer failed: %s" % e
                         um_col.update({'_id': compute_unit_id}, {
                             '$set': {'state': FAILED},

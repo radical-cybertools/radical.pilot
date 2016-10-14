@@ -13,10 +13,10 @@ __license__ = "MIT"
 
 import os 
 import saga
+import time
 import gridfs
 import radical.utils as ru
 
-from radical.pilot.utils  import timestamp
 from radical.pilot.states import *
 
 COMMAND_CANCEL_PILOT        = "Cancel_Pilot"
@@ -60,7 +60,7 @@ class Session():
         self._db         = db
         self._dburl      = ru.Url(dburl)
         self._session_id = sid
-        self._created    = timestamp()
+        self._created    = time.time()
         self._connected  = self._created
         self._closed     = None
 
@@ -145,7 +145,7 @@ class Session():
         if self._s is None:
             raise RuntimeError("No active session.")
 
-        self._closed = timestamp()
+        self._closed = time.time()
 
     #--------------------------------------------------------------------------
     #
@@ -234,7 +234,7 @@ class Session():
 
         if state :
             set_query["state"] = state
-            push_query["statehistory"] = [{'state': state, 'timestamp': timestamp()}]
+            push_query["statehistory"] = [{'state': state, 'timestamp': time.time()}]
 
         if logs  : 
             push_query["log"] = logs
@@ -262,7 +262,7 @@ class Session():
         if self._s is None:
             raise Exception("No active session.")
 
-        ts = timestamp()
+        ts = time.time()
 
         # the SAGA attribute interface does not expose private attribs in
         # as_dict().  That semantics may change in the future, for now we copy
@@ -366,7 +366,7 @@ class Session():
 
         command = {COMMAND_FIELD: {COMMAND_TYPE: cmd,
                                    COMMAND_ARG:  arg,
-                                   COMMAND_TIME: timestamp()
+                                   COMMAND_TIME: time.time()
         }}
 
         if pilot_ids is None:
@@ -453,7 +453,7 @@ class Session():
         If src_states is given, this will only update units which are currently
         in those src states.
         """
-        ts = timestamp()
+        ts = time.time()
 
         if  not unit_ids :
             return
@@ -743,7 +743,7 @@ class Session():
 
         for unit in units:
 
-            ts = timestamp()
+            ts = time.time()
 
             unit_json = {
                 "_id":           unit.uid,

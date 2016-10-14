@@ -10,7 +10,6 @@ import threading
 
 from ..states             import * 
 from ..utils              import logger
-from ..utils              import timestamp
 from ..staging_directives import CREATE_PARENTS
 
 IDLE_TIME  = 1.0  # seconds to sleep after idle cycles
@@ -83,7 +82,7 @@ class InputFileTransferWorker(threading.Thread):
 
                 # See if we can find a ComputeUnit that is waiting for
                 # input file transfer.
-                ts = timestamp()
+                ts = time.time()
                 compute_unit = um_col.find_and_modify(
                     query={"unitmanager": self.unit_manager_id,
                            "state"      : PENDING_INPUT_STAGING,
@@ -209,7 +208,7 @@ class InputFileTransferWorker(threading.Thread):
                                                'state': AGENT_STAGING_INPUT_PENDING,
                                                'timestamp': ts},
                                            'log': {
-                                               'timestamp': timestamp(),
+                                               'timestamp': time.time(),
                                                'message': 'push unit to agent after ftw staging'
                                        }}})
                         logger.debug("InputStagingController: %s : push to agent" % compute_unit_id)
@@ -219,7 +218,7 @@ class InputFileTransferWorker(threading.Thread):
                     except Exception as e :
 
                         # Update the CU's state to 'FAILED'.
-                        ts = timestamp()
+                        ts = time.time()
                         logentry = {'message': "Input transfer failed: %s" % e,
                                     'timestamp': ts}
 
