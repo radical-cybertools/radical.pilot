@@ -172,7 +172,8 @@
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_stampede",
-        "virtenv_mode"                : "create"
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
     },
 
        "wrangler": {
@@ -575,7 +576,8 @@
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_comet",
-        "virtenv_mode"                : "create"
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
     },
 
     "supermic": {
