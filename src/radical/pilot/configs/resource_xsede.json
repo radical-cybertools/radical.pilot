@@ -366,10 +366,10 @@
             "module load openmpi",
             "module load mpi4py"
         ],
-        "pre_bootstrap_2"             : [
-            "export PATH=$PATH",
-            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
-        ],
+      # "pre_bootstrap_2"             : [
+      #     "export PATH=$PATH",
+      #     "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+      # ],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_comet",
