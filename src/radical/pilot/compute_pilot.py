@@ -182,7 +182,8 @@ class ComputePilot(object):
             'stderr':          self.stderr,
             'resource':        self.resource,
             'sandbox':         self.sandbox,
-            'description':     self.description  # this is a deep copy
+            'description':     self.description,  # this is a deep copy
+            'resource_detail': self.resource_detail
         }
         return ret
 
@@ -322,8 +323,29 @@ class ComputePilot(object):
         Returns the full sandbox URL of this pilot, if that is already
         known, or 'None' otherwise.
 
+<<<<<<< HEAD
         **Returns:**
             * A URL (radical.utils.Url).
+=======
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def spark_master_url(self):
+        """Returns the master url of apache spark
+        """
+        # Check if this instance is valid
+        if not self._uid:
+            return None
+
+        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
+        return pilot_json.get('lm_detail')
+
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def pilot_manager(self):
+        """ Returns the pilot manager object for this pilot.
+>>>>>>> c260de0
         """
 
         # NOTE: The pilot has a sandbox property, containing the full sandbox
@@ -539,7 +561,7 @@ class ComputePilot(object):
             # the directory if it does not yet exist.
             target_dir = saga.filesystem.Directory(tgt_dir_url, flags=saga.filesystem.CREATE_PARENTS)
 
-            if action == LINK:
+            if action == LINK:	
                 # TODO: Does this make sense?
                 #log_message = 'Linking %s to %s' % (source, abs_target)
                 #os.symlink(source, abs_target)
