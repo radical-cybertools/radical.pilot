@@ -131,11 +131,12 @@ class Agent_0(rpu.Worker):
 
         # sub-agents are started, components are started, bridges are up: we are
         # ready to roll!
-        pilot = {'type'    : 'pilot',
-                 'uid'     : self._pid,
-                 'state'   : rps.PMGR_ACTIVE,
-                 'lm_info' : self._lrms.lm_info.get('version_info'),
-                 '$set'    : 'lm_info'}
+        pilot = {'type'      : 'pilot',
+                 'uid'       : self._pid,
+                 'state'     : rps.PMGR_ACTIVE,
+                 'lm_info'   : self._lrms.lm_info.get('version_info'),
+                 'lm_detail' : self._lrms.lm_info.get('lm_detail'),
+                 '$set'      : ['lm_info', 'lm_detail']}
         self.advance(pilot, publish=True, push=False, prof=True)
 
         # register idle callback, to pull for units -- which is the only action

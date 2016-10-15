@@ -277,8 +277,14 @@ class PilotManager(rpu.Component):
                 # we also don't need to maintain bulks for that reason.
                 pilot_dict['state'] = s
                 self._pilots[pid]._update(pilot_dict)
+
                 if advance:
                     self.advance(pilot_dict, s, publish=publish, push=False)
+
+                if s in [ACTIVE]:
+                    logger.info('pilot %s is %s: %s [%s]', \
+                            pid, s, pilot.get('lm_info'), pilot.get('lm_detail')) 
+
 
 
     # --------------------------------------------------------------------------
