@@ -5,6 +5,18 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.40.3 Release                                                        2016-05-17
+--------------------------------------------------------------------------------
+
+  - point release with tutorial configurations
+
+
+0.40.2 Release                                                        2016-05-13
+--------------------------------------------------------------------------------
+
+  - hotfix to fix vnode parsing on archer
+
+
 0.40.1 Release                                                        2016-02-11
 --------------------------------------------------------------------------------
 

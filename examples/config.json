@@ -1,5 +1,6 @@
 
 {
+<<<<<<< HEAD
     "local.localhost" : {
         "project"  : null,
         "queue"    : null,
@@ -62,14 +63,14 @@
 
     "xsede.comet"  : {
         "project"  : "unc100",
-        "queue"    : "",
-        "schema"   : null
+        "queue"    : "compute",
+        "schema"   : "gsissh"
     },
 
     "xsede.comet_orte": {
         "project"  : "unc100",
-        "queue"    : "",
-        "schema"   : null
+        "queue"    : "compute",
+        "schema"   : "gsissh"
     },
 
     "xsede.gordon" : {
