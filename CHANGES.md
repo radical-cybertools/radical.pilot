@@ -5,7 +5,6 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
-
 0.41 Release                                                          2016-07-15
 --------------------------------------------------------------------------------
 
