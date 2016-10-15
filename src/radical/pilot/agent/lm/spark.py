@@ -105,7 +105,13 @@ class Spark(LaunchMethod):
         python_path = os.getenv('PYTHONPATH')
         python = ru.which('python')
         logger.info('Python Executable: %s' % python)
-        master_ip = lrms.node_list[0]+hostname
+        if len(lrms.node_list) ==1:
+        	master_ip = lrms.node_list[0]
+        else:
+        	try:
+        		master_ip = subprocess.check_call('hostname -f')
+        	except Exception as e:
+        		raise RuntimeError("Master ip couldn't be detected. %s" % e)
 
         #Setup default env properties:
         spark_default_file = open(spark_home + "/conf/spark-defaults.conf",'w')
