@@ -536,6 +536,43 @@
         "python_dist"                 : "default"
     },
 
+    "comet_spark": {
+        "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["ssh", "gsissh"],
+        "mandatory_args"              : ["project"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://comet.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://comet.sdsc.xsede.org/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://comet.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "gsisftp://comet.sdsc.xsede.org/"
+        },
+        "default_queue"               : "compute",
+        "cores_per_node"              : "24",
+        "lrms"                        : "SLURM",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "FORK",
+        "task_launch_method"          : "SPARK",
+        "mpi_launch_method"           : "MPIRUN_RSH",
+        "pre_bootstrap_1"             : ["module load python"],
+        "pre_bootstrap_2"             : [
+            "export PATH=$PATH",
+            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+        ],
+        #"default_remote_workdir"      : "/oasis/scratch/comet/$USER/temp_project",
+        #"valid_roots"                 : ["/oasis/scratch/comet"],
+        "valid_roots"                 : ["/home"],
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_comet",
+        "virtenv_mode"                : "create"
+    },
+
     "supermic": {
         "description"                 : "SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)",
         "notes"                       : "Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.",
