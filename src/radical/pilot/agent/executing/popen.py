@@ -231,7 +231,7 @@ class Popen(AgentExecutingComponent) :
             env_string += " RP_SESSION_ID=%s" % self._cfg['session_id']
             env_string += " RP_PILOT_ID=%s"   % self._cfg['pilot_id']
             env_string += " RP_AGENT_ID=%s"   % self._cfg['agent_name']
-            env_string += " RP_SPAWNER_ID=%s" % self.cname
+            env_string += " RP_SPAWNER_ID=%s" % self.uid
             env_string += " RP_UNIT_ID=%s"    % cu['_id']
             for key,val in self._cu_environment.iteritems():
                 env_string += " %s='%s'"      % (key, val)
