@@ -341,9 +341,9 @@ class PilotManagerController(threading.Thread):
                             # may, or may not, cancel the pilot's units.
                             self.call_callbacks(pilot_id, new_state)
 
-                    if new_state in [ACTIVE]:
-                        logger.info('pilot %s is active: %s [%s]', pilot_id, \
-                                pilot.get('lm_info'), pilot.get('lm_detail')) 
+                        if new_state in [ACTIVE]:
+                            logger.info('pilot %s is active: %s [%s]', pilot_id, \
+                                    pilot.get('lm_info'), pilot.get('lm_detail')) 
 
                     # If the state is 'DONE', 'FAILED' or 'CANCELED', we also
                     # set the state of the compute unit accordingly (but only
