@@ -25,6 +25,7 @@ LM_NAME_POE           = 'POE'
 LM_NAME_RUNJOB        = 'RUNJOB'
 LM_NAME_SSH           = 'SSH'
 LM_NAME_YARN          = 'YARN'
+LM_NAME_SPARK         = 'SPARK'
 
 
 # ==============================================================================
@@ -92,6 +93,7 @@ class LaunchMethod(object):
         from .runjob         import Runjob
         from .ssh            import SSH
         from .yarn           import Yarn
+        from .spark          import Spark
 
         try:
             impl = {
@@ -109,7 +111,8 @@ class LaunchMethod(object):
                 LM_NAME_POE           : POE,
                 LM_NAME_RUNJOB        : Runjob,
                 LM_NAME_SSH           : SSH,
-                LM_NAME_YARN          : Yarn
+                LM_NAME_YARN          : Yarn,
+                LM_NAME_SPARK         : Spark
             }[name]
             return impl(cfg, session)
 
@@ -142,7 +145,8 @@ class LaunchMethod(object):
         impl = {
             LM_NAME_FORK          : Fork,
             LM_NAME_ORTE          : ORTE,
-            LM_NAME_YARN          : Yarn
+            LM_NAME_YARN          : Yarn,
+            LM_NAME_SPARK         : Spark
         }.get(name)
 
         if not impl:
@@ -171,7 +175,8 @@ class LaunchMethod(object):
 
         impl = {
             LM_NAME_ORTE          : ORTE,
-            LM_NAME_YARN          : Yarn
+            LM_NAME_YARN          : Yarn,
+            LM_NAME_SPARK         : Spark
         }.get(name)
 
         if not impl:
