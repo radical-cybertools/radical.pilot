@@ -332,7 +332,7 @@ class ComputePilot(object):
         resource_details = {
             'nodes':          pilot_json['nodes'],
             'cores_per_node': pilot_json['cores_per_node'],
-            'lm_detail': pilot_json['lm_detail']
+            'lm_detail': pilot_json['lm_detail'] if pilot_json.has_key('lm_detail') else None
         }
         return resource_details
 >>>>>>> d64b253
