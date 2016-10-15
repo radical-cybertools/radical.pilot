@@ -39,7 +39,7 @@ class Spark(LaunchMethod):
         # the first node in the list and the port is the default one, else 
         # it is the one that the YARN LRMS returns
         spark_home = None   
-        if lrms.name == 'SPARK':
+        if lrms.name == 'SPARKLRMS':
             logger.info("Found SPARK ")
             logger.info('Hook called by SPARK LRMS')
             logger.info('NameNode: {0}'.format(lrms.namenode_url))
