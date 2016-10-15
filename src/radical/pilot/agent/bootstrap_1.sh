@@ -1318,8 +1318,23 @@ pre_bootstrap_1()
         exit 1
     fi
 
-    # we also want pre_bootstrap_1 commands re-enacted during pre_bootstrap_2
-    pre_bootstrap_2 "$cmd"
+  # We want the sub-agents to see the same environment as the main agent.  In
+  # order to ensure this, we can re-run all prep_bootstrap_1 comands as
+  # pre_bootstrap_2, which is in the process scope of the SAs.
+  #
+  # The drawback here is that it expects those commands to actually work ok in
+  # that scope -- which is not always guaranteed.  For example, a `module load`
+  # command might work differently on a compute node than on a head node.
+  #
+  # So we will not use this mechanism for now, but leave this comment in case
+  # this becomes relevant again at some point.  For now, the approach is:
+  #
+  #  - run all pre_bootstrap_1 commands
+  #  - copy PATH and LD_LIBRARY_PATH
+  #  - apply those copies in bootstrap_2.sh *before* sourcing the virtualenv
+  #  - run any pre_bootstrap_2 commands *after* soucring the virtrualenv
+  #
+  # pre_bootstrap_2 "$cmd"
 }
 
 # -------------------------------------------------------------------------------
@@ -1379,6 +1394,17 @@ then
     SESSION_SANDBOX="$PILOT_SANDBOX/.."
 fi
 
+# At this point, all pre_bootstrap_1 commands have been executed.  We copy the
+# resulting PATH and LD_LIBRARY_PATH, and apply that in bootstrap_2.sh, so that
+# the sub-agents start off with the same env (or at least the relevant parts of
+# it).
+#
+# This assumes that the env is actually transferrable.  If that assumption
+# breaks at some point, we'll have to either only transfer the incremental env
+# changes, or reconsider the approach to pre_bootstrap_x commands altogether --
+# see comment in the pre_bootstrap_1 function.
+PB1_PATH="$PATH"
+PB1_LDLB="$LD_LIBRARY_PATH"
 
 # FIXME: By now the pre_process rules are already performed.
 #        We should split the parsing and the execution of those.
@@ -1552,6 +1578,10 @@ hostname
 
 # make sure we use the correct sandbox
 cd $PILOT_SANDBOX
+
+# apply some env settings as stored after running pre_bootstrap_1 commands
+export PATH="$PB1_PATH"
+export LD_LIBRARY_PATH="$PB1_LDLB"
 
 # activate virtenv
 if test "$PYTHON_DIST" = "anaconda"
