@@ -14,6 +14,12 @@
         "cores"    : 64
     },
 
+    "local.localhost_spark_ana" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null
+    },
+
     "ncsa.bw" : {
         "project"  : "gkd",
         "queue"    : "debug",
