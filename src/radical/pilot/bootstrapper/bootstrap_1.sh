@@ -1205,6 +1205,8 @@ echo "#"
 echo "#"
 echo "# -------------------------------------------------------------------"
 
+# print the sorted env for logging, but also keep a copy so that we can dig
+# original env settings for any CUs, if so specified in the resource config.
 env | sort | grep '=' | tee env.orig
 echo "# -------------------------------------------------------------------"
 

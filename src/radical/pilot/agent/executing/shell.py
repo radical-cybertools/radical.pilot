@@ -117,6 +117,19 @@ class Shell(AgentExecutingComponent):
                 if e.startswith(r):
                     os.environ.pop(e, None)
 
+        # if we need to transplant any original env into the CU, we dig the
+        # respective keys from the dump made by bootstrap_1.sh
+        self._env_cu_export = dict()
+        if self._cfg.get('export_to_cu'):
+            with open('env.orig', 'r') as f:
+                for line in f.readlines():
+                    if '=' in line:
+                        k,v = line.split('=', 1)
+                        key = k.strip()
+                        val = v.strip()
+                        if key in self._cfg['export_to_cu']:
+                            self._env_cu_export[key] = val
+
         # the registry keeps track of units to watch, indexed by their shell
         # spawner process ID.  As the registry is shared between the spawner and
         # watcher thread, we use a lock while accessing it.
@@ -331,6 +344,10 @@ class Shell(AgentExecutingComponent):
         env  += "export RP_AGENT_ID=%s\n"   % self._cfg['agent_name']
         env  += "export RP_SPAWNER_ID=%s\n" % self.cname
         env  += "export RP_UNIT_ID=%s\n"    % cu['_id']
+
+        # also add any env vars requested for export by the resource config
+        for k,v in self._env_cu_export.iteritems():
+            env += "export %s=%s\n" % (k,v)
         env  += "\n"
 
         if  descr['pre_exec'] :
