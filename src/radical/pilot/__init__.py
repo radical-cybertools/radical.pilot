@@ -20,7 +20,7 @@ from .exceptions import *
 
 # ------------------------------------------------------------------------------
 # import API
-from .session                   import Session 
+from .session                   import Session
 from .context                   import Context
 
 from .unit_manager              import UnitManager

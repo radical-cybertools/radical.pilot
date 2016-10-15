@@ -86,7 +86,7 @@ def get_session_docs(db, sid, cache=None, cachedir=None) :
     json_data['unit'   ] = bson2json(list(db[sid].find({'type' : 'unit'   })))
 
     if  len(json_data['session']) == 0 :
-        raise ValueError ('no such session %s' % sid)
+        raise ValueError ('no session %s in db (was `cleanup` disabled on `session.close()`?)' % sid)
 
   # if  len(json_data['session']) > 1 :
   #     print 'more than one session document -- picking first one'

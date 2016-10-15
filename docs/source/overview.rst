@@ -100,3 +100,16 @@ very detailed information about RP's inner functionality.  Pilots running on
 target resources also create log files (those should only be useful for
 debugging purposes).
 
+
+Where can I find the logfiles?
+==============================
+
+RP supports logging to the terminal and to files.  You can set the following
+variables:
+
+    RADICAL_PILOT_VERBOSE=DEBUG
+    RADICAL_PILOT_LOG_TGT=/tmp/rp.log
+
+The defined verbosity levels are the same as defined by Python's logging module
+
+

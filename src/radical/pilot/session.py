@@ -127,13 +127,14 @@ class Session(rs.Session):
             self._cfg['logdir'] = '%s/%s' % (os.getcwd(), self._uid)
 
         self._logdir = self._cfg['logdir']
-        print        self._cfg['owner'], self._cfg['debug']
         self._log    = self._get_logger(self._cfg['owner'], self._cfg['debug'])
 
 
-        if not dburl: dburl = self._cfg.get('dburl')
         if not dburl:
             dburl = os.getenv("RADICAL_PILOT_DBURL", None)
+
+        if not dburl and _connect:
+            dburl = self._cfg.get('default_dburl')
 
         if not dburl and _connect:
             # we forgive missing dburl on reconnect, but not otherwise
