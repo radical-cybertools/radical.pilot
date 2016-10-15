@@ -12,12 +12,12 @@ __copyright__ = "Copyright 2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os 
+import time
 import pprint
 import threading
 
 from ..states   import *
 from ..utils    import logger
-from ..utils    import timestamp
 
 from .interface import Scheduler
 
@@ -195,7 +195,7 @@ class BackfillingScheduler(Scheduler):
                     # need to reschedule the units which are reschedulable --
                     # all others are marked 'FAILED' if they are already
                     # 'EXECUTING' and not restartable
-                    ts = timestamp()
+                    ts = time.time()
                     self._dbs.change_compute_units (
                         filter_dict = {"pilot"       : pid, 
                                        "state"       : {"$in": [UNSCHEDULED,

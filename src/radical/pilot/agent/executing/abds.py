@@ -332,7 +332,7 @@ class ABDS(AgentExecutingComponent):
 
         self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['_id'])
 
-        cu['started'] = rpu.timestamp()
+        cu['started'] = time.time()
         cu['proc']    = proc
 
         self._watch_queue.put(cu)
@@ -343,7 +343,7 @@ class ABDS(AgentExecutingComponent):
     def _watch(self):
 
         cname = self.name.replace('Component', 'Watcher')
-        self._prof = rpu.Profiler(cname)
+        self._prof = ru.Profiler(cname)
         self._prof.prof('run', uid=self._pilot_id)
         try:
             self._log = ru.get_logger(cname, target="%s.log" % cname,
@@ -431,7 +431,7 @@ class ABDS(AgentExecutingComponent):
             else :
                 # poll subprocess object
                 exit_code = cu['proc'].poll()
-                now       = rpu.timestamp()
+                now       = time.time()
 
                 if exit_code is None:
                     # Process is still running

@@ -314,7 +314,7 @@ class Popen(AgentExecutingComponent) :
 
         self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['_id'])
 
-        cu['started'] = rpu.timestamp()
+        cu['started'] = time.time()
         cu['proc']    = proc
 
         self._watch_queue.put(cu)
@@ -377,7 +377,7 @@ class Popen(AgentExecutingComponent) :
 
             # poll subprocess object
             exit_code = cu['proc'].poll()
-            now       = rpu.timestamp()
+            now       = time.time()
 
             if exit_code is None:
                 # Process is still running

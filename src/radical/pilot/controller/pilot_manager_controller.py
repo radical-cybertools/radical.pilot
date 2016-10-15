@@ -22,7 +22,6 @@ import radical.utils as ru
 
 from ..states       import *
 from ..utils        import logger
-from ..utils        import timestamp
 from ..db.database  import COMMAND_CANCEL_PILOT
 
 from .pilot_launcher_worker import PilotLauncherWorker
@@ -222,7 +221,7 @@ class PilotManagerController(threading.Thread):
         if  not pilot_id in self._callback_histories :
             self._callback_histories[pilot_id] = list()
         self._callback_histories[pilot_id].append (
-                {'timestamp' : timestamp(), 
+                {'timestamp' : time.time(), 
                  'state'     : new_state})
 
         for cb in self._shared_data[pilot_id]['callbacks']:

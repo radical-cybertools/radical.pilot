@@ -125,7 +125,7 @@ class Update(rpu.Worker):
         s_max = rps.FAILED
 
         if not timestamp:
-            timestamp = rpu.timestamp()
+            timestamp = time.time()
 
         # we always push state history
         update_dict = {'$push': {
@@ -247,7 +247,7 @@ class Update(rpu.Worker):
         # and push bulk if time is up.
         uid       = cu['_id']
         state     = cu.get('state')
-        timestamp = cu.get('state_timestamp', rpu.timestamp())
+        timestamp = cu.get('state_timestamp', time.time())
 
         if 'clone' in uid:
             return
