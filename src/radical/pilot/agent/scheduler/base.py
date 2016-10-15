@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import time
 import threading
 
 import radical.utils as ru
@@ -170,7 +171,7 @@ class AgentSchedulingComponent(rpu.Component):
         """
 
         # Get timestamp to use for recording a successful scheduling attempt
-        before_ts = rpu.prof_utils.timestamp()
+        before_ts = time.time()
 
         # needs to be locked as we try to acquire slots, but slots are freed
         # in a different thread.  But we keep the lock duration short...

@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import time
 import Queue
 import tempfile
 import threading
@@ -439,7 +440,7 @@ class Shell(AgentExecutingComponent):
         # FIXME: verify format of returned pid (\d+)!
         pid           = lines[-1].strip ()
         cu['pid']     = pid
-        cu['started'] = rpu.timestamp()
+        cu['started'] = time.time()
 
         # before we return, we need to clean the
         # 'BULK COMPLETED message from lrun
@@ -593,7 +594,7 @@ class Shell(AgentExecutingComponent):
         self.publish('unschedule', cu)
 
         # record timestamp, exit code on final states
-        cu['finished'] = rpu.timestamp()
+        cu['finished'] = time.time()
 
         if data : cu['exit_code'] = int(data)
         else    : cu['exit_code'] = None

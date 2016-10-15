@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import time
 import math
 
 import radical.utils as ru
@@ -66,7 +67,7 @@ class Torus(AgentSchedulingComponent):
             else:
                 slot_matrix += "+" * self._lrms_cores_per_node
         slot_matrix += "|"
-        return {'timestamp': rpu.timestamp(),
+        return {'timestamp': time.time(),
                 'slotstate': slot_matrix}
 
 
