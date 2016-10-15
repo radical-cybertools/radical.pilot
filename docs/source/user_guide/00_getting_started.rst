@@ -7,8 +7,8 @@ Getting Started
 
 In this section we will walk the reader through the most basic RP application
 example.  After you have worked through this chapter, you will understand how to
-launch a local ComputePilot and use a UnitManager to schedule and run
-ComputeUnits (tasks) on it.
+launch a local ``ComputePilot`` and use a ``UnitManager`` to schedule and run
+``ComputeUnits`` (tasks) on it.
 
 .. note:: The reader is assumed to be familiar with the general RP concepts as
           described in :ref:`chapter_overview` for reference.
@@ -28,18 +28,18 @@ Loading the RP Module, Follow the Application Execution
 -------------------------------------------------------
 
 In order to use RADICAL-Pilot in your Python application, you need to import the
-``radical.pilot`` module (we use the `rp` abbreviation for the module name):
+``radical.pilot`` module (we use the ``rp`` abbreviation for the module name):
 
 .. code-block:: python
 
     import radical.pilot as rp
 
 
-All example application scripts used in this user guide use the `LogReporter`
-facility (of RADICAL-Utils) to print runtime and progress information.  You can
-control that output with the `RADICAL_PILOT_VERBOSE` variable, which can be set
+All example application scripts used in this user guide use the ``LogReporter``
+facility (of ``RADICAL-Utils``) to print runtime and progress information.  You can
+control that output with the ``RADICAL_PILOT_VERBOSE`` variable, which can be set
 to the normal Python logging levels, and to the value `REPORT` to obtain well
-formatted output.  We assume the `REPORT` setting to be used when referencing
+formatted output.  We assume the ``REPORT`` setting to be used when referencing
 any output in this chapter.
 
 .. code-block:: python
@@ -69,7 +69,7 @@ RADICAL-Pilot uses MongoDB can be found in the :ref:`chapter_overview` section.
 
 To create a new Session, the only thing you need to provide is the URL of
 a MongoDB server.  If no MongoDB URL is specified on session creation, RP
-attempts to use the value specified via the `RADICAL_PILOT_DBURL` environment
+attempts to use the value specified via the ``RADICAL_PILOT_DBURL`` environment
 variable.
 
 .. code-block:: python
@@ -87,9 +87,9 @@ variable.
 Creating ComputePilots
 ----------------------
 
-A :class:`radical.pilot.ComputePilot` is responsible for ComputeUnit execution.
-ComputePilots can be launched either locally or remotely, and they can manage
-a single node or a large number of nodes on a cluster.
+A :class:`radical.pilot.ComputePilot` is responsible for ``ComputeUnit`` execution.
+``ComputePilots`` (or short: pilot) can be launched either locally or remotely, and 
+they can manage a single node or a large number of nodes on a cluster.
 
 Pilots are created via a :class:`radical.pilot.PilotManager`, by passing
 a :class:`radical.pilot.ComputePilotDescription`.  The most important elements
@@ -138,8 +138,8 @@ details on the pilot description, please check the :class:`API Documentation
 <radical.pilot.ComputePilotDescription>`.
 
 
-.. warning:: Note that the submitted ComputePilot agent **will not terminate** 
-    when your Python scripts finishes. ComputePilot agents terminate only after
+.. warning:: Note that the submitted pilot agent **will not terminate** 
+    when your Python scripts finishes. Pilot agents terminate only after
     they have reached their ``runtime`` limit, are killed by the target system,
     or if you explicitly cancel them via :func:`radical.pilot.Pilot.cancel`,
     :func:`radical.pilot.PilotManager.cancel_pilots`, or
@@ -149,20 +149,20 @@ details on the pilot description, please check the :class:`API Documentation
 Submitting ComputeUnits
 -----------------------
 
-After you have launched a ComputePilot, you can now generate
-:class:`radical.pilot.ComputeUnit`  objects for the Pilot to execute. You
-can think of a ComputeUnit as something very similar to an operating system
+After you have launched a pilot, you can now generate
+:class:`radical.pilot.ComputeUnit`  objects for the pilot to execute. You
+can think of a ``ComputeUnit`` (or short: unit) as something very similar to an operating system
 process that consists of an ``executable``, a list of ``arguments``, and an
 ``environment`` along with some runtime requirements.
 
-Analogous to ComputePilots, a ComputeUnit is described via a
+Analogous to pilots, a units is described via a
 :class:`radical.pilot.ComputeUnitDescription` object. The mandatory properties
 that you need to define are:
 
    * ``executable`` - the executable to launch
    * ``cores``      - the number of cores required by the executable
 
-Our basic example creates 128 ComputeUnits which each run `/bin/date`:
+Our basic example creates 128 units which each run `/bin/date`:
 
 .. code-block:: python
 
@@ -176,10 +176,11 @@ Our basic example creates 128 ComputeUnits which each run `/bin/date`:
 
 
 Compute units are executed by pilots.  The `:class:radical.pilot.UnitManager`
-class is responsible for routing Compute Units from the application to the
-available pilots.  That Unit manager accepts ComputeUnitDescriptions as we
+class is responsible for routing the units from the application to the
+available pilots.  That Unit manager accepts ``ComputeUnitDescriptions`` as we
 created above and assigns them, according to some scheduling algorithm, to the
-set of available pilots for execution:
+set of available pilots for execution (pilots are made available to a Unit
+manager via the ``add_pilot`` call):
 
 .. code-block:: python
 
@@ -202,7 +203,7 @@ Running the example will result in an output similar to the one shown below:
 
 The runtime can vary significantly, and typically the first run on any resource will be longest.
 This is because the first time RP is  used on a new resource for a specific user,
-it will set up a Python virtualenv for the Pilot to use.  Subsequent runs may
+it will set up a Python virtualenv for the pilot to use.  Subsequent runs may
 update that virtualenv, or may install additional components as needed, but that
 should take less time than its creation.  So please allow for a couple of
 minutes on the first execution (depending on your network connectivity, the
@@ -214,6 +215,6 @@ What's Next?
 ------------
 
 The next user guide section (:ref:`chapter_user_guide_01`) will describe how an
-application can inspect completed compute units for more detailed information,
+application can inspect completed units for more detailed information,
 such as exit codes and stdout/stderr.
 

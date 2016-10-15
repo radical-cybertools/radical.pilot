@@ -1,7 +1,7 @@
 .. _chapter_tutorial_simple_bot:
 
 *******************
-Bag-of-Tasks
+Simple Bag-of-Tasks
 *******************
 
 You might be wondering how to create your own RADICAL-Pilot script or how
