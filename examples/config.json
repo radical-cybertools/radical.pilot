@@ -72,7 +72,7 @@
     "xsede.supermic" : {
         "project"  : "TG-CCR140028",
         "queue"    : "workq",
-        "schema"   : null,
+        "schema"   : "gsissh",
         "cores"    : 64
     },
 

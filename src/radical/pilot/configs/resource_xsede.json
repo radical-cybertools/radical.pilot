@@ -3,17 +3,17 @@
     "stampede": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["ssh", "gsissh", "go"],
+        "schemas"                     : ["gsissh", "ssh", "go"],
         "mandatory_args"              : ["project"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://stampede.tacc.utexas.edu/"
-        },
         "gsissh"                      :
         {
             "job_manager_endpoint"    : "slurm+gsissh://stampede.tacc.utexas.edu:2222/",
             "filesystem_endpoint"     : "gsisftp://stampede.tacc.utexas.edu:2222/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://stampede.tacc.utexas.edu/"
         },
         "go":
         {
@@ -47,17 +47,17 @@
     "stampede_yarn": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["ssh", "gsissh", "go"],
+        "schemas"                     : ["gsissh", "ssh", "go"],
         "mandatory_args"              : ["project"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://stampede.tacc.utexas.edu/"
-        },
         "gsissh"                      :
         {
             "job_manager_endpoint"    : "slurm+gsissh://stampede.tacc.utexas.edu:2222/",
             "filesystem_endpoint"     : "gsisftp://stampede.tacc.utexas.edu:2222/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://stampede.tacc.utexas.edu/"
         },
         "go":
         {
@@ -130,17 +130,17 @@
     "stampede_spark": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["ssh", "gsissh", "go"],
+        "schemas"                     : ["gsissh", "ssh", "go"],
         "mandatory_args"              : ["project"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://stampede.tacc.utexas.edu/"
-        },
         "gsissh"                      :
         {
             "job_manager_endpoint"    : "slurm+gsissh://stampede.tacc.utexas.edu:2222/",
             "filesystem_endpoint"     : "gsisftp://stampede.tacc.utexas.edu:2222/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://stampede.tacc.utexas.edu/"
         },
         "go":
         {
@@ -583,14 +583,14 @@
     "supermic": {
         "description"                 : "SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)",
         "notes"                       : "Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.",
-        "schemas"                     : ["ssh", "gsissh"],
-        "ssh"                         : {
-            "job_manager_endpoint"    : "torque+ssh://supermic.cct-lsu.xsede.org",
-            "filesystem_endpoint"     : "sftp://supermic.cct-lsu.xsede.org/"
-        },
+        "schemas"                     : ["gsissh", "ssh"],
         "gsissh"                      : {
-            "job_manager_endpoint"    : "torque+gsissh://supermic.cct-lsu.xsede.org",
-            "filesystem_endpoint"     : "gsisftp://supermic.cct-lsu.xsede.org/"
+            "job_manager_endpoint"    : "torque+gsissh://supermic.cct-lsu.xsede.org:2222/",
+            "filesystem_endpoint"     : "gsisftp://supermic.cct-lsu.xsede.org:2222/"
+        },
+        "ssh"                         : {
+            "job_manager_endpoint"    : "torque+ssh://supermic.cct-lsu.xsede.org/",
+            "filesystem_endpoint"     : "sftp://supermic.cct-lsu.xsede.org/"
         },
         "default_queue"               : "workq",
         "cores_per_node"              : "20",
