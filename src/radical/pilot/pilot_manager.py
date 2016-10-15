@@ -364,6 +364,19 @@ class PilotManager(rpu.Component):
         pilots     = list()
         pilot_docs = list()
         for descr in descriptions :
+
+            if not pd.runtime:
+                raise ValueError('pilot runtime must be defined')
+
+            if pd.runtime <= 0:
+                raise ValueError('pilot runtime must be positive')
+
+            if not pd.cores:
+                raise ValueError('pilot core size must be defined')
+
+            if not pd.resource:
+                raise ValueError('pilot target resource must be defined')
+
             pilot = ComputePilot(pmgr=self, descr=descr)
             pilots.append(pilot)
             pilot_doc = pilot.as_dict()
@@ -381,7 +394,8 @@ class PilotManager(rpu.Component):
         # initial state advance to 'NEW'
         # FIXME: we should use update_pilot(), but that will not trigger an
         #        advance, since the state did not change.  We would then miss
-        #        the profile entry for the advance to NEW...
+        #        the profile entry for the advance to NEW.  So we here basically
+        #        only trigger the profile entry for NEW.
         self.advance(pilot_docs, state=rps.NEW, publish=False, push=False)
 
         if self._session._rec:

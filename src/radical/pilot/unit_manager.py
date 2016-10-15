@@ -658,6 +658,19 @@ class UnitManager(rpu.Component):
         if len(descriptions) == 0:
             raise ValueError('cannot submit no unit descriptions')
 
+        for ud in unit_descriptions:
+
+            if not ud.executable:
+                raise ValueError('compute unit executable must be defined')
+
+            if not ud.cores:
+                raise ValueError('compute unit core count must be defined')
+
+            if float(ud.cores) != int(ud.cores):
+                raise ValueError('compute unit core count must be an integer')
+
+            if int(ud.cores) <= 0:
+                raise ValueError('compute unit core count must be positive')
 
         self._log.report.info('<<submit %d unit(s)\n\t' % len(descriptions))
 
