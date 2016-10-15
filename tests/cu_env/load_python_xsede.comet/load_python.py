@@ -32,9 +32,6 @@ if __name__ == '__main__':
 	# Create a new session. No need to try/except this: if session creation
 	# fails, there is not much we can do anyways...
 	session = rp.Session()
-	c=rp.Context('ssh')
-	c.user_id = 'vivek91'
-	session.add_context(c)
 
 	# all other pilot code is now tried/excepted.  If an exception is caught, we
 	# can rely on the session object to exist and be valid, and we can thus tear
