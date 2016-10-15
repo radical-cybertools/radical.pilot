@@ -67,8 +67,12 @@ class Spark(LaunchMethod):
             if not os.path.isfile(spark_tar):
                 raise RuntimeError("Spark wasn't downloaded properly. Please try again")
 
-            os.system("tar -xzf" + spark_tar + "; rm " + spark_tar ) #untar and delete tarball 
-            os.system("mv spark-1.5.2-bin-hadoop2.6 spark-1.5.2")
+            try:
+            	subprocess.check_call("tar -xzf" + spark_tar + "; rm " + spark_tar ) #untar and delete tarball 
+            	subprocess.check_call("mv spark-1.5.2-bin-hadoop2.6 spark-1.5.2")
+            except  Exception as e:
+	        	raise RuntimeError("Scala wasn't installed properly. Please try again. %s " % e )
+
             spark_home = os.getcwd() + '/spark-' + VERSION
 
             #-------------------------------------------------------------------
@@ -97,14 +101,15 @@ class Spark(LaunchMethod):
             # if no installation found install scala 2.10.4
             scala_home=ru.which('scala')
             if not scala_home:
-                os.system('cd')
-                os.system('wget http://www.scala-lang.org/files/archive/scala-2.10.4.tgz')
-                if not os.path.isfile('scala-2.10.4.tgz'):
-                    raise RuntimeError("Scala wasn't downloaded properly. Please try again")
-                os.system('tar -xvf scala-2.10.4.tgz ; cd scala-2.10.4 ; export PATH=`pwd`/bin:$PATH; export SCALA_HOME=`pwd`')
-                os.system('rm scala-2.10.4.tgz')
-                scala_home = os.getcwd() + '/scala-2.10.4'
-                os.system('cd')
+            	try:
+	                subprocess.check_call('cd')
+	                subprocess.check_call('wget http://www.scala-lang.org/files/archive/scala-2.10.4.tgz')
+	                subprocess.check_call('tar -xvf scala-2.10.4.tgz ; cd scala-2.10.4 ; export PATH=`pwd`/bin:$PATH; export SCALA_HOME=`pwd`')
+	                subprocess.system('rm scala-2.10.4.tgz')
+	                scala_home = os.getcwd() + '/scala-2.10.4'
+	                subprocess.system('cd')
+	            except  Exception as e:
+	            	raise RuntimeError("Scala wasn't installed properly. Please try again. %s " % e )
 
 
             if lrms.node_list[0]!='localhost':
@@ -269,7 +274,7 @@ class Spark(LaunchMethod):
         spark_configurations = " "
         # if the user hasn't specified another ui port use this one
         if not 'spark.ui.port' in command:
-            spark_configurations += ' --conf spark.ui.port=%d '  % (random.randint(4020,4180))  # can i use this range? TODO
+            spark_configurations += ' --conf spark.ui.port=%d '  % (random.randint(4020,4180))  
         
         spark_command = self.launch_command + '/' + task_exec + '  ' + spark_configurations + ' '  +  command
 
