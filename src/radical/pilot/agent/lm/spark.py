@@ -145,7 +145,7 @@ class Spark(LaunchMethod):
 
             spark_env_file = open(spark_home + "/conf/spark-env.sh",'w')
             #load in the spark enviroment of master and slaves the
-            configurations of the machine
+            #configurations of the machine
             if master_ip!='localhost':
                 for config in config['pre_bootstrap_1']:
                     spark_env_file.write(config + '\n')
