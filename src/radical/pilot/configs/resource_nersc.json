@@ -56,8 +56,6 @@
         ],
         "pre_bootstrap_2"             : [
             "export HOME=$HOME",
-            "export PATH=$PATH",
-            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH",
             "export LD_PRELOAD=/lib64/librt.so.1"
             # Workaround for ZMQ runtime failure
         ],
@@ -160,8 +158,6 @@
         ],
         "pre_bootstrap_2"             : [
             "export HOME=$HOME",
-            "export PATH=$PATH",
-            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH",
             "export LD_PRELOAD=/lib64/librt.so.1"
             # Workaround for ZMQ runtime failure
         ],

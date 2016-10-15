@@ -36,9 +36,6 @@
                                          "source ~train00/ssi_sourceme",
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
-        "pre_bootstrap_2"             : ["export PATH=$PATH",
-                                         "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
-                                        ],
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
@@ -83,9 +80,6 @@
                                          "source ~train00/ssi_sourceme",
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
-        "pre_bootstrap_2"             : ["export PATH=$PATH",
-                                         "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
-                                        ],
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
@@ -124,9 +118,6 @@
         "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap_1"             : ["module load python/2.7.9",
                                          "export TACC_DELETE_FILES=TRUE"
-                                        ],
-        "pre_bootstrap_2"             : ["export PATH=$PATH",
-                                         "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
                                         ],
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/work", "$WORK", "$DATA"],
@@ -323,10 +314,6 @@
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap_1"             : ["module load python"],
-        "pre_bootstrap_2"             : [
-            "export PATH=$PATH",
-            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
-        ],
         #"default_remote_workdir"      : "/oasis/scratch/comet/$USER/temp_project",
         #"valid_roots"                 : ["/oasis/scratch/comet"],
         "valid_roots"                 : ["/home"],
@@ -366,10 +353,6 @@
             "module load openmpi",
             "module load mpi4py"
         ],
-      # "pre_bootstrap_2"             : [
-      #     "export PATH=$PATH",
-      #     "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
-      # ],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_comet",

@@ -47,9 +47,7 @@
             "module use --append /projects/sciteam/gkd/modules",
             "module load openmpi"
         ],
-        "pre_bootstrap_2"             : [
-            "export HOME=$HOME"
-        ],
+        "pre_bootstrap_2"             : ["export HOME=$HOME"],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
@@ -83,9 +81,7 @@
             "module use --append /projects/sciteam/gkd/modules",
             "module load openmpi"
         ],
-        "pre_bootstrap_2"             : [
-            "export HOME=$HOME"
-        ],
+        "pre_bootstrap_2"             : ["export HOME=$HOME"],
         "default_remote_workdir"      : "$HOME/scratch/",
         "valid_roots"                 : ["/scratch/"],
         "rp_version"                  : "local",

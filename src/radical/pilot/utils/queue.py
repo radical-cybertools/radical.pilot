@@ -396,10 +396,15 @@ class Queue(mp.Process):
         if not self._role == QUEUE_INPUT:
             raise RuntimeError("queue %s (%s) can't put()" % (self._qname, self._role))
 
+<<<<<<< HEAD
       # if self._debug:
       #     self._log.debug("-> %s", pprint.pformat(msg))
         data = msgpack.packb(msg) 
         _uninterruptible(self._q.send, data)
+=======
+      # self._log.debug("-> %s", pprint.pformat(msg))
+        _uninterruptible(self._q.send_json, msg)
+>>>>>>> a530025
 
 
     # --------------------------------------------------------------------------
@@ -411,10 +416,15 @@ class Queue(mp.Process):
 
         _uninterruptible(self._q.send, 'request')
 
+<<<<<<< HEAD
         data = _uninterruptible(self._q.recv)
         msg  = msgpack.unpackb(data) 
       # if self._debug:
       #     self._log.debug("<- %s", pprint.pformat(msg))
+=======
+        msg = _uninterruptible(self._q.recv_json)
+      # self._log.debug("<- %s", pprint.pformat(msg))
+>>>>>>> a530025
         return msg
 
 
@@ -446,8 +456,12 @@ class Queue(mp.Process):
                 data = _uninterruptible(self._q.recv)
                 msg  = msgpack.unpackb(data) 
                 self._requested = False
+<<<<<<< HEAD
               # if self._debug:
               #     self._log.debug("<< %s", pprint.pformat(msg))
+=======
+              # self._log.debug("<< %s", pprint.pformat(msg))
+>>>>>>> a530025
                 return msg
 
             else:
