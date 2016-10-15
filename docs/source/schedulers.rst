@@ -46,8 +46,8 @@ communication roundtrip time between unit manager and pilot agent).
 
 In general we thus recomment to *not* use backfilling
 
-  - if only one pilot exists
-  - for large numbers of very short-running CUs
+  - for a single pilot; 
+  - for large numbers of short-running CUs.
 
 
 The backfilling scheduler (BF) will only dispatch units to pilot agents once the
