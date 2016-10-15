@@ -202,7 +202,7 @@ class Session(rs.Session):
             self._log.report.error(">>err\n")
             self._log.exception('session create failed')
             raise RuntimeError("Couldn't create new session (database URL '%s' incorrect?): %s" \
-                            % (self._dburl, ex))  
+                            % (dburl, ex))  
 
         # FIXME: make sure the above code results in a usable session on
         #        reconnect
