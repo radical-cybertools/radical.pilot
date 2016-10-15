@@ -169,7 +169,6 @@ class Spark(LaunchMethod):
         # dict.  That lm_info dict will be attached to the scheduler's lrms_info
         # dict, and will be passed around as part of the opaque_slots structure,
         # so it is available on all LM create_command calls.
-        #TODO fix the dictionary #george
         lm_info = {'spark_home'    : spark_home,
                    'lm_detail'     : spark_master_string,
                    'master_ip'     : master_ip,
