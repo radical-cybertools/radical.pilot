@@ -129,7 +129,6 @@ class Session(rs.Session):
         self._logdir = self._cfg['logdir']
         self._log    = self._get_logger(self._cfg['owner'], self._cfg['debug'])
 
-
         if not dburl:
             dburl = os.getenv("RADICAL_PILOT_DBURL", None)
 
