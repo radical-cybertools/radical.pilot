@@ -332,7 +332,7 @@ class ComputePilot(object):
         resource_details = {
             'nodes':          pilot_json['nodes'],
             'cores_per_node': pilot_json['cores_per_node'],
-            'spark_master_url': pilot_json['lm_detail']
+            'lm_detail': pilot_json['lm_detail']
         }
         return resource_details
 >>>>>>> d64b253
