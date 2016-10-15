@@ -68,7 +68,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 1   # number of units to run
+        n = 2   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -77,8 +77,9 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cu.pre_exec = ['env', 'module load netcdf']
-            cud.executable = 'env'
+            cud.pre_exec   = ['module load netcdf']
+            cud.executable = 'echo'
+            cud.arguments  = ['$TACC_NETCDF_INC']
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -86,11 +87,15 @@ if __name__ == '__main__':
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        umgr.submit_units(cuds)
+        units = umgr.submit_units(cuds)
 
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
+
+        for unit in units:
+            print '%s : %s : %s' % (unit.uid, unit.state, unit.stdout)
+            assert('netcdf' in unit.stdout)
     
 
     except Exception as e:
