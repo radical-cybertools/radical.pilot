@@ -320,26 +320,27 @@ class ComputePilot(object):
     @property
     def sandbox(self):
         """
+<<<<<<< HEAD
         Returns the full sandbox URL of this pilot, if that is already
         known, or 'None' otherwise.
-
-<<<<<<< HEAD
-        **Returns:**
-            * A URL (radical.utils.Url).
 =======
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def spark_master_url(self):
-        """Returns the master url of apache spark
-        """
         # Check if this instance is valid
         if not self._uid:
             return None
 
         pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
-        return pilot_json.get('lm_detail')
+        resource_details = {
+            'nodes':          pilot_json['nodes'],
+            'cores_per_node': pilot_json['cores_per_node'],
+            'spark_master_url': pilot_json['lm_detail']
+        }
+        return resource_details
+>>>>>>> d64b253
 
+<<<<<<< HEAD
+        **Returns:**
+            * A URL (radical.utils.Url).
+=======
     # -------------------------------------------------------------------------
     #
     @property
