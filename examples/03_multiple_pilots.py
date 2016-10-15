@@ -6,7 +6,9 @@ __license__   = 'MIT'
 import os
 import sys
 
-os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
+verbose  = os.environ.get('RADICAL_PILOT_VERBOSE', 'REPORT')
+rp_dburl = os.environ.get('RADICAL_PILOT_DBURL',
+                          'mongodb://rp:rp@ds015335.mlab.com:15335/rp')
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -24,7 +26,7 @@ import radical.utils as ru
 if __name__ == '__main__':
 
     # we use a reporter class for nicer output
-    report = ru.LogReporter(name='radical.pilot')
+    report = ru.LogReporter(name='radical.pilot', level=verbose)
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
@@ -33,7 +35,7 @@ if __name__ == '__main__':
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
-    session = rp.Session()
+    session = rp.Session(database_url=rp_dburl)
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
