@@ -90,7 +90,7 @@ class Spark(LaunchMethod):
                     java_home = jpos[0]
              
             else:
-                java_home = os.environ['JAVA_HOME']   
+                java_home = os.environ.get('JAVA_HOME')
                 if not java_home:
                     try:
                         java_home = subprocess.check_output("/usr/libexec/java_home").split()[0]
