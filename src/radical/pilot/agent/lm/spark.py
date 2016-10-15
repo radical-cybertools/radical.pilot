@@ -80,7 +80,7 @@ class Spark(LaunchMethod):
                 subprocess.check_call('rm scala-2.10.4.tgz'.split())
                 scala_home = os.getcwd() + '/scala-2.10.4' 
             except  Exception as e:
-            	raise RuntimeError("Scala wasn't installed properly. Please try again. %s " % e )
+                raise RuntimeError("Scala wasn't installed properly. Please try again. %s " % e )
 
         if lrms.node_list[0]!='localhost':
             hostname = subprocess.check_output('/bin/hostname').split(lrms.node_list[0])[1].split('\n')[0]
