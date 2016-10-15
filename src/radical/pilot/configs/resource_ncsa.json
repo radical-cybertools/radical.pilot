@@ -125,7 +125,7 @@
         "default_remote_workdir"      : "/scratch/training/$USER",
         "valid_roots"                 : ["/scratch/training"],
         "rp_version"                  : "installed",
-        "virtenv"                     : "/scratch/training/instr004/shared_ve",
+        "virtenv"                     : "/scratch/training/instr004/radical.pilot.sandbox/ve_bw",
         "virtenv_mode"                : "use",
         "stage_cacerts"               : "True",
         "python_dist"                 : "default"
