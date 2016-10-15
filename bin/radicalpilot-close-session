@@ -238,7 +238,6 @@ if __name__ == '__main__':
     if  not options.url: 
         options.url = _DEFAULT_DBURL 
 
-
     mode    = options.mode 
     url     = options.url
     session = options.session

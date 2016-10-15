@@ -40,7 +40,6 @@ def bson2json (bson_data) :
 def get_session_ids(db) :
 
     # this is not bein cashed, as the session list can and will change freqently
-
     return db.collection_names(include_system_collections=False)
 
 

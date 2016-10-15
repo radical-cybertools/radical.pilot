@@ -199,5 +199,5 @@ pilot times out
 tmp:
 ----
   - pilots canceled but state is not picked up during shutdown
-
+  - always get DEFAULT_DBURL from session config (use a  class method on session)
 
