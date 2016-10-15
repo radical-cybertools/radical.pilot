@@ -82,7 +82,7 @@
     },
 
 	"localhost_spark": {
-        "description"                 : "Your local machine.",
+        "description"                 : "Your local machine gets spark.",
         "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
         "schemas"                     : ["local", "ssh"],
         "ssh"                         :
@@ -105,7 +105,37 @@
         "mpi_launch_method"           : "MPIEXEC",
         "rp_version"                  : "debug",
         "virtenv"                     : "%(global_sandbox)s/ve_localhost",
-        "virtenv_mode"                : "create"
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
+    },
+
+
+	"localhost_spark_ana": {
+        "description"                 : "Your local machine gets spark.",
+        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
+        "schemas"                     : ["local", "ssh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "ssh://localhost/",
+            "filesystem_endpoint"     : "sftp://localhost/"
+        },
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_remote_workdir"      : "$HOME",
+        "lrms"                        : "FORK",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "FORK",
+        "task_launch_method"          : "SPARK",
+        "mpi_launch_method"           : "MPIEXEC",
+        "rp_version"                  : "debug",
+        "virtenv"                     : "%(global_sandbox)s/ve_localhost",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "anaconda"
     }
 }
 
