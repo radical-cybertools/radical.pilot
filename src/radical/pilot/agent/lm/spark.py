@@ -44,8 +44,8 @@ class Spark(LaunchMethod):
 	        except  Exception as e:
 	        	raise RuntimeError("Spark wasn't installed properly. Please try again. %s " % e )
 	        spark_home = os.getcwd() + '/spark-' + VERSION
-	    else:
-	    	spark_home = os.environ['SPARK_HOME']
+        else:
+	        spark_home = os.environ['SPARK_HOME']
         
         #-------------------------------------------------------------------
         platform_os = sys.platform
@@ -210,12 +210,12 @@ class Spark(LaunchMethod):
                     % (self.name, opaque_slots))
 
 
-        if 'nodename' not in opaque_slots['lm_info']:
-            raise RuntimeError('nodename not in lm_info for %s: %s' \
-                    % (self.name, opaque_slots))
+        # if 'nodename' not in opaque_slots['lm_info']:
+        #     raise RuntimeError('nodename not in lm_info for %s: %s' \
+        #             % (self.name, opaque_slots))
 
         master_ip   = opaque_slots['lm_info']['master_ip']
-        client_node = opaque_slots['lm_info']['nodename']
+        #client_node = opaque_slots['lm_info']['nodename']
         #spark_home = opaque_slots['lm_info']['spark_home']
 
 
