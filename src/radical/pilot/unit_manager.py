@@ -280,8 +280,8 @@ class UnitManager(rpu.Component):
                 if unit['description'].get('restartable'):
                     self._log.debug('unit %s is  restartable', unit['uid'])
                     unit['restarted'] = True
-                    descr = rpcud.ComputeUnitDescription(unit['description'])
-                    to_restart.append(descr)
+                    ud = rpcud.ComputeUnitDescription(unit['description'])
+                    to_restart.append(ud)
                     # FIXME: should we increment some restart counter in the
                     #        description?
                     # FIXME: we could submit the units individually, and then
@@ -658,7 +658,11 @@ class UnitManager(rpu.Component):
         if len(descriptions) == 0:
             raise ValueError('cannot submit no unit descriptions')
 
-        for ud in unit_descriptions:
+        self._log.report.info('<<submit %d unit(s)\n\t' % len(descriptions))
+
+        # we return a list of compute units
+        units = list()
+        for ud in descriptions:
 
             if not ud.executable:
                 raise ValueError('compute unit executable must be defined')
@@ -672,12 +676,7 @@ class UnitManager(rpu.Component):
             if int(ud.cores) <= 0:
                 raise ValueError('compute unit core count must be positive')
 
-        self._log.report.info('<<submit %d unit(s)\n\t' % len(descriptions))
-
-        # we return a list of compute units
-        units = list()
-        for descr in descriptions :
-            unit = ComputeUnit.create(umgr=self, descr=descr)
+            unit = ComputeUnit.create(umgr=self, descr=ud)
             units.append(unit)
 
             # keep units around
@@ -686,7 +685,7 @@ class UnitManager(rpu.Component):
 
             if self._session._rec:
                 import radical.utils as ru
-                ru.write_json(descr.as_dict(), "%s/%s.batch.%03d.json" \
+                ru.write_json(ud.as_dict(), "%s/%s.batch.%03d.json" \
                         % (self._session._rec, unit.uid, self._rec_id))
 
             self._log.report.progress()

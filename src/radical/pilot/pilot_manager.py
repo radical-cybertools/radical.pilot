@@ -363,7 +363,7 @@ class PilotManager(rpu.Component):
         # create the pilot instance
         pilots     = list()
         pilot_docs = list()
-        for descr in descriptions :
+        for pd in descriptions :
 
             if not pd.runtime:
                 raise ValueError('pilot runtime must be defined')
@@ -377,7 +377,7 @@ class PilotManager(rpu.Component):
             if not pd.resource:
                 raise ValueError('pilot target resource must be defined')
 
-            pilot = ComputePilot(pmgr=self, descr=descr)
+            pilot = ComputePilot(pmgr=self, descr=pd)
             pilots.append(pilot)
             pilot_doc = pilot.as_dict()
             pilot_docs.append(pilot_doc)
@@ -387,7 +387,7 @@ class PilotManager(rpu.Component):
                 self._pilots[pilot.uid] = pilot
 
             if self._session._rec:
-                ru.write_json(descr.as_dict(), "%s/%s.batch.%03d.json" \
+                ru.write_json(pd.as_dict(), "%s/%s.batch.%03d.json" \
                         % (self._session._rec, pilot.uid, self._rec_id))
             self._log.report.progress()
 
