@@ -42,7 +42,7 @@ class Spark(LaunchMethod):
 
         # If the LRMS used is not SPARK the namenode url is going to be
         # the first node in the list and the port is the default one, else 
-        # it is the one that the YARN LRMS returns
+        # it is the one that the SPARK LRMS returns
         spark_home = None   
         if lrms.name == 'SPARKLRMS':
             logger.info("Found SPARK ")
@@ -68,14 +68,14 @@ class Spark(LaunchMethod):
             logger.info("Download: %s to %s"%(SPARK_DOWNLOAD_URL, download_destination))
             opener.retrieve(SPARK_DOWNLOAD_URL, download_destination)
             spark_tar = "spark-" + VERSION + ".tar.gz"
+            if not os.path.isfile(spark_tar):
+                raise RuntimeError("Spark wasn't downloaded properly. Please try again")
+
             os.system("tar -xzf" + spark_tar + "; rm " + spark_tar ) #untar and delete tarball 
             os.system("mv spark-1.5.2-bin-hadoop2.6 spark-1.5.2")
             spark_home = os.getcwd() + '/spark-' + VERSION
 
             #-------------------------------------------------------------------
-            # TODO: need to find a correct way to locate java_home
-            # Solution to find Java's home folder: 
-            # http://stackoverflow.com/questions/1117398/java-home-directory
             platform_os = sys.platform
             if platform_os == "linux" or platform_os == "linux2":
                 java = ru.which('java')
@@ -88,9 +88,9 @@ class Spark(LaunchMethod):
                     java_home = jpos[0][:jpos[0].find('jre')]
                 else:
                     java_home = jpos[0]
-            
+             
             else:
-                java_home = os.environ['JAVA_HOME']
+                java_home = os.environ['JAVA_HOME']   
                 if not java_home:
                     try:
                         java_home = subprocess.check_output("/usr/libexec/java_home").split()[0]
@@ -103,15 +103,14 @@ class Spark(LaunchMethod):
             if not scala_home:
                 os.system('cd')
                 os.system('wget http://www.scala-lang.org/files/archive/scala-2.10.4.tgz')
+                if not os.path.isfile('scala-2.10.4.tgz'):
+                    raise RuntimeError("Scala wasn't downloaded properly. Please try again")
                 os.system('tar -xvf scala-2.10.4.tgz ; cd scala-2.10.4 ; export PATH=`pwd`/bin:$PATH; export SCALA_HOME=`pwd`')
                 os.system('rm scala-2.10.4.tgz')
                 scala_home = os.getcwd() + '/scala-2.10.4'
                 os.system('cd')
 
 
-            # Ips of the worker nodes ; TODO: Find out where these IPs are!!!
-            # If I need workers then I need to deploy spark to all workers. Hence, I guess I need to install the requirements
-            # to all workers.
             if lrms.node_list[0]!='localhost':
                 hostname = subprocess.check_output('/bin/hostname').split(lrms.node_list[0])[1].split('\n')[0]
             else:
@@ -129,7 +128,7 @@ class Spark(LaunchMethod):
 
             spark_conf_slaves.close()
 
-            ## put Master Ip in spark-env.sh file - Almost all options can be configured using this file
+            ## put Master Ip in spark-env.sh file - 
 
             python_path = os.getenv('PYTHONPATH')
             python = ru.which('python')
@@ -151,21 +150,11 @@ class Spark(LaunchMethod):
                 for config in cfg['resource_cfg']['pre_bootstrap_1']:
                     spark_env_file.write(config + '\n')
 
-                #spark_env_file.write('module load intel/15.0.2\n')
-                #spark_env_file.write('module load mvapich2/2.1\n')
-                #spark_env_file.write('module load xalt/0.6\n')
-                #spark_env_file.write('module load TACC\n')
-                #spark_env_file.write('module load python/2.7.3-epd-7.3.2\n')
-
             spark_env_file.write('export SPARK_MASTER_IP=' + master_ip +"\n")
             spark_env_file.write('export SCALA_HOME='+ scala_home+ "\n")
             spark_env_file.write('export JAVA_HOME=' + java_home + "\n")
-            #spark_env_file.write('export PYTHONPATH='+'/opt/apps/python/2.7.3-epd-7.3.2/'+':$PYTHONPATH\n')
-            #spark_env_file.write('export PYSPARK_PYTHON='+'/opt/apps/python/2.7.3-epd-7.3.2/bin/python'+'\n')
             spark_env_file.write('export SPARK_LOG_DIR='+os.getcwd()+'/spark-logs'+'\n')
 
-            ##Do I have to put the enviroment variables of java, scala, path and pythonpath in spark_env file?
-            ## TODO: might not needed. I have to launch an app to check whether is required
             spark_env_file.close()
 
 
@@ -207,13 +196,9 @@ class Spark(LaunchMethod):
     #
     def _configure(self):
 
-        # Single Node configuration
-        #self._log.info('Getting YARN app')
-        #os.system('wget https://dl.dropboxusercontent.com/u/28410803/Pilot-YARN-0.1-jar-with-dependencies.jar')
         self._log.info(self._cfg['lrms_info']['lm_info'])
         self.launch_command = self._cfg['lrms_info']['lm_info']['launch_command']
         self._log.info('SPARK was called')
-        
 
     # --------------------------------------------------------------------------
     #
@@ -261,13 +246,6 @@ class Spark(LaunchMethod):
         else:
             env_string = ''
 
-        #app_name = '-appname '+ cud['_id']
-        # Construct the ncores_string which is the number of cores used by the
-        # container to run the script
-        #if task_cores:
-        #    ncores_string = '-container_vcores '+str(task_cores)
-        #else:
-        #    ncores_string = ''
 
         if task_args:
             command = " ".join(task_args)
