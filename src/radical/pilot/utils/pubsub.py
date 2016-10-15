@@ -139,82 +139,8 @@ class Pubsub(mp.Process):
                 raise RuntimeError('wildcard port (*) required for bridge addresses (%s)' \
                                 % self._addr)
 
-<<<<<<< HEAD
             self._pqueue = mp.Queue()
             self.start()
-=======
-            # ------------------------------------------------------------------
-            def _bridge(addr, pqueue):
-
-                try:
-                    import setproctitle as spt
-                    spt.setproctitle('radical.pilot %s' % self._name)
-                except Exception as e:
-                    pass
-
-                try:
-                    # reset signal handlers to their default
-                    signal.signal(signal.SIGINT,  signal.SIG_DFL)
-                    signal.signal(signal.SIGTERM, signal.SIG_DFL)
-                    signal.signal(signal.SIGALRM, signal.SIG_DFL)
-
-                    self._log.info('start bridge %s on %s', self._name, addr)
-
-                    ctx = zmq.Context()
-                    _in = ctx.socket(zmq.XSUB)
-                    _in.linger = _LINGER_TIMEOUT
-                    _in.hwm    = _HIGH_WATER_MARK
-                    _in.bind(addr)
-
-                    _out = ctx.socket(zmq.XPUB)
-                    _out.linger = _LINGER_TIMEOUT
-                    _out.hwm    = _HIGH_WATER_MARK
-                    _out.bind(addr)
-
-                    # communicate the bridge ports to the parent process
-                    _in_port  =  _in.getsockopt(zmq.LAST_ENDPOINT)
-                    _out_port = _out.getsockopt(zmq.LAST_ENDPOINT)
-
-                    pqueue.put([_in_port, _out_port])
-
-                    self._log.info('bound bridge %s to %s : %s', self._name, _in_port, _out_port)
-
-                    # start polling for messages
-                    _poll = zmq.Poller()
-                    _poll.register(_in,  zmq.POLLIN)
-                    _poll.register(_out, zmq.POLLIN)
-
-                    while True:
-
-                        _socks = dict(_uninterruptible(_poll.poll, timeout=1000)) # timeout in ms
-
-                        if _in in _socks:
-                            if _USE_MULTIPART:
-                                msg = _uninterruptible(_in.recv_multipart, flags=zmq.NOBLOCK)
-                                _uninterruptible(_out.send_multipart, msg)
-                            else:
-                                msg = _uninterruptible(_in.recv, flags=zmq.NOBLOCK)
-                                _uninterruptible(_out.send, msg)
-                          # self._log.debug("-> %s", msg)
-
-
-                        if _out in _socks:
-                            if _USE_MULTIPART:
-                                msg = _uninterruptible(_out.recv_multipart)
-                                _uninterruptible(_in.send_multipart, msg)
-                            else:
-                                msg = _uninterruptible(_out.recv)
-                                _uninterruptible(_in.send, msg)
-                          # self._log.debug("<- %s", msg)
-
-                except Exception as e:
-                    self._log.exception('bridge error: %s', e)
-            # ------------------------------------------------------------------
-
-            pqueue   = mp.Queue()
-            self._p  = mp.Process(target=_bridge, args=[self._addr, pqueue])
-            self._p.start()
->>>>>>> a530025
 
             try:
                 self._bridge_in, self._bridge_out = self._pqueue.get(True, _BRIDGE_TIMEOUT)
@@ -425,7 +351,6 @@ class Pubsub(mp.Process):
         data  = msgpack.packb(msg) 
 
         if _USE_MULTIPART:
-<<<<<<< HEAD
           # if self._debug:
           #     self._log.debug("-> %s", ([topic, pprint.pformat(msg)]))
             _uninterruptible(self._q.send_multipart, [topic, data])
@@ -433,13 +358,6 @@ class Pubsub(mp.Process):
         else:
           # if self._debug:
           #     self._log.debug("-> %s %s", topic, pprint.pformat(msg))
-=======
-          # self._log.debug("-> %s", str([topic, data]))
-            _uninterruptible(self._q.send_multipart, [topic, data])
-
-        else:
-          # self._log.debug("-> %s %s", topic, data)
->>>>>>> a530025
             _uninterruptible(self._q.send, "%s %s" % (topic, data))
 
 
@@ -457,14 +375,9 @@ class Pubsub(mp.Process):
             raw = _uninterruptible(self._q.recv)
             topic, data = raw.split(' ', 1)
 
-<<<<<<< HEAD
         msg = msgpack.unpackb(data) 
       # if self._debug:
       #     self._log.debug("<- %s", ([topic, pprint.pformat(msg)]))
-=======
-        msg = json.loads(data)
-      # self._log.debug("<- %s", str([topic, pprint.pformat(msg)]))
->>>>>>> a530025
         return [topic, msg]
 
 

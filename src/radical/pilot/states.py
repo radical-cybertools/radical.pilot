@@ -11,6 +11,7 @@ FAILED   = 'FAILED'
 CANCELED = 'CANCELED'
 
 # shortcut
+INITIAL  = [NEW]
 FINAL    = [DONE, FAILED, CANCELED]
 
 
@@ -233,7 +234,6 @@ def _unit_state_collapse(states):
         if _unit_state_values[state] > _unit_state_values[ret]:
             ret = state
     return ret
-
 
 
 # -----------------------------------------------------------------------------
