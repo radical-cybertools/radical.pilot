@@ -342,7 +342,7 @@ class PilotManagerController(threading.Thread):
                             self.call_callbacks(pilot_id, new_state)
 
                     if new_state in [ACTIVE]:
-                        logger.info('pilot became active: %s [%s]', \
+                        logger.info('pilot %s is active: %s [%s]', pilot_id, \
                                 pilot.get('lm_info'), pilot.get('lm_detail')) 
 
                     # If the state is 'DONE', 'FAILED' or 'CANCELED', we also
