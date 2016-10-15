@@ -92,9 +92,9 @@
     },
 
     "xsede.gordon" : {
-        "project"  : null,
+        "project"  : "unc100",
         "queue"    : "normal",
-        "schema"   : null,
+        "schema"   : "gsissh",
         "cores"    : 64
     },
 
