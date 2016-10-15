@@ -5,10 +5,10 @@
 Getting Started
 ***************
 
-In this section we will walk you through the basics of using  RP. 
-After you have worked through this chapter, you will understand how to
-launch a local Pilot and use a UnitManager to schedule and run
-ComputeUnits (tasks) on it.
+In this section we will walk you through the basics of using  RP.  After you
+have worked through this chapter, you will understand how to launch a local
+``ComputePilot`` and use a ``UnitManager`` to schedule and run ``ComputeUnits``
+(tasks) on it.
 
 .. note:: The reader is assumed to be familiar with the general RP concepts as
           described in :ref:`chapter_overview` for reference.
@@ -16,6 +16,9 @@ ComputeUnits (tasks) on it.
 .. note:: This chapter assumes that you have successfully installed
           RADICAL-Pilot, and also configured access to the resources you intent
           to use for the examples (see chapter :ref:`chapter_installation`).
+
+.. note:: We colloquially refer to ``ComputePilot`` as `pilot`, and to
+          ``ComputeUnit`` as `unit`.
 
 You can download the basic :download:`00_getting_started.py
 <../../../examples/00_getting_started.py>`.  The text below will explain the
@@ -35,10 +38,10 @@ in your Python script or application:
     import radical.pilot as rp
 
 
-All example application scripts used in this user guide use the ``LogReporter``
-facility (of ``RADICAL-Utils``) to print runtime and progress information.  You can
+All example scripts used in this user guide use the ``LogReporter``
+facility (of RADICAL-Utils) to print runtime and progress information.  You can
 control that output with the ``RADICAL_PILOT_VERBOSE`` variable, which can be set
-to the normal Python logging levels, and to the value `REPORT` to obtain well
+to the normal Python logging levels, and to the value ``REPORT`` to obtain well
 formatted output.  We assume the ``REPORT`` setting to be used when referencing
 any output in this chapter.
 
@@ -84,16 +87,16 @@ variable.
    out the database entries of the session.
 
 
-Creating ComputePilots (or just Pilots)
----------------------------------------
+Creating ComputePilots
+----------------------
 
 A :class:`radical.pilot.ComputePilot` is responsible for ``ComputeUnit`` execution.
-``ComputePilots`` (or short: pilot) can be launched either locally or remotely, and 
+Pilots can be launched either locally or remotely, and 
 they can manage a single node or a large number of nodes on a cluster.
 
 Pilots are created via a :class:`radical.pilot.PilotManager`, by passing
 a :class:`radical.pilot.ComputePilotDescription`.  The most important elements
-of the ComputePilot description are
+of the ``ComputePilotDescription`` are
 
     * `resource`: a label which specifies the target resource to run the pilot
       on, ie. the location of the pilot;
@@ -151,7 +154,7 @@ Submitting ComputeUnits
 
 After you have launched a pilot, you can now generate
 :class:`radical.pilot.ComputeUnit`  objects for the pilot to execute. You
-can think of a ``ComputeUnit`` (or short: unit) as something very similar to an operating system
+can think of a ``ComputeUnit`` as something very similar to an operating system
 process that consists of an ``executable``, a list of ``arguments``, and an
 ``environment`` along with some runtime requirements.
 
@@ -175,12 +178,12 @@ Our basic example creates 128 units which each run `/bin/date`:
             cuds.append(cud)
 
 
-ComputeUnits are executed by pilots.  The `:class:radical.pilot.UnitManager`
-class is responsible for routing ComputeUnits from the application to the
-available pilots.  The UnitManager accepts ComputeUnitDescriptions as we
+Units are executed by pilots.  The `:class:radical.pilot.UnitManager`
+class is responsible for routing those units from the application to the
+available pilots.  The ``UnitManager`` accepts ``ComputeUnitDescriptions`` as we
 created above and assigns them, according to some scheduling algorithm, to the
-set of available pilots for execution (pilots are made available to a Unit
-manager via the ``add_pilot`` call):
+set of available pilots for execution (pilots are made available to a 
+``UnitManager`` via the ``add_pilot`` call):
 
 .. code-block:: python
 
