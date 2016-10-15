@@ -363,7 +363,7 @@
         "pre_bootstrap_1"             : [
             "module use --append /home/marksant/privatemodules",
             "module load python",
-            "module load openmpi/STATIC"
+            "module load openmpi"
         ],
         "pre_bootstrap_2"             : [
             "export PATH=$PATH",
