@@ -11,6 +11,13 @@ import radical.utils as ru
 
 # ------------------------------------------------------------------------------
 #
+# when recombining profiles, we will get one NTP sync offset per profile, and
+# thus potentially multiple such offsets per host.  If those differ more than
+# a certain value (float, in seconds) from each other, we print a warning:
+#
+NTP_DIFF_WARN_LIMIT = 1.0
+
+
 def prof2frame(prof):
     """
     expect a profile, ie. a list of profile rows which are dicts.  
@@ -342,8 +349,22 @@ def combine_profiles(profs):
         t_off = t_sys - t_ntp
 
         if host_id in t_host:
+<<<<<<< HEAD
           # print 'conflicting time sync for %s (%s)' % (pname, host_id)
             continue
+=======
+
+            accuracy = max(accuracy, t_off-t_host[host_id])
+
+            if abs(t_off-t_host[host_id]) > NTP_DIFF_WARN_LIMIT:
+                print 'conflict sync   %-35s (%-35s) %6.1f : %6.1f :  %12.5f' \
+                        % (os.path.basename(pname), host_id, t_off, t_host[host_id], (t_off-t_host[host_id]))
+
+            continue # we always use the first match
+
+      # print 'store time sync %-35s (%-35s) %6.1f' \
+      #         % (os.path.basename(pname), host_id, t_off)
+>>>>>>> 1999dfb... some documentation on NTP diff warnings, higher limit
 
         t_host[host_id] = t_off
 
