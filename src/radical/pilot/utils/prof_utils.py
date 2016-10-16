@@ -578,9 +578,9 @@ def get_session_profile(sid, src=None):
         from .session import fetch_profiles
         profiles = fetch_profiles(sid=sid, skip_existing=True)
 
-    profs      = read_profiles(profiles)
-    prof, acc  = combine_profiles(profs)
-    prof       = clean_profile(prof, sid)
+    profs     = read_profiles(profiles)
+    prof, acc = combine_profiles(profs)
+    prof      = clean_profile(prof, sid)
 
     return prof, acc
 
@@ -655,6 +655,9 @@ def get_session_description(sid, src=None, dburl=None):
                      'has'      : ['unit'],
                      'children' : list()
                     }
+        # also inject the pilot description, and resource specifically
+        tree[uid]['cfg']['description'] = pilot['description']
+        tree[uid]['cfg']['resource']    = pilot['description']['resource']
 
     for unit in sorted(json['unit'], key=lambda k: k['uid']):
         uid  = unit['uid']
