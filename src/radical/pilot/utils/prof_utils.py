@@ -309,25 +309,29 @@ def combine_profiles(profs):
     Time syncing is done based on 'sync abs' timestamps, which we expect one to
     be available per host (the first profile entry will contain host
     information).  All timestamps from the same host will be corrected by the
-    respectively determined ntp offset.
+    respectively determined ntp offset.  We define an 'accuracy' measure which
+    is the maximum difference of clock correction offsets across all hosts.
+
+    The method returnes the combined profile and accuracy, as tuple.
     """
 
-    pd_rel = dict() # profiles which have relative time refs
+    pd_rel   = dict() # profiles which have relative time refs
 
-    t_host = dict() # time offset per host
-    p_glob = list() # global profile
-    t_min  = None   # absolute starting point of prof session
-    c_qed  = 0      # counter for profile closing tag
+    t_host   = dict() # time offset per host
+    p_glob   = list() # global profile
+    t_min    = None   # absolute starting point of prof session
+    c_qed    = 0      # counter for profile closing tag
+    accuracy = 0      # max uncorrected clock deviation
 
     for pname, prof in profs.iteritems():
 
         if not len(prof):
-            print 'empty profile %s' % pname
+          # print 'empty profile %s' % pname
             continue
 
         if not prof[0]['msg']:
             # FIXME: https://github.com/radical-cybertools/radical.analytics/issues/20 
-            # print 'unsynced profile %s' % pname
+          # print 'unsynced profile %s' % pname
             continue
 
         t_prof = prof[0]['time']
@@ -340,7 +344,8 @@ def combine_profiles(profs):
         else:
             t_min = t_prof
 
-        if t_mode != 'sys':
+        if t_mode == 'sys':
+          # print 'sys synced profile (%s)' % t_mode
             continue
 
         # determine the correction for the given host
@@ -349,24 +354,36 @@ def combine_profiles(profs):
         t_off = t_sys - t_ntp
 
         if host_id in t_host:
-          # print 'conflicting time sync for %s (%s)' % (pname, host_id)
-            continue
+
+            accuracy = max(accuracy, t_off-t_host[host_id])
+
+            if abs(t_off-t_host[host_id]) > 0.05:
+                print 'conflict sync   %-35s (%-35s) %6.1f : %6.1f :  %12.5f' \
+                        % (os.path.basename(pname), host_id, t_off, t_host[host_id], (t_off-t_host[host_id]))
+
+            continue # we always use the first match
+
+      # print 'store time sync %-35s (%-35s) %6.1f' \
+      #         % (os.path.basename(pname), host_id, t_off)
 
         t_host[host_id] = t_off
 
-    # FIXME: this should be removed once #1117 is fixed
-    for pname, prof in profs.iteritems():
-        i=0
-        l=len(prof)
-        while i<l:
-            if prof[i]['time'] == 1.0:
-                if i < l-1:
-                    prof[i]['time'] = prof[i+1]['time']
-                elif i > 0:
-                    prof[i]['time'] = prof[i-1]['time']
-                else:
-                    prof[i]['time'] = t_0
-            i += 1
+ #  # FIXME: this should be removed once #1117 is fixed
+ #  for pname, prof in profs.iteritems():
+ #      i=0
+ #      l=len(prof)
+ #      while i<l:
+ #          if prof[i]['time'] == 1.0:
+ #              if i < l-1:
+ #                  prof[i]['time'] = prof[i+1]['time']
+ #              elif i > 0:
+ #                  prof[i]['time'] = prof[i-1]['time']
+ #              else:
+ #                  prof[i]['time'] = t_0
+ #          i += 1
+
+  # for h in t_host:
+  #     print 'clock offset: %-30s : %12.2f'  % (h, t_host[h])
 
     unsynced = set()
     for pname, prof in profs.iteritems():
@@ -379,6 +396,7 @@ def combine_profiles(profs):
 
         host, ip, _, _, _ = prof[0]['msg'].split(':')
         host_id = '%s:%s' % (host, ip)
+      # print ' --> pname: %s [%s] : %s' % (pname, host_id, bool(host_id in t_host))
         if host_id in t_host:
             t_off   = t_host[host_id]
         else:
@@ -387,6 +405,8 @@ def combine_profiles(profs):
 
         t_0 = prof[0]['time']
         t_0 -= t_min
+
+      # print 'correct %12.2f : %12.2f for %-30s : %-15s' % (t_min, t_off, host, pname) 
 
         # correct profile timestamps
         for row in prof:
@@ -399,6 +419,9 @@ def combine_profiles(profs):
             # count closing entries
             if row['event'] == 'QED':
                 c_qed += 1
+
+          # if row['event'] == 'advance' and row['uid'] == os.environ.get('FILTER'):
+          #     print "~~~ ", row
 
         # add profile to global one
         p_glob += prof
@@ -413,12 +436,17 @@ def combine_profiles(profs):
     # sort by time and return
     p_glob = sorted(p_glob[:], key=lambda k: k['time']) 
 
+  # for event in p_glob:
+  #     if event['event'] == 'advance' and event['uid'] == os.environ.get('FILTER'):
+  #         print '#=- ', event
+
+
     if unsynced:
         # FIXME: https://github.com/radical-cybertools/radical.analytics/issues/20 
         # print 'unsynced hosts: %s' % list(unsynced)
         pass
 
-    return p_glob
+    return [p_glob, accuracy]
 
 
 # ------------------------------------------------------------------------------
@@ -436,6 +464,7 @@ def clean_profile(profile, sid):
     """
 
     from radical.pilot import states as rps
+    import os
 
     entities = dict()  # things which have a uid
 
@@ -537,11 +566,11 @@ def get_session_profile(sid, src=None):
         from .session import fetch_profiles
         profiles = fetch_profiles(sid=sid, skip_existing=True)
 
-    profs = read_profiles(profiles)
-    prof  = combine_profiles(profs)
-    prof  = clean_profile(prof, sid)
+    profs      = read_profiles(profiles)
+    prof, acc  = combine_profiles(profs)
+    prof       = clean_profile(prof, sid)
 
-    return prof
+    return prof, acc
 
 
 # ------------------------------------------------------------------------------
