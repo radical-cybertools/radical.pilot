@@ -644,20 +644,21 @@ def get_session_description(sid, src=None, dburl=None):
                      'has'      : ['unit'],
                      'children' : list()
                     }
+        # also inject the pilot description, and resource specifically
+        tree[uid]['description'] = dict()
 
     for pilot in sorted(json['pilot'], key=lambda k: k['uid']):
         uid  = pilot['uid']
         pmgr = pilot['pmgr']
         tree[pmgr]['children'].append(uid)
-        tree[uid] = {'uid'      : uid,
-                     'etype'    : 'pilot',
-                     'cfg'      : pilot['cfg'],
-                     'has'      : ['unit'],
-                     'children' : list()
+        tree[uid] = {'uid'        : uid,
+                     'etype'      : 'pilot',
+                     'cfg'        : pilot['cfg'],
+                     'description': pilot['description'],
+                     'has'        : ['unit'],
+                     'children'   : list()
                     }
         # also inject the pilot description, and resource specifically
-        tree[uid]['cfg']['description'] = pilot['description']
-        tree[uid]['cfg']['resource']    = pilot['description']['resource']
 
     for unit in sorted(json['unit'], key=lambda k: k['uid']):
         uid  = unit['uid']
@@ -665,11 +666,12 @@ def get_session_description(sid, src=None, dburl=None):
         umgr = unit['pilot']
         tree[pid ]['children'].append(uid)
         tree[umgr]['children'].append(uid)
-        tree[uid] = {'uid'      : uid,
-                     'etype'    : 'unit',
-                     'cfg'      : unit['description'],
-                     'has'      : list(),
-                     'children' : list()
+        tree[uid] = {'uid'         : uid,
+                     'etype'       : 'unit',
+                     'cfg'         : unit['description'],
+                     'description' : unit['description'],
+                     'has'         : list(),
+                     'children'    : list()
                     }
 
     ret['tree'] = tree
