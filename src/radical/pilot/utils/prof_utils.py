@@ -349,10 +349,6 @@ def combine_profiles(profs):
         t_off = t_sys - t_ntp
 
         if host_id in t_host:
-<<<<<<< HEAD
-          # print 'conflicting time sync for %s (%s)' % (pname, host_id)
-            continue
-=======
 
             accuracy = max(accuracy, t_off-t_host[host_id])
 
@@ -362,11 +358,10 @@ def combine_profiles(profs):
 
             continue # we always use the first match
 
+        t_host[host_id] = t_off
+
       # print 'store time sync %-35s (%-35s) %6.1f' \
       #         % (os.path.basename(pname), host_id, t_off)
->>>>>>> 1999dfb... some documentation on NTP diff warnings, higher limit
-
-        t_host[host_id] = t_off
 
     # FIXME: this should be removed once #1117 is fixed
     for pname, prof in profs.iteritems():
