@@ -11,6 +11,18 @@ import radical.utils as ru
 
 # ------------------------------------------------------------------------------
 #
+# when recombining profiles, we will get one NTP sync offset per profile, and
+# thus potentially multiple such offsets per host.  If those differ more than
+# a certain value (float, in seconds) from each other, we print a warning:
+#
+NTP_DIFF_WARN_LIMIT = 1.0
+
+
+# ------------------------------------------------------------------------------
+#
+# we expect profiles in CSV formatted files.  The CSV field names are defined
+# here:
+#
 _prof_fields  = ['time', 'name', 'uid', 'state', 'event', 'msg']
 
 
@@ -357,7 +369,7 @@ def combine_profiles(profs):
 
             accuracy = max(accuracy, t_off-t_host[host_id])
 
-            if abs(t_off-t_host[host_id]) > 0.05:
+            if abs(t_off-t_host[host_id]) > NTP_DIFF_WARN_LIMIT:
                 print 'conflict sync   %-35s (%-35s) %6.1f : %6.1f :  %12.5f' \
                         % (os.path.basename(pname), host_id, t_off, t_host[host_id], (t_off-t_host[host_id]))
 
