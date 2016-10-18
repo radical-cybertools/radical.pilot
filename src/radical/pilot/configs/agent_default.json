@@ -21,11 +21,11 @@
     # time between checks of internal state and commands from mothership (seconds)
     "heartbeat_interval"   : 10,
 
-    "agent_scheduler_cfg" : {
-        "partitions" : {
-            "monitor" : 1
-        }
-    },
+  # "agent_scheduler_cfg" : {
+  #     "partitions" : {
+  #         "monitor" : 1
+  #     }
+  # },
 
     "agent_layout" : {
         "agent_0"   : {
