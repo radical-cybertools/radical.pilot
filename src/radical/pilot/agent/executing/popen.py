@@ -113,6 +113,10 @@ class Popen(AgentExecutingComponent) :
         if old_path:
             new_env['PATH'] = old_path
 
+        old_ppath = new_env.pop('_OLD_VIRTUAL_PYTHONPATH', None)
+        if old_ppath:
+            new_env['PYTHONPATH'] = old_ppath
+
         old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
         if old_home:
             new_env['PYTHON_HOME'] = old_home
@@ -219,6 +223,20 @@ class Popen(AgentExecutingComponent) :
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 launch_script.write("echo script after_cd `%s` >> %s/PROF\n" % (self.gtod, sandbox))
 
+            # Create string for environment variable setting
+            env_string = 'export'
+            if cu['description']['environment']:
+                for key,val in cu['description']['environment'].iteritems():
+                    env_string += ' %s=%s' % (key, val)
+            env_string += " RP_SESSION_ID=%s" % self._cfg['session_id']
+            env_string += " RP_PILOT_ID=%s"   % self._cfg['pilot_id']
+            env_string += " RP_AGENT_ID=%s"   % self._cfg['agent_name']
+            env_string += " RP_SPAWNER_ID=%s" % self.uid
+            env_string += " RP_UNIT_ID=%s"    % cu['_id']
+            for key,val in self._cu_environment.iteritems():
+                env_string += " %s='%s'"      % (key, val)
+            launch_script.write('# Environment variables\n%s\n' % env_string)
+
             # Before the Big Bang there was nothing
             if cu['description']['pre_exec']:
                 pre_exec_string = ''
@@ -234,18 +252,6 @@ class Popen(AgentExecutingComponent) :
                 launch_script.write(pre_exec_string)
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
                     launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (self.gtod, sandbox))
-
-            # Create string for environment variable setting
-            env_string = 'export'
-            if cu['description']['environment']:
-                for key,val in cu['description']['environment'].iteritems():
-                    env_string += ' %s=%s' % (key, val)
-            env_string += " RP_SESSION_ID=%s" % self._cfg['session_id']
-            env_string += " RP_PILOT_ID=%s"   % self._cfg['pilot_id']
-            env_string += " RP_AGENT_ID=%s"   % self._cfg['agent_name']
-            env_string += " RP_SPAWNER_ID=%s" % self.uid
-            env_string += " RP_UNIT_ID=%s"    % cu['uid']
-            launch_script.write('# Environment variables\n%s\n' % env_string)
 
             # The actual command line, constructed per launch-method
             try:
@@ -311,12 +317,13 @@ class Popen(AgentExecutingComponent) :
                                       close_fds          = True,
                                       shell              = True,
                                       cwd                = sandbox,
-                                      env                = self._cu_environment,
+                                    # env                = self._cu_environment,
                                       universal_newlines = False,
                                       startupinfo        = None,
                                       creationflags      = 0)
 
         self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['uid'])
+
         self._watch_queue.put(cu)
 
 

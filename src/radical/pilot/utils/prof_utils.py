@@ -98,7 +98,7 @@ class Profiler (object):
 
     # ------------------------------------------------------------------------------
     #
-    def prof(self, event, uid=None, state=None, msg=None, timestamp=None, logger=None):
+    def prof(self, event, uid=None, state=None, msg=None, timestamp=None, logger=None, name=None):
 
         if not self._enabled:
             return
@@ -109,6 +109,8 @@ class Profiler (object):
         if not timestamp:
             timestamp = self.timestamp()
 
+        if not name:
+            name = self._name
         tid = threading.current_thread().name
 
         if not uid  : uid   = ''
@@ -119,7 +121,7 @@ class Profiler (object):
         # NOTE: Don't forget to sync any format changes in the bootstrapper
         #       and downstream analysis tools too!
         self._handle.write("%.4f,%s:%s,%s,%s,%s,%s\n" \
-                % (timestamp, self._name, tid, uid, state, event, msg))
+                % (timestamp, name, tid, uid, state, event, msg))
 
 
     # --------------------------------------------------------------------------
@@ -354,6 +356,7 @@ def combine_profiles(profs):
         t_host[host_id] = t_off
 
 
+    unsynced = set()
     for pname, prof in profs.iteritems():
 
         if not len(prof):
@@ -367,7 +370,7 @@ def combine_profiles(profs):
         if host_id in t_host:
             t_off   = t_host[host_id]
         else:
-            print 'WARNING: no time offset for %s' % host_id
+            unsynced.add(host_id)
             t_off = 0.0
 
         t_0 = prof[0]['time']
@@ -398,6 +401,9 @@ def combine_profiles(profs):
     # sort by time and return
     p_glob = sorted(p_glob[:], key=lambda k: k['time']) 
 
+    if unsynced:
+        print 'unsynced hosts: %s' % list(unsynced)
+
     return p_glob
 
 
@@ -420,10 +426,13 @@ def clean_profile(profile, sid):
     entities = dict()  # things which have a uid
 
     for event in profile:
+
         uid   = event['uid']
         state = event['state']
         time  = event['time']
         name  = event['event']
+
+        del(event['event'])
 
         # we derive entity_type from the uid -- but funnel 
         # some cases into the session
@@ -451,26 +460,36 @@ def clean_profile(profile, sid):
             assert(state)
             assert(uid)
 
-            event['event_name']  = 'state'
+            event['event_type'] = 'state'
+            skip = False
 
             if state in rps.FINAL:
 
                 # a final state will cancel any previoud CANCELED state
                 if rps.CANCELED in entities[uid]['states']:
-                   del (entities[uid]['states'][rps.CANCELED])
+                    del (entities[uid]['states'][rps.CANCELED])
+
+                # vice-versa, we will not add CANCELED if a final
+                # state already exists:
+                if state == rps.CANCELED:
+                    if any([s in entities[uid]['states'] 
+                        for s in rps.FINAL]):
+                        skip = True
+                        continue
 
             if state in entities[uid]['states']:
                 # ignore duplicated recordings of state transitions
+                skip = True
                 continue
               # raise ValueError('double state (%s) for %s' % (state, uid))
 
-            entities[uid]['states'][state] = event
+            if not skip:
+                entities[uid]['states'][state] = event
 
         else:
             # FIXME: define different event types (we have that somewhere)
-            event['event_name'] = 'event'
-
-        entities[uid]['events'].append(event)
+            event['event_type'] = 'event'
+            entities[uid]['events'].append(event)
 
 
     # we have evaluated, cleaned and sorted all events -- now we recreate
@@ -490,14 +509,15 @@ def clean_profile(profile, sid):
 
 # ------------------------------------------------------------------------------
 #
-def get_session_profile(sid):
+def get_session_profile(sid, src=None):
     
-    profdir = '%s/%s/' % (os.getcwd(), sid)
+    if not src:
+        src = "%s/%s" % (os.getcwd(), sid)
 
-    if os.path.exists(profdir):
+    if os.path.exists(src):
         # we have profiles locally
-        profiles  = glob.glob("%s/*.prof"   % profdir)
-        profiles += glob.glob("%s/*/*.prof" % profdir)
+        profiles  = glob.glob("%s/*.prof"   % src)
+        profiles += glob.glob("%s/*/*.prof" % src)
     else:
         # need to fetch profiles
         from .session import fetch_profiles
@@ -543,55 +563,55 @@ def get_session_description(sid, src=None, dburl=None):
     ret['entities'] = dict()
 
     tree      = dict()
-    tree[sid] = {'uid'   : sid,
-                 'etype' : 'session',
-                 'cfg'   : json['session']['cfg'],
-                 'has'   : ['umgr', 'pmgr', 'pilot', 'unit'],
-                 'umgr'  : list(),
-                 'pmgr'  : list()
+    tree[sid] = {'uid'      : sid,
+                 'etype'    : 'session',
+                 'cfg'      : json['session']['cfg'],
+                 'has'      : ['umgr', 'pmgr'],
+                 'children' : list()
                 }
 
     for pmgr in sorted(json['pmgr'], key=lambda k: k['uid']):
         uid = pmgr['uid']
-        tree[sid]['pmgr'].append(uid)
-        tree[uid] = {'uid'   : uid,
-                     'etype' : 'pmgr',
-                     'cfg'   : pmgr['cfg'],
-                     'has'   : ['pilot'],
-                     'pilot' : list()
+        tree[sid]['children'].append(uid)
+        tree[uid] = {'uid'      : uid,
+                     'etype'    : 'pmgr',
+                     'cfg'      : pmgr['cfg'],
+                     'has'      : ['pilot'],
+                     'children' : list()
                     }
 
     for umgr in sorted(json['umgr'], key=lambda k: k['uid']):
         uid = umgr['uid']
-        tree[sid]['umgr'].append(uid)
-        tree[uid] = {'uid'   : uid,
-                     'etype' : 'umgr',
-                     'cfg'   : umgr['cfg'],
-                     'has'   : ['unit'],
-                     'unit' : list()
+        tree[sid]['children'].append(uid)
+        tree[uid] = {'uid'      : uid,
+                     'etype'    : 'umgr',
+                     'cfg'      : umgr['cfg'],
+                     'has'      : ['unit'],
+                     'children' : list()
                     }
 
     for pilot in sorted(json['pilot'], key=lambda k: k['uid']):
         uid  = pilot['uid']
         pmgr = pilot['pmgr']
-        tree[pmgr]['pilot'].append(uid)
-        tree[uid] = {'uid'   : uid,
-                     'etype' : 'pilot',
-                     'cfg'   : pilot['cfg'],
-                     'has'   : ['unit'],
-                     'unit' : list()
+        tree[pmgr]['children'].append(uid)
+        tree[uid] = {'uid'      : uid,
+                     'etype'    : 'pilot',
+                     'cfg'      : pilot['cfg'],
+                     'has'      : ['unit'],
+                     'children' : list()
                     }
 
     for unit in sorted(json['unit'], key=lambda k: k['uid']):
         uid  = unit['uid']
         pid  = unit['umgr']
         umgr = unit['pilot']
-        tree[pid ]['unit'].append(uid)
-        tree[umgr]['unit'].append(uid)
-        tree[uid] = {'uid'   : uid,
-                     'etype' : 'unit',
-                     'cfg'   : unit['description'],
-                     'has'   : [],
+        tree[pid ]['children'].append(uid)
+        tree[umgr]['children'].append(uid)
+        tree[uid] = {'uid'      : uid,
+                     'etype'    : 'unit',
+                     'cfg'      : unit['description'],
+                     'has'      : list(),
+                     'children' : list()
                     }
 
     ret['tree'] = tree

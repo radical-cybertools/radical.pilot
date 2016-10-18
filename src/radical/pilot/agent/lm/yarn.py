@@ -28,8 +28,9 @@ class Yarn(LaunchMethod):
     def lrms_config_hook(cls, name, cfg, lrms, logger):
         """
         FIXME: this config hook will inspect the LRMS nodelist and, if needed,
-               will start the YRN cluster on node[0].
+               will start the YARN cluster on node[0].
         """
+        import radical.utils as ru
 
         logger.info('Hook called by YARN LRMS with the name %s'%lrms.name)
 
@@ -97,15 +98,54 @@ class Yarn(LaunchMethod):
                 mapred_site_file.write(line)
             mapred_site_file.close()
 
-        def config_yarn_site():
+        def config_yarn_site(cores,nodelist,hostname):
 
             yarn_site_file = open(os.getcwd()+'/hadoop/etc/hadoop/yarn-site.xml','r')
             lines = yarn_site_file.readlines()
             yarn_site_file.close()
 
+            total_mem_str=subprocess.check_output(['grep','MemTotal','/proc/meminfo'])
+            total_free_mem=int(total_mem_str.split()[1])/1048
+
+            if nodelist.__len__() == 1:
+                cores_used = cores/2
+                total_mem = total_free_mem*0.75
+            else:
+                cores_used = cores*(len(nodelist)-1)
+                total_mem = total_free_mem*(len(nodelist)-1)
+                slaves = open(os.getcwd()+'/hadoop/etc/hadoop/slaves','w')
+                for node in nodelist[1:]:
+                    slaves.write('%s\n'%(node+hostname))
+                slaves.close()
+                master = open(os.getcwd()+'/hadoop/etc/hadoop/masters','w')
+                master.write('%s\n'%(nodelist[0]+hostname))
+                master.close()
+
+            max_app_mem = total_mem/cores_used
+
             prop_str  = ' <property>\n'
             prop_str += '  <name>yarn.nodemanager.aux-services</name>\n'
             prop_str += '    <value>mapreduce_shuffle</value>\n'
+            prop_str += ' </property>\n'
+
+            prop_str += ' <property>\n'
+            prop_str += '  <name>yarn.scheduler.maximum-allocation-mb</name>\n'
+            prop_str += '   <value>%d</value>\n'%max_app_mem
+            prop_str += ' </property>\n'
+
+            prop_str += ' <property>\n'
+            prop_str += '  <name>yarn.resourcemanager.hostname</name>\n'
+            prop_str += '   <value>%s</value>\n'%(nodelist[0]+hostname)
+            prop_str += ' </property>\n'
+
+            prop_str += ' <property>\n'
+            prop_str += '  <name>yarn.nodemanager.resource.cpu-vcores</name>\n'
+            prop_str += '   <value>%d</value>\n'%cores_used
+            prop_str += ' </property>\n'
+
+            prop_str += ' <property>\n'
+            prop_str += '  <name>yarn.nodemanager.resource.memory-mb</name>\n'
+            prop_str += '   <value>%d</value>\n'%total_mem
             prop_str += ' </property>\n'
 
             lines.insert(-1,prop_str)
@@ -114,6 +154,24 @@ class Yarn(LaunchMethod):
             for line in lines:
                 yarn_site_file.write(line)
             yarn_site_file.close()
+
+            scheduler_file=open(os.getcwd()+'/hadoop/etc/hadoop/capacity-scheduler.xml','r')
+            lines=scheduler_file.readlines()
+            scheduler_file.close()
+
+            for line in lines:
+                if line.startswith('    <value>org.apache.hadoop.yarn.util.resource.'):
+                    new_line='    <value>org.apache.hadoop.yarn.util.resource.'+'DefaultResourceCalculator</value>\n'
+                    lines[lines.index(line)]=new_line
+                elif line.startswith('    <name>yarn.scheduler.capacity.maximum-am-resource-percent</name>'):
+                    new_line='    <value>1</value>\n'
+                    lines[lines.index(line)+1]=new_line
+                        
+            scheduler_file=open(os.getcwd()+'/hadoop/etc/hadoop/capacity-scheduler.xml','w')
+            for line in lines:
+                scheduler_file.write(line)
+            
+            scheduler_file.close()
 
         # If the LRMS used is not YARN the namenode url is going to be
         # the first node in the list and the port is the default one, else
@@ -125,7 +183,7 @@ class Yarn(LaunchMethod):
             service_url    = lrms.namenode_url
             rm_url         = "%s:%s" % (lrms.rm_ip, lrms.rm_port)
             rm_ip          = lrms.rm_ip
-            launch_command = cls._which('yarn')
+            launch_command = ru.which('yarn')
 
         else:
             # Here are the necessary commands to start the cluster.
@@ -142,10 +200,6 @@ class Yarn(LaunchMethod):
                 stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
                 # TODO: Decide how the agent will get Hadoop tar ball.
 
-                # this was formerly
-                #   def set_env_vars():
-                # but we are in a class method, and don't have self -- and we don't need
-                # it anyway...
 
             hadoop_home        = os.getcwd() + '/hadoop'
             hadoop_install     = hadoop_home
@@ -160,7 +214,12 @@ class Yarn(LaunchMethod):
             # Solution to find Java's home folder:
             # http://stackoverflow.com/questions/1117398/java-home-directory
 
-            jpos = subprocess.check_output(['readlink','-f', '/usr/bin/java']).split('bin')
+            java = ru.which('java')
+            if java != '/usr/bin/java':
+                jpos=java.split('bin')
+            else:
+                jpos = os.path.realpath('/usr/bin/java').split('bin')
+
             if jpos[0].find('jre') != -1:
                 java_home = jpos[0][:jpos[0].find('jre')]
             else:
@@ -174,20 +233,23 @@ class Yarn(LaunchMethod):
             for line in hadoop_env_file_lines:
                 hadoop_env_file.write(line)
             hadoop_env_file.close()
-
-            # set_env_vars() ended here
+            host=node_name.split(lrms.node_list[0])[1]
 
             config_core_site(node_name)
             config_hdfs_site(lrms.node_list)
             config_mapred_site()
-            config_yarn_site()
+            config_yarn_site(lrms.cores_per_node,lrms.node_list,host)
 
             logger.info('Start Formatting DFS')
             namenode_format = os.system(hadoop_home + '/bin/hdfs namenode -format -force')
             logger.info('DFS Formatted. Starting DFS.')
-            hadoop_start = os.system(hadoop_home + '/sbin/start-dfs.sh')
             logger.info('Starting YARN')
-            yarn_start = os.system(hadoop_home + '/sbin/start-yarn.sh')
+            yarn_start = subprocess.check_output([hadoop_home + '/sbin/start-all.sh'])
+            if 'Error' in yarn_start:
+                raise RuntimeError('Unable to start YARN cluster: %s' \
+                    % (yarn_start))
+            else:
+                logger.info('Started YARN')
 
             #-------------------------------------------------------------------
             # Creating user's HDFS home folder
@@ -322,19 +384,38 @@ class Yarn(LaunchMethod):
             for InputFile in cud['input_staging']:
                 scp_input_files+='%s/%s '%(work_dir,InputFile['target'])
             scp_input_files+='"'
+            print_str+="echo 'start=""`date +%s.%3N`""'>>ExecScript.sh\n"
             print_str+="echo 'scp $YarnUser@%s:%s .'>>ExecScript.sh\n"%(client_node,scp_input_files)
+            print_str+="echo 'stop=""`date +%s.%3N`""'>>ExecScript.sh\n"
+            print_str+="echo 'time_spent=""$(echo ""$stop - $start"" | bc)""'>>ExecScript.sh\n"
+            print_str+="echo 'echo $time_spent >>Yprof'>>ExecScript.sh\n"
 
+        if cud['pre_exec']:
+            pre_exec_string = ''
+            for elem in cud['pre_exec']:
+                pre_exec_string += '%s;' % elem
+            pre_exec_string+=''
+            print_str+="echo ''>>ExecScript.sh\n"
+            print_str+="echo ''>>ExecScript.sh\n"
+            print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
+            print_str+="echo '# Pre exec'>>ExecScript.sh\n"
+            print_str+="echo '%s'>>ExecScript.sh\n"%pre_exec_string
+        
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
         print_str+="echo '# Creating Executing Command'>>ExecScript.sh\n"
-        
+        print_str+="echo 'start=""`date +%s.%3N`""'>>ExecScript.sh\n"
         print_str+="echo '%s %s 1>Ystdout 2>Ystderr'>>ExecScript.sh\n"%(cud['executable'],task_argstr)
+        print_str+="echo 'stop=""`date +%s.%3N`""'>>ExecScript.sh\n"
+        print_str+="echo 'time_spent=""$(echo ""$stop - $start"" | bc)""'>>ExecScript.sh\n"
+        print_str+="echo 'echo $time_spent >>Yprof'>>ExecScript.sh\n"
 
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo '#---------------------------------------------------------'>>ExecScript.sh\n"
         print_str+="echo '# Staging Output Files'>>ExecScript.sh\n"
+        print_str+="echo 'start=""`date +%s.%3N`""'>>ExecScript.sh\n"
         print_str+="echo 'YarnUser=$(whoami)'>>ExecScript.sh\n"
         scp_output_files='Ystderr Ystdout'
 
@@ -342,6 +423,10 @@ class Yarn(LaunchMethod):
             for OutputFile in cud['output_staging']:
                 scp_output_files+=' %s'%(OutputFile['source'])
         print_str+="echo 'scp -v %s $YarnUser@%s:%s'>>ExecScript.sh\n"%(scp_output_files,client_node,work_dir)
+        print_str+="echo 'stop=""`date +%s.%3N`""'>>ExecScript.sh\n"
+        print_str+="echo 'time_spent=""$(echo ""$stop - $start"" | bc)""'>>ExecScript.sh\n"
+        print_str+="echo 'echo $time_spent >>Yprof'>>ExecScript.sh\n"
+        print_str+="echo 'scp -v Yprof $YarnUser@%s:%s'>>ExecScript.sh\n"%(client_node,work_dir)
 
         print_str+="echo ''>>ExecScript.sh\n"
         print_str+="echo ''>>ExecScript.sh\n"
@@ -371,7 +456,7 @@ class Yarn(LaunchMethod):
 
         yarn_command = '%s -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
                        ' com.radical.pilot.Client -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar'\
-                       ' -shell_script ExecScript.sh %s %s -service_url %s\ncat Ystdout' % (self.launch_command,
+                       ' -shell_script ExecScript.sh %s %s -service_url %s' % (self.launch_command,
                         env_string, ncores_string,service_url)
 
         self._log.debug("Yarn Command %s"%yarn_command)

@@ -22,6 +22,7 @@
         "valid_roots"                 : ["/"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_grace",
-        "virtenv_mode"                : "create"
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
     }
 }

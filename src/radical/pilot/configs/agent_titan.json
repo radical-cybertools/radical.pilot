@@ -1,0 +1,63 @@
+
+{
+    "staging_area"         : "staging_area",
+    "staging_schema"       : "staging",
+    "max_io_loglength"     : 1024,
+    "bulk_collection_size" :  100,
+    "bulk_collection_time" : 5.0,
+    "db_poll_sleeptime"    : 1.0,
+
+    "agent_layout" : {
+        "agent_1"   : {
+            "target"     : "node",
+            "components" : {
+                "AgentStagingInputComponent"  : 1,
+                "AgentSchedulingComponent"    : 1
+            }
+        },
+        "agent_2"   : {
+            "target"     : "node",
+            "components" : {
+                "AgentExecutingComponent"     : 1,
+                "AgentStagingOutputComponent" : 1
+            }
+        }
+    },
+
+    "bridges" : {
+        "agent_staging_input_queue"  : { "log_level" : "debug",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 0},
+        "agent_scheduling_queue"     : { "log_level" : "debug",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 0},
+        "agent_executing_queue"      : { "log_level" : "debug",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 0},
+        "agent_staging_output_queue" : { "log_level" : "debug",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 0},
+
+        "agent_unschedule_pubsub"    : {"log_level"  : "debug",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 0},
+        "agent_reschedule_pubsub"    : {"log_level"  : "debug",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 0},
+
+        "log_pubsub"                 : {"log_level"  : "debug",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 0},
+        "state_pubsub"               : {"log_level"  : "debug",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 0},
+        "control_pubsub"             : {"log_level"  : "debug",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 0}
+    },
+
+    "components" : {
+        "UpdateWorker" : 1
+    }
+}
+

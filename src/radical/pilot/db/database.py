@@ -35,7 +35,7 @@ class DBSession(object):
         units   : document describing a rp.Unit
         """
 
-        self._dburl      = ru.Url(dburl)
+        self._dburl      = dburl
         self._log        = logger
         self._mongo      = None
         self._db         = None

@@ -86,7 +86,7 @@ class Update(rpu.Worker):
         now = time.time()
         age = now - self._last
 
-        # only push if flush is forced, or when Acollection time or size 
+        # only push if flush is forced, or when collection time or size 
         # have been exceeded
         if  not flush \
             and age < self._bct \

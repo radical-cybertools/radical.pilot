@@ -82,7 +82,7 @@ class PilotManager(rpu.Component):
         self._pilots      = dict()
         self._pilots_lock = threading.RLock()
         self._callbacks   = dict()
-        self._cb_lock     = threading.RLock()
+        self._pcb_lock    = threading.RLock()
         self._terminate   = threading.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
@@ -155,7 +155,7 @@ class PilotManager(rpu.Component):
 
         # we don't want any callback invokations during shutdown
         # FIXME: really?
-        with self._cb_lock:
+        with self._pcb_lock:
             for m in rpt.PMGR_METRICS:
                 self._callbacks[m] = dict()
 
@@ -243,7 +243,7 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _update_pilot(self, pilot_dict, publish=False):
+    def _update_pilot(self, pilot_dict, publish=False, advance=True):
 
         # FIXME: this is breaking the bulk!
 
@@ -254,7 +254,6 @@ class PilotManager(rpu.Component):
 
             # we don't care about pilots we don't know
             if pid not in self._pilots:
-              # print 'unknown pilot %s' % pid
                 return False
 
             # only update on state changes
@@ -278,21 +277,31 @@ class PilotManager(rpu.Component):
                 # we also don't need to maintain bulks for that reason.
                 pilot_dict['state'] = s
                 self._pilots[pid]._update(pilot_dict)
-                self.advance(pilot_dict, s, publish=publish, push=False)
+
+                if advance:
+                    self.advance(pilot_dict, s, publish=publish, push=False)
+
+                if s in [ACTIVE]:
+                    logger.info('pilot %s is %s: %s [%s]', \
+                            pid, s, pilot.get('lm_info'), pilot.get('lm_detail')) 
+
 
 
     # --------------------------------------------------------------------------
     #
     def _call_pilot_callbacks(self, pilot_obj, state):
 
-        with self._cb_lock:
+        with self._pcb_lock:
             for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
 
                 cb      = cb_val['cb']
                 cb_data = cb_val['cb_data']
                 
+              # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, self.state, cb_name)
+
                 if cb_data: cb(pilot_obj, state, cb_data)
                 else      : cb(pilot_obj, state)
+          # print ' ~~~~ done PCBS'
 
 
     # --------------------------------------------------------------------------
@@ -360,8 +369,21 @@ class PilotManager(rpu.Component):
         # create the pilot instance
         pilots     = list()
         pilot_docs = list()
-        for descr in descriptions :
-            pilot = ComputePilot(pmgr=self, descr=descr)
+        for pd in descriptions :
+
+            if not pd.runtime:
+                raise ValueError('pilot runtime must be defined')
+
+            if pd.runtime <= 0:
+                raise ValueError('pilot runtime must be positive')
+
+            if not pd.cores:
+                raise ValueError('pilot core size must be defined')
+
+            if not pd.resource:
+                raise ValueError('pilot target resource must be defined')
+
+            pilot = ComputePilot(pmgr=self, descr=pd)
             pilots.append(pilot)
             pilot_doc = pilot.as_dict()
             pilot_docs.append(pilot_doc)
@@ -371,13 +393,15 @@ class PilotManager(rpu.Component):
                 self._pilots[pilot.uid] = pilot
 
             if self._session._rec:
-                ru.write_json(descr.as_dict(), "%s/%s.batch.%03d.json" \
+                ru.write_json(pd.as_dict(), "%s/%s.batch.%03d.json" \
                         % (self._session._rec, pilot.uid, self._rec_id))
             self._log.report.progress()
 
+        # initial state advance to 'NEW'
         # FIXME: we should use update_pilot(), but that will not trigger an
         #        advance, since the state did not change.  We would then miss
-        #        the profile entry for the advance to NEW...
+        #        the profile entry for the advance to NEW.  So we here basically
+        #        only trigger the profile entry for NEW.
         self.advance(pilot_docs, state=rps.NEW, publish=False, push=False)
 
         if self._session._rec:
@@ -610,7 +634,7 @@ class PilotManager(rpu.Component):
         if metric not in rpt.PMGR_METRICS :
             raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
 
-        with self._cb_lock:
+        with self._pcb_lock:
             cb_name = cb.__name__
             self._callbacks[metric][cb_name] = {'cb'      : cb, 
                                                 'cb_data' : cb_data}
@@ -630,7 +654,7 @@ class PilotManager(rpu.Component):
         else:
             metrics = [metric]
 
-        with self._cb_lock:
+        with self._pcb_lock:
 
             for metric in metrics:
 

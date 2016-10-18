@@ -40,7 +40,6 @@ def bson2json (bson_data) :
 def get_session_ids(db) :
 
     # this is not bein cashed, as the session list can and will change freqently
-
     return db.collection_names(include_system_collections=False)
 
 
@@ -86,7 +85,7 @@ def get_session_docs(db, sid, cache=None, cachedir=None) :
     json_data['unit'   ] = bson2json(list(db[sid].find({'type' : 'unit'   })))
 
     if  len(json_data['session']) == 0 :
-        raise ValueError ('no such session %s' % sid)
+        raise ValueError ('no session %s in db (was `cleanup` disabled on `session.close()`?)' % sid)
 
   # if  len(json_data['session']) > 1 :
   #     print 'more than one session document -- picking first one'

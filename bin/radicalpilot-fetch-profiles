@@ -28,7 +28,7 @@ def usage(msg=None, noexit=False):
           -a  : alternative agent sandbox access method (schema://host)
           -t  : target dir to fetch profiles to
                 A sub-dir <sid>/ will be created there.
-                This defaults to $PWD/profiles/
+                This defaults to $PWD
           -d  : mongodb URL to fetch session info
                 Those infos are used to get the pilot locations from where the
                 profiles are to be fetched.
@@ -70,16 +70,11 @@ if __name__ == '__main__':
     if options.help:
         usage()
 
-    if not options.src:
-        options.src = os.getcwd()
-    if not options.tgt:
-        options.tgt = os.getcwd()
-    if not options.dburl:
-        options.dburl = None
-    if not options.access:
-        options.access = None
-    if not options.skip:
-        options.skip = False
+    if not options.src:    options.src    = os.getcwd()
+    if not options.tgt:    options.tgt    = os.getcwd()
+    if not options.dburl:  options.dburl  = None
+    if not options.access: options.access = None
+    if not options.skip:   options.skip   = False
 
     sid    = args[0]
     src    = options.src
@@ -89,5 +84,7 @@ if __name__ == '__main__':
     skip   = options.skip
 
     rpu.fetch_profiles(sid=sid, dburl=dburl, src=src, tgt=tgt, access=access, skip_existing=skip)
+    tgt += '/%s' % sid
+
 
 # ------------------------------------------------------------------------------

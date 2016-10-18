@@ -156,7 +156,7 @@ class ComputePilot(object):
             cb      = cb_val['cb']
             cb_data = cb_val['cb_data']
 
-          # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, self.state, cb_name)
+          # print ' ~~~ call pcbs: %s -> %s : %s' % (self.uid, self.state, cb_name)
             
             if cb_data: cb(self, self.state, cb_data)
             else      : cb(self, self.state)
@@ -182,7 +182,8 @@ class ComputePilot(object):
             'stderr':          self.stderr,
             'resource':        self.resource,
             'sandbox':         self.sandbox,
-            'description':     self.description  # this is a deep copy
+            'description':     self.description,  # this is a deep copy
+            'resource_detail': self.resource_detail
         }
         return ret
 
@@ -319,11 +320,33 @@ class ComputePilot(object):
     @property
     def sandbox(self):
         """
+<<<<<<< HEAD
         Returns the full sandbox URL of this pilot, if that is already
         known, or 'None' otherwise.
+=======
+        # Check if this instance is valid
+        if not self._uid:
+            return None
 
+        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
+        resource_details = {
+            'nodes':          pilot_json['nodes'],
+            'cores_per_node': pilot_json['cores_per_node'],
+            'lm_detail': pilot_json.get('lm_detail')
+        }
+        return resource_details
+>>>>>>> d64b253
+
+<<<<<<< HEAD
         **Returns:**
             * A URL (radical.utils.Url).
+=======
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def pilot_manager(self):
+        """ Returns the pilot manager object for this pilot.
+>>>>>>> c260de0
         """
 
         # NOTE: The pilot has a sandbox property, containing the full sandbox
@@ -539,7 +562,7 @@ class ComputePilot(object):
             # the directory if it does not yet exist.
             target_dir = saga.filesystem.Directory(tgt_dir_url, flags=saga.filesystem.CREATE_PARENTS)
 
-            if action == LINK:
+            if action == LINK:	
                 # TODO: Does this make sense?
                 #log_message = 'Linking %s to %s' % (source, abs_target)
                 #os.symlink(source, abs_target)

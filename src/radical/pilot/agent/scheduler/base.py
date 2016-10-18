@@ -18,6 +18,7 @@ SCHEDULER_NAME_CONTINUOUS   = "CONTINUOUS"
 SCHEDULER_NAME_SCATTERED    = "SCATTERED"
 SCHEDULER_NAME_TORUS        = "TORUS"
 SCHEDULER_NAME_YARN         = "YARN"
+SCHEDULER_NAME_SPARK        = "SPARK"
 
 
 # ==============================================================================
@@ -30,7 +31,7 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def __init__(self, cfg, session):
 
-        self._slots = None
+        self.slots = None
         self._lrms  = None
 
         self._uid = ru.generate_id('agent.scheduling.%(counter)s', ru.ID_CUSTOM)
@@ -91,13 +92,15 @@ class AgentSchedulingComponent(rpu.Component):
         from .scattered  import Scattered
         from .torus      import Torus
         from .yarn       import Yarn
+        from .spark       import Spark
 
         try:
             impl = {
                 SCHEDULER_NAME_CONTINUOUS : Continuous,
                 SCHEDULER_NAME_SCATTERED  : Scattered,
                 SCHEDULER_NAME_TORUS      : Torus,
-                SCHEDULER_NAME_YARN       : Yarn
+                SCHEDULER_NAME_YARN       : Yarn,
+                SCHEDULER_NAME_SPARK      : Spark
             }[name]
 
             impl = impl(cfg, session)
@@ -139,6 +142,9 @@ class AgentSchedulingComponent(rpu.Component):
         CU off to the ExecutionWorker.
         """
 
+        # Get timestamp to use for recording a successful scheduling attempt
+        before_ts = rpu.prof_utils.timestamp()
+
         # needs to be locked as we try to acquire slots, but slots are freed
         # in a different thread.  But we keep the lock duration short...
         with self._slot_lock :
@@ -152,6 +158,7 @@ class AgentSchedulingComponent(rpu.Component):
             return False
 
         # got an allocation, go off and launch the process
+        self._prof.prof('schedule', msg="try", uid=cu['uid'], timestamp=before_ts)
         self._prof.prof('schedule', msg="allocated", uid=cu['uid'])
         self._log.info("slot status after allocated  : %s" % self.slot_status ())
 

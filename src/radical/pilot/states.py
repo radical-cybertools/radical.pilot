@@ -11,6 +11,7 @@ FAILED   = 'FAILED'
 CANCELED = 'CANCELED'
 
 # shortcut
+INITIAL  = [NEW]
 FINAL    = [DONE, FAILED, CANCELED]
 
 
@@ -18,10 +19,10 @@ FINAL    = [DONE, FAILED, CANCELED]
 #
 # pilot states
 #
-PMGR_LAUNCHING_PENDING = 'LAUNCHING_PENDING'
-PMGR_LAUNCHING         = 'LAUNCHING'
-PMGR_ACTIVE_PENDING    = 'ACTIVE_PENDING'
-PMGR_ACTIVE            = 'ACTIVE'
+PMGR_LAUNCHING_PENDING = 'PMGR_LAUNCHING_PENDING'
+PMGR_LAUNCHING         = 'PMGR_LAUNCHING'
+PMGR_ACTIVE_PENDING    = 'PMGR_ACTIVE_PENDING'
+PMGR_ACTIVE            = 'PMGR_ACTIVE'
 
 # assign numeric values to states to support state ordering operations
 # ONLY final state get the same values.
@@ -233,7 +234,6 @@ def _unit_state_collapse(states):
         if _unit_state_values[state] > _unit_state_values[ret]:
             ret = state
     return ret
-
 
 
 # -----------------------------------------------------------------------------

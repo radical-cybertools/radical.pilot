@@ -133,7 +133,7 @@ def list_sessions(db, dbname, age, session):
 
     if not sids:
         print 'no matching session in database at %s' % url
-        return
+        return []
 
     session_ids = list()
     for sid in sids:
@@ -237,7 +237,6 @@ if __name__ == '__main__':
 
     if  not options.url: 
         options.url = _DEFAULT_DBURL 
-
 
     mode    = options.mode 
     url     = options.url

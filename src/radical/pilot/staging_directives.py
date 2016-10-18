@@ -2,7 +2,8 @@
 import os
 import saga
 
-from .utils     import logger
+import radical.utils as ru
+
 from .constants import *
 
 # The Staging Directives are specified using a dict in the following form:
@@ -36,6 +37,8 @@ def expand_staging_directive(staging_directive):
     Take an abbreviated or compressed staging directive and expand it.
 
     """
+
+    log = ru.get_logger('radical.pilot.utils')
 
     if not staging_directive:
         return []
@@ -74,7 +77,7 @@ def expand_staging_directive(staging_directive):
                 append = False
 
             if append:
-                logger.warn("append mode on staging not supported (ignored)")
+                log.warn("append mode on staging not supported (ignored)")
 
             new_sd = {'source':   src.strip(),
                       'target':   tgt.strip(),
@@ -82,7 +85,7 @@ def expand_staging_directive(staging_directive):
                       'flags':    DEFAULT_FLAGS,
                       'priority': DEFAULT_PRIORITY
             }
-            logger.debug("Converting string '%s' into dict '%s'" % (sd, new_sd))
+            log.debug("Converting string '%s' into dict '%s'" % (sd, new_sd))
             new_staging_directive.append(new_sd)
 
         elif isinstance(sd, dict):
@@ -140,11 +143,11 @@ def expand_staging_directive(staging_directive):
                 new_sd = {'source':   source,
                           'target':   target,
                           'action':   action,
-                          'flags':    DEFAULT_FLAGS,
-                          'priority': DEFAULT_PRIORITY
+                          'flags':    flags,
+                          'priority': priority,
                 }
                 new_staging_directive.append(new_sd)
-                logger.debug("Completing entry '%s'" % new_sd)
+                log.debug("Completing entry '%s'" % new_sd)
 
             elif isinstance(source, list):
                 # We detected a list of sources, we need to expand it
@@ -193,7 +196,7 @@ def expand_staging_directive(staging_directive):
                         }
                         new_sds.append(new_sd)
 
-                logger.debug("Converting list '%s' into dicts '%s'" % (source, new_sds))
+                log.debug("Converting list '%s' into dicts '%s'" % (source, new_sds))
 
                 # Add the content of the local list to global list
                 new_staging_directive.extend(new_sds)

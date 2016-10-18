@@ -7,8 +7,6 @@ import os
 import sys
 import time
 
-# os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
-
 import radical.pilot as rp
 import radical.utils as ru
 
@@ -70,12 +68,12 @@ if __name__ == '__main__':
             for i in range(n):
                pd_init = {
                        'resource'      : resource,
-                       'cores'         : 64,   # pilot size
                        'runtime'       : 60,   # pilot runtime (min)
-                     # 'exit_on_error' : False,
+                       'exit_on_error' : True,
                        'project'       : config.get(resource,{}).get('project'),
                        'queue'         : config.get(resource,{}).get('queue'),
                        'access_schema' : config.get(resource,{}).get('schema'),
+                       'cores'         : config[resource]['cores'],
                        }
                pdesc = rp.ComputePilotDescription(pd_init)
                pdescs.append(pdesc)
