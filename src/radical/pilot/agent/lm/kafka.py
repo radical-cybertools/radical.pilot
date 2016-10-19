@@ -17,7 +17,7 @@ from .base import LaunchMethod
 
 # ==============================================================================
 #
-# The Launch Method Implementation for Running Spark applications
+# The Launch Method Implementation for Running Streaming applications
 #
 class Kafka(LaunchMethod):
 
@@ -33,7 +33,26 @@ class Kafka(LaunchMethod):
     #
     @classmethod
     def lrms_config_hook(cls, name, cfg, lrms, logger):
-        
+
+
+    import re
+    from os import fsync
+    ## this function is to update values in the configuration file os kafka
+    def updating(filename,dico):
+
+        RE = '(('+'|'.join(dico.keys())+')\s*=)[^\r\n]*?(\r?\n|\r)'
+        pat = re.compile(RE)
+
+        def jojo(mat,dic = dico ):
+        return dic[mat.group(2)].join(mat.group(1,3))
+
+        with open(filename,'rb') as f:
+            content = f.read() 
+
+        with open(filename,'wb') as f:
+            f.write(pat.sub(jojo,content))
+
+##---------------------------------------------------
 
 	    logger.info("Downloading Apache Kafka..")
 	    try:
@@ -76,22 +95,36 @@ class Kafka(LaunchMethod):
         zk_properties_file.write('DataDir = %s \n' % dataDir )
         clientPort = 2181  ##
         zk_properties_file.write('clientPort = %d \n')
-        if len(lrms.node_list) == 1:
-            zk_properties_file.write(lrms.node_list[0] + ':2888:3888' +'\n')
-        else:
-            for nodename in lrms.node_list[1:]:
-                zk_properties_file.write(nodename + ':2888:3888' '\n')   
+        for i, nodename in enumerate(lrms.node_list):
+            zk_properties_file.write('server.'+str(i+1) + '=' + nodename + ':2888:3888 \n')    #ex. server.1=c242.stampede:2888:3888
         initLimit = 5
         zk_properties_file.write('initLimit = %d \n')
         syncLimit = 2
         zk_properties_file.write('syncLimit = %d \n')
-        zk_properties_file.write('maxClientCnxns = 0 \n')  ##
+        maxClientCnxns = 0
+        zk_properties_file.write('maxClientCnxns = %d \n', maxClientCnxns)  ##
         zk_properties_file.close()
 
-        ## fix zookeeper server properties:
-        kafka_server_properties_file = open(kafka_home + '/config/server.properties','w+')
-        kafka_server_properties_file.write('\n ## added by Radical-Pilot \n')
-        kafka_server_properties_file.write('delete.topic.enable = true\n')
+
+        nodenames_string = ''
+        for nodename in lrms.node_list:
+            nodenames_string += nodename + ':2080,'
+
+        #setup configuration of kafka for multibroker cluster 
+        for i,nodename in enumerate(lrms.node_list):
+            try:
+                subprocess.check_call('cp ' + kafka_home +'/config/server.properties ' +kafka_home + '/config/server.properties_%d',i)
+                vars = ['broker.id','log.dirs','zookeeper.connect' ]
+                new_values = [str(i),'/tmp/kafka-logs-'+str(i), nodenames_string]
+                what_to_change = dict(zip(vars,new_values))
+                filename = kafka_home + 'config/server.properties_' + str(i)
+                updating(filename,what_to_change)
+                with open(filename,'a') as f:
+                    f.write('\n ## added by Radical-Pilot  ## \n')
+                    f.write('host.name=%s \n', nodename )
+                    f.write('delete.topic.enable = true\n')
+            except Exception as e:
+                raise RuntimeError(e)
 
 
         #### Start Zookeeper Cluster Service
@@ -104,11 +137,14 @@ class Kafka(LaunchMethod):
         ## start kafka server:
         logger.info('Starting Kafka service..')
         try:
-            subprocess.check_call(kafka_home + '/bin/kafka-server-start.sh' + ' ' + kafka_home + '/config/server.properties')
+            for i,nodename in enumerate(lrms.node_list):
+                subprocess.check_call(kafka_home + '/bin/kafka-server-start.sh' + ' ' + kafka_home + '/config/server.properties_%d',i )
         except Exception as e:
             raise RuntimeError("Kafka service failed to start: %s" % e)
 
-        launch_command = None
+        launch_command = kafka_home + '/bin'
+
+        zookeeper_url_string = ""
 
         
 
@@ -119,7 +155,7 @@ class Kafka(LaunchMethod):
         # dict, and will be passed around as part of the opaque_slots structure,
         # so it is available on all LM create_command calls.
         lm_info = {'kafka_home'    : kafka_home,
-                   'lm_detail'     : spark_master_string,
+                   'lm_detail'     : zookeeper_url_string,
                    'name'          : lrms.name,
                    'launch_command': launch_command,
                    'nodename'      : lrms.node_list[0]}
@@ -194,7 +230,7 @@ class Kafka(LaunchMethod):
             command = " "
 
         
-        kafka_command = self.launch_command 
+        kafka_command = self.launch_command  + '/' + task_exec
 
 
         self._log.debug("Kafka  Command %s"%spark_command)
