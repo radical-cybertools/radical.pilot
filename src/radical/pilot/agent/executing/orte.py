@@ -15,7 +15,6 @@ import traceback
 from orte_cffi import ffi, lib as orte_lib
 
 from .... import pilot     as rp
-from ...  import utils     as rpu
 
 from .base import AgentExecutingComponent
 
@@ -236,7 +235,7 @@ class ORTE(AgentExecutingComponent):
             self.advance(cu, rp.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
 
         else:
-            cu['started'] = rpu.timestamp()
+            cu['started'] = time.time()
 
             cu_id = cu['_id']
             self._log.debug("[%s] Unit %s has spawned." % (time.ctime(), cu_id))
@@ -249,7 +248,7 @@ class ORTE(AgentExecutingComponent):
     #
     def unit_completed_cb(self, task, exit_code):
 
-        timestamp = rpu.timestamp()
+        timestamp = time.time()
 
         cu = self.task_map[task]
         del self.task_map[task]
