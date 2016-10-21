@@ -7,6 +7,13 @@
             "cores"    : 2
         },
         
+        "local.localhost_anaconda" : {
+            "project"  : null,
+            "queue"    : null,
+            "schema"   : null,
+            "cores"    : 2
+        },
+        
         "local.localhost_spark_ana" : {
             "project"  : null,
             "queue"    : null,
