@@ -594,12 +594,12 @@ class Component(mp.Process):
         q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB, addr)
         q.subscribe(topic)
 
-        if topic in ['reschedule', 'unschedule']:
+        if topic in os.getenv("RADICAL_PILOT_CPROFILE_SUBSCRIBERS", "").split():
             t = ProfiledThread(target=_subscriber, args=[q,cb],
-                      name="%s-%s.subscriber" % (self.cname, topic))
+                               name="%s-%s.subscriber" % (self.cname, topic))
         else:
             t = mt.Thread(target=_subscriber, args=[q,cb],
-            name="%s.subscriber" % self.cname)
+                          name="%s.subscriber" % self.cname)
 
         t.start()
         self._subscribers.append(t)
