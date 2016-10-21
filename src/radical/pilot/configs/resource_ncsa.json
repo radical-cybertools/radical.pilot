@@ -127,6 +127,11 @@
             "module load bwpy",
             "module load ccm"
         ],
+        "pre_bootstrap_2"             : [
+            "export HOME=$HOME",
+            "export PATH=$PATH",
+            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+        ],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",

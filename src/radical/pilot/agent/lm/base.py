@@ -34,11 +34,11 @@ class LaunchMethod(object):
 
     # List of environment variables that designated Launch Methods should export
     EXPORT_ENV_VARIABLES = [
-        'LD_LIBRARY_PATH',
-        'PATH',
-        'PYTHONPATH',
-        'PYTHON_DIR',
-        'RADICAL_PILOT_PROFILE'
+      # 'LD_LIBRARY_PATH',
+      # 'PATH',
+      # 'PYTHONPATH',
+      # 'PYTHON_DIR',
+      # 'RADICAL_PILOT_PROFILE'
     ]
 
     # --------------------------------------------------------------------------
