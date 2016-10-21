@@ -29,6 +29,7 @@
         "stage_cacerts"               : "True",
         "python_dist"                 : "default"
     },
+
     "bw_lib": {
         "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system (https://bluewaters.ncsa.illinois.edu/)",
         "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
@@ -54,11 +55,7 @@
             "module use --append /projects/sciteam/gkd/modules",
             "module load openmpi/rhc_static"
         ],
-        "pre_bootstrap_2"             : [
-            "export HOME=$HOME",
-            "export PATH=$PATH",
-            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
-        ],
+        "pre_bootstrap_2"             : ["export HOME=$HOME"],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
@@ -172,4 +169,3 @@
         "python_dist"                 : "default"
     }
 }
-
