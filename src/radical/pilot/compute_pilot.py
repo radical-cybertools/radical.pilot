@@ -300,7 +300,8 @@ class ComputePilot (object):
         pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
         resource_details = {
             'nodes':          pilot_json['nodes'],
-            'cores_per_node': pilot_json['cores_per_node']
+            'cores_per_node': pilot_json['cores_per_node'],
+            'lm_detail': pilot_json.get('lm_detail')
         }
         return resource_details
 
@@ -527,7 +528,7 @@ class ComputePilot (object):
             # the directory if it does not yet exist.
             target_dir = saga.filesystem.Directory(tgt_dir_url, flags=saga.filesystem.CREATE_PARENTS)
 
-            if action == LINK:
+            if action == LINK:	
                 # TODO: Does this make sense?
                 #log_message = 'Linking %s to %s' % (source, abs_target)
                 #os.symlink(source, abs_target)

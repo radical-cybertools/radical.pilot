@@ -278,7 +278,7 @@ setup_args = {
                             'radical.utils',
                             'pymongo==2.8',
                             'python-hostlist',
-                            'netifaces',
+                            'netifaces==0.10.4',
                             'setproctitle',
                             'ntplib',
                             'pyzmq'

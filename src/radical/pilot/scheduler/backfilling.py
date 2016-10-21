@@ -12,18 +12,18 @@ __copyright__ = "Copyright 2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os 
+import time
 import pprint
 import threading
 
 from ..states   import *
 from ..utils    import logger
-from ..utils    import timestamp
 
 from .interface import Scheduler
 
 # to reduce roundtrips, we can oversubscribe a pilot, and schedule more units
 # than it can immediately execute.  Value is in %.
-OVERSUBSCRIPTION_RATE = 0
+OVERSUBSCRIPTION_RATE = os.environ.get('RADICAL_PILOT_BF_OVERSUBSCRIPTION', 100)
 
 # -----------------------------------------------------------------------------
 # 
@@ -195,7 +195,7 @@ class BackfillingScheduler(Scheduler):
                     # need to reschedule the units which are reschedulable --
                     # all others are marked 'FAILED' if they are already
                     # 'EXECUTING' and not restartable
-                    ts = timestamp()
+                    ts = time.time()
                     self._dbs.change_compute_units (
                         filter_dict = {"pilot"       : pid, 
                                        "state"       : {"$in": [UNSCHEDULED,
@@ -302,8 +302,9 @@ class BackfillingScheduler(Scheduler):
             self.pilots[pid]['resource'] = pilot.resource
             self.pilots[pid]['sandbox']  = pilot.sandbox
 
-            if  OVERSUBSCRIPTION_RATE :
-                self.pilots[pid]['caps'] += int(OVERSUBSCRIPTION_RATE * pilot.description.cores / 100.0)
+            self.pilots[pid]['caps'] += int((100+OVERSUBSCRIPTION_RATE) \
+                                            * pilot.description.cores   \
+                                            / 100.0)
 
             # make sure we register callback only once per pmgr
             pmgr = pilot.pilot_manager

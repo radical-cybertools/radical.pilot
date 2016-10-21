@@ -10,8 +10,7 @@ import radical.utils   as ru
 
 from ..states    import *
 
-from .prof_utils import Profiler, clone_units, drop_units
-from .prof_utils import timestamp as util_timestamp
+from .prof_utils import clone_units, drop_units
 
 from .queue      import Queue        as rpu_Queue
 from .queue      import QUEUE_ZMQ    as rpu_QUEUE_ZMQ
@@ -174,7 +173,7 @@ class Component(mp.Process):
         self._log = ru.get_logger(log_name, log_tgt, self._debug)
         self._log.info('creating %s' % self._cname)
 
-        self._prof = Profiler(self._cname)
+        self._prof = ru.Profiler(self._cname)
 
         # start the main event loop in a separate process.  At that point, the
         # component will basically detach itself from the parent process, and
@@ -659,7 +658,7 @@ class Component(mp.Process):
         self._is_parent = False
         self._cname     = self.childname
         self._log       = ru.get_logger(self._cname, "%s.log" % self._cname, self._debug)
-        self._prof      = Profiler(self._cname)
+        self._prof      = ru.Profiler(self._cname)
 
         # parent can call terminate, which we translate here into sys.exit(),
         # which is then excepted in the run loop below for an orderly shutdown.
@@ -847,7 +846,7 @@ class Component(mp.Process):
         """
 
         if not timestamp:
-            timestamp = util_timestamp()
+            timestamp = time.time()
 
         if not isinstance(units, list):
             units = [units]

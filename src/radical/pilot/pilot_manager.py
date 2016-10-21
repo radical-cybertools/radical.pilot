@@ -291,12 +291,24 @@ class PilotManager(object):
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'resource'."
                 raise BadParameter(error_msg)
 
-            elif pd.runtime is None:
+            if pd.runtime is None:
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'runtime'."
                 raise BadParameter(error_msg)
 
-            elif pd.cores is None:
+            if pd.runtime <= 0:
+                error_msg = "ComputePilotDescription 'runtime must be positive."
+                raise BadParameter(error_msg)
+
+            if pd.cores is None:
                 error_msg = "ComputePilotDescription does not define mandatory attribute 'cores'."
+                raise BadParameter(error_msg)
+
+            if float(pd.cores) != int(pd.cores):
+                error_msg = "ComputePilotDescription 'cores' must be integer."
+                raise BadParameter(error_msg)
+
+            if int(pd.cores) <= 0:
+                error_msg = "ComputePilotDescription 'cores' must be positive."
                 raise BadParameter(error_msg)
 
             resource_key = pd.resource

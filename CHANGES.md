@@ -5,6 +5,87 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.43.1 Release                                                        2016-09-09
+--------------------------------------------------------------------------------
+
+  - hotfix: fix netifaces to version 0.10.4 to avoid trouble on BlueWaters
+
+
+0.43 Release                                                          2016-09-08
+--------------------------------------------------------------------------------
+
+  - Add aec_handover for orte. 
+  - add a local confiuration for bw 
+  - add early binding eample for osg 
+  - add greenfield config (only works for single-node runs at the moment)
+  - add PYTHONPATH to the vars we reset for CU envs 
+  - allow overloading of agent config 
+  - fix #1071 
+  - fix synapse example 
+  - avoid profiling of empty state transitions 
+  - Check of YARN start-all script. Raising Runtime error in case of error. 
+  - disable hwm altogether 
+  - drop clones *before* push 
+  - enable scheduling time measurements. 
+  - First commit for multinode YARN cluster 
+  - fix getip 
+  - fix iface detection 
+  - fix reordering of states for some update sequences 
+  - fix unit cancellation 
+  - improve ve create script 
+  - make orte-submit aware of non-mpi CUs 
+  - move env preservation to an earlier point, to avoid pre-exec stuff 
+  - Python distribution mandatory to all confs 
+  - Remove temp agent config directory. 
+  - Resolving #1107 
+  - Schedule behind the real unit and support multicore. 
+  - SchedulerContinuous -> AgentSchedulingComponent. 
+  - Take ccmrun out of bootstrap_2. 
+  - Tempfile is not a tempfile so requires explicit removal. 
+  - resolve #1001 
+  - Unbreak CCM. 
+  - use high water mark for ZMQ to avoid message drops on high loads 
+
+
+0.42 Release                                                          2016-08-09
+--------------------------------------------------------------------------------
+
+  - change examples to use 2 cores on localhost 
+  - Iterate documentation
+  - Manual cherry pick fix for getip. 
+
+
+0.41 Release                                                          2016-07-15
+--------------------------------------------------------------------------------
+
+  - address some of error messages and type checks 
+  - add scheduler documentation simplify interpretation of BF oversubscription fix a log message 
+  - fix logging problem reported by Ming and Vivek 
+  - global default url, sync profile/logfile/db fetching tools 
+  - make staging path resilient against cwd changes 
+  - Switch SSH and ORTE for Comet
+  - sync session cleanup tool with rpu 
+  - update allocation IDs 
+
+
+0.40.4 Release                                                        2016-05-18
+--------------------------------------------------------------------------------
+
+  - point release with more tutorial configurations
+
+
+0.40.3 Release                                                        2016-05-17
+--------------------------------------------------------------------------------
+
+  - point release with tutorial configurations
+
+
+0.40.2 Release                                                        2016-05-13
+--------------------------------------------------------------------------------
+
+  - hotfix to fix vnode parsing on archer
+
+
 0.40.1 Release                                                        2016-02-11
 --------------------------------------------------------------------------------
 
@@ -485,5 +566,4 @@ API Changes:
 
 
 --------------------------------------------------------------------------------
-
 

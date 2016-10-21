@@ -3,6 +3,8 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import time
+
 import radical.utils as ru
 
 from ... import utils     as rpu
@@ -98,7 +100,7 @@ class Continuous(AgentSchedulingComponent):
                 else:
                     slot_matrix += "+"
         slot_matrix += "|"
-        return {'timestamp' : rpu.timestamp(),
+        return {'timestamp' : time.time(),
                 'slotstate' : slot_matrix}
 
 

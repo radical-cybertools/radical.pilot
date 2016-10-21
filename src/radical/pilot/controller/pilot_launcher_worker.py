@@ -19,7 +19,6 @@ import radical.utils as ru
 
 from ..states    import *
 from ..utils     import logger
-from ..utils     import timestamp
 from ..context   import Context
 from ..logentry  import Logentry
 
@@ -206,7 +205,7 @@ class PilotLauncherWorker(threading.Thread):
 
             if  pilot_failed :
                 out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
-                ts = timestamp()
+                ts = time.time()
                 pilot_col.update(
                     {"_id"  : pilot_id,
                      "state": {"$ne"     : DONE}},
@@ -236,7 +235,7 @@ class PilotLauncherWorker(threading.Thread):
                 # FIXME: this should only be done if the state is not yet
                 # done...
                 out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
-                ts = timestamp()
+                ts = time.time()
                 pilot_col.update(
                     {"_id"  : pilot_id,
                      "state": {"$ne"     : DONE}},
@@ -312,7 +311,7 @@ class PilotLauncherWorker(threading.Thread):
                     #       pending pilots.  In practice we only ever use one
                     #       pmgr though, and its during its shutdown that we get
                     #       here...
-                    ts = timestamp()
+                    ts = time.time()
                     compute_pilot = pilot_col.find_and_modify(
                         query={"pilotmanager": self.pilot_manager_id,
                                "state" : PENDING_LAUNCH},
@@ -333,7 +332,7 @@ class PilotLauncherWorker(threading.Thread):
                 # state to pending, otherwise to failed.
                 compute_pilot = None
 
-                ts = timestamp()
+                ts = time.time()
                 compute_pilot = pilot_col.find_and_modify(
                     query={"pilotmanager": self.pilot_manager_id,
                            "state" : PENDING_LAUNCH},
@@ -409,6 +408,9 @@ class PilotLauncherWorker(threading.Thread):
                         shared_filesystem       = resource_cfg.get ('shared_filesystem', True)
                         health_check            = resource_cfg.get ('health_check', True)
                         python_dist             = resource_cfg.get ('python_dist')
+                        cu_pre_exec             = resource_cfg.get ('cu_pre_exec')
+                        cu_post_exec            = resource_cfg.get ('cu_post_exec')
+                        export_to_cu            = resource_cfg.get ('export_to_cu')
                         
 
                         # Agent configuration that is not part of the public API.
@@ -667,7 +669,9 @@ class PilotLauncherWorker(threading.Thread):
 
                         # set some agent configuration
                         agent_cfg_dict['cores']              = number_cores
-                        agent_cfg_dict['debug']              = os.environ.get('RADICAL_PILOT_AGENT_VERBOSE', logger.getEffectiveLevel())
+                        agent_cfg_dict['resource_cfg']       = resource_cfg
+                        agent_cfg_dict['debug']              = os.environ.get('RADICAL_PILOT_AGENT_VERBOSE',
+                                                                              logger.getEffectiveLevel())
                         agent_cfg_dict['mongodb_url']        = str(agent_dburl)
                         agent_cfg_dict['lrms']               = lrms
                         agent_cfg_dict['spawner']            = agent_spawner
@@ -677,6 +681,9 @@ class PilotLauncherWorker(threading.Thread):
                         agent_cfg_dict['session_id']         = session_id
                         agent_cfg_dict['agent_launch_method']= agent_launch_method
                         agent_cfg_dict['task_launch_method'] = task_launch_method
+                        agent_cfg_dict['export_to_cu']       = export_to_cu
+                        agent_cfg_dict['cu_pre_exec']        = cu_pre_exec
+                        agent_cfg_dict['cu_post_exec']       = cu_post_exec
                         if mpi_launch_method:
                             agent_cfg_dict['mpi_launch_method']  = mpi_launch_method
                         if cores_per_node:
@@ -785,7 +792,10 @@ class PilotLauncherWorker(threading.Thread):
                         msg = "Submitting SAGA job with description: %s" % str(jd.as_dict())
                         logentries.append(Logentry (msg, logger=logger.debug))
 
-                        pilotjob = js.create_job(jd)
+                        try:
+                            pilotjob = js.create_job(jd)
+                        except saga.BadParameter as e:
+                            raise ValueError('Pilot submission to %s failed: %s' % (resource_key, e))
                         pilotjob.run()
 
                         # Clean up agent config file and dir after submission
@@ -810,7 +820,7 @@ class PilotLauncherWorker(threading.Thread):
                             log_dicts.append (le.as_dict())
 
                         # Update the Pilot's state to 'PENDING_ACTIVE' if SAGA job submission was successful.
-                        ts = timestamp()
+                        ts = time.time()
                         ret = pilot_col.update(
                             {"_id"  : pilot_id,
                              "state": LAUNCHING},
@@ -840,7 +850,7 @@ class PilotLauncherWorker(threading.Thread):
                     except Exception as e:
                         # Update the Pilot's state 'FAILED'.
                         out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
-                        ts = timestamp()
+                        ts = time.time()
 
                         # FIXME: we seem to be unable to bson/json handle saga
                         # log messages containing an '#'.  This shows up here.

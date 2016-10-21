@@ -118,8 +118,8 @@ def expand_staging_directive(staging_directive):
                 new_sd = {'source':   source,
                           'target':   target,
                           'action':   action,
-                          'flags':    DEFAULT_FLAGS,
-                          'priority': DEFAULT_PRIORITY
+                          'flags':    flags,
+                          'priority': priority,
                 }
                 new_staging_directive.append(new_sd)
                 logger.debug("Completing entry '%s'" % new_sd)

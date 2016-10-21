@@ -140,7 +140,8 @@ class ComputeUnit(object):
             computeunit._uid = str(u['_id'])
             computeunit._description = u['description']
             computeunit._manager = unit_manager_obj
-            computeunit._worker = unit_manager_obj._worker
+            computeunit._worker  = unit_manager_obj._worker
+            computeunit._session = unit_manager_obj._session
 
             computeunits.append(computeunit)
 

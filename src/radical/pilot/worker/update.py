@@ -78,7 +78,7 @@ class Update(rpu.Worker):
     def _ordered_update(self, cu, state, timestamp=None):
         """
         The update worker can receive states for a specific unit in any order.
-        If states are pushed straight to theh DB, the state attribute of a unit
+        If states are pushed straight to the DB, the state attribute of a unit
         may not reflect the actual state.  This should be avoided by re-ordering
         on the client side DB consumption -- but until that is implemented we
         enforce ordered state pushes to MongoDB.  We do it like this:
@@ -86,7 +86,7 @@ class Update(rpu.Worker):
           - for each unit arriving in the update worker
             - check if new state is final
               - yes: push update, but never push any update again (only update
-                hist)
+                state history)
               - no:
                 check if all expected earlier states are pushed already
                 - yes: push this state also
@@ -125,7 +125,7 @@ class Update(rpu.Worker):
         s_max = rps.FAILED
 
         if not timestamp:
-            timestamp = rpu.timestamp()
+            timestamp = time.time()
 
         # we always push state history
         update_dict = {'$push': {
@@ -172,11 +172,8 @@ class Update(rpu.Worker):
         if new_state:
           # self._log.debug(" === new %s: %s" % (uid, new_state))
             state = new_state
-
-        # the max of the consecutive list is set in te update dict...
-        if state:
-          # self._log.debug(" === set %s: %s" % (uid, state))
             cache['last'] = state
+          # self._log.debug(" === set %s: %s" % (uid, state))
             update_dict['$set'] = {'state': state}
 
         # record if final state is sent
@@ -250,7 +247,7 @@ class Update(rpu.Worker):
         # and push bulk if time is up.
         uid       = cu['_id']
         state     = cu.get('state')
-        timestamp = cu.get('state_timestamp', rpu.timestamp())
+        timestamp = cu.get('state_timestamp', time.time())
 
         if 'clone' in uid:
             return

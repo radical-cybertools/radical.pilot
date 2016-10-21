@@ -90,6 +90,19 @@ class ABDS(AgentExecutingComponent):
 
         self.tmpdir = tempfile.gettempdir()
 
+        # if we need to transplant any original env into the CU, we dig the
+        # respective keys from the dump made by bootstrap_1.sh
+        self._env_cu_export = dict()
+        if self._cfg.get('export_to_cu'):
+            with open('env.orig', 'r') as f:
+                for line in f.readlines():
+                    if '=' in line:
+                        k,v = line.split('=', 1)
+                        key = k.strip()
+                        val = v.strip()
+                        if key in self._cfg['export_to_cu']:
+                            self._env_cu_export[key] = val
+
 
     # --------------------------------------------------------------------------
     #
@@ -250,15 +263,19 @@ class ABDS(AgentExecutingComponent):
             launch_script.write('chmod -R 777 .\n')
 
             # Create string for environment variable setting
-            env_string = 'export'
+            env_string = ''
             if cu['description']['environment']:
                 for key,val in cu['description']['environment'].iteritems():
-                    env_string += ' %s=%s' % (key, val)
-            env_string += " RP_SESSION_ID=%s" % self._cfg['session_id']
-            env_string += " RP_PILOT_ID=%s"   % self._cfg['pilot_id']
-            env_string += " RP_AGENT_ID=%s"   % self._cfg['agent_name']
-            env_string += " RP_SPAWNER_ID=%s" % self.cname
-            env_string += " RP_UNIT_ID=%s"    % cu['_id']
+                    env_string += 'export %s=%s\n' % (key, val)
+            env_string += "export RP_SESSION_ID=%s\n" % self._cfg['session_id']
+            env_string += "export RP_PILOT_ID=%s\n"   % self._cfg['pilot_id']
+            env_string += "export RP_AGENT_ID=%s\n"   % self._cfg['agent_name']
+            env_string += "export RP_SPAWNER_ID=%s\n" % self.cname
+            env_string += "export RP_UNIT_ID=%s\n"    % cu['_id']
+
+            # also add any env vars requested for export by the resource config
+            for k,v in self._env_cu_export.iteritems():
+                env_string += "export %s=%s\n" % (k,v)
             launch_script.write('# Environment variables\n%s\n' % env_string)
 
             # The actual command line, constructed per launch-method
@@ -278,6 +295,7 @@ class ABDS(AgentExecutingComponent):
             launch_script.write("# The command to run\n")
             launch_script.write("%s\n" % launch_command)
             launch_script.write("RETVAL=$?\n")
+            launch_script.write("\ncat Ystdout\n")
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 launch_script.write("echo script after_exec `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
@@ -331,7 +349,7 @@ class ABDS(AgentExecutingComponent):
 
         self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['_id'])
 
-        cu['started'] = rpu.timestamp()
+        cu['started'] = time.time()
         cu['proc']    = proc
 
         self._watch_queue.put(cu)
@@ -342,7 +360,7 @@ class ABDS(AgentExecutingComponent):
     def _watch(self):
 
         cname = self.name.replace('Component', 'Watcher')
-        self._prof = rpu.Profiler(cname)
+        self._prof = ru.Profiler(cname)
         self._prof.prof('run', uid=self._pilot_id)
         try:
             self._log = ru.get_logger(cname, target="%s.log" % cname,
@@ -430,7 +448,7 @@ class ABDS(AgentExecutingComponent):
             else :
                 # poll subprocess object
                 exit_code = cu['proc'].poll()
-                now       = rpu.timestamp()
+                now       = time.time()
 
                 if exit_code is None:
                     # Process is still running

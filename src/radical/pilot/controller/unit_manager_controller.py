@@ -19,7 +19,6 @@ import radical.utils as ru
 from ..types              import *
 from ..states             import *
 from ..utils              import logger
-from ..utils              import timestamp
 from ..staging_directives import TRANSFER, LINK, COPY, MOVE
 
 from .input_file_transfer_worker  import InputFileTransferWorker
@@ -163,44 +162,67 @@ class UnitManagerController(threading.Thread):
         if  not unit_id in self._callback_histories :
             self._callback_histories[unit_id] = list()
         self._callback_histories[unit_id].append (
-                {'timestamp' : timestamp(), 
+                {'timestamp' : time.time(), 
                  'state'     : new_state})
         self._session.prof.prof('notification', uid=unit_id, state=new_state)
 
-        for [cb, cb_data] in self._shared_data[unit_id]['callbacks']:
-            try:
+        # we check the last unit state for which a callback was issued, and then
+        # issue callbacks for all intermediate states, too.
+        with self._shared_data_lock:
 
-                if self._shared_data[unit_id]['facade_object'] :
-                    if  cb_data :
-                        cb(self._shared_data[unit_id]['facade_object'], new_state, cb_data)
-                    else :
-                        cb(self._shared_data[unit_id]['facade_object'], new_state)
-                else :
-                    logger.error("Couldn't call callback (no pilot instance)")
-            except Exception as e:
-                logger.exception(
-                    "Couldn't call callback function %s" % e)
-                raise
+            new_state_value  = unit_state_value[new_state]
+            last_state_value = new_state_value
+            last_state       = self._shared_data[unit_id].get('last_state')
 
-        # If we have any manager-level callbacks registered, we
-        # call those as well!
-        if  not UNIT_STATE in self._manager_callbacks :
-            self._manager_callbacks[UNIT_STATE] = list()
+            if last_state:
+                last_state_value = unit_state_value[last_state]
+                assert(new_state_value > last_state_value)
 
-        for [cb, cb_data] in self._manager_callbacks[UNIT_STATE]:
-            if not self._shared_data[unit_id]['facade_object'] :
-                logger.warning ('skip cb for incomple unit (%s: %s)' % (unit_id, new_state))
-                break
+            for intermediate_state_value in range(last_state_value+1, new_state_value+1):
 
-            try:
-                if  cb_data :
-                    cb(self._shared_data[unit_id]['facade_object'], new_state, cb_data)
-                else :
-                    cb(self._shared_data[unit_id]['facade_object'], new_state)
-            except Exception as e:
-                logger.exception(
-                    "Couldn't call callback function %s" % e)
-                raise
+                if intermediate_state_value == new_state_value:
+                    intermediate_state = new_state
+                else:
+                    intermediate_state = unit_state_by_value[intermediate_state_value]
+
+
+                for [cb, cb_data] in self._shared_data[unit_id]['callbacks']:
+                    try:
+
+                        if not self._shared_data[unit_id]['facade_object']:
+                            raise RuntimeError("Couldn't call callback (no unit instance)")
+
+                        if  cb_data :
+                            cb(self._shared_data[unit_id]['facade_object'], intermediate_state, cb_data)
+                        else:
+                            cb(self._shared_data[unit_id]['facade_object'], intermediate_state)
+
+                    except Exception as e:
+                        logger.exception("Couldn't call callback function: %s" % e)
+                        raise
+
+                # If we have any manager-level callbacks registered, we
+                # call those as well!
+                if  not UNIT_STATE in self._manager_callbacks :
+                    self._manager_callbacks[UNIT_STATE] = list()
+
+                for [cb, cb_data] in self._manager_callbacks[UNIT_STATE]:
+                    if not self._shared_data[unit_id]['facade_object'] :
+                        logger.warning ('skip cb for incomple unit (%s: %s)' % (unit_id, intermediate_state))
+                        break
+
+                    try:
+                        if  cb_data :
+                            cb(self._shared_data[unit_id]['facade_object'], intermediate_state, cb_data)
+                        else :
+                            cb(self._shared_data[unit_id]['facade_object'], intermediate_state)
+                    except Exception as e:
+                        logger.exception(
+                            "Couldn't call callback function %s" % e)
+                        raise
+
+            # remember the last callback
+            self._shared_data[unit_id]['last_state'] = new_state
 
         # If we meet a final state, we record the object's callback history for
         # later evaluation.

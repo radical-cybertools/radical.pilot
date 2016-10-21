@@ -58,10 +58,10 @@ LOCK_TIMEOUT=180 # 3 min
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
 VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
-VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces setproctitle orte_cffi"
+VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces==0.10.4 setproctitle orte_cffi"
 
 # before we change anything else in the pilot environment, we safe a couple of
-# env vars to bve able to re-create a close-to-pristine env for unit execution.
+# env vars to later re-create a close-to-pristine env for unit execution.
 _OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
 _OLD_VIRTUAL_PYTHONHOME="$PYTHONHOME"
 _OLD_VIRTUAL_PATH="$PATH"
@@ -1203,7 +1203,11 @@ echo "# bootstrap_1 started as     : '$0 $@'"
 echo "# Environment of bootstrap_1 process:"
 echo "#"
 echo "#"
-env | sort
+echo "# -------------------------------------------------------------------"
+
+# print the sorted env for logging, but also keep a copy so that we can dig
+# original env settings for any CUs, if so specified in the resource config.
+env | sort | grep '=' | tee env.orig
 echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
@@ -1228,6 +1232,18 @@ while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x" OPTION; do
         *)  usage "Unknown option: '$OPTION'='$OPTARG'"  ;;
     esac
 done
+
+# At this point, all pre_bootstrap_1 commands have been executed.  We copy the
+# resulting PATH and LD_LIBRARY_PATH, and apply that in bootstrap_2.sh, so that
+# the sub-agents start off with the same env (or at least the relevant parts of
+# it).
+#
+# This assumes that the env is actually transferrable.  If that assumption
+# breaks at some point, we'll have to either only transfer the incremental env
+# changes, or reconsider the approach to pre_bootstrap_x commands altogether --
+# see comment in the pre_bootstrap_1 function.
+PB1_PATH="$PATH"
+PB1_LDLB="$LD_LIBRARY_PATH"
 
 # FIXME: By now the pre_process rules are already performed.
 #        We should split the parsing and the execution of those.
@@ -1391,6 +1407,10 @@ hostname
 
 # make sure we use the correct sandbox
 cd $SANDBOX
+
+# apply some env settings as stored after running pre_bootstrap_1 commands
+export PATH="$PB1_PATH"
+export LD_LIBRARY_PATH="$PB1_LDLB"
 
 # activate virtenv
 if test "$PYTHON_DIST" = "anaconda"

@@ -22,7 +22,6 @@ import radical.utils as ru
 
 from ..states       import *
 from ..utils        import logger
-from ..utils        import timestamp
 from ..db.database  import COMMAND_CANCEL_PILOT
 
 from .pilot_launcher_worker import PilotLauncherWorker
@@ -222,7 +221,7 @@ class PilotManagerController(threading.Thread):
         if  not pilot_id in self._callback_histories :
             self._callback_histories[pilot_id] = list()
         self._callback_histories[pilot_id].append (
-                {'timestamp' : timestamp(), 
+                {'timestamp' : time.time(), 
                  'state'     : new_state})
 
         for cb in self._shared_data[pilot_id]['callbacks']:
@@ -340,6 +339,10 @@ class PilotManagerController(threading.Thread):
                             # includes communication to the unit scheduler which
                             # may, or may not, cancel the pilot's units.
                             self.call_callbacks(pilot_id, new_state)
+
+                        if new_state in [ACTIVE]:
+                            logger.info('pilot %s is active: %s [%s]', pilot_id, \
+                                    pilot.get('lm_info'), pilot.get('lm_detail')) 
 
                     # If the state is 'DONE', 'FAILED' or 'CANCELED', we also
                     # set the state of the compute unit accordingly (but only

@@ -27,6 +27,8 @@ from .exceptions      import PilotException
 from .db              import Session as dbSession
 
 
+default_dburl = 'mongodb://rp:rp@ds015335.mlab.com:15335/rp'
+
 # ------------------------------------------------------------------------------
 #
 class Session (saga.Session):
@@ -105,10 +107,11 @@ class Session (saga.Session):
         self._resource_configs = {}
 
         if  not database_url:
-            database_url = os.getenv ("RADICAL_PILOT_DBURL", None)
+            database_url = os.environ.get("RADICAL_PILOT_DBURL")
 
         if  not database_url:
-            raise PilotException ("no database URL (set RADICAL_PILOT_DBURL)")  
+            logger.warning('using default dburl %s', default_dburl)
+            database_url = default_dburl
 
         dburl = ru.Url(database_url)
 
@@ -138,7 +141,7 @@ class Session (saga.Session):
                 ru.reset_id_counters(prefix=['pmgr', 'umgr', 'pilot', 'unit', 'unit.%(counter)06d'])
 
             # initialize profiling
-            self.prof = Profiler('%s' % uid)
+            self.prof = ru.Profiler('%s' % uid)
             self.prof.prof('start session', uid=uid)
 
             logger.report.info ('<<new session: ')
@@ -163,7 +166,7 @@ class Session (saga.Session):
             logger.report.error(">>err\n")
             logger.exception ('session create failed')
             raise PilotException("Couldn't create new session (database URL '%s' incorrect?): %s" \
-                            % (self._dburl, ex))  
+                            % (dburl, ex))  
 
         # Loading all "default" resource configurations
         module_path  = os.path.dirname(os.path.abspath(__file__))

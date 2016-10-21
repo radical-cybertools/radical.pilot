@@ -29,3 +29,5 @@
     declared explicitly.
   + rename 'worker' to 'sub-agent' to avoid confusion?
   - component: collapse declare_input and declare_worker
+
+  - executor should write CU script in one go, not incrementally

@@ -168,7 +168,7 @@ class Agent(rpu.Worker):
         # first order of business: set the start time and state of the pilot
         # Only the master agent performs this action
         if self.agent_name == 'agent_0':
-            now = rpu.timestamp()
+            now = time.time()
             ret = self._p.update(
                 {"_id": self._pilot_id},
                 {"$set" : {"state"        : rps.ACTIVE,
@@ -533,9 +533,9 @@ class Agent(rpu.Worker):
         # right here...  No idea how to avoid that roundtrip...
         # This also blocks us from using multiple ingest threads, or from doing
         # late binding by unit pull :/
-        cu_cursor = self._cu.find(spec  = {"pilot"   : self._pilot_id,
-                                           'state'   : rps.AGENT_STAGING_INPUT_PENDING,
-                                           'control' : 'umgr'})
+        cu_cursor = self._cu.find(spec = {"pilot"   : self._pilot_id,
+                                          'state'   : rps.AGENT_STAGING_INPUT_PENDING,
+                                          'control' : 'umgr'})
         if not cu_cursor.count():
             # no units whatsoever...
             self._log.info("units pulled:    0")

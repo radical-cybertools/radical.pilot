@@ -2,7 +2,7 @@
 
 # set -x
 
-scriptname="radicalpilot-create-static-ve"
+scriptname="radical-pilot-create-static-ve"
 
 reqs="pymongo==2.8 python-hostlist netifaces setproctitle ntplib pyzmq"
 reqs="$reqs apache-libcloud colorama backports.ssl-match-hostname"
