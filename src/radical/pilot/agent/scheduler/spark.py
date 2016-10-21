@@ -4,11 +4,11 @@ __license__   = "MIT"
 
 
 import json
+import time
 import urllib2 as ul
 
 import radical.utils as ru
 
-from ... import utils     as rpu
 from ... import states    as rps
 from ... import constants as rpc
 
@@ -45,7 +45,7 @@ class Spark(AgentSchedulingComponent):
         self._rm_url = self._cfg['lrms_info']['lm_info']['rm_url']
         self._client_node = self._cfg['lrms_info']['lm_info']['nodename']
 
-        sample_time = rpu.timestamp()
+        sample_time = time.time()
 
         #-----------------------------------------------------------------------
         # Find out the cluster's resources
