@@ -19,19 +19,19 @@
         },
 
         "ncsa.bw" : {
-            "project"  : "gkd",
+            "project"  : "gk4",
             "queue"    : "debug",
             "schema"   : "gsissh"
         },
 
         "ncsa.bw_lib" : {
-            "project"  : "gkd",
+            "project"  : "gk4",
             "queue"    : "debug",
             "schema"   : "gsissh"
         },
 
         "ncsa.bw_ccm" : {
-            "project"  : "gkd",
+            "project"  : "gk4",
             "queue"    : "debug",
             "schema"   : "gsissh"
         },
