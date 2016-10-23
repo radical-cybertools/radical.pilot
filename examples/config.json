@@ -86,7 +86,7 @@
         "xsede.wrangler" : {
             "project"  : "TG-MCB090174",
             "queue"    : "debug",
-            "schema"   : null,
+            "schema"   : "gsissh",
             "cores"    : 24
         },
 
