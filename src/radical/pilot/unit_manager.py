@@ -423,6 +423,10 @@ class UnitManager(object):
                 error_msg = "ComputeUnittDescription 'cores' must be positive."
                 raise BadParameter(error_msg)
 
+            if ud.sandbox and ud.sandbox[0] = '/':
+                error_msg = "ComputeUnittDescription 'sandbox' must be relative."
+                raise BadParameter(error_msg)
+
         logger.report.info('<<submit %d unit(s)\n\t' % len(unit_descriptions))
 
         # we return a list of compute units

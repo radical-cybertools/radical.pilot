@@ -19,6 +19,7 @@ NAME                   = 'name'
 EXECUTABLE             = 'executable'
 ARGUMENTS              = 'arguments'
 ENVIRONMENT            = 'environment'
+SANDBOX                = 'sandbox'
 CORES                  = 'cores'
 INPUT_STAGING          = 'input_staging'
 OUTPUT_STAGING         = 'output_staging'
@@ -69,6 +70,13 @@ class ComputeUnitDescription(attributes.Attributes) :
 
        (`Attribute`) Environment variables to set in the execution environment (`dict`) [`optional`].
 
+    .. data:: sandbox
+
+       (`Attribute`) This specifies the working directory of the unit.  That
+       directory *MUST* be relative to the pilot sandbox.  It will be created if
+       it does not exist.  By default, the sandbox has the name of the unit's
+       uid.
+
     .. data:: stdout
 
        (`Attribute`) the name of the file to store stdout in.
@@ -114,6 +122,8 @@ class ComputeUnitDescription(attributes.Attributes) :
 
        .. note:: TODO: explain in detal, reference ENMDTK.
 
+       .. note:: TODO: explain in detal, reference ENMDTK.
+
     .. data:: cleanup
 
        [Type: `bool`] [optional] If cleanup is set to True, the pilot will
@@ -140,6 +150,7 @@ class ComputeUnitDescription(attributes.Attributes) :
         self._attributes_register(EXECUTABLE,       None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(ARGUMENTS,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(ENVIRONMENT,      None, attributes.STRING, attributes.DICT,   attributes.WRITEABLE)
+        self._attributes_register(SANDBOX,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PRE_EXEC,         None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(POST_EXEC,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(RESTARTABLE,      None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
@@ -176,6 +187,7 @@ class ComputeUnitDescription(attributes.Attributes) :
         self.set_attribute (EXECUTABLE,     None)
         self.set_attribute (ARGUMENTS,      None)
         self.set_attribute (ENVIRONMENT,    None)
+        self.set_attribute (SANDBOX,        None)
         self.set_attribute (PRE_EXEC,       None)
         self.set_attribute (POST_EXEC,      None)
         self.set_attribute (STDOUT,         None)
