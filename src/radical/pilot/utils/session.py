@@ -83,12 +83,12 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
 
     pilots = json_docs['pilot']
     num_pilots = len(pilots)
- #  print "Session: %s" % sid
- #  print "Number of pilots in session: %d" % num_pilots
+    print "Session: %s" % sid
+    print "Number of pilots in session: %d" % num_pilots
 
     for pilot in pilots:
 
-      # print "Processing pilot '%s'" % pilot['_id']
+        print "pilot '%s'" % pilot['_id']
 
         sandbox_url = saga.Url(pilot['sandbox'])
 
@@ -102,11 +102,16 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
 
           # print "Overriding remote sandbox: %s" % sandbox_url
 
-        sandbox = saga.filesystem.Directory (sandbox_url, session=session)
+        try:
+            sandbox = saga.filesystem.Directory (sandbox_url, session=session)
+        except Exception as e:
+            print "Can't access pilot sandbox [%s]" % e
+            continue
 
         # Try to fetch a tarball of profiles, so that we can get them all in one (SAGA) go!
         PROFILES_TARBALL = '%s.prof.tgz' % pilot['_id']
         tarball_available = False
+
         try:
             if sandbox.is_file(PROFILES_TARBALL):
                 print "Profiles tarball exists!"
@@ -152,7 +157,11 @@ def fetch_profiles (sid, dburl=None, client=None, tgt=None, access=None,
             continue
 
         # If we dont have a tarball (for whichever reason), fetch individual profiles
-        profiles = sandbox.list('*.prof')
+        try:
+            profiles = sandbox.list('*.prof')
+        except Exception as e:
+            print 'no profiles in %s [%s]' % (sandbox, e)
+            profiles = list()
 
         for prof in profiles:
 
