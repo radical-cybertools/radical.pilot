@@ -5,6 +5,8 @@ import glob
 import time
 import threading
 
+import radical.utils as ru
+
 NTP_DIFF_WARN_LIMIT = 1.0
 
 # ------------------------------------------------------------------------------
@@ -558,12 +560,11 @@ def read_profiles(profiles):
     """
 
     ret    = dict()
-    fields = ru.Profiler.fields
 
     for prof in profiles:
         rows = list()
         with open(prof, 'r') as csvfile:
-            reader = csv.DictReader(csvfile, fieldnames=fields)
+            reader = csv.DictReader(csvfile, fieldnames=_prof_fields)
             for row in reader:
 
                 # skip header
@@ -602,6 +603,8 @@ def combine_profiles(profs):
     t_min  = None   # absolute starting point of prof session
     c_qed  = 0      # counter for profile closing tag
 
+    accuracy = 0.0
+
     for pname, prof in profs.iteritems():
 
         if not len(prof):
@@ -614,7 +617,14 @@ def combine_profiles(profs):
 
         t_prof = prof[0]['time']
 
-        host, ip, t_sys, t_ntp, t_mode = prof[0]['msg'].split(':')
+        elems = prof[0]['msg'].split(':')
+        if len(elems) == 5:
+            host, ip, t_sys, t_ntp, t_mode = elems
+        elif len(elems) == 4:
+            host = 'unknown'
+            ip   = '0.0.0.0'
+            t_sys, _, t_ntp, t_mode = elems
+
         host_id = '%s:%s' % (host, ip)
 
         if t_min:
@@ -668,7 +678,13 @@ def combine_profiles(profs):
         if not prof[0]['msg']:
             continue
 
-        host, ip, _, _, _ = prof[0]['msg'].split(':')
+        elems = prof[0]['msg'].split(':')
+        if len(elems) == 5:
+            host, ip = elems[0:1]
+        elif len(elems) == 4:
+            host = 'unknown'
+            ip   = '0.0.0.0'
+
         host_id = '%s:%s' % (host, ip)
         if host_id in t_host:
             t_off   = t_host[host_id]
@@ -736,6 +752,11 @@ def clean_profile(profile, sid):
         name  = event['event']
 
         del(event['event'])
+
+      # v = False
+      # if 'pilot.0000' in uid:
+      #     v = True
+      #     print '=== ', event
 
         # we derive entity_type from the uid -- but funnel 
         # some cases into the session
@@ -885,65 +906,76 @@ def get_session_description(sid, src=None, dburl=None):
 
     assert(sid == json['session']['uid'])
 
+    hostmap         = dict()
     ret             = dict()
     ret['entities'] = dict()
 
     tree      = dict()
-    tree[sid] = {'uid'      : sid,
-                 'etype'    : 'session',
-               # 'cfg'      : json['session']['cfg'],
-                 'has'      : ['umgr', 'pmgr'],
-                 'children' : list()
+    tree[sid] = {'uid'        : sid,
+                 'etype'      : 'session',
+                 'cfg'        : json['session']['cfg'],
+                 'description': dict(),
+                 'has'        : ['umgr', 'pmgr'],
+                 'children'   : list()
                 }
 
     for pmgr in sorted(json['pmgr'], key=lambda k: k['uid']):
         uid = pmgr['uid']
         tree[sid]['children'].append(uid)
-        tree[uid] = {'uid'      : uid,
-                     'etype'    : 'pmgr',
-                   # 'cfg'      : pmgr['cfg'],
-                     'has'      : ['pilot'],
-                     'children' : list()
+        tree[uid] = {'uid'        : uid,
+                     'etype'      : 'pmgr',
+                     'cfg'        : pmgr['cfg'],
+                     'description': dict(),
+                     'has'        : ['pilot'],
+                     'children'   : list()
                     }
 
     for umgr in sorted(json['umgr'], key=lambda k: k['uid']):
         uid = umgr['uid']
         tree[sid]['children'].append(uid)
-        tree[uid] = {'uid'      : uid,
-                     'etype'    : 'umgr',
-               #     'cfg'      : umgr['cfg'],
-                     'has'      : ['unit'],
-                     'children' : list()
+        tree[uid] = {'uid'        : uid,
+                     'etype'      : 'umgr',
+                     'cfg'        : umgr['cfg'],
+                     'description': dict(),
+                     'has'        : ['unit'],
+                     'children'   : list()
                     }
 
     for pilot in sorted(json['pilot'], key=lambda k: k['uid']):
         uid  = pilot['uid']
         pmgr = pilot['pmgr']
         tree[pmgr]['children'].append(uid)
-        tree[uid] = {'uid'      : uid,
-                     'etype'    : 'pilot',
-               #     'cfg'      : pilot['cfg'],
-                     'has'      : ['unit'],
-                     'children' : list()
+        tree[uid] = {'uid'        : uid,
+                     'etype'      : 'pilot',
+                     'cfg'        : pilot['cfg'],
+                     'description': pilot['description'],
+                     'has'        : ['unit'],
+                     'children'   : list()
                     }
+        if not hostmap.get(uid):
+            if pilot.get('sandbox'):
+                hostmap[uid] = ru.Url(pilot['sandbox']).host
+            else:
+                hostmap[uid] = None
+        for p in json['pilot']:
+            if p['uid'] == uid:
+                tree[uid]['json'] = p
 
     for unit in sorted(json['unit'], key=lambda k: k['uid']):
         uid  = unit['uid']
-        pid  = unit['umgr']
-        umgr = unit['pilot']
-        tree[pid ]['children'].append(uid)
+        pid  = unit['pilot']
+        umgr = unit['umgr']
+        if pid : tree[pid ]['children'].append(uid)
         tree[umgr]['children'].append(uid)
-        tree[uid] = {'uid'      : uid,
-                     'etype'    : 'unit',
-               #     'cfg'      : unit['description'],
-                     'has'      : list(),
-                     'children' : list()
+        tree[uid] = {'uid'         : uid,
+                     'etype'       : 'unit',
+                     'cfg'         : dict(),
+                     'description' : unit['description'],
+                     'has'         : list(),
+                     'children'    : list()
                     }
 
     ret['tree'] = tree
-
-    import pprint, sys
-    pprint.pprint(tree)
 
     ret['entities']['pilot'] = {
             'state_model'  : rps.pilot_state_by_value,
@@ -965,7 +997,7 @@ def get_session_description(sid, src=None, dburl=None):
 
     ret['config'] = dict() # magic to get session config goes here
 
-    return ret
+    return ret, hostmap
 
 
 # ------------------------------------------------------------------------------
