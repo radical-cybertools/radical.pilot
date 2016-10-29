@@ -325,11 +325,11 @@ def combine_profiles(profiles):
         elif tref == 'rel': pd_rel[prof] = p
         elif not empty    : print 'WARNING: skipping profile %s (no sync)' % prof
 
-        # Check for proper closure of profiling files
-        if qed == 0:
-            print 'WARNING: profile "%s" not correctly closed.' % prof
-        if qed > 1:
-            print 'WARNING: profile "%s" closed %d times.' % (prof, qed)
+      # # Check for proper closure of profiling files
+      # if qed == 0:
+      #     print 'WARNING: profile "%s" not correctly closed.' % prof
+      # if qed > 1:
+      #     print 'WARNING: profile "%s" closed %d times.' % (prof, qed)
 
     # make all timestamps absolute for pd_abs profiles
     for prof, p in pd_abs.iteritems():
