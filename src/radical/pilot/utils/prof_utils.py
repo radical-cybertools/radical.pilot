@@ -583,7 +583,7 @@ def read_profiles(profiles):
 
 # ------------------------------------------------------------------------------
 #
-def combine_profiles(profs):
+def xcombine_profiles(profs):
     """
     We merge all profiles and sorted by time.
 
