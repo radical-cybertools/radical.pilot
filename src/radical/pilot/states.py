@@ -76,6 +76,7 @@ ACTIVE                       = 'Active'
 
 PMGR_PENDING_LAUNCH          = 'PendingLaunch'
 PMGR_LAUNCH_PENDING          = 'PendingLaunch'
+PMGR_LAUNCHING_PENDING       = 'PendingLaunch'
 PMGR_LAUNCHING               = 'Launching'
 PMGR_PENDING_ACTIVE          = 'PendingActive'
 PMGR_ACTIVE_PENDING          = 'PendingActive'
