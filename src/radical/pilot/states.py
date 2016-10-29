@@ -74,6 +74,11 @@ LAUNCHING                    = 'Launching'
 PENDING_ACTIVE               = 'PendingActive'
 ACTIVE                       = 'Active'
 
+PMGR_PENDING_LAUNCH          = 'PendingLaunch'
+PMGR_LAUNCHING               = 'Launching'
+PMGR_PENDING_ACTIVE          = 'PendingActive'
+PMGR_ACTIVE                  = 'Active'
+
 pilot_state_value = {
     NEW                          :  1,
     PENDING_LAUNCH               :  2,
