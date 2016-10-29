@@ -636,7 +636,8 @@ def fetch_json(sid, dburl=None, tgt=None, skip_existing=False):
     if skip_existing and os.path.isfile(dst) \
             and os.stat(dst).st_size > 0:
 
-        print "session already in %s" % dst
+      # print "session already in %s" % dst
+        pass
 
     else:
 

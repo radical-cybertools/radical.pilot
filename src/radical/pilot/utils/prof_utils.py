@@ -559,7 +559,7 @@ def read_profiles(profiles):
     we back-calculate global time (epoch) from the synch timestamps.  
     """
 
-    ret    = dict()
+    ret = dict()
 
     for prof in profiles:
         rows = list()
