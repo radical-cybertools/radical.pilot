@@ -371,7 +371,7 @@ def combine_profiles(profiles):
                         break
     
         if t_ref == None:
-            print "WARNING: 'sync rel' reference not found %s" % prof
+      #     print "WARNING: 'sync rel' reference not found %s" % prof
             continue
     
         # the profile's sync reference t_rel was created at the t_abs of the
