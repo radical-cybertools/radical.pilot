@@ -94,45 +94,6 @@
         "python_dist"                 : "default"
     },
 
-    "wrangler": {
-        "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["ssh", "gsissh", "go"],
-        "mandatory_args"              : ["project"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://wrangler.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://wrangler.tacc.utexas.edu/"
-        },
-        "gsissh"                      :
-        {
-            "job_manager_endpoint"    : "slurm+gsissh://wrangler.tacc.utexas.edu:2222/",
-            "filesystem_endpoint"     : "gsisftp://wrangler.tacc.utexas.edu:2222/"
-        },
-        "go":
-        {
-            "job_manager_endpoint"    : "slurm+ssh://wrangler.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "go://xsede#wrangler/"
-        },
-        "default_queue"               : "normal",
-        "lrms"                        : "SLURM",
-        "agent_type"                  : "multicore",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "MPIRUN_RSH",
-        "pre_bootstrap_1"             : ["module load python/2.7.9",
-                                         "export TACC_DELETE_FILES=TRUE"
-                                        ],
-        "default_remote_workdir"      : "$WORK",
-        "valid_roots"                 : ["/work", "$WORK", "$DATA"],
-        "rp_version"                  : "installed",
-        "virtenv"                     : "/work/03170/tg824689/wrangler/ve_wrangler",
-        "virtenv_mode"                : "use",
-        "python_dist"                 : "default"
-    },
-
     "stampede_spark": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",

@@ -157,5 +157,12 @@
             "queue"    : "shared",
             "schema"   : "ssh",
             "cores"    : 64
+        },
+
+        "osg.xsede-virt-clust"   : {
+            "project"  : "TG-CCR140028",
+            "queue"    : null,
+            "schema"   : "gsissh",
+            "cores"    : 1
         }
 }
