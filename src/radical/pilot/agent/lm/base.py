@@ -26,6 +26,7 @@ LM_NAME_RUNJOB        = 'RUNJOB'
 LM_NAME_SSH           = 'SSH'
 LM_NAME_YARN          = 'YARN'
 LM_NAME_SPARK         = 'SPARK'
+LM_NAME_KAFKA         = 'KAFKA'
 
 
 # ==============================================================================
@@ -111,7 +112,8 @@ class LaunchMethod(object):
                 LM_NAME_RUNJOB        : Runjob,
                 LM_NAME_SSH           : SSH,
                 LM_NAME_YARN          : Yarn,
-                LM_NAME_SPARK         : Spark
+                LM_NAME_SPARK         : Spark,
+                LM_NAME_KAFKA         : Kafka,
             }[name]
             return impl(cfg, logger)
 
@@ -141,12 +143,14 @@ class LaunchMethod(object):
         from .orte           import ORTE
         from .yarn           import Yarn
         from .spark          import Spark
+        from .kafka          import Kafka
 
         impl = {
             LM_NAME_FORK          : Fork,
             LM_NAME_ORTE          : ORTE,
             LM_NAME_YARN          : Yarn,
-            LM_NAME_SPARK         : Spark
+            LM_NAME_SPARK         : Spark,
+            LM_NAME_KAFKA         : Kafka,
         }.get(name)
 
         if not impl:
@@ -173,11 +177,13 @@ class LaunchMethod(object):
         from .orte           import ORTE
         from .yarn           import Yarn
         from .spark          import Spark
+        from .kafka          import Kafka
 
         impl = {
             LM_NAME_ORTE          : ORTE,
             LM_NAME_YARN          : Yarn,
-            LM_NAME_SPARK         : Spark
+            LM_NAME_SPARK         : Spark,
+            LM_NAME_KAFKA         : Kafka,
         }.get(name)
 
         if not impl:
