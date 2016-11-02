@@ -89,14 +89,17 @@ class Kafka(LaunchMethod):
 
         ## fix zookeeper properties 
         zk_properties_file = open(kafka_home + '/config/zookeeper.properties','w')
+        # unit for measuments properites, like heartbeats and timeouts.
         tickTime = 2000
         zk_properties_file.write('tickTime = %d \n' % tickTime)
-        dataDir = zookeeper_home + '/data'  ##
+        dataDir = '/tmp/zookeeper/data'  ## TODO: isws tha prp na ginei /tmp/zookeeper/data  
         zk_properties_file.write('DataDir = %s \n' % dataDir )
         clientPort = 2181  ##
+        #TODO: add only odd number of zk nodes to satisfy quorum 
         zk_properties_file.write('clientPort = %d \n')
         for i, nodename in enumerate(lrms.node_list):
             zk_properties_file.write('server.'+str(i+1) + '=' + nodename + ':2888:3888 \n')    #ex. server.1=c242.stampede:2888:3888
+        # initial limits : tick_time/init_limit (s)  . it is the amount time that takes zk  follower to connect to a leader initially when a cluster is started
         initLimit = 5
         zk_properties_file.write('initLimit = %d \n')
         syncLimit = 2
@@ -104,6 +107,13 @@ class Kafka(LaunchMethod):
         maxClientCnxns = 0
         zk_properties_file.write('maxClientCnxns = %d \n', maxClientCnxns)  ##
         zk_properties_file.close()
+
+        # prp na kanw copy paste afto to arxeio se kane node kai na alla3w to clientPort kai to dataDir
+        for i in xrange(len(lrms.node_list)):
+            newDir =  dataDir + '/' + str(i+1)
+            subprocess.check_call('mkdir ' + newDir)
+            subprocess.check_call('echo ' + str(i+1) + ' > '  + newDir + 'myid')
+
 
 
         nodenames_string = ''
@@ -165,20 +175,20 @@ class Kafka(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    @classmethod
+    @classmethod    ## i have to shutdown kafka too
     def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
         if 'name' not in lm_info:
             raise RuntimeError('name not in lm_info for %s' \
                     % (self.name))
 
         if lm_info['name'] != 'KAFKALRMS':
-            logger.info('Stoping Kafka')
+            logger.info('Stoping Zookeeper')
             try:
-                stop_kafka = subprocess.check_output(lm_info['spark_home'] + '/sbin/stop-all.sh') 
+                stop_kafka = subprocess.check_output(lm_info['kafka_home'] + '/bin/zookeeper-server-stop.sh') 
             except Exception as e:
-                raise RuntimeError("Kafka failed to stop properly.")
+                raise RuntimeError("Zookeeper failed to stop properly.")
             else:
-                logger.info('Kafka stopped successfully')
+                logger.info('Zookeeper stopped successfully')
 
     # --------------------------------------------------------------------------
     #
