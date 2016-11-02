@@ -138,7 +138,7 @@
             "cores"    : 64
         },
 
-        "ornl.titan_orte" : {
+        "ornl.titan" : {
             "project"  : "BIP103",
             "queue"    : "debug",
             "schema"   : "local",
