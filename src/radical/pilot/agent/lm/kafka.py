@@ -154,7 +154,7 @@ class Kafka(LaunchMethod):
 
         launch_command = kafka_home + '/bin'
 
-        zookeeper_url_string = ""
+        zookeeper_url_string = nodenames_string
 
         
 
@@ -189,6 +189,7 @@ class Kafka(LaunchMethod):
                 raise RuntimeError("Zookeeper failed to stop properly.")
             else:
                 logger.info('Zookeeper stopped successfully')
+                ## TODO: stop kafka server too
 
     # --------------------------------------------------------------------------
     #
@@ -240,9 +241,9 @@ class Kafka(LaunchMethod):
             command = " "
 
         
-        kafka_command = self.launch_command  + '/' + task_exec
+        kafka_command = self.launch_command  + '/' + task_exec + command
 
 
-        self._log.debug("Kafka  Command %s"%spark_command)
+        self._log.debug("Kafka  Command %s"%kafka_command)
 
         return kafka_command, None
