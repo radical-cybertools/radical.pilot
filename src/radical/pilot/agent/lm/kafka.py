@@ -153,8 +153,8 @@ class Kafka(LaunchMethod):
 
          ##---------------------------------------------------
 
-	    logger.info("Downloading Apache Kafka..")
-	    try:
+        logger.info("Downloading Apache Kafka..")
+        try:
             subprocess.check_call('wget http://mirror.cc.columbia.edu/pub/software/apache/kafka/0.8.2.1/kafka_2.11-0.8.2.1.tgz')
             subprocess.check_call('tar -zxf kafka_2.11-0.8.2.1.tgz')
             subprocess.check_call('rm kafka_2.11-0.8.2.1.tgz')
@@ -268,6 +268,7 @@ class Kafka(LaunchMethod):
         # so it is available on all LM create_command calls.
         lm_info = {'kafka_home'    : kafka_home,
                    'lm_detail'     : zookeeper_url_string+ ' ', spark_lm_info['spark_master_string'],
+                   'zk_url'        : zookeeper_url_string,
                    'name'          : lrms.name,
                    'launch_command': launch_command,
                    'nodename'      : lrms.node_list[0],
@@ -342,15 +343,22 @@ class Kafka(LaunchMethod):
 
         if 'master_ip' not in opaque_slots['lm_info']:
             raise RuntimeError('master_ip not in lm_info for %s: %s' \
-                    % (self.name, opaque_slots))
+                    % (self.name, opaque_slots))s
 
         if 'spark_launch' not in opaque_slots['lm_info']:
             raise RuntimeError('spark_launch not in lm_info for %s: %s' \
                     % (self.name, opaque_slots))
 
+        if 'zk_url' not in opaque_slots['lm_info']:
+            raise RuntimeError('zk_url not in lm_info for %s: %s' \
+                    % (self.name, opaque_slots))
+        
+
+
 
         master_ip   = opaque_slots['lm_info']['master_ip']
         spark_launch = opaque_slots['lm_info']['spark_launch']
+        zookeeper = opaque_slots['lm_info']['zk_url']
 
 
         if task_env:
@@ -370,7 +378,8 @@ class Kafka(LaunchMethod):
         if task_exec=='/spark-submit':   #TODO: fix launch commands
             command =  spark_launch + '/' + task_exec  + ' '  +  command
         else:
-            command = self.launch_command  + '/' + task_exec + command
+            zk = ' --zookeeper ' + zookeeper
+            command = self.launch_command  + '/' + task_exec + command  + zk
 
 
         self._log.debug("Command %s"%command)
