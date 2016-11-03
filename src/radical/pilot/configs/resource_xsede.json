@@ -588,6 +588,44 @@
         "python_dist"                 : "default"
     },
 
+    "comet_streaming": {
+        "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["ssh", "gsissh"],
+        "mandatory_args"              : ["project"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://comet.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://comet.sdsc.xsede.org/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://comet.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "gsisftp://comet.sdsc.xsede.org/"
+        },
+        "default_queue"               : "compute",
+        "cores_per_node"              : "24",
+        "lrms"                        : "SLURM",
+        "agent_type"                  : "multicore",
+        "agent_config"                : "default",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "ORTE",
+        "task_launch_method"          : "KAFKA",
+        "mpi_launch_method"           : "ORTE",
+        "pre_bootstrap_1"             : [
+            "module use --append /home/marksant/privatemodules",
+            "module load python",
+            "module load openmpi",
+            "module load mpi4py"
+        ],
+        "valid_roots"                 : ["/home"],
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_comet",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
+    },
+
     "supermic": {
         "description"                 : "SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)",
         "notes"                       : "Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.",
