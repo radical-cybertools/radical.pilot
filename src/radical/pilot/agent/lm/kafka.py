@@ -35,24 +35,123 @@ class Kafka(LaunchMethod):
     def lrms_config_hook(cls, name, cfg, lrms, logger):
 
 
-    import re
-    from os import fsync
-    ## this function is to update values in the configuration file os kafka
-    def updating(filename,dico):
+        def lrms_apache_spark():
 
-        RE = '(('+'|'.join(dico.keys())+')\s*=)[^\r\n]*?(\r?\n|\r)'
-        pat = re.compile(RE)
+            if not os.environ.get('SPARK_HOME'):
+                logger.info("Downloading Apache Spark..")
+                try:    
+                    VERSION = "1.5.2"
+                    subprocess.check_call("wget http://d3kbcqa49mib13.cloudfront.net/spark-1.5.2-bin-hadoop2.6.tgz".split())
+                    subprocess.check_call('tar -xzf spark-1.5.2-bin-hadoop2.6.tgz'.split())
+                    subprocess.check_call(("mv spark-1.5.2-bin-hadoop2.6 spark-" + VERSION).split())
+                except  Exception as e:
+                    raise RuntimeError("Spark wasn't installed properly. Please try again. %s " % e )
+                spark_home = os.getcwd() + '/spark-' + VERSION
+            else:
+                spark_home = os.environ['SPARK_HOME']
 
-        def jojo(mat,dic = dico ):
-        return dic[mat.group(2)].join(mat.group(1,3))
+            # if no installation found install scala 2.10.4
+            scala_home=ru.which('scala')
+            if not scala_home:
+                try:
+                    subprocess.check_call('wget http://www.scala-lang.org/files/archive/scala-2.10.4.tgz'.split())
+                    subprocess.check_call('tar -xvf scala-2.10.4.tgz'.split())
+                    subprocess.check_call('rm scala-2.10.4.tgz'.split())
+                    scala_home = os.getcwd() + '/scala-2.10.4' 
+                except  Exception as e:
+                    raise RuntimeError("Scala wasn't installed properly. Please try again. %s " % e )
 
-        with open(filename,'rb') as f:
-            content = f.read() 
+            spark_conf_slaves = open(spark_home+"/conf/slaves",'w')
 
-        with open(filename,'wb') as f:
-            f.write(pat.sub(jojo,content))
+            if len(lrms.node_list) == 1:
+                spark_conf_slaves.write(lrms.node_list[0])#+hostname)
+                spark_conf_slaves.write('\n')
+            else:
+                for nodename in lrms.node_list[1:]:
+                    spark_conf_slaves.write(nodename)   # +hostname)
+                    spark_conf_slaves.write('\n')
 
-##---------------------------------------------------
+            spark_conf_slaves.close()
+
+            ## put Master Ip in spark-env.sh file - 
+
+            python_path = os.getenv('PYTHONPATH')
+            python = ru.which('python')
+            logger.info('Python Executable: %s' % python)
+            if len(lrms.node_list) ==1:
+                master_ip = lrms.node_list[0]
+            else:
+                try:
+                    master_ip = subprocess.check_output('hostname -f'.split()).strip()
+                except Exception as e:
+                    raise RuntimeError("Master ip couldn't be detected. %s" % e)
+
+            #Setup default env properties:
+            spark_default_file = open(spark_home + "/conf/spark-defaults.conf",'w')
+            spark_master_string = 'spark://%s:7077' % master_ip
+            spark_default_file.write('spark.master  ' + spark_master_string + '\n')
+            spark_default_file.close()
+            logger.info("Let's print the config")
+            logger.info('Config : {0}'.format(cfg['resource_cfg']))
+
+            spark_env_file = open(spark_home + "/conf/spark-env.sh",'w')
+            #load in the spark enviroment of master and slaves the
+            #configurations of the machine
+            if master_ip!='localhost':
+                for config in cfg['resource_cfg']['pre_bootstrap_1']:
+                    spark_env_file.write(config + '\n')
+
+            spark_env_file.write('export SPARK_MASTER_IP=' + master_ip + "\n")
+            spark_env_file.write('export SCALA_HOME='+ scala_home+ "\n")
+            spark_env_file.write('export JAVA_HOME=' + java_home + "\n")
+            spark_env_file.write('export SPARK_LOG_DIR='+os.getcwd()+'/spark-logs'+'\n')
+            spark_env_file.write('export PYSPARK_PYTHON='+python+'\n')
+            spark_env_file.close()
+
+            #### Start spark Cluster
+            try:
+                subprocess.check_output(spark_home + '/sbin/start-all.sh')
+            except Exception as e:
+                raise RuntimeError("Spark Cluster failed to start: %s" % e)
+            
+            logger.info('Start Spark Cluster')
+            launch_command = spark_home +'/bin'
+
+            # The LRMS instance is only available here -- everything which is later
+            # needed by the scheduler or launch method is stored in an 'lm_info'
+            # dict.  That lm_info dict will be attached to the scheduler's lrms_info
+            # dict, and will be passed around as part of the opaque_slots structure,
+            # so it is available on all LM create_command calls.
+            spark_lm_info = {'spark_home'    : spark_home,
+                             'master_ip'     : master_ip,
+                             'lm_detail'     : spark_master_string,
+                             'name'          : lrms.name,
+                             'launch_command': launch_command,
+                             'nodename'      : lrms.node_list[0]
+                             }
+
+            return spark_lm_info
+            
+        #------------------------------------------------------------------------------
+
+        import re
+        from os import fsync
+        ## this function is to update values in the configuration file os kafka
+        def updating(filename,dico):
+
+            RE = '(('+'|'.join(dico.keys())+')\s*=)[^\r\n]*?(\r?\n|\r)'
+            pat = re.compile(RE)
+
+            def jojo(mat,dic = dico ):
+            return dic[mat.group(2)].join(mat.group(1,3))
+
+            with open(filename,'rb') as f:
+                content = f.read() 
+
+            with open(filename,'wb') as f:
+                f.write(pat.sub(jojo,content))
+
+         ##---------------------------------------------------
 
 	    logger.info("Downloading Apache Kafka..")
 	    try:
@@ -156,6 +255,9 @@ class Kafka(LaunchMethod):
 
         zookeeper_url_string = nodenames_string
 
+
+        spark_lm_info = lrms_apache_spark()
+
         
 
           
@@ -165,10 +267,15 @@ class Kafka(LaunchMethod):
         # dict, and will be passed around as part of the opaque_slots structure,
         # so it is available on all LM create_command calls.
         lm_info = {'kafka_home'    : kafka_home,
-                   'lm_detail'     : zookeeper_url_string,
+                   'lm_detail'     : zookeeper_url_string+ ' ', spark_lm_info['spark_master_string'],
                    'name'          : lrms.name,
                    'launch_command': launch_command,
-                   'nodename'      : lrms.node_list[0]}
+                   'nodename'      : lrms.node_list[0],
+                   'spark_home'    : spark_lm_info['spark_home'],
+                   'master_ip'     : spark_lm_info['master_ip'],
+                   'spark_launch'  : spark_lm_info['launch_command']
+
+                   }
 
         return lm_info
 
@@ -190,9 +297,17 @@ class Kafka(LaunchMethod):
             else:
                 logger.info('Zookeeper stopped successfully')
                 ## TODO: stop kafka server too
+            logger.info('Stoping SPARK')
+            try:
+                subprocess.check_output(lm_info['spark_home'] + '/sbin/stop-all.sh') 
+            except Exception as e:
+                raise RuntimeError("Spark failed to terminate properly.")
+            else:
+                logger.info("Spark stopped successfully")
 
     # --------------------------------------------------------------------------
     #
+    #TODO: what is configure responsible for?
     def _configure(self):
 
         self._log.info(self._cfg['lrms_info']['lm_info'])
@@ -225,6 +340,17 @@ class Kafka(LaunchMethod):
             raise RuntimeError('lm_info missing for %s: %s' \
                                % (self.name, opaque_slots))
 
+        if 'master_ip' not in opaque_slots['lm_info']:
+            raise RuntimeError('master_ip not in lm_info for %s: %s' \
+                    % (self.name, opaque_slots))
+
+        if 'spark_launch' not in opaque_slots['lm_info']:
+            raise RuntimeError('spark_launch not in lm_info for %s: %s' \
+                    % (self.name, opaque_slots))
+
+
+        master_ip   = opaque_slots['lm_info']['master_ip']
+        spark_launch = opaque_slots['lm_info']['spark_launch']
 
 
         if task_env:
@@ -240,10 +366,13 @@ class Kafka(LaunchMethod):
         else:
             command = " "
 
-        
-        kafka_command = self.launch_command  + '/' + task_exec + command
+
+        if task_exec=='/spark-submit':   #TODO: fix launch commands
+            command =  spark_launch + '/' + task_exec  + ' '  +  command
+        else:
+            command = self.launch_command  + '/' + task_exec + command
 
 
-        self._log.debug("Kafka  Command %s"%kafka_command)
+        self._log.debug("Command %s"%command)
 
-        return kafka_command, None
+        return command, None
