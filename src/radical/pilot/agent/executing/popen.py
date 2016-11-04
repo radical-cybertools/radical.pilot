@@ -82,7 +82,7 @@ class Popen(AgentExecutingComponent) :
         self.tmpdir = tempfile.gettempdir()
 
         # if we need to transplant any original env into the CU, we dig the
-        # respective keys from the dump the bootstrapper made
+        # respective keys from the dump made by bootstrap_1.sh
         self._env_cu_export = dict()
         if self._cfg.get('export_to_cu'):
             with open('env.orig', 'r') as f:
@@ -243,6 +243,8 @@ class Popen(AgentExecutingComponent) :
             env_string += "export RP_AGENT_ID=%s\n"   % self._cfg['agent_name']
             env_string += "export RP_SPAWNER_ID=%s\n" % self.cname
             env_string += "export RP_UNIT_ID=%s\n"    % cu['_id']
+
+            # also add any env vars requested for export by the resource config
             for k,v in self._env_cu_export.iteritems():
                 env_string += "export %s=%s\n" % (k,v)
             if cu['description']['environment']:

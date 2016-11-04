@@ -1342,6 +1342,9 @@ echo "---------------------------------------------------------------------"
 echo "bootstrap_1 running on host: `hostname -f`."
 echo "bootstrap_1 started as     : '$0 $@'"
 echo "Environment of bootstrap_1 process:"
+
+# print the sorted env for logging, but also keep a copy so that we can dig
+# original env settings for any CUs, if so specified in the resource config.
 env | sort | grep '=' | tee env.orig
 echo "# -------------------------------------------------------------------"
 
