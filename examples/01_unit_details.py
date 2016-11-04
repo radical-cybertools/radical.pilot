@@ -67,19 +67,19 @@ if __name__ == '__main__':
         pdesc = rp.ComputePilotDescription(pd_init)
 
         # Launch the pilot.
-        pilots = pmgr.submit_pilots([pdesc, pdesc])
+        pilot = pmgr.submit_pilots(pdesc)
 
 
         report.header('submit units')
 
         # Register the ComputePilot in a UnitManager object.
         umgr = rp.UnitManager(session=session)
-        umgr.add_pilots(pilots)
+        umgr.add_pilots(pilot)
 
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 4   # number of units to run
+        n = 128   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -135,7 +135,7 @@ if __name__ == '__main__':
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.
         report.header('finalize')
-        session.close(cleanup=False)
+        session.close()
 
     report.header()
 
