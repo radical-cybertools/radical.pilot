@@ -21,7 +21,7 @@ from .base import LaunchMethod
 #
 class Kafka(LaunchMethod):
 
-        # --------------------------------------------------------------------------
+    #--------------------------------------------------------------------------
     #
     def __init__(self, cfg, logger):
 
@@ -146,7 +146,7 @@ class Kafka(LaunchMethod):
                 return dic[mat.group(2)].join(mat.group(1,3))
 
             with open(filename,'rb') as f:
-                content = f.read() 
+                content = f.read()
 
             with open(filename,'wb') as f:
                 f.write(pat.sub(jojo,content))
@@ -267,7 +267,8 @@ class Kafka(LaunchMethod):
         # dict, and will be passed around as part of the opaque_slots structure,
         # so it is available on all LM create_command calls.
         lm_info = {'kafka_home'    : kafka_home,
-                   'lm_detail'     : zookeeper_url_string+ ' ', spark_lm_info['spark_master_string'],
+                   'lm_detail'     : zookeeper_url_string + ' '
+                                     + spark_lm_info['spark_master_string'],
                    'zk_url'        : zookeeper_url_string,
                    'name'          : lrms.name,
                    'launch_command': launch_command,
@@ -343,7 +344,7 @@ class Kafka(LaunchMethod):
 
         if 'master_ip' not in opaque_slots['lm_info']:
             raise RuntimeError('master_ip not in lm_info for %s: %s' \
-                    % (self.name, opaque_slots))s
+                    % (self.name, opaque_slots))
 
         if 'spark_launch' not in opaque_slots['lm_info']:
             raise RuntimeError('spark_launch not in lm_info for %s: %s' \
