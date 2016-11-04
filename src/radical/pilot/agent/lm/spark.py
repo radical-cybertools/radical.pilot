@@ -74,9 +74,8 @@ class Spark(LaunchMethod):
         scala_home=ru.which('scala')
         if not scala_home:
             try:
-                #subprocess.check_call('cd')
                 subprocess.check_call('wget http://www.scala-lang.org/files/archive/scala-2.10.4.tgz'.split())
-                subprocess.check_call('tar -xvf scala-2.10.4.tgz'.split())  #; cd scala-2.10.4 ; export PATH=`pwd`/bin:$PATH; export SCALA_HOME=`pwd`')
+                subprocess.check_call('tar -xvf scala-2.10.4.tgz'.split())
                 subprocess.check_call('rm scala-2.10.4.tgz'.split())
                 scala_home = os.getcwd() + '/scala-2.10.4' 
             except  Exception as e:
@@ -109,7 +108,7 @@ class Spark(LaunchMethod):
             master_ip = lrms.node_list[0]
         else:
             try:
-                master_ip = subprocess.check_call('hostname -f')
+                master_ip = subprocess.check_output('hostname -f'.split()).strip()
             except Exception as e:
                 raise RuntimeError("Master ip couldn't be detected. %s" % e)
 
@@ -234,8 +233,8 @@ class Spark(LaunchMethod):
 
         spark_configurations = " "
         # if the user hasn't specified another ui port use this one
-        if not 'spark.ui.port' in command:
-            spark_configurations += ' --conf spark.ui.port=%d '  % (random.randint(4020,4180))  
+        #if not 'spark.ui.port' in command:
+        #    spark_configurations += ' --conf spark.ui.port=%d '  % (random.randint(4020,4180))  
         
         spark_command = self.launch_command + '/' + task_exec + '  ' + spark_configurations + ' '  +  command
 

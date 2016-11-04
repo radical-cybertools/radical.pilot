@@ -158,7 +158,7 @@
         "pre_bootstrap_1"             : ["module purge",
                                          "module load TACC",
                                          "module load intel/15.0.2",
-					 "module load python/2.7.9",
+					 "module load python/2.7.12",
 					 "module use /scratch/projects/xsede/modulefiles",
 					 "module load  jdk64/1.8.0",
                                          # Load ICC license so we can build during bootstrap
@@ -292,7 +292,7 @@
         "pre_bootstrap_1"             : [ 
                                         "module purge",
                                         "module load TACC",
-                                        "module load python/2.7.9",
+                                        "module load python/2.7.12",
                                         "export TACC_DELETE_FILES=TRUE",
                                         "module load jdk64/1.8.0",
                                         "module unload xalt"
