@@ -259,7 +259,6 @@ class PilotManager(rpu.Component):
             # only update on state changes
             current = self._pilots[pid].state
             target  = pilot_dict['state']
-            print ' pstate: %s --> %s' % (current, target)
             if current == target:
                 return
 
