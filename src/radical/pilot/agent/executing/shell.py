@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import time
 import Queue
 import tempfile
 import threading

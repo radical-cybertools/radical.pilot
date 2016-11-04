@@ -45,7 +45,7 @@ class Spark(AgentSchedulingComponent):
         self._rm_url = self._cfg['lrms_info']['lm_info']['rm_url']
         self._client_node = self._cfg['lrms_info']['lm_info']['nodename']
 
-        sample_time = rpu.timestamp()
+        sample_time = time.time()
 
         #-----------------------------------------------------------------------
         # Find out the cluster's resources

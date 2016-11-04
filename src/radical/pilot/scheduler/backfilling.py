@@ -12,12 +12,12 @@ __copyright__ = "Copyright 2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os 
+import time
 import pprint
 import threading
 
-from ..states   import *
-from ..utils    import logger
-from ..utils    import timestamp
+from ...states   import *
+from ...utils    import logger
 
 from .interface import Scheduler
 
@@ -183,7 +183,7 @@ class BackfillingScheduler(Scheduler):
                 self.pilots[pid]['state'] = state
                 logger.debug ("[SchedulerCallback]: ComputePilot %s changed to %s" % (pid, state))
     
-                if  state in [ACTIVE] :
+                if  state in [PMGR_ACTIVE] :
                     # the pilot is now ready to be used
                     self._reschedule (target_pid=pid)
     
@@ -195,7 +195,7 @@ class BackfillingScheduler(Scheduler):
                     # need to reschedule the units which are reschedulable --
                     # all others are marked 'FAILED' if they are already
                     # 'EXECUTING' and not restartable
-                    ts = timestamp()
+                    ts = time.time()
                     self._dbs.change_compute_units (
                         filter_dict = {"pilot"       : pid, 
                                        "state"       : {"$in": [UNSCHEDULED,
@@ -460,7 +460,7 @@ class BackfillingScheduler(Scheduler):
                   # logger.debug ("        pilot %s (%s caps, state %s)" \
                   #            % (pid, self.pilots[pid]['state'], self.pilots[pid]['caps']))
 
-                    if  self.pilots[pid]['state'] in [ACTIVE] :
+                    if  self.pilots[pid]['state'] in [PMGR_ACTIVE] :
 
                         if  ud.cores <= self.pilots[pid]['caps'] :
                     

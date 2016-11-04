@@ -129,15 +129,22 @@ class Session(rs.Session):
         self._logdir = self._cfg['logdir']
         self._log    = self._get_logger(self._cfg['owner'], self._cfg['debug'])
 
-        if not dburl:
-            dburl = os.getenv("RADICAL_PILOT_DBURL", None)
+        if _connect:
+            # we need a dburl to connect to.
+        
+            if not dburl:
+                dburl = os.environ.get("RADICAL_PILOT_DBURL")
 
-        if not dburl and _connect:
-            dburl = self._cfg.get('default_dburl')
+            if not dburl:
+                dburl = self._cfg.get('default_dburl')
 
-        if not dburl and _connect:
-            # we forgive missing dburl on reconnect, but not otherwise
-            raise RuntimeError("no database URL (set RADICAL_PILOT_DBURL)")  
+            if not dburl:
+                dburl = self._cfg.get('dburl')
+
+            if not dburl:
+                # we forgive missing dburl on reconnect, but not otherwise
+                raise RuntimeError("no database URL (set RADICAL_PILOT_DBURL)")  
+
 
         self._dburl = ru.Url(dburl)
 
@@ -495,11 +502,11 @@ class Session(rs.Session):
     #
     def _get_profiler(self, name, level=None):
         """
-        This is a thin wrapper around `rpu.Profiler()` which makes sure that
+        This is a thin wrapper around `ru.Profiler()` which makes sure that
         profiles end up in a separate directory with the name of `session.uid`.
         """
 
-        return rpu.Profiler(name, path=self._logdir)
+        return ru.Profiler(name, path=self._logdir)
 
 
     # --------------------------------------------------------------------------

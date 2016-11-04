@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import time
 import json
 import urllib2 as ul
 
@@ -47,7 +48,7 @@ class Yarn(AgentSchedulingComponent):
         self._rm_url = self._cfg['lrms_info']['lm_info']['rm_url']
         self._client_node = self._cfg['lrms_info']['lm_info']['nodename']
 
-        sample_time = rpu.timestamp()
+        sample_time = time.time()
         yarn_status = ul.urlopen('http://{0}:8088/ws/v1/cluster/scheduler'.format(self._rm_ip))
 
         yarn_schedul_json = json.loads(yarn_status.read())
@@ -80,7 +81,7 @@ class Yarn(AgentSchedulingComponent):
         # As it seems this part of the Scheduler is not according to the assumptions
         # made about slot status. Keeping the code commented just in case it is
         # needed later either as whole or art of it.
-        sample = rpu.timestamp()
+        sample = time.time()
         yarn_status = ul.urlopen('http://{0}:8088/ws/v1/cluster/scheduler'.format(self._rm_ip))
         yarn_schedul_json = json.loads(yarn_status.read())
 

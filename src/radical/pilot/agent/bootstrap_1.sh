@@ -171,7 +171,7 @@ profile_event()
     fi
 
     printf "%.4f,%s,%s,%s,%s,%s\n" \
-        "$NOW" "bootstrap_1" "$PILOT_ID" "ACTIVE_PENDING" "$event" "$msg" \
+        "$NOW" "bootstrap_1" "$PILOT_ID" "PMGR_ACTIVE_PENDING" "$event" "$msg" \
         | tee -a "$PROFILE"
 }
 
@@ -1582,6 +1582,10 @@ export SAGA_VERBOSE=DEBUG
 export RADICAL_VERBOSE=DEBUG
 export RADICAL_UTIL_VERBOSE=DEBUG
 export RADICAL_PILOT_VERBOSE=DEBUG
+
+# the agent will *always* use the dburl from the config file, not from the env
+# FIXME: can we better define preference in the session ctor?
+unset RADICAL_PILOT_DBURL
 
 # avoid ntphost lookups on compute nodes
 export RADICAL_PILOT_NTPHOST=$RADICAL_PILOT_NTPHOST

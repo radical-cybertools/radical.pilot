@@ -615,7 +615,7 @@ class Default(PMGRLaunchingComponent):
                               % (os.environ['HOME'], os.path.basename(agent_cfg_file))
 
                 if os.path.exists(user_cfg_file):
-                    logger.info("merging user config: %s" % user_cfg_file)
+                    self._log.info("merging user config: %s" % user_cfg_file)
                     user_cfg = ru.read_json(user_cfg_file)
                     ru.dict_merge (agent_cfg, user_cfg, policy='overwrite')
 

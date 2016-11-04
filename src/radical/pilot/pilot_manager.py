@@ -259,6 +259,7 @@ class PilotManager(rpu.Component):
             # only update on state changes
             current = self._pilots[pid].state
             target  = pilot_dict['state']
+            print ' pstate: %s --> %s' % (current, target)
             if current == target:
                 return
 
@@ -281,9 +282,10 @@ class PilotManager(rpu.Component):
                 if advance:
                     self.advance(pilot_dict, s, publish=publish, push=False)
 
-                if s in [ACTIVE]:
-                    logger.info('pilot %s is %s: %s [%s]', \
-                            pid, s, pilot.get('lm_info'), pilot.get('lm_detail')) 
+                if s in [rps.PMGR_ACTIVE]:
+                    self._log.info('pilot %s is %s: %s [%s]', \
+                            pid, s, pilot_dict.get('lm_info'), 
+                                    pilot_dict.get('lm_detail')) 
 
 
 

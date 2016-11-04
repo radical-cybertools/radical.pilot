@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import time
 import threading
 
 import radical.utils as ru
@@ -46,7 +47,7 @@ class AgentSchedulingComponent(rpu.Component):
         self.register_input(rps.AGENT_SCHEDULING_PENDING, 
                             rpc.AGENT_SCHEDULING_QUEUE, self.work)
 
-        self.register_output(rps.EXECUTING_PENDING,  
+        self.register_output(rps.AGENT_EXECUTING_PENDING,  
                              rpc.AGENT_EXECUTING_QUEUE)
 
         # we need unschedule updates to learn about units which free their
@@ -92,7 +93,7 @@ class AgentSchedulingComponent(rpu.Component):
         from .scattered  import Scattered
         from .torus      import Torus
         from .yarn       import Yarn
-        from .spark       import Spark
+        from .spark      import Spark
 
         try:
             impl = {
@@ -143,7 +144,7 @@ class AgentSchedulingComponent(rpu.Component):
         """
 
         # Get timestamp to use for recording a successful scheduling attempt
-        before_ts = rpu.prof_utils.timestamp()
+        before_ts = time.time()
 
         # needs to be locked as we try to acquire slots, but slots are freed
         # in a different thread.  But we keep the lock duration short...
@@ -186,7 +187,7 @@ class AgentSchedulingComponent(rpu.Component):
             if self._try_allocation(cu):
 
                 # allocated cu -- advance it
-                self.advance(cu, rps.EXECUTING_PENDING, publish=True, push=True)
+                self.advance(cu, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
 
                 # remove it from the wait queue
                 with self._wait_lock :
@@ -255,7 +256,7 @@ class AgentSchedulingComponent(rpu.Component):
         # put it on the wait queue.
         if self._try_allocation(cu):
             self._prof.prof('schedule', msg="allocation succeeded", uid=cu['uid'])
-            self.advance(cu, rps.EXECUTING_PENDING, publish=True, push=True)
+            self.advance(cu, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
 
         else:
             # No resources available, put in wait queue

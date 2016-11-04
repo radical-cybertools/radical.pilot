@@ -20,7 +20,6 @@ from ..types              import *
 from ..states             import *
 from ..states             import _unit_state_values
 from ..utils              import logger
-from ..utils              import timestamp
 from ..staging_directives import TRANSFER, LINK, COPY, MOVE
 
 from .input_file_transfer_worker  import InputFileTransferWorker
@@ -164,7 +163,7 @@ class UnitManagerController(threading.Thread):
         if  not unit_id in self._callback_histories :
             self._callback_histories[unit_id] = list()
         self._callback_histories[unit_id].append (
-                {'timestamp' : timestamp(), 
+                {'timestamp' : time.time(), 
                  'state'     : new_state})
         self._session.prof.prof('notification', uid=unit_id, state=new_state)
 

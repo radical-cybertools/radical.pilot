@@ -162,7 +162,7 @@ class ABDS(AgentExecutingComponent):
         for unit in units:
             self._handle_unit(unit)
 
-        self.advance(cu, rps.EXECUTING_PENDING, publish=True, push=False)
+        self.advance(units, rps.EXECUTING_PENDING, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -411,8 +411,9 @@ class ABDS(AgentExecutingComponent):
             # This code snippet reads the YARN application report file and if
             # the application is RUNNING it update the state of the CU with the
             # right time stamp. In any other case it works as it was.
+            logfile = '%s/%s' % (cu['workdir'], '/YarnApplicationReport.log')
             if cu['state']==rps.EXECUTING_PENDING \
-               and os.path.isfile(cu['workdir']+'/YarnApplicationReport.log'):
+                    and os.path.isfile(logfile):
 
                 yarnreport = open(logfile,'r')
                 report_contents = yarnreport.readlines()
@@ -439,7 +440,7 @@ class ABDS(AgentExecutingComponent):
             else :
                 # poll subprocess object
                 exit_code = cu['proc'].poll()
-                now       = rpu.timestamp()
+                now       = time.time()
 
                 if exit_code is None:
                     # Process is still running

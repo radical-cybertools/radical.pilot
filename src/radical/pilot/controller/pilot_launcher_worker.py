@@ -19,7 +19,6 @@ import radical.utils as ru
 
 from ..states    import *
 from ..utils     import logger
-from ..utils     import timestamp
 from ..context   import Context
 from ..logentry  import Logentry
 
@@ -145,7 +144,7 @@ class PilotLauncherWorker(threading.Thread):
 
         pending_pilots = pilot_col.find(
             {"pilotmanager": self.pilot_manager_id,
-             "state"       : {"$in": [PENDING_ACTIVE, ACTIVE]},
+             "state"       : {"$in": [PMGR_ACTIVE_PENDING, PMGR_ACTIVE]},
              "health_check_enabled": True}
         )
 
@@ -206,7 +205,7 @@ class PilotLauncherWorker(threading.Thread):
 
             if  pilot_failed :
                 out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
-                ts = timestamp()
+                ts = time.time()
                 pilot_col.update(
                     {"_id"  : pilot_id,
                      "state": {"$ne"     : DONE}},
@@ -236,7 +235,7 @@ class PilotLauncherWorker(threading.Thread):
                 # FIXME: this should only be done if the state is not yet
                 # done...
                 out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
-                ts = timestamp()
+                ts = time.time()
                 pilot_col.update(
                     {"_id"  : pilot_id,
                      "state": {"$ne"     : DONE}},
@@ -312,7 +311,7 @@ class PilotLauncherWorker(threading.Thread):
                     #       pending pilots.  In practice we only ever use one
                     #       pmgr though, and its during its shutdown that we get
                     #       here...
-                    ts = timestamp()
+                    ts = time.time()
                     compute_pilot = pilot_col.find_and_modify(
                         query={"pilotmanager": self.pilot_manager_id,
                                "state" : PENDING_LAUNCH},
@@ -333,7 +332,7 @@ class PilotLauncherWorker(threading.Thread):
                 # state to pending, otherwise to failed.
                 compute_pilot = None
 
-                ts = timestamp()
+                ts = time.time()
                 compute_pilot = pilot_col.find_and_modify(
                     query={"pilotmanager": self.pilot_manager_id,
                            "state" : PENDING_LAUNCH},
@@ -814,16 +813,16 @@ class PilotLauncherWorker(threading.Thread):
                         for le in logentries :
                             log_dicts.append (le.as_dict())
 
-                        # Update the Pilot's state to 'PENDING_ACTIVE' if SAGA job submission was successful.
-                        ts = timestamp()
+                        # Update the Pilot's state to 'PMGR_ACTIVE_PENDING' if SAGA job submission was successful.
+                        ts = time.time()
                         ret = pilot_col.update(
                             {"_id"  : pilot_id,
                              "state": LAUNCHING},
-                            {"$set" : {"state": PENDING_ACTIVE,
+                            {"$set" : {"state": PMGR_ACTIVE_PENDING,
                                        "saga_job_id": saga_job_id,
                                        "health_check_enabled": health_check,
                                        "agent_config": agent_cfg_dict},
-                             "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
+                             "$push": {"statehistory": {"state": PMGR_ACTIVE_PENDING, "timestamp": ts}},
                              "$pushAll": {"log": log_dicts}
                             }
                         )
@@ -837,7 +836,7 @@ class PilotLauncherWorker(threading.Thread):
                                 {"_id"  : pilot_id},
                                 {"$set" : {"saga_job_id": saga_job_id,
                                            "health_check_enabled": health_check},
-                                 "$push": {"statehistory": {"state": PENDING_ACTIVE, "timestamp": ts}},
+                                 "$push": {"statehistory": {"state": PMGR_ACTIVE_PENDING, "timestamp": ts}},
                                  "$pushAll": {"log": log_dicts}}
                             )
 
@@ -845,7 +844,7 @@ class PilotLauncherWorker(threading.Thread):
                     except Exception as e:
                         # Update the Pilot's state 'FAILED'.
                         out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
-                        ts = timestamp()
+                        ts = time.time()
 
                         # FIXME: we seem to be unable to bson/json handle saga
                         # log messages containing an '#'.  This shows up here.

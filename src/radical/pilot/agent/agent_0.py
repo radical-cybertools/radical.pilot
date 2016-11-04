@@ -183,7 +183,7 @@ class Agent_0(rpu.Worker):
         if state == rps.FAILED:
             self._log.info(ru.get_trace())
     
-        now = rpu.timestamp()
+        now = time.time()
         out = None
         err = None
         log = None

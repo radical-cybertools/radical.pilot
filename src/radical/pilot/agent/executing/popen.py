@@ -292,7 +292,7 @@ class Popen(AgentExecutingComponent) :
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
-        self._prof.prof('control', msg='launch script constructed', uid=cu['uid'])
+        self._prof.prof('command', msg='launch script constructed', uid=cu['_id'])
 
         # prepare stdout/stderr
         stdout_file = cu['description'].get('stdout') or 'STDOUT'
@@ -301,11 +301,11 @@ class Popen(AgentExecutingComponent) :
         cu['stdout_file'] = os.path.join(sandbox, stdout_file)
         cu['stderr_file'] = os.path.join(sandbox, stderr_file)
 
-        _stdout_file_h = open(cu['stdout_file'], "w+")
-        _stderr_file_h = open(cu['stderr_file'], "w+")
-        self._prof.prof('control', msg='stdout and stderr files created', uid=cu['uid'])
+        _stdout_file_h = open(cu['stdout_file'], "w")
+        _stderr_file_h = open(cu['stderr_file'], "w")
+        self._prof.prof('command', msg='stdout and stderr files created', uid=cu['_id'])
 
-        self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, sandbox)
+        self._log.info("Launching unit %s via %s in %s", cu['_id'], cmdline, sandbox)
 
         cu['proc'] = subprocess.Popen(args               = cmdline,
                                       bufsize            = 0,
@@ -322,8 +322,7 @@ class Popen(AgentExecutingComponent) :
                                       startupinfo        = None,
                                       creationflags      = 0)
 
-        self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['uid'])
-
+        self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['_id'])
         self._watch_queue.put(cu)
 
 
@@ -384,7 +383,7 @@ class Popen(AgentExecutingComponent) :
 
             # poll subprocess object
             exit_code = cu['proc'].poll()
-            now       = rpu.timestamp()
+            now       = time.time()
 
             if exit_code is None:
                 # Process is still running

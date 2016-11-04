@@ -22,7 +22,6 @@ import radical.utils as ru
 
 from ..states       import *
 from ..utils        import logger
-from ..utils        import timestamp
 from ..db.database  import COMMAND_CANCEL_PILOT
 
 from .pilot_launcher_worker import PilotLauncherWorker
@@ -222,7 +221,7 @@ class PilotManagerController(threading.Thread):
         if  not pilot_id in self._callback_histories :
             self._callback_histories[pilot_id] = list()
         self._callback_histories[pilot_id].append (
-                {'timestamp' : timestamp(), 
+                {'timestamp' : time.time(), 
                  'state'     : new_state})
 
         for cb in self._shared_data[pilot_id]['callbacks']:
@@ -341,7 +340,7 @@ class PilotManagerController(threading.Thread):
                             # may, or may not, cancel the pilot's units.
                             self.call_callbacks(pilot_id, new_state)
 
-                        if new_state in [ACTIVE]:
+                        if new_state in [PMGR_ACTIVE]:
                             logger.info('pilot %s is active: %s [%s]', pilot_id, \
                                     pilot.get('lm_info'), pilot.get('lm_detail')) 
 
@@ -355,10 +354,10 @@ class PilotManagerController(threading.Thread):
                             state=CANCELED,
                             src_states=[AGENT_STAGING_INPUT_PENDING,
                                         AGENT_STAGING_INPUT,
-                                        ALLOCATING_PENDING,
-                                        ALLOCATING,
-                                        EXECUTING_PENDING,
-                                        EXECUTING,
+                                        AGENT_SCHEDULING_PENDING,
+                                        AGENT_SCHEDULING,
+                                        AGENT_EXECUTING_PENDING,
+                                        AGENT_EXECUTING,
                                         AGENT_STAGING_OUTPUT_PENDING,
                                         AGENT_STAGING_OUTPUT],
                             log="Pilot '%s' has terminated with state '%s'. CU canceled." % (pilot_id, new_state))
@@ -535,7 +534,7 @@ class PilotManagerController(threading.Thread):
         self._dbs.send_command_to_pilot(COMMAND_CANCEL_PILOT, pilot_ids=pilot_ids)
         logger.info("Sent 'COMMAND_CANCEL_PILOT' command to pilots %s.", pilot_ids)
 
-        # pilots which are in ACTIVE state should now have time to react on the
+        # pilots which are in PMGR_ACTIVE state should now have time to react on the
         # CANCEL command sent above.  Meanwhile, we'll cancel all pending
         # pilots.  If that is done, we wait a little, say 10 seconds, to give
         # the pilot time to pick up the request and shut down -- but if it does
@@ -558,7 +557,9 @@ class PilotManagerController(threading.Thread):
                 if old_state in [DONE, FAILED, CANCELED]:
                     logger.debug("can't actively cancel pilot %s: already in final state" % pilot_id)
 
-                elif old_state in [PENDING_LAUNCH, LAUNCHING, PENDING_ACTIVE]:
+                elif old_state in [PMGR_LAUNCHING_PENDING, 
+                                   PMGR_LAUNCHING,
+                                   PMGR_ACTIVE_PENDING]:
 
                     if pilot_id in self._shared_worker_data['job_ids']:
 

@@ -35,17 +35,17 @@ class Spark(LaunchMethod):
         import radical.utils as ru
 
         if not os.environ.get('SPARK_HOME'):
-	        logger.info("Downloading Apache Spark..")
-	        try:    
-		        VERSION = "1.5.2"
-		        subprocess.check_call("wget http://d3kbcqa49mib13.cloudfront.net/spark-1.5.2-bin-hadoop2.6.tgz".split())
-		        subprocess.check_call('tar -xzf spark-1.5.2-bin-hadoop2.6.tgz'.split())
-		        subprocess.check_call(("mv spark-1.5.2-bin-hadoop2.6 spark-" + VERSION).split())
-	        except  Exception as e:
-	        	raise RuntimeError("Spark wasn't installed properly. Please try again. %s " % e )
-	        spark_home = os.getcwd() + '/spark-' + VERSION
+            logger.info("Downloading Apache Spark..")
+            try:
+                VERSION = "1.5.2"
+                subprocess.check_call("wget http://d3kbcqa49mib13.cloudfront.net/spark-1.5.2-bin-hadoop2.6.tgz".split())
+                subprocess.check_call('tar -xzf spark-1.5.2-bin-hadoop2.6.tgz'.split())
+                subprocess.check_call(("mv spark-1.5.2-bin-hadoop2.6 spark-" + VERSION).split())
+            except  Exception as e:
+                raise RuntimeError("Spark wasn't installed properly. Please try again. %s " % e )
+            spark_home = os.getcwd() + '/spark-' + VERSION
         else:
-	        spark_home = os.environ['SPARK_HOME']
+            spark_home = os.environ['SPARK_HOME']
         
         #-------------------------------------------------------------------
         platform_os = sys.platform
@@ -106,12 +106,12 @@ class Spark(LaunchMethod):
         python = ru.which('python')
         logger.info('Python Executable: %s' % python)
         if len(lrms.node_list) ==1:
-        	master_ip = lrms.node_list[0]
+            master_ip = lrms.node_list[0]
         else:
-        	try:
-        		master_ip = subprocess.check_call('hostname -f')
-        	except Exception as e:
-        		raise RuntimeError("Master ip couldn't be detected. %s" % e)
+            try:
+                master_ip = subprocess.check_call('hostname -f')
+            except Exception as e:
+                raise RuntimeError("Master ip couldn't be detected. %s" % e)
 
         #Setup default env properties:
         spark_default_file = open(spark_home + "/conf/spark-defaults.conf",'w')
@@ -138,14 +138,14 @@ class Spark(LaunchMethod):
 
         #### Start spark Cluster
         try:
-        	subprocess.check_output(spark_home + '/sbin/start-all.sh')
+            subprocess.check_output(spark_home + '/sbin/start-all.sh')
         except Exception as e:
             raise RuntimeError("Spark Cluster failed to start: %s" % e)
-        
+
         logger.info('Start Spark Cluster')
         launch_command = spark_home +'/bin'
 
-          
+
         # The LRMS instance is only available here -- everything which is later
         # needed by the scheduler or launch method is stored in an 'lm_info'
         # dict.  That lm_info dict will be attached to the scheduler's lrms_info
@@ -166,8 +166,7 @@ class Spark(LaunchMethod):
     @classmethod
     def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
         if 'name' not in lm_info:
-            raise RuntimeError('name not in lm_info for %s' \
-                    % (self.name))
+            raise RuntimeError('name not in lm_info for %s' % name)
 
         if lm_info['name'] != 'SPARKLRMS':
             logger.info('Stoping SPARK')

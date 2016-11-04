@@ -67,10 +67,8 @@ class ComputePilot(object):
         self._uid           = ru.generate_id('pilot.%(counter)04d', ru.ID_CUSTOM)
         self._state         = rps.NEW
         self._log           = pmgr._log
-        self._log_msgs      = list()
-        self._stdout        = None
-        self._stderr        = None
-        self._sandbox       = None
+
+        self._pilot_dict    = dict()
         self._callbacks     = dict()
         self._cb_lock       = threading.RLock()
         self._exit_on_error = self._descr.get('exit_on_error')
@@ -138,17 +136,22 @@ class ComputePilot(object):
         target  = pilot_dict['state']
 
         if target not in [rps.FAILED, rps.CANCELED]:
-            assert(rps._pilot_state_value(target) - rps._pilot_state_value(current) == 1)
+            assert(rps._pilot_state_value(target) - rps._pilot_state_value(current))
+            # FIXME
 
+        self._state = target
 
-        # we update all fields
-        # FIXME: well, not all really :/
-        # FIXME: setattr is ugly...  we should maintain all state in a dict.
-        for key in ['state', 'sandbox', 'stdout', 'stderr']:
+        # keep all information around
+        self._pilot_dict = copy.deepcopy(pilot_dict)
 
-            val = pilot_dict.get(key, None)
-            if val:
-                setattr(self, "_%s" % key, val)
+        # and extract som for convenience
+        if not 'resource_details' in self._pilot_dict:
+            # FIXME: fill on agent side
+            self._pilot_dict['resource_details'] = {
+                    'nodes':          self._pilot_dict.get('nodes'),
+                    'cores_per_node': self._pilot_dict.get('cores_per_node'),
+                    'lm_detail':      self._pilot_dict.get('lm_detail')
+                }
 
         # invoke pilot specific callbacks
         for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
@@ -172,18 +175,18 @@ class ComputePilot(object):
         Returns a Python dictionary representation of the object.
         """
         ret = {
-            'session':         self.session.uid,
-            'pmgr':            self.pmgr.uid,
-            'uid':             self.uid,
-            'type':            'pilot',
-            'state':           self.state,
-            'log':             self.log,
-            'stdout':          self.stdout,
-            'stderr':          self.stderr,
-            'resource':        self.resource,
-            'sandbox':         self.sandbox,
-            'description':     self.description,  # this is a deep copy
-            'resource_detail': self.resource_detail
+            'session':          self.session.uid,
+            'pmgr':             self.pmgr.uid,
+            'uid':              self.uid,
+            'type':             'pilot',
+            'state':            self.state,
+            'log':              self.log,
+            'stdout':           self.stdout,
+            'stderr':           self.stderr,
+            'resource':         self.resource,
+            'sandbox':          self.sandbox,
+            'description':      self.description,  # this is a deep copy
+            'resource_details': self.resource_details
         }
         return ret
 
@@ -214,6 +217,16 @@ class ComputePilot(object):
         """
 
         return self._pmgr
+
+
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def resource_details(self):
+        """
+        Returns agent level resource information
+        """
+        return self._pilot_dict.get('resource_details')
 
 
     # --------------------------------------------------------------------------
@@ -258,7 +271,7 @@ class ComputePilot(object):
             * log (list of [timestamp, string] tuples)
         """
 
-        return copy.deepcopy(self._log_msgs)
+        return self._pilot_dict.get('log')
 
 
     # --------------------------------------------------------------------------
@@ -278,7 +291,7 @@ class ComputePilot(object):
             * stdout (string)
         """
 
-        return self._stdout
+        return self._pilot_dict.get('stdout')
 
 
     # --------------------------------------------------------------------------
@@ -298,7 +311,7 @@ class ComputePilot(object):
             * stderr (string)
         """
 
-        return self._stderr
+        return self._pilot_dict.get('stderr')
 
 
     # --------------------------------------------------------------------------
@@ -320,33 +333,11 @@ class ComputePilot(object):
     @property
     def sandbox(self):
         """
-<<<<<<< HEAD
         Returns the full sandbox URL of this pilot, if that is already
         known, or 'None' otherwise.
-=======
-        # Check if this instance is valid
-        if not self._uid:
-            return None
 
-        pilot_json = self._worker.get_compute_pilot_data(pilot_ids=self.uid)
-        resource_details = {
-            'nodes':          pilot_json['nodes'],
-            'cores_per_node': pilot_json['cores_per_node'],
-            'lm_detail': pilot_json.get('lm_detail')
-        }
-        return resource_details
->>>>>>> d64b253
-
-<<<<<<< HEAD
         **Returns:**
             * A URL (radical.utils.Url).
-=======
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def pilot_manager(self):
-        """ Returns the pilot manager object for this pilot.
->>>>>>> c260de0
         """
 
         # NOTE: The pilot has a sandbox property, containing the full sandbox
@@ -362,7 +353,7 @@ class ComputePilot(object):
         #       implicitly also holds for the staging area, which is relative
         #       to the pilot sandbox.
 
-        return self._sandbox
+        return self._pilot_dict.get('sandbox')
 
 
     # --------------------------------------------------------------------------

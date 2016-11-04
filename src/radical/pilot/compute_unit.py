@@ -147,6 +147,7 @@ class ComputeUnit(object):
         if target not in [rps.FAILED, rps.CANCELED]:
             assert(rps._unit_state_value(target) - rps._unit_state_value(current) == 1)
 
+        self._state = target
 
         # we update all fields
         # FIXME: well, not all really :/

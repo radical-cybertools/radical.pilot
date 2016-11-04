@@ -144,11 +144,11 @@ class Default(AgentStagingInputComponent):
             self._log.info("%sing %s to %s", action, src, tgt)
 
             # for local files, check for existence first
-            if directive['action'] in [rpc.LINK, rpc.COPY, rpc.MOVE]:
+            if action in [rpc.LINK, rpc.COPY, rpc.MOVE]:
                 if not os.path.isfile(source):
                     # check if NON_FATAL flag is set, in that case ignore
                     # missing files
-                    if rpc.NON_FATAL in directive['flags']:
+                    if rpc.NON_FATAL in flags:
                         self._log.warn("ignoring that source %s does not exist.", source)
                         continue
                     else:
