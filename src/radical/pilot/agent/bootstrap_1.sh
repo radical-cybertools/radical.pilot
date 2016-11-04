@@ -1342,9 +1342,8 @@ echo "---------------------------------------------------------------------"
 echo "bootstrap_1 running on host: `hostname -f`."
 echo "bootstrap_1 started as     : '$0 $@'"
 echo "Environment of bootstrap_1 process:"
-echo ""
-env | sort
-echo "---------------------------------------------------------------------"
+env | sort | grep '=' | tee env.orig
+echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
 while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do

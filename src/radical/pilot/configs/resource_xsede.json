@@ -41,7 +41,11 @@
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_stampede",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "default"
+        "python_dist"                 : "default", 
+        "export_to_cu"                : ["LMOD_CMD",
+                                         "LMOD_SYSTEM_DEFAULT_MODULES",
+                                         "LD_LIBRARY_PATH"], 
+        "cu_pre_exec"                 : ["module restore"]
     },
 
     "stampede_yarn": {

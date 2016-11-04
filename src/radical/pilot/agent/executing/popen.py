@@ -81,6 +81,19 @@ class Popen(AgentExecutingComponent) :
         self.gtod   = "%s/gtod" % self._pwd
         self.tmpdir = tempfile.gettempdir()
 
+        # if we need to transplant any original env into the CU, we dig the
+        # respective keys from the dump the bootstrapper made
+        self._env_cu_export = dict()
+        if self._cfg.get('export_to_cu'):
+            with open('env.orig', 'r') as f:
+                for line in f.readlines():
+                    if '=' in line:
+                        k,v = line.split('=', 1)
+                        key = k.strip()
+                        val = v.strip()
+                        if key in self._cfg['export_to_cu']:
+                            self._env_cu_export[key] = val
+
 
     # --------------------------------------------------------------------------
     #
@@ -224,20 +237,25 @@ class Popen(AgentExecutingComponent) :
                 launch_script.write("echo script after_cd `%s` >> %s/PROF\n" % (self.gtod, sandbox))
 
             # Create string for environment variable setting
-            env_string = 'export'
+            env_string = ''
+            env_string += "export RP_SESSION_ID=%s\n" % self._cfg['session_id']
+            env_string += "export RP_PILOT_ID=%s\n"   % self._cfg['pilot_id']
+            env_string += "export RP_AGENT_ID=%s\n"   % self._cfg['agent_name']
+            env_string += "export RP_SPAWNER_ID=%s\n" % self.cname
+            env_string += "export RP_UNIT_ID=%s\n"    % cu['_id']
+            for k,v in self._env_cu_export.iteritems():
+                env_string += "export %s=%s\n" % (k,v)
             if cu['description']['environment']:
                 for key,val in cu['description']['environment'].iteritems():
                     env_string += ' %s=%s' % (key, val)
-            env_string += " RP_SESSION_ID=%s" % self._cfg['session_id']
-            env_string += " RP_PILOT_ID=%s"   % self._cfg['pilot_id']
-            env_string += " RP_AGENT_ID=%s"   % self._cfg['agent_name']
-            env_string += " RP_SPAWNER_ID=%s" % self.uid
-            env_string += " RP_UNIT_ID=%s"    % cu['_id']
-            for key,val in self._cu_environment.iteritems():
-                env_string += " %s='%s'"      % (key, val)
+
             launch_script.write('# Environment variables\n%s\n' % env_string)
 
             # Before the Big Bang there was nothing
+            if self._cfg.get('cu_pre_exec'):
+                for val in self._cfg['cu_pre_exec']:
+                    launch_script.write("%s\n"  % val)
+
             if cu['description']['pre_exec']:
                 pre_exec_string = ''
                 if isinstance(cu['description']['pre_exec'], list):
@@ -285,6 +303,10 @@ class Popen(AgentExecutingComponent) :
                 launch_script.write('%s\n' % post_exec_string)
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
                     launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (self.gtod, sandbox))
+
+            if self._cfg.get('cu_post_exec'):
+                for val in self._cfg['cu_post_exec']:
+                    launch_script.write("%s\n"  % val)
 
             launch_script.write("# Exit the script with the return code from the command\n")
             launch_script.write("exit $RETVAL\n")
