@@ -67,19 +67,19 @@ if __name__ == '__main__':
         pdesc = rp.ComputePilotDescription(pd_init)
 
         # Launch the pilot.
-        pilot = pmgr.submit_pilots(pdesc)
+        pilots = pmgr.submit_pilots([pdesc, pdesc])
 
 
         report.header('submit units')
 
         # Register the ComputePilot in a UnitManager object.
         umgr = rp.UnitManager(session=session)
-        umgr.add_pilots(pilot)
+        umgr.add_pilots(pilots)
 
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 128   # number of units to run
+        n = 4   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()

@@ -29,22 +29,22 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
     ret = list()
 
     if not dburl:
-        dburl = os.environ.get('RADICAL_PILOT_DBURL')
+        dburl = os.environ['RADICAL_PILOT_DBURL']
 
     if not dburl:
         raise ValueError('RADICAL_PILOT_DBURL is not set')
 
     if not src:
         src = os.getcwd()
-            
+
     if not tgt:
         tgt = os.getcwd()
-            
+
     if not tgt.startswith('/') and '://' not in tgt:
         tgt = "%s/%s" % (os.getcwd(), tgt)
 
     # we always create a session dir as real target
-    tgt_url = saga.Url(tgt)
+    tgt_url = saga.Url("%s/%s/" % (tgt, sid))
 
     # Turn URLs without schema://host into file://localhost,
     # so that they dont become interpreted as relative.
@@ -67,7 +67,6 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
         if skip_existing and os.path.isfile(ftgt.path) \
                 and os.stat(ftgt.path).st_size > 0:
-
             log.report.info("\t- %s\n" % client_profile.split('/')[-1])
 
         else:
@@ -156,6 +155,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
                 profiles = glob.glob("%s/%s/*.prof" % (tgt_url.path, pilot['uid']))
                 ret.extend(profiles)
                 os.unlink(ftgt.path)
+
             except Exception as e:
                 log.warn('could not extract tarball %s [%s]', ftgt.path, e)
                 print 'skip %s [%s]' % (ftgt.path, e)
@@ -173,7 +173,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
         for prof in profiles:
 
             try:
-
+                ret.append("%s" % ftgt.path)
                 ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['uid'], prof))
 
                 if skip_existing and os.path.isfile(ftgt.path) \
@@ -186,7 +186,6 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
                     prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
                     prof_file.close()
 
-                ret.append("%s" % ftgt.path)
             except Exception as e:
                 log.error('skip %s [%s]' % (ftgt, e))
 

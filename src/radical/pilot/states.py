@@ -265,5 +265,25 @@ if 'RP_ENABLE_OLD_DEFINES' in os.environ:
     PENDING_OUTPUT_STAGING = UMGR_STAGING_OUTPUT_PENDING
     STAGING_OUTPUT         = UMGR_STAGING_OUTPUT
 
+pilot_state_value = {
+    NEW                          :  1,
+    PENDING_LAUNCH               :  2,
+    LAUNCHING                    :  3,
+    PENDING_ACTIVE               :  4,
+    ACTIVE                       :  5,
+    DONE                         :  6,
+    FAILED                       :  6,
+    CANCELED                     :  6
+    }
+
+pilot_state_by_value = {
+     1 : NEW                          ,
+     2 : PENDING_LAUNCH               ,
+     3 : LAUNCHING                    ,
+     4 : PENDING_ACTIVE               ,
+     5 : ACTIVE                       ,
+     6 : FINAL
+    }
+
 # -----------------------------------------------------------------------------
 
