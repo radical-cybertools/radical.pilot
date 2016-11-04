@@ -143,7 +143,7 @@ class Kafka(LaunchMethod):
             pat = re.compile(RE)
 
             def jojo(mat,dic = dico ):
-            return dic[mat.group(2)].join(mat.group(1,3))
+                return dic[mat.group(2)].join(mat.group(1,3))
 
             with open(filename,'rb') as f:
                 content = f.read() 
