@@ -28,21 +28,14 @@
     },
 
     "ncsa.bw" : {
-        "project"  : "gkd",
+        "project"  : "gk4",
         "queue"    : "debug",
         "schema"   : "gsissh",
         "cores"    : 64
     },
 
-    "ncsa.bw_local" : {
-        "project"  : null,
-        "queue"    : "debug",
-        "schema"   : null,
-        "cores"    : 64
-    },
-
     "ncsa.bw_ccm" : {
-        "project"  : "gkd",
+        "project"  : "gk4",
         "queue"    : "debug",
         "schema"   : "gsissh",
         "cores"    : 64
