@@ -1,5 +1,6 @@
 
 {
+<<<<<<< HEAD
     "local.localhost" : {
         "project"  : null,
         "queue"    : null,
@@ -171,7 +172,7 @@
         "project"  : "TG-CCR140028", 
         "queue"    : null,
         "schema"   : "gsissh",
-        "cores"    : 64
+        "cores"    : 1
     },
 
     "osg.connect" : {
