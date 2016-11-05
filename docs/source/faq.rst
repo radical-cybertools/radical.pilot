@@ -166,7 +166,7 @@ We generally only support `sh` and `bash` as login shells on the target
 machines.  Please try to switch to those shells if you use others like `zsh` and
 `csh/tcsh`.  If you need other shells supported, please open a ticket.
 
-Prompt detecting behaviour can be improved by calling `touch $HOME/.hushloging`
+Prompt detecting behaviour can be improved by calling `touch $HOME/.hushlogin`
 on the target machine, which will suppress some system messages on login.  
 
 If the problem persists, please open a ticket.
