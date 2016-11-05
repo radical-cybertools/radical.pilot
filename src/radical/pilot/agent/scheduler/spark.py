@@ -4,11 +4,11 @@ __license__   = "MIT"
 
 
 import json
+import time
 import urllib2 as ul
 
 import radical.utils as ru
 
-from ... import utils     as rpu
 from ... import states    as rps
 from ... import constants as rpc
 
