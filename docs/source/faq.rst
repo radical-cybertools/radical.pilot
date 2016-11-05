@@ -159,6 +159,25 @@ This is coming from the firewall on your Mac. You can either:
     - Sign the application per instructions here: http://apple.stackexchange.com/a/121010
 
 
+...avoid the error "Could not detect shell prompt (timeout)"
+------------------------------------------------------------
+
+We generally only support `sh` and `bash` as login shells on the target
+machines.  Please try to switch to those shells if you use others like `zsh` and
+`csh/tcsh`.  If you need other shells supported, please open a ticket.
+
+Prompt detecting behaviour can be improved by calling `touch $HOME/.hushloging`
+on the target machine, which will suppress some system messages on login.  
+
+If the problem persists, please open a ticket.
+
+Details: we implement rather cumbersome screen scraping via an interactive ssh
+session to get onto the target machine, instead of using `paramiko` or other
+modules.  This gives us better performance, but most importantly, this gives us
+support for `gsissh`, which we did not find available in any other package so
+far.
+
+
 Other Questions
 ================
 
