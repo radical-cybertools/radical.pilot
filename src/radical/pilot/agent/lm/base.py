@@ -94,6 +94,7 @@ class LaunchMethod(object):
         from .ssh            import SSH
         from .yarn           import Yarn
         from .spark          import Spark
+        from .kafka          import Kafka 
 
         try:
             impl = {
