@@ -270,49 +270,78 @@ import multiprocessing as mp
 
 import radical.utils   as ru
 
-TIMEOUT  =  3
-WORK_MIN =  1
-WORK_MAX = 10
-WORK_N   =  5
 
 # ------------------------------------------------------------------------------
+#
+WORK_MIN     =  0.1  # minimial time the work loop sleeps, in seconds
+WORK_MAX     =  1.0  # maximial time the work loop sleeps, in seconds
+TIME_ALIVE   =  3.0  # start termination  after this time, in seconds
+JOIN_TIMEOUT =  3
+
+
+# ------------------------------------------------------------------------------
+#
+# we use `ru.raise_on()` to  trigger artificial error conditions throughout the
+# test code.  `ru.raise_on(tag)` will raise a runtime error when
+#
+#   os.environ['RU_RAISE_ON_%s' % tag.upper()'] 
+#
+# meets some condition.   If set to an integer 'n', it will raise on te n'th
+# invokation (counter is process local).  If set to `RANDOM_%d`, the integer
+# part is expected a number between 0 and 100, and the method will raise an
+# error in the given percentage of cases (normal distribution).
+# 
+# Since raises on `init`, `work` and `watch` will prenmaturely finish many runs,
+# wecuse a higher percentage at `stop`.
+#
+os.environ['RU_RAISE_ON_INIT']  = 'RANDOM_5'
+os.environ['RU_RAISE_ON_WATCH'] = 'RANDOM_5'
+os.environ['RU_RAISE_ON_WORK']  = 'RANDOM_5'
+os.environ['RU_RAISE_ON_STOP']  = 'RANDOM_15'
+
+
+# ------------------------------------------------------------------------------
+#
+# This dict defines the process and thread tree to be created.  Each process
+# (main, child) must have exactly one 'watcher' which will create and monitor
+# the sub-elements of that process.
 #
 config = {
         'watcher  0' : None, 
         'child    1' : {
             'watcher  2' : None, 
-         #  'worker   3' : None, 
+            'worker   3' : None, 
             'worker   4' : None, 
-         #  'child    5' : {
-         #      'watcher  6' : None, 
-         #      'worker   7' : None, 
-         #      'worker   8' : None, 
-         #      'child    9' : {
-         #          'watcher 10' : None, 
-         #          'worker  11' : None, 
-         #          'worker  12' : None, 
-         #      },
-         #      'child  13' : {
-         #          'watcher 14' : None, 
-         #          'worker  15' : None, 
-         #          'worker  16' : None, 
-         #      }
-#           },
-#           'child   17' : {
-#               'watcher 18' : None, 
-#               'worker  19' : None, 
-#               'worker  20' : None, 
-#               'child   21' : {
-#                   'watcher 22' : None, 
-#                   'worker  23' : None, 
-#                   'worker  24' : None, 
-#               },
-#               'child   25' : {
-#                   'watcher 26' : None, 
-#                   'worker  27' : None, 
-#                   'worker  28' : None, 
-#               }
-#           }
+            'child    5' : {
+                'watcher  6' : None, 
+                'worker   7' : None, 
+                'worker   8' : None, 
+                'child    9' : {
+                    'watcher 10' : None, 
+                    'worker  11' : None, 
+                    'worker  12' : None, 
+                },
+                'child  13' : {
+                    'watcher 14' : None, 
+                    'worker  15' : None, 
+                    'worker  16' : None, 
+                }
+            },
+            'child   17' : {
+                'watcher 18' : None, 
+                'worker  19' : None, 
+                'worker  20' : None, 
+                'child   21' : {
+                    'watcher 22' : None, 
+                    'worker  23' : None, 
+                    'worker  24' : None, 
+                },
+                'child   25' : {
+                    'watcher 26' : None, 
+                    'worker  27' : None, 
+                    'worker  28' : None, 
+                }
+            }
         }
     }
 

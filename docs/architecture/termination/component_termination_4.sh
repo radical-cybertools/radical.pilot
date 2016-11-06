@@ -23,8 +23,8 @@ do
             printf "%5d OK   `date`\n" $i | tee -a component_termination_4.log
         else
             printf "%5d FAIL `date`\n" $i | tee -a component_termination_4.log
+            grep -e '^RuntimeError' component_termination_4.tmp | tee -a component_termination_4.log
         fi
-        grep -e '^RuntimeError' component_termination_4.tmp >> component_termination_4.log
         rm -f component_termination_4.tmp
         rm -f component_termination_4.ok
     )
