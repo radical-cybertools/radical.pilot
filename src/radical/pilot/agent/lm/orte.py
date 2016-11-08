@@ -17,6 +17,14 @@ from .base import LaunchMethod
 #
 class ORTE(LaunchMethod):
 
+    # These are passed as -x to orterun
+    EXPORT_ENV_VARIABLES = [
+        'LD_LIBRARY_PATH',
+        'PATH',
+        'PYTHONPATH',
+        'PYTHON_DIR',
+    ]
+
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, logger):
