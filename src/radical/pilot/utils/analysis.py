@@ -59,6 +59,7 @@ _info_states = [
         ]
 
 _info_entries = [
+    # info,              name,                     event,       msg
     ('umgr_get_u',      'MainThread',             'advance',   'New'),
     ('umgr_adv_u_pend', 'MainThread',             'advance',   'PendingInputStaging'),
     ('usic_get_u',      'InputFileTransfer',      'advance',   'StagingInput'),
@@ -569,6 +570,9 @@ def get_info_df(df):
         for i in set(l):
             cols.add(i)
             if l.count(i)>1:
+                # TODO: this is a hack to workaround a problem in the state management
+                if i == 'mod_adv_u':
+                    continue
                 raise ValueError('doubled info entry %s (uid:%s)' % (i, uid))
 
         dicts[uid] = tmp1_d
