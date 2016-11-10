@@ -117,7 +117,7 @@
         "xsede.wrangler" : {
             "project"  : "TG-MCB090174",
             "queue"    : "debug",
-            "schema"   : null,
+            "schema"   : "gsissh",
             "cores"    : 24
         },
 
@@ -169,7 +169,7 @@
             "cores"    : 64
         },
 
-        "ornl.titan_orte" : {
+        "ornl.titan" : {
             "project"  : "BIP103",
             "queue"    : "debug",
             "schema"   : "local",
@@ -188,5 +188,12 @@
             "queue"    : "shared",
             "schema"   : "ssh",
             "cores"    : 64
+        },
+
+        "osg.xsede-virt-clust"   : {
+            "project"  : "TG-CCR140028",
+            "queue"    : null,
+            "schema"   : "gsissh",
+            "cores"    : 1
         }
 }

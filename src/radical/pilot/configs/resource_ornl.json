@@ -24,20 +24,9 @@
         "agent_launch_method"         : "APRUN",
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
-        # The python module file expands differently on login/mom/compute
-        # nodes, therefore use a binary that works on all three.
-        "python_interpreter"          : "/lustre/atlas/sw/xk7/python/2.7.9/sles11.3_gnu4.3.4/bin/python",
         "pre_bootstrap_1"             : [
+            "module swap PrgEnv-pgi PrgEnv-gnu",
             "module load python",
-            # Workaround for ZMQ runtime failure
-            "export LD_PRELOAD=/lib64/librt.so.1"
-        ],
-        "pre_bootstrap_2"             : [
-            "export HOME=$HOME",
-            # TODO: investigate PYTHONHOME further
-          # "export PYTHONHOME=/lustre/atlas1/bip103/scratch/marksant1/radical.pilot.sandbox/ve_titan",
-          # "export PATH=$PATH",
-          # "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH",
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
         ],
@@ -49,7 +38,7 @@
         "stage_cacerts"               : "True",
         "python_dist"                 : "default"
     },
-    "titan_orte": {
+    "titan": {
         "description"                 : "The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/titan/)",
         "notes"                       : "Requires the use of an RSA SecurID on every connection.",
         "schemas"                     : ["ssh", "local", "go"],
@@ -74,22 +63,11 @@
         "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",
-        # The python module file expands differently on login/mom/compute
-        # nodes, therefore use a binary that works on all three.
-        "python_interpreter"          : "/lustre/atlas/sw/xk7/python/2.7.9/sles11.3_gnu4.3.4/bin/python",
         "pre_bootstrap_1"             : [
-            "module use --append /ccs/home/marksant1/privatemodules",
+            "module swap PrgEnv-pgi PrgEnv-gnu",
+            "module use --append /lustre/atlas/world-shared/bip103/modules",
             "module load openmpi/STATIC",
             "module load python",
-            # Workaround for ZMQ runtime failure
-            "export LD_PRELOAD=/lib64/librt.so.1"
-        ],
-        "pre_bootstrap_2"             : [
-            "export HOME=$HOME",
-            # TODO: investigate PYTHONHOME further
-            "export PYTHONHOME=/lustre/atlas1/bip103/scratch/marksant1/radical.pilot.sandbox/ve_titan",
-            #"export PATH=$PATH",
-            #"export LD_LIBRARY_PATH=$LD_LIBRARY_PATH",
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
         ],
