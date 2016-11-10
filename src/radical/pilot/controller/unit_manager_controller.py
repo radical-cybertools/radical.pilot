@@ -506,7 +506,8 @@ class UnitManagerController(threading.Thread):
                     source = ru.Url(input_sd_entry['source'])
                     target = ru.Url(input_sd_entry['target'])
 
-                    new_sd = {'action':   action,
+                    new_sd = {'_id':      ru.generate_id('sd'),
+                              'action':   action,
                               'source':   str(source),
                               'target':   str(target),
                               'flags':    input_sd_entry['flags'],
@@ -545,7 +546,8 @@ class UnitManagerController(threading.Thread):
                     source = ru.Url(output_sds_entry['source'])
                     target = ru.Url(output_sds_entry['target'])
 
-                    new_sd = {'action':   action,
+                    new_sd = {'_id':      ru.generate_id('sd'),
+                              'action':   action,
                               'source':   str(source),
                               'target':   str(target),
                               'flags':    output_sds_entry['flags'],

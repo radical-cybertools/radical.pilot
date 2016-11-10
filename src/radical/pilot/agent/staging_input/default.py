@@ -13,6 +13,10 @@ from ...  import utils     as rpu
 from ...  import states    as rps
 from ...  import constants as rpc
 
+os.environ['RADICAL_SAGA_VERBOSE'] = 'DEBUG'
+os.environ['RADICAL_SAGA_LOG_TGT'] = 'saga.log'
+import saga
+
 from .base import AgentStagingInputComponent
 
 
@@ -105,8 +109,7 @@ class Default(AgentStagingInputComponent):
         try:
             for directive in cu['Agent_Input_Directives']:
 
-                self._prof.prof('Agent input_staging queue', uid=cu['_id'],
-                         msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
+                self._prof.prof('begin', uid=cu['_id'], msg=str(directive['_id']))
 
                 # Perform input staging
                 self._log.info("unit input staging directives %s for cu: %s to %s",
@@ -121,9 +124,12 @@ class Default(AgentStagingInputComponent):
                     # Remove the leading slash to get a relative path from the staging area
                     rel2staging = source_url.path.split('/',1)[1]
                     source = os.path.join(staging_area, rel2staging)
-                else:
+                elif directive['action'] != rpc.TRANSFER:
                     self._log.info('Operating from absolute path')
                     source = source_url.path
+                elif directive['action'] == rpc.TRANSFER:
+                    self._log.info('Operating from remote location')
+                    source = directive['source']
 
                 # Get the target from the directive and convert it to the location
                 # in the workdir
@@ -151,17 +157,26 @@ class Default(AgentStagingInputComponent):
                 if   directive['action'] == rpc.LINK: os.symlink     (source, abs_target)
                 elif directive['action'] == rpc.COPY: shutil.copyfile(source, abs_target)
                 elif directive['action'] == rpc.MOVE: shutil.move    (source, abs_target)
-                else:
-                    # FIXME: implement TRANSFER mode
-                    raise NotImplementedError('Action %s not supported' % directive['action'])
+                elif directive['action'] == rpc.TRANSFER:
+                    srm_dir = saga.filesystem.Directory('srm://proxy/?SFN=bogus')
+                    if srm_dir.exists(source):
+                        tgt_url = saga.Url(abs_target)
+                        tgt_url.schema = 'file'
+                        srm_dir.copy(source, tgt_url)
+                    else:
+                        raise saga.exceptions.DoesNotExist("%s does not exist" % source)
+
+                self._prof.prof('end', uid=cu['_id'], msg=str(directive['_id']))
 
                 log_message = "%s'ed %s to %s - success" % (directive['action'], source, abs_target)
                 self._log.info(log_message)
+
 
         except Exception as e:
             self._log.exception("staging input failed -> unit failed")
             staging_ok = False
 
+        # TODO: don't raise for non-fatal staging
 
         # Agent input staging is done (or failed)
         if staging_ok:
