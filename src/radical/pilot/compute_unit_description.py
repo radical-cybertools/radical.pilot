@@ -30,6 +30,8 @@ CLEANUP                = 'cleanup'
 STDOUT                 = 'stdout'
 STDERR                 = 'stderr'
 RESTARTABLE            = 'restartable'
+INPUT_DATA             = 'input_data'
+OUTPUT_DATA            = 'output_data'
 
 # ------------------------------------------------------------------------------
 #
@@ -166,26 +168,29 @@ class ComputeUnitDescription(attributes.Attributes) :
       # self._attributes_register(START_AFTER,      None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
       # self._attributes_register(CONCURRENT_WITH,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
 
-      # disabled deprecated attributes
-      # self._attributes_register_deprecated ('input_data',  'input_staging',  flow=self._DOWN)
-      # self._attributes_register_deprecated ('output_data', 'output_staging', flow=self._DOWN)
+        # pilot data
+        self._attributes_register(INPUT_DATA,       None, attributes.ANY,    attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register(OUTPUT_DATA,      None, attributes.ANY,    attributes.VECTOR, attributes.WRITEABLE)
 
         # explicitly set attrib defaults so they get listed and included via as_dict()
-        self.set_attribute (KERNEL,         None)
-        self.set_attribute (NAME,           None)
-        self.set_attribute (EXECUTABLE,     None)
-        self.set_attribute (ARGUMENTS,      None)
-        self.set_attribute (ENVIRONMENT,    None)
-        self.set_attribute (PRE_EXEC,       None)
-        self.set_attribute (POST_EXEC,      None)
-        self.set_attribute (STDOUT,         None)
-        self.set_attribute (STDERR,         None)
-        self.set_attribute (INPUT_STAGING,  None)
-        self.set_attribute (OUTPUT_STAGING, None)
-        self.set_attribute (CORES,             1)
-        self.set_attribute (MPI,           False)
-        self.set_attribute (RESTARTABLE,   False)
-        self.set_attribute (CLEANUP,       False)
+        self.set_attribute (KERNEL,          None)
+        self.set_attribute (NAME,            None)
+        self.set_attribute (EXECUTABLE,      None)
+        self.set_attribute (ARGUMENTS,       None)
+        self.set_attribute (ENVIRONMENT,     None)
+        self.set_attribute (PRE_EXEC,        None)
+        self.set_attribute (POST_EXEC,       None)
+        self.set_attribute (STDOUT,          None)
+        self.set_attribute (STDERR,          None)
+        self.set_attribute (INPUT_STAGING,   None)
+        self.set_attribute (OUTPUT_STAGING,  None)
+        self.set_attribute (INPUT_DATA,      None)
+        self.set_attribute (OUTPUT_DATA,     None)
+        self.set_attribute (CANDIDATE_HOSTS, None)
+        self.set_attribute (CORES,              1)
+        self.set_attribute (MPI,            False)
+        self.set_attribute (RESTARTABLE,    False)
+        self.set_attribute (CLEANUP,        False)
 
         # apply initialization dict
         if from_dict:

@@ -70,5 +70,103 @@
     "virtenv": "./ve_osgconnect",
     "virtenv_mode": "create",
     "python_dist": "default"
+  },
+
+  "cinvestav": {
+    "schemas": ["srm"],
+    "srm": {
+      "filesystem_endpoint": "srm://meson.fis.cinvestav.mx:8443/srm/v2/server?SFN=/meson/data/osg/marksant"
+    }
+  },
+
+  "CIT_CMS_T2": {
+    "schemas": ["srm"],
+    "srm": {
+      "filesystem_endpoint": "srm://cit-se.ultralight.org:8443/srm/v2/server?SFN=/mnt/hadoop/osg/osg/marksant"
+    }
+  },
+
+  "FIUPG": {
+    "schemas": ["srm"],
+    "srm": {
+      "filesystem_endpoint": "srm://srm.hep.fiu.edu:8443/srm/v2/server?SFN=/mnt/hadoop/osg/marksant"
+    }
+  },
+
+  "GLOW": {
+    "schemas": ["srm"],
+    "srm": {
+      "filesystem_endpoint": "srm://cmssrm.hep.wisc.edu:8443/srm/v2/server?SFN=/hdfs/osg/vo/osg/marksant"
+    }
+  },
+
+  "LUCILLE": {
+    "schemas": ["srm"],
+    "srm": {
+      "filesystem_endpoint": "srm://lutse1.lunet.edu:8443/srm/v2/server?SFN=/data/osg/cache/marksant"
+    }
+  },
+
+  "MIT_CMS": {
+    "schemas": ["srm"],
+    "srm": {
+      "filesystem_endpoint": "srm://se01.cmsaf.mit.edu:8443/srm/v2/server?SFN=/mnt/hadoop/cms/store/user/marksant"
+    }
+  },
+
+  "Nebraska": {
+    "schemas": ["srm"],
+    "srm": {
+      "filesystem_endpoint": "srm://srm.unl.edu:8443/srm/v2/server?SFN=/mnt/hadoop/user/osg/marksant"
+    }
+  },
+
+  "SPRACE": {
+    "schemas": ["srm"],
+    "srm": {
+      "filesystem_endpoint": "srm://osg-se.sprace.org.br:8443/srm/managerv2?SFN=/pnfs/sprace.org.br/data/osg/marksant"
+    }
+  },
+
+  "SWT2_CPB": {
+    "schemas": ["srm"],
+    "srm": {
+      "filesystem_endpoint": "srm://gk03.atlas-swt2.org:8443/srm/v2/server?SFN=/xrd/vos/osg/marksant"
+    }
+  },
+
+  "UCD": {
+    "schemas": ["srm"],
+    "srm": {
+      "filesystem_endpoint": "srm://se.tier3.ucdavis.edu:8443/srm/v2/server?SFN=/mnt/hadoop/tmp/marksant"
+    }
+  },
+
+  "UCSDT2": {
+    "schemas": ["srm"],
+    "srm": {
+      "filesystem_endpoint": "srm://bsrm-3.t2.ucsd.edu:8443/srm/v2/server?SFN=/hadoop/osg/marksant"
+    }
+  },
+
+  "UERJ": {
+    "schemas": ["srm"],
+    "srm": {
+      "filesystem_endpoint": "srm://bestman.hepgrid.uerj.br:8443/srm/v2/server?SFN=/mnt/hadoop/osg/marksant"
+    }
+  },
+
+  "uprm-cms": {
+    "schemas": ["srm"],
+    "srm": {
+      "filesystem_endpoint": "srm://cms-se.hep.uprm.edu:8443/srm/v2/server?SFN=/mnt/hadoop/user/osg/marksant"
+    }
+  },
+
+  "UTA_SWT2": {
+    "schemas": ["srm"],
+    "srm": {
+      "filesystem_endpoint": "srm://gk05.swt2.uta.edu:8443/srm/v2/server?SFN=/xrd/vos/osg/marksant"
+    }
   }
 }

@@ -14,12 +14,14 @@ __license__   = "MIT"
 from direct_submission import DirectSubmissionScheduler
 from round_robin       import RoundRobinScheduler
 from backfilling       import BackfillingScheduler
+from pilotdata         import PilotDataScheduler
 
 # -----------------------------------------------------------------------------
 # Constants
 SCHED_ROUND_ROBIN       = "round_robin"
 SCHED_DIRECT            = "direct_submission"
 SCHED_BACKFILLING       = "backfilling"
+SCHED_PILOTDATA         = "pilotdata"
 
 # alias:
 SCHED_DIRECT_SUBMISSION = SCHED_DIRECT
@@ -35,5 +37,6 @@ def get_scheduler(manager, name, session):
     if   name == SCHED_ROUND_ROBIN      : return RoundRobinScheduler       (manager, session)
     elif name == SCHED_DIRECT_SUBMISSION: return DirectSubmissionScheduler (manager, session)
     elif name == SCHED_BACKFILLING      : return BackfillingScheduler      (manager, session)
+    elif name == SCHED_PILOTDATA        : return PilotDataScheduler        (manager, session)
     else                                : raise RuntimeError("Scheduler '%s' doesn't exist." % name)
 

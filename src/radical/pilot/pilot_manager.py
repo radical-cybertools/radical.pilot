@@ -24,6 +24,7 @@ from .exceptions      import *
 from .utils           import logger
 from .controller      import PilotManagerController
 from .compute_pilot   import ComputePilot
+from .data_pilot      import DataPilot
 from .exceptions      import PilotException, BadParameter
 from .resource_config import ResourceConfig
 
@@ -279,7 +280,7 @@ class PilotManager(object):
         if len(pilot_descriptions) == 0:
             raise ValueError('cannot submit no pilot descriptions')
 
-        logger.report.info('<<submit %d pilot(s) ' % len(pilot_descriptions))
+        logger.report.info('<<submit %d compute pilot(s) ' % len(pilot_descriptions))
 
         # Itereate over the pilot descriptions, try to create a pilot for
         # each one and append it to 'pilot_obj_list'.
@@ -610,3 +611,166 @@ class PilotManager(object):
 
         self._worker.register_manager_callback(cb_func, cb_data)
 
+    # -------------------------------------------------------------------------
+    #
+    def submit_data_pilots(self, pilot_descriptions):
+        """Submits a new :class:`radical.pilot.DataPilot` to a resource.
+
+        **Returns:**
+
+            * One or more :class:`radical.pilot.ComputePilot` instances
+              [`list of :class:`radical.pilot.ComputePilot`].
+
+        **Raises:**
+
+            * :class:`radical.pilot.PilotException`
+        """
+
+        # Check if the object instance is still valid.
+        self._is_valid()
+
+        # Implicit list conversion.
+        return_list_type = True
+        if  not isinstance(pilot_descriptions, list):
+            return_list_type   = False
+            pilot_descriptions = [pilot_descriptions]
+
+        if len(pilot_descriptions) == 0:
+            raise ValueError('cannot submit no data pilot descriptions')
+
+        logger.report.info('<<submit %d data pilot(s) ' % len(pilot_descriptions))
+
+        # Itereate over the pilot descriptions, try to create a pilot for
+        # each one and append it to 'pilot_obj_list'.
+        pilot_obj_list = list()
+
+        for pd in pilot_descriptions:
+
+            if pd.resource is None:
+                error_msg = "DataPilotDescription does not define mandatory attribute 'resource'."
+                raise BadParameter(error_msg)
+
+            resource_key = pd.resource
+            resource_cfg = self._session.get_resource_config(resource_key)
+
+            # Check resource-specific mandatory attributes
+            if "mandatory_args" in resource_cfg:
+                for ma in resource_cfg["mandatory_args"]:
+                    if getattr(pd, ma) is None:
+                        error_msg = "DataPilotDescription for '%s' needs mandatory %s." \
+                                    % (resource_key, ma)
+                        raise BadParameter(error_msg)
+
+            # we expand and exchange keys in the resource config, depending on
+            # the selected schema so better use a deep copy...
+            import copy
+            resource_cfg  = copy.deepcopy(resource_cfg)
+            schema        = pd['access_schema']
+
+            if not schema:
+                if 'schemas' in resource_cfg:
+                    schema = resource_cfg['schemas'][0]
+                    # import pprint
+                    # print "no schema, using %s" % schema
+                    # pprint.pprint (pd)
+
+            if not schema in resource_cfg:
+                # import pprint
+                # pprint.pprint (resource_cfg)
+                logger.warning("schema %s unknown for resource %s -- continue with defaults" \
+                                % (schema, resource_key))
+
+            else:
+                for key in resource_cfg[schema]:
+                    # merge schema specific resource keys into the
+                    # resource config
+                    resource_cfg[key] = resource_cfg[schema][key]
+
+            # Override path component of EP if specified in PD
+            # Supports relative paths and absolute paths
+            path = pd['path']
+            if path:
+                ep_url = ru.Url(resource_cfg['filesystem_endpoint'])
+                if ep_url.schema == 'srm':
+                    ep_url.query = os.path.join(ep_url.query, path)
+                else:
+                    ep_url.path = os.path.join(ep_url.path, path)
+                resource_cfg['filesystem_endpoint'] = str(ep_url)
+
+            # After the sanity checks have passed, we can register a pilot
+            # startup request with the worker process and create a facade
+            # object.
+
+            pilot = DataPilot.create(
+                pilot_description=pd,
+                pilot_manager_obj=self)
+
+            pilot._resource_config = resource_cfg
+
+            pilot._uid = self._worker.register_data_pilot(pilot)
+
+            pilot_obj_list.append(pilot)
+
+            logger.report.progress()
+        logger.report.ok('>>ok\n')
+
+        # Implicit return value conversion
+        if  return_list_type :
+            return pilot_obj_list
+        else:
+            return pilot_obj_list[0]
+
+
+    # -------------------------------------------------------------------------
+    #
+    def list_data_pilots(self):
+        """Lists the unique identifiers of all :class:`radical.pilot.ComputePilot`
+        instances associated with this PilotManager
+
+        **Returns:**
+
+            * A list of :class:`radical.pilot.ComputePilot` uids [`string`].
+
+        **Raises:**
+
+            * :class:`radical.pilot.PilotException`
+        """
+        # Check if the object instance is still valid.
+        self._is_valid()
+
+        # Get the pilot list from the worker
+        return self._worker.list_data_pilots()
+
+    # -------------------------------------------------------------------------
+    #
+    def get_data_pilots(self, pilot_ids=None):
+        """Returns one or more :class:`radical.pilot.ComputePilot` instances.
+
+        **Arguments:**
+
+            * **pilot_uids** [`list of strings`]: If pilot_uids is set,
+              only the Pilots with  the specified uids are returned. If
+              pilot_uids is `None`, all Pilots are returned.
+
+        **Returns:**
+
+            * A list of :class:`radical.pilot.ComputePilot` objects
+              [`list of :class:`radical.pilot.ComputePilot`].
+
+        **Raises:**
+
+            * :class:`radical.pilot.PilotException`
+        """
+        self._is_valid()
+
+        return_list_type = True
+        if (not isinstance(pilot_ids, list)) and (pilot_ids is not None):
+            return_list_type = False
+            pilot_ids = [pilot_ids]
+
+        pilots = self._worker.get_data_pilots(pilot_ids)
+
+        if return_list_type :
+            return pilots
+        else :
+            return pilots[0]

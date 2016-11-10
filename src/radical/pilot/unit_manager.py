@@ -23,6 +23,7 @@ from .states       import *
 from .exceptions   import *
 from .utils        import logger
 from .compute_unit import ComputeUnit
+from .data_unit    import DataUnit
 from .controller   import UnitManagerController
 from .scheduler    import get_scheduler, SCHED_DEFAULT
 
@@ -71,8 +72,8 @@ class UnitManager(object):
 
     # -------------------------------------------------------------------------
     #
-    def __init__(self, session, scheduler=None, input_transfer_workers=2,
-                 output_transfer_workers=2, report_state=True):
+    def __init__(self, session, scheduler=None, input_transfer_workers=1,
+                 output_transfer_workers=1, report_state=True):
         """Creates a new UnitManager and attaches it to the session.
 
         **Args:**
@@ -135,6 +136,8 @@ class UnitManager(object):
         if self._report_state:
             self.register_callback(self._default_unit_state_cb,      UNIT_STATE)
             self.register_callback(self._default_wait_queue_size_cb, WAIT_QUEUE_SIZE)
+
+        self._data_units = {}
 
         self._valid = True
 
@@ -423,7 +426,7 @@ class UnitManager(object):
                 error_msg = "ComputeUnittDescription 'cores' must be positive."
                 raise BadParameter(error_msg)
 
-        logger.report.info('<<submit %d unit(s)\n\t' % len(unit_descriptions))
+        logger.report.info('<<submit %d compute unit(s)\n\t' % len(unit_descriptions))
 
         # we return a list of compute units
         ret = list()
@@ -574,7 +577,7 @@ class UnitManager(object):
         if  len(unscheduled) :
             self._worker.unschedule_compute_units (units=unscheduled)
 
-        logger.info ('%s units remain unscheduled' % len(unscheduled))
+        logger.info ('%s units remain unscheduled (%s)' % (len(unscheduled), unscheduled))
 
 
     # -------------------------------------------------------------------------
@@ -781,4 +784,109 @@ class UnitManager(object):
             raise ValueError ("Metric '%s' is not available on the unit manager" % metric)
 
         self._worker.register_manager_callback(cb_func, metric, cb_data)
+
+
+    # -------------------------------------------------------------------------
+    #
+    def list_data_pilots(self):
+        """Lists the UIDs of the pilots currently associated with
+        the unit manager.
+
+        **Returns:**
+
+              * A list of :class:`radical.pilot.ComputePilot` UIDs [`string`].
+
+        **Raises:**
+
+            * :class:`radical.pilot.PilotException`
+        """
+        if not self._valid:
+            raise RuntimeError("instance is already closed")
+
+        return self._worker.get_pilot_uids()
+
+
+    # -------------------------------------------------------------------------
+    #
+    def submit_data_units(self, unit_descriptions, data_pilots=[], existing=False):
+        """Submits on or more :class:`radical.pilot.DataUnit` instances to the
+        unit manager.
+
+        **Arguments:**
+
+            * **data_unit_descriptions** [:class:`radical.pilot.ComputeUnitDescription`
+              or list of :class:`radical.pilot.ComputeUnitDescription`]: The
+              description of the compute unit instance(s) to create.
+
+        **Returns:**
+
+              * A list of :class:`radical.pilot.DataUnit` objects.
+
+        **Raises:**
+
+            * :class:`radical.pilot.PilotException`
+        """
+
+        if not self._valid:
+            raise RuntimeError("instance is already closed")
+
+        return_list_type = True
+        if not isinstance(unit_descriptions, list):
+            return_list_type  = False
+            unit_descriptions = [unit_descriptions]
+
+        if len(unit_descriptions) == 0:
+            raise ValueError('cannot submit no unit descriptions')
+
+        logger.report.info('<<submit %d data unit(s)\n\t' % len(unit_descriptions))
+
+        units = list()
+        for ud in unit_descriptions :
+
+            u = DataUnit.create(unit_description=ud, unit_manager_obj=self, local_state=SCHEDULING)
+            u._pilot_ids = data_pilots
+            u._existing = existing
+            units.append(u)
+
+            self._data_units[u.uid] = u
+
+            logger.report.progress()
+
+        logger.report.ok('>>ok\n')
+
+        if  return_list_type :
+            return units
+        else :
+            return units[0]
+
+
+    # -------------------------------------------------------------------------
+    #
+    def list_data_units(self):
+        """Returns the UIDs of the :class:`radical.pilot.DataUnit` managed by
+        this unit manager.
+
+        **Returns:**
+
+              * A list of :class:`radical.pilot.ComputeUnit` UIDs [`string`].
+
+        """
+        if not self._valid:
+            raise RuntimeError("instance is already closed")
+
+        return self._data_units.keys()
+
+
+    # -------------------------------------------------------------------------
+    #
+    def get_data_units(self, du_ids):
+        dus = []
+
+        if not du_ids:
+            du_ids = self.list_data_units()
+
+        for id in du_ids:
+            dus.append(self._data_units[id])
+
+        return dus
 

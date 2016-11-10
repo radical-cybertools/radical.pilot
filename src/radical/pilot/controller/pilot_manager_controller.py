@@ -84,6 +84,8 @@ class PilotManagerController(threading.Thread):
         self._shared_worker_data = {'job_services' : dict(), 
                                     'job_ids'      : dict()}
 
+        self._data_pilots = {}
+
         # The manager-level callbacks.
         self._manager_callbacks = list()
 
@@ -637,6 +639,36 @@ class PilotManagerController(threading.Thread):
                     logger.error("can't actively cancel pilot %s: no job id known (delayed)" % pilot_id)
                     logger.debug (pprint.pformat (self._shared_worker_data))
 
+
+    # ------------------------------------------------------------------------
+    #
+    def list_data_pilots(self):
+        """List all known data pilots.
+        """
+        return self._data_pilots.keys()
+
+
+    # ------------------------------------------------------------------------
+    #
+    def get_data_pilots(self, pilot_ids):
+        """List all known data pilots.
+        """
+        pilots = []
+
+        for pid in pilot_ids:
+            pilots.append(self._data_pilots[pid])
+
+        return pilots
+
+
+# ------------------------------------------------------------------------
+    #
+    def register_data_pilot(self, pilot):
+        pilot_uid = ru.generate_id('dp')
+
+        self._data_pilots[pilot_uid] = pilot
+
+        return pilot_uid
 
 
 # ------------------------------------------------------------------------------

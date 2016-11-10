@@ -26,6 +26,12 @@ from .pilot_manager             import PilotManager
 from .compute_pilot             import ComputePilot
 from .compute_pilot_description import ComputePilotDescription
 
+from .data_unit                 import DataUnit
+from .data_unit_description     import DataUnitDescription
+
+from .data_pilot                import DataPilot
+from .data_pilot_description    import DataPilotDescription
+
 from .resource_config           import ResourceConfig
 from .staging_directives        import COPY, LINK, MOVE, TRANSFER
 from .staging_directives        import SKIP_FAILED, CREATE_PARENTS

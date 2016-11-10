@@ -139,6 +139,19 @@
         "virtenv"                     : "%(global_sandbox)s/ve_localhost",
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda"
+    },
+
+    "pd_tmp": {
+        "schemas": ["file"],
+        "file": {
+            "filesystem_endpoint": "file://localhost/tmp/pd"
+        }
+    },
+
+    "pd_home": {
+        "schemas": ["file"],
+        "file": {
+            "filesystem_endpoint": "file://localhost/Users/mark/proj/pilotflow/data"
+        }
     }
 }
-
