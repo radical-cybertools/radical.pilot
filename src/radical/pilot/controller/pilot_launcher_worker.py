@@ -760,7 +760,7 @@ class PilotLauncherWorker(threading.Thread):
                                 #'%s < %s' % ('unit.000000/STDERR', 'unit.000000/STDERR')
 
                                 # TODO: This needs to go into a per pilot directory on the submit node
-                                '%s < %s' % ('pilot.0000.log.tgz', 'pilot.0000.log.tgz')
+                                '%s < %s' % ('%s.log.tgz' % pilot_id, '%s.log.tgz' % pilot_id)
                             ]
 
                             if stage_sdist:
@@ -778,7 +778,7 @@ class PilotLauncherWorker(threading.Thread):
 
                             if 'RADICAL_PILOT_PROFILE' in os.environ :
                                 # TODO: This needs to go into a per pilot directory on the submit node
-                                jd.file_transfer.append('%s < %s' % ('pilot.0000.prof.tgz', 'pilot.0000.prof.tgz'))
+                                jd.file_transfer.append('%s < %s' % ('%s.prof.tgz' % pilot_id, '%s.prof.tgz' % pilot_id))
 
                         # Set the SPMD variation only if required
                         if spmd_variation:
