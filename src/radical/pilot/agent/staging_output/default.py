@@ -15,6 +15,8 @@ from ...  import constants as rpc
 
 from .base import AgentStagingOutputComponent
 
+import saga
+
 
 # ==============================================================================
 #
@@ -133,8 +135,7 @@ class Default(AgentStagingOutputComponent):
             # all other units get their (expectedly valid) output files staged
             for directive in cu['Agent_Output_Directives']:
 
-                self._prof.prof('Agent output_staging', uid=cu['_id'],
-                         msg="%s -> %s" % (str(directive['source']), str(directive['target'])))
+                self._prof.prof('begin', uid=cu['_id'], msg=str(directive['_id']))
 
                 # Perform output staging
                 self._log.info("unit output staging directives %s for cu: %s to %s",
@@ -145,37 +146,50 @@ class Default(AgentStagingOutputComponent):
 
                 # Handle special 'staging' scheme
                 if target_url.scheme == self._cfg['staging_scheme']:
-                    self._log.info('Operating from staging')
+                    self._log.info('Operating to staging')
                     # Remove the leading slash to get a relative path from
                     # the staging area
                     rel2staging = target_url.path.split('/',1)[1]
                     target = os.path.join(staging_area, rel2staging)
-                else:
-                    self._log.info('Operating from absolute path')
-                    # FIXME: will this work for TRANSFER mode?
+                elif directive['action'] != rpc.TRANSFER:
+                    self._log.info('Operating to absolute path')
                     target = target_url.path
+                elif directive['action'] == rpc.TRANSFER:
+                    self._log.info('Operating to remote location')
+                    target = directive['target']
 
                 # Get the source from the directive and convert it to the location
                 # in the workdir
                 source = str(directive['source'])
-                abs_source = os.path.join(workdir, source)
 
-                # Create output directory in case it doesn't exist yet
-                # FIXME: will this work for TRANSFER mode?
-                rpu.rec_makedir(os.path.dirname(target))
+                # TODO: this excludes directories inside the unit dir,
+                # but simplifies matters from an application perspective
+                source = os.path.basename(source)
+
+                abs_source = os.path.join(workdir, source)
 
                 self._log.info("Going to '%s' %s to %s", directive['action'], abs_source, target)
 
                 if directive['action'] == rpc.LINK:
-                    # This is probably not a brilliant idea, so at least give a warning
+                    # Create output directory in case it doesn't exist yet
+                    rpu.rec_makedir(os.path.dirname(target))
+                    # TODO: This is probably not a brilliant idea, so at least give a warning
                     os.symlink(abs_source, target)
                 elif directive['action'] == rpc.COPY:
+                    # Create output directory in case it doesn't exist yet
+                    rpu.rec_makedir(os.path.dirname(target))
                     shutil.copyfile(abs_source, target)
                 elif directive['action'] == rpc.MOVE:
+                    # Create output directory in case it doesn't exist yet
+                    rpu.rec_makedir(os.path.dirname(target))
                     shutil.move(abs_source, target)
-                else:
-                    # FIXME: implement TRANSFER mode
-                    raise NotImplementedError('Action %s not supported' % directive['action'])
+                elif directive['action'] == rpc.TRANSFER:
+                    src_url = saga.Url(abs_source)
+                    src_url.schema = 'file'
+                    srm_dir = saga.filesystem.Directory('srm://proxy/?SFN=bogus')
+                    srm_dir.copy(src_url, target)
+
+                self._prof.prof('end', uid=cu['_id'], msg=str(directive['_id']))
 
                 log_message = "%s'ed %s to %s - success" %(directive['action'], abs_source, target)
                 self._log.info(log_message)
@@ -184,6 +198,7 @@ class Default(AgentStagingOutputComponent):
             self._log.exception("staging output failed -> unit failed")
             staging_ok = False
 
+        # TODO: don't raise for non-fatal staging
 
         # Agent output staging is done (or failed)
         if staging_ok:
