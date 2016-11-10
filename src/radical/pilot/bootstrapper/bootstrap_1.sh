@@ -1233,6 +1233,18 @@ while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x" OPTION; do
     esac
 done
 
+# TODO: Move earlier, because if pre_bootstrap fails, this is not yet set
+LOGFILES_TARBALL="$PILOTID.log.tgz"
+PROFILES_TARBALL="$PILOTID.prof.tgz"
+
+# some backends (condor) never finalize a job when output files are missing --
+# so we touch them here to prevent that
+echo "# -------------------------------------------------------------------"
+echo '# Touching output tarballs'
+echo "# -------------------------------------------------------------------"
+touch "$LOGFILES_TARBALL"
+touch "$PROFILES_TARBALL"
+
 # At this point, all pre_bootstrap_1 commands have been executed.  We copy the
 # resulting PATH and LD_LIBRARY_PATH, and apply that in bootstrap_2.sh, so that
 # the sub-agents start off with the same env (or at least the relevant parts of
@@ -1546,7 +1558,6 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Tarring profiles ..."
-    PROFILES_TARBALL="$PILOTID.prof.tgz"
     tar -czf $PROFILES_TARBALL *.prof
     ls -l $PROFILES_TARBALL
     echo "#"
@@ -1561,7 +1572,6 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Tarring logfiles ..."
-    LOGFILES_TARBALL="$PILOTID.log.tgz"
     tar -czf $LOGFILES_TARBALL *.{log,out,err,cfg}
     ls -l $LOGFILES_TARBALL
     echo "#"
