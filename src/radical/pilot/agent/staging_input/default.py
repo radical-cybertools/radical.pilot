@@ -13,8 +13,6 @@ from ...  import utils     as rpu
 from ...  import states    as rps
 from ...  import constants as rpc
 
-os.environ['RADICAL_SAGA_VERBOSE'] = 'DEBUG'
-os.environ['RADICAL_SAGA_LOG_TGT'] = 'saga.log'
 import saga
 
 from .base import AgentStagingInputComponent
