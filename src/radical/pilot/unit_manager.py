@@ -443,7 +443,7 @@ class UnitManager(object):
 
             u = ComputeUnit.create (unit_description=ud,
                                     unit_manager_obj=self, 
-                                    local_state=SCHEDULING)
+                                    local_state=NEW)
             units.append(u)
 
             if self._session._rec:
@@ -455,6 +455,10 @@ class UnitManager(object):
             self._rec_id += 1
 
         self._worker.publish_compute_units (units=units)
+
+        # after publishing the units in NEW state, we immediately set them to
+        # UNSCHEDULED before handing over to the scheduler
+        self._worker.unschedule_compute_units(units=units)
 
         schedule = None
         try:
@@ -571,9 +575,8 @@ class UnitManager(object):
             self._worker.fire_manager_callback (WAIT_QUEUE_SIZE, self,
                                                 self.wait_queue_size)
 
-        if  len(unscheduled) :
-            self._worker.unschedule_compute_units (units=unscheduled)
-
+        # there is nothing to do for unscheduled units -- they are already in
+        # UNSCHEDULED state.
         logger.info ('%s units remain unscheduled' % len(unscheduled))
 
 
