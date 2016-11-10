@@ -259,8 +259,11 @@
 
 
 import os
+import sys
 import time
 import random
+import signal
+import setproctitle
 
 import threading       as mt
 import multiprocessing as mp
@@ -270,9 +273,10 @@ import radical.utils   as ru
 
 # ------------------------------------------------------------------------------
 #
-WORK_MIN   =  0.1  # minimial time the work loop sleeps, in seconds
-WORK_MAX   =  1.0  # maximial time the work loop sleeps, in seconds
-TIME_ALIVE =  3.0  # start termination  after this time, in seconds
+WORK_MIN   =  0.01  # minimial time the work loop sleeps, in seconds
+WORK_MAX   =  0.10  # maximial time the work loop sleeps, in seconds
+TIME_ALIVE =  0.50  # start termination  after this time, in seconds
+JOIN_TIMEOUT =  3
 
 
 # ------------------------------------------------------------------------------
@@ -345,105 +349,337 @@ config = {
 # ------------------------------------------------------------------------------
 #
 def work(worker):
-    while not worker.term.is_set():
-        item = WORK_MIN + (random.random() * (WORK_MAX - WORK_MIN))
-        time.sleep(item)
-        ru.raise_on('work')
+	
+    # a simple worker routine which sleeps repeatedly for a random number of
+    # seconds, until a term signal is set.  The given 'worker' can be a thread
+    # or process, or in fact anything which has a self.uid and self.term.
+
+    try:
+        worker.log.info('%-10s : work start' % worker.uid)
+
+        while not worker.term.is_set():
+
+            item = WORK_MIN + (random.random() * (WORK_MAX - WORK_MIN))
+            worker.log.info('%-10s : %ds sleep start' % (worker.uid, item))
+            time.sleep(item)
+            worker.log.info('%-10s : %ds sleep stop'  % (worker.uid, item))
+            ru.raise_on('work')
+
+        worker.log.info('%-10s : work term requested' % worker.uid)
+
+    except Exception as e:
+        worker.log.info('%-10s : work fail [%s]' % (worker.uid, e))
+        raise
 
 
+
+# ------------------------------------------------------------------------------
+#
 class Child(mp.Process):
     
-    def __init__(self, cfg, term):
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, name, cfg, term, verbose):
+
         ru.raise_on('init')
         mp.Process.__init__(self)
-        self.cfg     = cfg
-        self.term    = mp.Event()
+
+        self.uid       = name
+        self.verbose   = verbose
+        self.log       = ru.get_logger('radical.' + self.uid, level=verbose)
+        self.is_parent = True
+        self.cfg       = cfg
+        self.wterm     = term             # term sig shared with parent watcher
+        self.term      = mp.Event()       # private term signal
+        self.killed    = False
+
+        # start watcher for own children and threads
         ru.raise_on('init')
-        self.watcher = Watcher(cfg)
+        self.watcher = Watcher(cfg, verbose='error') 
         self.watcher.start()
         ru.raise_on('init')
 
+
+    # --------------------------------------------------------------------------
+    #
     def stop(self):
+
         ru.raise_on('stop')
+
+        assert(self.pid)              # child was spanwed
+     ## assert(self.is_parent)        # is parent process
+     ## assert(ru.is_main_thread())   # is main thread
+
         self.term.set()
+
+        self.log.info('%-10s : stop child' % self.uid)
         self.watcher.stop()
         ru.raise_on('stop')
-        self.watcher.join()
+
+     ## # we check if the watcher finishes.
+     ## if None == ru.watch_condition(cond=self.watcher.is_alive,
+     ##                               target=False,
+     ##                               timeout=JOIN_TIMEOUT):
+     ##     self.log.info('%-10s : could not stop child - kill' % self.uid)
+     ##     self.watcher.kill()
+     ## FIXME: we could attempt a kill and *not* join afterwards, just let py GC
+     ##        do the rest
+     ## FIXME: the above is equivalent to `t.join(timeout); t.is_alive()
+
+        self.watcher.join(JOIN_TIMEOUT)
+        self.log.info('%-10s : child stopped (alive: %s)' % (self.uid, bool(self.is_alive())))
         ru.raise_on('stop')
 
+
+  # # --------------------------------------------------------------------------
+  # #
+  # def kill(self):
+  #
+  #     assert(ru.is_main_thread())
+  #     assert(self.is_parent)
+  #
+  #     if not self.is_alive():
+  #         self.log.info('%-10s : child not alive' % self.uid)
+  #         return
+  #
+  #     signal.kill(self.child, signal.SIGUSR2)
+  #     self.log.info('%-10s : child killed' % self.uid)
+
+
+    # --------------------------------------------------------------------------
+    #
     def run(self):
+
+        self.is_parent = False
+        self.log       = ru.get_logger('radical.' + self.uid + '.child',
+                                       level=self.verbose)
+     ## self.dh        = ru.DebugHelper()
+     ## setproctitle.setproctitle('rp.%s.child' % self.uid)
+     ##
+     ## # FIXME: make sure that debug_helper is not capturing signals unless
+     ## #        needed (ie. unless RADICAL_DEBUG is set)
+     ##
+     ## def handler(signum, sigframe):
+     ##     self.log.info('%-10s : signal handled' % self.uid)
+     ##     self.term.set()
+     ## signal.signal(signal.SIGUSR2, handler)
+
         work(self)
 
 
+# ------------------------------------------------------------------------------
+#
 class Worker(mt.Thread):
 
-    def __init__(self, cfg, term):
-        ru.raise_on('init')
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, name, cfg, term, verbose):
+
         mt.Thread.__init__(self)
-        self.cfg  = cfg
-        self.term = term
+        self.uid     = name
+        self.verbose = verbose
+        self.log     = ru.get_logger('radical.' + self.uid, level=verbose)
+        self.cfg     = cfg
+        self.term    = term
+
         ru.raise_on('init')
 
+        # we don't allow subsubthreads
+        # FIXME: this could be lifted, but we leave in place and
+        #        re-evaluate as needed.
+        if not ru.is_main_thread():
+            raise RuntimeError('threads must be spawned by MainThread [%s]' % \
+                    ru.get_thread_name())
+
+
+    # --------------------------------------------------------------------------
+    #
     def stop(self):
+
         ru.raise_on('stop')
         self.term.set()
         ru.raise_on('stop')
 
+
+  # # --------------------------------------------------------------------------
+  # #
+  # def kill(self):
+  #
+  #     # this can only be called from the thread owner, ie. the main thread
+  #     assert(ru.is_main_thread())
+  #     
+  #     if not self.is_alive():
+  #         self.log.info('%-10s : child not alive' % self.uid)
+  #         return
+  #
+  #     # inject exit request (ru.ThreadExit) into child thread
+  #     ru.raise_in_thread(self.ident)
+  #     self.log.info('%-10s : child killed' % self.uid)
+
+
+    # --------------------------------------------------------------------------
+    #
     def run(self):
-        work(self)
+
+        try:
+            self.log = ru.get_logger('radical.' + self.uid + '.child', 
+                                     level=self.verbose)
+            work(self)
+        except ru.ThreadExit:
+            self.log.info('%-10s : thread exit requested' % self.uid)
+            raise
 
 
+
+# ------------------------------------------------------------------------------
+#
 class Watcher(mt.Thread):
 
-    def __init__(self, cfg):
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, cfg, verbose):
+
         ru.raise_on('init')
         mt.Thread.__init__(self)
+
         self.cfg          = cfg
         self.term         = mt.Event()
-        self.things       = list()
         self._thread_term = mt.Event()
         self._proc_term   = mp.Event()
+        self.things       = list()
+        self.uid          = None
+
+        for name,_ in cfg.iteritems():
+            if 'watcher' in name:
+                if self.uid:
+                    raise ValueError('only one watcher supported')
+                self.uid = name
+
+        self.log = ru.get_logger('radical.' + self.uid + '.child', 
+                                 level=verbose)
+        
         ru.raise_on('init')
 
+        # first create threads and procs to be watched
         for name,_cfg in cfg.iteritems():
+            self.log.info('child %s: ', name)
             if 'child' in name:
-                child = Child(cfg=_cfg, term=self._proc_term)
+                child = Child(name=name, 
+                              cfg=_cfg, 
+                              term=self._proc_term,
+                              verbose=verbose)
                 child.start()
                 self.things.append(child)
             elif 'worker' in name:
-                worker = Worker(cfg=_cfg, term=self._thread_term)
+                worker = Worker(name=name, 
+                                cfg=_cfg, 
+                                term=self._thread_term, 
+                                verbose=verbose)
                 worker.start()
                 self.things.append(worker)
             ru.raise_on('init')
 
+      # if not self.things:
+      #     raise ValueError('nothing to watch')
+
+      # if not self.uid:
+      #     raise ValueError('no watcher in config')
+        
+
+    # --------------------------------------------------------------------------
+    #
     def stop(self):
+
+        # NOTE: this can be called from the watcher subthread
+        
+        # make sure the watcher loop is gone
         ru.raise_on('stop')
         self.term.set()         # end watcher loop
+        ru.raise_on('stop')
+
+        # tell children whats up
         self._proc_term.set()   # end process childs
         self._thread_term.set() # end thread childs
         ru.raise_on('stop')
+
         for t in self.things:
+            self.log.info('%-10s : join    %s' % (self.uid, t.uid))
             t.stop()
-            t.join()
+            t.join(timeout=JOIN_TIMEOUT)
+
+            if t.is_alive():
+                self.log.info('%-10s : kill    %s' % (self.uid, t.uid))
+             ## # FIXME: differentiate between procs and threads
+             ## ru.raise_in_thread(tident=t.ident)
+             ## t.join(timeout=JOIN_TIMEOUT)
+
+            if t.is_alive():
+                self.log.info('%-10s : zombied %s' % (self.uid, t.uid))
+            else:
+                self.log.info('%-10s : joined  %s' % (self.uid, t.uid))
+
             ru.raise_on('stop')
 
+        self.log.info('%-10s : stopped' % self.uid)
+
+
+    # --------------------------------------------------------------------------
+    #
     def check(self):
         return bool(self.term.is_set())
 
+
+  # # --------------------------------------------------------------------------
+  # #
+  # def kill(self):
+  #
+  #     assert(ru.is_main_thread())
+  #
+  #     if not self.is_alive():
+  #         self.log.info('%-10s : child not alive' % self.uid)
+  #         return
+  #
+  #     # inject exit request (ru.ThreadExit) into child thread
+  #     ru.raise_in_thread(tident=self.ident)
+  #     self.log.info('%-10s : %s killed' % (self.uid, self.ident))
+
+
+    # --------------------------------------------------------------------------
+    #
     def run(self):
-        while not self.term.is_set():
-            time.sleep(1)  # start things
-            ru.raise_on('watch')
-            for t in self.things:
-                if not t.is_alive():
-                    return
+
+        try:
+            self.log.info('%-10s : start' % self.uid)
+            while not self.term.is_set():
+                time.sleep(0.1)  # start things
+                ru.raise_on('watch')
+                for t in self.things:
+                    if not t.is_alive():
+                        self.log.info('%-10s : %s died' % (self.uid, t.uid))
+                        # a child died.  We kill the other children and
+                        # terminate.
+                      # self.stop()
+                        return
+                    self.log.info('%-10s : %s ok' % (self.uid, t.uid))
+
+        except ThreadExit:
+            raise RuntimeError('%-10s : watcher exit requested [%s]' % \
+                    (self.uid, self.ident))
+       
+        except Exception as e:
+            raise RuntimeError('%-10s : watcher error' % self.uid)
+       
+        finally:
+            self.log.info('%-10s : stop' % self.uid)
 
 
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
-    watcher = Watcher(config)
+    setproctitle.setproctitle('rp.main')
+
+    watcher = Watcher(config, verbose='debug')
     watcher.start()
     ru.raise_on('init')
     time.sleep(TIME_ALIVE)
