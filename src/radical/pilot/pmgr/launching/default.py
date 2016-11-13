@@ -792,7 +792,6 @@ class Default(PMGRLaunchingComponent):
         del(agent_base_cfg['bridges'])    # agent needs separate bridges
         del(agent_base_cfg['components']) # agent needs separate components
         del(agent_base_cfg['number'])     # agent counts differently
-        del(agent_base_cfg['heart'])      # agent needs separate heartbeat
 
         ru.dict_merge(agent_cfg, agent_base_cfg, ru.PRESERVE)
 

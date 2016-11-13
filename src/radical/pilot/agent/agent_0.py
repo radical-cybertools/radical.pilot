@@ -122,7 +122,7 @@ class Agent_0(rpu.Worker):
 
         # register the command callback which pulls the DB for commands
         self.register_timed_cb(self._agent_command_cb, 
-                               timer=self._cfg['heartbeat_interval'])
+                               timer=self._cfg['db_poll_sleeptime'])
 
         # registers the staging_input_queue as this is what we want to push
         # units to

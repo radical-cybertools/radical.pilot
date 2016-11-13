@@ -190,21 +190,6 @@ class Pubsub(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def poll(self):
-        """
-        This is a wrapper around is_alive() which mimics the behavior of the same
-        call in the subprocess.Popen class with the same name.  It does not
-        return an exitcode though, but 'None' if the process is still
-        alive, and always '0' otherwise
-        """
-        if self.is_alive():
-            return None
-        else:
-            return 0
-
-
-    # --------------------------------------------------------------------------
-    #
     def join(self, timeout=None):
 
         try:

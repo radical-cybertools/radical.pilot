@@ -193,32 +193,6 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def _heartbeat_monitor_cb(self, topic, msg):
-
-      # self._log.debug('command incoming: %s', msg)
-
-        cmd = msg['cmd']
-        arg = msg['arg']
-
-        if self._term.is_set():
-            self._log.debug('command [%s] ignored during shutdown', cmd)
-            return
-
-        if cmd == 'heartbeat':
-            sender = arg['sender']
-            if sender == self._cfg['heart']:
-              # self._log.debug('heartbeat monitored (%s)', sender)
-                self._heartbeat = time.time()
-            else:
-                pass
-              # self._log.debug('heartbeat ignored (%s)', sender)
-        else:
-            pass
-          # self._log.debug('command ignored: %s', cmd)
-
-
-    # --------------------------------------------------------------------------
-    #
     def _cancel_monitor_cb(self, topic, msg):
         """
         We listen on the control channel for cancel requests, and append any
@@ -253,27 +227,6 @@ class Component(mp.Process):
         else:
             pass
           # self._log.debug('command ignored: %s', cmd)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _heartbeat_checker_cb(self):
-
-        if self._term.is_set():
-            self._log.debug('hbeat check disabled during shutdown')
-            return
-
-        last = time.time() - self._heartbeat
-        tout = self._heartbeat_timeout
-
-        if last > tout:
-            self._log.error('heartbeat check failed (%s / %s)', last, tout)
-            ru.cancel_main_thread('usr2')
-
-      # else:
-      #     self._log.debug('heartbeat check ok (%s / %s)', last, tout)
-
-        return False # always sleep
 
 
     # --------------------------------------------------------------------------
@@ -438,28 +391,6 @@ class Component(mp.Process):
         # give any derived class the opportunity to perform initialization in
         # the child context
         self.initialize_child()
-
-        # The heartbeat monotoring is performed in the child, which is
-        # registering two callbacks:
-        #   - an CONTROL_PUBSUB _heartbeat_monitor_cb which listens for
-        #     heartbeats with 'src == self.owner', and records the time of
-        #     heartbeat in self._heartbeat
-        #   - an idle _heartbeat_checker_cb which checks the timer in frequent
-        #     intervals, and which will call self.stop() if the last heartbeat
-        #     is longer that self._heartbeat_timeout seconds ago
-        #
-        # Note that heartbeats are also used to keep sub-agents alive.
-        # FIXME: this is not yet done
-        assert(self._cfg.get('heart'))
-        assert(self._cfg.get('heartbeat_interval'))
-
-        # set up for eventual heartbeat send/recv
-        self._heartbeat          = time.time()  # startup =~ heartbeat
-        self._heartbeat_timeout  = self._cfg['heartbeat_timeout']
-        self._heartbeat_interval = self._cfg['heartbeat_interval']
-        self.register_timed_cb(self._heartbeat_checker_cb,
-                               timer=self._heartbeat_interval)
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._heartbeat_monitor_cb)
 
         # set controller callback to handle cancellation requests
         self._cancel_list = list()

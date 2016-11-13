@@ -259,12 +259,22 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     # Allow Session to function as a context manager in a `with` clause
     def __exit__(self, type, value, traceback):
+
+        # FIXME: use cleanup_on_close, terminate_on_close attributes
         self.close()
 
 
     # --------------------------------------------------------------------------
     #
     def _is_valid(self):
+
+        # there are two conditions which make an session 'invalid', ie. unfit
+        # for use:
+        #
+        #   - the session was closed 
+        #   - the session controller died
+        #
+
         if not self._valid:
             raise RuntimeError("instance was closed")
 

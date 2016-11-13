@@ -17,7 +17,7 @@ from .. import constants as rpc
 
 # ==============================================================================
 #
-DEFAULT_BULK_COLLECTION_TIME =  5.0 # seconds
+DEFAULT_BULK_COLLECTION_TIME =  1.0 # seconds
 DEFAULT_BULK_COLLECTION_SIZE =  100 # seconds
 
 

@@ -29,7 +29,7 @@ from .pubsub     import PUBSUB_BRIDGE  as rpu_PUBSUB_BRIDGE
 
 # ==============================================================================
 #
-class Controller(object):
+class Controller(mt.Thread):
     """
     A Controller is an entity which creates, manages and destroys Bridges and
     Components, according to some configuration.
@@ -68,10 +68,7 @@ class Controller(object):
         where the respective number of component instances will be created.
         The controller creation will stall until all components are started,
         which is done via a barrier on respective 'alive' messages on the
-        'control_pubsub'.  After creation, the controller will issue heartbeat
-        signals on the same pubsub, in the expectation that the components will
-        self-destruct if they miss that heartbeat, ie. in the case of unexpected
-        controller failer or unclean shutdown.
+        'control_pubsub'.
 
         Components and Bridges will get passed a copy of the config on creation.
         Components will also get passed a copy of the bridge addresses dict.
@@ -100,12 +97,9 @@ class Controller(object):
         self._cfg = copy.deepcopy(cfg)
 
         # Dig any releavnt information from the cfg.  That most importantly
-        # contains bridge addresses etc, but also the heartbeat settings.
+        # contains bridge addresses.
         self._ctrl_cfg = {
-                'bridges'            : copy.deepcopy(cfg.get('bridges')),
-                'heart'              : cfg.get('heart'),
-                'heartbeat_interval' : cfg.get('heartbeat_interval'),
-                'heartbeat_timeout'  : cfg.get('heartbeat_timeout'),
+                'bridges' : copy.deepcopy(cfg.get('bridges'))
         }
         # we also ceep the component information around, in case we need to
         # start any
@@ -122,15 +116,8 @@ class Controller(object):
         self._ctrl_sub = None
 
         # control thread activities
-        self._term     = mt.Event()
-
-        # set up for eventual heartbeat sending/receiving
-        self._heartbeat_interval = self._ctrl_cfg.get('heartbeat_interval',  10)
-        self._heartbeat_timeout  = self._ctrl_cfg.get('heartbeat_timeout', 3*10)
-        self._heartbeat_thread   = None    # heartbeat thread
-        self._heartbeat_tname    = None    # thread name
-        self._heartbeat_term     = None    # thread termination signal
-
+        self._term       = mt.Event()  # signal termination
+        self._term_cause = list()      # record termination causes
 
         # set up for eventual component/brodge watching
         self._watcher_thread     = None    # watcher thread
@@ -167,6 +154,31 @@ class Controller(object):
         # complete the setup with bridge and component creation
         self._start_bridges()
         self._start_components()
+        
+    # --------------------------------------------------------------------------
+    # 
+    def is_alive(self):
+
+        # A controller can become unusable due to three distinct conditions: 
+        #
+        #   - it is terminated, 
+        #   - it detects a failing component or bridge 
+        #   - it meets an unrecoverable internal error condition
+        # 
+        # In all three cases, it will attempt to terminate the (remaining)
+        # managed componens and bridges, and will then terminate: while the
+        # controller instance remains valid, any method call with result in
+        # a `RuntimeError` exception.  We do *not* attempt to actively signal
+        # the owner about the termination, dut to the known signaling and
+        # exception problems.  Instead we rely on this polling mechanism to
+        # check controller health now and then.  
+        #
+        # `is_alive()` is used internally to perform the respective health check
+        # on each method call, but is also exposed as API call, and any owner of
+        # a `Controller` instance is well advised to frequently call this method
+        # to poll for error conditions.
+        if self._term.is_set():
+            raise RuntimeError('Controller terminated.  Cause: %s' % self._term_cause)
 
 
     # --------------------------------------------------------------------------
@@ -195,17 +207,6 @@ class Controller(object):
 
         self_thread = mt.current_thread()
         self._log.debug('%s stopped', self.uid)
-
-        if self._heartbeat_thread:
-            self._log.debug('%s stop    hbeat', self.uid)
-            self._heartbeat_term.set()
-            self._log.debug('%s stopped hbeat', self.uid)
-            if self._heartbeat_thread != self_thread:
-                self._log.debug('%s join    hbeat', self.uid)
-                self._heartbeat_thread.join()
-                self._log.debug('%s joined  hbeat', self.uid)
-            else:
-                self._log.debug('%s stop as hbeat', self.uid)
 
         if self._watcher_thread:
             self._log.debug('%s stop    watch', self.uid)
@@ -261,17 +262,6 @@ class Controller(object):
         assert(self._ctrl_cfg['bridges'][rpc.LOG_PUBSUB])
         assert(self._ctrl_cfg['bridges'][rpc.CONTROL_PUBSUB])
 
-        # the control channel is special: whoever creates the control channel
-        # will also send heartbeats on it, for all components which use it.
-        # Thus, if we will create the control channel, we become the heart --
-        # otherwise we expect a heart UID set in the config.
-        if self._ctrl_cfg['bridges'][rpc.CONTROL_PUBSUB].get('addr_in'):
-            # control bridge address is defined -- heart should be known
-            assert(self._ctrl_cfg['heart']), 'control bridge w/o heartbeat src?'
-        else:
-            # we will have to start the bridge, and become the heart.
-            self._ctrl_cfg['heart'] = self._owner
-
         # start all bridges which don't yet have an address
         bridges = list()
         for bname,bcfg in self._ctrl_cfg['bridges'].iteritems():
@@ -326,22 +316,6 @@ class Controller(object):
         # make sure the bridges are watched:
         self._bridges_to_watch += bridges
 
-        # if we are the root of a component tree, start sending heartbeats 
-        self._log.debug('send heartbeat?: %s =? %s', self._owner, self._ctrl_cfg['heart'])
-      # print 'send heartbeat?: %s =? %s' % (self._owner, self._ctrl_cfg['heart'])
-        if self._owner == self._ctrl_cfg['heart']:
-
-            if not self._heartbeat_thread:
-
-                # we need to issue heartbeats!
-                self._heartbeat_term   = mt.Event()
-                self._heartbeat_tname  = '%s.heartbeat' % self._uid
-                self._heartbeat_thread = mt.Thread(target = self._heartbeat_sender,
-                                                   args   =[self._heartbeat_term],
-                                                   name   = self._heartbeat_tname)
-                self._heartbeat_thread.start()
-
-
         # before we go on to start components, we also register for alive
         # messages, otherwise those messages can arrive before we are able to
         # get them.
@@ -358,7 +332,7 @@ class Controller(object):
     def _start_components(self):
 
         # at this point we know that bridges have been started, and we can use
-        # the control pubsub for heartbeats and alive messages.
+        # the control pubsub for alive messages.
 
         self._log.debug('start comps: %s', self._comp_cfg)
       # print 'start comps: %s' % self._comp_cfg
@@ -367,7 +341,6 @@ class Controller(object):
             return
 
         assert(self._ctrl_sub)
-        assert('heart'   in self._ctrl_cfg)
         assert('bridges' in self._ctrl_cfg )
 
         assert(rpc.LOG_PUBSUB     in self._ctrl_cfg['bridges'])
@@ -392,8 +365,7 @@ class Controller(object):
 
                 # for components, we pass on the original cfg (or rather a copy
                 # of that) -- but we'll overwrite any relevant settings from our
-                # ctrl_cfg, soch as bridge addresses, heartbeat configguration,
-                # etc.
+                # ctrl_cfg, such as bridge addresses.
                 ccfg = copy.deepcopy(self._cfg)
                 ccfg['components'] = dict()  # avoid recursion
                 ccfg['cname']      = cname
@@ -555,7 +527,7 @@ class Controller(object):
     #
     def _watcher(self, term):
         """
-        we do a poll() on all our bridges, components, and workers,
+        we call `is_alive()` on all our bridges, components, and workers,
         to check if they are still alive.  If any goes AWOL, we will begin to
         tear down this agent.
         """
@@ -571,42 +543,13 @@ class Controller(object):
                     
             for thing in things:
 
-                if thing.poll() == None:
+                if thing.is_alive():
                   # self._log.debug('%-40s: ok' % thing.name)
                     pass
                 else:
                   # print '%s died? - shutting down' % thing.name
                     self._log.error('%s died - shutting down' % thing.name)
                     self.stop()
-
-            time.sleep(0.1)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _heartbeat_sender(self, term):
-
-        # we use a loop which runs quicker than self._heartbeat_interval would
-        # make you think.  This way we can check more frequently for any
-        # terminate signal, and thus don't have to delay thread cancellation.
-
-        heart = self._ctrl_cfg['heart']
-        addr  = self._ctrl_cfg['bridges'][rpc.CONTROL_PUBSUB]['addr_in']
-        pub   = rpu_Pubsub(self._session, rpc.CONTROL_PUBSUB, rpu_PUBSUB_PUB,
-                           self._ctrl_cfg, addr=addr)
-
-        last_heartbeat = 0.0  # we never sent a heartbeat before
-        while not term.is_set() and not self._term.is_set():
-
-            now = time.time()
-            if last_heartbeat + self._heartbeat_interval < now:
-
-              # print 'send heartbeat!!! %s' % heart
-
-                pub.put(rpc.CONTROL_PUBSUB, {'cmd' : 'heartbeat',
-                                             'arg' : {'sender' : heart}})
-                self._log.debug('heartbeat sent (%s)' % heart)
-                last_heartbeat = now
 
             time.sleep(0.1)
 

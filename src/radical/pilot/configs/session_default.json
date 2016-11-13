@@ -6,12 +6,6 @@
     # fallback db url
     "default_dburl"      : "mongodb://rp:rp@ds015335.mlab.com:15335/rp",
 
-    # time between consecutive heartbeats
-    "heartbeat_interval" : 10,
-
-    # time until death is declared on missing heartbeats
-    "heartbeat_timeout"  : 300,
-
     "bridges" : {
         "log_pubsub"     : {"log_level" : "debug",
                             "stall_hwm" : 1,

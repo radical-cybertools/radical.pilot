@@ -129,8 +129,7 @@ class Queue(mp.Process):
 
         Addresses are of the form 'tcp://host:port'.  Both 'host' and 'port' can
         be wildcards for BRIDGE roles -- the bridge will report the in and out
-        addresses as obj.bridge_in and obj.bridge_out.
-        """
+        addresses as obj.bridge_in and obj.bridge_out.  """
 
         self._session = session
         self._qname   = qname
@@ -235,21 +234,6 @@ class Queue(mp.Process):
     def bridge_out(self):
         assert(self._role == QUEUE_BRIDGE)
         return self._bridge_out
-
-
-    # --------------------------------------------------------------------------
-    #
-    def poll(self):
-        """
-        This is a wrapper around is_alive() which mimics the behavior of the same
-        call in the subprocess.Popen class with the same name.  It does not
-        return an exitcode though, but 'None' if the process is still
-        alive, and always '0' otherwise
-        """
-        if self.is_alive():
-            return None
-        else:
-            return 0
 
 
     # --------------------------------------------------------------------------
