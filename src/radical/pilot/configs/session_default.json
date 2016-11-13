@@ -4,10 +4,10 @@
 # a functional rp session, both on the client and on the agent side.
 {
     # time between consecutive heartbeats
-    "heartbeat_interval" : 10,
+    "heartbeat_interval" : 100,
 
     # time until death is declared on missing heartbeats
-    "heartbeat_timeout"  : 300,
+    "heartbeat_timeout"  : 3000,
 
     "bridges" : {
         "log_pubsub"     : {"log_level" : "debug",

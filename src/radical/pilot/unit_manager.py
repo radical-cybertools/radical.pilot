@@ -244,7 +244,7 @@ class UnitManager(rpu.Component):
 
         if state in rps.FINAL:
 
-            self._log.debug('pilot %s is final - pull units')
+            self._log.debug('pilot %s is final - pull units', pilot.uid)
 
             unit_cursor = self.session._dbs._c.find(spec={
                 'type'    : 'unit',
