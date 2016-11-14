@@ -178,7 +178,7 @@ class UnitManager(rpu.Component):
         if self._closed:
             return
 
-        self._log.debug("closing %s", self.uid)
+        self._log.debug("closing %s\n%s", self.uid, '\n'.join(ru.get_stacktrace()))
         self._log.report.info('<<close unit manager')
 
         # we don't want any callback invokations during shutdown
@@ -681,7 +681,6 @@ class UnitManager(rpu.Component):
                 self._units[unit.uid] = unit
 
             if self._session._rec:
-                import radical.utils as ru
                 ru.write_json(descr.as_dict(), "%s/%s.batch.%03d.json" \
                         % (self._session._rec, unit.uid, self._rec_id))
 
