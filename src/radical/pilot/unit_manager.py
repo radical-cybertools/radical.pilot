@@ -242,6 +242,15 @@ class UnitManager(rpu.Component):
         #        and before being notified about the pilot's demise, send new
         #        units to the pilot.
 
+        # we only look into pilot states when the umgr is still active
+        # FIXME: note that there is a race in that the umgr can be closed while
+        #        we are in the cb.
+        if self._closed:
+            self._log.debug('umgr closed, ignore pilot state (%s: %s)', 
+                            pilot.uid, pilot.state)
+            return
+
+
         if state in rps.FINAL:
 
             self._log.debug('pilot %s is final - pull units', pilot.uid)
@@ -289,7 +298,7 @@ class UnitManager(rpu.Component):
                 else:
                     self._log.debug('unit %s not restartable', unit['uid'])
 
-            if to_restart:
+            if to_restart and not self._closed:
                 self._log.debug('restart %s units', len(to_restart))
                 restarted = self.submit_units(to_restart)
                 for u in restarted:
