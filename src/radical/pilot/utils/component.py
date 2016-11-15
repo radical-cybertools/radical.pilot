@@ -505,14 +505,18 @@ class Component(mp.Process):
         # it exists, parent otherwise.
         if self.is_parent and not self.has_child:
             self._log.debug('parent sends alive')
+            self._log.debug('msg [%s] : %s [parent]', self.uid, self.owner)
             self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
                                               'arg' : {'sender' : self.uid,
-                                                       'owner'  : self.owner}})
+                                                       'owner'  : self.owner, 
+                                                       'src'    : 'parent'}})
         elif self.is_child:
             self._log.debug('child sends alive')
+            self._log.debug('msg [%s] : %s [child]', self.uid, self.owner)
             self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
                                               'arg' : {'sender' : self.uid,
-                                                       'owner'  : self.owner}})
+                                                       'owner'  : self.owner, 
+                                                       'src'    : 'child'}})
         else:
             self._log.debug('no alive sent (%s : %s : %s)', self.is_child,
                     self.has_child, self.is_parent)
@@ -709,7 +713,7 @@ class Component(mp.Process):
             self._initialize_parent()
         except Exception as e:
             # FIXME we might have no self._log here
-            self._log.debug('TERM : %s except in start', self.uid)
+            self._log.exception('TERM : %s except in start', self.uid)
             ru.cancel_main_thread()
             raise
 

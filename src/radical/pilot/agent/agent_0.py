@@ -301,6 +301,7 @@ class Agent_0(rpu.Worker):
                         'description'  : {
                             'cores'      : 1,
                             'executable' : "/bin/sh",
+                            'mpi'        : False,
                             'arguments'  : ["%s/bootstrap_2.sh" % os.getcwd(), sa]
                             }
                         }

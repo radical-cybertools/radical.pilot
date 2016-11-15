@@ -25,8 +25,6 @@ if __name__ == '__main__':
 
     session = rp.Session()
     l = ru.get_logger('radical.pilot', level='DEBUG')
-    l.debug('test')
-    sys.exit()
 
     # we use a reporter class for nicer output
     report = ru.LogReporter(name='radical.pilot')

@@ -71,3 +71,9 @@ DEFAULT_PRIORITY = 0
 DEFAULT_FLAGS    = [CREATE_PARENTS, SKIP_FAILED]
 STAGING_AREA     = 'staging_area'
 
+
+# scheduler names (and backwards compat)
+SCHEDULER_ROUND_ROBIN  = "round_robin"
+SCHEDULER_BACKFILLING  = "backfilling"
+SCHEDULER_DEFAULT      = SCHEDULER_ROUND_ROBIN
+

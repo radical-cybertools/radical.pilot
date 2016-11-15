@@ -51,7 +51,7 @@
     "xsede.stampede" : {
         "project"  : "TG-MCB090174",
         "queue"    : "development",
-        "schema"   : null
+        "schema"   : "gsissh"
     },
 
     "xsede.comet"  : {
@@ -90,9 +90,15 @@
         "schema"   : null
     },
 
-    "ornl.titan"   : {
-        "project"  : "csc168",
-        "queue"    : "batch",
+    "ornl.titan_aprun"   : {
+        "project"  : "BIP103",
+        "queue"    : "debug",
+        "schema"   : "local"
+    },
+
+    "ornl.titan_orte"   : {
+        "project"  : "BIP103",
+        "queue"    : "debug",
         "schema"   : "local"
     },
 
