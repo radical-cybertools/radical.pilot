@@ -322,11 +322,11 @@ def combine_profiles(profs):
     for pname, prof in profs.iteritems():
 
         if not len(prof):
-            print 'empty profile %s' % pname
+            # print 'empty profile %s' % pname
             continue
 
         if not prof[0]['msg']:
-            ## print 'unsynced profile %s' % pname
+            # print 'unsynced profile %s' % pname
             continue
 
         t_prof = prof[0]['time']
