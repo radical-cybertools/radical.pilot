@@ -221,11 +221,11 @@ class Kafka(LaunchMethod):
         #setup configuration of kafka for multibroker cluster 
         for i,nodename in enumerate(lrms.node_list):
             try:
-                os.system('cp ' + kafka_home +'/config/server.properties ' +kafka_home + '/config/server.properties_%d' % i)
+                os.system('cp ' + kafka_home +'/config/server.properties ' + kafka_home + '/config/server.properties_%d' % i)
                 vars = ['broker.id','log.dirs','zookeeper.connect' ]
                 new_values = [str(i),'/tmp/kafka-logs-'+str(i), nodenames_string]
                 what_to_change = dict(zip(vars,new_values))
-                filename = kafka_home + 'config/server.properties_' + str(i)
+                filename = kafka_home + '/config/server.properties_' + str(i)
                 updating(filename,what_to_change)
                 with open(filename,'a') as f:
                     f.write('\n ## added by Radical-Pilot  ## \n')
