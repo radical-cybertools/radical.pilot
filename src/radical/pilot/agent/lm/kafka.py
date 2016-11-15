@@ -229,7 +229,7 @@ class Kafka(LaunchMethod):
                 updating(filename,what_to_change)
                 with open(filename,'a') as f:
                     f.write('\n ## added by Radical-Pilot  ## \n')
-                    f.write('host.name=%s \n', nodename )
+                    f.write('host.name=%s \n' % nodename )
                     f.write('delete.topic.enable = true\n')
             except Exception as e:
                 raise RuntimeError(e)
