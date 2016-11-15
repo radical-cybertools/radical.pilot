@@ -326,7 +326,7 @@ def combine_profiles(profs):
             continue
 
         if not prof[0]['msg']:
-            print 'unsynced profile %s' % pname
+            # print 'unsynced profile %s' % pname
             continue
 
         t_prof = prof[0]['time']
@@ -400,7 +400,8 @@ def combine_profiles(profs):
     p_glob = sorted(p_glob[:], key=lambda k: k['time']) 
 
     if unsynced:
-        print 'unsynced hosts: %s' % list(unsynced)
+        # print 'unsynced hosts: %s' % list(unsynced)
+        pass
 
     return p_glob
 
