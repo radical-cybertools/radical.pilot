@@ -209,8 +209,8 @@ class Kafka(LaunchMethod):
         # prp na kanw copy paste afto to arxeio se kane node kai na alla3w to clientPort kai to dataDir
         for i in xrange(len(lrms.node_list)):
             newDir =  dataDir + '/' + str(i+1)
-            subprocess.check_call('mkdir ' + newDir)
-            subprocess.check_call('echo ' + str(i+1) + ' > '  + newDir + 'myid')
+            subprocess.check_call(['mkdir',newDir])
+            subprocess.check_call(['echo',str(i+1),'>',newDir,'myid'])
 
 
 
