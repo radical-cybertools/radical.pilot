@@ -209,8 +209,8 @@ class Kafka(LaunchMethod):
         # prp na kanw copy paste afto to arxeio se kane node kai na alla3w to clientPort kai to dataDir
         for i in xrange(len(lrms.node_list)):
             newDir =  dataDir + '/' + str(i+1)
-            subprocess.check_call(['mkdir',newDir])
-            subprocess.check_call(['echo',str(i+1),'>',newDir,'myid'])
+            os.system('mkdir ' + newDir)
+            os.system('echo ' + str(i+1)  + ' . ' + newDir + 'myid')
 
 
 
@@ -221,7 +221,7 @@ class Kafka(LaunchMethod):
         #setup configuration of kafka for multibroker cluster 
         for i,nodename in enumerate(lrms.node_list):
             try:
-                subprocess.check_call('cp ' + kafka_home +'/config/server.properties ' +kafka_home + '/config/server.properties_%d',i)
+                os.system('cp ' + kafka_home +'/config/server.properties ' +kafka_home + '/config/server.properties_%d',i)
                 vars = ['broker.id','log.dirs','zookeeper.connect' ]
                 new_values = [str(i),'/tmp/kafka-logs-'+str(i), nodenames_string]
                 what_to_change = dict(zip(vars,new_values))
@@ -238,7 +238,7 @@ class Kafka(LaunchMethod):
         #### Start Zookeeper Cluster Service
         logger.info('Starting Zookeeper service..')
         try:
-            subprocess.check_call(kafka_home + '/bin/zookeeper-server-start.sh ' + ' ' + kafka_home + '/config/zookeeper.properties')
+            os.system(kafka_home + '/bin/zookeeper-server-start.sh ' + ' ' + kafka_home + '/config/zookeeper.properties')
         except Exception as e:
             raise RuntimeError("Zookeeper service failed to start: %s " % e)
 
@@ -246,7 +246,7 @@ class Kafka(LaunchMethod):
         logger.info('Starting Kafka service..')
         try:
             for i,nodename in enumerate(lrms.node_list):
-                subprocess.check_call(kafka_home + '/bin/kafka-server-start.sh' + ' ' + kafka_home + '/config/server.properties_%d',i )
+                os.system(kafka_home + '/bin/kafka-server-start.sh' + ' ' + kafka_home + '/config/server.properties_%d',i )
         except Exception as e:
             raise RuntimeError("Kafka service failed to start: %s" % e)
 
@@ -292,7 +292,7 @@ class Kafka(LaunchMethod):
         if lm_info['name'] != 'KAFKALRMS':
             logger.info('Stoping Zookeeper')
             try:
-                stop_kafka = subprocess.check_output(lm_info['kafka_home'] + '/bin/zookeeper-server-stop.sh') 
+                stop_kafka = os.system(lm_info['kafka_home'] + '/bin/zookeeper-server-stop.sh') 
             except Exception as e:
                 raise RuntimeError("Zookeeper failed to stop properly.")
             else:
@@ -300,7 +300,7 @@ class Kafka(LaunchMethod):
                 ## TODO: stop kafka server too
             logger.info('Stoping SPARK')
             try:
-                subprocess.check_output(lm_info['spark_home'] + '/sbin/stop-all.sh') 
+                os.system(lm_info['spark_home'] + '/sbin/stop-all.sh') 
             except Exception as e:
                 raise RuntimeError("Spark failed to terminate properly.")
             else:
