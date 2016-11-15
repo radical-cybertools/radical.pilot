@@ -158,8 +158,7 @@ class Kafka(LaunchMethod):
             subprocess.check_call('wget http://mirror.cc.columbia.edu/pub/software/apache/kafka/0.8.2.1/kafka_2.11-0.8.2.1.tgz'.split())
             subprocess.check_call('tar -zxf kafka_2.11-0.8.2.1.tgz'.split())
             subprocess.check_call('rm kafka_2.11-0.8.2.1.tgz'.split())
-            subprocess.check_call('cd kafka_2.11-0.8.2.1/'.split())
-            kafka_home = os.getcwd()
+            kafka_home = os.getcwd() + '/kafka_2.11-0.8.2.1'
         except Exception as e:
             raise RuntimeError("Kafka wasn't installed properly.Please try again. %s " % e)
 
