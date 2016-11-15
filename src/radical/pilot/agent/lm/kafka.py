@@ -203,7 +203,7 @@ class Kafka(LaunchMethod):
         syncLimit = 2
         zk_properties_file.write('syncLimit = %d \n')
         maxClientCnxns = 0
-        zk_properties_file.write('maxClientCnxns = %d \n', maxClientCnxns)  ##
+        zk_properties_file.write('maxClientCnxns = %d \n' % maxClientCnxns)  ##
         zk_properties_file.close()
 
         # prp na kanw copy paste afto to arxeio se kane node kai na alla3w to clientPort kai to dataDir
