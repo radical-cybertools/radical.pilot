@@ -211,7 +211,7 @@
 #       termination to the child, we will hang.
 #       The reason is: if the parent fails, it will not completely terminate the
 #       process, because to do so it needs to collect the child processes, to
-#       avoid zombies.  We could make the children daemon processed, but alas,
+#       avoid zombies.  We could make the children daemon processes, but alas,
 #       Python's multiprocessing module forbids exactly that, apparently to
 #       ensure that children can be collected cleanly.  Haha.  Hahahahaha.
 #       A watcher will thus always look towards the leaves of the process tree,
