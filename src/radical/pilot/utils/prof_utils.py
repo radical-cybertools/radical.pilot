@@ -171,7 +171,7 @@ def timestamp():
 #
 def prof2frame(prof):
     """
-    expect a profile, ie. a list of profile rows which are dicts.  
+    expect a profile, ie. a list of profile rows which are dicts.
     Write that profile to a temp csv and let pandas parse it into a frame.
     """
 
@@ -236,7 +236,7 @@ def get_experiment_frames(experiments, datadir=None):
       'test 6' : [ [ 'rp.session.ip-10-184-31-85.merzky.016611.0013', 'stampede - isolated',            ],
                    [ 'rp.session.ip-10-184-31-85.merzky.016612.0012', 'stampede - integrated',          ],
                    [ 'rp.session.titan-ext4.marksant1.016607.0006',   'blue waters - integrated'        ] ]
-    }  name in 
+    }  name in
 
     ie. iname in t is a list of experiment names, and each label has a list of
     session/label pairs, where the label will be later used to label (duh) plots.
@@ -258,12 +258,12 @@ def get_experiment_frames(experiments, datadir=None):
 
         for sid, label in experiments[exp]:
             print "   - %s" % sid
-            
+
             for prof in glob.glob ("%s/%s-pilot.*.prof" % (datadir, sid)):
                 print "     - %s" % prof
                 frame = pd.read_csv(prof)
                 exp_frames[exp].append ([frame, label])
-                
+
     return exp_frames
 
 
@@ -272,8 +272,8 @@ def get_experiment_frames(experiments, datadir=None):
 def read_profiles(profiles):
     """
     We read all profiles as CSV files and parse them.  For each profile,
-    we back-calculate global time (epoch) from the synch timestamps.  
-    
+    we back-calculate global time (epoch) from the synch timestamps.
+
     """
     ret = dict()
 
@@ -288,10 +288,10 @@ def read_profiles(profiles):
                     continue
 
                 row['time'] = float(row['time'])
-    
+
                 # store row in profile
                 p.append(row)
-    
+
         ret[prof] = p
 
     return ret
@@ -304,7 +304,7 @@ def combine_profiles(profs):
     We merge all profiles and sorted by time.
 
     This routine expectes all profiles to have a synchronization time stamp.
-    Two kinds of sync timestamps are supported: absolute and relative.  
+    Two kinds of sync timestamps are supported: absolute and relative.
 
     Time syncing is done based on 'sync abs' timestamps, which we expect one to
     be available per host (the first profile entry will contain host
@@ -377,7 +377,7 @@ def combine_profiles(profs):
         # correct profile timestamps
         for row in prof:
 
-            t_orig = row['time'] 
+            t_orig = row['time']
 
             row['time'] -= t_min
             row['time'] -= t_off
@@ -397,7 +397,7 @@ def combine_profiles(profs):
       #     print 'WARNING: profile "%s" closed %d times.' % (prof, c_qed)
 
     # sort by time and return
-    p_glob = sorted(p_glob[:], key=lambda k: k['time']) 
+    p_glob = sorted(p_glob[:], key=lambda k: k['time'])
 
  ## if unsynced:
  ##     print 'unsynced hosts: %s' % list(unsynced)
@@ -406,14 +406,14 @@ def combine_profiles(profs):
 
 
 # ------------------------------------------------------------------------------
-# 
+#
 def clean_profile(profile, sid):
     """
     This method will prepare a profile for consumption in radical.analytics.  It
     performs the following actions:
 
       - makes sure all events have a `ename` entry
-      - remove all state transitions to `CANCELLED` if a different final state 
+      - remove all state transitions to `CANCELLED` if a different final state
         is encountered for the same uid
       - assignes the session uid to all events without uid
       - makes sure that state transitions have an `ename` set to `state`
@@ -432,7 +432,7 @@ def clean_profile(profile, sid):
 
         del(event['event'])
 
-        # we derive entity_type from the uid -- but funnel 
+        # we derive entity_type from the uid -- but funnel
         # some cases into the session
         if uid:
             event['entity_type'] = uid.split('.',1)[0]
@@ -470,7 +470,7 @@ def clean_profile(profile, sid):
                 # vice-versa, we will not add CANCELED if a final
                 # state already exists:
                 if state == rps.CANCELED:
-                    if any([s in entities[uid]['states'] 
+                    if any([s in entities[uid]['states']
                         for s in rps.FINAL]):
                         skip = True
                         continue
@@ -500,7 +500,7 @@ def clean_profile(profile, sid):
             ret.append(event)
 
     # sort by time and return
-    ret = sorted(ret[:], key=lambda k: k['time']) 
+    ret = sorted(ret[:], key=lambda k: k['time'])
 
     return ret
 
@@ -508,7 +508,7 @@ def clean_profile(profile, sid):
 # ------------------------------------------------------------------------------
 #
 def get_session_profile(sid, src=None):
-    
+
     if not src:
         src = "%s/%s" % (os.getcwd(), sid)
 
@@ -529,7 +529,7 @@ def get_session_profile(sid, src=None):
 
 
 # ------------------------------------------------------------------------------
-# 
+#
 def get_session_description(sid, src=None, dburl=None):
     """
     This will return a description which is usable for radical.analytics
@@ -557,59 +557,72 @@ def get_session_description(sid, src=None, dburl=None):
 
     assert(sid == json['session']['uid'])
 
+    hostmap         = dict()
     ret             = dict()
     ret['entities'] = dict()
 
     tree      = dict()
-    tree[sid] = {'uid'      : sid,
-                 'etype'    : 'session',
-                 'cfg'      : json['session']['cfg'],
-                 'has'      : ['umgr', 'pmgr'],
-                 'children' : list()
+    tree[sid] = {'uid'        : sid,
+                 'etype'      : 'session',
+                 'cfg'        : json['session']['cfg'],
+                 'description': dict(),
+                 'has'        : ['umgr', 'pmgr'],
+                 'children'   : list()
                 }
 
     for pmgr in sorted(json['pmgr'], key=lambda k: k['uid']):
         uid = pmgr['uid']
         tree[sid]['children'].append(uid)
-        tree[uid] = {'uid'      : uid,
-                     'etype'    : 'pmgr',
-                     'cfg'      : pmgr['cfg'],
-                     'has'      : ['pilot'],
-                     'children' : list()
+        tree[uid] = {'uid'        : uid,
+                     'etype'      : 'pmgr',
+                     'cfg'        : pmgr['cfg'],
+                     'description': dict(),
+                     'has'        : ['pilot'],
+                     'children'   : list()
                     }
 
     for umgr in sorted(json['umgr'], key=lambda k: k['uid']):
         uid = umgr['uid']
         tree[sid]['children'].append(uid)
-        tree[uid] = {'uid'      : uid,
-                     'etype'    : 'umgr',
-                     'cfg'      : umgr['cfg'],
-                     'has'      : ['unit'],
-                     'children' : list()
+        tree[uid] = {'uid'        : uid,
+                     'etype'      : 'umgr',
+                     'cfg'        : umgr['cfg'],
+                     'description': dict(),
+                     'has'        : ['unit'],
+                     'children'   : list()
                     }
 
     for pilot in sorted(json['pilot'], key=lambda k: k['uid']):
         uid  = pilot['uid']
         pmgr = pilot['pmgr']
         tree[pmgr]['children'].append(uid)
-        tree[uid] = {'uid'      : uid,
-                     'etype'    : 'pilot',
-                     'cfg'      : pilot['cfg'],
-                     'has'      : ['unit'],
-                     'children' : list()
+        tree[uid] = {'uid'        : uid,
+                     'etype'      : 'pilot',
+                     'cfg'        : pilot['cfg'],
+                     'description': pilot['description'],
+                     'has'        : ['unit'],
+                     'children'   : list()
                     }
+        if not hostmap.get(uid):
+            if pilot.get('sandbox'):
+                hostmap[uid] = ru.Url(pilot['sandbox']).host
+            else:
+                hostmap[uid] = None
 
     for unit in sorted(json['unit'], key=lambda k: k['uid']):
         uid  = unit['uid']
-        pid  = unit['umgr']
-        umgr = unit['pilot']
+        # pid  = unit['umgr']
+        pid  = unit['pilot']
+        # umgr = unit['pilot']
+        umgr = unit['umgr']
         tree[pid ]['children'].append(uid)
         tree[umgr]['children'].append(uid)
-        tree[uid] = {'uid'      : uid,
-                     'etype'    : 'unit',
-                     'cfg'      : unit['description'],
-                     'has'      : list(),
-                     'children' : list()
+        tree[uid] = {'uid'         : uid,
+                     'etype'       : 'unit',
+                     'cfg'         : unit['description'],
+                     'description' : unit['description'],
+                     'has'         : list(),
+                     'children'    : list()
                     }
 
     ret['tree'] = tree
@@ -627,16 +640,13 @@ def get_session_description(sid, src=None, dburl=None):
             }
 
     ret['entities']['session'] = {
-            'state_model'  : None, # session has no states, only events
+            'state_model'  : None,  # session has no states, only events
             'state_values' : None,
             'event_model'  : dict(),
             }
 
-    ret['config'] = dict() # magic to get session config goes here
+    ret['config'] = dict()  # magic to get session config goes here
 
-
-    return ret
-
+    return ret, hostmap
 
 # ------------------------------------------------------------------------------
-
