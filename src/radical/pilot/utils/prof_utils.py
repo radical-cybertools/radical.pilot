@@ -300,7 +300,7 @@ def read_profiles(profiles):
 
 # ------------------------------------------------------------------------------
 #
-def combine_profiles(profs):
+def combine_profiles(profs, sid):
     """
     We merge all profiles and sorted by time.
 
@@ -321,7 +321,9 @@ def combine_profiles(profs):
     t_smin = None   # absolute starting point of prof session
     c_qed  = 0      # counter for profile closing tag
 
-    accuracy = 0.0
+    accuracy     = 0.0    # approx. accuracy of time stamps
+    hostmap      = dict() # map uid to host
+    session_host = ''     # hostid of main session profile
 
     for pname, prof in profs.iteritems():
 
@@ -344,6 +346,13 @@ def combine_profiles(profs):
             t_sys, _, t_ntp, t_mode = elems
 
         host_id = '%s:%s' % (host, ip)
+
+        # the session profile is special - it gives us the session hostid
+        if os.path.basename(pname) == '%s.prof' % sid:
+            if session_host:
+                print 'multiple session hosts: %s, %s' % (session_host, host_id)
+            else:
+                session_host = host_id
 
         if t_smin:
             t_smin = min(t_smin, t_ntp)
@@ -414,6 +423,12 @@ def combine_profiles(profs):
             if row['event'] == 'QED':
                 c_qed += 1
 
+            # keep track of what hosts any given uid touched
+            if host_id not in ['unknown:0.0.0.0', session_host]:
+                uid = row['uid']
+                if uid:
+                    hostmap[uid] = host_id
+
         # add profile to global one
         p_glob += prof
 
@@ -430,7 +445,7 @@ def combine_profiles(profs):
  ## if unsynced:
  ##     print 'unsynced hosts: %s' % list(unsynced)
 
-    return [p_glob, t_smin]
+    return [p_glob, t_smin, hostmap]
 
 
 # ------------------------------------------------------------------------------
@@ -549,16 +564,16 @@ def get_session_profile(sid, src=None):
         from .session import fetch_profiles
         profiles = fetch_profiles(sid=sid, skip_existing=True)
 
-    profs       = read_profiles(profiles)
-    prof, t_min = combine_profiles(profs)
-    prof        = clean_profile(prof, sid)
+    profs           = read_profiles(profiles)
+    prof, t_min, hm = combine_profiles(profs, sid)
+    prof            = clean_profile(prof, sid)
 
-    return prof, t_min
+    return prof, t_min, hm
 
 
 # ------------------------------------------------------------------------------
 #
-def get_session_description(sid, src=None, dburl=None):
+def get_session_description(sid, src=None, dburl=None, hostmap=None):
     """
     This will return a description which is usable for radical.analytics
     evaluation.  It informs about
@@ -585,7 +600,8 @@ def get_session_description(sid, src=None, dburl=None):
 
     assert(sid == json['session']['uid'])
 
-    hostmap         = dict()
+    if not hostmap:
+        hostmap     = dict()
     ret             = dict()
     ret['entities'] = dict()
 
