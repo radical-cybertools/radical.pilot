@@ -204,7 +204,23 @@
 #       thus only be able to handle at most one hierarchy layer of unclean
 #       process or thread termination, and also only if thread and process
 #       termination are triggered concurrently.
-# 
+#
+# NOTE: The watcher thread will only be able to watch sub-threads and *child*
+#       processes - it cannot watch the *parent* process.  Thus, if the parent
+#       process fails badly for some reason and is not able to communicate
+#       termination to the child, we will hang.
+#       The reason is: if the parent fails, it will not completely terminate the
+#       process, because to do so it needs to collect the child processes, to
+#       avoid zombies.  We could make the children daemon processed, but alas,
+#       Python's multiprocessing module forbids exactly that, apparently to
+#       ensure that children can be collected cleanly.  Haha.  Hahahahaha.
+#       A watcher will thus always look towards the leaves of the process tree,
+#       not towards the root.
+#       Options to resolve this would be any of the following
+#         - don't use the multiprocessing module
+#         - heartbeat monitoring
+#         - process-alive check different from process-exists
+#
 ################################################################################
 # 
 #
