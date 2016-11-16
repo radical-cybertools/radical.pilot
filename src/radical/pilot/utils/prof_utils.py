@@ -8,6 +8,7 @@ import threading
 
 import radical.utils as ru
 
+NTP_DIFF_WARN_LIMIT = 1.0
 
 # ------------------------------------------------------------------------------
 #
@@ -317,7 +318,10 @@ def combine_profiles(profs):
     t_host = dict() # time offset per host
     p_glob = list() # global profile
     t_min  = None   # absolute starting point of prof session
+    t_smin = None   # absolute starting point of prof session
     c_qed  = 0      # counter for profile closing tag
+
+    accuracy = 0.0
 
     for pname, prof in profs.iteritems():
 
@@ -331,8 +335,20 @@ def combine_profiles(profs):
 
         t_prof = prof[0]['time']
 
-        host, ip, t_sys, t_ntp, t_mode = prof[0]['msg'].split(':')
+        elems = prof[0]['msg'].split(':')
+        if len(elems) == 5:
+            host, ip, t_sys, t_ntp, t_mode = elems
+        elif len(elems) == 4:
+            host = 'unknown'
+            ip   = '0.0.0.0'
+            t_sys, _, t_ntp, t_mode = elems
+
         host_id = '%s:%s' % (host, ip)
+
+        if t_smin:
+            t_smin = min(t_smin, t_ntp)
+        else:
+            t_smin = t_ntp
 
         if t_min:
             t_min = min(t_min, t_prof)
@@ -348,8 +364,14 @@ def combine_profiles(profs):
         t_off = t_sys - t_ntp
 
         if host_id in t_host:
-          # print 'conflicting time sync for %s (%s)' % (pname, host_id)
-            continue
+
+            accuracy = max(accuracy, t_off-t_host[host_id])
+
+            if abs(t_off-t_host[host_id]) > NTP_DIFF_WARN_LIMIT:
+                print 'conflict sync   %-35s (%-35s) %6.1f : %6.1f :  %12.5f' \
+                        % (os.path.basename(pname), host_id, t_off, t_host[host_id], (t_off-t_host[host_id]))
+
+            continue # we always use the first match
 
         t_host[host_id] = t_off
 
@@ -363,7 +385,13 @@ def combine_profiles(profs):
         if not prof[0]['msg']:
             continue
 
-        host, ip, _, _, _ = prof[0]['msg'].split(':')
+        elems = prof[0]['msg'].split(':')
+        if len(elems) == 5:
+            host, ip = elems[0:2]
+        elif len(elems) == 4:
+            host = 'unknown'
+            ip   = '0.0.0.0'
+
         host_id = '%s:%s' % (host, ip)
         if host_id in t_host:
             t_off   = t_host[host_id]
@@ -402,7 +430,7 @@ def combine_profiles(profs):
  ## if unsynced:
  ##     print 'unsynced hosts: %s' % list(unsynced)
 
-    return p_glob
+    return [p_glob, t_smin]
 
 
 # ------------------------------------------------------------------------------
@@ -521,11 +549,11 @@ def get_session_profile(sid, src=None):
         from .session import fetch_profiles
         profiles = fetch_profiles(sid=sid, skip_existing=True)
 
-    profs = read_profiles(profiles)
-    prof  = combine_profiles(profs)
-    prof  = clean_profile(prof, sid)
+    profs       = read_profiles(profiles)
+    prof, t_min = combine_profiles(profs)
+    prof        = clean_profile(prof, sid)
 
-    return prof
+    return prof, t_min
 
 
 # ------------------------------------------------------------------------------
@@ -611,11 +639,9 @@ def get_session_description(sid, src=None, dburl=None):
 
     for unit in sorted(json['unit'], key=lambda k: k['uid']):
         uid  = unit['uid']
-        # pid  = unit['umgr']
         pid  = unit['pilot']
-        # umgr = unit['pilot']
         umgr = unit['umgr']
-        tree[pid ]['children'].append(uid)
+        if pid: tree[pid ]['children'].append(uid)
         tree[umgr]['children'].append(uid)
         tree[uid] = {'uid'         : uid,
                      'etype'       : 'unit',
@@ -649,4 +675,6 @@ def get_session_description(sid, src=None, dburl=None):
 
     return ret, hostmap
 
+
 # ------------------------------------------------------------------------------
+
