@@ -379,7 +379,7 @@ class Kafka(LaunchMethod):
             command =  spark_launch + '/' + task_exec  + ' '  +  command
         else:
             zk = ' --zookeeper ' + zookeeper
-            command = self.launch_command  + '/' + task_exec + command  + zk
+            command = self.launch_command  + '/' + '  ' + task_exec + ' ' + command + ' '  + zk
 
 
         self._log.debug("Command %s"%command)
