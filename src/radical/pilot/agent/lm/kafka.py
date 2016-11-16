@@ -267,7 +267,7 @@ class Kafka(LaunchMethod):
         # so it is available on all LM create_command calls.
         lm_info = {'kafka_home'    : kafka_home,
                    'lm_detail'     : zookeeper_url_string + ' '
-                                     + spark_lm_info['spark_master_string'],
+                                     + spark_lm_info['lm_detail'],
                    'zk_url'        : zookeeper_url_string,
                    'name'          : lrms.name,
                    'launch_command': launch_command,
