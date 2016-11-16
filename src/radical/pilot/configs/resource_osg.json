@@ -28,9 +28,25 @@
     "agent_launch_method": "FORK",
     "task_launch_method": "FORK",
     "pre_bootstrap_1": [
+      # Allow to load modules
       "source /cvmfs/oasis.opensciencegrid.org/osg/modules/lmod/current/init/bash",
+      # Unset env var otherwise tempfile conflicts with other VO
+      "unset GLOBUS_TCP_PORT_RANGE_STATE_FILE",
+      # Load the OASIS CVMFS config if it is available
+      "SETUPSH=/cvmfs/oasis.opensciencegrid.org/osg-software/osg-wn-client/3.3/current/el6-x86_64/setup.sh",
+      "if test -r $SETUPSH; then source $SETUPSH; fi",
+      # Make sure the GFAL directories are setup
+      "if test -z $GFAL_CONFIG_DIR; then export GFAL_CONFIG_DIR=$OSG_LOCATION/etc/gfal2.d/; fi",
+      "if test -z $GFAL_PLUGIN_DIR; then export GFAL_PLUGIN_DIR=$OSG_LOCATION/usr/lib64/gfal2-plugins/; fi",
+      # Export this path here to be loaded for PB2
+      "export PB2PATH=$PATH",
       "module load python/2.7",
       "module load gcc"
+    ],
+    "pre_bootstrap_2": [
+      "export HOME=$HOME",
+      "export PATH=$PB2PATH",
+      "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
     ],
     "rp_version": "debug",
     "virtenv": "./ve_xd-login",
