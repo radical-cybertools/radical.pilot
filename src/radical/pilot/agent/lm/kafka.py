@@ -216,7 +216,7 @@ class Kafka(LaunchMethod):
 
         nodenames_string = ''
         for nodename in lrms.node_list:
-            nodenames_string += nodename + ':2080,'    ## TODO: fix this
+            nodenames_string += nodename + ':2080'    ## TODO: fix this
 
         #setup configuration of kafka for multibroker cluster 
         for i,nodename in enumerate(lrms.node_list):
