@@ -185,13 +185,15 @@ class Kafka(LaunchMethod):
                 except Exception:
                     java_home = '/Library/Java/Home'
 
+        os.system('mkdir -p' + kafka_home + '/tmp/zookeeper/data')
+
         ## fix zookeeper properties 
         zk_properties_file = open(kafka_home + '/config/zookeeper.properties','w')
         # unit for measuments properites, like heartbeats and timeouts.
         tickTime = 2000
         zk_properties_file.write('tickTime = %d \n' % tickTime)
         dataDir = kafka_home + '/tmp/zookeeper/data'   
-        zk_properties_file.write('dataDir=%s \n' % dataDir )
+        zk_properties_file.write('dataDir= %s \n' % dataDir )
         clientPort = 2181  
         #TODO: add only odd number of zk nodes to satisfy quorum 
         zk_properties_file.write('clientPort = %d \n' % clientPort)
