@@ -196,7 +196,7 @@ class Kafka(LaunchMethod):
         #TODO: add only odd number of zk nodes to satisfy quorum 
         zk_properties_file.write('clientPort = %d \n' % clientPort)
         for i, nodename in enumerate(lrms.node_list):
-            zk_properties_file.write('server' + '=' + nodename + ':2888:3888 \n')    #ex. server.1=c242.stampede:2888:3888
+            zk_properties_file.write('server' + '=' + nodename  '\n') #+ ':2888:3888    #ex. server.1=c242.stampede:2888:3888
         # initial limits : tick_time/init_limit (s)  . it is the amount time that takes zk  follower to connect to a leader initially when a cluster is started
         initLimit = 5
         zk_properties_file.write('initLimit = %d \n' % initLimit)
