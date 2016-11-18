@@ -39,6 +39,16 @@ def _sigusr2_handler(signum, frame):
   # print 'caught sigusr2'
     raise KeyboardInterrupt('sigusr2')
 
+import cProfile
+class ProfiledThread(mt.Thread):
+    # Overrides threading.Thread.run()
+    def run(self):
+        profiler = cProfile.Profile()
+        try:
+            return profiler.runcall(mt.Thread.run, self)
+        finally:
+            self_thread = mt.current_thread()
+            profiler.dump_stats('python-%s.profile' % (self_thread.name))
 
 # ==============================================================================
 #
@@ -1196,12 +1206,19 @@ class Component(mp.Process):
             if name in self._subscribers:
                 raise ValueError('cb %s already registered for %s' % (cb.__name__, pubsub))
 
+            if pubsub in os.getenv("RADICAL_PILOT_CPROFILE_SUBSCRIBERS", "").split():
+                ttype = ProfiledThread
+                tname = name="%s-%s.subscriber" % (self.uid, pubsub)
+            else:
+                ttype = mt.Thread
+                tname = name="%s.subscriber" % self.uid
+
             # create a pubsub subscriber (the pubsub name doubles as topic)
             q = rpu_Pubsub(self._session, pubsub, rpu_PUBSUB_SUB, self._cfg, addr=addr)
             q.subscribe(pubsub)
 
             e = mt.Event()
-            t = mt.Thread(target=_subscriber, args=[q,e,cb,cb_data], name=name)
+            t = ttype(target=_subscriber, args=[q,e,cb,cb_data], name=tname)
             t.start()
 
             self._subscribers[name] = {'term'   : e,  # termination signal

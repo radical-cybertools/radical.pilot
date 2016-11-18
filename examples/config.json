@@ -21,6 +21,12 @@
         "cores"    : 64
     },
 
+    "local.localhost_orte" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null
+    },
+
     "local.localhost_spark_ana" : {
         "project"  : null,
         "queue"    : null,
@@ -81,6 +87,18 @@
         "queue"    : "development",
         "schema"   : "gsissh",
         "cores"    : 64
+    },
+
+    "xsede.stampede_orte" : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "development",
+        "schema"   : null
+    },
+
+    "xsede.stampede_ortelib" : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "development",
+        "schema"   : null
     },
 
     "xsede.comet"  : {
