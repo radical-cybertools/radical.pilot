@@ -192,18 +192,18 @@ class Kafka(LaunchMethod):
         zk_properties_file.write('tickTime = %d \n' % tickTime)
         dataDir = '/tmp/zookeeper/data'  ## TODO: isws tha prp na ginei /tmp/zookeeper/data  
         zk_properties_file.write('DataDir = %s \n' % dataDir )
-        clientPort = 2080  ##
+        clientPort = 2080  ## default 2181
         #TODO: add only odd number of zk nodes to satisfy quorum 
         zk_properties_file.write('clientPort = %d \n' % clientPort)
         for i, nodename in enumerate(lrms.node_list):
-            zk_properties_file.write('server.'+str(i+1) + '=' + nodename + ':2888:3888 \n')    #ex. server.1=c242.stampede:2888:3888
+            zk_properties_file.write('server' + '=' + nodename + ':2888:3888 \n')    #ex. server.1=c242.stampede:2888:3888
         # initial limits : tick_time/init_limit (s)  . it is the amount time that takes zk  follower to connect to a leader initially when a cluster is started
         initLimit = 5
         zk_properties_file.write('initLimit = %d \n' % initLimit)
-        syncLimit = 2
+        syncLimit = 23
         zk_properties_file.write('syncLimit = %d \n' % syncLimit)
         maxClientCnxns = 0
-        #zk_properties_file.write('maxClientCnxns = %d \n' % maxClientCnxns)  ## TODO: fix this
+        zk_properties_file.write('maxClientCnxns = %d \n' % maxClientCnxns)  ## TODO: fix this
         zk_properties_file.close()
 
         # prp na kanw copy paste afto to arxeio se kane node kai na alla3w to clientPort kai to dataDir
