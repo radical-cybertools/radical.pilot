@@ -320,6 +320,16 @@ class LaunchMethod(object):
                     # ignore empty args
                     continue
 
+                if arg in ['>', '>>', '<', '<<', '|', '||', '&&', '&']:
+                    # Don't quote shell direction arguments, etc.
+                    arg_string += '%s ' % arg
+                    continue
+
+                if any([c in arg for c in ['?', '*']]):
+                    # Don't quote arguments with wildcards
+                    arg_string += '%s ' % arg
+                    continue
+
                 arg = arg.replace('"', '\\"')    # Escape all double quotes
                 if arg[0] == arg[-1] == "'" :    # If a string is between outer single quotes,
                     arg_string += '%s ' % arg    # ... pass it as is.
