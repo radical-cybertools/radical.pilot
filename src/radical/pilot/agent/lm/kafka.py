@@ -190,7 +190,7 @@ class Kafka(LaunchMethod):
         # unit for measuments properites, like heartbeats and timeouts.
         tickTime = 2000
         zk_properties_file.write('tickTime = %d \n' % tickTime)
-        dataDir = '/tmp/zookeeper/data'   
+        dataDir = kafka_home + '/tmp/zookeeper/data'   
         zk_properties_file.write('dataDir=%s \n' % dataDir )
         clientPort = 2181  
         #TODO: add only odd number of zk nodes to satisfy quorum 
