@@ -190,9 +190,9 @@ class Kafka(LaunchMethod):
         # unit for measuments properites, like heartbeats and timeouts.
         tickTime = 2000
         zk_properties_file.write('tickTime = %d \n' % tickTime)
-        dataDir = '/tmp/zookeeper/data'  ## TODO: isws tha prp na ginei /tmp/zookeeper/data  
+        dataDir = '/tmp/zookeeper/data'   
         zk_properties_file.write('DataDir = %s \n' % dataDir )
-        clientPort = 2080  ## default 2181
+        clientPort = 2181  
         #TODO: add only odd number of zk nodes to satisfy quorum 
         zk_properties_file.write('clientPort = %d \n' % clientPort)
         for i, nodename in enumerate(lrms.node_list):
@@ -216,7 +216,7 @@ class Kafka(LaunchMethod):
 
         nodenames_string = ''
         for nodename in lrms.node_list:
-            nodenames_string += nodename + ':2080'    ## TODO: fix this
+            nodenames_string += nodename + ':2181'    ## TODO: fix this
 
         #setup configuration of kafka for multibroker cluster 
         for i,nodename in enumerate(lrms.node_list):
