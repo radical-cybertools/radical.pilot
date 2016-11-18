@@ -191,7 +191,7 @@ class Kafka(LaunchMethod):
         tickTime = 2000
         zk_properties_file.write('tickTime = %d \n' % tickTime)
         dataDir = '/tmp/zookeeper/data'   
-        zk_properties_file.write('dataDir =%s \n' % dataDir )
+        zk_properties_file.write('dataDir=%s \n' % dataDir )
         clientPort = 2181  
         #TODO: add only odd number of zk nodes to satisfy quorum 
         zk_properties_file.write('clientPort = %d \n' % clientPort)
@@ -238,7 +238,7 @@ class Kafka(LaunchMethod):
         #### Start Zookeeper Cluster Service
         logger.info('Starting Zookeeper service..')
         try:
-            os.system(kafka_home + '/bin/zookeeper-server-start.sh ' + ' ' + kafka_home + '/config/zookeeper.properties')
+            os.system(kafka_home + '/bin/zookeeper-server-start.sh ' + ' -daemon  ' + kafka_home + '/config/zookeeper.properties')
         except Exception as e:
             raise RuntimeError("Zookeeper service failed to start: %s " % e)
 
