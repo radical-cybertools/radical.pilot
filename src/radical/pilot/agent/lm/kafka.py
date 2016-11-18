@@ -193,7 +193,7 @@ class Kafka(LaunchMethod):
         tickTime = 2000
         zk_properties_file.write('tickTime = %d \n' % tickTime)
         dataDir = kafka_home + '/tmp/zookeeper/data'   
-        zk_properties_file.write('dataDir= %s \n' % dataDir )
+        zk_properties_file.write('dataDir=%s \n' % dataDir )
         clientPort = 2181  
         #TODO: add only odd number of zk nodes to satisfy quorum 
         zk_properties_file.write('clientPort = %d \n' % clientPort)
@@ -248,7 +248,7 @@ class Kafka(LaunchMethod):
         logger.info('Starting Kafka service..')
         try:
             for i,nodename in enumerate(lrms.node_list):
-                os.system(kafka_home + '/bin/kafka-server-start.sh' + ' ' + kafka_home + '/config/server.properties_%d' %i )
+                os.system(kafka_home + '/bin/kafka-server-start.sh' + '  -daemon  ' + kafka_home + '/config/server.properties_%d' %i )
         except Exception as e:
             raise RuntimeError("Kafka service failed to start: %s" % e)
 
