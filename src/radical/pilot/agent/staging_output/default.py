@@ -6,6 +6,7 @@ __license__   = "MIT"
 import os
 import shutil
 
+import saga          as rs
 import radical.utils as ru
 
 from .... import pilot     as rp
@@ -14,6 +15,7 @@ from ...  import states    as rps
 from ...  import constants as rpc
 
 from .base import AgentStagingOutputComponent
+
 
 
 # ==============================================================================
@@ -126,15 +128,16 @@ class Default(AgentStagingOutputComponent):
         # check if we have any staging directives to be enacted in this
         # component
         actionables = list()
-        for entry in unit.get('output_staging', []):
+        for sd in unit['description'].get('output_staging', []):
 
-            action = entry['action']
-            flags  = entry['flags']
-            src    = ru.Url(entry['source'])
-            tgt    = ru.Url(entry['target'])
+            src    = ru.Url(sd['source'])
+            tgt    = ru.Url(sd['target'])
+            action = sd['action']
+            flags  = sd['flags']
+            did    = sd['uid']
 
-            if action in [rpc.LINK, rpc.COPY, rpc.MOVE]:
-                actionables.append([src, tgt, flags])
+            actionables.append([src, tgt, action, flags,  did])
+
 
         if actionables:
 
@@ -147,41 +150,57 @@ class Default(AgentStagingOutputComponent):
             self._prof.prof("created staging_area", uid=uid)
 
             # Loop over all transfer directives and execute them.
-            for src, tgt, flags in actionables:
+            for src, tgt, action, flags, did in actionables:
 
-                self._prof.prof('agent staging out', msg=src, uid=uid)
+                self._prof.prof('begin', uid=uid, msg=did)
 
                 # Handle special 'staging' schema
                 if tgt.schema == self._cfg['staging_schema']:
-                    # remove leading '/' to convert into rel path
-                    target = os.path.join(staging_area, tgt.path[1:])
-                else:
+                    self._log.info('Operating to staging')
+                    rel2staging = tgt.path.split('/',1)[1]
+                    target = os.path.join(staging_area, rel2staging)
+                elif action != rpc.TRANSFER:
+                    self._log.info('Operating to absolute path')
                     target = tgt.path
+                    assert(target.startswith('/'))
+                elif action == rpc.TRANSFER:
+                    self._log.info('Operating to remote location')
+                    target = tgt
 
-                source = os.path.join(sandbox, src.path)
+                # make sure the src path is either absolute or relative to the
+                # sandbox
+                if not src.path.startswith('/'):
+                    src.path = '%s/%s' % (sandbox, src.path)
 
-                if rpc.CREATE_PARENTS in flags:
+                if rpc.CREATE_PARENTS in flags and action != rpc.TRANSFER:
                     tgtdir = os.path.dirname(target)
                     if tgtdir != sandbox:
                         # TODO: optimization point: create each dir only once
                         self._log.debug("mkdir %s" % tgtdir)
                         rpu.rec_makedir(tgtdir)
 
-                self._log.info("%sing %s to %s", action, src, tgt)
-
                 if   action == rpc.LINK: os.symlink     (source, target)
                 elif action == rpc.COPY: shutil.copyfile(source, target)
                 elif action == rpc.MOVE: shutil.move    (source, target)
+                elif action == rpc.TRANSFER:
+
+                    # we only handle srm staging right now -- other TRANSFER
+                    # directives are left to umgr output staging
+                    if tgt.schema == 'srm':
+                        src_url = rs.Url(source)
+                        src_url.schema = 'file'
+                        srm_dir = rs.filesystem.Directory('srm://proxy/?SFN=bogus')
+                        srm_dir.copy(src_url, target)
                 else:
-                    # FIXME: implement TRANSFER mode
                     raise NotImplementedError('unsupported action %s' % action)
 
-                self._log.info("%s'ed %s to %s" % (action, source, target))
+                self._prof.prof('end', uid=uid, msg=did)
 
+        # TODO: don't raise for non-fatal staging
 
         # all agent staging is done -- pass on to umgr output staging
         self.advance(unit, rps.UMGR_STAGING_OUTPUT_PENDING, publish=True, push=False)
 
 
 # ------------------------------------------------------------------------------
-
+	

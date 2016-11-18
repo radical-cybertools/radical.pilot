@@ -90,7 +90,13 @@ class ComputeUnit(object):
             not self._descr.get('kernel')     :
             raise ValueError("ComputeUnitDescription needs 'executable' or 'kernel'")
 
-        # If staging directives exist, expand them
+        # If staging directives exist, expand them 
+        #
+        # FIXME: staging directives should be expanded later, during 
+        #        umgr_input_staging -- at that point we have enough information
+        #        to make *all* src and tgt names into full URLs (including fully
+        #        quualified paths), and can then rely on those being URLs in all
+        #        places.
         expand_description(self._descr)
 
         self._umgr.advance(self.as_dict(), rps.NEW, publish=False, push=False)

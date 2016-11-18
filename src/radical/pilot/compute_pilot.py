@@ -17,7 +17,7 @@ from . import states    as rps
 from . import constants as rpc
 from . import types     as rpt
 
-from .staging_directives import expand_staging_directive
+from .staging_directives import expand_staging_directives
 from .staging_directives import TRANSFER, COPY, LINK, MOVE, STAGING_AREA
 
 
@@ -513,7 +513,7 @@ class ComputePilot(object):
             raise Exception("Pilot already finished, no need to stage anymore!")
 
         # Iterate over all directives
-        for directive in expand_staging_directive(directives):
+        for directive in expand_staging_directives(directives):
 
             # TODO: respect flags in directive
 
