@@ -191,7 +191,7 @@ class Kafka(LaunchMethod):
         tickTime = 2000
         zk_properties_file.write('tickTime = %d \n' % tickTime)
         dataDir = '/tmp/zookeeper/data'   
-        zk_properties_file.write('DataDir = %s \n' % dataDir )
+        zk_properties_file.write('dataDir =%s \n' % dataDir )
         clientPort = 2181  
         #TODO: add only odd number of zk nodes to satisfy quorum 
         zk_properties_file.write('clientPort = %d \n' % clientPort)
