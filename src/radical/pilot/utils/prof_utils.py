@@ -340,12 +340,11 @@ def combine_profiles(profs, sid):
         elems = prof[0]['msg'].split(':')
         if len(elems) == 5:
             host, ip, t_sys, t_ntp, t_mode = elems
+            host_id = '%s:%s' % (host, ip)
         elif len(elems) == 4:
-            host = 'unknown'
-            ip   = '0.0.0.0'
+            host_id = 'other'
             t_sys, _, t_ntp, t_mode = elems
 
-        host_id = '%s:%s' % (host, ip)
 
         # the session profile is special - it gives us the session hostid
         if os.path.basename(pname) == '%s.prof' % sid:
@@ -397,11 +396,10 @@ def combine_profiles(profs, sid):
         elems = prof[0]['msg'].split(':')
         if len(elems) == 5:
             host, ip = elems[0:2]
+            host_id = '%s:%s' % (host, ip)
         elif len(elems) == 4:
-            host = 'unknown'
-            ip   = '0.0.0.0'
+            host_id = 'other'
 
-        host_id = '%s:%s' % (host, ip)
         if host_id in t_host:
             t_off   = t_host[host_id]
         else:
@@ -424,10 +422,11 @@ def combine_profiles(profs, sid):
                 c_qed += 1
 
             # keep track of what hosts any given uid touched
-            if host_id not in ['unknown:0.0.0.0', session_host]:
-                uid = row['uid']
-                if uid:
+            if host_id:
+                if row['event'] == 'advance' and row['state'] == 'PMGR_ACTIVE':
+                    uid = row['uid']
                     hostmap[uid] = host_id
+                    host_id      = None  # only record once
 
         # add profile to global one
         p_glob += prof
@@ -647,11 +646,8 @@ def get_session_description(sid, src=None, dburl=None, hostmap=None):
                      'has'        : ['unit'],
                      'children'   : list()
                     }
-        if not hostmap.get(uid):
-            if pilot.get('sandbox'):
-                hostmap[uid] = ru.Url(pilot['sandbox']).host
-            else:
-                hostmap[uid] = None
+        if uid not in hostmap:
+            hostmap[uid] = 'other'
 
     for unit in sorted(json['unit'], key=lambda k: k['uid']):
         uid  = unit['uid']
