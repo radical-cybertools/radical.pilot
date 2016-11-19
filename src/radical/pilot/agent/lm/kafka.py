@@ -185,7 +185,7 @@ class Kafka(LaunchMethod):
                 except Exception:
                     java_home = '/Library/Java/Home'
 
-        #os.system('mkdir -p' + kafka_home + '/tmp/zookeeper/data')
+        os.system('mkdir -p' + kafka_home + '/tmp/zookeeper/data')
 
         ## fix zookeeper properties 
         zk_properties_file = open(kafka_home + '/config/zookeeper.properties','w')
@@ -240,6 +240,7 @@ class Kafka(LaunchMethod):
         #### Start Zookeeper Cluster Service
         logger.info('Starting Zookeeper service..')
         try:
+            os.system('env')
             os.system(kafka_home + '/bin/zookeeper-server-start.sh ' + ' -daemon  ' + kafka_home + '/config/zookeeper.properties')
         except Exception as e:
             raise RuntimeError("Zookeeper service failed to start: %s " % e)
