@@ -159,6 +159,7 @@ class Kafka(LaunchMethod):
             subprocess.check_call('tar -zxf kafka_2.11-0.8.2.1.tgz'.split())
             subprocess.check_call('rm kafka_2.11-0.8.2.1.tgz'.split())
             kafka_home = os.getcwd() + '/kafka_2.11-0.8.2.1'
+            logger.info("Kafka directory: %s \n " % kafka_home)
         except Exception as e:
             raise RuntimeError("Kafka wasn't installed properly.Please try again. %s " % e)
 
@@ -185,7 +186,11 @@ class Kafka(LaunchMethod):
                 except Exception:
                     java_home = '/Library/Java/Home'
 
-        os.system('mkdir -p' + kafka_home + '/tmp/zookeeper/data')
+
+        path = os.path.join(kafka_home, 'tmp/zookeeper/data')
+        os.system('mkdir -p ' + path)
+        logger.info("Zookeeper dataDir: %s \n"  % path)
+
 
         ## fix zookeeper properties 
         zk_properties_file = open(kafka_home + '/config/zookeeper.properties','w')
@@ -206,7 +211,7 @@ class Kafka(LaunchMethod):
         zk_properties_file.write('syncLimit = %d \n' % syncLimit)
         maxClientCnxns = 0
         #zk_properties_file.write('maxClientCnxns = %d \n' % maxClientCnxns)  ## TODO: fix this
-        #zk_properties_file.close()
+        zk_properties_file.close()
 
         # prp na kanw copy paste afto to arxeio se kane node kai na alla3w to clientPort kai to dataDir
         # for i in xrange(len(lrms.node_list)):
@@ -238,10 +243,14 @@ class Kafka(LaunchMethod):
 
 
         #### Start Zookeeper Cluster Service
+        zk_properties_path = os.path.join(kafka_home, 'config/zookeeper.properties')
+        logger.info('Zk properties path: %s  \n' % zk_properties_path ) 
+
+
         logger.info('Starting Zookeeper service..')
         try:
             os.system('env')
-            os.system(kafka_home + '/bin/zookeeper-server-start.sh ' + ' -daemon  ' + kafka_home + '/config/zookeeper.properties')
+            os.system(kafka_home + '/bin/zookeeper-server-start.sh ' + ' -daemon  ' + zk_properties_path)
         except Exception as e:
             raise RuntimeError("Zookeeper service failed to start: %s " % e)
 
