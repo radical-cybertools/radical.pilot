@@ -185,7 +185,7 @@ class Kafka(LaunchMethod):
                 except Exception:
                     java_home = '/Library/Java/Home'
 
-        os.system('mkdir -p' + kafka_home + '/tmp/zookeeper/data')
+        #os.system('mkdir -p' + kafka_home + '/tmp/zookeeper/data')
 
         ## fix zookeeper properties 
         zk_properties_file = open(kafka_home + '/config/zookeeper.properties','w')
@@ -209,10 +209,10 @@ class Kafka(LaunchMethod):
         #zk_properties_file.close()
 
         # prp na kanw copy paste afto to arxeio se kane node kai na alla3w to clientPort kai to dataDir
-        for i in xrange(len(lrms.node_list)):
-            newDir =  dataDir + '/' + str(i+1)
-            os.system('mkdir  -p' + newDir)
-            os.system('echo ' + str(i+1)  + ' . ' + newDir + 'myid')
+        # for i in xrange(len(lrms.node_list)):
+        #     newDir =  dataDir + '/' + str(i+1)
+        #     os.system('mkdir  -p' + newDir)
+        #     os.system('echo ' + str(i+1)  + ' . ' + newDir + 'myid')
 
 
 
@@ -247,7 +247,7 @@ class Kafka(LaunchMethod):
         ## start kafka server:
         logger.info('Starting Kafka service..')
         try:
-            for i,nodename in enumerate(lrms.node_list):
+            for i,nodename in enumerate(lrms.node_list)
                 os.system(kafka_home + '/bin/kafka-server-start.sh' + '  -daemon  ' + kafka_home + '/config/server.properties_%d' %i )
         except Exception as e:
             raise RuntimeError("Kafka service failed to start: %s" % e)
