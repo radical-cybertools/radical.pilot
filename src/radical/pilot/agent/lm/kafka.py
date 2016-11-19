@@ -227,7 +227,7 @@ class Kafka(LaunchMethod):
 
         nodenames_string = lrms.node_list[0]
         # add the next 3 lines for multinode configuration
-        nodenames_string = ''
+        #nodenames_string = ''
         #for nodename in lrms.node_list:
         #    nodenames_string += nodename + ':2181,'    ## TODO: fix this
 
