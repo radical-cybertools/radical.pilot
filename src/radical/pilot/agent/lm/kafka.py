@@ -202,8 +202,12 @@ class Kafka(LaunchMethod):
         clientPort = 2181  
         #TODO: add only odd number of zk nodes to satisfy quorum 
         zk_properties_file.write('clientPort = %d \n' % clientPort)
-        for i, nodename in enumerate(lrms.node_list):
-            zk_properties_file.write('server' + '=' + nodename + '\n') #+ ':2888:3888    #ex. server.1=c242.stampede:2888:3888
+
+        #add these lines for multinode zk setup and remove the next one
+        #for i, nodename in enumerate(lrms.node_list):
+        #    zk_properties_file.write('server.' + str(i)  + '=' + nodename + ':2888:3888\n') #+ '    #ex. server.1=c242.stampede:2888:3888
+
+        zk_properties_file.write('server' + '=' + lrms.node_list[0] + '\n')
         # initial limits : tick_time/init_limit (s)  . it is the amount time that takes zk  follower to connect to a leader initially when a cluster is started
         initLimit = 5
         zk_properties_file.write('initLimit = %d \n' % initLimit)
@@ -221,9 +225,11 @@ class Kafka(LaunchMethod):
 
 
 
+        nodenames_string = lrms.node_list[0]
+        # add the next 3 lines for multinode configuration
         nodenames_string = ''
-        for nodename in lrms.node_list:
-            nodenames_string += nodename + ':2181'    ## TODO: fix this
+        #for nodename in lrms.node_list:
+        #    nodenames_string += nodename + ':2181,'    ## TODO: fix this
 
         #setup configuration of kafka for multibroker cluster 
         for i,nodename in enumerate(lrms.node_list):
