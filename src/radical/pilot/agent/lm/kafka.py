@@ -247,7 +247,7 @@ class Kafka(LaunchMethod):
         ## start kafka server:
         logger.info('Starting Kafka service..')
         try:
-            for i,nodename in enumerate(lrms.node_list)
+            for i,nodename in enumerate(lrms.node_list):
                 os.system(kafka_home + '/bin/kafka-server-start.sh' + '  -daemon  ' + kafka_home + '/config/server.properties_%d' %i )
         except Exception as e:
             raise RuntimeError("Kafka service failed to start: %s" % e)
