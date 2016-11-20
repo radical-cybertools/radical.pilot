@@ -64,12 +64,12 @@ class Default(UMGRStagingOutputComponent):
             # check if we have any staging directives to be enacted in this
             # component
             actionables = list()
-            for entry in unit.get('output_staging', []):
+            for sd in unit['description'].get('output_staging', []):
 
-                action = entry['action']
-                flags  = entry['flags']
-                src    = ru.Url(entry['source'])
-                tgt    = ru.Url(entry['target'])
+                action = sd['action']
+                flags  = sd['flags']
+                src    = ru.Url(sd['source'])
+                tgt    = ru.Url(sd['target'])
 
                 if action in [rpc.TRANSFER] and src.schema in ['file']:
                     actionables.append([src, tgt, flags])
@@ -102,7 +102,8 @@ class Default(UMGRStagingOutputComponent):
 
         # we have actionable staging directives
         # url used for cache (sandbox url w/o path)
-        tmp = rs.Url(unit["sandbox"])
+        sandbox  = rs.Url(unit["sandbox"])
+        tmp      = rs.Url(unit["sandbox"])
         tmp.path = '/'
         key = str(tmp)
 
@@ -122,6 +123,10 @@ class Default(UMGRStagingOutputComponent):
                 copy_flags = rs.filesystem.CREATE_PARENTS
             else:
                 copy_flags = 0
+
+            self._log.debug('')
+            self._log.debug(src)
+            self._log.debug(tgt)
 
             saga_dir.copy(src, tgt, flags=copy_flags)
 

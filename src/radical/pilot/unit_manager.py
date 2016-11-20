@@ -178,7 +178,7 @@ class UnitManager(rpu.Component):
         if self._closed:
             return
 
-        self._log.debug("closing %s", self.uid)
+        self._log.debug("closing %s\n%s", self.uid, '\n'.join(ru.get_stacktrace()))
         self._log.report.info('<<close unit manager')
 
         # we don't want any callback invokations during shutdown
@@ -242,9 +242,18 @@ class UnitManager(rpu.Component):
         #        and before being notified about the pilot's demise, send new
         #        units to the pilot.
 
+        # we only look into pilot states when the umgr is still active
+        # FIXME: note that there is a race in that the umgr can be closed while
+        #        we are in the cb.
+        if self._closed:
+            self._log.debug('umgr closed, ignore pilot state (%s: %s)', 
+                            pilot.uid, pilot.state)
+            return
+
+
         if state in rps.FINAL:
 
-            self._log.debug('pilot %s is final - pull units')
+            self._log.debug('pilot %s is final - pull units', pilot.uid)
 
             unit_cursor = self.session._dbs._c.find(spec={
                 'type'    : 'unit',
@@ -289,7 +298,7 @@ class UnitManager(rpu.Component):
                 else:
                     self._log.debug('unit %s not restartable', unit['uid'])
 
-            if to_restart:
+            if to_restart and not self._closed:
                 self._log.debug('restart %s units', len(to_restart))
                 restarted = self.submit_units(to_restart)
                 for u in restarted:
@@ -684,7 +693,6 @@ class UnitManager(rpu.Component):
                 self._units[unit.uid] = unit
 
             if self._session._rec:
-                import radical.utils as ru
                 ru.write_json(ud.as_dict(), "%s/%s.batch.%03d.json" \
                         % (self._session._rec, unit.uid, self._rec_id))
 

@@ -1198,16 +1198,24 @@ class Component(mp.Process):
         signal.signal(signal.SIGTERM, _sigterm_handler)
         signal.signal(signal.SIGUSR2, _sigusr2_handler)
 
+
         try:
             # we don't have a child, we *are* the child
             self._is_parent = False
             self._uid       = self._child_uid
-
+        
             spt.setproctitle('rp.%s' % self.uid)
 
             # this is now the child process context
             self._initialize_common()
             self._initialize_child()
+
+            if os.path.isdir(self._session.uid):
+                sys.stdout = open("%s/%s.out" % (self._session.uid, self.uid), "w")
+                sys.stderr = open("%s/%s.err" % (self._session.uid, self.uid), "w")
+            else:
+                sys.stdout = open("%s.out" % self.uid, "w")
+                sys.stderr = open("%s.err" % self.uid, "w")
 
             self._log.debug('START: %s run', self.uid)
 

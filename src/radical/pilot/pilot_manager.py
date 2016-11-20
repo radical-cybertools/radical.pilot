@@ -150,7 +150,7 @@ class PilotManager(rpu.Component):
         if self._closed:
             return
 
-        self._log.debug("closing %s", self.uid)
+        self._log.debug("closing %s\n%s", self.uid, '\n'.join(ru.get_stacktrace()))
         self._log.report.info('<<close pilot manager')
 
         # we don't want any callback invokations during shutdown
