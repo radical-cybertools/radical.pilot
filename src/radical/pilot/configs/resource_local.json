@@ -167,6 +167,6 @@
         "virtenv"                     : "%(global_sandbox)s/ve_localhost",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
-    },
+    }
 }
 
