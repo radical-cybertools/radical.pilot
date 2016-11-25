@@ -393,7 +393,7 @@ class Kafka(LaunchMethod):
             command = " "
 
 
-        if task_exec=='/spark-submit':   #TODO: fix launch commands
+        if task_exec=='spark-submit':   #TODO: fix launch commands
             command =  spark_launch + '/' + task_exec  + ' '  +  command  + ' ' + ' --packages  org.apache.spark:spark-streaming-kafka-0-8_2.11:2.0.0 '
         else:
             zk = ' --zookeeper ' + zookeeper
