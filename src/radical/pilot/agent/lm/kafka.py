@@ -40,10 +40,10 @@ class Kafka(LaunchMethod):
             if not os.environ.get('SPARK_HOME'):
                 logger.info("Downloading Apache Spark..")
                 try:    
-                    VERSION = "1.5.2"
-                    subprocess.check_call("wget http://d3kbcqa49mib13.cloudfront.net/spark-1.5.2-bin-hadoop2.6.tgz".split())
-                    subprocess.check_call('tar -xzf spark-1.5.2-bin-hadoop2.6.tgz'.split())
-                    subprocess.check_call(("mv spark-1.5.2-bin-hadoop2.6 spark-" + VERSION).split())
+                    VERSION = "2.0.2"
+                    subprocess.check_call("wget http://d3kbcqa49mib13.cloudfront.net/spark-2.0.2-bin-hadoop2.7.tgz".split())
+                    subprocess.check_call('tar -xzf spark-2.0.2-bin-hadoop2.7.tgz'.split())
+                    subprocess.check_call(("mv spark-2.0.2-bin-hadoop2.7 spark-" + VERSION).split())
                 except  Exception as e:
                     raise RuntimeError("Spark wasn't installed properly. Please try again. %s " % e )
                 spark_home = os.getcwd() + '/spark-' + VERSION
@@ -392,14 +392,13 @@ class Kafka(LaunchMethod):
         else:
             command = " "
 
-
-        if task_exec=='spark-submit':   #TODO: fix launch commands
-            command =  spark_launch + '/' + task_exec  + ' '  +  command  + ' ' + ' --packages  org.apache.spark:spark-streaming-kafka-0-8_2.11:2.0.0 '
+        if task_exec=='spark-submit':   #TODO: fix launch commands               1.5.2
+            command =  spark_launch + '/' + task_exec  + ' '  +  command  + ' '
         else:
             zk = ' --zookeeper ' + zookeeper
             command = self.launch_command  + '/'  + task_exec + ' ' + command + ' '  + zk
 
-
+        print command
         self._log.debug("Command %s"%command)
 
         return command, None
