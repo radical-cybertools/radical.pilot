@@ -86,14 +86,14 @@
         "xsede.wrangler" : {
             "project"  : "TG-MCB090174",
             "queue"    : "debug",
-            "schema"   : null,
+            "schema"   : "gsissh",
             "cores"    : 24
         },
 
         "xsede.comet"  : {
             "project"  : "TG-MCB090174",
             "queue"    : "compute",
-            "schema"   : "ssh",
+            "schema"   : "gsissh",
             "cores"    : 64
         },
 
