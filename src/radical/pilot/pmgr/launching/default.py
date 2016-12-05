@@ -494,6 +494,9 @@ class Default(PMGRLaunchingComponent):
                 self._log.error('%s: %s : %s : %s', j.id, j.state, j.stderr, j.stdout)
                 raise RuntimeError ("SAGA Job state is FAILED.")
 
+            if not j.name:
+                raise RuntimeError('cannot get job name for %s' % j.id)
+
             pilot = None
             for p in pilots:
                 if p['uid'] == j.name:
