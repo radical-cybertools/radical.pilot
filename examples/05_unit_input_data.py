@@ -117,23 +117,23 @@ if __name__ == '__main__':
         os.system('rm input.dat')
 
 
-  # except Exception as e:
-  #     # Something unexpected happened in the pilot code above
-  #     report.error('caught Exception: %s\n' % e)
-  #     raise
-  #
-  # except (KeyboardInterrupt, SystemExit) as e:
-  #     # the callback called sys.exit(), and we can here catch the
-  #     # corresponding KeyboardInterrupt exception for shutdown.  We also catch
-  #     # SystemExit (which gets raised if the main threads exits for some other
-  #     # reason).
-  #     report.warn('exit requested\n')
+    except Exception as e:
+        # Something unexpected happened in the pilot code above
+        report.error('caught Exception: %s\n' % e)
+        raise
+
+    except (KeyboardInterrupt, SystemExit) as e:
+        # the callback called sys.exit(), and we can here catch the
+        # corresponding KeyboardInterrupt exception for shutdown.  We also catch
+        # SystemExit (which gets raised if the main threads exits for some other
+        # reason).
+        report.warn('exit requested\n')
 
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.
         report.header('finalize')
-#       session.close()
+        session.close()
 
     report.header()
 
