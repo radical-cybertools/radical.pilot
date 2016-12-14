@@ -50,16 +50,6 @@ class Kafka(LaunchMethod):
             else:
                 spark_home = os.environ['SPARK_HOME']
 
-            # if no installation found install scala 2.10.4
-            scala_home=ru.which('scala')
-            if not scala_home:
-                try:
-                    subprocess.check_call('wget http://www.scala-lang.org/files/archive/scala-2.10.4.tgz'.split())
-                    subprocess.check_call('tar -xvf scala-2.10.4.tgz'.split())
-                    subprocess.check_call('rm scala-2.10.4.tgz'.split())
-                    scala_home = os.getcwd() + '/scala-2.10.4' 
-                except  Exception as e:
-                    raise RuntimeError("Scala wasn't installed properly. Please try again. %s " % e )
 
             spark_conf_slaves = open(spark_home+"/conf/slaves",'w')
 
@@ -102,7 +92,6 @@ class Kafka(LaunchMethod):
                     spark_env_file.write(config + '\n')
 
             spark_env_file.write('export SPARK_MASTER_IP=' + master_ip + "\n")
-            spark_env_file.write('export SCALA_HOME='+ scala_home+ "\n")
             spark_env_file.write('export JAVA_HOME=' + java_home + "\n")
             spark_env_file.write('export SPARK_LOG_DIR='+os.getcwd()+'/spark-logs'+'\n')
             spark_env_file.write('export PYSPARK_PYTHON='+python+'\n')
@@ -225,12 +214,9 @@ class Kafka(LaunchMethod):
 
 
 
-        nodenames_string = lrms.node_list[0] + ':2181'
-        # add the next 3 lines for multinode configuration
-        #nodenames_string = ''
-        #for nodename in lrms.node_list:
-        #    nodenames_string += nodename + ':2181,'    ## TODO: fix this
-
+        nodenames_string = lrms.node_list[0]    #+  ':2181'   #TODO: this is for zk
+        
+        brokers_url = ''
         #setup configuration of kafka for multibroker cluster 
         for i,nodename in enumerate(lrms.node_list):
             try:
@@ -255,7 +241,6 @@ class Kafka(LaunchMethod):
 
         logger.info('Starting Zookeeper service..')
         try:
-            os.system('env')
             os.system(kafka_home + '/bin/zookeeper-server-start.sh ' + ' -daemon  ' + zk_properties_path)
         except Exception as e:
             raise RuntimeError("Zookeeper service failed to start: %s " % e)
@@ -271,9 +256,12 @@ class Kafka(LaunchMethod):
         launch_command = kafka_home + '/bin'
 
         zookeeper_url_string = nodenames_string
-
-
         spark_lm_info = lrms_apache_spark()
+
+        lm_detail_dict = {'zk_url': zookeeper_url_string, 'brokers': lrms.node_list, 
+                                                          'spark_master': spark_lm_info['lm_detail']}
+
+
 
         
 
@@ -284,7 +272,7 @@ class Kafka(LaunchMethod):
         # dict, and will be passed around as part of the opaque_slots structure,
         # so it is available on all LM create_command calls.
         lm_info = {'kafka_home'    : kafka_home,
-                   'lm_detail'     : zookeeper_url_string,        #TODO:    ' '  + spark_lm_info['lm_detail'],
+                   'lm_detail'     : lm_detail_dict,       
                    'zk_url'        : zookeeper_url_string,
                    'name'          : lrms.name,
                    'launch_command': launch_command,
