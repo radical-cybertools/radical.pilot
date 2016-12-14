@@ -15,6 +15,8 @@ import traceback
 from orte_cffi import ffi, lib as orte_lib
 
 from ....  import pilot as rp
+from ...  import states    as rps
+from ...  import constants as rpc
 from .base import AgentExecutingComponent
 
 # ----------------------------------------------------------------------------------
@@ -62,17 +64,14 @@ class ORTE(AgentExecutingComponent):
     #
     def initialize_child(self):
 
-        self.declare_input (rp.EXECUTING_PENDING, rp.AGENT_EXECUTING_QUEUE)
-        self.declare_worker(rp.EXECUTING_PENDING, self.work)
+        self.register_input(rps.AGENT_EXECUTING_PENDING,
+                            rpc.AGENT_EXECUTING_QUEUE, self.work)
 
-        self.declare_output(rp.AGENT_STAGING_OUTPUT_PENDING, rp.AGENT_STAGING_OUTPUT_QUEUE)
+        self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
+                             rpc.AGENT_STAGING_OUTPUT_QUEUE)
 
-        self.declare_publisher ('unschedule', rp.AGENT_UNSCHEDULE_PUBSUB)
-        self.declare_publisher ('state',      rp.AGENT_STATE_PUBSUB)
-
-        # all components use the command channel for control messages
-        self.declare_publisher ('command', rp.AGENT_COMMAND_PUBSUB)
-        self.declare_subscriber('command', rp.AGENT_COMMAND_PUBSUB, self.command_cb)
+        self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
         self._cancel_lock    = threading.RLock()
         self._cus_to_cancel  = list()
