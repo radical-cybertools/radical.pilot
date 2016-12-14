@@ -64,6 +64,8 @@ class ORTE(AgentExecutingComponent):
     #
     def initialize_child(self):
 
+        self._pwd = os.getcwd()
+
         self.register_input(rps.AGENT_EXECUTING_PENDING,
                             rpc.AGENT_EXECUTING_QUEUE, self.work)
 
@@ -95,17 +97,15 @@ class ORTE(AgentExecutingComponent):
             raise Exception("ORTE_LIB spawner only works with ORTE_LIB LM's.")
 
         self._task_launcher = rp.agent.LM.create(
-            name   = "ORTE_LIB",
-            cfg    = self._cfg,
-            logger = self._log)
+            name    = "ORTE_LIB",
+            cfg     = self._cfg,
+            session = self._session)
 
         self._orte_initialized = False
 
-        # communicate successful startup
-        self.publish('command', {'cmd' : 'alive', 'arg' : self.cname})
-
         self._cu_environment = self._populate_cu_environment()
 
+        self.gtod   = "%s/gtod" % self._pwd
         self.tmpdir = tempfile.gettempdir()
 
     # --------------------------------------------------------------------------
@@ -178,7 +178,24 @@ class ORTE(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def work(self, cu):
+    def work(self, units):
+
+        if not isinstance(units, list):
+            units = [units]
+
+        self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
+
+        for unit in units:
+            self._handle_unit(unit)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _handle_unit(self, cu):
+
+        # prep stdout/err so that we can append w/o checking for None
+        cu['stdout'] = ''
+        cu['stderr'] = ''
 
         if not self._orte_initialized:
             self._log.debug("ORTE not yet initialized!")
@@ -213,9 +230,10 @@ class ORTE(AgentExecutingComponent):
 
             # Free the Slots, Flee the Flots, Ree the Frots!
             if cu['opaque_slots']:
-                self.publish('unschedule', cu)
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
-            self.advance(cu, rp.FAILED, publish=True, push=False)
+            self.advance(cu, rps.FAILED, publish=True, push=False)
+
 
     # --------------------------------------------------------------------------
     #
@@ -228,9 +246,9 @@ class ORTE(AgentExecutingComponent):
 
             # unit launch failed
             self._prof.prof('final', msg="startup failed", uid=cu['_id'])
-            cu['target_state'] = rp.FAILED
+            cu['target_state'] = rps.FAILED
 
-            self.advance(cu, rp.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
+            self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
 
         else:
             cu['started'] = time.time()
@@ -239,7 +257,7 @@ class ORTE(AgentExecutingComponent):
             self._log.debug("[%s] Unit %s has spawned." % (time.ctime(), cu_id))
             self._prof.prof('passed', msg="ExecWatcher picked up unit", uid=cu_id)
 
-            self.advance(cu, rp.EXECUTING, publish=True, push=False)
+            self.advance(cu, rps.AGENT_EXECUTING, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -260,22 +278,22 @@ class ORTE(AgentExecutingComponent):
         cu['finished']  = timestamp
 
         # Free the Slots, Flee the Flots, Ree the Frots!
-        self.publish('unschedule', cu)
+        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
         if exit_code != 0:
             # The unit failed - fail after staging output
             self._prof.prof('final', msg="execution failed", uid=cu['_id'])
-            cu['target_state'] = rp.FAILED
+            cu['target_state'] = rps.FAILED
 
         else:
             # The unit finished cleanly, see if we need to deal with
             # output data.  We always move to stageout, even if there are no
             # directives -- at the very least, we'll upload stdout/stderr
             self._prof.prof('final', msg="execution succeeded", uid=cu['_id'])
-            cu['target_state'] = rp.DONE
+            cu['target_state'] = rps.DONE
 
         # TODO: push=False because this is a callback?
-        self.advance(cu, rp.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
+        self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
 
 
     # --------------------------------------------------------------------------
@@ -316,13 +334,16 @@ class ORTE(AgentExecutingComponent):
     #
     def spawn(self, launcher, cu):
 
-
         self._prof.prof('spawn', msg='unit spawn', uid=cu['_id'])
+
+        # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
+        #       class definition.
+        sandbox = '%s/%s' % (self._pwd, cu['uid'])
 
         if False:
             cu_tmpdir = '%s/%s' % (self.tmpdir, cu['_id'])
         else:
-            cu_tmpdir = cu['workdir']
+            cu_tmpdir = sandbox
 
         rec_makedir(cu_tmpdir)
 
@@ -385,7 +406,7 @@ class ORTE(AgentExecutingComponent):
             "RP_SESSION_ID=%s" % self._cfg['session_id'],
             "RP_PILOT_ID=%s" % self._cfg['pilot_id'],
             "RP_AGENT_ID=%s" % self._cfg['agent_name'],
-            "RP_SPAWNER_ID=%s" % self.cname,
+            "RP_SPAWNER_ID=%s" % self.uid,
             "RP_UNIT_ID=%s" % cu['_id']
         ]
         for env in rp_envs:
@@ -415,10 +436,10 @@ class ORTE(AgentExecutingComponent):
         arg_list.append(ffi.new("char[]", "sh"))
         arg_list.append(ffi.new("char[]", "-c"))
         if 'RADICAL_PILOT_PROFILE' in os.environ:
-            task_command = "echo script start_script `%s` >> %s/PROF; " % (cu['gtod'], cu_tmpdir) + \
-                      "echo script after_cd `%s` >> %s/PROF; " % (cu['gtod'], cu_tmpdir) + \
+            task_command = "echo script start_script `%s` >> %s/PROF; " % (self.gtod, cu_tmpdir) + \
+                      "echo script after_cd `%s` >> %s/PROF; " % (self.gtod, cu_tmpdir) + \
                       task_command + \
-                      "; echo script after_exec `%s` >> %s/PROF" % (cu['gtod'], cu_tmpdir)
+                      "; echo script after_exec `%s` >> %s/PROF" % (self.gtod, cu_tmpdir)
         arg_list.append(ffi.new("char[]", str("%s; exit $RETVAL" % str(task_command))))
 
         self._log.debug("Launching unit %s via %s %s", cu['_id'], orte_command, task_command)
@@ -427,6 +448,16 @@ class ORTE(AgentExecutingComponent):
         arg_list.append(ffi.NULL)
         argv = ffi.new("char *[]", arg_list)
         self._prof.prof('command', msg='launch command constructed', uid=cu['_id'])
+
+        # stdout/stderr filenames can't be set with orte
+        # TODO: assert here or earlier?
+        # assert cu['description'].get('stdout') == None
+        # assert cu['description'].get('stderr') == None
+
+        # prepare stdout/stderr
+        # TODO: when mpi==true && cores>1 there will be multiple files that need to be concatenated.
+        cu['stdout_file'] = os.path.join(sandbox, 'rank.0/stdout')
+        cu['stderr_file'] = os.path.join(sandbox, 'rank.0/stderr')
 
         # Submit to the DVM!
         index = ffi.new("int *")
@@ -467,7 +498,7 @@ class ORTE(AgentExecutingComponent):
                         self._prof.prof('final', msg="execution canceled", uid=cu['_id'])
 
                         self.publish('unschedule', cu)
-                        self.advance(cu, rp.CANCELED, publish=True, push=False)
+                        self.advance(cu, rps.CANCELED, publish=True, push=False)
 
                 except Queue.Empty:
                     # nothing found -- no problem
