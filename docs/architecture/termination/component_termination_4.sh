@@ -14,7 +14,7 @@ then
     mv -v $log $log.$i
 fi
 
-mkdir -p errlog
+mkdir -p errlog_4
 export i=0
 while true
 do
@@ -38,7 +38,7 @@ do
         else
             printf "%5d FAIL `date`\n" $i | tee -a $log
             grep -e '^RuntimeError' component_termination_4.tmp | tee -a $log
-            mv component_termination_4.tmp errlog/component_termination_4.tmp.$i
+            mv component_termination_4.tmp errlog_4/component_termination_4.tmp.$i
         fi
         rm -f component_termination_4.ok
     )
