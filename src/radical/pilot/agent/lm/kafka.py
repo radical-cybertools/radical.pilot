@@ -1,4 +1,3 @@
-
 __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
@@ -214,7 +213,7 @@ class Kafka(LaunchMethod):
 
 
 
-        nodenames_string = lrms.node_list[0]    #+  ':2181'   #TODO: this is for zk
+        nodenames_string = lrms.node_list[0]  + ':2181'   #TODO: this is for zk
         
         brokers_url = ''
         #setup configuration of kafka for multibroker cluster 
@@ -381,6 +380,9 @@ class Kafka(LaunchMethod):
 
         if task_exec=='spark-submit':   #TODO: fix launch commands               1.5.2
             command =  spark_launch + '/' + task_exec  + ' '  +  command  + ' '
+        elif task_exec=='python':
+            launch_command = ru.which('python')     #TODO: this is a hack
+            command =  launch_command  + ' ' + command + ' ' 
         else:
             zk = ' --zookeeper ' + zookeeper
             command = self.launch_command  + '/'  + task_exec + ' ' + command + ' '  + zk
