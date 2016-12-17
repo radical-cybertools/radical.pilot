@@ -25,24 +25,9 @@ from .pubsub     import PUBSUB_SUB     as rpu_PUBSUB_SUB
 from .pubsub     import PUBSUB_BRIDGE  as rpu_PUBSUB_BRIDGE
 
 
-# ------------------------------------------------------------------------------
-#
-# all RP processes, both parents and children, will install the two signal
-# handlers below, which are used to coordinate the component termination
-# sequence.  For details, see docs/architecture/component_termination.py.
-#
-def _sigterm_handler(signum, frame):
-  # print 'caught sigterm'
-    raise KeyboardInterrupt('sigterm')
-
-def _sigusr2_handler(signum, frame):
-  # print 'caught sigusr2'
-    raise KeyboardInterrupt('sigusr2')
-
-
 # ==============================================================================
 #
-class Component(mp.Process):
+class Component(ru.Process):
     """
     This class provides the basic structure for any RP component which operates
     on stateful things.  It provides means to:
@@ -166,23 +151,19 @@ class Component(mp.Process):
         self._started   = False
         self._debug     = cfg.get('debug', 'DEBUG')
         self._owner     = cfg.get('owner', self.uid)
-        self._cname     = cfg.get('cname', self.__class__.__name__)
         self._ctype     = "%s.%s" % (self.__class__.__module__,
                                      self.__class__.__name__)
         self._number    = cfg.get('number', 0)
         self._name      = cfg.get('name.%s' %  self._number,
                                   '%s.%s'   % (self._ctype, self._number))
-        self._term      = mt.Event()  # control watcher threads
 
         if self._owner == self.uid:
             self._owner = 'root'
 
-        # don't create log and profiler, yet -- we do that all on start, and
-        # inbetween nothing should happen anyway
-        # NOTE: is this a sign that we should call start right here?
+        self._log  = self._session._get_logger(self.uid, level=self._debug)
 
         # initialize the Process base class for later fork.
-        mp.Process.__init__(self, name=self.uid)
+        ru.Process.__init__(self, name=self.uid, log=self._log)
 
 
     # --------------------------------------------------------------------------
@@ -206,10 +187,6 @@ class Component(mp.Process):
 
       # self._log.debug('command incoming: %s', msg)
 
-        if self._term.is_set():
-            self._log.debug('command ignored during shutdown')
-            return
-
         cmd = msg['cmd']
         arg = msg['arg']
 
@@ -231,17 +208,6 @@ class Component(mp.Process):
 
     # --------------------------------------------------------------------------
     #
-    def _profile_flush_cb(self):
-
-        with self._cb_lock:
-
-            # this cb remains active during shutdown
-            self._log.handlers[0].flush()
-            self._prof.flush()
-
-
-    # --------------------------------------------------------------------------
-    #
     @property
     def cfg(self):
         return copy.deepcopy(self._cfg)
@@ -252,7 +218,7 @@ class Component(mp.Process):
 
     @property
     def uid(self):
-        return self._uid
+        return self.uid
 
     @property
     def owner(self):
@@ -268,11 +234,11 @@ class Component(mp.Process):
 
     @property
     def is_parent(self):
-        return self._is_parent
+        return self._rup_is_parent
 
     @property
     def is_child(self):
-        return not self.is_parent
+        return self._rup_is_child
 
     @property
     def has_child(self):
@@ -282,17 +248,6 @@ class Component(mp.Process):
     # --------------------------------------------------------------------------
     #
     def initialize_common(self):
-        """
-        This method may be overloaded by the components.  It is called once in
-        the context of the parent process, *and* once in the context of the
-        child process, after start().
-        """
-        self._log.debug('initialize_common (NOOP)')
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _initialize_common(self):
         """
         This private method contains initialization for both parent a child
         process, which gets the component into a proper functional state.
@@ -306,10 +261,7 @@ class Component(mp.Process):
         self._outputs       = dict()       # queues to send things to
         self._workers       = dict()       # methods to work on things
         self._publishers    = dict()       # channels to send notifications to
-        self._subscribers   = dict()       # callbacks to receive notifications
-        self._idlers        = dict()       # callbacks to call in intervals
-
-        self._finalized     = False        # finalization guard
+        self._threads       = dict()       # subscriber and idler threads
 
         self._cb_lock       = mt.RLock()   # guard threaded callback invokations
 
@@ -336,461 +288,64 @@ class Component(mp.Process):
         self.register_publisher(rpc.STATE_PUBSUB)
         self.register_publisher(rpc.CONTROL_PUBSUB)
 
-        # make sure we watch all threads, flush all profiles
-        self.register_timed_cb(self._thread_watcher_cb, timer= 1.0)
-        self.register_timed_cb(self._profile_flush_cb,  timer=60.0)
-
-        # give any derived class the opportunity to perform initialization in
-        # parent *and* child context
-        self.initialize_common()
-
 
     # --------------------------------------------------------------------------
     #
-    def _initialize_parent(self):
-        """
-        parent initialization of component base class goes here
-        """
-
-        # we don't have a parent, we *are* the parent
-        self._is_parent  = True
-        self._uid        = self._parent_uid
-        self._parent_uid = None
-
-        # give any derived class the opportunity to perform initialization in
-        # the parent context
-        self.initialize_parent()
-
-        # only *after* initialization can we send the 'alive' signal --
-        # otherwise we'd invite race conditions (only after init we have
-        # subscribed to channels, and only then any publishing on those channels
-        # should start, otherwise we'll loose messages.
-        self._send_alive()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def initialize_parent(self):
-        """
-        This method may be overloaded by the components.  It is called *once* in
-        the context of the parent process, upon start(), and should be used to
-        set up component state before things arrive.
-        """
-        self._log.debug('initialize_parent (NOOP)')
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _initialize_child(self):
+    def initialize_child(self):
         """
         child initialization of component base class goes here
         """
 
-        time.sleep(1)
+        spt.setproctitle('rp.%s' % self.uid)
 
-        # give any derived class the opportunity to perform initialization in
-        # the child context
-        self.initialize_child()
+        if os.path.isdir(self._session.uid):
+            sys.stdout = open("%s/%s.out" % (self._session.uid, self.uid), "w")
+            sys.stderr = open("%s/%s.err" % (self._session.uid, self.uid), "w")
+        else:
+            sys.stdout = open("%s.out" % self.uid, "w")
+            sys.stderr = open("%s.err" % self.uid, "w")
+
 
         # set controller callback to handle cancellation requests
         self._cancel_list = list()
         self._cancel_lock = mt.RLock()
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._cancel_monitor_cb)
 
-        # parent calls terminate on stop(), which we translate here into stop()
-        def sigterm_handler(signum, frame):
-            self._log.warn('caught sigterm')
-            self.stop()
-        signal.signal(signal.SIGTERM, sigterm_handler)
-        def sighup_handler(signum, frame):
-            self._log.warn('caught sighup')
-            self.stop()
-        signal.signal(signal.SIGHUP, sighup_handler)
-
-        # only *after* initialization can we send the 'alive' signal --
-        # otherwise we'd invite race conditions (only after init we have
-        # subscribed to channels, and only then any publishing on those channels
-        # should start, otherwise we'll loose messages.
-        self._send_alive()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def initialize_child(self):
-        """
-        This method may be overloaded by the components.  It is called *once* in
-        the context of the child process, upon start(), and should be used to
-        set up component state before things arrive.
-        """
-        self._log.debug('initialize_child (NOOP)')
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _send_alive(self):
-
-        # parent *or* child will send an alive message.  child will send it if
-        # it exists, parent otherwise.
-        if self.is_parent and not self.has_child:
-            self._log.debug('parent sends alive')
-            self._log.debug('msg [%s] : %s [parent]', self.uid, self.owner)
-            self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
-                                              'arg' : {'sender' : self.uid,
-                                                       'owner'  : self.owner, 
-                                                       'src'    : 'parent'}})
-        elif self.is_child:
-            self._log.debug('child sends alive')
-            self._log.debug('msg [%s] : %s [child]', self.uid, self.owner)
-            self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
-                                              'arg' : {'sender' : self.uid,
-                                                       'owner'  : self.owner, 
-                                                       'src'    : 'child'}})
-        else:
-            self._log.debug('no alive sent (%s : %s : %s)', self.is_child,
-                    self.has_child, self.is_parent)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _finalize_common(self):
-
-        self._log.debug('_finalize_common (%s)', self)
-
-        if self._finalized:
-            self._log.debug('_finalize_common found done (%s)', self)
-            # some other thread is already taking care of finalization
-            return
-
-        self._finalized = True
-        self_thread     = mt.current_thread()
-
-        # call finalizer of deriving classes
-
-        # ----------------------------------------------------------------------
-        # reverse order from _initialize_common
-        #
-        self.finalize_common()
-
-        self.unregister_timed_cb(self._profile_flush_cb)
-        self.unregister_timed_cb(self._thread_watcher_cb)
-
-        self.unregister_publisher(rpc.LOG_PUBSUB)
-        self.unregister_publisher(rpc.STATE_PUBSUB)
-        self.unregister_publisher(rpc.CONTROL_PUBSUB)
-        #
-        # ----------------------------------------------------------------------
-      
-
-
-        # signal all threads to terminate
-        for s in self._subscribers:
-            self._log.debug('%s -> term %s', self.uid, s)
-            self._subscribers[s]['term'].set()
-        for i in self._idlers:
-            self._log.debug('%s -> term %s', self.uid, i)
-            self._idlers[i]['term'].set()
-
-        # collect the threads
-        for s in self._subscribers:
-            t = self._subscribers[s]['thread']
-            if t != self_thread:
-                self._log.debug('%s -> join %s', self.uid, s)
-                t.join()
-                self._log.debug('%s >> join %s', self.uid, s)
-        for i in self._idlers:
-            t = self._idlers[i]['thread']
-            if t != self_thread:
-                self._log.debug('%s -> join %s', self.uid, i)
-                t.join()
-                self._log.debug('%s >> join %s', self.uid, i)
-
-        # NOTE: this relies on us not to change the name of MainThread
-        if self_thread.name == 'MainThread':
-            self._log.debug('%s close prof', self.uid)
-            try:
-                self._prof.prof("stopped", uid=self._uid)
-                self._prof.close()
-            except Exception:
-                pass
-
-        self._log.debug('_finalize_common done')
-
 
     # --------------------------------------------------------------------------
     #
     def finalize_common(self):
-        """
-        This method may be overloaded by the components.  It is called once in
-        the context of the parent *and* the child process, upon stop().  It
-        should be used to tear down component state after things have been
-        processed.
-        """
-        self._log.debug('TERM : %s finalize_common (NOOP)', self.uid)
 
-        # FIXME: finaliers should unrergister all callbacks/idlers/subscribers
+        # reverse order from initialize_common
+        self.unregister_publisher(rpc.LOG_PUBSUB)
+        self.unregister_publisher(rpc.STATE_PUBSUB)
+        self.unregister_publisher(rpc.CONTROL_PUBSUB)
 
-
-    # --------------------------------------------------------------------------
-    #
-    def _finalize_parent(self):
-
-        self._log.debug('TERM : %s _finalize_parent', self.uid)
-
-        self.finalize_parent()
-        self._finalize_common()
-
-        self._log.debug('TERM : %s _finalize_parent done', self.uid)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize_parent(self):
-        """
-        This method may be overloaded by the components.  It is called *once* in
-        the context of the parent process, upon stop(), and should be used to
-        tear down component state after things have been processed.
-        """
-        self._log.debug('TERM : %s finalize_parent (NOOP)', self.uid)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _finalize_child(self):
-
-        # FIXME: revert actions from _initialize_child
-
+        self._log.debug('%s close prof', self.uid)
         try:
-            self._log.debug('TERM : %s _finalize_child', self.uid)
-
-            self.finalize_child()
-            self._finalize_common()
-
-        except Exception as e:
-            self._log.warn('TERM : %s error %s [%s]', self.uid, e, type(e))
-       
-        except SystemExit:
-            self._log.warn('TERM : %s exit', self.uid)
-
-        except KeyboardInterrupt:
-            self._log.warn('TERM : %s intr', self.uid)
-       
-        finally:
-            self._log.debug('TERM : %s _finalize_child done', self.uid)
+            self._prof.prof("stopped", uid=self.name)
+            self._prof.close()
+        except Exception:
+            pass
 
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
-        """
-        This method may be overloaded by the components.  It is called *once* in
-        the context of the child process, upon stop(), and should be used to
-        tear down component state after things have been processed.
-        """
-        self._log.debug('TERM : %s finalize_child (NOOP)', self.uid)
+    def stop(self, timeout=None):
+        '''
+        Before calling the ru.Process stop, we need to terminate and join all
+        threads, as those might otherwise invoke callback which can interfere
+        with termination.
+        '''
 
-
-    # --------------------------------------------------------------------------
-    #
-    def start(self, spawn=True):
-        """
-        This method will start the child process.  *After* doing so, it will
-        call the parent's initialize, so that this is only executed in the
-        parent's process context (before fork).  Start will execute the run loop
-        in the child process context, and in that context call
-        initialize_child() before entering the loop.
-
-        start() essentially performs:
-
-            pid = fork()
-
-            if pid:
-                self._initialize_common()
-                self._initialize_parent()
-            else:
-                self._initialize_common()
-                self._initialize_child()
-                run()
-
-        This is not really correct though, as we don't have control over the
-        fork itself (that happens in the base class).  So we do:
-
-        def run():
-            self._initialize_common()
-            self._initialize_child()
-            ...
-
-        which takes care of the child initialization, and here we take care of
-        the parent initialization after we called the base class' `start()`
-        method, ie. after fork.
-        """
-
-        # this method will fork the child process
-        # and provide the right uid
-
-        if spawn:
-            self._parent_uid = self._uid
-            self._child_uid  = self._uid + '.child'
-            mp.Process.start(self)  # fork happens here
-        else:
-            self._parent_uid = self._uid
-            self._child_uid  = None
-
-        try:
-            # this is now the parent process context
-            self._initialize_common()
-            self._initialize_parent()
-        except Exception as e:
-            # FIXME we might have no self._log here
-            self._log.exception('TERM : %s except in start', self.uid)
-            ru.cancel_main_thread()
-            raise
-
-
-    # --------------------------------------------------------------------------
-    #
-    def stop(self):
-        """
-        Shut down the process hosting the event loop.  If the parent calls
-        stop(), the child is terminated, and the child process is responsible
-        for finilization in its own scope: when the child calls stop() itself, 
-        child finalizers are called before exit.  The child thus catches the
-        termoination signal.
-
-        stop() can be called multiple times, and can be called from the
-        MainThread, or from any sub thread (such as callbacks).  The
-        finalizers are only called in the MainThread, so only once any subthread
-        originating termination has been communicated to the MainThread.
-
-        It is in general important that all finalization steps are executed in
-        reverse order of their initialization -- any deviation from that scheme
-        should be carefully evaluated.  This specifically holds for the
-        overloaded methods:
-
-            - initialize_common / finalize_common
-            - initialize_parent / finalize_parent
-            - initialize_child  / finalize_child
-
-        but also for their private counterparts defined in this base class.
-
-        stop() basically performs:
-
-            tear down all subscriber threads
-            if parent:
-                finalize_parent()
-                self.terminate()
-            else:
-                finalize_child()
-                sys.exit()
-        """
-
-        self._log.debug('TERM : stop %s (%s : %s : %s) [%s]', self.uid, os.getpid(),
+        self._log.debug('stop %s (%s : %s : %s) [%s]', self.uid, os.getpid(),
                         self.pid, mt.current_thread().name,
                         ru.get_caller_name())
 
-        # avoid races with any idle checkers
-        # FIXME: that is useless w/o actually joining them
-        self._term.set()
+        for _,t in self._threads.iteritems(): t['term'  ].set()
+        for _,t in self._threads.iteritems(): t['thread'].join()
 
-        # parent and child finalization will have all components and bridges
-        # available
-        if self._is_parent:
-
-            # signal the child -- if one exists
-            if self.has_child:
-                self._log.info("TERM stop    %s (child)", self.pid)
-                
-                # The mp stop can race with internal process termination.  We catch the
-                # respective OSError here.
-
-                # In some cases, the popen module seems finalized before the stop is
-                # gone through.  I suspect that this is a race between the process
-                # object finalization and internal process termination.  We catch the
-                # respective AttributeError, caused by `self._popen` being unavailable.
-                
-                try:
-                    self.terminate()
-                except OSError as e:
-                    self._log.warn('TERM : %s stop: child is gone', self.uid)
-                except AttributeError as e:
-                    self._log.warn('TERM : %s stop: popen is gone', self.uid)
-
-                self._log.info("TERM : stopped %s" % self.pid)
-                self._log.info("TERM : join    %s" % self.pid)
-                self.join()
-                self._log.info("TERM : joined  %s" % self.pid)
-
-            self._finalize_parent()
-
-            self._log.debug('TERM : stop as parent (return)')
-            return
-
-        else:
-
-            # we don't call the finalizers here, as this could be a thread.
-            # the child exits here.  This is caught in the run loop, which will
-            # then call the finalizers in the finally clause, before calling
-            # stop() itself, then to exit the main thread.
-            self._log.debug('TERM : stop as child (exit)')
-            sys.exit()
-
-
-  # # --------------------------------------------------------------------------
-  # #
-  # # FIXME: remove in favor of join().wait
-  # # 
-  # def wait(self, timeout=None):
-  #     """
-  #     wait will block until stop() self._term has been set
-  #     """
-  #
-  #     start = time.time()
-  #     while not self._term.is_set():
-  #         if timeout != None:
-  #             now = time.time()
-  #             if now-start > timeout:
-  #                 break
-  #         time.sleep(1)
-  #
-  #
-    # --------------------------------------------------------------------------
-    #
-    def join(self, timeout=None):
-
-        # Due to the overloaded stop, we may seen situations where the child
-        # process pid is not known anymore, and an assertion in the mp layer
-        # gets triggered.  We catch that assertion and assume the join
-        # completed.
-
-        try:
-            # we only really join when the component child process has been started
-            # this is basically a wait(2) on the child pid.
-            if self.pid:
-                self._log.debug('TERM : %s join   (%s)', self.uid, self.pid)
-                mp.Process.join(self, timeout)
-                self._log.debug('TERM : %s joined (%s)', self.uid, self.pid)
-            else:
-                self._log.warn('TERM : skip join for %s: no child', self.uid)
-
-        except AssertionError as e:
-            self._log.warn('TERM : ignored assertion error on join')
-
-        # let callee know if child has been joined
-        return (not self.is_alive())
-
-
-    # --------------------------------------------------------------------------
-    #
-    def poll(self):
-        """
-        This is a wrapper around is_alive() which mimics the behavior of the same
-        call in the subprocess.Popen class with the same name.  It does not
-        return an exitcode though, but 'None' if the process is still
-        alive, and always '0' otherwise
-        """
-        if self.is_alive():
-            return None
-        else:
-            return 0
+        return ru.Process.stop(timeout)
 
 
     # --------------------------------------------------------------------------
@@ -949,33 +504,33 @@ class Component(mp.Process):
         self._log.debug('START: %s register idler %s', self.uid, name)
 
         with self._cb_lock:
-            if name in self._idlers:
+            if name in self._threads:
                 raise ValueError('cb %s already registered' % cb.__name__)
 
         if None != timer:
             timer = float(timer)
 
         # create a separate thread per idle cb
+        #
         # NOTE: idle timing is a tricky beast: if we sleep for too long, then we
         #       have to wait that long on stop() for the thread to get active
-        #       again and terminate/join.  So we always sleep for 1sec, and
-        #       manually check if timer has passed before activating the
+        #       again and terminate/join.  So we always sleep just a little, and
+        #       explicitly check if sufficient time has passed to activate the
         #       callback.
         # ----------------------------------------------------------------------
-        def _idler(terminate, callback, callback_data, to):
-          # print 'thread %10s : %s' % (ru.gettid(), mt.current_thread().name)
+        def _idler(term):
             try:
                 last = 0.0  # never been called
-                while not terminate.is_set() and not self._term.is_set():
+                while not term.is_set():
                     now = time.time()
-                    if to == None or (now-last) > to:
+                    if timer == None or (now-last) > timer:
                         with self._cb_lock:
-                            if callback_data != None:
-                                callback(cb_data=callback_data)
+                            if cb_data != None:
+                                cb(cb_data=cb_data)
                             else:
-                                callback()
+                                cb()
                         last = now
-                    if to:
+                    if timer:
                         time.sleep(0.1)
             except Exception as e:
                 self._log.exception("TERM : %s idler failed %s", self.uid, mt.current_thread().name)
@@ -985,12 +540,13 @@ class Component(mp.Process):
 
         # create a idler thread
         e = mt.Event()
-        t = mt.Thread(target=_idler, args=[e,cb,cb_data,timer], name=name)
+        t = mt.Thread(target=_idler, args=[e], name=name)
+        t.daemon = True
         t.start()
 
         with self._cb_lock:
-            self._idlers[name] = {'term'   : e,  # termination signal
-                                  'thread' : t}  # thread handle
+            self._threads[name] = {'term'   : e,  # termination signal
+                                   'thread' : t}  # thread handle
 
         self._log.debug('%s registered idler %s' % (self.uid, t.name))
 
@@ -1008,13 +564,13 @@ class Component(mp.Process):
         self._log.debug('TERM : %s unregister idler %s', self.uid, name)
 
         with self._cb_lock:
-            if name not in self._idlers:
+            if name not in self._threads:
                 raise ValueError('%s is not registered' % name)
 
-            entry = self._idlers[name]
+            entry = self._threads[name]
             entry['term'].set()
             entry['thread'].join()
-            del(self._idlers[name])
+            del(self._threads[name])
 
         self._log.debug("TERM : %s unregistered idler %s", self.uid, name)
 
@@ -1103,28 +659,27 @@ class Component(mp.Process):
       # time.sleep(0.1)
 
         # ----------------------------------------------------------------------
-        def _subscriber(q, terminate, callback, callback_data):
+        def _subscriber(q, term):
 
             try:
-                while not terminate.is_set() and not self._term.is_set():
+                while not term.is_set():
                     topic, msg = q.get_nowait(1000) # timout in ms
                     if topic and msg:
                         if not isinstance(msg,list):
                             msg = [msg]
                         for m in msg:
-                          # self._log.debug("<= %s:%s: %s", self.uid, callback.__name__, topic)
                             with self._cb_lock:
-                                if callback_data != None:
-                                    callback(topic=topic, msg=m, cb_data=callback_data)
+                                if cb_data != None:
+                                    cb(topic=topic, msg=m, cb_data=cb_data)
                                 else:
-                                    callback(topic=topic, msg=m)
-                self._log.debug("x< %s:%s: %s", self.uid, callback.__name__, topic)
+                                    cb(topic=topic, msg=m)
+                self._log.debug("x< %s:%s: %s", self.uid, cb.__name__, topic)
             except Exception as e:
                 self._log.exception("subscriber failed %s", mt.current_thread().name)
         # ----------------------------------------------------------------------
 
         with self._cb_lock:
-            if name in self._subscribers:
+            if name in self._threads:
                 raise ValueError('cb %s already registered for %s' % (cb.__name__, pubsub))
 
             # create a pubsub subscriber (the pubsub name doubles as topic)
@@ -1132,11 +687,11 @@ class Component(mp.Process):
             q.subscribe(pubsub)
 
             e = mt.Event()
-            t = mt.Thread(target=_subscriber, args=[q,e,cb,cb_data], name=name)
+            t = mt.Thread(target=_subscriber, args=[q,e], name=name)
             t.start()
 
-            self._subscribers[name] = {'term'   : e,  # termination signal
-                                       'thread' : t}  # thread handle
+            self._threads[name] = {'term'   : e,  # termination signal
+                                   'thread' : t}  # thread handle
 
         self._log.debug('%s registered %s subscriber %s' % (self.uid, pubsub, t.name))
 
@@ -1154,37 +709,34 @@ class Component(mp.Process):
         self._log.debug('TERM : %s unregister subscriber %s', self.uid, name)
 
         with self._cb_lock:
-            if name not in self._subscribers:
+            if name not in self._threads:
                 raise ValueError('%s is not subscribed to %s' % (cb.__name__, pubsub))
 
-            entry = self._subscribers[name]
+            entry = self._threads[name]
             entry['term'].set()
             entry['thread'].join()
-            del(self._subscribers[name])
+            del(self._threads[name])
 
         self._log.debug("unregistered %s", name)
 
 
     # --------------------------------------------------------------------------
     #
-    def _thread_watcher_cb(self):
+    def watch_common(self):
+        '''
+        This method is called repeatedly in the ru.Process watcher loop.  We use
+        it to watch all our threads, and will raise an exception if any of them
+        disappears.  This will initiate the ru.Process termination sequence.
+        '''
 
-        for s in self._subscribers:
-            t = self._subscribers[s]['thread']
-            if not t.is_alive() and not self._term.is_set():
-                self._log.error('TERM : %s subscriber %s died', self.uid, t.name)
-                ru.cancel_main_thread()
-
-        for i in self._idlers:
-            t = self._idlers[i]['thread']
-            if not t.is_alive() and not self._term.is_set():
-                self._log.error('TERM : %s idler %s died', self.uid, t.name)
-                ru.cancel_main_thread()
+        for n,t in self._threads.iteritems():
+            if not t['thread'].is_alive():
+                raise RuntimeError('%s idler %s died', self.uid, n)
 
 
     # --------------------------------------------------------------------------
     #
-    def run(self):
+    def work(self):
         """
         This is the main routine of the component, as it runs in the component
         process.  It will first initialize the component in the process context.
@@ -1194,139 +746,83 @@ class Component(mp.Process):
         attempt on getting a thing is up.
         """
 
-        # install signal handlers for termination handling
-        signal.signal(signal.SIGTERM, _sigterm_handler)
-        signal.signal(signal.SIGUSR2, _sigusr2_handler)
+        # if no action occurs in this iteration, idle
+        if not self._inputs:
+            time.sleep(0.1)
+            return True
 
+        for name in self._inputs:
+            input  = self._inputs[name]['queue']
+            states = self._inputs[name]['states']
 
-        try:
-            # we don't have a child, we *are* the child
-            self._is_parent = False
-            self._uid       = self._child_uid
-        
-            spt.setproctitle('rp.%s' % self.uid)
+            # FIXME: a simple, 1-thing caching mechanism would likely
+            #        remove the req/res overhead completely (for any
+            #        non-trivial worker).
+            things = input.get_nowait(1000) # timeout in microseconds
 
-            # this is now the child process context
-            self._initialize_common()
-            self._initialize_child()
+            if not things:
+                return True
 
-            if os.path.isdir(self._session.uid):
-                sys.stdout = open("%s/%s.out" % (self._session.uid, self.uid), "w")
-                sys.stderr = open("%s/%s.err" % (self._session.uid, self.uid), "w")
-            else:
-                sys.stdout = open("%s.out" % self.uid, "w")
-                sys.stderr = open("%s.err" % self.uid, "w")
+            if not isinstance(things, list):
+                things = [things]
 
-            self._log.debug('START: %s run', self.uid)
+          # self._log.debug(' === input bulk %s things on %s' % (len(things), name))
 
-            # The main event loop will repeatedly iterate over all input
-            # channels.  It can only be terminated by
-            #   - exceptions
-            #   - sys.exit()
-            #   - kill from the parent (which becomes a sys.exit(), too)
-            while True:
+            # the worker target depends on the state of things, so we 
+            # need to sort the things into buckets by state before 
+            # pushing them
+            buckets = dict()
+            for thing in things:
+                state = thing['state']
+                if not state in buckets:
+                    buckets[state] = list()
+                buckets[state].append(thing)
 
-                # if no action occurs in this iteration, idle
-                if not self._inputs:
-                    time.sleep(0.1)
+            # We now can push bulks of things to the workers
 
-                for name in self._inputs:
-                    input  = self._inputs[name]['queue']
-                    states = self._inputs[name]['states']
+            for state,things in buckets.iteritems():
 
-                    # FIXME: a simple, 1-thing caching mechanism would likely
-                    #        remove the req/res overhead completely (for any
-                    #        non-trivial worker).
-                    things = input.get_nowait(1000) # timeout in microseconds
+                assert(state in states)
+                assert(state in self._workers)
 
-                    if not things:
-                        continue
-
-                    if not isinstance(things, list):
-                        things = [things]
-
-                  # self._log.debug(' === input bulk %s things on %s' % (len(things), name))
-
-                    # the worker target depends on the state of things, so we 
-                    # need to sort the things into buckets by state before 
-                    # pushing them
-                    buckets = dict()
+                try:
+                    to_cancel = list()
                     for thing in things:
+                        uid   = thing['uid']
+                        ttype = thing['type']
                         state = thing['state']
-                        if not state in buckets:
-                            buckets[state] = list()
-                        buckets[state].append(thing)
 
-                    # We now can push bulks of things to the workers
+                        # FIXME: this can become expensive over time
+                        #        if the cancel list is never cleaned
+                        if uid in self._cancel_list:
+                            with self._cancel_lock:
+                                self._cancel_list.remove(uid)
+                            to_cancel.append(thing)
 
-                    for state,things in buckets.iteritems():
+                        self._log.debug('got %s (%s)', ttype, uid)
+                        self._prof.prof(event='get', state=state, uid=uid, msg=input.name)
+                        self._prof.prof(event='work start', state=state, uid=uid)
 
-                        assert(state in states)
-                        assert(state in self._workers)
+                    if to_cancel:
+                        self.advance(to_cancel, rps.CANCELED, publish=True, push=False)
 
-                        try:
-                            to_cancel = list()
-                            for thing in things:
-                                uid   = thing['uid']
-                                ttype = thing['type']
-                                state = thing['state']
+                    with self._cb_lock:
+                      # self._log.debug(' === work on bulk [%s]', len(things))
+                        self._workers[state](things)
 
-                                # FIXME: this can become expensive over time
-                                #        if the cancel list is never cleaned
-                                if uid in self._cancel_list:
-                                    with self._cancel_lock:
-                                        self._cancel_list.remove(uid)
-                                    to_cancel.append(thing)
+                    for thing in things:
+                        self._prof.prof(event='work done ', state=state, uid=uid)
 
-                                self._log.debug('got %s (%s)', ttype, uid)
-                                self._prof.prof(event='get', state=state, uid=uid, msg=input.name)
-                                self._prof.prof(event='work start', state=state, uid=uid)
+                except Exception as e:
+                    # this is not fatal -- only the 'things' fail, not
+                    # the component
 
-                            if to_cancel:
-                                self.advance(to_cancel, rps.CANCELED, publish=True, push=False)
+                    self._log.exception("worker %s failed", self._workers[state])
+                    self.advance(things, rps.FAILED, publish=True, push=False)
 
-                            with self._cb_lock:
-                              # self._log.debug(' === work on bulk [%s]', len(things))
-                                self._workers[state](things)
-
-                            for thing in things:
-                                self._prof.prof(event='work done ', state=state, uid=uid)
-
-                        except Exception as e:
-                            # this is not fatal -- only the 'things' fail, not
-                            # the component
-
-                            self._log.exception("worker %s failed", self._workers[state])
-                            self.advance(things, rps.FAILED, publish=True, push=False)
-
-                            for thing in things:
-                                self._prof.prof(event='failed', msg=str(e), 
-                                                uid=thing['uid'], state=state)
-
-        except Exception as e:
-            # error in communication channel or worker
-            # we could in principle detect the latter within the loop -- - but
-            # since we don't know what to do with the things it operated on, we
-            # don't bother...
-            self._log.error('TERM : %s run exception (%s)', self.uid, e)
-            self._log.exception('loop exception')
-        
-        except SystemExit:
-            # normal shutdown from self.()stop()
-            self._log.error('TERM : %s run exit', self.uid)
-            self._log.info("loop exit")
-        
-        except KeyboardInterrupt:
-            # a thread caused this by calling ru.cancel_main_thread()
-            self._log.error('TERM : %s run intr', self.uid)
-            self._log.info("loop intr")
-        
-        finally:
-            self._log.error('TERM : %s run final', self.uid)
-            self._log.info('loop stops')
-            self._finalize_child()
-            self.stop()
-            self._log.error('TERM : %s run finalled', self.uid)
+                    for thing in things:
+                        self._prof.prof(event='failed', msg=str(e), 
+                                        uid=thing['uid'], state=state)
 
 
     # --------------------------------------------------------------------------
