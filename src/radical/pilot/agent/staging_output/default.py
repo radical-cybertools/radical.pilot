@@ -78,6 +78,7 @@ class Default(AgentStagingOutputComponent):
         sandbox = '%s/%s' % (self._pwd, uid)
 
         ## parked from unit state checker: unit postprocessing
+        # TODO: disable this at scale?
         if os.path.isfile(unit['stdout_file']):
             with open(unit['stdout_file'], 'r') as stdout_f:
                 try:
@@ -87,6 +88,7 @@ class Default(AgentStagingOutputComponent):
 
                 unit['stdout'] += rpu.tail(txt)
 
+        # TODO: disable this at scale?
         if os.path.isfile(unit['stderr_file']):
             with open(unit['stderr_file'], 'r') as stderr_f:
                 try:
@@ -179,15 +181,15 @@ class Default(AgentStagingOutputComponent):
                         self._log.debug("mkdir %s" % tgtdir)
                         rpu.rec_makedir(tgtdir)
 
-                if   action == rpc.LINK: os.symlink     (source, target)
-                elif action == rpc.COPY: shutil.copyfile(source, target)
-                elif action == rpc.MOVE: shutil.move    (source, target)
+                if   action == rpc.LINK: os.symlink     (src.path, target)
+                elif action == rpc.COPY: shutil.copyfile(src.path, target)
+                elif action == rpc.MOVE: shutil.move    (src.path, target)
                 elif action == rpc.TRANSFER:
 
                     # we only handle srm staging right now -- other TRANSFER
                     # directives are left to umgr output staging
                     if tgt.schema == 'srm':
-                        src_url = rs.Url(source)
+                        src_url = rs.Url(src.path)
                         src_url.schema = 'file'
                         srm_dir = rs.filesystem.Directory('srm://proxy/?SFN=bogus')
                         srm_dir.copy(src_url, target)
