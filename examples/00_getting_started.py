@@ -21,9 +21,6 @@ import radical.utils as ru
 #
 if __name__ == '__main__':
 
-    session = rp.Session()
-    l = ru.get_logger('radical.pilot', level='DEBUG')
-
     # we use a reporter class for nicer output
     report = ru.LogReporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
@@ -89,7 +86,6 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.executable = '/bin/date'
-            cud.cores = 16
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')

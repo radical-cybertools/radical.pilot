@@ -49,20 +49,6 @@ class AgentExecutingComponent(rpu.Component):
         if cls != AgentExecutingComponent:
             raise TypeError("Factory only available to base class!")
 
-      # from .popen import Popen
-      # from .shell import Shell
-      # from .abds  import ABDS
-      #
-      # try:
-      #     impl = {
-      #         EXECUTING_NAME_POPEN : Popen,
-      #         EXECUTING_NAME_SHELL : Shell,
-      #         EXECUTING_NAME_ABDS  : ABDS
-      #     }[name]
-      #
-      #     impl = impl(cfg, session)
-      #     return impl
-
         if name == EXECUTING_NAME_POPEN:
             from .popen import Popen
             impl = Popen(cfg, session)
