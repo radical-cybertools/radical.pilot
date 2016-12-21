@@ -53,8 +53,8 @@ PREBOOTSTRAP2=""
 
 
 # seconds to wait for lock files
-# 3 min should be enough for anybody to create/update a virtenv...
-LOCK_TIMEOUT=180 # 3 min
+# 10 min should be enough for anybody to create/update a virtenv...
+LOCK_TIMEOUT=600 # 10 min
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
 VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
