@@ -8,6 +8,8 @@ import fractions
 import tempfile
 import collections
 
+import radical.utils as ru
+
 
 # 'enum' for launch method types
 LM_NAME_APRUN         = 'APRUN'
@@ -23,6 +25,7 @@ LM_NAME_MPIRUN_RSH    = 'MPIRUN_RSH'
 LM_NAME_ORTE          = 'ORTE'
 LM_NAME_POE           = 'POE'
 LM_NAME_RUNJOB        = 'RUNJOB'
+LM_NAME_RSH           = 'RSH'
 LM_NAME_SSH           = 'SSH'
 LM_NAME_YARN          = 'YARN'
 LM_NAME_SPARK         = 'SPARK'
@@ -90,6 +93,7 @@ class LaunchMethod(object):
         from .orte           import ORTE
         from .poe            import POE
         from .runjob         import Runjob
+        from .rsh            import RSH
         from .ssh            import SSH
         from .yarn           import Yarn
         from .spark          import Spark
@@ -109,6 +113,7 @@ class LaunchMethod(object):
                 LM_NAME_ORTE          : ORTE,
                 LM_NAME_POE           : POE,
                 LM_NAME_RUNJOB        : Runjob,
+                LM_NAME_RSH           : RSH,
                 LM_NAME_SSH           : SSH,
                 LM_NAME_YARN          : Yarn,
                 LM_NAME_SPARK         : Spark

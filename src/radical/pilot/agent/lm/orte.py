@@ -7,6 +7,7 @@ import os
 import time
 import threading
 import subprocess
+import radical.utils as ru
 
 from .base import LaunchMethod
 
@@ -175,7 +176,7 @@ class ORTE(LaunchMethod):
     #
     def _configure(self):
 
-        self.launch_command = self._which('orterun')
+        self.launch_command = ru.which('orterun')
 
 
     # --------------------------------------------------------------------------

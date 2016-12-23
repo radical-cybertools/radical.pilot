@@ -6,6 +6,8 @@ __license__   = "MIT"
 import os
 import subprocess
 
+import radical.utils as ru
+
 from .base import LaunchMethod
 
 
