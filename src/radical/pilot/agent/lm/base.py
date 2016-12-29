@@ -209,42 +209,20 @@ class LaunchMethod(object):
     #
     @classmethod
     def _find_executable(cls, names):
-        """Takes a (list of) name(s) and looks for an executable in the path.
+        """
+        Takes a (list of) name(s) and looks for an executable in the path.  It
+        will return the first match found, or `None` if none of the given names
+        is found.
         """
 
         if not isinstance(names, list):
             names = [names]
 
         for name in names:
-            ret = cls._which(name)
-            if ret is not None:
+            ret = ru.which(name)
+            if ret:
                 return ret
 
-        return None
-
-
-    # --------------------------------------------------------------------------
-    #
-    @classmethod
-    def _which(cls, program):
-        """Finds the location of an executable.
-        Taken from:
-        http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
-        """
-        # ----------------------------------------------------------------------
-        #
-        def is_exe(fpath):
-            return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
-
-        fpath, _ = os.path.split(program)
-        if fpath:
-            if is_exe(program):
-                return program
-        else:
-            for path in os.environ["PATH"].split(os.pathsep):
-                exe_file = os.path.join(path, program)
-                if is_exe(exe_file):
-                    return exe_file
         return None
 
 

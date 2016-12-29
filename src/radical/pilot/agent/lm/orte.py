@@ -7,6 +7,7 @@ import os
 import time
 import threading
 import subprocess
+
 import radical.utils as ru
 
 from .base import LaunchMethod
@@ -42,7 +43,7 @@ class ORTE(LaunchMethod):
                the DVM.
         """
 
-        dvm_command = cls._which('orte-dvm')
+        dvm_command = ru.which('orte-dvm')
         if not dvm_command:
             raise Exception("Couldn't find orte-dvm")
 
@@ -164,7 +165,7 @@ class ORTE(LaunchMethod):
         if 'dvm_uri' in lm_info:
             try:
                 logger.info('terminating dvm')
-                orterun = cls._which('orterun')
+                orterun = ru.which('orterun')
                 if not orterun:
                     raise Exception("Couldn't find orterun")
                 subprocess.Popen([orterun, "--hnp", lm_info['dvm_uri'], "--terminate"])
