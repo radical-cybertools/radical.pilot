@@ -597,6 +597,49 @@ def get_session_description(sid, src=None, dburl=None, hostmap=None):
     ftmp = fetch_json(sid=sid, dburl=dburl, tgt=src, skip_existing=True)
     json = ru.read_json(ftmp)
 
+    # FIXME: those fixes should be phased out before release
+    # for backward compatibility, we convert all `_id` entries into `uid`
+    def _fix_uid(this):
+        if isinstance(this, dict):
+            if '_id' in this and 'uid' not in this:
+                this['uid'] = this['_id']
+                print this['uid']
+            for x in this:
+                _fix_uid(this[x])
+        elif isinstance(this, list):
+            for x in this:
+                _fix_uid(x)
+
+    # also make sure we always have a config
+    def _fix_cfg(this):
+        if isinstance(this, dict):
+            if 'uid' in this and 'cfg' not in this:
+                this['cfg'] = dict()
+            for x in this:
+                _fix_cfg(this[x])
+        elif isinstance(this, list):
+            for x in this:
+                _fix_cfg(x)
+
+    # also make sure we always have a config
+    def _fix_names(this):
+        if isinstance(this, dict):
+            if 'pilotmanager' in this and 'pmgr' not in this:
+                this['pmgr'] = this['pilotmanager']
+            if 'unitmanager' in this and 'umgr' not in this:
+                this['umgr'] = this['unitmanager']
+            for x in this:
+                _fix_names(this[x])
+        elif isinstance(this, list):
+            for x in this:
+                _fix_names(x)
+
+    # and fix some other names...
+
+    _fix_uid(json)
+    _fix_cfg(json)
+    _fix_names(json)
+
     assert(sid == json['session']['uid'])
 
     if not hostmap:
