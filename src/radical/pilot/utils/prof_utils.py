@@ -325,6 +325,45 @@ def combine_profiles(profs, sid):
     hostmap      = dict() # map uid to host
     session_host = ''     # hostid of main session profile
 
+    # we have relative profiles, where the entry timestamps are relative to
+    # the profile start, and thus relative to the sync timestamp; and we
+    # have absolute profiles which record timestamps in seconds since epoch.
+    # The reltive ones are actually deprecated - but we allow for those for
+    # backward compatibility.  Wehn we find a profile where the *last*
+    # timestamp is smaller than a year-second (60*60*24*365 seconds), we
+    # assume it is a relative profile, and we add the sync time to all
+    # entries.
+    year_second = 60*60*24*365
+    for pname, prof in profs.iteritems():
+
+        last_entry = prof[-1]
+        if last_entry['time'] >= year_second:
+            # absolite profile, nothing to do
+            continue
+
+        # get sync timstamp from prof[0]
+        if not prof[0]['msg']:
+            # unsynced profile - nothing we can do
+            continue
+
+        elems = prof[0]['msg'].split(':')
+        if len(elems) == 5:
+            _, _, _, time_sync, _ = elems
+        elif len(elems) == 4:
+            t_sync, _, _, _ = elems
+        else:
+            # cannot parse, ignore
+            continue
+
+        t_sync = float(t_sync)
+
+        for entry in prof:
+            entry['time'] += t_sync
+
+
+    # we now only have absolute profiles.  Next, we determine the clock
+    # skew per host and correct times by that.  We use NTP timestamps where
+    # available
     for pname, prof in profs.iteritems():
 
         if not len(prof):
@@ -342,9 +381,10 @@ def combine_profiles(profs, sid):
             host, ip, t_sys, t_ntp, t_mode = elems
             host_id = '%s:%s' % (host, ip)
         elif len(elems) == 4:
-            host_id = 'other'
             t_sys, _, t_ntp, t_mode = elems
-
+            host_id = 'other'
+        else:
+            raise ValueError('cannot parse sync timstamp for %s' % pname)
 
         # the session profile is special - it gives us the session hostid
         if os.path.basename(pname) == '%s.prof' % sid:
@@ -363,9 +403,6 @@ def combine_profiles(profs, sid):
         else:
             t_min = t_prof
 
-        if t_mode != 'sys':
-            continue
-
         # determine the correction for the given host
         t_sys = float(t_sys)
         t_ntp = float(t_ntp)
@@ -382,7 +419,6 @@ def combine_profiles(profs, sid):
             continue # we always use the first match
 
         t_host[host_id] = t_off
-
 
     unsynced = set()
     for pname, prof in profs.iteritems():
@@ -401,7 +437,7 @@ def combine_profiles(profs, sid):
             host_id = 'other'
 
         if host_id in t_host:
-            t_off   = t_host[host_id]
+            t_off = t_host[host_id]
         else:
             unsynced.add(host_id)
             t_off = 0.0
