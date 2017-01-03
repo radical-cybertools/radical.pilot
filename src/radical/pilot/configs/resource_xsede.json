@@ -367,7 +367,7 @@
         "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap_1"             : ["module purge", "module load python intel mvapich2_ib gnubase"],
         "valid_roots"                 : ["/home"],
-        "rp_version"                  : "debug",
+        "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_gordon",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
@@ -402,7 +402,7 @@
                                         ],
         "valid_roots"                 : ["/usr/users", "/brashear"],
         "stage_cacerts"               : "True",
-        "rp_version"                  : "debug",
+        "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_blacklight",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
@@ -437,7 +437,7 @@
                                         ],
         "valid_roots"                 : ["/home", "/crucible", "/arc"],
         "stage_cacerts"               : "True",
-        "rp_version"                  : "debug",
+        "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_greenfield",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"

@@ -499,25 +499,13 @@ virtenv_setup()
                 tar zxmf $sdist
                 RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
             done
-            RP_INSTALL_TARGET='VIRTENV'
-            RP_INSTALL_SDIST='TRUE'
-            ;;
-
-        debug)
-            for sdist in `echo $SDISTS | tr ':' ' '`
-            do
-                src=${sdist%.tgz}
-                src=${sdist%.tar.gz}
-                tar zxmf $sdist
-                RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
-            done
             RP_INSTALL_TARGET='SANDBOX'
             RP_INSTALL_SDIST='TRUE'
             ;;
 
         release)
             RP_INSTALL_SOURCES='radical.pilot'
-            RP_INSTALL_TARGET='VIRTENV'
+            RP_INSTALL_TARGET='SANDBOX'
             RP_INSTALL_SDIST='FALSE'
             ;;
 
@@ -533,7 +521,7 @@ virtenv_setup()
                 echo "         Setting 'rp_version' to 'release'"
                 RP_VERSION='release'
                 RP_INSTALL_SOURCES='radical.pilot'
-                RP_INSTALL_TARGET='VIRTENV'
+                RP_INSTALL_TARGET='SANDBOX'
                 RP_INSTALL_SDIST='FALSE'
             fi
             ;;
@@ -545,7 +533,7 @@ virtenv_setup()
             git clone https://github.com/radical-cybertools/radical.pilot.git
             (cd radical.pilot; git checkout $RP_VERSION)
             RP_INSTALL_SOURCES="radical.pilot/"
-            RP_INSTALL_TARGET='VIRTENV'
+            RP_INSTALL_TARGET='SANDBOX'
             RP_INSTALL_SDIST='FALSE'
     esac
 
@@ -899,20 +887,15 @@ virtenv_update()
 #   @tag/@branch/@commit: # no sdist staging
 #       git clone $github_base radical.pilot.src
 #       (cd radical.pilot.src && git checkout token)
-#       pip install -t $VIRTENV/rp_install/ radical.pilot.src
+#       pip install -t $SANDBOX/rp_install/ radical.pilot.src
 #       rm -rf radical.pilot.src
-#       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
+#       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
 #
 #   release: # no sdist staging
-#       pip install -t $VIRTENV/rp_install radical.pilot
-#       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
+#       pip install -t $SANDBOX/rp_install radical.pilot
+#       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
 #
 #   local: # needs sdist staging
-#       tar zxmf $sdist.tgz
-#       pip install -t $VIRTENV/rp_install $sdist/
-#       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
-#
-#   debug: # needs sdist staging
 #       tar zxmf $sdist.tgz
 #       pip install -t $SANDBOX/rp_install $sdist/
 #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
