@@ -603,7 +603,6 @@ def get_session_description(sid, src=None, dburl=None, hostmap=None):
         if isinstance(this, dict):
             if '_id' in this and 'uid' not in this:
                 this['uid'] = this['_id']
-                print this['uid']
             for x in this:
                 _fix_uid(this[x])
         elif isinstance(this, list):
