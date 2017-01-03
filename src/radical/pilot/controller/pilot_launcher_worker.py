@@ -569,16 +569,14 @@ class PilotLauncherWorker(threading.Thread):
 
                         # 'debug' is deprecated now
                         if rp_version == 'debug':
-                            logger.warn ("rp_version flag 'debug' is deprectaed, use 'local'")
+                            logger.warn ("rp_version flag 'debug' is deprecated, use 'local'")
                             rp_version = 'local'
 
-
-                        if  not rp_version.startswith('@') and \
-                            not rp_version in ['installed', 'local']:
-                            raise ValueError("invalid rp_version '%s'" % rp_version)
-
                         if rp_version.startswith('@'):
-                            rp_version  = rp_version[1:]  # strip '@'
+                            rp_version = rp_version[1:]  # strip '@'
+
+                        elif rp_version not in ['installed', 'local']:
+                            raise ValueError("invalid rp_version '%s'" % rp_version)
 
                         stage_sdist=False
                         if rp_version in ['local']:
