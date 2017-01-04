@@ -74,18 +74,6 @@ VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
 VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces==0.10.4 setproctitle orte_cffi msgpack-python"
 
-# before we change anything else in the pilot environment, we safe a couple of
-# env vars to later re-create a close-to-pristine env for unit execution.
-_OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
-_OLD_VIRTUAL_PYTHONHOME="$PYTHONHOME"
-_OLD_VIRTUAL_PATH="$PATH"
-_OLD_VIRTUAL_PS1="$PS1"
-
-export _OLD_VIRTUAL_PYTHONPATH
-export _OLD_VIRTUAL_PYTHONHOME
-export _OLD_VIRTUAL_PATH
-export _OLD_VIRTUAL_PS1
-
 
 # ------------------------------------------------------------------------------
 #
@@ -1371,6 +1359,18 @@ while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
         *)  usage "Unknown option: '$OPTION'='$OPTARG'"  ;;
     esac
 done
+
+# before we change anything else in the pilot environment, we safe a couple of
+# env vars to later re-create a close-to-pristine env for unit execution.
+_OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
+_OLD_VIRTUAL_PYTHONHOME="$PYTHONHOME"
+_OLD_VIRTUAL_PATH="$PATH"
+_OLD_VIRTUAL_PS1="$PS1"
+
+export _OLD_VIRTUAL_PYTHONPATH
+export _OLD_VIRTUAL_PYTHONHOME
+export _OLD_VIRTUAL_PATH
+export _OLD_VIRTUAL_PS1
 
 # derive some var names from given args
 if test -z "$SESSION_SANDBOX"
