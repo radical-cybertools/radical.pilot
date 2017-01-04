@@ -429,8 +429,8 @@ virtenv_setup()
     virtenv_mode="$3"
     python_dist="$4"
 
-    virtenv_create=UNDEFINED
-    virtenv_update=UNDEFINED
+    ve_create=UNDEFINED
+    ve_update=UNDEFINED
 
     if test "$virtenv_mode" = "private"
     then
@@ -439,18 +439,18 @@ virtenv_setup()
             printf "\nERROR: private virtenv already exists at $virtenv\n\n"
             exit 1
         fi
-        virtenv_create=TRUE
-        virtenv_update=FALSE
+        ve_create=TRUE
+        ve_update=FALSE
 
     elif test "$virtenv_mode" = "update"
     then
-        virtenv_create=FALSE
-        virtenv_update=TRUE
-        test -d "$virtenv/" || virtenv_create=TRUE
+        ve_create=FALSE
+        ve_update=TRUE
+        test -d "$virtenv/" || ve_create=TRUE
     elif test "$virtenv_mode" = "create"
     then
-        virtenv_create=TRUE
-        virtenv_update=FALSE
+        ve_create=TRUE
+        ve_update=FALSE
 
     elif test "$virtenv_mode" = "use"
     then
@@ -459,29 +459,29 @@ virtenv_setup()
             printf "\nERROR: given virtenv does not exist at $virtenv\n\n"
             exit 1
         fi
-        virtenv_create=FALSE
-        virtenv_update=FALSE
+        ve_create=FALSE
+        ve_update=FALSE
 
     elif test "$virtenv_mode" = "recreate"
     then
         test -d "$virtenv/" && rm -r "$virtenv"
-        virtenv_create=TRUE
-        virtenv_update=FALSE
+        ve_create=TRUE
+        ve_update=FALSE
     else
-        virtenv_create=FALSE
-        virtenv_update=FALSE
+        ve_create=FALSE
+        ve_update=FALSE
         printf "\nERROR: virtenv mode invalid: $virtenv_mode\n\n"
         exit 1
     fi
 
-    if test "$virtenv_create" = 'TRUE'
+    if test "$ve_create" = 'TRUE'
     then
         # no need to update a fresh ve
-        virtenv_update=FALSE
+        ve_update=FALSE
     fi
 
-    echo "virtenv_create   : $virtenv_create"
-    echo "virtenv_update   : $virtenv_update"
+    echo "virtenv_create   : $ve_create"
+    echo "virtenv_update   : $ve_update"
 
 
     # radical_pilot installation and update is governed by PILOT_VERSION.  If
@@ -578,7 +578,7 @@ virtenv_setup()
 
 
     # create virtenv if needed.  This also activates the virtenv.
-    if test "$virtenv_create" = "TRUE"
+    if test "$ve_create" = "TRUE"
     then
         if ! test -d "$virtenv/"
         then
@@ -604,7 +604,7 @@ virtenv_setup()
 
 
     # update virtenv if needed.  This also activates the virtenv.
-    if test "$virtenv_update" = "TRUE"
+    if test "$ve_update" = "TRUE"
     then
         echo 'rp lock for ve update'
         lock "$pid" "$virtenv" # use default timeout
