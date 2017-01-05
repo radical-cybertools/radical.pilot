@@ -120,7 +120,7 @@
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "debug",
         "virtenv"                     : "%(global_sandbox)s/ve_titan",
-        "virtenv_mode"                : "update",
+        "virtenv_mode"                : "create",
         "stage_cacerts"               : "True",
         "python_dist"                 : "default"
     }
