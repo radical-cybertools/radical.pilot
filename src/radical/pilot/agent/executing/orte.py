@@ -430,6 +430,16 @@ class ORTE(AgentExecutingComponent):
         argv = ffi.new("char *[]", arg_list)
         self._prof.prof('command', msg='launch command constructed', uid=cu['_id'])
 
+        # stdout/stderr filenames can't be set with orte
+        # TODO: assert here or earlier?
+        # assert cu['description'].get('stdout') == None
+        # assert cu['description'].get('stderr') == None
+
+        # prepare stdout/stderr
+        # TODO: when mpi==true && cores>1 there will be multiple files that need to be concatenated.
+        cu['stdout_file'] = os.path.join(cu_tmpdir, 'rank.0/stdout')
+        cu['stderr_file'] = os.path.join(cu_tmpdir, 'rank.0/stderr')
+
         # Submit to the DVM!
         index = ffi.new("int *")
         rc = orte_lib.orte_submit_job(argv, index, orte_lib.launch_cb, self._myhandle, orte_lib.finish_cb, self._myhandle)
