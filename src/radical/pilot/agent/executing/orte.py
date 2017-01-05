@@ -235,22 +235,26 @@ class ORTE(AgentExecutingComponent):
     def unit_spawned_cb(self, task, status):
 
         cu = self.task_map[task]
+        cu_id = cu['_id']
 
         if status:
             del self.task_map[task]
 
             # unit launch failed
-            self._prof.prof('final', msg="startup failed", uid=cu['_id'])
-            cu['target_state'] = rps.FAILED
+            self._prof.prof('final', msg="startup failed", uid=cu_id)
+            self._log.debug("[%s] Unit %s startup failed: %s." % (time.ctime(), cu_id, status))
 
+            # Free the Slots, Flee the Flots, Ree the Frots!
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+
+            cu['target_state'] = rps.FAILED
             self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
 
         else:
             cu['started'] = time.time()
 
-            cu_id = cu['_id']
-            self._log.debug("[%s] Unit %s has spawned." % (time.ctime(), cu_id))
             self._prof.prof('passed', msg="ExecWatcher picked up unit", uid=cu_id)
+            self._log.debug("[%s] Unit %s has spawned." % (time.ctime(), cu_id))
 
             self.advance(cu, rps.AGENT_EXECUTING, publish=True, push=False)
 
