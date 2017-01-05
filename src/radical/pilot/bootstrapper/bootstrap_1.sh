@@ -63,6 +63,15 @@ VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntpl
 
 # ------------------------------------------------------------------------------
 #
+# disable user site packages as those can conflict with our virtualenv
+# installation -- see https://github.com/conda/conda/issues/448
+#
+# NOTE: we need to make sure this is inherited into sub-agent shells
+#
+export PYTHONNOUSERSITE=True
+
+# ------------------------------------------------------------------------------
+#
 # If profiling is enabled, compile our little gtod app and take the first time
 #
 create_gtod()
@@ -1416,6 +1425,9 @@ fi
 
 # some inspection for logging
 hostname
+
+# disable user site packages as those can conflict with our virtualenv
+export PYTHONNOUSERSITE=True
 
 # make sure we use the correct sandbox
 cd $SANDBOX
