@@ -67,9 +67,10 @@
     limiting traffic and noise
   - component.stop() should *first* unregister component_checker_cb 
     (and probably all other callbacks)
-    - in fact, we should be very careful to unregister callbacks in reverse
+    + in fact, we should be very careful to unregister callbacks in reverse
       order of registration.
-  - pilot default error cb calls sys.exit -> no shutdown.
+  - pilot default error cb calls sys.exit -> no shutdown because exit does not
+    exit when called in a thread
 
   + update the backfilling scheduler
   - state notifications should be obtained via a tailed cursor
@@ -89,24 +90,30 @@
     initialization
   + make sure we don't carry locks across fork calls.  If that turns out to be
     difficult (hi logging), we have to execve after fork and start afresh.
-  - idle_cb -> timed_cb (we make no promise on idleness, really)
+  + idle_cb -> timed_cb (we make no promise on idleness, really)
   - kill pilots on pmgr.launching.finalize_child?
   + saga_pid in pmgr.launcher control_cb
   + heartbeat interval assertion
   - dying agent bridge causes agent shutdown to hang
-  - lrms -> rm
+  - lrms -> rm?
   + dying pilot watcher cb remains undetected
-  - separation of controller.[uid,heart,owner] is unclean
 
   - cancellation leads to double wait, which is ok, but also reports twice,
     which is not
+  - pilots canceled but state is not picked up during shutdown, should still
+    call callbacks.
   - umgr wait and pmgr wait report different things, differently
     (inclusion of previously final things, final state marker)
+
+  - staging directives should be expanded in umgr_input_staging -- at that point
+    we have enough information to make *all* src and tgt names into full URLs
+    (including fully quualified paths), and can then rely on those being URLs in 
+    all places.
 
   + ctrl 
     + things -> watchable
   - advance -> remove push/pull args, and make those separate calls?  
-    Probably not though...
+    Probably not, but the advance call is a tad too complex and powerful...
   + comment in cb in sch base
   + remove release_slot in rr
   + add_pilot -> add_pilots
@@ -121,7 +128,7 @@
   + worker/agent.py -> agent/agent_n.py
   + agent_n controller has uid of pilot.000.ctrl -- should be agent_n.ctrl
   + sub-agents: catch stdout/err for popen procs
-  - agent_n does not need a child process really?
+  - agent_n does not need a child process really.
 
   + agent state ACTIVE is recorded twice
   + agent state DONE   is recorded twice on timeout
@@ -130,6 +137,23 @@
     and system exits, which we though expect to fall through to the component
     layer for lifetime management.
 
+  - rpu.Component (via ru.Process) allows
+      self.start(spawn=False)
+    cases like this should not need a *process* class in the first place.  It
+    would be cleaner to separate out the initialization/finalization, callback 
+    and communication layer from Process
+
+  - separation of controller.[uid,heart,owner] is unclean
+  - the Controller class does not really do much apart from making sure the
+    sub-components and bridges are started according to a config.  For that
+    little work it is rather complex.
+
+  - document minimal setuptools/pip version
+    fails with
+      pip 1.3 from
+      setuptools-0.6c11-py2.7
+
+
 
 Expected Termination Behavior:
 ==============================
@@ -137,31 +161,34 @@ Expected Termination Behavior:
 application calls session close
 -------------------------------
 
-  - session.close() at any point in time
+  - session.close() can be called at any point in time
     - in main thread:
       - close all umgrs
-        - terminate all threads
         - cancel any non-final units and wait for them
           - advance them to CANCELED
           - issue 'cancel' commands (no reschedule)
-          ? do we want notifications for the unit cancel?
+          - we want notifications for the unit cancel
           ? do we rely on UpdateWorker to register/store CANCELED advance?
         - stop all components (delegated to session controller)
         - stop all bridges    (delegated to session controller)
+        - terminate all threads
       - close all pmgrs
         - cancel any non-final pilots and wait for them
-        ? do we want notifications for the pilot cancel?
-        - terminate all threads
+          - we want notifications for the pilot cancel
         - stop all components (delegated to session controller)
         - stop all bridges    (delegated to session controller)
+        - terminate all threads
       - terminate all threads
       - close session controller
         - terminate all threads
         - stop all bridges
         - stop all components
+
     - in other threads
-      - as in main thread
-      - thread should then exit (default), call sys.exit, or raise.
+      - thread should exit
+      - missing thread is detected by thread watcher
+        -> watcher calling session.close + raise
+
     - in other processes / components
       - stop the component
       - no message is sent, we expect the pmgr, umgr or session watcher to
@@ -172,12 +199,15 @@ application calls session close
 user interrupts via Ctrl-C
 --------------------------
   - application must except, call session.close()
+  - no guarantees on clean termination are made: multithreaded Python can
+    swallow interrupts.
 
 
 pilot fails, exit_on_error is set
 ---------------------------------
-  - call to sys.exit()
-  - application must except, call session.close()
+  - pmgr will invoke callback which will exit the callback thread
+  - missing thread is detected by thread watcher
+    -> watcher calling session.close + raise
 
 
 pilot times out
@@ -191,18 +221,9 @@ pilot times out
         - stop self._lrms
         - update db for final state
         - call session.close()
-
       - call finalize_common
         - terminate and join all subscribers
         - close profiler
+    - sys.exit()
 
 
-tmp:
-----
-  - pilots canceled but state is not picked up during shutdown
-  - always get DEFAULT_DBURL from session config (use a  class method on session)
-
-  - staging directives should be expanded in umgr_input_staging -- at that point
-    we have enough information to make *all* src and tgt names into full URLs
-    (including fully quualified paths), and can then rely on those being URLs in 
-    all places.
