@@ -339,7 +339,7 @@ rehash()
     #       directory, so we may find the dists in pwd
     CA_CERT_GZ="$SESSION_SANDBOX/cacert.pem.gz"
     CA_CERT_PEM="$SESSION_SANDBOX/cacert.pem"
-    if ! test -f "$CA_CERT_GZ"
+    if ! test -f "$CA_CERT_GZ" -o -f "$CA_CERT_PEM"
     then
         CA_CERT_GZ="./cacert.pem.gz"
         CA_CERT_PEM="./cacert.pem"
