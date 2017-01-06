@@ -60,6 +60,10 @@ class ORTE(AgentExecutingComponent):
 
         AgentExecutingComponent.__init__(self, cfg, session)
 
+        self._watcher   = None
+        self._terminate = threading.Event()
+
+
     # --------------------------------------------------------------------------
     #
     def initialize_child(self):
@@ -84,8 +88,7 @@ class ORTE(AgentExecutingComponent):
         self.task_map = {}
 
         # run watcher thread
-        self._terminate = threading.Event()
-        self._watcher   = threading.Thread(target=self._watch, name="Watcher")
+        self._watcher = threading.Thread(target=self._watch, name="Watcher")
         self._watcher.daemon = True
         self._watcher.start ()
 
@@ -108,21 +111,12 @@ class ORTE(AgentExecutingComponent):
         self.gtod   = "%s/gtod" % self._pwd
         self.tmpdir = tempfile.gettempdir()
 
-    # --------------------------------------------------------------------------
-    #
-    def finalize_child(self):
-
-        # terminate watcher thread
-        self._terminate.set()
-        # self._watcher.join()
-
-        # communicate finalization
-        self.publish('command', {'cmd' : 'final',
-                                 'arg' : self.cname})
 
     # --------------------------------------------------------------------------
     #
     def command_cb(self, topic, msg):
+
+        self._log.info('command_cb [%s]: %s', topic, msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -132,6 +126,7 @@ class ORTE(AgentExecutingComponent):
             self._log.info("cancel unit command (%s)" % arg)
             with self._cancel_lock:
                 self._cus_to_cancel.append(arg)
+
 
     # --------------------------------------------------------------------------
     #
