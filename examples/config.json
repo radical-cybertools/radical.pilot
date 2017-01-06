@@ -182,6 +182,13 @@
         "cores"    :128
     },
 
+    "ornl.titan_lib"   : {
+        "project"  : "BIP103",
+        "queue"    : "debug",
+        "schema"   : "local",
+        "cores"    : 64
+    },
+
     "ornl.titan"   : {
         "project"  : "BIP103",
         "queue"    : "debug",
