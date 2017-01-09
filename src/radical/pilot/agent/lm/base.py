@@ -143,14 +143,12 @@ class LaunchMethod(object):
 
         from .fork           import Fork
         from .orte           import ORTE
-        from .orte_lib       import ORTELib
         from .yarn           import Yarn
         from .spark          import Spark
 
         impl = {
             LM_NAME_FORK          : Fork,
             LM_NAME_ORTE          : ORTE,
-            LM_NAME_ORTE_LIB      : ORTELib,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark
         }.get(name)
@@ -177,13 +175,11 @@ class LaunchMethod(object):
             raise TypeError("LaunchMethod shutdown hook only available to base class!")
 
         from .orte           import ORTE
-        from .orte_lib       import ORTELib
         from .yarn           import Yarn
         from .spark          import Spark
 
         impl = {
             LM_NAME_ORTE          : ORTE,
-            LM_NAME_ORTE_LIB      : ORTELib,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark
         }.get(name)
