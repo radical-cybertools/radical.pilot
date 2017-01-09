@@ -9,8 +9,9 @@ import sys
 import socket
 import random
 
-from .base import LaunchMethod
+import radical.utils as ru
 
+from .base import LaunchMethod
 
 
 # ==============================================================================
