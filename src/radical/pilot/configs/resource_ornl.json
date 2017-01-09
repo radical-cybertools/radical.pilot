@@ -107,7 +107,7 @@
         "pre_bootstrap_1"             : [
             "module swap PrgEnv-pgi PrgEnv-gnu",
             "module use --append /lustre/atlas/world-shared/bip103/modules",
-            "module load openmpi/STATIC",
+            "module load openmpi/DEVEL-STATIC",
             "module load python",
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1",
