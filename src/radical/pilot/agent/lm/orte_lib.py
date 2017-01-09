@@ -122,7 +122,6 @@ class ORTELib(LaunchMethod):
                     # Process is gone: fatal!
                     raise Exception("ORTE DVM process disappeared")
 
-
         # ----------------------------------------------------------------------
         def _watch_dvm(dvm_process):
 
@@ -165,10 +164,10 @@ class ORTELib(LaunchMethod):
         if 'dvm_uri' in lm_info:
             try:
                 logger.info('terminating dvm')
-                orte_submit = cls._which('orterun')
-                if not orte_submit:
+                orterun = cls._which('orterun')
+                if not orterun:
                     raise Exception("Couldn't find orterun")
-                subprocess.Popen([orte_submit, "--hnp", lm_info['dvm_uri'], "--terminate"])
+                subprocess.Popen([orterun, "--hnp", lm_info['dvm_uri'], "--terminate"])
             except Exception as e:
                 logger.exception('dmv termination failed')
 
@@ -191,9 +190,9 @@ class ORTELib(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_mpi     = cud.get('mpi') or False
+        task_mpi     = cud.get('mpi')       or False
         task_args    = cud.get('arguments') or []
-        task_argstr  = " ".join(task_args)
+        task_argstr  = self._create_arg_string(task_args)
 
         if 'task_slots' not in opaque_slots:
             raise RuntimeError('No task_slots to launch via %s: %s' \
