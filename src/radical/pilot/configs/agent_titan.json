@@ -1,4 +1,3 @@
-
 {
     "staging_area"         : "staging_area",
     "staging_schema"       : "staging",
@@ -8,16 +7,13 @@
     "db_poll_sleeptime"    : 1.0,
 
     "agent_layout" : {
+        # Offload as much as possible to a Compute Node,
+        # to keep thread number low on MOM node.
         "agent_1"   : {
             "target"     : "node",
             "components" : {
                 "AgentStagingInputComponent"  : 1,
-                "AgentSchedulingComponent"    : 1
-            }
-        },
-        "agent_2"   : {
-            "target"     : "node",
-            "components" : {
+                "AgentSchedulingComponent"    : 1,
                 "AgentExecutingComponent"     : 1,
                 "AgentStagingOutputComponent" : 1
             }
@@ -56,8 +52,8 @@
                                          "bulk_size" : 0}
     },
 
+    "agent_name" : "agent_0",
     "components" : {
-        "UpdateWorker" : 1
+        "UpdateWorker"            : 1
     }
 }
-

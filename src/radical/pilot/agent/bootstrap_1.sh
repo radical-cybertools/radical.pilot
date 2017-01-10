@@ -72,19 +72,7 @@ LOCK_TIMEOUT=180 # 3 min
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
 VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
-VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces==0.10.4 setproctitle msgpack-python"
-
-# before we change anything else in the pilot environment, we safe a couple of
-# env vars to later re-create a close-to-pristine env for unit execution.
-_OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
-_OLD_VIRTUAL_PYTHONHOME="$PYTHONHOME"
-_OLD_VIRTUAL_PATH="$PATH"
-_OLD_VIRTUAL_PS1="$PS1"
-
-export _OLD_VIRTUAL_PYTHONPATH
-export _OLD_VIRTUAL_PYTHONHOME
-export _OLD_VIRTUAL_PATH
-export _OLD_VIRTUAL_PS1
+VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces==0.10.4 setproctitle orte_cffi msgpack-python"
 
 
 # ------------------------------------------------------------------------------
@@ -339,7 +327,7 @@ rehash()
     #       directory, so we may find the dists in pwd
     CA_CERT_GZ="$SESSION_SANDBOX/cacert.pem.gz"
     CA_CERT_PEM="$SESSION_SANDBOX/cacert.pem"
-    if ! test -f "$CA_CERT_GZ"
+    if ! test -f "$CA_CERT_GZ" -o -f "$CA_CERT_PEM"
     then
         CA_CERT_GZ="./cacert.pem.gz"
         CA_CERT_PEM="./cacert.pem"
@@ -980,7 +968,7 @@ virtenv_create()
 
     # now that the virtenv is set up, we install all dependencies
     # of the RADICAL stack
-    for dep in "$VIRTENV_RADICAL_DEPS"
+    for dep in $VIRTENV_RADICAL_DEPS
     do
         run_cmd "install $dep" \
                 "$PIP install $dep" \
@@ -1004,7 +992,7 @@ virtenv_update()
     # we upgrade all dependencies of the RADICAL stack, one by one.
     # NOTE: we only do pip upgrades -- that will ignore the easy_installed
     #       modules on india etc.
-    for dep in "$VIRTENV_RADICAL_DEPS"
+    for dep in $VIRTENV_RADICAL_DEPS
     do
         run_cmd "install $dep" \
                 "$PIP install --upgrade $dep" \
@@ -1371,6 +1359,18 @@ while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
         *)  usage "Unknown option: '$OPTION'='$OPTARG'"  ;;
     esac
 done
+
+# before we change anything else in the pilot environment, we safe a couple of
+# env vars to later re-create a close-to-pristine env for unit execution.
+_OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
+_OLD_VIRTUAL_PYTHONHOME="$PYTHONHOME"
+_OLD_VIRTUAL_PATH="$PATH"
+_OLD_VIRTUAL_PS1="$PS1"
+
+export _OLD_VIRTUAL_PYTHONPATH
+export _OLD_VIRTUAL_PYTHONHOME
+export _OLD_VIRTUAL_PATH
+export _OLD_VIRTUAL_PS1
 
 # derive some var names from given args
 if test -z "$SESSION_SANDBOX"

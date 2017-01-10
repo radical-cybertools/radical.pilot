@@ -24,10 +24,32 @@
     "local.localhost_spark_ana" : {
         "project"  : null,
         "queue"    : null,
-        "schema"   : null
+        "schema"   : null,
+        "cores"    : 2
+    },
+
+    "local.localhost_orte" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 2
+    },
+
+    "local.localhost_ortelib" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 2
     },
 
     "ncsa.bw" : {
+        "project"  : "gk4",
+        "queue"    : "debug",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "ncsa.bw_lib" : {
         "project"  : "gk4",
         "queue"    : "debug",
         "schema"   : "gsissh",
@@ -77,6 +99,20 @@
     },
 
     "xsede.stampede" : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "development",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "xsede.stampede_orte" : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "development",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "xsede.stampede_ortelib" : {
         "project"  : "TG-MCB090174",
         "queue"    : "development",
         "schema"   : "gsissh",
@@ -140,6 +176,13 @@
     },
 
     "ornl.titan_aprun"   : {
+        "project"  : "BIP103",
+        "queue"    : "debug",
+        "schema"   : "local",
+        "cores"    :128
+    },
+
+    "ornl.titan_lib"   : {
         "project"  : "BIP103",
         "queue"    : "debug",
         "schema"   : "local",

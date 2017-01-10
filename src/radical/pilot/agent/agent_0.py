@@ -50,6 +50,8 @@ class Agent_0(rpu.Worker):
         agent_cfg  = "%s/%s.cfg" % (os.getcwd(), agent_name)
         cfg        = ru.read_json_str(agent_cfg)
 
+        cfg['agent_name'] = agent_name
+
         self._uid         = agent_name
         self._pid         = cfg['pilot_id']
         self._session_id  = cfg['session_id']
