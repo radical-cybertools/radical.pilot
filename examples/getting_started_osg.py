@@ -29,16 +29,21 @@ resources = {
 }
 #------------------------------------------------------------------------------
 #
-def pilot_state_cb (pilot, state):
+def pilot_state_cb (pilot, state, cb_data):
 
     if not pilot:
         return
 
-    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
+    pid = pilot.uid
 
-    # Hello HTC :-)
-    #if state == rp.FAILED:
-    #    sys.exit (1)
+    print "[Callback]: ComputePilot '%s' state: %s." % (pid, state)
+
+    if state in rp.FINAL and pid not in cb_data['final_pilots']:
+        cb_data['final_pilots'].append(pid)
+
+    if len(cb_data['final_pilots']) == cb_data['started_pilots']:
+        print 'no more pilots, we give up'
+        sys.exit()
 
 
 #------------------------------------------------------------------------------
@@ -93,8 +98,13 @@ if __name__ == "__main__":
     # clause...
     try:
 
+        pilot_counter = {
+                'started_pilots' : PILOTS, 
+                'final_pilots'   : list()
+                }
+
         pmgr = rp.PilotManager(session=session)
-        pmgr.register_callback(pilot_state_cb)
+        pmgr.register_callback(pilot_state_cb, cb_data=pilot_counter)
 
         umgr = rp.UnitManager(session=session, scheduler=SCHED)
         umgr.register_callback(unit_state_cb,      rp.UNIT_STATE)
