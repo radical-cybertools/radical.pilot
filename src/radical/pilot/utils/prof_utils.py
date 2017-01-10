@@ -336,6 +336,9 @@ def combine_profiles(profs, sid):
     year_second = 60*60*24*365
     for pname, prof in profs.iteritems():
 
+        if not prof:
+            continue
+
         last_entry = prof[-1]
         if last_entry['time'] >= year_second:
             # absolite profile, nothing to do
