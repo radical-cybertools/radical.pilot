@@ -34,9 +34,9 @@
                                          "module unload xalt",
                                          # Load ICC license so we can build during bootstrap
                                          "source ~train00/ssi_sourceme",
-                                         "export TACC_DELETE_FILES=TRUE",
-                                         "module use -a /home1/01740/marksant/openmpi/modulefiles",
-                                         "module load openmpi/rhc"
+                                       # "module use -a /home1/01740/marksant/openmpi/modulefiles",
+                                       # "module load openmpi/rhc",
+                                         "export TACC_DELETE_FILES=TRUE"
                                         ],
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
