@@ -8,6 +8,8 @@ import sys
 import socket
 import random
 import radical.utils as ru
+from time import time
+import datetime
 
 
 from .base import LaunchMethod
@@ -40,8 +42,10 @@ class Kafka(LaunchMethod):
                 logger.info("Downloading Apache Spark..")
                 try:    
                     VERSION = "2.0.2"
+                    spark_startup = time() 
                     subprocess.check_call("wget http://d3kbcqa49mib13.cloudfront.net/spark-2.0.2-bin-hadoop2.7.tgz".split())
                     subprocess.check_call('tar -xzf spark-2.0.2-bin-hadoop2.7.tgz'.split())
+                    spark_startup = time() - spark_startup
                     subprocess.check_call(("mv spark-2.0.2-bin-hadoop2.7 spark-" + VERSION).split())
                 except  Exception as e:
                     raise RuntimeError("Spark wasn't installed properly. Please try again. %s " % e )
@@ -115,7 +119,8 @@ class Kafka(LaunchMethod):
                              'lm_detail'     : spark_master_string,
                              'name'          : lrms.name,
                              'launch_command': launch_command,
-                             'nodename'      : lrms.node_list[0]
+                             'nodename'      : lrms.node_list[0],
+                             'spark_download': spark_startup,
                              }
 
             return spark_lm_info
@@ -140,6 +145,7 @@ class Kafka(LaunchMethod):
                 f.write(pat.sub(jojo,content))
 
          ##---------------------------------------------------
+        zk_kafka_startup = time()
 
         logger.info("Downloading Apache Kafka..")
         try:
@@ -216,13 +222,15 @@ class Kafka(LaunchMethod):
         nodenames_string = lrms.node_list[0]  + ':2181'   #TODO: this is for zk
         
         brokers_url = ''
+        ports = 9092 #this is the first port
         #setup configuration of kafka for multibroker cluster 
         for i,nodename in enumerate(lrms.node_list):
             try:
                 os.system('cp ' + kafka_home +'/config/server.properties ' + kafka_home + '/config/server.properties_%d' % i)
-                vars = ['broker.id','log.dirs','zookeeper.connect' ]
-                new_values = [str(i),'/tmp/kafka-logs-'+str(i), nodenames_string]
+                vars = ['broker.id','port','log.dirs','zookeeper.connect' ]
+                new_values = [str(i),str(ports),'tmp/kafka-logs-'+str(i), nodenames_string]
                 what_to_change = dict(zip(vars,new_values))
+                ports+=1
                 filename = kafka_home + '/config/server.properties_' + str(i)
                 updating(filename,what_to_change)
                 with open(filename,'a') as f:
@@ -255,10 +263,17 @@ class Kafka(LaunchMethod):
         launch_command = kafka_home + '/bin'
 
         zookeeper_url_string = nodenames_string
+        
+        spark_startup = 0
+        #zk_kafka_startup = time() - zk_kafka_startup  TODO: remove that
+        
         spark_lm_info = lrms_apache_spark()
+        zk_kafka_startup = str(datetime.datetime.now())   #TODO: remove this line
+        pilot_startup = {'spark': spark_startup, 'zk_kafka': zk_kafka_startup}
 
-        lm_detail_dict = {'zk_url': zookeeper_url_string, 'brokers': lrms.node_list, 
-                                                          'spark_master': spark_lm_info['lm_detail']}
+        lm_detail_dict = {'zk_url': zookeeper_url_string, 'brokers': lrms.node_list, 'spark_download': spark_lm_info['spark_download'],
+                                                          'spark_master': spark_lm_info['lm_detail'], 'startup_times' : pilot_startup}
+
 
 
 
@@ -278,7 +293,7 @@ class Kafka(LaunchMethod):
                    'nodename'      : lrms.node_list[0],
                    'spark_home'    : spark_lm_info['spark_home'],
                    'master_ip'     : spark_lm_info['master_ip'],
-                   'spark_launch'  : spark_lm_info['launch_command']
+                   'spark_launch'  : spark_lm_info['launch_command'],
 
                    }
 
@@ -385,7 +400,7 @@ class Kafka(LaunchMethod):
             command =  launch_command  + ' ' + command + ' ' 
         else:
             zk = ' --zookeeper ' + zookeeper
-            command = self.launch_command  + '/'  + task_exec + ' ' + command + ' '  + zk
+            command = self.launch_command  + '/'  + task_exec + ' ' + command + ' ' # + zk
 
         print command
         self._log.debug("Command %s"%command)
