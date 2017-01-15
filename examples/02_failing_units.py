@@ -52,12 +52,6 @@ if __name__ == '__main__':
 
         # Register the ComputePilot in a UnitManager object.
         umgr = rp.UnitManager(session=session)
-        def unit_cb(unit, state):
-            pass
-          # print 'cb: unit  %s: %s' % (unit.uid, state)
-          # if state in [rp.FAILED]:
-          #     session.close()
-        umgr.register_callback(unit_cb)
 
         n = 1
         pdescs = list()
@@ -82,54 +76,34 @@ if __name__ == '__main__':
         pilots = pmgr.submit_pilots(pdescs)
         umgr.add_pilots(pilots)
 
-      # def pilot_cb(pilot, state):
-      #   # print 'cb: pilot %s: %s : %s' % (pilot.uid, state, time.time())
-      #     if state in [rp.FAILED]:
-      #         print 'cb: pilot %s: %s : %s' % (pilot.uid, state, time.time())
-      #         session.close()
-      # for pilot in pilots:
-      #     pilot.register_callback(pilot_cb)
-       
         report.header('submit units')
 
 
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
-
-        n = 10 # number of units to run
+        n = 128 # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
-        start = time.time()
         for i in range(0, n):
 
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            # trigger an error now and then
-            if i % 100: 
-              # cud.executable = 'sleep'
-              # cud.arguments  = ['1']
-              # cud.pre_exec   = ['sleep 1']
-                cud.executable = '/bin/echo'
-                cud.arguments  = ['$RP_PILOT_ID']
+            if i % 10: 
+                cud.executable = '/bin/date'
             else:
-                cud.executable = '/bin/echo'
-                cud.arguments  = ['$RP_PILOT_ID']
-
+                # trigger an error now and then
+                cud.executable = '/bin/data' # does not exist
             cuds.append(cud)
             report.progress()
+
         report.ok('>>ok\n')
 
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        start = time.time()
         units = umgr.submit_units(cuds)
-        stop  = time.time()
-        print ' === > %s' % (stop-start)
-
-      # sys.exit()
 
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
@@ -140,12 +114,12 @@ if __name__ == '__main__':
             if unit.state in [rp.FAILED, rp.CANCELED]:
                 report.plain('  * %s: %s, exit: %5s, err: %35s' \
                         % (unit.uid, unit.state[:4], 
-                           unit.exit_code, unit.stderr.strip()))
+                           unit.exit_code, unit.stderr))
                 report.error('>>err\n')
             else:
                 report.plain('  * %s: %s, exit: %5s, out: %35s' \
                         % (unit.uid, unit.state[:4], 
-                            unit.exit_code, unit.stdout.strip()))
+                            unit.exit_code, unit.stdout))
                 report.ok('>>ok\n')
     
 
