@@ -35,17 +35,17 @@ class Spark(LaunchMethod):
         import radical.utils as ru
 
         if not os.environ.get('SPARK_HOME'):
-	        logger.info("Downloading Apache Spark..")
-	        try:    
-		        VERSION = "2.0.2"
+                logger.info("Downloading Apache Spark..")
+                try:    
+                        VERSION = "2.0.2"
                         subprocess.check_call("wget http://d3kbcqa49mib13.cloudfront.net/spark-2.0.2-bin-hadoop2.7.tgz".split())
-		        subprocess.check_call('tar -xzf spark-2.0.2-bin-hadoop2.7.tgz'.split())
-		        subprocess.check_call(("mv spark-2.0.2-bin-hadoop2.7 spark-" + VERSION).split())
-	        except  Exception as e:
-	        	raise RuntimeError("Spark wasn't installed properly. Please try again. %s " % e )
-	        spark_home = os.getcwd() + '/spark-' + VERSION
+                        subprocess.check_call('tar -xzf spark-2.0.2-bin-hadoop2.7.tgz'.split())
+                        subprocess.check_call(("mv spark-2.0.2-bin-hadoop2.7 spark-" + VERSION).split())
+                except  Exception as e:
+                        raise RuntimeError("Spark wasn't installed properly. Please try again. %s " % e )
+                spark_home = os.getcwd() + '/spark-' + VERSION
         else:
-	        spark_home = os.environ['SPARK_HOME']
+                spark_home = os.environ['SPARK_HOME']
         
         #-------------------------------------------------------------------
         platform_os = sys.platform
@@ -86,12 +86,12 @@ class Spark(LaunchMethod):
         ## put Master Ip in spark-env.sh file - 
 
         if len(lrms.node_list) ==1:
-        	master_ip = lrms.node_list[0]
+                master_ip = lrms.node_list[0]
         else:
-        	try:
-        		master_ip = subprocess.check_output('hostname -f'.split()).strip()
-        	except Exception as e:
-        		raise RuntimeError("Master ip couldn't be detected. %s" % e)
+                try:
+                        master_ip = subprocess.check_output('hostname -f'.split()).strip()
+                except Exception as e:
+                        raise RuntimeError("Master ip couldn't be detected. %s" % e)
 
         #Setup default env properties:
         spark_default_file = open(spark_home + "/conf/spark-defaults.conf",'w')
@@ -117,7 +117,7 @@ class Spark(LaunchMethod):
 
         #### Start spark Cluster
         try:
-        	subprocess.check_output(spark_home + '/sbin/start-all.sh')
+                subprocess.check_output(spark_home + '/sbin/start-all.sh')
         except Exception as e:
             raise RuntimeError("Spark Cluster failed to start: %s" % e)
         
