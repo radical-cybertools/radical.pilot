@@ -1379,8 +1379,8 @@ then
 fi
 
 # TODO: Move earlier, because if pre_bootstrap fails, this is not yet set
-LOGFILES_TARBALL="$PILOTID.log.tgz"
-PROFILES_TARBALL="$PILOTID.prof.tgz"
+LOGFILES_TARBALL="$PILOT_ID.log.tgz"
+PROFILES_TARBALL="$PILOT_ID.prof.tgz"
 
 # some backends (condor) never finalize a job when output files are missing --
 # so we touch them here to prevent that
