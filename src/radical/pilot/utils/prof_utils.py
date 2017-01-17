@@ -6,7 +6,10 @@ import glob
 import time
 import threading
 
-import radical.utils as ru
+import radical.utils  as ru
+
+from .. import states as rps
+
 
 NTP_DIFF_WARN_LIMIT = 1.0
 
@@ -606,6 +609,10 @@ def get_session_profile(sid, src=None):
     prof, t_min, hm = combine_profiles(profs, sid)
     prof            = clean_profile(prof, sid)
 
+    # fix legacy state names
+    for p in prof:
+        p['state'] = rps._legacy_states.get(p['state'], p['state'])
+
     return prof, t_min, hm
 
 
@@ -659,7 +666,7 @@ def get_session_description(sid, src=None, dburl=None, hostmap=None):
             for x in this:
                 _fix_cfg(x)
 
-    # also make sure we always have a config
+    # fix some other names...
     def _fix_names(this):
         if isinstance(this, dict):
             if 'pilotmanager' in this and 'pmgr' not in this:
@@ -672,7 +679,6 @@ def get_session_description(sid, src=None, dburl=None, hostmap=None):
             for x in this:
                 _fix_names(x)
 
-    # and fix some other names...
 
     _fix_uid(json)
     _fix_cfg(json)
