@@ -53,24 +53,12 @@ PREBOOTSTRAP2=""
 
 
 # seconds to wait for lock files
-# 3 min should be enough for anybody to create/update a virtenv...
-LOCK_TIMEOUT=180 # 3 min
+# 10 min should be enough for anybody to create/update a virtenv...
+LOCK_TIMEOUT=600 # 10 min
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
 VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
 VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces==0.10.4 setproctitle"
-
-# before we change anything else in the pilot environment, we safe a couple of
-# env vars to later re-create a close-to-pristine env for unit execution.
-_OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
-_OLD_VIRTUAL_PYTHONHOME="$PYTHONHOME"
-_OLD_VIRTUAL_PATH="$PATH"
-_OLD_VIRTUAL_PS1="$PS1"
-
-export _OLD_VIRTUAL_PYTHONPATH
-export _OLD_VIRTUAL_PYTHONHOME
-export _OLD_VIRTUAL_PATH
-export _OLD_VIRTUAL_PS1
 
 
 # ------------------------------------------------------------------------------
@@ -1233,6 +1221,30 @@ while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x" OPTION; do
     esac
 done
 
+# before we change anything else in the pilot environment, we safe a couple of
+# env vars to later re-create a close-to-pristine env for unit execution.
+_OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
+_OLD_VIRTUAL_PYTHONHOME="$PYTHONHOME"
+_OLD_VIRTUAL_PATH="$PATH"
+_OLD_VIRTUAL_PS1="$PS1"
+
+export _OLD_VIRTUAL_PYTHONPATH
+export _OLD_VIRTUAL_PYTHONHOME
+export _OLD_VIRTUAL_PATH
+export _OLD_VIRTUAL_PS1
+
+# TODO: Move earlier, because if pre_bootstrap fails, this is not yet set
+LOGFILES_TARBALL="$PILOTID.log.tgz"
+PROFILES_TARBALL="$PILOTID.prof.tgz"
+
+# some backends (condor) never finalize a job when output files are missing --
+# so we touch them here to prevent that
+echo "# -------------------------------------------------------------------"
+echo '# Touching output tarballs'
+echo "# -------------------------------------------------------------------"
+touch "$LOGFILES_TARBALL"
+touch "$PROFILES_TARBALL"
+
 # At this point, all pre_bootstrap_1 commands have been executed.  We copy the
 # resulting PATH and LD_LIBRARY_PATH, and apply that in bootstrap_2.sh, so that
 # the sub-agents start off with the same env (or at least the relevant parts of
@@ -1546,7 +1558,6 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Tarring profiles ..."
-    PROFILES_TARBALL="$PILOTID.prof.tgz"
     tar -czf $PROFILES_TARBALL *.prof
     ls -l $PROFILES_TARBALL
     echo "#"
@@ -1561,7 +1572,6 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Tarring logfiles ..."
-    LOGFILES_TARBALL="$PILOTID.log.tgz"
     tar -czf $LOGFILES_TARBALL *.{log,out,err,cfg}
     ls -l $LOGFILES_TARBALL
     echo "#"

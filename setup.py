@@ -274,8 +274,8 @@ setup_args = {
     'cmdclass'           : {
         'test'           : our_test,
                            },
-    'install_requires'   : ['saga-python',
-                            'radical.utils',
+    'install_requires'   : ['saga-python>=0.44',
+                            'radical.utils>=0.44',
                             'pymongo==2.8',
                             'python-hostlist',
                             'netifaces==0.10.4',

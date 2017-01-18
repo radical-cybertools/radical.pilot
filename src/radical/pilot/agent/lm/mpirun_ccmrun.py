@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import radical.utils as ru
 
 from .base import LaunchMethod
 
@@ -24,9 +25,9 @@ class MPIRunCCMRun(LaunchMethod):
     #
     def _configure(self):
         # ccmrun: Cluster Compatibility Mode job launcher for Cray systems
-        self.launch_command= self._which('ccmrun')
+        self.launch_command= ru.which('ccmrun')
 
-        self.mpirun_command = self._which('mpirun')
+        self.mpirun_command = ru.which('mpirun')
         if not self.mpirun_command:
             raise RuntimeError("mpirun not found!")
 
