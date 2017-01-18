@@ -187,7 +187,7 @@
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "ORTE",
-        "agent_launch_method"         : "ORTE_LIB",
+        "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE_LIB",
         "mpi_launch_method"           : "ORTE_LIB",
         "rp_version"                  : "debug",

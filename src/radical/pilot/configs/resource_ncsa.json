@@ -17,9 +17,7 @@
         "mpi_launch_method"           : "APRUN",
         "pre_bootstrap_1"             : [
             "module switch PrgEnv-cray PrgEnv-gnu",
-            "module load bwpy",
-            "module use --append /projects/sciteam/gkd/modules",
-            "module load openmpi/rhc_static"
+            "module load bwpy"
         ],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
@@ -42,9 +40,9 @@
         "lrms"                        : "TORQUE",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "ORTE",
         "agent_config"                : "cray",
-        "agent_launch_method"         : "ORTE_LIB",
+        "agent_spawner"               : "ORTE",
+        "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE_LIB",
         "mpi_launch_method"           : "ORTE_LIB",
         "tunnel_bind_device"          : "ipogif0",
