@@ -305,6 +305,9 @@ class ORTE(AgentExecutingComponent):
 
         dvm_uri    = opaque_slots['lm_info']['dvm_uri']
 
+        # Notify the runtime that we are using threads and that we require mutexes
+        orte_lib.opal_set_using_threads(True)
+
         argv_keepalive = [
             ffi.new("char[]", "RADICAL-Pilot"), # Will be stripped off by the library
             ffi.new("char[]", "--hnp"), ffi.new("char[]", str(dvm_uri)),
