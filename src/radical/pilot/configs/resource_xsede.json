@@ -34,8 +34,6 @@
                                          "module unload xalt",
                                          # Load ICC license so we can build during bootstrap
                                          "source ~train00/ssi_sourceme",
-                                       # "module use -a /home1/01740/marksant/openmpi/modulefiles",
-                                       # "module load openmpi/rhc",
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
         "default_remote_workdir"      : "$WORK",
@@ -124,7 +122,7 @@
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "ORTE",
-        "agent_launch_method"         : "ORTE_LIB",
+        "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE_LIB",
         "mpi_launch_method"           : "ORTE_LIB",
         "pre_bootstrap_1"             : ["module purge",
@@ -225,9 +223,9 @@
         "pre_bootstrap_1"             : ["module purge",
                                          "module load TACC",
                                          "module load intel/15.0.2",
-					 "module load python/2.7.12",
-					 "module use /scratch/projects/xsede/modulefiles",
-					 "module load  jdk64/1.8.0",
+                                         "module load python/2.7.12",
+                                         "module use /scratch/projects/xsede/modulefiles",
+                                         "module load jdk64/1.8.0",
                                          # Load ICC license so we can build during bootstrap
                                          "source ~train00/ssi_sourceme",
                                          "export TACC_DELETE_FILES=TRUE"
