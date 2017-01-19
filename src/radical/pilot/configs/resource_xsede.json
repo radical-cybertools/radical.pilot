@@ -231,7 +231,7 @@
     "wrangler_spark": {
         "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["ssh", "gsissh", "go"],
+        "schemas"                     : ["gsissh", "ssh", "go"],
         "mandatory_args"              : ["project"],
         "ssh"                         :
         {
