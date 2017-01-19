@@ -82,6 +82,7 @@ class ORTE(AgentExecutingComponent):
         self._pilot_id = self._cfg['pilot_id']
 
         self.task_map = {}
+        self.task_map_lock = threading.Lock()
 
         # run watcher thread
         self._terminate = threading.Event()
@@ -223,11 +224,13 @@ class ORTE(AgentExecutingComponent):
     #
     def unit_spawned_cb(self, task, status):
 
-        cu = self.task_map[task]
+        with self.task_map_lock:
+            cu = self.task_map[task]
         cu_id = cu['_id']
 
         if status:
-            del self.task_map[task]
+            with self.task_map_lock:
+                del self.task_map[task]
 
             # unit launch failed
             self._prof.prof('final', msg="startup failed", uid=cu_id)
@@ -254,8 +257,9 @@ class ORTE(AgentExecutingComponent):
 
         timestamp = time.time()
 
-        cu = self.task_map[task]
-        del self.task_map[task]
+        with self.task_map_lock:
+            cu = self.task_map[task]
+            del self.task_map[task]
 
         self._prof.prof('exec', msg='execution complete', uid=cu['_id'])
 
@@ -449,15 +453,17 @@ class ORTE(AgentExecutingComponent):
 
         # Submit to the DVM!
         index = ffi.new("int *")
-        rc = orte_lib.orte_submit_job(argv, index, orte_lib.launch_cb, self._myhandle, orte_lib.finish_cb, self._myhandle)
-        if rc:
-            raise Exception("submit job failed with error: %d" % rc)
-        task = index[0]
+        with self.task_map_lock:
+
+            rc = orte_lib.orte_submit_job(argv, index, orte_lib.launch_cb, self._myhandle, orte_lib.finish_cb, self._myhandle)
+            if rc:
+                raise Exception("submit job failed with error: %d" % rc)
+            task = index[0]
+
+            # Record the mapping of ORTE index to CU
+            self.task_map[task] = cu
 
         self._prof.prof('spawn', msg='spawning passed to orte', uid=cu['_id'])
-
-        # Record the mapping of ORTE index to CU
-        self.task_map[task] = cu
 
         self._log.debug("Task %d submitted!", task)
 
