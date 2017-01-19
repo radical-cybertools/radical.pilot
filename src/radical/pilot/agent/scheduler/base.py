@@ -3,10 +3,9 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import logging
 import time
 import threading
-
-import radical.utils as ru
 
 from ... import utils     as rpu
 from ... import states    as rps
@@ -101,7 +100,17 @@ class AgentSchedulingComponent(rpu.Component):
         self.publish('command', {'cmd' : 'final',
                                  'arg' : self.cname})
 
+        self._dump_prof()
 
+
+    # --------------------------------------------------------------------------
+    #
+    def _dump_prof(self):
+        #  FIXME: this is specific for cprofile use in derived classes, and can
+        #         probably be solved cleaner.
+        pass
+
+ 
     # --------------------------------------------------------------------------
     #
     # This class-method creates the appropriate sub-class for the Scheduler.
@@ -187,7 +196,9 @@ class AgentSchedulingComponent(rpu.Component):
         # got an allocation, go off and launch the process
         self._prof.prof('schedule', msg="try", uid=cu['_id'], timestamp=before_ts)
         self._prof.prof('schedule', msg="allocated", uid=cu['_id'])
-        self._log.info("slot status after allocated  : %s" % self.slot_status ())
+
+        if self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug("slot status after allocated  : %s", self.slot_status())
 
         return True
 
@@ -203,7 +214,8 @@ class AgentSchedulingComponent(rpu.Component):
         cu = msg
 
         self._prof.prof('reschedule', uid=self._pilot_id)
-        self._log.info("slot status before reschedule: %s" % self.slot_status())
+        if self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug("slot status before reschedule: %s", self.slot_status())
 
         # cycle through wait queue, and see if we get anything running now.  We
         # cycle over a copy of the list, so that we can modify the list on the
@@ -224,7 +236,8 @@ class AgentSchedulingComponent(rpu.Component):
                 break
 
         # Note: The extra space below is for visual alignment
-        self._log.info("slot status after  reschedule: %s" % self.slot_status ())
+        if self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug("slot status after  reschedule: %s", self.slot_status())
         self._prof.prof('reschedule done')
 
 
@@ -243,7 +256,8 @@ class AgentSchedulingComponent(rpu.Component):
             self._log.warn("cannot unschedule: %s (no slots)" % cu)
             return
 
-        self._log.info("slot status before unschedule: %s" % self.slot_status ())
+        if self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug("slot status before unschedule: %s", self.slot_status())
 
         # needs to be locked as we try to release slots, but slots are acquired
         # in a different thread....
@@ -256,7 +270,8 @@ class AgentSchedulingComponent(rpu.Component):
         self.publish('reschedule', cu)
 
         # Note: The extra space below is for visual alignment
-        self._log.info("slot status after  unschedule: %s" % self.slot_status ())
+        if self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug("slot status after  unschedule: %s", self.slot_status())
 
 
     # --------------------------------------------------------------------------

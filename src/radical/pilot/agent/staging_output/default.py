@@ -89,6 +89,7 @@ class Default(AgentStagingOutputComponent):
         workdir = cu['workdir']
 
         ## parked from unit state checker: unit postprocessing
+        # TODO: disable this at scale?
         if os.path.isfile(cu['stdout_file']):
             with open(cu['stdout_file'], 'r') as stdout_f:
                 try:
@@ -98,6 +99,7 @@ class Default(AgentStagingOutputComponent):
 
                 cu['stdout'] += rpu.tail(txt)
 
+        # TODO: disable this at scale?
         if os.path.isfile(cu['stderr_file']):
             with open(cu['stderr_file'], 'r') as stderr_f:
                 try:

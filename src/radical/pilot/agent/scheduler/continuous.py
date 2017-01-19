@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import os
 import time
 
 import radical.utils as ru
@@ -13,9 +14,31 @@ from ... import constants as rpc
 
 from .base import AgentSchedulingComponent
 
+import cProfile
+import inspect
+import threading as mt
 
-# ==============================================================================
-#
+cprof = cProfile.Profile()
+
+def cprof_it(func):
+    def wrapper(*args, **kwargs):
+            retval = cprof.runcall(func, *args, **kwargs)
+            return retval
+
+    return wrapper
+
+def dec_all_methods(dec):
+    def dectheclass(cls):
+        self_thread = mt.current_thread()
+        if self_thread.name == 'MainThread' and \
+                "CONTINUOUS" in os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "").split():
+            for name, m in inspect.getmembers(cls, inspect.ismethod):
+                setattr(cls, name, dec(m))
+        return cls
+    return dectheclass
+
+#==============================================================================
+@dec_all_methods(cprof_it)
 class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
@@ -25,6 +48,14 @@ class Continuous(AgentSchedulingComponent):
         self.slots = None
 
         AgentSchedulingComponent.__init__(self, cfg)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _dump_prof(self):
+        if "CONTINUOUS" in os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "").split():
+            self_thread = mt.current_thread()
+            cprof.dump_stats("python-%s.profile" % self_thread.name)
 
 
     # --------------------------------------------------------------------------

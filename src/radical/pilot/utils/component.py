@@ -27,6 +27,16 @@ from .pubsub     import PUBSUB_SUB   as rpu_PUBSUB_SUB
 #   - for notifications, change msg from [topic, unit] to [topic, msg]
 #   - components should not need to declare the state publisher?
 
+import cProfile
+class ProfiledThread(mt.Thread):
+    # Overrides threading.Thread.run()
+    def run(self):
+        profiler = cProfile.Profile()
+        try:
+            return profiler.runcall(mt.Thread.run, self)
+        finally:
+            self_thread = mt.current_thread()
+            profiler.dump_stats('python-%s.profile' % (self_thread.name))
 
 # ==============================================================================
 #
@@ -584,8 +594,13 @@ class Component(mp.Process):
         q = rpu_Pubsub.create(rpu_PUBSUB_ZMQ, pubsub, rpu_PUBSUB_SUB, addr)
         q.subscribe(topic)
 
-        t = mt.Thread(target=_subscriber, args=[q,cb],
-                      name="%s.subscriber" % self.cname)
+        if topic in os.getenv("RADICAL_PILOT_CPROFILE_SUBSCRIBERS", "").split():
+            t = ProfiledThread(target=_subscriber, args=[q,cb],
+                               name="%s-%s.subscriber" % (self.cname, topic))
+        else:
+            t = mt.Thread(target=_subscriber, args=[q,cb],
+                          name="%s.subscriber" % self.cname)
+
         t.start()
         self._subscribers.append(t)
 
