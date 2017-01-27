@@ -74,7 +74,6 @@ class ORTELib(LaunchMethod):
 
         export_vars = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
-
         # Construct the hosts_string
         #
         # On some Crays, like on ARCHER, the hostname is "archer_N".
@@ -97,7 +96,6 @@ class ORTELib(LaunchMethod):
                 self._log.error( 'non-MPI CUs cannot span nodes %s', task_slots)
                 raise ValueError('non-MPI CUs cannot span nodes %s'% task_slots)
             hosts_string = nodes[0]
-
 
         # Additional (debug) arguments to orterun
         debug_strings = [
