@@ -59,12 +59,13 @@ class ORTELib(LaunchMethod):
         task_mpi     = cud.get('mpi')       or False
         task_args    = cud.get('arguments') or []
         task_argstr  = self._create_arg_string(task_args)
+        task_slots   = opaque_slots.get('task_slots')
 
-        if 'task_slots' not in opaque_slots:
+        if not task_slots:
             raise RuntimeError('No task_slots to launch via %s: %s' \
                                % (self.name, opaque_slots))
 
-        task_slots = opaque_slots['task_slots']
+        nodes = [slot.split(':')[0].rsplit('_', 1)[-1] for slot in task_slots]
 
         if task_argstr:
             task_command = "%s %s" % (task_exec, task_argstr)
@@ -86,16 +87,15 @@ class ORTELib(LaunchMethod):
         if task_mpi:
             # we create one process per given task slot.  In this case we don't
             # care if the task slots are on the same node or not
-            hosts_string = ",".join([slot.split(':')[0].rsplit('_', 1)[-1] for slot in task_slots])
+            hosts_string = ",".join(nodes)
         else:
             # this is not an MPI task, so we only start *one* process on the
             # given set of slots, and expect the application itself to spread
             # onto the other slots.  For that to be possible we expect all task
             # slots to reside on the same node.
-            nodes = [slot.split(':')[0].rsplit('_', 1)[-1] for slot in task_slots]
             if len(set(nodes)) != 1:
-                self._log.error( 'MPI CUs canot span multiple nodes %s' , task_slots)
-                raise ValueError('MPI CUs canot span multiple nodes %s' % task_slots)
+                self._log.error( 'non-MPI CUs cannot span nodes %s', task_slots)
+                raise ValueError('non-MPI CUs cannot span nodes %s'% task_slots)
             hosts_string = nodes[0]
 
 
