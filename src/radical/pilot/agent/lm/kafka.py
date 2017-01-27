@@ -97,15 +97,18 @@ class Kafka(LaunchMethod):
             spark_env_file.write('export SPARK_MASTER_IP=' + master_ip + "\n")
             spark_env_file.write('export JAVA_HOME=' + java_home + "\n")
             spark_env_file.write('export SPARK_LOG_DIR='+os.getcwd()+'/spark-logs'+'\n')
-            spark_env_file.write('export PYSPARK_PYTHON='+python+'\n')
+            spark_env_file.write('export PYSPARK_PYTHON=`which python`  \n')
             spark_env_file.close()
 
             #### Start spark Cluster
+            spark_start = time()
             try:
                 subprocess.check_output(spark_home + '/sbin/start-all.sh')
             except Exception as e:
                 raise RuntimeError("Spark Cluster failed to start: %s" % e)
-            
+
+            spark_start = time() - spark_start
+
             logger.info('Start Spark Cluster')
             launch_command = spark_home +'/bin'
 
@@ -121,6 +124,7 @@ class Kafka(LaunchMethod):
                              'launch_command': launch_command,
                              'nodename'      : lrms.node_list[0],
                              'spark_download': spark_startup,
+                             'cluster_startup': spark_start, 
                              }
 
             return spark_lm_info
@@ -273,8 +277,13 @@ class Kafka(LaunchMethod):
         zk_kafka_startup = str(datetime.datetime.now())   #TODO: remove this line
         pilot_startup = {'spark': spark_startup, 'zk_kafka': zk_kafka_startup}
 
-        lm_detail_dict = {'zk_url': zookeeper_url_string, 'brokers': lrms.node_list, 'spark_download': spark_lm_info['spark_download'],
-                                                          'spark_master': spark_lm_info['lm_detail'], 'startup_times' : pilot_startup}
+        lm_detail_dict = {'zk_url': zookeeper_url_string,
+                          'brokers': lrms.node_list, 
+                          'spark_download': spark_lm_info['spark_download'],
+                          'spark_master': spark_lm_info['lm_detail'],
+                          'startup_times' : pilot_startup,
+                          'cluster_startup': spark_lm_info['cluster_startup'],
+                          }
 
 
 
