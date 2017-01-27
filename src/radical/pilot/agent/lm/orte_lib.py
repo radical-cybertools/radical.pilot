@@ -13,7 +13,7 @@ from .base import LaunchMethod
 
 # ==============================================================================
 #
-# NOTE: This requires a development version of Open MPI available.
+# NOTE: This requires a development version of Open MPI
 #
 class ORTELib(LaunchMethod):
 
@@ -71,7 +71,11 @@ class ORTELib(LaunchMethod):
         else:
             task_command = task_exec
 
-        # Construct the hosts_string, env vars
+        export_vars = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
+
+
+        # Construct the hosts_string
+        #
         # On some Crays, like on ARCHER, the hostname is "archer_N".
         # In that case we strip off the part upto and including the underscore.
         #
@@ -79,8 +83,21 @@ class ORTELib(LaunchMethod):
         #       with underscores in it, or other hostname mangling, we need to turn
         #       this into a system specific regexp or so.
         #
-        hosts_string = ",".join([slot.split(':')[0].rsplit('_', 1)[-1] for slot in task_slots])
-        export_vars  = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
+        if task_mpi:
+            # we create one process per given task slot.  In this case we don't
+            # care if the task slots are on the same node or not
+            hosts_string = ",".join([slot.split(':')[0].rsplit('_', 1)[-1] for slot in task_slots])
+        else:
+            # this is not an MPI task, so we only start *one* process on the
+            # given set of slots, and expect the application itself to spread
+            # onto the other slots.  For that to be possible we expect all task
+            # slots to reside on the same node.
+            nodes = [slot.split(':')[0].rsplit('_', 1)[-1] for slot in task_slots]
+            if len(set(nodes)) != 1:
+                self._log.error( 'MPI CUs canot span multiple nodes %s' , task_slots)
+                raise ValueError('MPI CUs canot span multiple nodes %s' % task_slots)
+            hosts_string = nodes[0]
+
 
         # Additional (debug) arguments to orterun
         debug_strings = [
@@ -92,3 +109,7 @@ class ORTELib(LaunchMethod):
             self.launch_command, ' '.join(debug_strings), export_vars, task_cores if task_mpi else 1, hosts_string)
 
         return orte_command, task_command
+
+
+# ------------------------------------------------------------------------------
+
