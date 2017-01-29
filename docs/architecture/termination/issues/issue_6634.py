@@ -10,7 +10,8 @@ import threading as mt
 def work():
 
     print 'exit now'
-    # this should call the python interpreter to exit - it does not.
+    # NOTE: This should call the python interpreter to exit.
+    #       This is not the case, only the thread is terminated.
     sys.exit()
 
 

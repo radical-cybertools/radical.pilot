@@ -16,6 +16,9 @@ class A(P):
         self.q = mp.Queue()
         def b(q):
             C = q.get()
+
+            # NOTE: we expect to be able to poll the process state for the
+            #       reconnected process.  This is not the case.
             exit_code = C.poll()
             assert(exit_code == 1), exit_code
 

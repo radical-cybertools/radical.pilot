@@ -17,9 +17,11 @@ def worker():
         d = threading.Thread(target=daemon)
         d.daemon = True
         d.start()
-        # Return, do not call sys.exit(0) or d.join().  The process should exit
-        # without waiting for the daemon thread, but we expect that due to a bug
-        # relating to os.fork and threads it will hang.
+
+        # NOTE: We return, and do not call sys.exit(0) or d.join().  
+        #       The process should exit without waiting for the daemon thread.
+        #       But due to a bug relating to os.fork and threads it will hang.
+        return
 
 
 w = threading.Thread(target=worker)

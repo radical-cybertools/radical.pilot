@@ -28,6 +28,9 @@ def test():
     child.start()
 
     time.sleep(0.3)
+
+    # NOTE: We expect sys.exit() to exit and terminate/abandon damon threads.
+    #       That does not always happen
     sys.exit()
 
 if __name__ == '__main__':

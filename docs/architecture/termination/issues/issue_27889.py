@@ -29,7 +29,8 @@ try:
     t.start()
     time.sleep(3)
 except Exception as e:
-    # we should see this message, but should never see a stack trace.  We do.
+    # NOTE: we should see this message, but should never see a stack trace.  
+    #       Alas, we do.
     print 'except: %s' % e
 else:
     print 'unexcepted'

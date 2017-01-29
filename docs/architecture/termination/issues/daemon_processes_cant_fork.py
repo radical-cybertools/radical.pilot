@@ -51,7 +51,10 @@ def test():
 
     child = mp.Process(target=work_1)
     child.daemon = True
-    child.start()
+
+    # NOTE: we expect this to work out of the box.  
+    #       It does not.
+    child.start()  
     child.join()
 
 

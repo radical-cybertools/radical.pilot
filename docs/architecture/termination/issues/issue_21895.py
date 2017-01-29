@@ -19,7 +19,8 @@ def main():
     subprocess.Popen(['sleep', '1'])
     time.sleep(1)
     print('exit now')
-    # this should exit the main thread - it does not.
+
+    # NOTE: This should exit the main thread - it does not.
     sys.exit()
 
 if __name__ == '__main__':
