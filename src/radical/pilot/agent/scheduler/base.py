@@ -174,6 +174,11 @@ class AgentSchedulingComponent(rpu.Component):
         if self._log.isEnabledFor(logging.DEBUG):
             self._log.debug("slot status after allocated  : %s", self.slot_status())
 
+        self._log.debug("%s [%s] : %s [%s]", 
+                        cu['uid'], cu['description']['cores'], 
+                        cu['opaque_slots'], 
+                        len(cu['opaque_slots']['task_slots']))
+
         return True
 
 
