@@ -17,21 +17,21 @@
         "local.localhost_spark_ana" : {
             "project"  : null,
             "queue"    : null,
-            "schema"   : null
+            "schema"   : null,
             "cores"    : 2
         },
 
         "local.localhost_orte" : {
             "project"  : null,
             "queue"    : null,
-            "schema"   : null
+            "schema"   : null,
             "cores"    : 2
         },
 
         "local.localhost_ortelib" : {
             "project"  : null,
             "queue"    : null,
-            "schema"   : null
+            "schema"   : null,
             "cores"    : 2
         },
 
@@ -108,14 +108,14 @@
         "xsede.stampede_orte" : {
             "project"  : "TG-MCB090174",
             "queue"    : "development",
-            "schema"   : null
+            "schema"   : null,
             "cores"    : 32
         },
 
         "xsede.stampede_ortelib" : {
             "project"  : "TG-MCB090174",
             "queue"    : "development",
-            "schema"   : null
+            "schema"   : null,
             "cores"    : 32
         },
 
@@ -150,7 +150,7 @@
         "xsede.greenfield" : {
             "project"  : null,
             "queue"    : "debug",
-            "schema"   : "gsissh"
+            "schema"   : "gsissh",
             "cores"    : 64
         },
 
