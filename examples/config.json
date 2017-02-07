@@ -208,5 +208,12 @@
             "queue"    : null,
             "schema"   : "gsissh",
             "cores"    : 1
+        },
+
+        "lumc.shark"   : {
+            "project"  : null,
+            "queue"    : null,
+            "schema"   : "ssh",
+            "cores"    : 16
         }
 }

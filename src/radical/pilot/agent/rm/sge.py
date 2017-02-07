@@ -35,18 +35,27 @@ class SGE(LRMS):
 
         # Parse SGE hostfile for nodes
         sge_node_list = [line.split()[0] for line in open(sge_hostfile)]
-        # Keep only unique nodes
-        sge_nodes = list(set(sge_node_list))
-        self._log.info("Found PE_HOSTFILE %s. Expanded to: %s", sge_hostfile, sge_nodes)
+        self._log.info("Found PE_HOSTFILE %s. Expanded to: %s", sge_hostfile, sge_node_list)
 
         # Parse SGE hostfile for cores
         sge_cores_count_list = [int(line.split()[1]) for line in open(sge_hostfile)]
         sge_core_counts = list(set(sge_cores_count_list))
-        sge_cores_per_node = min(sge_core_counts)
-        self._log.info("Found unique core counts: %s Using: %d", sge_core_counts, sge_cores_per_node)
 
-        self.node_list = sge_nodes
-        self.cores_per_node = sge_cores_per_node
+        # Check if nodes have the same core count
+        if len(sge_core_counts) == 1:
+            sge_cores_per_node = min(sge_core_counts)
+            self._log.info("Found unique core counts: %s Using: %d", sge_core_counts, sge_cores_per_node)
 
+            self.node_list = list(set(sge_node_list))
+            self.cores_per_node = sge_cores_per_node
 
+        else:
+            # In case of non-homogeneous counts, consider all slots be single core
+            sge_cores_per_node = 1
+            self._log.info("Found unique core counts: %s Using: %d", sge_core_counts, sge_cores_per_node)
+            self.cores_per_node = sge_cores_per_node
 
+            # Expand node list
+            self.node_list = []
+            for x in zip(sge_node_list, sge_cores_count_list):
+                self.node_list.extend(x[1] * [x[0]])
