@@ -237,7 +237,7 @@ class Popen(AgentExecutingComponent) :
             env_string = ''
             if cu['description']['environment']:
                 for key,val in cu['description']['environment'].iteritems():
-                    env_string += ' %s=%s' % (key, val)
+                    env_string += 'export "%s=%s"\n' % (key, val)
             env_string += "export RP_SESSION_ID=%s\n" % self._cfg['session_id']
             env_string += "export RP_PILOT_ID=%s\n"   % self._cfg['pilot_id']
             env_string += "export RP_AGENT_ID=%s\n"   % self._cfg['agent_name']
