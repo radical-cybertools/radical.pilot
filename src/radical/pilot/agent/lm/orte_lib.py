@@ -8,6 +8,8 @@ import time
 import threading
 import subprocess
 
+import radical.utils as ru
+
 from .base import LaunchMethod
 
 
@@ -37,7 +39,7 @@ class ORTELib(LaunchMethod):
                the DVM.
         """
 
-        dvm_command = cls._which('orte-dvm')
+        dvm_command = ru.which('orte-dvm')
         if not dvm_command:
             raise Exception("Couldn't find orte-dvm")
 
@@ -160,7 +162,7 @@ class ORTELib(LaunchMethod):
         if 'dvm_uri' in lm_info:
             try:
                 logger.info('terminating dvm')
-                orte_submit = cls._which('orterun')
+                orte_submit = ru.which('orterun')
                 if not orte_submit:
                     raise Exception("Couldn't find orterun")
                 subprocess.Popen([orte_submit, "--hnp", lm_info['dvm_uri'], "--terminate"])
@@ -172,7 +174,7 @@ class ORTELib(LaunchMethod):
     #
     def _configure(self):
 
-        self.launch_command = self._which('orterun')
+        self.launch_command = ru.which('orterun')
 
         # Request to create a background asynchronous event loop
         os.putenv("OMPI_MCA_ess_tool_async_progress", "enabled")
