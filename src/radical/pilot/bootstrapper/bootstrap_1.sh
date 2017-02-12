@@ -417,8 +417,8 @@ virtenv_setup()
     virtenv_mode="$3"
     python_dist="$4"
 
-    virtenv_create=UNDEFINED
-    virtenv_update=UNDEFINED
+    ve_create=UNDEFINED
+    ve_update=UNDEFINED
 
     if test "$virtenv_mode" = "private"
     then
@@ -427,18 +427,18 @@ virtenv_setup()
             printf "\nERROR: private virtenv already exists at $virtenv\n\n"
             exit 1
         fi
-        virtenv_create=TRUE
-        virtenv_update=FALSE
+        ve_create=TRUE
+        ve_update=FALSE
 
     elif test "$virtenv_mode" = "update"
     then
-        virtenv_create=FALSE
-        virtenv_update=TRUE
-        test -d "$virtenv/" || virtenv_create=TRUE
+        ve_create=FALSE
+        ve_update=TRUE
+        test -d "$virtenv/" || ve_create=TRUE
     elif test "$virtenv_mode" = "create"
     then
-        virtenv_create=TRUE
-        virtenv_update=FALSE
+        ve_create=TRUE
+        ve_update=FALSE
 
     elif test "$virtenv_mode" = "use"
     then
@@ -447,29 +447,29 @@ virtenv_setup()
             printf "\nERROR: given virtenv does not exist at $virtenv\n\n"
             exit 1
         fi
-        virtenv_create=FALSE
-        virtenv_update=FALSE
+        ve_create=FALSE
+        ve_update=FALSE
 
     elif test "$virtenv_mode" = "recreate"
     then
         test -d "$virtenv/" && rm -r "$virtenv"
-        virtenv_create=TRUE
-        virtenv_update=FALSE
+        ve_create=TRUE
+        ve_update=FALSE
     else
-        virtenv_create=FALSE
-        virtenv_update=FALSE
+        ve_create=FALSE
+        ve_update=FALSE
         printf "\nERROR: virtenv mode invalid: $virtenv_mode\n\n"
         exit 1
     fi
 
-    if test "$virtenv_create" = 'TRUE'
+    if test "$ve_create" = 'TRUE'
     then
         # no need to update a fresh ve
-        virtenv_update=FALSE
+        ve_update=FALSE
     fi
 
-    echo "virtenv_create   : $virtenv_create"
-    echo "virtenv_update   : $virtenv_update"
+    echo "virtenv_create   : $ve_create"
+    echo "virtenv_update   : $ve_update"
 
 
     # radical_pilot installation and update is governed by PILOT_VERSION.  If
@@ -487,25 +487,13 @@ virtenv_setup()
                 tar zxmf $sdist
                 RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
             done
-            RP_INSTALL_TARGET='VIRTENV'
-            RP_INSTALL_SDIST='TRUE'
-            ;;
-
-        debug)
-            for sdist in `echo $SDISTS | tr ':' ' '`
-            do
-                src=${sdist%.tgz}
-                src=${sdist%.tar.gz}
-                tar zxmf $sdist
-                RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
-            done
             RP_INSTALL_TARGET='SANDBOX'
             RP_INSTALL_SDIST='TRUE'
             ;;
 
         release)
             RP_INSTALL_SOURCES='radical.pilot'
-            RP_INSTALL_TARGET='VIRTENV'
+            RP_INSTALL_TARGET='SANDBOX'
             RP_INSTALL_SDIST='FALSE'
             ;;
 
@@ -521,7 +509,7 @@ virtenv_setup()
                 echo "         Setting 'rp_version' to 'release'"
                 RP_VERSION='release'
                 RP_INSTALL_SOURCES='radical.pilot'
-                RP_INSTALL_TARGET='VIRTENV'
+                RP_INSTALL_TARGET='SANDBOX'
                 RP_INSTALL_SDIST='FALSE'
             fi
             ;;
@@ -533,7 +521,7 @@ virtenv_setup()
             git clone https://github.com/radical-cybertools/radical.pilot.git
             (cd radical.pilot; git checkout $RP_VERSION)
             RP_INSTALL_SOURCES="radical.pilot/"
-            RP_INSTALL_TARGET='VIRTENV'
+            RP_INSTALL_TARGET='SANDBOX'
             RP_INSTALL_SDIST='FALSE'
     esac
 
@@ -578,7 +566,7 @@ virtenv_setup()
 
 
     # create virtenv if needed.  This also activates the virtenv.
-    if test "$virtenv_create" = "TRUE"
+    if test "$ve_create" = "TRUE"
     then
         if ! test -d "$virtenv/"
         then
@@ -604,7 +592,7 @@ virtenv_setup()
 
 
     # update virtenv if needed.  This also activates the virtenv.
-    if test "$virtenv_update" = "TRUE"
+    if test "$ve_update" = "TRUE"
     then
         echo 'rp lock for ve update'
         lock "$pid" "$virtenv" # use default timeout
@@ -887,20 +875,15 @@ virtenv_update()
 #   @tag/@branch/@commit: # no sdist staging
 #       git clone $github_base radical.pilot.src
 #       (cd radical.pilot.src && git checkout token)
-#       pip install -t $VIRTENV/rp_install/ radical.pilot.src
+#       pip install -t $SANDBOX/rp_install/ radical.pilot.src
 #       rm -rf radical.pilot.src
-#       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
+#       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
 #
 #   release: # no sdist staging
-#       pip install -t $VIRTENV/rp_install radical.pilot
-#       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
+#       pip install -t $SANDBOX/rp_install radical.pilot
+#       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
 #
 #   local: # needs sdist staging
-#       tar zxmf $sdist.tgz
-#       pip install -t $VIRTENV/rp_install $sdist/
-#       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
-#
-#   debug: # needs sdist staging
 #       tar zxmf $sdist.tgz
 #       pip install -t $SANDBOX/rp_install $sdist/
 #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH

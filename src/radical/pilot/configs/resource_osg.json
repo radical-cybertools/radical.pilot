@@ -1,32 +1,27 @@
 {
-  "xsede-virt-clust": {
-    "description": "XSEDE OSG Virtual Cluster is a Condor pool overlay on top of OSG resources. (https://portal.xsede.org/OSG-User-Guide).",
-    "notes": "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-    "schemas": [
-      "ssh",
-      "gsissh"
-    ],
-    "mandatory_args": [
-      "project"
-    ],
-    "ssh": {
+  "xsede-virt-clust"     : {
+    "description"        : "XSEDE OSG Virtual Cluster is a Condor pool overlay on top of OSG resources. (https://portal.xsede.org/OSG-User-Guide).",
+    "notes"              : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+    "schemas"            : ["ssh", "gsissh"],
+    "mandatory_args"     : ["project"],
+    "ssh"                : {
       "job_manager_endpoint": "condor+ssh://xd-login.opensciencegrid.org",
-      "filesystem_endpoint": "sftp://xd-login.opensciencegrid.org/"
+      "filesystem_endpoint" : "sftp://xd-login.opensciencegrid.org/"
     },
-    "gsissh": {
+    "gsissh"             : {
       "job_manager_endpoint": "condor+gsissh://xd-login.opensciencegrid.org",
-      "filesystem_endpoint": "gsisftp://xd-login.opensciencegrid.org/"
+      "filesystem_endpoint" : "gsisftp://xd-login.opensciencegrid.org/"
     },
-    "lrms": "FORK",
-    "agent_type": "multicore",
-    "shared_filesystem": false,
-    "health_check": false,
-    "agent_scheduler": "CONTINUOUS",
-    "agent_spawner": "POPEN",
-    "agent_config": "osg",
+    "lrms"               : "FORK",
+    "agent_type"         : "multicore",
+    "shared_filesystem"  : false,
+    "health_check"       : false,
+    "agent_scheduler"    : "CONTINUOUS",
+    "agent_spawner"      : "POPEN",
+    "agent_config"       : "osg",
     "agent_launch_method": "FORK",
-    "task_launch_method": "FORK",
-    "pre_bootstrap_1": [
+    "task_launch_method" : "FORK",
+    "pre_bootstrap_1"    : [
       # Allow to load modules
       "source /cvmfs/oasis.opensciencegrid.org/osg/modules/lmod/current/init/bash",
       # Unset env var otherwise tempfile conflicts with other VO
@@ -41,50 +36,47 @@
       "export PB2PATH=$PATH",
       "module load python/2.7"
     ],
-    "pre_bootstrap_2": [
+    "pre_bootstrap_2"    : [
       "export HOME=$HOME",
       "export PATH=$PB2PATH",
       "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
     ],
-    "rp_version": "debug",
-    "virtenv": "./ve_xd-login",
-    "virtenv_mode": "create",
-    "python_dist": "default"
+    "rp_version"         : "local",
+    "virtenv"            : "./ve_xd-login",
+    "virtenv_mode"       : "create",
+    "python_dist"        : "default"
   },
+
   "connect": {
-    "description": "OSG Connect. (https://osgconnect.net).",
-    "notes": "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-    "schemas": [
-      "ssh",
-      "gsissh"
-    ],
-    "mandatory_args": [
-      "project"
-    ],
-    "ssh": {
+    "description"        : "OSG Connect. (https://osgconnect.net).",
+    "notes"              : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+    "schemas"            : ["ssh", "gsissh"],
+    "mandatory_args"     : ["project"],
+    "ssh"                : {
       "job_manager_endpoint": "condor+ssh://login.osgconnect.net",
-      "filesystem_endpoint": "sftp://login.osgconnect.net/"
+      "filesystem_endpoint" : "sftp://login.osgconnect.net/"
     },
-    "gsissh": {
+    "gsissh"             : {
       "job_manager_endpoint": "condor+gsissh://login.osgconnect.net",
-      "filesystem_endpoint": "gsisftp://login.osgconnect.net/"
+      "filesystem_endpoint" : "gsisftp://login.osgconnect.net/"
     },
-    "lrms": "FORK",
-    "agent_type": "multicore",
-    "shared_filesystem": false,
-    "health_check": false,
-    "agent_scheduler": "CONTINUOUS",
-    "agent_spawner": "POPEN",
-    "agent_config": "osg",
+    "lrms"               : "FORK",
+    "agent_type"         : "multicore",
+    "shared_filesystem"  : false,
+    "health_check"       : false,
+    "agent_scheduler"    : "CONTINUOUS",
+    "agent_spawner"      : "POPEN",
+    "agent_config"       : "osg",
     "agent_launch_method": "FORK",
-    "task_launch_method": "FORK",
-    "pre_bootstrap_1": [
+    "task_launch_method" : "FORK",
+    "pre_bootstrap_1"    : [
       "source /cvmfs/oasis.opensciencegrid.org/osg/modules/lmod/current/init/bash",
       "module load python/2.7"
     ],
-    "rp_version": "debug",
-    "virtenv": "./ve_osgconnect",
-    "virtenv_mode": "create",
-    "python_dist": "default"
+    "rp_version"         : "debug",
+    "virtenv"            : "./ve_osgconnect",
+    "virtenv_mode"       : "create",
+    "python_dist"        : "default"
   }
 }
+
