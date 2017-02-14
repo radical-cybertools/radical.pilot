@@ -49,7 +49,7 @@ os.environ['RADICAL_VERBOSE'] = 'DEBUG'
 
 All `getting_started_[n].py` examples accept resource targets.  To simplify the
 examples, some resource configuration details are moved to a config file
-(`resources.json`).  Please make sure that it contains valid settings for the
+(`config.json`).  Please make sure that it contains valid settings for the
 target resources.
 
 All examples assume password-less ssh access to be configured out-of-band (or
