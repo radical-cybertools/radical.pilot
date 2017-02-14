@@ -794,19 +794,29 @@ virtenv_create()
     #       pip complains about some parameter mismatch).  So we fix on the last
     #       known workable version -- which seems to be acceptable to other
     #       hosts, too
-    run_cmd "update setuptools" \
+
+    if ! test "$python_dist" = "anaconda"
+    then
+        run_cmd "update setuptools" \
             "$PIP install --upgrade setuptools==0.6c11" \
          || echo "Couldn't update setuptools -- using default version"
-
-
+    else
+        echo "Setuptools will not be updated"
+    fi
+    
     # NOTE: new releases of pip deprecate options we depend upon.  While the pip
     #       developers discuss if those options will get un-deprecated again,
     #       fact is that there are released pip versions around which do not
     #       work for us (hello supermuc!).  So we fix the version to one we know
     #       is functional.
-    run_cmd "update pip" \
-            "$PIP install --upgrade pip==1.4.1" \
-         || echo "Couldn't update pip -- using default version"
+    if ! test "$python_dist" = "anaconda"
+    then
+        run_cmd "update pip" \
+                "$PIP install --upgrade pip==1.4.1" \
+             || echo "Couldn't update pip -- using default version"
+    else
+        echo "PIP will not be updated"
+    fi
 
     # make sure the new pip version is used (but keep the python executable)
     rehash "$PYTHON"
