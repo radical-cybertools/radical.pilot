@@ -357,12 +357,9 @@
         "task_launch_method"          : "SPARK",
         "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap_1"             : [ 
-                                        "module purge",
-                                        "module load TACC",
-                                        "module load python/2.7.12",
+                                        "module load python/2.7.9",
                                         "export TACC_DELETE_FILES=TRUE",
-                                        "module load jdk64/1.8.0",
-                                        "module unload xalt"
+                                        "module load jdk64/1.8.0"
                                         ],
         "pre_bootstrap_2"             : ["export PATH=$PATH",
                                          "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
