@@ -603,9 +603,9 @@
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",
         "pre_bootstrap_1"             : [
-            "module use --append /home/marksant/privatemodules",
+            "module use --append /home/amerzky/ompi/modules",
             "module load python",
-            "module load openmpi",
+            "module load openmpi/2017_02_15",
             "module load mpi4py"
         ],
         "valid_roots"                 : ["/home"],
