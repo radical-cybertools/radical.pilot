@@ -18,6 +18,9 @@ import cProfile
 import inspect
 import threading as mt
 
+
+# ------------------------------------------------------------------------------
+#
 cprof = cProfile.Profile()
 
 def cprof_it(func):
@@ -37,7 +40,9 @@ def dec_all_methods(dec):
         return cls
     return dectheclass
 
-#==============================================================================
+
+# ------------------------------------------------------------------------------
+#
 @dec_all_methods(cprof_it)
 class Continuous(AgentSchedulingComponent):
 
