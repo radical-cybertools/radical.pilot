@@ -282,9 +282,9 @@
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",
         "pre_bootstrap_1"             : [
-            "module use --append /home/marksant/privatemodules",
+            "module use --append /home/amerzky/ompi/modules",
             "module load python",
-            "module load openmpi/STATIC"
+            "module load openmpi/2017_02_15"
         ],
         "pre_bootstrap_2"             : [
             "export PATH=$PATH",
