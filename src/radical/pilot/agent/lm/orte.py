@@ -235,7 +235,7 @@ class ORTE(LaunchMethod):
         if task_mpi: np_flag = '-np %s' % task_cores
         else       : np_flag = '-np 1'
 
-        orte_command = '%s %s --hnp "%s" %s %s -host %s %s' % (self.launch_command, 
+        orte_command = '%s %s --hnp "%s" %s --bind-to none %s -host %s %s' % (self.launch_command, 
                 ' '.join(debug_strings), dvm_uri, export_vars, np_flag, 
                 hosts_string, task_command)
 
