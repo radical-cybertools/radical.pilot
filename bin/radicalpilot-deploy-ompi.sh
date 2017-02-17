@@ -53,7 +53,7 @@ wget https://ftp.gnu.org/gnu/m4/m4-1.4.16.tar.gz
 cd $OMPI_SOURCE
 tar -xvzf $OMPI_DOWNLOAD/m4-1.4.16.tar.gz
 cd m4-1.4.16
-./configure --prefix=$OMPI_TOOLS_PREFIX --disable-pmix-dstore
+./configure --prefix=$OMPI_TOOLS_PREFIX
 make
 make install
 
@@ -87,7 +87,15 @@ git checkout $OMPI_COMMIT
 export OMPI_BUILD=$OMPI_DIR/build/$OMPI_LABEL
 mkdir -p $OMPI_BUILD
 cd $OMPI_BUILD
-CFLAGS=-O3 CXXFLAGS=-O3 $OMPI_SOURCE/ompi/configure --enable-orterun-prefix-by-default --with-devel-headers --disable-debug --enable-static --prefix=$OMPI_INSTALLED/$OMPI_LABEL
+export CFLAGS=-O3
+export CXXFLAGS=-O3
+$OMPI_SOURCE/ompi/configure \
+    --enable-orterun-prefix-by-default \
+    --with-devel-headers \
+    --disable-debug \
+    --enable-static \
+    --disable-pmix-dstore \
+    --prefix=$OMPI_INSTALLED/$OMPI_LABEL
 make
 make install
 
