@@ -16,10 +16,10 @@
 # Thanks to Mark Santcroos to provide the input for this installation
 # procedure!
 
-export OMPI_DIR=$HOME/ompi/              # target location for install
-export OMPI_LABEL=$(date '+%Y_%m_%d')    # module flag for installed version
-export OMPI_COMMIT=4c9f7af               # OpenMPI commit to install
-export MAKEFLAGS=-j16                    # speed up build on multicore machines
+export OMPI_DIR=$HOME/ompi/                          # target location for install
+export OMPI_COMMIT=6da4dbb                           # OpenMPI commit to install
+export OMPI_LABEL=$(date '+%Y_%m_%d'_${OMPI_COMMIT}) # module flag for installed version
+export MAKEFLAGS=-j16                                # speed up build on multicore machines
 
 
 # The environments below are only important during build time
@@ -53,7 +53,7 @@ wget https://ftp.gnu.org/gnu/m4/m4-1.4.16.tar.gz
 cd $OMPI_SOURCE
 tar -xvzf $OMPI_DOWNLOAD/m4-1.4.16.tar.gz
 cd m4-1.4.16
-./configure --prefix=$OMPI_TOOLS_PREFIX
+./configure --prefix=$OMPI_TOOLS_PREFIX --disable-pmix-dstore
 make
 make install
 
