@@ -16,10 +16,10 @@
 # Thanks to Mark Santcroos to provide the input for this installation
 # procedure!
 
-export OMPI_DIR=$HOME/ompi/              # target location for install
-export OMPI_LABEL=$(date '+%Y_%m_%d')    # module flag for installed version
-export OMPI_COMMIT=4c9f7af               # OpenMPI commit to install
-export MAKEFLAGS=-j16                    # speed up build on multicore machines
+export OMPI_DIR=$HOME/ompi/                          # target location for install
+export OMPI_COMMIT=6da4dbb                           # OpenMPI commit to install
+export OMPI_LABEL=$(date '+%Y_%m_%d'_${OMPI_COMMIT}) # module flag for installed version
+export MAKEFLAGS=-j16                                # speed up build on multicore machines
 
 
 # The environments below are only important during build time
@@ -87,7 +87,15 @@ git checkout $OMPI_COMMIT
 export OMPI_BUILD=$OMPI_DIR/build/$OMPI_LABEL
 mkdir -p $OMPI_BUILD
 cd $OMPI_BUILD
-CFLAGS=-O3 CXXFLAGS=-O3 $OMPI_SOURCE/ompi/configure --enable-orterun-prefix-by-default --with-devel-headers --disable-debug --enable-static --prefix=$OMPI_INSTALLED/$OMPI_LABEL
+export CFLAGS=-O3
+export CXXFLAGS=-O3
+$OMPI_SOURCE/ompi/configure \
+    --enable-orterun-prefix-by-default \
+    --with-devel-headers \
+    --disable-debug \
+    --enable-static \
+    --disable-pmix-dstore \
+    --prefix=$OMPI_INSTALLED/$OMPI_LABEL
 make
 make install
 
