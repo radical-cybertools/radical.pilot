@@ -49,8 +49,8 @@
         "pre_bootstrap_1"             : [
             "module switch PrgEnv-cray PrgEnv-gnu",
             "module load bwpy",
-            "module use --append /projects/sciteam/gkd/modules",
-            "module load openmpi/rhc_static"
+            "module use --append /projects/sciteam/gk4/openmpi/modules",
+            "module load openmpi/DEVEL-STATIC"
         ],
         "pre_bootstrap_2"             : ["export HOME=$HOME"],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
@@ -83,8 +83,8 @@
         "pre_bootstrap_1"             : [
             "module switch PrgEnv-cray PrgEnv-gnu",
             "module load bwpy",
-            "module use --append /projects/sciteam/gkd/modules",
-            "module load openmpi/rhc_static"
+            "module use --append /projects/sciteam/gk4/openmpi/modules",
+            "module load openmpi/DEVEL-STATIC"
         ],
         "pre_bootstrap_2"             : ["export HOME=$HOME"],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
@@ -152,8 +152,8 @@
         "pre_bootstrap_1"             : [
             "module switch PrgEnv-cray PrgEnv-gnu",
             "module load bwpy",
-            "module use --append /projects/sciteam/gkd/modules",
-            "module load openmpi"
+            "module use --append /projects/sciteam/gk4/openmpi/modules",
+            "module load openmpi/DEVEL-STATIC"
         ],
         "pre_bootstrap_2"             : ["export HOME=$HOME"],
         "default_remote_workdir"      : "/scratch/training/$USER",
