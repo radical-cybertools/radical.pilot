@@ -602,7 +602,7 @@
         "pre_bootstrap_1"             : [
             "module use --append /home/amerzky/ompi/modules",
             "module load python",
-            "module load openmpi/2017_02_15"
+            "module load openmpi/2017_02_17_6da4dbb"
         ],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
