@@ -4,20 +4,20 @@ Getting Started
 
 A series of `getting_started_[n].py` examples demonstrate the usage of RP, by
 executing a bag of simple shell commands over pilot(s).  The different scripts
-all base on the simplest case in `getting_started_00.py`, introducing different
-features:
+are all based on the simplest case in `00_getting_started.py`, introducing
+different features:
 
-* `getting_started_00.py`: basic example
-* `getting_started_01.py`: obtain unit details
-* `getting_started_02.py`: handle failing units
-* `getting_started_03.py`: use multiple pilots
-* `getting_started_04.py`: use a different scheduler
-* `getting_started_05.py`: stage unit input data
-* `getting_started_06.py`: stage unit output data
-* `getting_started_07.py`: stage shared unit input data
-* `getting_started_08.py`: use environment variables for units
-* `getting_started_09.py`: running MPI units
-* `getting_started_10.py`: use pre- and post- execution
+* `00_getting_started.py`: basic example
+* `01_unit_details.py`: obtain unit details
+* `02_failing_units.py`: handle failing units
+* `03_multiple_pilots.py`: use multiple pilots
+* `04_scheduler_selection.py`: use a different scheduler
+* `05_unit_input_data.py`: stage unit input data
+* `06_unit_output_data.py`: stage unit output data
+* `07_shared_unit_data.py`: stage shared unit input data
+* `08_unit_environment.py`: use environment variables for units
+* `09_mpi_units.py`: running MPI units
+* `10_pre_and_post_exec.py`: use pre- and post- execution
 
 (script evolution:
  0
@@ -47,7 +47,7 @@ to
 os.environ['RADICAL_VERBOSE'] = 'DEBUG'
 ```
 
-All `getting_started_[n].py` examples accept resource targets.  To simplify the
+All `[nn]_*.py` examples accept resource targets.  To simplify the
 examples, some resource configuration details are moved to a config file
 (`config.json`).  Please make sure that it contains valid settings for the
 target resources.
