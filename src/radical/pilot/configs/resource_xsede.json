@@ -329,7 +329,7 @@
     "wrangler_spark": {
         "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["ssh", "gsissh", "go"],
+        "schemas"                     : ["gsissh", "ssh", "go"],
         "mandatory_args"              : ["project"],
         "ssh"                         :
         {
@@ -355,12 +355,9 @@
         "task_launch_method"          : "SPARK",
         "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap_1"             : [ 
-                                        "module purge",
-                                        "module load TACC",
-                                        "module load python/2.7.12",
+                                        "module load python/2.7.9",
                                         "export TACC_DELETE_FILES=TRUE",
-                                        "module load jdk64/1.8.0",
-                                        "module unload xalt"
+                                        "module load jdk64/1.8.0"
                                         ],
         "pre_bootstrap_2"             : ["export PATH=$PATH",
                                          "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
@@ -462,7 +459,7 @@
         "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap_1"             : ["module purge", "module load python intel mvapich2_ib gnubase"],
         "valid_roots"                 : ["/home"],
-        "rp_version"                  : "debug",
+        "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_gordon",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
@@ -495,8 +492,8 @@
                                          "unset PYTHONPATH"
                                         ],
         "valid_roots"                 : ["/usr/users", "/brashear"],
-        "stage_cacerts"               : true,
-        "rp_version"                  : "debug",
+        "stage_cacerts"               : "True",
+        "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_blacklight",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
@@ -531,7 +528,7 @@
                                         ],
         "valid_roots"                 : ["/home", "/crucible", "/arc"],
         "stage_cacerts"               : "True",
-        "rp_version"                  : "debug",
+        "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_greenfield",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
@@ -595,10 +592,9 @@
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",
         "pre_bootstrap_1"             : [
-            "module use --append /home/marksant/privatemodules",
+            "module use --append /home/amerzky/ompi/modules",
             "module load python",
-            "module load openmpi",
-            "module load mpi4py"
+            "module load openmpi/2017_02_17_6da4dbb"
         ],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",

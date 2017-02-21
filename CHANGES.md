@@ -5,6 +5,31 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.44.1 Release                                                        2016-11-01
+--------------------------------------------------------------------------------
+
+  - add an agent config for cray/aprun all on mom node
+  - add anaconda config for examples 
+  - gsissh as default for wrangler, stampede, supermic 
+  - add conf for spark n wrangler, comet
+  - add docs to the cu env inject 
+  - expose spark's master url
+  - fix CU env setting (stampede) 
+  - configuration for spark and anaconda 
+  - resource config entries for titan
+  - disable PYTHONHOME setting in titan_aprun 
+  - dynamic configuration of spark_env 
+  - fix for gordon config 
+  - hardcode the netiface version until it is fixed upstream. 
+  - implement NON_FATAL for staging directives. 
+  - make resource config available to agent 
+  - rename scripts 
+  - update installation.rst 
+  - analytics backport 
+  - use profiler from RU 
+  - when calling a unit state callback, missed states also trigger callbacks 
+
+
 0.43.1 Release                                                        2016-09-09
 --------------------------------------------------------------------------------
 

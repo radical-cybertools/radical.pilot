@@ -5,6 +5,8 @@ __license__   = "MIT"
 
 import os
 
+import radical.utils as ru
+
 from .base import LaunchMethod
 
 
@@ -28,7 +30,7 @@ class SSH(LaunchMethod):
     #
     def _configure(self):
         # Find ssh command
-        command = self._which('ssh')
+        command = ru.which('ssh')
 
         if command is not None:
 
