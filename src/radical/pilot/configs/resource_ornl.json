@@ -100,8 +100,8 @@
         "agent_type"                  : "multicore",
         "agent_config"                : "cray",
         "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "ORTE",
-        "agent_launch_method"         : "ORTE",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "FORK",
         "task_launch_method"          : "ORTE_LIB",
         "mpi_launch_method"           : "ORTE_LIB",
         "pre_bootstrap_1"             : [
