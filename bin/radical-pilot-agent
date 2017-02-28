@@ -1,0 +1,47 @@
+#!/usr/bin/env python
+
+__copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
+__license__   = "MIT"
+
+
+import sys
+
+import saga                    as rs
+import radical.utils           as ru
+import radical.pilot           as rp
+
+
+# this needs git attribute 'ident' set for this file
+git_ident = "$Id$"
+
+# ==============================================================================
+#
+if __name__ == "__main__":
+
+    """
+    This script is part of the pilot bootstrapping routine, representing the
+    entry point into Python.
+    """
+
+    print "---------------------------------------------------------------------"
+    print
+    print "PYTHONPATH: %s"  % sys.path
+    print "python: %s"      % sys.version
+    print "utils : %-5s : %s" % (ru.version_detail, ru.__file__)
+    print "saga  : %-5s : %s" % (rs.version_detail, rs.__file__)
+    print "pilot : %-5s : %s" % (rp.version_detail, rp.__file__)
+    print "        type  : multicore"
+    print "        gitid : %s" % git_ident
+    print
+    print "---------------------------------------------------------------------"
+    print
+
+    agent_name=sys.argv[1]
+
+    print "%s.bootstrap_3 start" % agent_name
+    rp.agent.bootstrap_3(agent_name)
+    print "%s.bootstrap_3 done" % agent_name
+
+#
+# ------------------------------------------------------------------------------
+

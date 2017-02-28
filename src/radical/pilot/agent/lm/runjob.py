@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import radical.utils as ru
 
 from .base import LaunchMethod
 
@@ -14,16 +15,16 @@ class Runjob(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, logger)
+        LaunchMethod.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
         # runjob: job launcher for IBM BG/Q systems, e.g. Joule
-        self.launch_command= self._which('runjob')
+        self.launch_command= ru.which('runjob')
 
         raise NotImplementedError('RUNJOB LM needs to be decoupled from the scheduler/LRMS')
 
@@ -39,14 +40,14 @@ class Runjob(LaunchMethod):
         task_args    = cud.get('arguments') or []
         task_argstr  = self._create_arg_string(task_args)
 
-        if  'cores_per_node'      not in opaque_slots or\
-            'loadl_bg_block'      not in opaque_slots or\
-            'sub_block_shape_str' not in opaque_slots or\
-            'corner_node'         not in opaque_slots :
+        if  'cores_per_node'      not in opaque_slots or \
+            'loadl_bg_block'      not in opaque_slots or \
+            'sub_block_shape_str' not in opaque_slots or \
+            'corner_node'         not in opaque_slots    :
             raise RuntimeError('insufficient information to launch via %s: %s' \
                     % (self.name, opaque_slots))
 
-        cores_per_node      = opaque_slots['cores_per_node']
+        cores_per_node      = opaque_slots['lm_info']['cores_per_node']
         loadl_bg_block      = opaque_slots['loadl_bg_block']
         sub_block_shape_str = opaque_slots['sub_block_shape_str']
         corner_node         = opaque_slots['corner_node']

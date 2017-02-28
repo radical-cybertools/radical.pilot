@@ -3,6 +3,8 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import radical.utils as ru
+
 from .base import LaunchMethod
 
 
@@ -12,16 +14,16 @@ class APRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, logger)
+        LaunchMethod.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
         # aprun: job launcher for Cray systems
-        self.launch_command= self._which('aprun')
+        self.launch_command= ru.which('aprun')
 
         # TODO: ensure that only one concurrent aprun per node is executed!
 

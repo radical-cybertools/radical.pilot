@@ -11,7 +11,6 @@
         },
         "default_remote_workdir"      : "$HOME",
         "lrms"                        : "YARN",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "YARN",
         "agent_spawner"               : "ABDS",
         "agent_launch_method"         : "FORK",
