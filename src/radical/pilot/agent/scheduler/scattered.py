@@ -8,7 +8,7 @@ from ... import constants as rpc
 from .base import AgentSchedulingComponent
 
 
-#==============================================================================
+# ==============================================================================
 #
 # Scattered core agent scheduler.
 # Finds available cores within the job's allocation.
@@ -17,6 +17,7 @@ from .base import AgentSchedulingComponent
 #       on the same host.
 #
 class Scattered(AgentSchedulingComponent):
+    
 
     # --------------------------------------------------------------------------
     #
@@ -142,3 +143,4 @@ class Scattered(AgentSchedulingComponent):
             self.slots[offset]['state'] = new_state
 
 # ------------------------------------------------------------------------------
+

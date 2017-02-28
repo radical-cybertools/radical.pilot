@@ -16,9 +16,9 @@ class MPIRunCCMRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, logger)
+        LaunchMethod.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------

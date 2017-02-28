@@ -9,7 +9,6 @@
         },
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "APRUN",
@@ -59,7 +58,7 @@
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_bw",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
 
@@ -73,7 +72,6 @@
         },
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_config"                : "cray",
@@ -94,7 +92,7 @@
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_bw",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
 
@@ -143,7 +141,6 @@
         },
         "default_queue"               : "normal",
         "lrms"                        : "CCM",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",

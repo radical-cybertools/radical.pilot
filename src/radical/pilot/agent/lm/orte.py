@@ -21,9 +21,9 @@ class ORTE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, logger)
+        LaunchMethod.__init__(self, cfg, session)
 
         # We remove all ORTE related environment variables from the launcher
         # environment, so that we can use ORTE for both launch of the

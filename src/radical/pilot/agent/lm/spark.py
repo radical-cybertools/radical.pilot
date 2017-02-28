@@ -121,7 +121,7 @@ class Spark(LaunchMethod):
             subprocess.check_output(spark_home + '/sbin/start-all.sh')
         except Exception as e:
             raise RuntimeError("Spark Cluster failed to start: %s" % e)
-        
+
         logger.info('Start Spark Cluster')
         launch_command = spark_home +'/bin'
 
@@ -145,8 +145,7 @@ class Spark(LaunchMethod):
     @classmethod
     def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
         if 'name' not in lm_info:
-            raise RuntimeError('name not in lm_info for %s' \
-                    % (self.name))
+            raise RuntimeError('name not in lm_info for %s' % name)
 
         if lm_info['name'] != 'SPARKLRMS':
             logger.info('Stoping SPARK')

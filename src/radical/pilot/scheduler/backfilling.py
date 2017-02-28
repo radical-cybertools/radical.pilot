@@ -16,8 +16,8 @@ import time
 import pprint
 import threading
 
-from ..states   import *
-from ..utils    import logger
+from ...states   import *
+from ...utils    import logger
 
 from .interface import Scheduler
 
@@ -190,7 +190,7 @@ class BackfillingScheduler(Scheduler):
                 self.pilots[pid]['state'] = state
                 logger.debug ("[SchedulerCallback]: ComputePilot %s changed to %s" % (pid, state))
     
-                if  state in [ACTIVE] :
+                if  state in [PMGR_ACTIVE] :
                     # the pilot is now ready to be used
                     self._reschedule (target_pid=pid)
     
@@ -468,7 +468,7 @@ class BackfillingScheduler(Scheduler):
                   # logger.debug ("        pilot %s (%s caps, state %s)" \
                   #            % (pid, self.pilots[pid]['state'], self.pilots[pid]['caps']))
 
-                    if  self.pilots[pid]['state'] in [ACTIVE] :
+                    if  self.pilots[pid]['state'] in [PMGR_ACTIVE] :
 
                         if  ud.cores <= self.pilots[pid]['caps'] :
                     

@@ -64,12 +64,12 @@ class TestIssue114(unittest.TestCase):
         cpd.cleanup  = True
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
-        state = pm.wait_pilots(state=[rp.ACTIVE, 
+        state = pm.wait_pilots(state=[rp.PMGR_ACTIVE, 
                                       rp.DONE, 
                                       rp.FAILED], 
                                       timeout=5*60)
 
-        assert (pilot.state == rp.ACTIVE), "pilot state: %s" % pilot.state
+        assert (pilot.state == rp.PMGR_ACTIVE), "pilot state: %s" % pilot.state
 
         um = rp.UnitManager(
             session=session,
@@ -123,12 +123,12 @@ class TestIssue114(unittest.TestCase):
         )
         um.add_pilots(pilot)
 
-        state = pm.wait_pilots(state=[rp.ACTIVE, 
+        state = pm.wait_pilots(state=[rp.PMGR_ACTIVE, 
                                       rp.DONE, 
                                       rp.FAILED], 
                                       timeout=5*60)
 
-        assert (pilot.state == rp.ACTIVE), "pilot state: %s" % pilot.state
+        assert (pilot.state == rp.PMGR_ACTIVE), "pilot state: %s" % pilot.state
 
         cudesc = rp.ComputeUnitDescription()
         cudesc.cores      = 1
@@ -172,13 +172,13 @@ class TestIssue114(unittest.TestCase):
         )
         um.add_pilots(pilot)
 
-        state = pm.wait_pilots(state=[rp.ACTIVE, 
+        state = pm.wait_pilots(state=[rp.PMGR_ACTIVE, 
                                       rp.DONE, 
                                       rp.FAILED], 
                                       timeout=10*60)
 
-        assert state       == [rp.ACTIVE], 'state      : %s' % state    
-        assert pilot.state ==  rp.ACTIVE , 'pilot state: %s' % pilot.state 
+        assert state       == [rp.PMGR_ACTIVE], 'state      : %s' % state    
+        assert pilot.state ==  rp.PMGR_ACTIVE , 'pilot state: %s' % pilot.state 
 
         state = pm.wait_pilots(timeout=3*60)
 
