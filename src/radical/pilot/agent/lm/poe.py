@@ -3,6 +3,8 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import radical.utils as ru
+
 from .base import LaunchMethod
 
 
@@ -21,7 +23,7 @@ class POE(LaunchMethod):
     #
     def _configure(self):
         # poe: LSF specific wrapper for MPI (e.g. yellowstone)
-        self.launch_command = self._which('poe')
+        self.launch_command = ru.which('poe')
 
 
     # --------------------------------------------------------------------------
