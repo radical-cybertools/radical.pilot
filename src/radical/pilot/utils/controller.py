@@ -15,7 +15,6 @@ from ..          import constants      as rpc
 from ..          import states         as rps
 
 from .misc       import hostip
-from .prof_utils import timestamp      as rpu_timestamp
 
 from .queue      import Queue          as rpu_Queue
 from .queue      import QUEUE_OUTPUT   as rpu_QUEUE_OUTPUT
@@ -476,6 +475,8 @@ class Controller(object):
                 msgs = [msgs]
 
             for msg in msgs:
+
+                self._log.debug('msg [%s] : %s', owner, pprint.pformat(msg))
 
                 cmd = msg['cmd']
                 arg = msg['arg']

@@ -11,10 +11,12 @@ import threading
 
 import radical.utils as ru
 
-from .  import utils     as rpu
-from .  import states    as rps
-from .  import constants as rpc
-from .  import types     as rpt
+from . import utils     as rpu
+from . import states    as rps
+from . import constants as rpc
+from . import types     as rpt
+
+from . import compute_unit_description as rpcud
 
 from .umgr import scheduler as rpus
 
@@ -176,7 +178,7 @@ class UnitManager(rpu.Component):
         if self._closed:
             return
 
-        self._log.debug("closing %s", self.uid)
+        self._log.debug("closing %s\n%s", self.uid, '\n'.join(ru.get_stacktrace()))
         self._log.report.info('<<close unit manager')
 
         # we don't want any callback invokations during shutdown
@@ -219,6 +221,92 @@ class UnitManager(rpu.Component):
         """
 
         return str(self.as_dict())
+
+
+    #---------------------------------------------------------------------------
+    #
+    def _pilot_state_cb(self, pilot, state):
+
+        # we register this callback for pilots added to this umgr.  It will
+        # specifically look out for pilots which complete, and will make sure
+        # that all units are pulled back into umgr control if that happens
+        # prematurely.
+        #
+        # If we find units which have not completed the agent part of the unit
+        # state model, we declare them FAILED.  If they can be restarted, we
+        # resubmit an identical unit, which then will get a new unit ID.  This
+        # avoids state model confusion (the state model is right now expected to
+        # be linear), but is not intuitive for the application (FIXME).
+        #
+        # FIXME: there is a race with the umgr scheduler which may, just now,
+        #        and before being notified about the pilot's demise, send new
+        #        units to the pilot.
+
+        # we only look into pilot states when the umgr is still active
+        # FIXME: note that there is a race in that the umgr can be closed while
+        #        we are in the cb.
+        if self._closed:
+            self._log.debug('umgr closed, ignore pilot state (%s: %s)', 
+                            pilot.uid, pilot.state)
+            return
+
+
+        if state in rps.FINAL:
+
+            self._log.debug('pilot %s is final - pull units', pilot.uid)
+
+            unit_cursor = self.session._dbs._c.find(spec={
+                'type'    : 'unit',
+                'pilot'   : pilot.uid,
+                'umgr'    : self.uid,
+                'control' : {'$in' : ['agent_pending', 'agent']}})
+
+            if not unit_cursor.count():
+                units = list()
+            else:
+                units = list(unit_cursor)
+
+            self._log.debug(" === units pulled: %3d (pilot dead)" % len(units))
+
+            if not units:
+                return
+
+            # update the units to avoid pulling them again next time.
+            # NOTE:  this needs not locking with the unit pulling in the
+            #        _unit_pull_cb, as that will only pull umgr_pending 
+            #        units.
+            uids = [unit['uid'] for unit in units]
+
+            self._session._dbs._c.update(multi    = True,
+                            spec     = {'type'  : 'unit',
+                                        'uid'   : {'$in'     : uids}},
+                            document = {'$set'  : {'control' : 'umgr'}})
+
+            to_restart = list()
+
+            for unit in units:
+                unit['state'] = rps.FAILED
+                if unit['description'].get('restartable'):
+                    self._log.debug('unit %s is  restartable', unit['uid'])
+                    unit['restarted'] = True
+                    ud = rpcud.ComputeUnitDescription(unit['description'])
+                    to_restart.append(ud)
+                    # FIXME: should we increment some restart counter in the
+                    #        description?
+                    # FIXME: we could submit the units individually, and then
+                    #        reference the resulting new uid in the old unit.
+                else:
+                    self._log.debug('unit %s not restartable', unit['uid'])
+
+            if to_restart and not self._closed:
+                self._log.debug('restart %s units', len(to_restart))
+                restarted = self.submit_units(to_restart)
+                for u in restarted:
+                    self._log.debug('restart unit %s', u.uid)
+
+
+            # final units are not pushed
+            self.advance(units, publish=True, push=False) 
 
 
     #---------------------------------------------------------------------------
@@ -437,6 +525,9 @@ class UnitManager(rpu.Component):
                     raise ValueError('pilot %s already added' % pid)
                 self._pilots[pid] = pilot
 
+                # sinscribe for state updates
+                pilot.register_callback(self._pilot_state_cb)
+
         pilot_docs = [pilot.as_dict() for pilot in pilots]
 
         # publish to the command channel for the scheduler to pick up
@@ -576,13 +667,25 @@ class UnitManager(rpu.Component):
         if len(descriptions) == 0:
             raise ValueError('cannot submit no unit descriptions')
 
-
         self._log.report.info('<<submit %d unit(s)\n\t' % len(descriptions))
 
         # we return a list of compute units
         units = list()
-        for descr in descriptions :
-            unit = ComputeUnit.create(umgr=self, descr=descr)
+        for ud in descriptions:
+
+            if not ud.executable:
+                raise ValueError('compute unit executable must be defined')
+
+            if not ud.cores:
+                raise ValueError('compute unit core count must be defined')
+
+            if float(ud.cores) != int(ud.cores):
+                raise ValueError('compute unit core count must be an integer')
+
+            if int(ud.cores) <= 0:
+                raise ValueError('compute unit core count must be positive')
+
+            unit = ComputeUnit.create(umgr=self, descr=ud)
             units.append(unit)
 
             # keep units around
@@ -590,8 +693,7 @@ class UnitManager(rpu.Component):
                 self._units[unit.uid] = unit
 
             if self._session._rec:
-                import radical.utils as ru
-                ru.write_json(descr.as_dict(), "%s/%s.batch.%03d.json" \
+                ru.write_json(ud.as_dict(), "%s/%s.batch.%03d.json" \
                         % (self._session._rec, unit.uid, self._rec_id))
 
             self._log.report.progress()

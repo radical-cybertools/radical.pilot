@@ -663,7 +663,7 @@ def plot_session (db, session, cachedir, term) :
 
   # mtimetics = 10
 
-    plotfile = "%s/radicalpilot-stats.plot" % os.path.dirname (__file__)
+    plotfile = "%s/radical-pilot-stats.plot" % os.path.dirname (__file__)
     plotname = os.environ.get ('RP_PLOTNAME', None)
 
     # if maxslots and maxqueue differ by max 25% then we use the same scale.  If

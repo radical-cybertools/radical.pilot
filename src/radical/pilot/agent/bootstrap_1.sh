@@ -67,12 +67,12 @@ PREBOOTSTRAP2=""
 
 
 # seconds to wait for lock files
-# 3 min should be enough for anybody to create/update a virtenv...
-LOCK_TIMEOUT=180 # 3 min
+# 10 min should be enough for anybody to create/update a virtenv...
+LOCK_TIMEOUT=600 # 10 min
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
 VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
-VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces setproctitle msgpack-python"
+VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces==0.10.4 setproctitle orte_cffi msgpack-python"
 
 
 # ------------------------------------------------------------------------------
@@ -159,7 +159,7 @@ profile_event()
     fi
 
     printf "%.4f,%s,%s,%s,%s,%s\n" \
-        "$NOW" "bootstrap_1" "$PILOT_ID" "ACTIVE_PENDING" "$event" "$msg" \
+        "$NOW" "bootstrap_1" "$PILOT_ID" "PMGR_ACTIVE_PENDING" "$event" "$msg" \
         | tee -a "$PROFILE"
 }
 
@@ -327,7 +327,7 @@ rehash()
     #       directory, so we may find the dists in pwd
     CA_CERT_GZ="$SESSION_SANDBOX/cacert.pem.gz"
     CA_CERT_PEM="$SESSION_SANDBOX/cacert.pem"
-    if ! test -f "$CA_CERT_GZ"
+    if ! test -f "$CA_CERT_GZ" -o -f "$CA_CERT_PEM"
     then
         CA_CERT_GZ="./cacert.pem.gz"
         CA_CERT_PEM="./cacert.pem"
@@ -540,8 +540,8 @@ virtenv_setup()
     virtenv_mode="$3"
     python_dist="$4"
 
-    virtenv_create=UNDEFINED
-    virtenv_update=UNDEFINED
+    ve_create=UNDEFINED
+    ve_update=UNDEFINED
 
     if test "$virtenv_mode" = "private"
     then
@@ -550,18 +550,18 @@ virtenv_setup()
             printf "\nERROR: private virtenv already exists at $virtenv\n\n"
             exit 1
         fi
-        virtenv_create=TRUE
-        virtenv_update=FALSE
+        ve_create=TRUE
+        ve_update=FALSE
 
     elif test "$virtenv_mode" = "update"
     then
-        virtenv_create=FALSE
-        virtenv_update=TRUE
-        test -d "$virtenv/" || virtenv_create=TRUE
+        ve_create=FALSE
+        ve_update=TRUE
+        test -d "$virtenv/" || ve_create=TRUE
     elif test "$virtenv_mode" = "create"
     then
-        virtenv_create=TRUE
-        virtenv_update=FALSE
+        ve_create=TRUE
+        ve_update=FALSE
 
     elif test "$virtenv_mode" = "use"
     then
@@ -570,29 +570,29 @@ virtenv_setup()
             printf "\nERROR: given virtenv does not exist at $virtenv\n\n"
             exit 1
         fi
-        virtenv_create=FALSE
-        virtenv_update=FALSE
+        ve_create=FALSE
+        ve_update=FALSE
 
     elif test "$virtenv_mode" = "recreate"
     then
         test -d "$virtenv/" && rm -r "$virtenv"
-        virtenv_create=TRUE
-        virtenv_update=FALSE
+        ve_create=TRUE
+        ve_update=FALSE
     else
-        virtenv_create=FALSE
-        virtenv_update=FALSE
+        ve_create=FALSE
+        ve_update=FALSE
         printf "\nERROR: virtenv mode invalid: $virtenv_mode\n\n"
         exit 1
     fi
 
-    if test "$virtenv_create" = 'TRUE'
+    if test "$ve_create" = 'TRUE'
     then
         # no need to update a fresh ve
-        virtenv_update=FALSE
+        ve_update=FALSE
     fi
 
-    echo "virtenv_create   : $virtenv_create"
-    echo "virtenv_update   : $virtenv_update"
+    echo "virtenv_create   : $ve_create"
+    echo "virtenv_update   : $ve_update"
 
 
     # radical_pilot installation and update is governed by PILOT_VERSION.  If
@@ -618,33 +618,13 @@ virtenv_setup()
                 fi
                 RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
             done
-            RP_INSTALL_TARGET='VIRTENV'
-            RP_INSTALL_SDIST='TRUE'
-            ;;
-
-        debug)
-            for sdist in `echo $SDISTS | tr ':' ' '`
-            do
-                src=${sdist%.tgz}
-                src=${sdist%.tar.gz}
-                # NOTE: Condor does not support staging into some arbitrary
-                #       directory, so we may find the dists in pwd
-                if test -e "$SESSION_SANDBOX/$sdist"
-                then
-                    tar zxmf "$SESSION_SANDBOX/$sdist"
-                else
-                    tar zxmf "./$sdist"
-                    rm  -v   "./$sdist"
-                fi
-                RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
-            done
             RP_INSTALL_TARGET='SANDBOX'
             RP_INSTALL_SDIST='TRUE'
             ;;
 
         release)
             RP_INSTALL_SOURCES='radical.pilot'
-            RP_INSTALL_TARGET='VIRTENV'
+            RP_INSTALL_TARGET='SANDBOX'
             RP_INSTALL_SDIST='FALSE'
             ;;
 
@@ -661,7 +641,7 @@ virtenv_setup()
             git clone https://github.com/radical-cybertools/radical.pilot.git
             (cd radical.pilot; git checkout $RP_VERSION)
             RP_INSTALL_SOURCES="radical.pilot/"
-            RP_INSTALL_TARGET='VIRTENV'
+            RP_INSTALL_TARGET='SANDBOX'
             RP_INSTALL_SDIST='FALSE'
     esac
 
@@ -706,7 +686,7 @@ virtenv_setup()
 
 
     # create virtenv if needed.  This also activates the virtenv.
-    if test "$virtenv_create" = "TRUE"
+    if test "$ve_create" = "TRUE"
     then
         if ! test -d "$virtenv/"
         then
@@ -732,7 +712,7 @@ virtenv_setup()
 
 
     # update virtenv if needed.  This also activates the virtenv.
-    if test "$virtenv_update" = "TRUE"
+    if test "$ve_update" = "TRUE"
     then
         echo 'rp lock for ve update'
         lock "$pid" "$virtenv" # use default timeout
@@ -940,19 +920,29 @@ virtenv_create()
     #       pip complains about some parameter mismatch).  So we fix on the last
     #       known workable version -- which seems to be acceptable to other
     #       hosts, too
-    run_cmd "update setuptools" \
+
+    if ! test "$python_dist" = "anaconda"
+    then
+        run_cmd "update setuptools" \
             "$PIP install --upgrade setuptools==0.6c11" \
          || echo "Couldn't update setuptools -- using default version"
-
-
+    else
+        echo "Setuptools will not be updated"
+    fi
+    
     # NOTE: new releases of pip deprecate options we depend upon.  While the pip
     #       developers discuss if those options will get un-deprecated again,
     #       fact is that there are released pip versions around which do not
     #       work for us (hello supermuc!).  So we fix the version to one we know
     #       is functional.
-    run_cmd "update pip" \
-            "$PIP install --upgrade pip==1.4.1" \
-         || echo "Couldn't update pip -- using default version"
+    if ! test "$python_dist" = "anaconda"
+    then
+        run_cmd "update pip" \
+                "$PIP install --upgrade pip==1.4.1" \
+             || echo "Couldn't update pip -- using default version"
+    else
+        echo "PIP will not be updated"
+    fi
 
     # make sure the new pip version is used (but keep the python executable)
     rehash "$PYTHON"
@@ -968,7 +958,7 @@ virtenv_create()
 
     # now that the virtenv is set up, we install all dependencies
     # of the RADICAL stack
-    for dep in "$VIRTENV_RADICAL_DEPS"
+    for dep in $VIRTENV_RADICAL_DEPS
     do
         run_cmd "install $dep" \
                 "$PIP install $dep" \
@@ -992,7 +982,7 @@ virtenv_update()
     # we upgrade all dependencies of the RADICAL stack, one by one.
     # NOTE: we only do pip upgrades -- that will ignore the easy_installed
     #       modules on india etc.
-    for dep in "$VIRTENV_RADICAL_DEPS"
+    for dep in $VIRTENV_RADICAL_DEPS
     do
         run_cmd "install $dep" \
                 "$PIP install --upgrade $dep" \
@@ -1021,23 +1011,18 @@ virtenv_update()
 #   @tag/@branch/@commit: # no sdist staging
 #       git clone $github_base radical.pilot.src
 #       (cd radical.pilot.src && git checkout token)
-#       pip install -t $VIRTENV/rp_install/ radical.pilot.src
+#       pip install -t $SANDBOX/rp_install/ radical.pilot.src
 #       rm -rf radical.pilot.src
-#       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
+#       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
 #
 #   release: # no sdist staging
-#       pip install -t $VIRTENV/rp_install radical.pilot
-#       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
+#       pip install -t $SANDBOX/rp_install radical.pilot
+#       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
 #
 #   local: # needs sdist staging
 #       tar zxmf $sdist.tgz
-#       pip install -t $VIRTENV/rp_install $sdist/
-#       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
-#
-#   debug: # needs sdist staging
-#       tar zxmf $sdist.tgz
-#       pip install -t $PILOT_SANDBOX/rp_install $sdist/
-#       export PYTHONPATH=$PILOT_SANDBOX/rp_install:$PYTHONPATH
+#       pip install -t $SANDBOX/rp_install $sdist/
+#       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
 #
 #   installed: # no sdist staging
 #       true
@@ -1330,9 +1315,11 @@ echo "---------------------------------------------------------------------"
 echo "bootstrap_1 running on host: `hostname -f`."
 echo "bootstrap_1 started as     : '$0 $@'"
 echo "Environment of bootstrap_1 process:"
-echo ""
-env | sort
-echo "---------------------------------------------------------------------"
+
+# print the sorted env for logging, but also keep a copy so that we can dig
+# original env settings for any CUs, if so specified in the resource config.
+env | sort | grep '=' | tee env.orig
+echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
 while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
@@ -1358,12 +1345,48 @@ while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
     esac
 done
 
+# before we change anything else in the pilot environment, we safe a couple of
+# env vars to later re-create a close-to-pristine env for unit execution.
+_OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
+_OLD_VIRTUAL_PYTHONHOME="$PYTHONHOME"
+_OLD_VIRTUAL_PATH="$PATH"
+_OLD_VIRTUAL_PS1="$PS1"
+
+export _OLD_VIRTUAL_PYTHONPATH
+export _OLD_VIRTUAL_PYTHONHOME
+export _OLD_VIRTUAL_PATH
+export _OLD_VIRTUAL_PS1
+
 # derive some var names from given args
 if test -z "$SESSION_SANDBOX"
 then  
     SESSION_SANDBOX="$PILOT_SANDBOX/.."
 fi
 
+# TODO: Move earlier, because if pre_bootstrap fails, this is not yet set
+LOGFILES_TARBALL="$PILOT_ID.log.tgz"
+PROFILES_TARBALL="$PILOT_ID.prof.tgz"
+
+# some backends (condor) never finalize a job when output files are missing --
+# so we touch them here to prevent that
+echo "# -------------------------------------------------------------------"
+echo '# Touching output tarballs'
+echo "# -------------------------------------------------------------------"
+touch "$LOGFILES_TARBALL"
+touch "$PROFILES_TARBALL"
+
+
+# At this point, all pre_bootstrap_1 commands have been executed.  We copy the
+# resulting PATH and LD_LIBRARY_PATH, and apply that in bootstrap_2.sh, so that
+# the sub-agents start off with the same env (or at least the relevant parts of
+# it).
+#
+# This assumes that the env is actually transferrable.  If that assumption
+# breaks at some point, we'll have to either only transfer the incremental env
+# changes, or reconsider the approach to pre_bootstrap_x commands altogether --
+# see comment in the pre_bootstrap_1 function.
+PB1_PATH="$PATH"
+PB1_LDLB="$LD_LIBRARY_PATH"
 
 # FIXME: By now the pre_process rules are already performed.
 #        We should split the parsing and the execution of those.
@@ -1451,12 +1474,6 @@ rehash "$PYTHON"
 virtenv_setup    "$PILOT_ID" "$VIRTENV" "$VIRTENV_MODE" "$PYTHON_DIST"
 virtenv_activate "$VIRTENV" "$PYTHON_DIST"
 
-# Export the variables related to virtualenv,
-# so that we can disable the virtualenv for the cu.
-export _OLD_VIRTUAL_PATH
-export _OLD_VIRTUAL_PYTHONHOME
-export _OLD_VIRTUAL_PS1
-
 # ------------------------------------------------------------------------------
 # launch the radical agent
 #
@@ -1481,13 +1498,7 @@ PILOT_SCRIPT=`which radical-pilot-agent`
 # Verify it
 verify_install
 
-# TODO: Can this be generalized with our new split-agent now?
-if test -z "$CCM"
-then
-    AGENT_CMD="$PYTHON $PILOT_SCRIPT"
-else
-    AGENT_CMD="ccmrun $PYTHON $PILOT_SCRIPT"
-fi
+AGENT_CMD="$PYTHON $PILOT_SCRIPT"
 
 verify_rp_install
 
@@ -1550,6 +1561,10 @@ hostname
 # make sure we use the correct sandbox
 cd $PILOT_SANDBOX
 
+# apply some env settings as stored after running pre_bootstrap_1 commands
+export PATH="$PB1_PATH"
+export LD_LIBRARY_PATH="$PB1_LDLB"
+
 # activate virtenv
 if test "$PYTHON_DIST" = "anaconda"
 then
@@ -1567,6 +1582,10 @@ export SAGA_VERBOSE=DEBUG
 export RADICAL_VERBOSE=DEBUG
 export RADICAL_UTIL_VERBOSE=DEBUG
 export RADICAL_PILOT_VERBOSE=DEBUG
+
+# the agent will *always* use the dburl from the config file, not from the env
+# FIXME: can we better define preference in the session ctor?
+unset RADICAL_PILOT_DBURL
 
 # avoid ntphost lookups on compute nodes
 export RADICAL_PILOT_NTPHOST=$RADICAL_PILOT_NTPHOST
@@ -1615,6 +1634,7 @@ profile_event 'agent start'
 # start the master agent instance (zero)
 profile_event 'sync rel' 'agent start'
 
+
 # # I am ashamed that we have to resort to this -- lets hope it's temporary...
 # cat > packer.sh <<EOT
 # #!/bin/sh
@@ -1659,11 +1679,18 @@ profile_event 'sync rel' 'agent start'
 # ./packer.sh 2>&1 >> bootstrap_1.out &
 # PACKER_ID=$!
 
-
-./bootstrap_2.sh 'agent_0'    \
-               1> agent_0.bootstrap_2.out \
-               2> agent_0.bootstrap_2.err &
+# TODO: Can this be generalized with our new split-agent now?
+if test -z "$CCM"; then
+    ./bootstrap_2.sh 'agent_0'    \
+                   1> agent_0.bootstrap_2.out \
+                   2> agent_0.bootstrap_2.err &
+else
+    ccmrun ./bootstrap_2.sh 'agent_0'    \
+                   1> agent_0.bootstrap_2.out \
+                   2> agent_0.bootstrap_2.err &
+fi
 AGENT_PID=$!
+
 while true
 do
     sleep 1
@@ -1752,7 +1779,6 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Tarring profiles ..."
-    PROFILES_TARBALL="$PILOT_ID.prof.tgz"
     tar -czf $PROFILES_TARBALL *.prof || true
     ls -l $PROFILES_TARBALL
     echo "#"
@@ -1767,7 +1793,6 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Tarring logfiles ..."
-    LOGFILES_TARBALL="$PILOT_ID.log.tgz"
     tar -czf $LOGFILES_TARBALL *.{log,out,err,cfg} || true
     ls -l $LOGFILES_TARBALL
     echo "#"

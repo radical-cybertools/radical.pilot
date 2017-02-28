@@ -10,6 +10,7 @@ from radical.pilot.exceptions import *
 # ------------------------------------------------------------------------------
 # Attribute description keys
 LABEL                       = 'label'
+ENABLED                     = 'enabled'
 AGENT_LAUNCH_METHOD         = 'agent_launch_method'
 AGENT_MONGODB_ENDPOINT      = 'agent_mongodb_endpoint'
 AGENT_SCHEDULER             = 'agent_scheduler'
@@ -42,7 +43,7 @@ VIRTENV                     = 'virtenv'
 VIRTENV_MODE                = 'private'
 SHARED_FILESYSTEM           = 'shared_filesystem'
 HEALTH_CHECK                = 'health_check'
-
+PYTHON_DISTRIBUTION         = 'python_dist'
 
 # ------------------------------------------------------------------------------
 #
@@ -78,6 +79,10 @@ class ResourceConfig(attributes.Attributes):
     .. parameter:: label
 
        [Type: `string`] [**`mandatory`**] A unique label for this configuration. 
+
+    .. data:: enabled
+
+       [Type: `string`] [optional] enable (default) or disable a resource entry.
 
     .. data:: remote_job_manager_hop
 
@@ -210,6 +215,7 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_camelcasing (True)
 
         self._attributes_register(LABEL                  , label, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(ENABLED                ,  None, attributes.BOOL  , attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_LAUNCH_METHOD    ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_MONGODB_ENDPOINT ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_SCHEDULER        ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
@@ -242,6 +248,7 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(STAGE_CACERTS          ,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(SHARED_FILESYSTEM      ,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(HEALTH_CHECK           ,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(PYTHON_DISTRIBUTION    ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
         self['label'] = label
 

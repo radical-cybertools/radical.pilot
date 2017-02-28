@@ -6,7 +6,8 @@ __license__   = 'MIT'
 import os
 import sys
 
-os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
+verbose  = os.environ.get('RADICAL_PILOT_VERBOSE', 'REPORT')
+os.environ['RADICAL_PILOT_VERBOSE'] = verbose
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -18,13 +19,17 @@ import radical.utils as ru
 #
 # ------------------------------------------------------------------------------
 
+helloworld_mpi_bin  = 'helloworld_mpi.py'
+helloworld_mpi_path = '%s/%s' % (os.path.abspath(os.path.dirname(__file__)),
+                                 helloworld_mpi_bin)
+
 
 #------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
     # we use a reporter class for nicer output
-    report = ru.LogReporter(name='radical.pilot')
+    report = ru.LogReporter(name='radical.pilot', level=verbose)
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
@@ -56,12 +61,12 @@ if __name__ == '__main__':
         # Here we use a dict to initialize the description object
         pd_init = {
                 'resource'      : resource,
-                'cores'         : 64,  # pilot size
                 'runtime'       : 15,  # pilot runtime (min)
                 'exit_on_error' : True,
                 'project'       : config[resource]['project'],
                 'queue'         : config[resource]['queue'],
-                'access_schema' : config[resource]['schema']
+                'access_schema' : config[resource]['schema'],
+                'cores'         : config[resource]['cores'],
                 }
         pdesc = rp.ComputePilotDescription(pd_init)
 
@@ -88,9 +93,9 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.executable     = 'python'
-            cud.arguments      = ['helloworld_mpi.py']
-            cud.input_staging  = ['helloworld_mpi.py']
-            cud.cores          = 4
+            cud.arguments      = [helloworld_mpi_bin ]
+            cud.input_staging  = [helloworld_mpi_path]
+            cud.cores          = 2
             cud.mpi            = True
             cuds.append(cud)
             report.progress()

@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import time
 import Queue
 import tempfile
 import threading
@@ -50,22 +51,25 @@ class Shell(AgentExecutingComponent):
         # Mimic what virtualenv's "deactivate" would do
         self._deactivate = "# deactivate pilot virtualenv\n"
 
-        old_path = os.environ.get('_OLD_VIRTUAL_PATH',       None)
-        old_home = os.environ.get('_OLD_VIRTUAL_PYTHONHOME', None)
-        old_ps1  = os.environ.get('_OLD_VIRTUAL_PS1',        None)
+        old_path  = os.environ.get('_OLD_VIRTUAL_PATH',       None)
+        old_ppath = os.environ.get('_OLD_VIRTUAL_PYTHONPATH', None)
+        old_home  = os.environ.get('_OLD_VIRTUAL_PYTHONHOME', None)
+        old_ps1   = os.environ.get('_OLD_VIRTUAL_PS1',        None)
 
-        if old_path: self._deactivate += 'export PATH="%s"\n'        % old_path
-        if old_home: self._deactivate += 'export PYTHON_HOME="%s"\n' % old_home
-        if old_ps1:  self._deactivate += 'export PS1="%s"\n'         % old_ps1
+        if old_ppath: self._deactivate += 'export PATH="%s"\n'        % old_ppath
+        if old_path : self._deactivate += 'export PYTHONPATH="%s"\n'  % old_path
+        if old_home : self._deactivate += 'export PYTHON_HOME="%s"\n' % old_home
+        if old_ps1  : self._deactivate += 'export PS1="%s"\n'         % old_ps1
 
         self._deactivate += 'unset VIRTUAL_ENV\n\n'
 
         # FIXME: we should not alter the environment of the running agent, but
         #        only make sure that the CU finds a pristine env.  That also
         #        holds for the unsetting below -- AM
-        if old_path: os.environ['PATH']        = old_path
-        if old_home: os.environ['PYTHON_HOME'] = old_home
-        if old_ps1:  os.environ['PS1']         = old_ps1
+        if old_path : os.environ['PATH']        = old_path
+        if old_ppath: os.environ['PYTHONPATH']  = old_ppath
+        if old_home : os.environ['PYTHON_HOME'] = old_home
+        if old_ps1  : os.environ['PS1']         = old_ps1
 
         if 'VIRTUAL_ENV' in os.environ :
             del(os.environ['VIRTUAL_ENV'])
@@ -112,6 +116,19 @@ class Shell(AgentExecutingComponent):
             for r in  env_removables:
                 if e.startswith(r):
                     os.environ.pop(e, None)
+
+        # if we need to transplant any original env into the CU, we dig the
+        # respective keys from the dump made by bootstrap_1.sh
+        self._env_cu_export = dict()
+        if self._cfg.get('export_to_cu'):
+            with open('env.orig', 'r') as f:
+                for line in f.readlines():
+                    if '=' in line:
+                        k,v = line.split('=', 1)
+                        key = k.strip()
+                        val = v.strip()
+                        if key in self._cfg['export_to_cu']:
+                            self._env_cu_export[key] = val
 
         # the registry keeps track of units to watch, indexed by their shell
         # spawner process ID.  As the registry is shared between the spawner and
@@ -321,14 +338,18 @@ class Shell(AgentExecutingComponent):
         cwd  += "\n"
 
         env  += "# CU environment\n"
-        if descr['environment']:
-            for e in descr['environment'] :
-                env += "export %s=%s\n"  %  (e, descr['environment'][e])
         env  += "export RP_SESSION_ID=%s\n" % self._cfg['session_id']
         env  += "export RP_PILOT_ID=%s\n"   % self._cfg['pilot_id']
         env  += "export RP_AGENT_ID=%s\n"   % self._cfg['agent_name']
         env  += "export RP_SPAWNER_ID=%s\n" % self.uid
         env  += "export RP_UNIT_ID=%s\n"    % cu['uid']
+
+        # also add any env vars requested for export by the resource config
+        for k,v in self._env_cu_export.iteritems():
+            env += "export %s=%s\n" % (k,v)
+        if descr['environment']:
+            for e in descr['environment'] :
+                env += "export %s=%s\n"  %  (e, descr['environment'][e])
         env  += "\n"
 
         if  descr['pre_exec'] :

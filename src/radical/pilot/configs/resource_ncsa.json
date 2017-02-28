@@ -14,7 +14,45 @@
         "agent_launch_method"         : "APRUN",
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
-        "pre_bootstrap_1"             : ["module load bw-python"],
+        "pre_bootstrap_1"             : [
+            "module switch PrgEnv-cray PrgEnv-gnu",
+            "module load bwpy"
+        ],
+        "default_remote_workdir"      : "/scratch/sciteam/$USER",
+        "valid_roots"                 : ["/scratch/sciteam"],
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_bw",
+        "virtenv_mode"                : "create",
+        "stage_cacerts"               : "True",
+        "python_dist"                 : "default"
+    },
+
+    "bw_lib": {
+        "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system (https://bluewaters.ncsa.illinois.edu/)",
+        "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
+        "schemas"                     : ["gsissh"],
+        "gsissh"                      : {
+            "job_manager_endpoint"    : "torque+gsissh://bw.ncsa.illinois.edu",
+            "filesystem_endpoint"     : "gsisftp://bw.ncsa.illinois.edu/"
+        },
+        "default_queue"               : "normal",
+        "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_config"                : "cray",
+        "agent_spawner"               : "ORTE",
+        "agent_launch_method"         : "ORTE",
+        "task_launch_method"          : "ORTE_LIB",
+        "mpi_launch_method"           : "ORTE_LIB",
+        "tunnel_bind_device"          : "ipogif0",
+        "forward_tunnel_endpoint"     : "BIND_ADDRESS",
+        "pre_bootstrap_1"             : [
+            "module switch PrgEnv-cray PrgEnv-gnu",
+            "module load bwpy",
+            "module use --append /projects/sciteam/gk4/openmpi/modules",
+            "module load openmpi"
+        ],
+        "pre_bootstrap_2"             : ["export HOME=$HOME"],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
@@ -23,6 +61,7 @@
         "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
+
     "bw": {
         "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system (https://bluewaters.ncsa.illinois.edu/)",
         "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
@@ -44,14 +83,10 @@
         "pre_bootstrap_1"             : [
             "module switch PrgEnv-cray PrgEnv-gnu",
             "module load bwpy",
-            "module use --append /projects/sciteam/gkd/modules",
+            "module use --append /projects/sciteam/gk4/openmpi/modules",
             "module load openmpi"
         ],
-        "pre_bootstrap_2"             : [
-            "export HOME=$HOME",
-            "export PATH=$PATH",
-            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
-        ],
+        "pre_bootstrap_2"             : ["export HOME=$HOME"],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
@@ -60,6 +95,42 @@
         "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
+
+    "bw_local": {
+        "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system (https://bluewaters.ncsa.illinois.edu/)",
+        "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
+        "schemas"                     : ["local"],
+        "local"                       : {
+            "job_manager_endpoint"    : "torque://localhost",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_queue"               : "normal",
+        "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_config"                : "cray",
+        "agent_launch_method"         : "ORTE",
+        "task_launch_method"          : "ORTE",
+        "mpi_launch_method"           : "ORTE",
+        "tunnel_bind_device"          : "ipogif0",
+        "forward_tunnel_endpoint"     : "BIND_ADDRESS",
+        "pre_bootstrap_1"             : [
+            "module switch PrgEnv-cray PrgEnv-gnu",
+            "module load bwpy",
+            "module use --append /projects/sciteam/gk4/openmpi/modules",
+            "module load openmpi"
+        ],
+        "pre_bootstrap_2"             : ["export HOME=$HOME"],
+        "default_remote_workdir"      : "/scratch/training/$USER",
+        "valid_roots"                 : ["/scratch/training"],
+        "rp_version"                  : "installed",
+        "virtenv"                     : "/scratch/training/instr004/radical.pilot.sandbox/ve_bw",
+        "virtenv_mode"                : "use",
+        "stage_cacerts"               : "True",
+        "python_dist"                 : "default"
+    },
+
     "bw_ccm": {
         "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system in CCM (https://bluewaters.ncsa.illinois.edu/)",
         "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
@@ -77,14 +148,19 @@
         "mpi_launch_method"           : "MPIRUN",
         "pre_bootstrap_1"             :
         [
-          "module load bw-python",
-          "module load ccm"
+            "module switch PrgEnv-cray PrgEnv-gnu",
+            "module load bwpy",
+            "module load ccm"
+        ],
+        "pre_bootstrap_2"             : [
+            "export HOME=$HOME"
         ],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_bw",
         "virtenv_mode"                : "create",
+        "stage_cacerts"               : "True",
         "python_dist"                 : "default"
     }
 }

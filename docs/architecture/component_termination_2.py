@@ -43,6 +43,13 @@
 #     need to make sure our watcher threads (which are daemons) terminate 
 #     on their own.
 #
+#   - https://bugs.python.org/issue27889
+#     signals can not reliably be translated into exceptions, as the delayed
+#     signal handling implies races on the exception handling.  A nested
+#     exception loop seems to avoid that problem -- but that cannot be enforced
+#     in application code or 3rd party modules (and is very cumbersome to
+#     consistently apply throughout the code stack).
+#
 #
 # Not errors, but expected behavior which makes life difficult:
 #
@@ -55,12 +62,77 @@
 #     catch & discard the exception in the watchers main loop (which possibly
 #     masks real errors though).
 #
+#   - cpython's delayed signal handling can lead to signals being ignored when
+#     they are translated into exceptions.
+#     Assume this pseudo-code loop in a low-level 3rd party module:
+# 
+#     data = None
+#     while not data:
+#         try:
+#             if fd.select(timeout):
+#                 data = read(size)
+#         except:
+#             # select timed out - retry
+#             pass
+#
+#     Due to the verly generous except clauses, a signal interrupting the select
+#     would be interpreted as select timeout.  Those clauses *do* exist in
+#     modules and core libs.
+#     (This race is different from https://bugs.python.org/issue27889)
+#
+#   - a cpython-level API call exists to inject exceptions into other threads:
+#
+#       import ctypes
+#       ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(thread_id),
+#                                                  ctypes.py_object(e))
+#
+#     Alas, almost the same problems apply as for signal handling: exceptions
+#     thus inserted are interpreted delayed, and are thus prone to the same
+#     races as signal handlers.  Further, they can easily get lost in
+#     too-generous except clauses in low level modules and core libraries.
+#     Further, unlike signals, they will not interrupt any libc calls.
+#     That method is thus inferior to signal handling.
+#
 #   - mp.join() can miss starting child processes:
 #     When start() is called, join can be called immediately after.  At that
 #     point, the child may, however, not yet be alive, and join would *silently*
 #     return immediately.  If between that failed join and process termination
 #     the child process *actually* comes up, the process termination will hang,
 #     as the child has not been waited upon.
+#
+#   - we actually can't really use fork() either, unless it is *immediately* (as
+#     in *first call*) followed by an exec, because core python modules don't
+#     free locks on fork.  We monkeypatch the logging module though and also
+#     ensure unlock at-fork for our own stack, but the problem remains (zmq
+#     comes to mind).
+#     This problem could be addressed - but this is useless unless the other
+#     problems are addressed, too (the problem applies to process-bootstrapping
+#     only, and is quite easy to distinguish from other bugs / races).
+#
+#
+# Bottom line:
+#
+#   - we can't use
+#     - signal handlers which raise exceptions
+#     - exception injects into other threads
+#     - thread.interrupt_main() in combination with SIGINT(CTRL-C)
+#     - daemon threads
+#     - multiprocessing with a method target
+#
+#
+# NOTE: The code below does *not* demonstrate a workaround for all issues, just
+#       for some of them.  At this point, I am not aware of a clean (ie.
+#       reliable) approach to thread and process termination with cpython.
+#       I leave the code below as-is though, for the time being, to remind 
+#       myself of better times, when there was hope... :P
+#
+# NOTE: For some GIL details, see http://www.dabeaz.com/python/GIL.pdf
+#       This focuses on performance, but contains some details relevant to
+#       signal handling.  Note this is from 2009, mentions that  GIL management
+#       has not changed for the past 10 years.  It has not changed by now
+#       either, FWIW.
+#
+# ------------------------------------------------------------------------------
 #
 # This code demonstrates a workaround for those issues, and serves as a test for
 # the general problem space.

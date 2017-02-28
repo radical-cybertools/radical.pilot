@@ -6,7 +6,7 @@ from ..states import *
 info_names = {
         'AgentWorker'                 : 'awo',
         'AgentStagingInputComponent'  : 'asic',
-        'SchedulerContinuous'         : 'asc',  # agent scheduler component
+        'AgentSchedulingComponent'    : 'asc',
         'AgentExecutingComponent'     : 'aec',
         'AgentStagingOutputComponent' : 'asoc',
         'session'                     : 'mod'
@@ -32,33 +32,34 @@ _info_premature_final = {
 }
 
 _info_states = [
-        ACTIVE,
-        AGENT_STAGING_INPUT,
-        AGENT_STAGING_INPUT_PENDING,
-        AGENT_STAGING_OUTPUT,
-        AGENT_STAGING_OUTPUT_PENDING,
-        ALLOCATING,
-        ALLOCATING_PENDING,
+        NEW,
         CANCELED,
         DONE,
-        EXECUTING,
-        EXECUTING_PENDING,
         FAILED,
-        LAUNCHING,
-        NEW,
-        PENDING,
-        PENDING_ACTIVE,
-        PENDING_EXECUTION,
-        PENDING_INPUT_STAGING,
-        PENDING_LAUNCH,
-        PENDING_OUTPUT_STAGING,
-        SCHEDULING,
-        STAGING_INPUT,
-        STAGING_OUTPUT,
-        UNSCHEDULED
+
+        UMGR_SCHEDULING_PENDING,
+        UMGR_SCHEDULING,
+        UMGR_STAGING_INPUT_PENDING,
+        UMGR_STAGING_INPUT,
+        AGENT_STAGING_INPUT_PENDING,
+        AGENT_STAGING_INPUT,
+        AGENT_SCHEDULING_PENDING,
+        AGENT_SCHEDULING,
+        AGENT_EXECUTING_PENDING,
+        AGENT_EXECUTING,
+        AGENT_STAGING_OUTPUT_PENDING,
+        AGENT_STAGING_OUTPUT,
+        UMGR_STAGING_OUTPUT_PENDING,
+        UMGR_STAGING_OUTPUT,
+
+        PMGR_LAUNCHING_PENDING,
+        PMGR_LAUNCHING,
+        PMGR_ACTIVE_PENDING,
+        PMGR_ACTIVE,
         ]
 
 _info_entries = [
+    # info,              name,                     event,       msg
     ('umgr_get_u',      'MainThread',             'advance',   'New'),
     ('umgr_adv_u_pend', 'MainThread',             'advance',   'PendingInputStaging'),
     ('usic_get_u',      'InputFileTransfer',      'advance',   'StagingInput'),
@@ -67,12 +68,12 @@ _info_entries = [
     ('usoc_get_u',      'OutputFileTransfer',     'advance',   'StagingOutput'),
     ('usoc_adv_u',      'OutputFileTransfer',     'advance',   'Done'),
 
-    # FIXME: the names below will break for other schedulers
-    ('asc_allocated',   'SchedulerContinuous',    'schedule',  'allocated'),
-    ('asc_alloc_nok',   'SchedulerContinuous',    'schedule',  'allocation failed'),
-    ('asc_alloc_ok',    'SchedulerContinuous',    'schedule',  'allocation succeeded'),
-    ('asc_unqueue',     'SchedulerContinuous',    'unqueue',   're-allocation done'),
-    ('asc_released',    'SchedulerContinuous',    'unschedule','released'),
+    ('asc_try',         'AgentScheduling',        'schedule',  'try'),
+    ('asc_allocated',   'AgentScheduling',        'schedule',  'allocated'),
+    ('asc_alloc_nok',   'AgentScheduling',        'schedule',  'allocation failed'),
+    ('asc_alloc_ok',    'AgentScheduling',        'schedule',  'allocation succeeded'),
+    ('asc_unqueue',     'AgentScheduling',        'unqueue',   're-allocation done'),
+    ('asc_released',    'AgentScheduling',        'unschedule','released'),
 
     ('aec_launch',      'AgentExecuting',         'exec',      'unit launch'),
     ('aec_spawn',       'AgentExecuting',         'spawn',     'unit spawn'),
@@ -80,12 +81,13 @@ _info_entries = [
     ('ace_outerr',      'AgentExecuting',         'command',   'stdout and stderr files created'),
     ('aec_handover',    'AgentExecuting',         'spawn',     'spawning passed to pty'),
     ('aec_handover',    'AgentExecuting',         'spawn',     'spawning passed to popen'),
+    ('aec_handover',    'AgentExecuting',         'spawn',     'spawning passed to orte'),
     ('aec_end',         'AgentExecuting',         'final',     ''),
 
     ('aec_pickup',      'AgentExecuting',         'passed',    'ExecWatcher picked up unit'),
-    ('aec_start_script','AgentStagingOutputComponent','script','start_script'),
-    ('aec_after_cd',    'AgentStagingOutputComponent','script','after_cd'),
-    ('aec_after_exec',  'AgentStagingOutputComponent','script','after_exec'),
+    ('aec_start_script','AgentStagingOutput',     'script',    'start_script'),
+    ('aec_after_cd',    'AgentStagingOutput',     'script',    'after_cd'),
+    ('aec_after_exec',  'AgentStagingOutput',     'script',    'after_exec'),
     ('aec_complete',    'AgentExecuting',         'exec',      'execution complete'),
 ]
 
@@ -568,6 +570,9 @@ def get_info_df(df):
         for i in set(l):
             cols.add(i)
             if l.count(i)>1:
+                # TODO: this is a hack to workaround a problem in the state management
+                if i == 'mod_adv_u':
+                    continue
                 raise ValueError('doubled info entry %s (uid:%s)' % (i, uid))
 
         dicts[uid] = tmp1_d
@@ -613,7 +618,11 @@ def add_states(df):
             row['state'] and \
             row['event'] == 'advance': 
             old = _old_states.get(row['uid'], np.NaN)
-            _old_states[row['uid']] = row['state']
+            if old == row['state']:
+                # no change in state...
+                old = np.NaN
+            else:
+                _old_states[row['uid']] = row['state']
         return old
     # --------------------------------------------------------------------------
   # df['state_from'], df['state_to'] = zip(*df.apply(lambda row: _state(row), axis=1))

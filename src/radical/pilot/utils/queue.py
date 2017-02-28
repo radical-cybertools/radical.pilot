@@ -105,7 +105,6 @@ def sigusr2_handler(signum, frame):
 # forwarder.  'address' denominates a connection endpoint, and 'name' is
 # a unique identifier: if multiple instances in the current process space use
 # the same identifier, they will get the same queue instance.
-#
 
 
 # ==============================================================================
