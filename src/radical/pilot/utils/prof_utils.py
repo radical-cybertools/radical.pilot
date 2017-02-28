@@ -10,9 +10,6 @@ import radical.utils  as ru
 
 from .. import states as rps
 
-
-NTP_DIFF_WARN_LIMIT = 1.0
-
 # ------------------------------------------------------------------------------
 #
 # when recombining profiles, we will get one NTP sync offset per profile, and
@@ -138,7 +135,6 @@ def read_profiles(profiles):
     """
     We read all profiles as CSV files and parse them.  For each profile,
     we back-calculate global time (epoch) from the synch timestamps.
-
     """
     ret = dict()
 
@@ -164,7 +160,7 @@ def read_profiles(profiles):
 
 # ------------------------------------------------------------------------------
 #
-def combine_profiles(profs, sid):
+def combine_profiles(profs):
     """
     We merge all profiles and sorted by time.
 
@@ -692,6 +688,9 @@ def combine_profiles(profs):
         else:
             t_min = t_prof
 
+        if t_mode != 'sys':
+            continue
+
         # determine the correction for the given host
         t_sys = float(t_sys)
         t_ntp = float(t_ntp)
@@ -709,6 +708,8 @@ def combine_profiles(profs):
 
         t_host[host_id] = t_off
 
+      # print 'store time sync %-35s (%-35s) %6.1f' \
+      #         % (os.path.basename(pname), host_id, t_off)
 
     # FIXME: this should be removed once #1117 is fixed
     for pname, prof in profs.iteritems():
