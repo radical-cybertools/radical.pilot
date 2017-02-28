@@ -1,3 +1,4 @@
+
 import os
 import sys
 import glob
@@ -6,8 +7,6 @@ import tarfile
 
 import radical.utils as ru
 from   radical.pilot.states  import *
-from . import version_detail as rp_version_detail
-from . import logger
 
 from db_utils import *
 
@@ -27,21 +26,20 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
     '''
 
     log = ru.get_logger('radical.pilot.utils')
-
     ret = list()
 
     if not dburl:
         dburl = os.environ['RADICAL_PILOT_DBURL']
 
     if not dburl:
-        raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
+        raise ValueError('RADICAL_PILOT_DBURL is not set')
 
     if not src:
         src = os.getcwd()
-            
+
     if not tgt:
         tgt = os.getcwd()
-            
+
     if not tgt.startswith('/') and '://' not in tgt:
         tgt = "%s/%s" % (os.getcwd(), tgt)
 
@@ -69,15 +67,16 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
         if skip_existing and os.path.isfile(ftgt.path) \
                 and os.stat(ftgt.path).st_size > 0:
-
-            logger.report.info("\t- %s\n" % client_profile.split('/')[-1])
+            log.report.info("\t- %s\n" % client_profile.split('/')[-1])
 
         else:
-
-            logger.report.info("\t+ %s\n" % client_profile.split('/')[-1])
+            log.report.info("\t+ %s\n" % client_profile.split('/')[-1])
             prof_file = saga.filesystem.File(client_profile, session=session)
             prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
             prof_file.close()
+
+        if not os.path.isfile(client_profile):
+            raise RuntimeError('client profilefile %s does not exist' % client_profile)
 
     _, db, _, _, _ = ru.mongodb_connect (dburl)
 
@@ -90,8 +89,10 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
     for pilot in pilots:
 
-        pilot['uid'] = pilot['_id']
+        if not 'uid' in pilot:
+            pilot['uid'] = pilot.get('_id')
 
+        log.report.info("+ %s [%s]\n" % (pilot['uid'], pilot['description']['resource']))
         log.debug("processing pilot '%s'", pilot['uid'])
 
         sandbox_url = saga.Url(pilot['sandbox'])
@@ -106,7 +107,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
           # print "Overriding remote sandbox: %s" % sandbox_url
 
-        sandbox  = saga.filesystem.Directory (sandbox_url, session=session)
+        sandbox = saga.filesystem.Directory (sandbox_url, session=session)
 
         # Try to fetch a tarball of profiles, so that we can get them all in one (SAGA) go!
         PROFILES_TARBALL = '%s.prof.tgz' % pilot['uid']
@@ -153,6 +154,8 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
                 profiles = glob.glob("%s/%s/*.prof" % (tgt_url.path, pilot['uid']))
                 ret.extend(profiles)
+                os.unlink(ftgt.path)
+
             except Exception as e:
                 log.warn('could not extract tarball %s [%s]', ftgt.path, e)
                 print 'skip %s [%s]' % (ftgt.path, e)
@@ -161,52 +164,57 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
             continue
 
         # If we dont have a tarball (for whichever reason), fetch individual profiles
-        profiles = sandbox.list('*.prof')
+        try:
+            profiles = sandbox.list('*.prof')
+        except Exception as e:
+            log.error('cannot list profiles in %s [%s]' % (sandbox.url, e))
+            profiles = []
 
         for prof in profiles:
 
-            ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['uid'], prof))
-            ret.append("%s" % ftgt.path)
+            try:
+                ret.append("%s" % ftgt.path)
+                ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['uid'], prof))
 
-            if skip_existing and os.path.isfile(ftgt.path) \
-                             and os.stat(ftgt.path).st_size > 0:
+                if skip_existing and os.path.isfile(ftgt.path) \
+                                 and os.stat(ftgt.path).st_size > 0:
+                    log.report.info("\t- %s\n" % str(prof).split('/')[-1])
 
-                logger.report.info("\t- %s\n" % str(prof).split('/')[-1])
-                continue
+                else:
+                    log.report.info("\t+ %s\n" % str(prof).split('/')[-1])
+                    prof_file = saga.filesystem.File("%s%s" % (sandbox_url, prof), session=session)
+                    prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
+                    prof_file.close()
 
-            logger.report.info("\t+ %s\n" % str(prof).split('/')[-1])
-            prof_file = saga.filesystem.File("%s%s" % (sandbox_url, prof), session=session)
-            prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
-            prof_file.close()
+            except Exception as e:
+                log.error('skip %s [%s]' % (ftgt, e))
 
     return ret
 
 
 # ------------------------------------------------------------------------------
 #
-def fetch_logfiles (sid, dburl=None, client=None, tgt=None, access=None, 
+def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None, 
         session=None, skip_existing=False):
     '''
     sid: session for which all logfiles are fetched
-    client: dir to look for client session logfiles
+    src: dir to look for client session logfiles
     tgt: dir to store the logfile in
 
     returns list of file names
     '''
 
-
+    log = ru.get_logger('radical.pilot.utils')
     ret = list()
 
     if not dburl:
-        dburl = os.environ.get('RADICAL_PILOT_DBURL')
+        dburl = os.environ['RADICAL_PILOT_DBURL']
 
     if not dburl:
-        from radical.pilot.session import default_dburl
-        logger.report.warn('using default dburl: %s' % default_dburl)
-        dburl = default_dburl
+        raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
 
-    if not client:
-        client = os.getcwd()
+    if not src:
+        src = os.getcwd()
             
     if not tgt:
         tgt = os.getcwd()
@@ -215,7 +223,7 @@ def fetch_logfiles (sid, dburl=None, client=None, tgt=None, access=None,
         tgt = "%s/%s" % (os.getcwd(), tgt)
 
     # we always create a session dir as real target
-    tgt_url = saga.Url(tgt)
+    tgt_url = saga.Url("%s/%s/" % (tgt, sid))
 
     # Turn URLs without schema://host into file://localhost,
     # so that they dont become interpreted as relative.
@@ -227,7 +235,7 @@ def fetch_logfiles (sid, dburl=None, client=None, tgt=None, access=None,
     # first fetch session logfile
     # FIXME: should we record pwd or logfile location in db session?  Or create
     #        a sandbox like dir for storing logfiles and logs?
-    client_logfile = "%s/%s.log" % (client, sid)
+    client_logfile = "%s/%s.log" % (src, sid)
 
     ftgt = saga.Url('%s/%s' % (tgt_url, os.path.basename(client_logfile)))
     ret.append("%s" % ftgt.path)
@@ -235,18 +243,14 @@ def fetch_logfiles (sid, dburl=None, client=None, tgt=None, access=None,
     if skip_existing and os.path.isfile(ftgt.path) \
             and os.stat(ftgt.path).st_size > 0:
 
-        logger.report.info("\t- %s\n" % client_logfile.split('/')[-1])
+        log.report.info("\t- %s\n" % client_logfile.split('/')[-1])
 
     else:
 
-        if not os.path.isfile(client_logfile):
-            print 'skipping client logfile: %s does not exist' % client_logfile
-
-        else:
-            logger.report.info("\t+ %s\n" % client_logfile.split('/')[-1])
-            log_file = saga.filesystem.File(client_logfile, session=session)
-            log_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
-            log_file.close()
+        log.report.info("\t+ %s\n" % client_logfile.split('/')[-1])
+        log_file = saga.filesystem.File(client_logfile, session=session)
+        log_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
+        log_file.close()
 
     _, db, _, _, _ = ru.mongodb_connect (dburl)
 
@@ -254,17 +258,17 @@ def fetch_logfiles (sid, dburl=None, client=None, tgt=None, access=None,
 
     pilots = json_docs['pilot']
     num_pilots = len(pilots)
- #  print "Session: %s" % sid
- #  print "Number of pilots in session: %d" % num_pilots
+    log.info("Session: %s", sid)
+    log.info("Number of pilots in session: %d", num_pilots)
 
     for pilot in pilots:
 
-      # print "Processing pilot '%s'" % pilot['_id']
+      # print "processing pilot '%s'" % pilot['uid']
 
         sandbox_url = saga.Url(pilot['sandbox'])
 
         if access:
-            # Allow to use a different access scheme than used for the the run.
+            # Allow to use a different access schema than used for the the run.
             # Useful if you ran from the headnode, but would like to retrieve
             # the logfiles to your desktop (Hello Titan).
             access_url = saga.Url(access)
@@ -276,48 +280,55 @@ def fetch_logfiles (sid, dburl=None, client=None, tgt=None, access=None,
         sandbox  = saga.filesystem.Directory (sandbox_url, session=session)
 
         # Try to fetch a tarball of logfiles, so that we can get them all in one (SAGA) go!
-        LOGFILES_TARBALL = '%s.log.tgz' % pilot['_id']
+        LOGILES_TARBALL = '%s.log.tgz' % pilot['uid']
         tarball_available = False
         try:
-            if sandbox.is_file(LOGFILES_TARBALL):
-                print "Logfiles tarball exists!"
+            if sandbox.is_file(LOGILES_TARBALL):
 
-                ftgt = saga.Url('%s/%s' % (tgt_url, LOGFILES_TARBALL))
+                log.info("logfiles tarball exists")
+                ftgt = saga.Url('%s/%s' % (tgt_url, LOGILES_TARBALL))
 
                 if skip_existing and os.path.isfile(ftgt.path) \
                         and os.stat(ftgt.path).st_size > 0:
 
-                    print "Skipping fetching of '%s/%s' to '%s'." % (sandbox_url, LOGFILES_TARBALL, tgt_url)
+                    log.info("Skip fetching of '%s/%s' to '%s'.", 
+                             sandbox_url, LOGILES_TARBALL, tgt_url)
                     tarball_available = True
                 else:
 
-                    print "Fetching '%s%s' to '%s'." % (sandbox_url, LOGFILES_TARBALL, tgt_url)
-                    log_file = saga.filesystem.File("%s%s" % (sandbox_url, LOGFILES_TARBALL), session=session)
+                    log.info("Fetching '%s%s' to '%s'.", 
+                            sandbox_url, LOGILES_TARBALL, tgt_url)
+                    log_file = saga.filesystem.File("%s%s" % (sandbox_url, LOGILES_TARBALL), session=session)
                     log_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
                     log_file.close()
 
                     tarball_available = True
             else:
-                print "Logfiles tarball doesnt exists!"
+                log.warn("logiles tarball doesnt exists")
 
         except saga.DoesNotExist:
-            print "exception(TODO): logfiles tarball doesnt exists!"
+            log.warn("logfiles tarball doesnt exists")
 
         try:
-            os.mkdir("%s/%s" % (tgt_url.path, pilot['_id']))
+            os.mkdir("%s/%s" % (tgt_url.path, pilot['uid']))
         except OSError:
             pass
 
         # We now have a local tarball
         if tarball_available:
-            print "Extracting tarball %s into '%s'." % (ftgt.path, tgt_url.path)
-            tarball = tarfile.open(ftgt.path)
-            tarball.extractall("%s/%s" % (tgt_url.path, pilot['_id']))
+            log.debug("Extract tarball %s to %s", ftgt.path, tgt_url.path)
 
-            logfiles = glob.glob("%s/%s/*.log" % (tgt_url.path, pilot['_id']))
-            print "Tarball %s extracted to '%s/%s/'." % (ftgt.path, tgt_url.path, pilot['_id'])
-            ret.extend(logfiles)
-            os.unlink(ftgt.path)
+            try:
+                tarball = tarfile.open(ftgt.path)
+                tarball.extractall("%s/%s" % (tgt_url.path, pilot['uid']))
+
+                logfiles = glob.glob("%s/%s/*.log" % (tgt_url.path, pilot['uid']))
+                log.info("tarball %s extracted to '%s/%s/'.", 
+                        ftgt.path, tgt_url.path, pilot['uid'])
+                ret.extend(logfiles)
+            except Exception as e:
+                log.warn('could not extract tarball %s [%s]', ftgt.path, e)
+                print 'skip %s [%s]' % (ftgt.path, e)
 
             # If extract succeeded, no need to fetch individual logfiles
             continue
@@ -327,21 +338,22 @@ def fetch_logfiles (sid, dburl=None, client=None, tgt=None, access=None,
 
         for log in logfiles:
 
-            ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['_id'], log))
+            ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['uid'], log))
             ret.append("%s" % ftgt.path)
 
             if skip_existing and os.path.isfile(ftgt.path) \
                              and os.stat(ftgt.path).st_size > 0:
 
-                logger.report.info("\t- %s\n" % str(log).split('/')[-1])
+                log.report.info("\t- %s\n" % str(log).split('/')[-1])
                 continue
 
-            logger.report.info("\t+ %s\n" % str(log).split('/')[-1])
+            log.report.info("\t+ %s\n" % str(log).split('/')[-1])
             log_file = saga.filesystem.File("%s%s" % (sandbox_url, log), session=session)
             log_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
             log_file.close()
 
     return ret
+
 
 
 # ------------------------------------------------------------------------------
@@ -381,7 +393,7 @@ def get_session_frames (sids, db=None, cachedir=None) :
 
     for sid in sids :
 
-        docs = get_session_docs (db, sid, cachedir=cachedir)
+        docs = get_session_docs(db, sid, cachedir=cachedir)
 
         session       = docs['session']
         session_start = session['created']
@@ -396,17 +408,11 @@ def get_session_frames (sids, db=None, cachedir=None) :
         last_pilot_event = 0
         for pilot in docs['pilot'] :
 
-            pid         = pilot['_id']
-            description = pilot.get ('description', dict())
-            started     = pilot.get ('started')
-            finished    = pilot.get ('finished')
-            
-            cores = 0
-
-            if pilot['nodes'] and pilot['cores_per_node']:
-                cores = len(pilot['nodes']) * pilot['cores_per_node']
-            else:
-                cores = description.get('cores')
+            pid         = pilot['uid']
+            description = pilot.get('description', dict())
+            started     = pilot.get('started')
+            finished    = pilot.get('finished')
+            cores       = description.get('cores')
 
             if started  : started  -= session_start
             if finished : finished -= session_start
@@ -421,16 +427,16 @@ def get_session_frames (sids, db=None, cachedir=None) :
                 'cores'        : cores,
                 'runtime'      : description.get ('runtime'),
                 NEW            : None, 
-                PENDING_LAUNCH : None, 
-                LAUNCHING      : None, 
-                PENDING_ACTIVE : None, 
-                ACTIVE         : None, 
+                PMGR_LAUNCHING_PENDING : None, 
+                PMGR_LAUNCHING         : None, 
+                PMGR_ACTIVE_PENDING    : None, 
+                PMGR_ACTIVE            : None, 
                 DONE           : None, 
                 FAILED         : None, 
                 CANCELED       : None
             }
 
-            for entry in pilot.get('statehistory', list()):
+            for entry in pilot.get('state_history', list()):
                 state = entry['state']
                 timer = entry['timestamp'] - session_start
                 pilot_dict[state] = timer
@@ -447,7 +453,7 @@ def get_session_frames (sids, db=None, cachedir=None) :
 
         for unit in docs['unit']:
 
-            uid         = unit['_id']
+            uid         = unit['uid']
             started     = unit.get ('started')
             finished    = unit.get ('finished')
             description = unit.get ('description', dict())
@@ -480,7 +486,7 @@ def get_session_frames (sids, db=None, cachedir=None) :
                 CANCELED               : None
             }
 
-            for entry in unit.get('statehistory', list()):
+            for entry in unit.get('state_history', list()):
                 state = entry['state']
                 timer = entry['timestamp'] - session_start
                 unit_dict[state] = timer
@@ -504,7 +510,7 @@ def get_session_frames (sids, db=None, cachedir=None) :
             rec_hist = dict()
             cb_hist  = dict()
 
-            for e in unit.get('statehistory', list()):
+            for e in unit.get('state_history', list()):
                 state = e['state']
                 timer = e['timestamp'] - session_start
                 if state not in rec_hist:
@@ -614,10 +620,11 @@ def get_session_frames (sids, db=None, cachedir=None) :
 # ------------------------------------------------------------------------------
 #
 def fetch_json(sid, dburl=None, tgt=None, skip_existing=False):
-
     '''
     returns file name
     '''
+
+    log = ru.get_logger('radical.pilot.utils')
 
     if not tgt:
         tgt = '.'
@@ -629,10 +636,15 @@ def fetch_json(sid, dburl=None, tgt=None, skip_existing=False):
         # Assume a relative path
         dst = os.path.join(os.getcwd(), tgt, '%s.json' % sid)
 
+    try:
+        os.makedirs(os.path.dirname(tgt))
+    except OSError:
+        pass # dir exists
+
     if skip_existing and os.path.isfile(dst) \
             and os.stat(dst).st_size > 0:
 
-        print "session already in %s" % dst
+        log.info("session already in %s", dst)
 
     else:
 
@@ -640,43 +652,29 @@ def fetch_json(sid, dburl=None, tgt=None, skip_existing=False):
             dburl = os.environ.get('RADICAL_PILOT_DBURL')
 
         if not dburl:
-            from radical.pilot.session import default_dburl
-            logger.report.warn('using default dburl: %s' % default_dburl)
-            dburl = default_dburl
+            raise ValueError('RADICAL_PILOT_DBURL is not set')
 
         mongo, db, _, _, _ = ru.mongodb_connect(dburl)
 
         json_docs = get_session_docs(db, sid)
         ru.write_json(json_docs, dst)
 
-        print "session written to %s" % dst
+        log.info("session written to %s", dst)
 
         mongo.close()
 
     return dst
 
 
-#--------------------------------------------------------------------------
-#
-# Insert (experiment) metadata into an active session
-# RP stack version info always get added.
+# ------------------------------------------------------------------------------
 #
 def inject_metadata(session, metadata):
 
-    if not isinstance(metadata, dict):
-        raise Exception("Session metadata should be a dict!")
+    if not session:
+        raise ValueError("No session specified.")
 
-    if session is None:
-        raise Exception("No session specified.")
+    session.inject_metadata(metadata)
 
-    # Always record the radical software stack
-    metadata['radical_stack'] = {
-        'rp': rp_version_detail,
-        'rs': saga.version_detail,
-        'ru': ru.version_detail
-    }
 
-    result = session._dbs._s.update(
-        {"_id": session._uid},
-        {"$set" : {"metadata": metadata}}
-    )
+# ------------------------------------------------------------------------------
+

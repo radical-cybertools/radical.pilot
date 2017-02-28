@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import radical.utils as ru
 
 from .base import LaunchMethod
 
@@ -14,16 +15,17 @@ class MPIRunRSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, logger)
+        LaunchMethod.__init__(self, cfg, session)
+
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
 
         # mpirun_rsh (e.g. on Gordon@SDSC, Stampede@TACC)
-        if not self._which('mpirun_rsh'):
+        if not ru.which('mpirun_rsh'):
             raise Exception("mpirun_rsh could not be found")
 
         # We don't use the full pathname as the user might load a different

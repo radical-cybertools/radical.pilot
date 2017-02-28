@@ -1,5 +1,14 @@
 #!/bin/bash -l
 
+# interleave stdout and stderr, to get a coherent set of log messages
+if test -z "$RP_BOOTSTRAP_1_REDIR"
+then
+    export RP_BOOTSTRAP_1_REDIR=True
+    exec 2>&1
+fi
+
+echo "bootstrap_1 stderr redirected to stdout"
+
 # ------------------------------------------------------------------------------
 # Copyright 2013-2015, RADICAL @ Rutgers
 # Licensed under the MIT License
@@ -32,16 +41,21 @@ TUNNEL_BIND_DEVICE="lo"
 CLEANUP=
 HOSTPORT=
 SDISTS=
+RUNTIME=
 VIRTENV=
 VIRTENV_MODE=
 CCM=
-PILOTID=
+PILOT_ID=
 RP_VERSION=
 PYTHON=
-SESSIONID=
-SANDBOX=`pwd`
-AGENT_TYPE='multicore'
+SESSION_ID=
+SESSION_SANDBOX=
+PILOT_SANDBOX=`pwd`
 PREBOOTSTRAP2=""
+
+# NOTE:  $HOME is set to the job sandbox on OSG.  Bah!
+# FIXME: the need for this needs to be reconfirmed and documented
+# mkdir -p .ssh/
 
 # flag which is set when a system level RP installation is found, triggers
 # '--upgrade' flag for pip
@@ -53,24 +67,12 @@ PREBOOTSTRAP2=""
 
 
 # seconds to wait for lock files
-# 3 min should be enough for anybody to create/update a virtenv...
-LOCK_TIMEOUT=180 # 3 min
+# 10 min should be enough for anybody to create/update a virtenv...
+LOCK_TIMEOUT=600 # 10 min
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
 VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
-VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces==0.10.4 setproctitle"
-
-# before we change anything else in the pilot environment, we safe a couple of
-# env vars to later re-create a close-to-pristine env for unit execution.
-_OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
-_OLD_VIRTUAL_PYTHONHOME="$PYTHONHOME"
-_OLD_VIRTUAL_PATH="$PATH"
-_OLD_VIRTUAL_PS1="$PS1"
-
-export _OLD_VIRTUAL_PYTHONPATH
-export _OLD_VIRTUAL_PYTHONHOME
-export _OLD_VIRTUAL_PATH
-export _OLD_VIRTUAL_PS1
+VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces==0.10.4 setproctitle orte_cffi msgpack-python"
 
 
 # ------------------------------------------------------------------------------
@@ -79,6 +81,7 @@ export _OLD_VIRTUAL_PS1
 #
 create_gtod()
 {
+    # we "should" be able to build this everywhere ...
 
     cat > gtod.c <<EOT
 #include <stdio.h>
@@ -92,14 +95,41 @@ int main ()
     return (0);
 }
 EOT
-    cc -o gtod gtod.c
+    if ! test -e "./gtod"
+    then
+        echo -n "build gtod with cc... "
+        cc -o gtod gtod.c
+    fi
 
     if ! test -e "./gtod"
     then
-        # we "should" be able to build this everywhere ...
-        echo "can't build gtod binary!"
+        echo "failed"
+        echo -n "build gtod with gcc... "
+        gcc -o gtod gtod.c
+    fi
+
+    if ! test -e "./gtod"
+    then
+        tmp=`date '+%s.%N'`
+        if test "$?" = 0
+        then
+            if ! contains "$tmp" '%'
+            then
+                # we can use the system tool
+                echo "#!/bin/sh"      > ./gtod
+                echo "date '+%s.%N'" >> ./gtod
+                chmod 0755              ./gtod
+            fi
+        fi
+    fi
+
+    if ! test -e "./gtod"
+    then
+        echo "failed - giving up"
         exit 1
     fi
+
+    echo "success"
 
     TIME_ZERO=`./gtod`
     export TIME_ZERO
@@ -129,8 +159,42 @@ profile_event()
     fi
 
     printf "%.4f,%s,%s,%s,%s,%s\n" \
-        "$NOW" "bootstrap_1" "$PILOTID" "ACTIVE" "$event" "$msg" \
-        >> "$PROFILE"
+        "$NOW" "bootstrap_1" "$PILOT_ID" "PMGR_ACTIVE_PENDING" "$event" "$msg" \
+        | tee -a "$PROFILE"
+}
+
+
+# ------------------------------------------------------------------------------
+#
+# we add another safety feature to ensure agent cancelation after runtime
+# expires: the timeout() function expects *exactly* two processes to run in the
+# background.  Whichever finishes with will cause a SIGUSR1 signal, which is
+# then trapped to kill both processes.  Since the first one is dead, only the
+# second will actually get the kill, and the subsequent wait will thus 
+#
+timeout()
+{
+    TIMEOUT="$1"; shift
+    COMMAND="$*"
+
+    RET=./timetrap.ret
+
+    timetrap()
+    {
+        kill $PID_1 2>&1 > /dev/null
+        kill $PID_2 2>&1 > /dev/null
+    }
+    trap timetrap USR1
+    
+    rm -f $RET
+    ($COMMAND;       echo "$?" >> $RET; /bin/kill -s USR1 $$) & PID_1=$!
+    (sleep $TIMEOUT; echo "1"  >> $RET; /bin/kill -s USR1 $$) & PID_2=$!
+
+    wait
+
+    ret=`cat $RET || echo 2`
+    echo "------------------"
+    return $ret
 }
 
 
@@ -258,14 +322,25 @@ rehash()
     #       channel for some reason, so does not need the cert bundle.
     #       see https://github.com/pypa/pip/issues/2130
     #       ca-cert bundle from http://curl.haxx.se/docs/caextract.html
-    if test -f 'cacert.pem.gz'
+    
+    # NOTE: Condor does not support staging into some arbitrary
+    #       directory, so we may find the dists in pwd
+    CA_CERT_GZ="$SESSION_SANDBOX/cacert.pem.gz"
+    CA_CERT_PEM="$SESSION_SANDBOX/cacert.pem"
+    if ! test -f "$CA_CERT_GZ" -o -f "$CA_CERT_PEM"
     then
-        gunzip cacert.pem.gz
+        CA_CERT_GZ="./cacert.pem.gz"
+        CA_CERT_PEM="./cacert.pem"
     fi
 
-    if test -f 'cacert.pem'
+    if test -f "$CA_CERT_GZ"
     then
-        PIP="`which pip` --cert cacert.pem"
+        gunzip "$CA_CERT_GZ"
+    fi
+
+    if test -f "$CA_CERT_PEM"
+    then
+        PIP="`which pip` --cert $CA_CERT_PEM"
     else
         PIP="`which pip`"
     fi
@@ -277,6 +352,42 @@ rehash()
 
     echo "PYTHON: $PYTHON"
     echo "PIP   : $PIP"
+}
+
+
+# ------------------------------------------------------------------------------
+# verify that we have a usable python installation
+verify_install()
+{
+    echo -n "verify python viability: $PYTHON ..."
+    if ! $PYTHON -c 'import sys; assert(sys.version_info >= (2,7))'
+    then
+        echo ' failed'
+        echo "python installation ($PYTHON) is not usable - abort"
+        exit 1
+    fi
+    echo ' ok'
+
+    if ! test -z "$RADICAL_DEBUG"
+    then
+        echo 'debug mode: install pudb'
+        pip install pudb || true
+    fi
+
+    # FIXME: attempt to load all required modules
+    modules='saga radical.utils pymongo hostlist netifaces setproctitle ntplib msgpack zmq'
+    for m in $modules
+    do
+        printf 'verify module viability: %-15s ...' $m
+        if ! $PYTHON -c "import $m"
+        then
+            echo ' failed'
+            echo "python installation cannot load module $m - abort"
+            exit 1
+        fi
+        echo ' ok'
+
+    done
 }
 
 
@@ -315,7 +426,7 @@ run_cmd()
     echo "# $msg"
     echo "# cmd: $cmd"
     echo "#"
-    eval "$cmd"
+    eval "$cmd" 2>&1
     if test "$?" = 0
     then
         echo "#"
@@ -372,7 +483,6 @@ usage: $0 options
 This script launches a RADICAL-Pilot agent.
 
 OPTIONS:
-   -a   agent type (default: 'multicore')
    -b   python distribution (default, anaconda)
    -c   ccm mode of agent startup
    -d   distribution source tarballs for radical stack install
@@ -388,6 +498,7 @@ OPTIONS:
    -v   virtualenv location (create if missing)
    -w   execute commands before bootstrapping phase 2: the worker
    -x   exit cleanup - delete pilot sandbox, virtualenv etc. after completion
+   -y   runtime limit
 
 EOF
 
@@ -429,8 +540,8 @@ virtenv_setup()
     virtenv_mode="$3"
     python_dist="$4"
 
-    virtenv_create=UNDEFINED
-    virtenv_update=UNDEFINED
+    ve_create=UNDEFINED
+    ve_update=UNDEFINED
 
     if test "$virtenv_mode" = "private"
     then
@@ -439,18 +550,18 @@ virtenv_setup()
             printf "\nERROR: private virtenv already exists at $virtenv\n\n"
             exit 1
         fi
-        virtenv_create=TRUE
-        virtenv_update=FALSE
+        ve_create=TRUE
+        ve_update=FALSE
 
     elif test "$virtenv_mode" = "update"
     then
-        virtenv_create=FALSE
-        virtenv_update=TRUE
-        test -d "$virtenv/" || virtenv_create=TRUE
+        ve_create=FALSE
+        ve_update=TRUE
+        test -d "$virtenv/" || ve_create=TRUE
     elif test "$virtenv_mode" = "create"
     then
-        virtenv_create=TRUE
-        virtenv_update=FALSE
+        ve_create=TRUE
+        ve_update=FALSE
 
     elif test "$virtenv_mode" = "use"
     then
@@ -459,29 +570,29 @@ virtenv_setup()
             printf "\nERROR: given virtenv does not exist at $virtenv\n\n"
             exit 1
         fi
-        virtenv_create=FALSE
-        virtenv_update=FALSE
+        ve_create=FALSE
+        ve_update=FALSE
 
     elif test "$virtenv_mode" = "recreate"
     then
         test -d "$virtenv/" && rm -r "$virtenv"
-        virtenv_create=TRUE
-        virtenv_update=FALSE
+        ve_create=TRUE
+        ve_update=FALSE
     else
-        virtenv_create=FALSE
-        virtenv_update=FALSE
+        ve_create=FALSE
+        ve_update=FALSE
         printf "\nERROR: virtenv mode invalid: $virtenv_mode\n\n"
         exit 1
     fi
 
-    if test "$virtenv_create" = 'TRUE'
+    if test "$ve_create" = 'TRUE'
     then
         # no need to update a fresh ve
-        virtenv_update=FALSE
+        ve_update=FALSE
     fi
 
-    echo "virtenv_create   : $virtenv_create"
-    echo "virtenv_update   : $virtenv_update"
+    echo "virtenv_create   : $ve_create"
+    echo "virtenv_update   : $ve_update"
 
 
     # radical_pilot installation and update is governed by PILOT_VERSION.  If
@@ -496,19 +607,15 @@ virtenv_setup()
             do
                 src=${sdist%.tgz}
                 src=${sdist%.tar.gz}
-                tar zxmf $sdist
-                RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
-            done
-            RP_INSTALL_TARGET='VIRTENV'
-            RP_INSTALL_SDIST='TRUE'
-            ;;
-
-        debug)
-            for sdist in `echo $SDISTS | tr ':' ' '`
-            do
-                src=${sdist%.tgz}
-                src=${sdist%.tar.gz}
-                tar zxmf $sdist
+                # NOTE: Condor does not support staging into some arbitrary
+                #       directory, so we may find the dists in pwd
+                if test -e "$SESSION_SANDBOX/$sdist"
+                then
+                    tar zxmf "$SESSION_SANDBOX/$sdist"
+                else
+                    tar zxmf "./$sdist"
+                    rm  -v   "./$sdist"
+                fi
                 RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
             done
             RP_INSTALL_TARGET='SANDBOX'
@@ -517,25 +624,14 @@ virtenv_setup()
 
         release)
             RP_INSTALL_SOURCES='radical.pilot'
-            RP_INSTALL_TARGET='VIRTENV'
+            RP_INSTALL_TARGET='SANDBOX'
             RP_INSTALL_SDIST='FALSE'
             ;;
 
         installed)
-            if test -d "$VIRTENV/rp_install"
-            then
-                RP_INSTALL_SOURCES=''
-                RP_INSTALL_TARGET=''
-                RP_INSTALL_SDIST=''
-            else
-                echo "WARNING: 'rp_version' set to 'installed', "
-                echo "         but no installed rp found in '$VIRTENV' ($virtenv_mode)"
-                echo "         Setting 'rp_version' to 'release'"
-                RP_VERSION='release'
-                RP_INSTALL_SOURCES='radical.pilot'
-                RP_INSTALL_TARGET='VIRTENV'
-                RP_INSTALL_SDIST='FALSE'
-            fi
+            RP_INSTALL_SOURCES=''
+            RP_INSTALL_TARGET=''
+            RP_INSTALL_SDIST='FALSE'
             ;;
 
         *)
@@ -545,7 +641,7 @@ virtenv_setup()
             git clone https://github.com/radical-cybertools/radical.pilot.git
             (cd radical.pilot; git checkout $RP_VERSION)
             RP_INSTALL_SOURCES="radical.pilot/"
-            RP_INSTALL_TARGET='VIRTENV'
+            RP_INSTALL_TARGET='SANDBOX'
             RP_INSTALL_SDIST='FALSE'
     esac
 
@@ -590,7 +686,7 @@ virtenv_setup()
 
 
     # create virtenv if needed.  This also activates the virtenv.
-    if test "$virtenv_create" = "TRUE"
+    if test "$ve_create" = "TRUE"
     then
         if ! test -d "$virtenv/"
         then
@@ -616,7 +712,7 @@ virtenv_setup()
 
 
     # update virtenv if needed.  This also activates the virtenv.
-    if test "$virtenv_update" = "TRUE"
+    if test "$ve_update" = "TRUE"
     then
         echo 'rp lock for ve update'
         lock "$pid" "$virtenv" # use default timeout
@@ -795,6 +891,12 @@ virtenv_create()
             "$BOOTSTRAP_CMD"
     fi
 
+    # clean out virtenv sources
+    if test -d "virtualenv-1.9/"
+    then
+        rm -rf "virtualenv-1.9/"
+    fi
+
     if test $? -ne 0
     then
         echo "Couldn't create virtualenv"
@@ -818,19 +920,29 @@ virtenv_create()
     #       pip complains about some parameter mismatch).  So we fix on the last
     #       known workable version -- which seems to be acceptable to other
     #       hosts, too
-    run_cmd "update setuptools" \
+
+    if ! test "$python_dist" = "anaconda"
+    then
+        run_cmd "update setuptools" \
             "$PIP install --upgrade setuptools==0.6c11" \
          || echo "Couldn't update setuptools -- using default version"
-
-
+    else
+        echo "Setuptools will not be updated"
+    fi
+    
     # NOTE: new releases of pip deprecate options we depend upon.  While the pip
     #       developers discuss if those options will get un-deprecated again,
     #       fact is that there are released pip versions around which do not
     #       work for us (hello supermuc!).  So we fix the version to one we know
     #       is functional.
-    run_cmd "update pip" \
-            "$PIP install --upgrade pip==1.4.1" \
-         || echo "Couldn't update pip -- using default version"
+    if ! test "$python_dist" = "anaconda"
+    then
+        run_cmd "update pip" \
+                "$PIP install --upgrade pip==1.4.1" \
+             || echo "Couldn't update pip -- using default version"
+    else
+        echo "PIP will not be updated"
+    fi
 
     # make sure the new pip version is used (but keep the python executable)
     rehash "$PYTHON"
@@ -846,7 +958,7 @@ virtenv_create()
 
     # now that the virtenv is set up, we install all dependencies
     # of the RADICAL stack
-    for dep in "$VIRTENV_RADICAL_DEPS"
+    for dep in $VIRTENV_RADICAL_DEPS
     do
         run_cmd "install $dep" \
                 "$PIP install $dep" \
@@ -870,7 +982,7 @@ virtenv_update()
     # we upgrade all dependencies of the RADICAL stack, one by one.
     # NOTE: we only do pip upgrades -- that will ignore the easy_installed
     #       modules on india etc.
-    for dep in "$VIRTENV_RADICAL_DEPS"
+    for dep in $VIRTENV_RADICAL_DEPS
     do
         run_cmd "install $dep" \
                 "$PIP install --upgrade $dep" \
@@ -899,20 +1011,15 @@ virtenv_update()
 #   @tag/@branch/@commit: # no sdist staging
 #       git clone $github_base radical.pilot.src
 #       (cd radical.pilot.src && git checkout token)
-#       pip install -t $VIRTENV/rp_install/ radical.pilot.src
+#       pip install -t $SANDBOX/rp_install/ radical.pilot.src
 #       rm -rf radical.pilot.src
-#       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
+#       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
 #
 #   release: # no sdist staging
-#       pip install -t $VIRTENV/rp_install radical.pilot
-#       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
+#       pip install -t $SANDBOX/rp_install radical.pilot
+#       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
 #
 #   local: # needs sdist staging
-#       tar zxmf $sdist.tgz
-#       pip install -t $VIRTENV/rp_install $sdist/
-#       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
-#
-#   debug: # needs sdist staging
 #       tar zxmf $sdist.tgz
 #       pip install -t $SANDBOX/rp_install $sdist/
 #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
@@ -980,14 +1087,14 @@ rp_install()
             ;;
 
         SANDBOX)
-            RP_INSTALL="$SANDBOX/rp_install"
+            RP_INSTALL="$PILOT_SANDBOX/rp_install"
 
             # make sure the lib path into the prefix conforms to the python conventions
-            RP_LOC_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$VIRTENV|$SANDBOX/rp_install|"`
+            RP_LOC_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$VIRTENV|$PILOT_SANDBOX/rp_install|"`
 
             echo "VE_MOD_PREFIX: $VE_MOD_PREFIX"
             echo "VIRTENV      : $VIRTENV"
-            echo "SANDBOX      : $SANDBOX"
+            echo "SANDBOX      : $PILOT_SANDBOX"
             echo "VE_LOC_PREFIX: $VE_LOC_PREFIX"
 
             # local PYTHONPATH needs to be pre-pended.  The ve PYTHONPATH is
@@ -998,7 +1105,7 @@ rp_install()
             PYTHONPATH="$RP_LOC_PREFIX:$VE_MOD_REFIX:$VE_PYTHONPATH"
             export PYTHONPATH
 
-            PATH="$SANDBOX/rp_install/bin:$PATH"
+            PATH="$PILOT_SANDBOX/rp_install/bin:$PATH"
             export PATH
 
             RADICAL_MOD_PREFIX="$RP_LOC_PREFIX/radical/"
@@ -1059,11 +1166,11 @@ rp_install()
   #     fi
   # fi
 
-    pip_flags="$pip_flags --src '$SANDBOX/rp_install/src'"
-    pip_flags="$pip_flags --build '$SANDBOX/rp_install/build'"
+    pip_flags="$pip_flags --src '$PILOT_SANDBOX/rp_install/src'"
+    pip_flags="$pip_flags --build '$PILOT_SANDBOX/rp_install/build'"
     pip_flags="$pip_flags --install-option='--prefix=$RP_INSTALL'"
 
-    for src in $RP_INSTALL_SOURCES
+    for src in $rp_install_sources
     do
         run_cmd "update $src via pip" \
                 "$PIP install $pip_flags $src"
@@ -1074,7 +1181,14 @@ rp_install()
         fi
 
         # NOTE: why? fuck pip, that's why!
-        rm -rf "$SANDBOX/rp_install/build"
+        rm -rf "$PILOT_SANDBOX/rp_install/build"
+
+        # clean out the install source if it is a local dir
+        if test -d "$src"
+        then
+            echo "purge install source at $src"
+            rm -r "$src"
+        fi
     done
 
     profile_event 'rp_install done'
@@ -1197,13 +1311,10 @@ $cmd"
 
 # Report where we are, as this is not always what you expect ;-)
 # Print environment, useful for debugging
-echo "# -------------------------------------------------------------------"
-echo "# bootstrap_1 running on host: `hostname -f`."
-echo "# bootstrap_1 started as     : '$0 $@'"
-echo "# Environment of bootstrap_1 process:"
-echo "#"
-echo "#"
-echo "# -------------------------------------------------------------------"
+echo "---------------------------------------------------------------------"
+echo "bootstrap_1 running on host: `hostname -f`."
+echo "bootstrap_1 started as     : '$0 $@'"
+echo "Environment of bootstrap_1 process:"
 
 # print the sorted env for logging, but also keep a copy so that we can dig
 # original env settings for any CUs, if so specified in the resource config.
@@ -1211,9 +1322,9 @@ env | sort | grep '=' | tee env.orig
 echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
-while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x" OPTION; do
+while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
     case $OPTION in
-        a)  AGENT_TYPE="$OPTARG"  ;;
+        a)  SESSION_SANDBOX="$OPTARG"  ;;
         b)  PYTHON_DIST="$OPTARG"  ;;
         c)  CCM='TRUE'  ;;
         d)  SDISTS="$OPTARG"  ;;
@@ -1222,16 +1333,48 @@ while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x" OPTION; do
         h)  HOSTPORT="$OPTARG"  ;;
         i)  PYTHON="$OPTARG"  ;;
         m)  VIRTENV_MODE="$OPTARG"  ;;
-        p)  PILOTID="$OPTARG"  ;;
+        p)  PILOT_ID="$OPTARG"  ;;
         r)  RP_VERSION="$OPTARG"  ;;
-        s)  SESSIONID="$OPTARG"  ;;
+        s)  SESSION_ID="$OPTARG"  ;;
         t)  TUNNEL_BIND_DEVICE="$OPTARG" ;;
         v)  VIRTENV=$(eval echo "$OPTARG")  ;;
         w)  pre_bootstrap_2 "$OPTARG"  ;;
         x)  CLEANUP="$OPTARG"  ;;
+        y)  RUNTIME="$OPTARG"  ;;
         *)  usage "Unknown option: '$OPTION'='$OPTARG'"  ;;
     esac
 done
+
+# before we change anything else in the pilot environment, we safe a couple of
+# env vars to later re-create a close-to-pristine env for unit execution.
+_OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
+_OLD_VIRTUAL_PYTHONHOME="$PYTHONHOME"
+_OLD_VIRTUAL_PATH="$PATH"
+_OLD_VIRTUAL_PS1="$PS1"
+
+export _OLD_VIRTUAL_PYTHONPATH
+export _OLD_VIRTUAL_PYTHONHOME
+export _OLD_VIRTUAL_PATH
+export _OLD_VIRTUAL_PS1
+
+# derive some var names from given args
+if test -z "$SESSION_SANDBOX"
+then  
+    SESSION_SANDBOX="$PILOT_SANDBOX/.."
+fi
+
+# TODO: Move earlier, because if pre_bootstrap fails, this is not yet set
+LOGFILES_TARBALL="$PILOT_ID.log.tgz"
+PROFILES_TARBALL="$PILOT_ID.prof.tgz"
+
+# some backends (condor) never finalize a job when output files are missing --
+# so we touch them here to prevent that
+echo "# -------------------------------------------------------------------"
+echo '# Touching output tarballs'
+echo "# -------------------------------------------------------------------"
+touch "$LOGFILES_TARBALL"
+touch "$PROFILES_TARBALL"
+
 
 # At this point, all pre_bootstrap_1 commands have been executed.  We copy the
 # resulting PATH and LD_LIBRARY_PATH, and apply that in bootstrap_2.sh, so that
@@ -1247,10 +1390,11 @@ PB1_LDLB="$LD_LIBRARY_PATH"
 
 # FIXME: By now the pre_process rules are already performed.
 #        We should split the parsing and the execution of those.
-#        "bootstrap start" is here so that $PILOTID is known.
+#        "bootstrap start" is here so that $PILOT_ID is known.
 # Create header for profile log
 if ! test -z "$RADICAL_PILOT_PROFILE"
 then
+    echo 'create gtod'
     create_gtod
     profile_event 'bootstrap start'
 fi
@@ -1267,9 +1411,16 @@ rmdir "$VIRTENV" 2>/dev/null
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
-if test -z "$PILOTID"     ; then  usage "missing PILOTID      ";  fi
-if test -z "$SESSIONID"   ; then  usage "missing SESSIONID    ";  fi
-if test -z "$RP_VERSION"  ; then  usage "missing RP_VERSION   ";  fi
+if test -z "$RUNTIME"     ; then  usage "missing RUNTIME"   ;  fi
+if test -z "$PILOT_ID"    ; then  usage "missing PILOT_ID"  ;  fi
+if test -z "$RP_VERSION"  ; then  usage "missing RP_VERSION";  fi
+
+# pilot runtime is specified in minutes -- on shell level, we want seconds
+RUNTIME=$((RUNTIME * 60))
+
+# we also add a minute as safety margin, to give the agent proper time to shut
+# down on its own
+RUNTIME=$((RUNTIME + 60))
 
 # If the host that will run the agent is not capable of communication
 # with the outside world directly, we will setup a tunnel.
@@ -1320,7 +1471,7 @@ fi
 rehash "$PYTHON"
 
 # ready to setup the virtenv
-virtenv_setup    "$PILOTID" "$VIRTENV" "$VIRTENV_MODE" "$PYTHON_DIST"
+virtenv_setup    "$PILOT_ID" "$VIRTENV" "$VIRTENV_MODE" "$PYTHON_DIST"
 virtenv_activate "$VIRTENV" "$PYTHON_DIST"
 
 # ------------------------------------------------------------------------------
@@ -1335,21 +1486,17 @@ virtenv_activate "$VIRTENV" "$PYTHON_DIST"
 #       have re-implemented pip... :/
 # FIXME: the second option should use $RP_MOD_PATH, or should derive the path
 #       from the imported rp modules __file__.
-if test "$RP_INSTALL_TARGET" = 'SANDBOX'
-then
-    PILOT_SCRIPT="$SANDBOX/rp_install/bin/radical-pilot-agent-$AGENT_TYPE.py"
-    if ! test -e "$PILOT_SCRIPT"
-    then
-        PILOT_SCRIPT="$SANDBOX/rp_install/lib/python$PYTHON_VERSION/site-packages/radical/pilot/agent/radical-pilot-agent-$AGENT_TYPE.py"
-    fi
-else
-    PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent-$AGENT_TYPE.py"
-    if ! test -e "$PILOT_SCRIPT"
-    then
-        PILOT_SCRIPT="$VIRTENV/rp_install/lib/python$PYTHON_VERSION/site-packages/radical/pilot/agent/radical-pilot-agent-$AGENT_TYPE.py"
-    fi
-fi
+PILOT_SCRIPT=`which radical-pilot-agent`
+# if test "$RP_INSTALL_TARGET" = 'PILOT_SANDBOX'
+# then
+#     PILOT_SCRIPT="$PILOT_SANDBOX/rp_install/bin/radical-pilot-agent"
+# else
+#     PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent"
+# fi
 
+# after all is said and done, we should end up with a usable python version.
+# Verify it
+verify_install
 
 AGENT_CMD="$PYTHON $PILOT_SCRIPT"
 
@@ -1378,6 +1525,12 @@ IFS=$OLD_IFS
 # and communicate the IP to the agent.  The agent may still not be able to
 # connect, but then a sensible timeout will kick in on ntplib.
 RADICAL_PILOT_NTPHOST=`dig +short 0.pool.ntp.org | grep -v -e ";;" -e "\.$" | head -n 1`
+if test "$?" = 0
+then
+    RADICAL_PILOT_NTPHOST="46.101.140.169"
+fi
+echo "ntphost: $RADICAL_PILOT_NTPHOST"
+ping -c 1 "$RADICAL_PILOT_NTPHOST"
 
 # Before we start the (sub-)agent proper, we'll create a bootstrap_2.sh script
 # to do so.  For a single agent this is not needed -- but in the case where
@@ -1399,14 +1552,14 @@ else
     BS_SHELL='/bin/sh'
 fi
 
-(cat <<EOT
+cat > bootstrap_2.sh <<EOT
 #!$BS_SHELL
 
 # some inspection for logging
 hostname
 
 # make sure we use the correct sandbox
-cd $SANDBOX
+cd $PILOT_SANDBOX
 
 # apply some env settings as stored after running pre_bootstrap_1 commands
 export PATH="$PB1_PATH"
@@ -1430,6 +1583,10 @@ export RADICAL_VERBOSE=DEBUG
 export RADICAL_UTIL_VERBOSE=DEBUG
 export RADICAL_PILOT_VERBOSE=DEBUG
 
+# the agent will *always* use the dburl from the config file, not from the env
+# FIXME: can we better define preference in the session ctor?
+unset RADICAL_PILOT_DBURL
+
 # avoid ntphost lookups on compute nodes
 export RADICAL_PILOT_NTPHOST=$RADICAL_PILOT_NTPHOST
 
@@ -1442,8 +1599,6 @@ $PREBOOTSTRAP2_EXPANDED
 exec $AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
 
 EOT
-
-)> bootstrap_2.sh
 chmod 0755 bootstrap_2.sh
 # ------------------------------------------------------------------------------
 
@@ -1479,14 +1634,92 @@ profile_event 'agent start'
 # start the master agent instance (zero)
 profile_event 'sync rel' 'agent start'
 
+
+# # I am ashamed that we have to resort to this -- lets hope it's temporary...
+# cat > packer.sh <<EOT
+# #!/bin/sh
+# 
+# PROFILES_TARBALL="$PILOT_ID.prof.tgz"
+# LOGFILES_TARBALL="$PILOT_ID.log.tgz"
+# 
+# echo "start packing profiles / logfiles [\$(date)]"
+# while ! test -e exit.signal
+# do
+#     
+#     if test -z "\$(ls *.prof )"
+#     then 
+#         echo "skip  packing profiles [\$(date)]"
+#     else
+#         echo "check packing profiles [\$(date)]"
+#         mkdir prof/
+#         cp  *.prof prof/
+#         tar -czf "\$PROFILES_TARBALL.tmp" prof/ || true
+#         mv       "\$PROFILES_TARBALL.tmp" "\$PROFILES_TARBALL"
+#         rm -rf prof/
+#     fi
+# 
+# 
+#     # we always have a least the cfg file
+#     if true
+#     then
+#         echo "check packing logfiles [\$(date)]"
+#         mkdir log/
+#         cp  *.log *.out *.err *,cfg log/
+#         tar -czf "\$LOGFILES_TARBALL.tmp" log/ || true
+#         mv       "\$LOGFILES_TARBALL.tmp" "\$LOGFILES_TARBALL"
+#         rm -rf log/
+#     fi
+# 
+#     ls -l *.tgz
+#     sleep 10
+# done
+# echo "stop  packing profiles / logfiles [\$(date)]"
+# EOT
+# chmod 0755 packer.sh
+# ./packer.sh 2>&1 >> bootstrap_1.out &
+# PACKER_ID=$!
+
 # TODO: Can this be generalized with our new split-agent now?
 if test -z "$CCM"; then
-./bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
+    ./bootstrap_2.sh 'agent_0'    \
+                   1> agent_0.bootstrap_2.out \
+                   2> agent_0.bootstrap_2.err &
 else
-ccmrun ./bootstrap_2.sh 'agent_0' 1>agent_0.bootstrap_2.out 2>agent_0.bootstrap_2.err
+    ccmrun ./bootstrap_2.sh 'agent_0'    \
+                   1> agent_0.bootstrap_2.out \
+                   2> agent_0.bootstrap_2.err &
 fi
+AGENT_PID=$!
 
+while true
+do
+    sleep 1
+    if kill -0 $AGENT_PID
+    then 
+        if test -e "./killme.signal"
+        then
+            echo "send SIGTERM to $AGENT_PID"
+            kill -15 $AGENT_PID
+            sleep  5
+            echo "send SIGKILL to $AGENT_PID"
+            kill  -9 $AGENT_PID
+            break
+        fi
+    else 
+        echo "agent $AGENT_PID is gone"
+        break
+    fi
+done
+
+# collect process and exit code
+echo "agent $AGENT_PID is final"
+wait $AGENT_PID
 AGENT_EXITCODE=$?
+echo "agent $AGENT_PID is final ($AGENT_EXITCODE)"
+
+# # stop the packer.  We don't want to just kill it, as that might leave us with
+# # corrupted tarballs...
+# touch exit.signal
 
 profile_event 'cleanup start'
 
@@ -1499,10 +1732,10 @@ echo
 echo "# -------------------------------------------------------------------"
 echo "# CLEANUP: $CLEANUP"
 echo "#"
-contains $CLEANUP 'l' && rm -r "$SANDBOX/agent.*"
-contains $CLEANUP 'u' && rm -r "$SANDBOX/unit.*"
+contains $CLEANUP 'l' && rm -r "$PILOT_SANDBOX/agent.*"
+contains $CLEANUP 'u' && rm -r "$PILOT_SANDBOX/unit.*"
 contains $CLEANUP 'v' && rm -r "$VIRTENV/" # FIXME: in what cases?
-contains $CLEANUP 'e' && rm -r "$SANDBOX/"
+contains $CLEANUP 'e' && rm -r "$PILOT_SANDBOX/"
 
 profile_event 'cleanup done'
 echo "#"
@@ -1546,8 +1779,7 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Tarring profiles ..."
-    PROFILES_TARBALL="$PILOTID.prof.tgz"
-    tar -czf $PROFILES_TARBALL *.prof
+    tar -czf $PROFILES_TARBALL *.prof || true
     ls -l $PROFILES_TARBALL
     echo "#"
     echo "# -------------------------------------------------------------------"
@@ -1561,8 +1793,7 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Tarring logfiles ..."
-    LOGFILES_TARBALL="$PILOTID.log.tgz"
-    tar -czf $LOGFILES_TARBALL *.{log,out,err,cfg}
+    tar -czf $LOGFILES_TARBALL *.{log,out,err,cfg} || true
     ls -l $LOGFILES_TARBALL
     echo "#"
     echo "# -------------------------------------------------------------------"
@@ -1571,9 +1802,10 @@ fi
 echo
 echo "# -------------------------------------------------------------------"
 echo "#"
-echo "# Done, exiting!"
+echo "# Done, exiting ($AGENT_EXITCODE)"
 echo "#"
 echo "# -------------------------------------------------------------------"
 
 # ... and exit
 exit $AGENT_EXITCODE
+

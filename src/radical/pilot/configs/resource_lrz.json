@@ -16,7 +16,6 @@
         },
         "default_queue"               : "test",
         "lrms"                        : "LOADLEVELER",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -29,7 +28,7 @@
                                          "module unload mpi.ibm", "module load mpi.intel"
                                         ],
         "valid_roots"                 : ["/home", "/gpfs/work", "/gpfs/scratch"],
-        "rp_version"                  : "debug",
+        "rp_version"                  : "local",
         "virtenv"                     : "/home/hpc/pr87be/di29sut/ve_supermuc_shared_20150505",
         "virtenv_mode"                : "use",
         "python_dist"                 : "anaconda"

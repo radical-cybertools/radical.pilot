@@ -24,7 +24,7 @@ class DataUnitDescription(Description):
     decision making (see section 4.5)
 
     name         # A non-unique label.
-    file_urls    # Dict of logical and physical filesnames, e.g.:
+    files        # Dict of logical and physical filesnames, e.g.:
                     # { 'NAME1' : [ 'google://.../name1.txt',
                     #               'srm://grid/name1.txt'],
                     #   'NAME2' : [ 'file://.../name2.txt' ] }

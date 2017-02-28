@@ -8,6 +8,8 @@ import time
 import threading
 import subprocess
 
+import radical.utils as ru
+
 from .base import LaunchMethod
 
 
@@ -19,9 +21,9 @@ class ORTE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, logger)
+        LaunchMethod.__init__(self, cfg, session)
 
         # We remove all ORTE related environment variables from the launcher
         # environment, so that we can use ORTE for both launch of the
@@ -41,7 +43,7 @@ class ORTE(LaunchMethod):
                the DVM.
         """
 
-        dvm_command = cls._which('orte-dvm')
+        dvm_command = ru.which('orte-dvm')
         if not dvm_command:
             raise Exception("Couldn't find orte-dvm")
 
@@ -163,10 +165,10 @@ class ORTE(LaunchMethod):
         if 'dvm_uri' in lm_info:
             try:
                 logger.info('terminating dvm')
-                orte_submit = cls._which('orte-submit')
-                if not orte_submit:
-                    raise Exception("Couldn't find orte-submit")
-                subprocess.Popen([orte_submit, "--hnp", lm_info['dvm_uri'], "--terminate"])
+                orterun = ru.which('orterun')
+                if not orterun:
+                    raise Exception("Couldn't find orterun")
+                subprocess.Popen([orterun, "--hnp", lm_info['dvm_uri'], "--terminate"])
             except Exception as e:
                 logger.exception('dmv termination failed')
 
@@ -175,7 +177,7 @@ class ORTE(LaunchMethod):
     #
     def _configure(self):
 
-        self.launch_command = self._which('orte-submit')
+        self.launch_command = ru.which('orterun')
 
 
     # --------------------------------------------------------------------------
@@ -225,7 +227,7 @@ class ORTE(LaunchMethod):
         hosts_string = ",".join([slot.split(':')[0].rsplit('_', 1)[-1] for slot in task_slots])
         export_vars  = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
-        # Additional (debug) arguments to orte-submit
+        # Additional (debug) arguments to orterun
         debug_strings = [
             #'--debug-devel',
             #'--mca oob_base_verbose 100',

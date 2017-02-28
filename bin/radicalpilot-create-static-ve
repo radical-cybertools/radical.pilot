@@ -1,7 +1,5 @@
 #!/bin/sh
 
-# set -x
-
 scriptname="radical-pilot-create-static-ve"
 
 reqs="pymongo==2.8 python-hostlist netifaces setproctitle ntplib pyzmq"
