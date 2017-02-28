@@ -70,16 +70,11 @@ if __name__ == '__main__':
     if options.help:
         usage()
 
-    if not options.src:
-        options.src = os.getcwd()
-    if not options.tgt:
-        options.tgt = os.getcwd()
-    if not options.dburl:
-        options.dburl = None
-    if not options.access:
-        options.access = None
-    if not options.skip:
-        options.skip = False
+    if not options.src:    options.src    = os.getcwd()
+    if not options.tgt:    options.tgt    = os.getcwd()
+    if not options.dburl:  options.dburl  = None
+    if not options.access: options.access = None
+    if not options.skip:   options.skip   = False
 
     sid    = args[0]
     src    = options.src
@@ -88,6 +83,8 @@ if __name__ == '__main__':
     access = options.access
     skip   = options.skip
 
+    tgt += '/%s' % sid
     rpu.fetch_profiles(sid=sid, dburl=dburl, src=src, tgt=tgt, access=access, skip_existing=skip)
+
 
 # ------------------------------------------------------------------------------

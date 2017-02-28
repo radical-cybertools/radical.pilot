@@ -6,11 +6,10 @@ import saga
 import tarfile
 
 import radical.utils as ru
-from   radical.pilot.states import *
+from   radical.pilot.states  import *
 
 from db_utils import *
 
-logger = ru.get_logger('radical.pilot.utils')
 
 # ------------------------------------------------------------------------------
 #
@@ -27,21 +26,20 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
     '''
 
     log = ru.get_logger('radical.pilot.utils')
-
     ret = list()
 
     if not dburl:
         dburl = os.environ['RADICAL_PILOT_DBURL']
 
     if not dburl:
-        raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
+        raise ValueError('RADICAL_PILOT_DBURL is not set')
 
     if not src:
         src = os.getcwd()
-            
+
     if not tgt:
         tgt = os.getcwd()
-            
+
     if not tgt.startswith('/') and '://' not in tgt:
         tgt = "%s/%s" % (os.getcwd(), tgt)
 
@@ -69,15 +67,16 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
         if skip_existing and os.path.isfile(ftgt.path) \
                 and os.stat(ftgt.path).st_size > 0:
-
-            logger.report.info("\t- %s\n" % client_profile.split('/')[-1])
+            log.report.info("\t- %s\n" % client_profile.split('/')[-1])
 
         else:
-
-            logger.report.info("\t+ %s\n" % client_profile.split('/')[-1])
+            log.report.info("\t+ %s\n" % client_profile.split('/')[-1])
             prof_file = saga.filesystem.File(client_profile, session=session)
             prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
             prof_file.close()
+
+        if not os.path.isfile(client_profile):
+            raise RuntimeError('client profilefile %s does not exist' % client_profile)
 
     _, db, _, _, _ = ru.mongodb_connect (dburl)
 
@@ -93,7 +92,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
         if not 'uid' in pilot:
             pilot['uid'] = pilot.get('_id')
 
-        logger.report.info("+ %s [%s]\n" % (pilot['uid'], pilot['description']['resource']))
+        log.report.info("+ %s [%s]\n" % (pilot['uid'], pilot['description']['resource']))
         log.debug("processing pilot '%s'", pilot['uid'])
 
         sandbox_url = saga.Url(pilot['sandbox'])
@@ -155,6 +154,8 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
                 profiles = glob.glob("%s/%s/*.prof" % (tgt_url.path, pilot['uid']))
                 ret.extend(profiles)
+                os.unlink(ftgt.path)
+
             except Exception as e:
                 log.warn('could not extract tarball %s [%s]', ftgt.path, e)
                 print 'skip %s [%s]' % (ftgt.path, e)
@@ -166,28 +167,27 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
         try:
             profiles = sandbox.list('*.prof')
         except Exception as e:
-            logger.error('cannot list profiles in %s [%s]' % (sandbox.url, e))
+            log.error('cannot list profiles in %s [%s]' % (sandbox.url, e))
             profiles = []
 
         for prof in profiles:
 
             try:
-
+                ret.append("%s" % ftgt.path)
                 ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['uid'], prof))
 
                 if skip_existing and os.path.isfile(ftgt.path) \
                                  and os.stat(ftgt.path).st_size > 0:
-                    logger.report.info("\t- %s\n" % str(prof).split('/')[-1])
+                    log.report.info("\t- %s\n" % str(prof).split('/')[-1])
 
                 else:
-                    logger.report.info("\t+ %s\n" % str(prof).split('/')[-1])
+                    log.report.info("\t+ %s\n" % str(prof).split('/')[-1])
                     prof_file = saga.filesystem.File("%s%s" % (sandbox_url, prof), session=session)
                     prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
                     prof_file.close()
 
-                ret.append("%s" % ftgt.path)
             except Exception as e:
-                logger.error('skip %s [%s]' % (ftgt, e))
+                log.error('skip %s [%s]' % (ftgt, e))
 
     return ret
 
@@ -243,11 +243,11 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
     if skip_existing and os.path.isfile(ftgt.path) \
             and os.stat(ftgt.path).st_size > 0:
 
-        logger.report.info("\t- %s\n" % client_logfile.split('/')[-1])
+        log.report.info("\t- %s\n" % client_logfile.split('/')[-1])
 
     else:
 
-        logger.report.info("\t+ %s\n" % client_logfile.split('/')[-1])
+        log.report.info("\t+ %s\n" % client_logfile.split('/')[-1])
         log_file = saga.filesystem.File(client_logfile, session=session)
         log_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
         log_file.close()
@@ -344,15 +344,16 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
             if skip_existing and os.path.isfile(ftgt.path) \
                              and os.stat(ftgt.path).st_size > 0:
 
-                logger.report.info("\t- %s\n" % str(log).split('/')[-1])
+                log.report.info("\t- %s\n" % str(log).split('/')[-1])
                 continue
 
-            logger.report.info("\t+ %s\n" % str(log).split('/')[-1])
+            log.report.info("\t+ %s\n" % str(log).split('/')[-1])
             log_file = saga.filesystem.File("%s%s" % (sandbox_url, log), session=session)
             log_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
             log_file.close()
 
     return ret
+
 
 
 # ------------------------------------------------------------------------------
@@ -426,10 +427,10 @@ def get_session_frames (sids, db=None, cachedir=None) :
                 'cores'        : cores,
                 'runtime'      : description.get ('runtime'),
                 NEW            : None, 
-                PENDING_LAUNCH : None, 
-                LAUNCHING      : None, 
-                PENDING_ACTIVE : None, 
-                ACTIVE         : None, 
+                PMGR_LAUNCHING_PENDING : None, 
+                PMGR_LAUNCHING         : None, 
+                PMGR_ACTIVE_PENDING    : None, 
+                PMGR_ACTIVE            : None, 
                 DONE           : None, 
                 FAILED         : None, 
                 CANCELED       : None
@@ -651,7 +652,7 @@ def fetch_json(sid, dburl=None, tgt=None, skip_existing=False):
             dburl = os.environ.get('RADICAL_PILOT_DBURL')
 
         if not dburl:
-            raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
+            raise ValueError('RADICAL_PILOT_DBURL is not set')
 
         mongo, db, _, _, _ = ru.mongodb_connect(dburl)
 

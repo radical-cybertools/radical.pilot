@@ -76,14 +76,18 @@ class Default(UMGRStagingInputComponent):
             # check if we have any staging directives to be enacted in this
             # component
             actionables = list()
-            for entry in unit.get('input_staging', []):
+            for sd in unit['description'].get('input_staging', []):
 
-                action = entry['action']
-                flags  = entry['flags']
-                src    = ru.Url(entry['source'])
-                tgt    = ru.Url(entry['target'])
+                import pprint
+                pprint.pprint(sd)
 
-                if action in [rpc.TRANSFER] and src.schema in ['file']:
+                action = sd['action']
+                flags  = sd['flags']
+                src    = ru.Url(sd['source'])
+                tgt    = ru.Url(sd['target'])
+                print tgt
+
+                if action == rpc.TRANSFER and src.schema == 'file':
                     actionables.append([src, tgt, flags])
 
             if actionables:
@@ -134,6 +138,10 @@ class Default(UMGRStagingInputComponent):
                 copy_flags = rs.filesystem.CREATE_PARENTS
             else:
                 copy_flags = 0
+
+            # FIXME: this should be a proper test for absoluteness of URL
+            if not tgt.path.startswith('/'):
+                tgt.path = '%s/%s' % (sandbox.path, tgt.path)
 
             saga_dir.copy(src, tgt, flags=copy_flags)
 

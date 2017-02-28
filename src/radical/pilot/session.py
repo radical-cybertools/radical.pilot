@@ -127,22 +127,30 @@ class Session(rs.Session):
             self._cfg['logdir'] = '%s/%s' % (os.getcwd(), self._uid)
 
         self._logdir = self._cfg['logdir']
-        print        self._cfg['owner'], self._cfg['debug']
         self._log    = self._get_logger(self._cfg['owner'], self._cfg['debug'])
 
+        if _connect:
+            # we need a dburl to connect to.
+        
+            if not dburl:
+                dburl = os.environ.get("RADICAL_PILOT_DBURL")
 
-        if not dburl: dburl = self._cfg.get('dburl')
-        if not dburl:
-            dburl = os.getenv("RADICAL_PILOT_DBURL", None)
+            if not dburl:
+                dburl = self._cfg.get('default_dburl')
 
-        if not dburl and _connect:
-            # we forgive missing dburl on reconnect, but not otherwise
-            raise RuntimeError("no database URL (set RADICAL_PILOT_DBURL)")  
+            if not dburl:
+                dburl = self._cfg.get('dburl')
+
+            if not dburl:
+                # we forgive missing dburl on reconnect, but not otherwise
+                raise RuntimeError("no database URL (set RADICAL_PILOT_DBURL)")  
+
 
         self._dburl = ru.Url(dburl)
 
+        # ----------------------------------------------------------------------
+        # create new session
         if _connect:
-
             self._log.info("using database %s" % self._dburl)
 
             # if the database url contains a path element, we interpret that as
@@ -190,7 +198,7 @@ class Session(rs.Session):
 
         # create/connect database handle
         try:
-            self._dbs = DBSession(sid=self.uid, dburl=self._dburl,
+            self._dbs = DBSession(sid=self.uid, dburl=str(self._dburl),
                                   cfg=self._cfg, logger=self._log, 
                                   connect=_connect)
 
@@ -201,7 +209,7 @@ class Session(rs.Session):
             self._log.report.error(">>err\n")
             self._log.exception('session create failed')
             raise RuntimeError("Couldn't create new session (database URL '%s' incorrect?): %s" \
-                            % (self._dburl, ex))  
+                            % (dburl, ex))  
 
         # FIXME: make sure the above code results in a usable session on
         #        reconnect
@@ -494,11 +502,11 @@ class Session(rs.Session):
     #
     def _get_profiler(self, name, level=None):
         """
-        This is a thin wrapper around `rpu.Profiler()` which makes sure that
+        This is a thin wrapper around `ru.Profiler()` which makes sure that
         profiles end up in a separate directory with the name of `session.uid`.
         """
 
-        return rpu.Profiler(name, path=self._logdir)
+        return ru.Profiler(name, path=self._logdir)
 
 
     # --------------------------------------------------------------------------

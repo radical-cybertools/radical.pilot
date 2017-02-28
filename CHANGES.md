@@ -5,6 +5,153 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.45 Release                                                          2017-02-28
+--------------------------------------------------------------------------------
+
+  - NOTE: OSG and ORTE_LIB on titan are considered unsupported.  You can enable
+          those resources for experiments by removing the comment markers from
+          the respective resource configs.
+
+  - Adapt to new orte-submit interface. 
+  - Add orte-cffi dependency to bootstrapper. 
+  - Agent based staging directives. 
+  - Fixes to various resource configs
+  - Change orte-submit to orterun. 
+  - Conditional importing of executors. Fixes #926. 
+  - Config entries for orte lib on Titan. 
+  - Corrected environment export in executing POPEN 
+  - Extend virtenv lock timeout, use private rp_installs by default
+  - Fix non-mpi execution analogous to #975. 
+  - Fix/issue 1226 (#1232) 
+  - Fresh orte installation for bw. 
+  - support more OSG sites
+  - Initial version of ORTE lib interface. 
+  - Make cprofiling of scheduler conditional. 
+  - Make list of cprofile subscribers configurable. 
+  - Move env safekeeping until after the pre bootstrap. 
+  - Record OSG site name in mongodb. 
+  - Remove bash'isms from shell script. 
+  - pylint motivated cleanups
+  - Resolving issue #1211. 
+  - Resource and example config for Shark at LUMC. 
+  - SGE changes for non-homogeneous nodes. 
+  - Use ru.which
+  - add allegro.json config file for FUB allegro cluster 
+  - add rsh launch method 
+  - switch to gsissh on wrangler 
+  - use new ompi installation on comet (#1228) 
+  - add a simple/stupid ompi deployment helper 
+  - updated Config for Stampede and YARN 
+  - fix state transition to UNSCHEDDULED to avoid repetition 
+    and invalid state ordering
+
+
+0.44.1 Release                                                        2016-11-01
+--------------------------------------------------------------------------------
+
+  - add an agent config for cray/aprun all on mom node
+  - add anaconda config for examples 
+  - gsissh as default for wrangler, stampede, supermic 
+  - add conf for spark n wrangler, comet
+  - add docs to the cu env inject 
+  - expose spark's master url
+  - fix CU env setting (stampede) 
+  - configuration for spark and anaconda 
+  - resource config entries for titan
+  - disable PYTHONHOME setting in titan_aprun 
+  - dynamic configuration of spark_env 
+  - fix for gordon config 
+  - hardcode the netiface version until it is fixed upstream. 
+  - implement NON_FATAL for staging directives. 
+  - make resource config available to agent 
+  - rename scripts 
+  - update installation.rst 
+  - analytics backport 
+  - use profiler from RU 
+  - when calling a unit state callback, missed states also trigger callbacks 
+
+
+0.43.1 Release                                                        2016-09-09
+--------------------------------------------------------------------------------
+
+  - hotfix: fix netifaces to version 0.10.4 to avoid trouble on BlueWaters
+
+
+0.43 Release                                                          2016-09-08
+--------------------------------------------------------------------------------
+
+  - Add aec_handover for orte. 
+  - add a local confiuration for bw 
+  - add early binding eample for osg 
+  - add greenfield config (only works for single-node runs at the moment)
+  - add PYTHONPATH to the vars we reset for CU envs 
+  - allow overloading of agent config 
+  - fix #1071 
+  - fix synapse example 
+  - avoid profiling of empty state transitions 
+  - Check of YARN start-all script. Raising Runtime error in case of error. 
+  - disable hwm altogether 
+  - drop clones *before* push 
+  - enable scheduling time measurements. 
+  - First commit for multinode YARN cluster 
+  - fix getip 
+  - fix iface detection 
+  - fix reordering of states for some update sequences 
+  - fix unit cancellation 
+  - improve ve create script 
+  - make orte-submit aware of non-mpi CUs 
+  - move env preservation to an earlier point, to avoid pre-exec stuff 
+  - Python distribution mandatory to all confs 
+  - Remove temp agent config directory. 
+  - Resolving #1107 
+  - Schedule behind the real unit and support multicore. 
+  - SchedulerContinuous -> AgentSchedulingComponent. 
+  - Take ccmrun out of bootstrap_2. 
+  - Tempfile is not a tempfile so requires explicit removal. 
+  - resolve #1001 
+  - Unbreak CCM. 
+  - use high water mark for ZMQ to avoid message drops on high loads 
+
+
+0.42 Release                                                          2016-08-09
+--------------------------------------------------------------------------------
+
+  - change examples to use 2 cores on localhost 
+  - Iterate documentation
+  - Manual cherry pick fix for getip. 
+
+
+0.41 Release                                                          2016-07-15
+--------------------------------------------------------------------------------
+
+  - address some of error messages and type checks 
+  - add scheduler documentation simplify interpretation of BF oversubscription fix a log message 
+  - fix logging problem reported by Ming and Vivek 
+  - global default url, sync profile/logfile/db fetching tools 
+  - make staging path resilient against cwd changes 
+  - Switch SSH and ORTE for Comet
+  - sync session cleanup tool with rpu 
+  - update allocation IDs 
+
+
+0.40.4 Release                                                        2016-05-18
+--------------------------------------------------------------------------------
+
+  - point release with more tutorial configurations
+
+
+0.40.3 Release                                                        2016-05-17
+--------------------------------------------------------------------------------
+
+  - point release with tutorial configurations
+
+
+0.40.2 Release                                                        2016-05-13
+--------------------------------------------------------------------------------
+
+  - hotfix to fix vnode parsing on archer
+
+
 0.40.1 Release                                                        2016-02-11
 --------------------------------------------------------------------------------
 
@@ -485,5 +632,4 @@ API Changes:
 
 
 --------------------------------------------------------------------------------
-
 

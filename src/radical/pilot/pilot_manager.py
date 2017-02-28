@@ -277,8 +277,15 @@ class PilotManager(rpu.Component):
                 # we also don't need to maintain bulks for that reason.
                 pilot_dict['state'] = s
                 self._pilots[pid]._update(pilot_dict)
+
                 if advance:
                     self.advance(pilot_dict, s, publish=publish, push=False)
+
+                if s in [rps.PMGR_ACTIVE]:
+                    self._log.info('pilot %s is %s: %s [%s]', \
+                            pid, s, pilot_dict.get('lm_info'), 
+                                    pilot_dict.get('lm_detail')) 
+
 
 
     # --------------------------------------------------------------------------
@@ -363,8 +370,21 @@ class PilotManager(rpu.Component):
         # create the pilot instance
         pilots     = list()
         pilot_docs = list()
-        for descr in descriptions :
-            pilot = ComputePilot(pmgr=self, descr=descr)
+        for pd in descriptions :
+
+            if not pd.runtime:
+                raise ValueError('pilot runtime must be defined')
+
+            if pd.runtime <= 0:
+                raise ValueError('pilot runtime must be positive')
+
+            if not pd.cores:
+                raise ValueError('pilot core size must be defined')
+
+            if not pd.resource:
+                raise ValueError('pilot target resource must be defined')
+
+            pilot = ComputePilot(pmgr=self, descr=pd)
             pilots.append(pilot)
             pilot_doc = pilot.as_dict()
             pilot_docs.append(pilot_doc)
@@ -374,14 +394,15 @@ class PilotManager(rpu.Component):
                 self._pilots[pilot.uid] = pilot
 
             if self._session._rec:
-                ru.write_json(descr.as_dict(), "%s/%s.batch.%03d.json" \
+                ru.write_json(pd.as_dict(), "%s/%s.batch.%03d.json" \
                         % (self._session._rec, pilot.uid, self._rec_id))
             self._log.report.progress()
 
         # initial state advance to 'NEW'
         # FIXME: we should use update_pilot(), but that will not trigger an
         #        advance, since the state did not change.  We would then miss
-        #        the profile entry for the advance to NEW...
+        #        the profile entry for the advance to NEW.  So we here basically
+        #        only trigger the profile entry for NEW.
         self.advance(pilot_docs, state=rps.NEW, publish=False, push=False)
 
         if self._session._rec:
