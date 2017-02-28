@@ -243,7 +243,7 @@ class Popen(AgentExecutingComponent) :
             env_string += "export RP_AGENT_ID=%s\n"   % self._cfg['agent_name']
             env_string += "export RP_SPAWNER_ID=%s\n" % self.uid
             env_string += "export RP_UNIT_ID=%s\n"    % cu['uid']
-            env_string += "export RP_TMP=%s\n"        % self.tmpdir
+            env_string += "export RP_TMP=%s\n"        % self._cu_tmp
 
             # also add any env vars requested for export by the resource config
             for k,v in self._env_cu_export.iteritems():
