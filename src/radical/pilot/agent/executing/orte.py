@@ -462,8 +462,8 @@ class ORTE(AgentExecutingComponent):
 
         # prepare stdout/stderr
         # TODO: when mpi==true && cores>1 there will be multiple files that need to be concatenated.
-        cu['stdout_file'] = os.path.join(sandbox, 'rank.0/stdout')
-        cu['stderr_file'] = os.path.join(sandbox, 'rank.0/stderr')
+        cu['stdout_file'] = os.path.join(cu_tmpdir, 'rank.0/stdout')
+        cu['stderr_file'] = os.path.join(cu_tmpdir, 'rank.0/stderr')
 
         # Submit to the DVM!
         index = ffi.new("int *")
@@ -473,6 +473,9 @@ class ORTE(AgentExecutingComponent):
             if rc:
                 raise Exception("submit job failed with error: %d" % rc)
             task = index[0]
+
+            # Record the mapping of ORTE index to CU
+            self.task_map[task] = cu
 
             # Record the mapping of ORTE index to CU
             self.task_map[task] = cu

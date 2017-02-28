@@ -49,8 +49,8 @@
         "pre_bootstrap_1"             : [
             "module switch PrgEnv-cray PrgEnv-gnu",
             "module load bwpy",
-            "module use --append /projects/sciteam/gkd/modules",
-            "module load openmpi/rhc_static"
+            "module use --append /projects/sciteam/gk4/openmpi/modules",
+            "module load openmpi"
         ],
         "pre_bootstrap_2"             : ["export HOME=$HOME"],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
@@ -83,8 +83,8 @@
         "pre_bootstrap_1"             : [
             "module switch PrgEnv-cray PrgEnv-gnu",
             "module load bwpy",
-            "module use --append /projects/sciteam/gkd/modules",
-            "module load openmpi/rhc_static"
+            "module use --append /projects/sciteam/gk4/openmpi/modules",
+            "module load openmpi"
         ],
         "pre_bootstrap_2"             : ["export HOME=$HOME"],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
@@ -93,40 +93,6 @@
         "virtenv"                     : "%(global_sandbox)s/ve_bw",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
-        "python_dist"                 : "default"
-    },
-    "bw_local": {
-        "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system (https://bluewaters.ncsa.illinois.edu/)",
-        "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
-        "schemas"                     : ["local"],
-        "local"                       : {
-            "job_manager_endpoint"    : "torque://localhost",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
-        "default_queue"               : "normal",
-        "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
-        "agent_config"                : "cray",
-        "agent_launch_method"         : "ORTE",
-        "task_launch_method"          : "ORTE",
-        "mpi_launch_method"           : "ORTE",
-        "tunnel_bind_device"          : "ipogif0",
-        "forward_tunnel_endpoint"     : "BIND_ADDRESS",
-        "pre_bootstrap_1"             : [
-            "module switch PrgEnv-cray PrgEnv-gnu",
-            "module load bwpy",
-            "module use --append /projects/sciteam/gkd/modules",
-            "module load openmpi"
-        ],
-        "pre_bootstrap_2"             : ["export HOME=$HOME"],
-        "default_remote_workdir"      : "$HOME/scratch/",
-        "valid_roots"                 : ["/scratch/"],
-        "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_bw",
-        "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
         "python_dist"                 : "default"
     },
 
@@ -152,7 +118,7 @@
         "pre_bootstrap_1"             : [
             "module switch PrgEnv-cray PrgEnv-gnu",
             "module load bwpy",
-            "module use --append /projects/sciteam/gkd/modules",
+            "module use --append /projects/sciteam/gk4/openmpi/modules",
             "module load openmpi"
         ],
         "pre_bootstrap_2"             : ["export HOME=$HOME"],

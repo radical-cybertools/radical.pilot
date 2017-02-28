@@ -6,6 +6,8 @@ __license__   = "MIT"
 import os
 import subprocess
 
+import radical.utils as ru
+
 from .base import LaunchMethod
 
 
@@ -30,8 +32,6 @@ class Yarn(LaunchMethod):
         FIXME: this config hook will inspect the LRMS nodelist and, if needed,
                will start the YARN cluster on node[0].
         """
-        import radical.utils as ru
-
         logger.info('Hook called by YARN LRMS with the name %s'%lrms.name)
 
         def config_core_site(node):

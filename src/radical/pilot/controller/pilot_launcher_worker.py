@@ -378,6 +378,11 @@ class PilotLauncherWorker(threading.Thread):
                         # copy..
                         resource_cfg = self._session.get_resource_config(resource_key, schema)
 
+                        enabled = resource_cfg.get('enabled', True)
+                        if not enabled:
+                            raise ValueError('resource %s is unsupported - enable manually' % resource_key)
+                            
+
                         # import pprint
                         # pprint.pprint (resource_cfg)
 
@@ -520,20 +525,15 @@ class PilotLauncherWorker(threading.Thread):
                         #   @tag/@branch/@commit: # no sdist staging
                         #       git clone $github_base radical.pilot.src
                         #       (cd radical.pilot.src && git checkout token)
-                        #       pip install -t $VIRTENV/rp_install/ radical.pilot.src
+                        #       pip install -t $SANDBOX/rp_install/ radical.pilot.src
                         #       rm -rf radical.pilot.src
-                        #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
+                        #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
                         #
                         #   release: # no sdist staging
-                        #       pip install -t $VIRTENV/rp_install radical.pilot
-                        #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
+                        #       pip install -t $SANDBOX/rp_install radical.pilot
+                        #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
                         #
                         #   local: # needs sdist staging
-                        #       tar zxf $sdist.tgz
-                        #       pip install -t $VIRTENV/rp_install $sdist/
-                        #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
-                        #
-                        #   debug: # needs sdist staging
                         #       tar zxf $sdist.tgz
                         #       pip install -t $SANDBOX/rp_install $sdist/
                         #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
@@ -572,17 +572,20 @@ class PilotLauncherWorker(threading.Thread):
                         # above syntax is ignored, and the fallback stage@local
                         # is used.
 
-                        if  not rp_version.startswith('@') and \
-                            not rp_version in ['installed', 'local', 'debug']:
-                            raise ValueError("invalid rp_version '%s'" % rp_version)
-
-                        stage_sdist=True
-                        if rp_version in ['installed', 'release']:
-                            stage_sdist = False
+                        # 'debug' is deprecated now
+                        if rp_version == 'debug':
+                            logger.warn ("rp_version flag 'debug' is deprecated, use 'local'")
+                            rp_version = 'local'
 
                         if rp_version.startswith('@'):
-                            stage_sdist = False
-                            rp_version  = rp_version[1:]  # strip '@'
+                            rp_version = rp_version[1:]  # strip '@'
+
+                        elif rp_version not in ['installed', 'local']:
+                            raise ValueError("invalid rp_version '%s'" % rp_version)
+
+                        stage_sdist=False
+                        if rp_version in ['local']:
+                            stage_sdist = True
 
 
                         # ------------------------------------------------------

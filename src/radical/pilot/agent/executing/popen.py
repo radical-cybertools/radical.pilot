@@ -249,7 +249,7 @@ class Popen(AgentExecutingComponent) :
                 env_string += "export %s=%s\n" % (k,v)
             if cu['description']['environment']:
                 for key,val in cu['description']['environment'].iteritems():
-                    env_string += ' %s=%s' % (key, val)
+                    env_string += 'export "%s=%s"\n' % (key, val)
 
             launch_script.write('# Environment variables\n%s\n' % env_string)
 

@@ -56,6 +56,13 @@
         "cores"    : 64
     },
 
+    "ncsa.bw_local" : {
+        "project"  : null,
+        "queue"    : "debug",
+        "schema"   : null,
+        "cores"    : 64
+    },
+
     "ncsa.bw_ccm" : {
         "project"  : "gk4",
         "queue"    : "debug",
@@ -119,15 +126,15 @@
         "cores"    : 64
     },
 
-    "xsede.comet"  : {
-        "project"  : "unc100",
-        "queue"    : "compute",
+    "xsede.wrangler" : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "debug",
         "schema"   : "gsissh",
-        "cores"    : 64
+        "cores"    : 24
     },
 
-    "xsede.comet_orte": {
-        "project"  : "unc100",
+    "xsede.comet"  : {
+        "project"  : "TG-MCB090174",
         "queue"    : "compute",
         "schema"   : "gsissh",
         "cores"    : 64
@@ -141,6 +148,13 @@
     },
 
     "xsede.blacklight" : {
+        "project"  : null,
+        "queue"    : "debug",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "xsede.greenfield" : {
         "project"  : null,
         "queue"    : "debug",
         "schema"   : "gsissh",
@@ -161,13 +175,6 @@
         "cores"    : 64
     },
 
-    "xsede.wrangler" : {
-        "project"  : "TG-MCB090174",
-        "queue"    : "debug",
-        "schema"   : "gsissh",
-        "cores"    : 24
-    },
-
     "futuregrid.india" : {
         "project"  : null,
         "queue"    : null,
@@ -175,14 +182,14 @@
         "cores"    : 64
     },
 
-    "ornl.titan_aprun"   : {
+    "ornl.titan_aprun" : {
         "project"  : "BIP103",
         "queue"    : "debug",
         "schema"   : "local",
-        "cores"    :128
+        "cores"    : 64
     },
 
-    "ornl.titan_lib"   : {
+    "ornl.titan_lib" : {
         "project"  : "BIP103",
         "queue"    : "debug",
         "schema"   : "local",
@@ -210,8 +217,8 @@
         "cores"    : 64
     },
 
-    "osg.xsede-virt-clust" : {
-        "project"  : "TG-CCR140028", 
+    "osg.xsede-virt-clust"   : {
+        "project"  : "TG-CCR140028",
         "queue"    : null,
         "schema"   : "gsissh",
         "cores"    : 1
@@ -222,6 +229,13 @@
         "queue"    : null,
         "schema"   : "ssh",
         "cores"    : 64
+    }, 
+
+    "lumc.shark"   : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 16
     }
 }
 
