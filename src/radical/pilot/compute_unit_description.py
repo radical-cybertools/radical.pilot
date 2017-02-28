@@ -1,17 +1,9 @@
-# pylint: disable=C0301, C0103, W0212, E1101, R0903
-
-"""
-.. module:: radical.pilot.compute_unit_description
-   :platform: Unix
-   :synopsis: Implementation of the ComputeUnitDescription class.
-
-.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
-"""
 
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import saga.attributes as attributes
+
 
 # ------------------------------------------------------------------------------
 # Attribute description keys
@@ -34,13 +26,15 @@ RESTARTABLE            = 'restartable'
 
 # ------------------------------------------------------------------------------
 #
-class ComputeUnitDescription(attributes.Attributes) :
-    """A ComputeUnitDescription object describes the requirements and 
-    properties of a :class:`radical.pilot.ComputeUnit` and is passed as a parameter to
-    :meth:`radical.pilot.UnitManager.submit_units` to instantiate and run a new 
-    ComputeUnit.
+class ComputeUnitDescription(attributes.Attributes):
+    """
+    A ComputeUnitDescription object describes the requirements and properties
+    of a :class:`radical.pilot.ComputeUnit` and is passed as a parameter to
+    :meth:`radical.pilot.UnitManager.submit_units` to instantiate and run
+    a new unit.
 
-    .. note:: A ComputeUnitDescription **MUST** define at least an :data:`executable`.
+    .. note:: A ComputeUnitDescription **MUST** define at least
+              :data:`executable` or :data:`kernel`.
 
     **Example**::
 
@@ -132,9 +126,10 @@ class ComputeUnitDescription(attributes.Attributes) :
        before cleanup.
 
     """
+
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, from_dict=None):
-        """Le constructeur.
-        """ 
 
         # initialize attributes
         attributes.Attributes.__init__(self)
@@ -177,10 +172,6 @@ class ComputeUnitDescription(attributes.Attributes) :
       # self._attributes_register(START_AFTER,      None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
       # self._attributes_register(CONCURRENT_WITH,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
 
-      # disabled deprecated attributes
-      # self._attributes_register_deprecated ('input_data',  'input_staging',  flow=self._DOWN)
-      # self._attributes_register_deprecated ('output_data', 'output_staging', flow=self._DOWN)
-
         # explicitly set attrib defaults so they get listed and included via as_dict()
         self.set_attribute (KERNEL,         None)
         self.set_attribute (NAME,           None)
@@ -204,17 +195,25 @@ class ComputeUnitDescription(attributes.Attributes) :
             self.from_dict(from_dict)
 
 
-    #------------------------------------------------------------------------------
+    #---------------------------------------------------------------------------
     #
     def __deepcopy__ (self, memo):
 
         other = ComputeUnitDescription ()
 
-        for key in self.list_attributes () :
-            other.set_attribute (key, self.get_attribute (key))
+        for key in self.list_attributes ():
+            other.set_attribute(key, self.get_attribute (key))
 
         return other
 
 
-# ---------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    #
+    def __str__(self):
+        """Returns a string representation of the object.
+        """
+        return str(self.as_dict())
+
+
+# ------------------------------------------------------------------------------
 

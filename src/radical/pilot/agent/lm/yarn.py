@@ -6,6 +6,8 @@ __license__   = "MIT"
 import os
 import subprocess
 
+import radical.utils as ru
+
 from .base import LaunchMethod
 
 
@@ -17,9 +19,9 @@ class Yarn(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, logger)
+        LaunchMethod.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -30,8 +32,6 @@ class Yarn(LaunchMethod):
         FIXME: this config hook will inspect the LRMS nodelist and, if needed,
                will start the YARN cluster on node[0].
         """
-        import radical.utils as ru
-
         logger.info('Hook called by YARN LRMS with the name %s'%lrms.name)
 
         def config_core_site(node):
@@ -436,7 +436,7 @@ class Yarn(LaunchMethod):
         for key,val in task_env.iteritems():
             env_string+= '-shell_env '+key+'='+str(val)+' '
 
-        #app_name = '-appname '+ cud['_id']
+        #app_name = '-appname '+ cud['uid']
         # Construct the ncores_string which is the number of cores used by the
         # container to run the script
         if task_cores:

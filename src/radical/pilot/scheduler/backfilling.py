@@ -16,8 +16,8 @@ import time
 import pprint
 import threading
 
-from ..states   import *
-from ..utils    import logger
+from ...states   import *
+from ...utils    import logger
 
 from .interface import Scheduler
 
@@ -54,6 +54,7 @@ class BackfillingScheduler(Scheduler):
         self.pilots  = dict()
         self.lock    = threading.RLock ()
         self._dbs    = self.session.get_dbs()
+        self.cb_hist = {}
 
         # make sure the UM notifies us on all unit state changes
         manager.register_callback (self._unit_state_callback)
@@ -90,8 +91,14 @@ class BackfillingScheduler(Scheduler):
             
                 uid = unit.uid
 
-                logger.info ("[SchedulerCallback]: Computeunit %s changed to %s" % (uid, state))
+                logger.info("[SchedulerCallback]: Computeunit %s changed to %s" % (uid, state))
 
+                self.cb_hist[uid].append(state)
+                logger.debug("[SchedulerCallback]: unit state callback history: %s" % (self.cb_hist))
+
+                if state == UNSCHEDULED and SCHEDULING in self.cb_hist[uid]:
+                    logger.warn("[SchedulerCallback]: ComputeUnit %s with state %s already dealt with." % (uid, state))
+                    return
 
                 found_unit = False
                 if  state in [NEW, UNSCHEDULED] :
@@ -183,7 +190,7 @@ class BackfillingScheduler(Scheduler):
                 self.pilots[pid]['state'] = state
                 logger.debug ("[SchedulerCallback]: ComputePilot %s changed to %s" % (pid, state))
     
-                if  state in [ACTIVE] :
+                if  state in [PMGR_ACTIVE] :
                     # the pilot is now ready to be used
                     self._reschedule (target_pid=pid)
     
@@ -357,6 +364,7 @@ class BackfillingScheduler(Scheduler):
                     #        'SCHEDULING', this is only reached here...
                     raise RuntimeError ('Unit %s not in NEW or UNSCHEDULED state (%s)' % (unit.uid, unit.state))
 
+                self.cb_hist[uid] = []
                 self.waitq[uid] = unit
 
             # lets see what we can do about the known units...
@@ -460,7 +468,7 @@ class BackfillingScheduler(Scheduler):
                   # logger.debug ("        pilot %s (%s caps, state %s)" \
                   #            % (pid, self.pilots[pid]['state'], self.pilots[pid]['caps']))
 
-                    if  self.pilots[pid]['state'] in [ACTIVE] :
+                    if  self.pilots[pid]['state'] in [PMGR_ACTIVE] :
 
                         if  ud.cores <= self.pilots[pid]['caps'] :
                     

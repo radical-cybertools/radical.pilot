@@ -8,7 +8,6 @@ import radical.utils       as ru
 import radical.pilot       as rp
 import radical.pilot.utils as rpu
 
-_DEFAULT_DBURL = 'mongodb://rp:rp@ds015335.mlab.com:15335/rp'
 
 # ------------------------------------------------------------------------------
 #
@@ -18,7 +17,7 @@ def usage(msg=None, noexit=False):
         print "\n      Error: %s" % msg
 
     print """
-      usage   : %s <sid> [-t target] [-d dburl] [-c client] [-a scheme://host] [-s] [-h]
+      usage   : %s <sid> [-t tgt] [-d dburl] [-c src] [-a schema://host] [-s] [-h]
       example : %s $SID -d mongodb://localhost/rp -t /tmp/
 
       options :
@@ -26,10 +25,10 @@ def usage(msg=None, noexit=False):
           sid : session ID for which to fetch logfiles
           -c  : location from where to fetch the client logfiles
                 This defaults to $PWD
-          -a  : alternative agent sandbox access method (scheme://host)
-          -t  : target dir to fetch logfiles to
+          -a  : alternative agent sandbox access method (schema://host)
+          -t  : tgt dir to fetch logfiles to
                 A sub-dir <sid>/ will be created there.
-                This defaults to $PWD
+                This defaults to $PWD/
           -d  : mongodb URL to fetch session info
                 Those infos are used to get the pilot locations from where the
                 logfiles are to be fetched.
@@ -55,8 +54,8 @@ if __name__ == '__main__':
 
     parser.add_option('-a', '--access',  dest='access')
     parser.add_option('-d', '--dburl',   dest='dburl')
-    parser.add_option('-c', '--client',  dest='client')
-    parser.add_option('-t', '--target',  dest='target')
+    parser.add_option('-c', '--src',     dest='src')
+    parser.add_option('-t', '--tgt',     dest='tgt')
     parser.add_option('-s', '--skip',    dest='skip', action="store_true")
     parser.add_option('-h', '--help',    dest='help', action="store_true")
 
@@ -71,26 +70,21 @@ if __name__ == '__main__':
     if options.help:
         usage()
 
-    if not options.client:
-        options.client = os.getcwd()
-    if not options.target:
-        options.target = os.getcwd()
-    if not options.dburl:
-        options.dburl = None
-    if not options.access:
-        options.access = None
-    if not options.skip:
-        options.skip = False
+    if not options.src:    options.src    = os.getcwd()
+    if not options.tgt:    options.tgt    = os.getcwd()
+    if not options.dburl:  options.dburl  = None
+    if not options.access: options.access = None
+    if not options.skip:   options.skip   = False
 
     sid    = args[0]
-    client = options.client
-    target = options.target
+    src    = options.src
+    tgt    = options.tgt
     dburl  = options.dburl
     access = options.access
     skip   = options.skip
 
-    target += '/%s' % sid
+    tgt += '/%s' % sid
 
-    rpu.fetch_logfiles(sid=sid, dburl=dburl, client=client, tgt=target, access=access, skip_existing=skip)
+    rpu.fetch_logfiles(sid=sid, dburl=dburl, src=src, tgt=tgt, access=access, skip_existing=skip)
 
 # ------------------------------------------------------------------------------
