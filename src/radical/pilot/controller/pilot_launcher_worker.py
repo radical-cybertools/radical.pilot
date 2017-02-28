@@ -378,6 +378,11 @@ class PilotLauncherWorker(threading.Thread):
                         # copy..
                         resource_cfg = self._session.get_resource_config(resource_key, schema)
 
+                        enabled = resource_cfg.get('enabled', True)
+                        if not enabled:
+                            raise ValueError('resource %s is unsupported - enable manually' % resource_key)
+                            
+
                         # import pprint
                         # pprint.pprint (resource_cfg)
 
