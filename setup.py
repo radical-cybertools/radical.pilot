@@ -262,15 +262,17 @@ setup_args = {
     'package_dir'        : {'': 'src'},
     'scripts'            : ['bin/radicalpilot-bson2json',
                             'bin/radicalpilot-fetch-profiles',
+                            'bin/radicalpilot-fetch-logfiles',
+                            'bin/radicalpilot-fetch-json',
                             'bin/radicalpilot-inspect',
                             'bin/radicalpilot-version',
                             'bin/radicalpilot-close-session',
                             'bin/radicalpilot-cleanup',
                             'bin/radicalpilot-stats',
                             'bin/radicalpilot-stats.plot',
-                            'src/radical/pilot/agent/radical-pilot-agent-multicore.py'
+                            'bin/radical-pilot-agent'
                            ],
-    'package_data'       : {'': ['*.sh', '*.json', '*.gz', 'VERSION', 'SDIST', sdist_name]},
+    'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', 'VERSION', 'SDIST', sdist_name]},
     'cmdclass'           : {
         'test'           : our_test,
                            },
@@ -281,6 +283,7 @@ setup_args = {
                             'netifaces==0.10.4',
                             'setproctitle',
                             'ntplib',
+                            'msgpack-python',
                             'pyzmq'
                            ],
     'tests_require'      : [],

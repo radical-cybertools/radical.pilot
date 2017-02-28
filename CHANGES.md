@@ -5,6 +5,47 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.45 Release                                                          2017-02-28
+--------------------------------------------------------------------------------
+
+  - NOTE: OSG and ORTE_LIB on titan are considered unsupported.  You can enable
+          those resources for experiments by removing the comment markers from
+          the respective resource configs.
+
+  - Adapt to new orte-submit interface. 
+  - Add orte-cffi dependency to bootstrapper. 
+  - Agent based staging directives. 
+  - Fixes to various resource configs
+  - Change orte-submit to orterun. 
+  - Conditional importing of executors. Fixes #926. 
+  - Config entries for orte lib on Titan. 
+  - Corrected environment export in executing POPEN 
+  - Extend virtenv lock timeout, use private rp_installs by default
+  - Fix non-mpi execution analogous to #975. 
+  - Fix/issue 1226 (#1232) 
+  - Fresh orte installation for bw. 
+  - support more OSG sites
+  - Initial version of ORTE lib interface. 
+  - Make cprofiling of scheduler conditional. 
+  - Make list of cprofile subscribers configurable. 
+  - Move env safekeeping until after the pre bootstrap. 
+  - Record OSG site name in mongodb. 
+  - Remove bash'isms from shell script. 
+  - pylint motivated cleanups
+  - Resolving issue #1211. 
+  - Resource and example config for Shark at LUMC. 
+  - SGE changes for non-homogeneous nodes. 
+  - Use ru.which
+  - add allegro.json config file for FUB allegro cluster 
+  - add rsh launch method 
+  - switch to gsissh on wrangler 
+  - use new ompi installation on comet (#1228) 
+  - add a simple/stupid ompi deployment helper 
+  - updated Config for Stampede and YARN 
+  - fix state transition to UNSCHEDDULED to avoid repetition 
+    and invalid state ordering
+
+
 0.44.1 Release                                                        2016-11-01
 --------------------------------------------------------------------------------
 
@@ -263,7 +304,7 @@
   - only mkdir in input staging controller when we intent to stage data 
   - protect agent cb invokation by lock
   - (re)add command line for profile fetching 
-  - cleanup of data staging, with better support for different schemes
+  - cleanup of data staging, with better support for different schemas
     (incl. GlobusOnline)
   - work toward better OSG support
   - Use netifaces for ip address mangling. 

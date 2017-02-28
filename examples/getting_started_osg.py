@@ -13,13 +13,13 @@ RUNTIME  =    60
 SLEEP    =    10
 PILOTS   =     2
 UNITS    =    10
-SCHED    = rp.SCHED_BACKFILLING
+SCHED    = rp.umgr.scheduler.SCHEDULER_BACKFILLING
 
 resources = {
     'osg.xsede-virt-clust' : {
         'project'  : 'TG-CCR140028',
         'queue'    : None,
-        'schema'   : 'ssh'
+        'schema'   : 'gsissh'
     },
     'osg.connect' : {
         'project'  : 'RADICAL',
@@ -51,7 +51,7 @@ def unit_state_cb (unit, state):
 
     global CNT
 
-    print "[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot_id, state)
+    print "[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot, state)
 
     if state in [rp.FAILED, rp.DONE, rp.CANCELED]:
         CNT += 1
@@ -120,11 +120,11 @@ if __name__ == "__main__":
         pdesc.access_schema   = resources[resource]['schema']
         pdesc.candidate_hosts = [#'MIT_CMS',
                                  #'UConn-OSG',
-                                 '!SU-OG', # No compiler
+                               # '!SU-OG', # No compiler
                                  '!FIU_HPCOSG_CE', # zeromq build fails
                                  #'BU_ATLAS_Tier2',
-                                 '!UCSDT2', # Failing because of format character ...
-                                 '~(HAS_CVMFS_oasis_opensciencegrid_org =?= TRUE)'
+                               # '!UCSDT2', # Failing because of format character ...
+                               # '~(HAS_CVMFS_oasis_opensciencegrid_org =?= TRUE)'
                                 ]
 
         # TODO: bulk submit pilots here
@@ -135,8 +135,8 @@ if __name__ == "__main__":
         umgr.wait_units()
 
         for cu in units:
-            print "* Task %s state %s, exit code: %s, stdout: %s, started: %s, finished: %s" \
-                % (cu.uid, cu.state, cu.exit_code, cu.stdout, cu.start_time, cu.stop_time)
+            print "* Task %s state %s, exit code: %s, stdout: %s, pilot: %s" \
+                % (cu.uid, cu.state, cu.exit_code, cu.stdout, cu.pilot)
 
       # os.system ("radicalpilot-stats -m stat,plot -s %s > %s.stat" % (session.uid, session_name))
 

@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 
-import radical.pilot
-print  radical.pilot.version_detail
+import os
+import sys
+import radical.pilot as rp
+
+if len(sys.argv) > 1 and '-v' in sys.argv:
+    print 'version: %s' % rp.version_detail
+    print 'modpath: %s' % os.path.dirname(rp.__file__)
+
+else:
+    print rp.version_detail
 

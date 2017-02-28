@@ -3,12 +3,9 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import threading
-
 import radical.utils as ru
 
 from ... import utils     as rpu
-from ... import states    as rps
 from ... import constants as rpc
 
 
@@ -17,6 +14,7 @@ from ... import constants as rpc
 EXECUTING_NAME_POPEN = "POPEN"
 EXECUTING_NAME_SHELL = "SHELL"
 EXECUTING_NAME_ABDS  = "ABDS"
+EXECUTING_NAME_ORTE  = "ORTE"
 
 
 # ==============================================================================
@@ -31,9 +29,11 @@ class AgentExecutingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        rpu.Component.__init__(self, rpc.AGENT_EXECUTING_COMPONENT, cfg)
+        self._uid = ru.generate_id('agent.executing.%(counter)s', ru.ID_CUSTOM)
+
+        rpu.Component.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -41,7 +41,7 @@ class AgentExecutingComponent(rpu.Component):
     # This class-method creates the appropriate sub-class for the Spawner
     #
     @classmethod
-    def create(cls, cfg):
+    def create(cls, cfg, session):
 
         name = cfg['spawner']
 
@@ -49,24 +49,22 @@ class AgentExecutingComponent(rpu.Component):
         if cls != AgentExecutingComponent:
             raise TypeError("Factory only available to base class!")
 
-        from .popen import Popen
-        from .shell import Shell
-        from .abds  import ABDS
-
-
-        try:
-            impl = {
-                EXECUTING_NAME_POPEN : Popen,
-                EXECUTING_NAME_SHELL : Shell,
-                EXECUTING_NAME_ABDS  : ABDS
-            }[name]
-
-            impl = impl(cfg)
-            return impl
-
-        except KeyError:
+        if name == EXECUTING_NAME_POPEN:
+            from .popen import Popen
+            impl = Popen(cfg, session)
+        elif name == EXECUTING_NAME_SHELL:
+            from .shell import Shell
+            impl = Shell(cfg, session)
+        elif name == EXECUTING_NAME_ABDS:
+            from .abds import ABDS
+            impl = ABDS(cfg, session)
+        elif name == EXECUTING_NAME_ORTE:
+            from .orte import ORTE
+            impl = ORTE(cfg, session)
+        else:
             raise ValueError("AgentExecutingComponent '%s' unknown or defunct" % name)
+
+        return impl
 
 
 # ------------------------------------------------------------------------------
-
