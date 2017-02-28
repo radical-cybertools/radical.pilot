@@ -17,7 +17,7 @@ from . import states    as rps
 from . import constants as rpc
 from . import types     as rpt
 
-from .staging_directives import expand_staging_directive
+from .staging_directives import expand_staging_directives
 from .staging_directives import TRANSFER, COPY, LINK, MOVE, STAGING_AREA
 
 
@@ -67,10 +67,8 @@ class ComputePilot(object):
         self._uid           = ru.generate_id('pilot.%(counter)04d', ru.ID_CUSTOM)
         self._state         = rps.NEW
         self._log           = pmgr._log
-        self._log_msgs      = list()
-        self._stdout        = None
-        self._stderr        = None
-        self._sandbox       = None
+
+        self._pilot_dict    = dict()
         self._callbacks     = dict()
         self._cb_lock       = threading.RLock()
         self._exit_on_error = self._descr.get('exit_on_error')
@@ -138,17 +136,22 @@ class ComputePilot(object):
         target  = pilot_dict['state']
 
         if target not in [rps.FAILED, rps.CANCELED]:
-            assert(rps._pilot_state_value(target) - rps._pilot_state_value(current) == 1)
+            assert(rps._pilot_state_value(target) - rps._pilot_state_value(current))
+            # FIXME
 
+        self._state = target
 
-        # we update all fields
-        # FIXME: well, not all really :/
-        # FIXME: setattr is ugly...  we should maintain all state in a dict.
-        for key in ['state', 'sandbox', 'stdout', 'stderr']:
+        # keep all information around
+        self._pilot_dict = copy.deepcopy(pilot_dict)
 
-            val = pilot_dict.get(key, None)
-            if val:
-                setattr(self, "_%s" % key, val)
+        # and extract som for convenience
+        if not 'resource_details' in self._pilot_dict:
+            # FIXME: fill on agent side
+            self._pilot_dict['resource_details'] = {
+                    'nodes':          self._pilot_dict.get('nodes'),
+                    'cores_per_node': self._pilot_dict.get('cores_per_node'),
+                    'lm_detail':      self._pilot_dict.get('lm_detail')
+                }
 
         # invoke pilot specific callbacks
         for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
@@ -156,7 +159,7 @@ class ComputePilot(object):
             cb      = cb_val['cb']
             cb_data = cb_val['cb_data']
 
-          # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, self.state, cb_name)
+          # print ' ~~~ call pcbs: %s -> %s : %s' % (self.uid, self.state, cb_name)
             
             if cb_data: cb(self, self.state, cb_data)
             else      : cb(self, self.state)
@@ -172,17 +175,18 @@ class ComputePilot(object):
         Returns a Python dictionary representation of the object.
         """
         ret = {
-            'session':         self.session.uid,
-            'pmgr':            self.pmgr.uid,
-            'uid':             self.uid,
-            'type':            'pilot',
-            'state':           self.state,
-            'log':             self.log,
-            'stdout':          self.stdout,
-            'stderr':          self.stderr,
-            'resource':        self.resource,
-            'sandbox':         self.sandbox,
-            'description':     self.description  # this is a deep copy
+            'session':          self.session.uid,
+            'pmgr':             self.pmgr.uid,
+            'uid':              self.uid,
+            'type':             'pilot',
+            'state':            self.state,
+            'log':              self.log,
+            'stdout':           self.stdout,
+            'stderr':           self.stderr,
+            'resource':         self.resource,
+            'sandbox':          self.sandbox,
+            'description':      self.description,  # this is a deep copy
+            'resource_details': self.resource_details
         }
         return ret
 
@@ -213,6 +217,16 @@ class ComputePilot(object):
         """
 
         return self._pmgr
+
+
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def resource_details(self):
+        """
+        Returns agent level resource information
+        """
+        return self._pilot_dict.get('resource_details')
 
 
     # --------------------------------------------------------------------------
@@ -257,7 +271,7 @@ class ComputePilot(object):
             * log (list of [timestamp, string] tuples)
         """
 
-        return copy.deepcopy(self._log_msgs)
+        return self._pilot_dict.get('log')
 
 
     # --------------------------------------------------------------------------
@@ -277,7 +291,7 @@ class ComputePilot(object):
             * stdout (string)
         """
 
-        return self._stdout
+        return self._pilot_dict.get('stdout')
 
 
     # --------------------------------------------------------------------------
@@ -297,7 +311,7 @@ class ComputePilot(object):
             * stderr (string)
         """
 
-        return self._stderr
+        return self._pilot_dict.get('stderr')
 
 
     # --------------------------------------------------------------------------
@@ -339,7 +353,7 @@ class ComputePilot(object):
         #       implicitly also holds for the staging area, which is relative
         #       to the pilot sandbox.
 
-        return self._sandbox
+        return self._pilot_dict.get('sandbox')
 
 
     # --------------------------------------------------------------------------
@@ -499,7 +513,7 @@ class ComputePilot(object):
             raise Exception("Pilot already finished, no need to stage anymore!")
 
         # Iterate over all directives
-        for directive in expand_staging_directive(directives):
+        for directive in expand_staging_directives(directives):
 
             # TODO: respect flags in directive
 
@@ -539,7 +553,7 @@ class ComputePilot(object):
             # the directory if it does not yet exist.
             target_dir = saga.filesystem.Directory(tgt_dir_url, flags=saga.filesystem.CREATE_PARENTS)
 
-            if action == LINK:
+            if action == LINK:	
                 # TODO: Does this make sense?
                 #log_message = 'Linking %s to %s' % (source, abs_target)
                 #os.symlink(source, abs_target)

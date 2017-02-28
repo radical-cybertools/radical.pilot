@@ -20,7 +20,7 @@ from .base import UMGRSchedulingComponent, ROLE, ADDED
 _HWM = int(os.environ.get('RADICAL_PILOT_BACKFILLING_HWM', 200))
 
 # we consider pilots eligible for unit scheduling beyond a certain start state,
-# which defaults to 'ACTIVE'.
+# which defaults to 'PMGR_ACTIVE'.
 _BF_START = os.environ.get('RADICAL_PILOT_BACKFILLING_START', rps.PMGR_ACTIVE)
 _BF_STOP  = os.environ.get('RADICAL_PILOT_BACKFILLING_STOP',  rps.PMGR_ACTIVE)
 
@@ -101,7 +101,7 @@ class Backfilling(UMGRSchedulingComponent):
 
       # self._log.debug(' === update pilots for %s', pids)
 
-        # FIXME: if ACTIVE: schedule
+        # FIXME: if PMGR_ACTIVE: schedule
         # FIXME: if FINAL:  un/re-schedule
         action = False
         with self._pilots_lock:
@@ -255,7 +255,7 @@ class Backfilling(UMGRSchedulingComponent):
                 return
 
             # we ignore pilots which are not yet added, are not yet in
-            # BF_START_STATE, and are beyond ACTIVE state
+            # BF_START_STATE, and are beyond PMGR_ACTIVE state
             pids = list()
             for pid in self._pids:
 

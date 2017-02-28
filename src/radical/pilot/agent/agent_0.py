@@ -50,6 +50,8 @@ class Agent_0(rpu.Worker):
         agent_cfg  = "%s/%s.cfg" % (os.getcwd(), agent_name)
         cfg        = ru.read_json_str(agent_cfg)
 
+        cfg['agent_name'] = agent_name
+
         self._uid         = agent_name
         self._pid         = cfg['pilot_id']
         self._session_id  = cfg['session_id']
@@ -131,11 +133,12 @@ class Agent_0(rpu.Worker):
 
         # sub-agents are started, components are started, bridges are up: we are
         # ready to roll!
-        pilot = {'type'    : 'pilot',
-                 'uid'     : self._pid,
-                 'state'   : rps.PMGR_ACTIVE,
-                 'lm_info' : self._lrms.lm_info.get('version_info'),
-                 '$set'    : 'lm_info'}
+        pilot = {'type'      : 'pilot',
+                 'uid'       : self._pid,
+                 'state'     : rps.PMGR_ACTIVE,
+                 'lm_info'   : self._lrms.lm_info.get('version_info'),
+                 'lm_detail' : self._lrms.lm_info.get('lm_detail'),
+                 '$set'      : ['lm_info', 'lm_detail']}
         self.advance(pilot, publish=True, push=False, prof=True)
 
         # register idle callback, to pull for units -- which is the only action
@@ -301,6 +304,7 @@ class Agent_0(rpu.Worker):
                         'description'  : {
                             'cores'      : 1,
                             'executable' : "/bin/sh",
+                            'mpi'        : False,
                             'arguments'  : ["%s/bootstrap_2.sh" % os.getcwd(), sa]
                             }
                         }

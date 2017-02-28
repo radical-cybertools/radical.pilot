@@ -10,7 +10,7 @@ Requirements
 
 RADICAL-Pilot requires the following packages:
 
-* Python >= 2.7
+* Python >= 2.7 (including development headers)
 * virtualenv >= 1.11
 * pip == 1.4.1
 

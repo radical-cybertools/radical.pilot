@@ -81,6 +81,19 @@ class Popen(AgentExecutingComponent) :
         self.gtod   = "%s/gtod" % self._pwd
         self.tmpdir = tempfile.gettempdir()
 
+        # if we need to transplant any original env into the CU, we dig the
+        # respective keys from the dump made by bootstrap_1.sh
+        self._env_cu_export = dict()
+        if self._cfg.get('export_to_cu'):
+            with open('env.orig', 'r') as f:
+                for line in f.readlines():
+                    if '=' in line:
+                        k,v = line.split('=', 1)
+                        key = k.strip()
+                        val = v.strip()
+                        if key in self._cfg['export_to_cu']:
+                            self._env_cu_export[key] = val
+
 
     # --------------------------------------------------------------------------
     #
@@ -112,6 +125,10 @@ class Popen(AgentExecutingComponent) :
         old_path = new_env.pop('_OLD_VIRTUAL_PATH', None)
         if old_path:
             new_env['PATH'] = old_path
+
+        old_ppath = new_env.pop('_OLD_VIRTUAL_PYTHONPATH', None)
+        if old_ppath:
+            new_env['PYTHONPATH'] = old_ppath
 
         old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
         if old_home:
@@ -219,7 +236,28 @@ class Popen(AgentExecutingComponent) :
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 launch_script.write("echo script after_cd `%s` >> %s/PROF\n" % (self.gtod, sandbox))
 
+            # Create string for environment variable setting
+            env_string = ''
+            env_string += "export RP_SESSION_ID=%s\n" % self._cfg['session_id']
+            env_string += "export RP_PILOT_ID=%s\n"   % self._cfg['pilot_id']
+            env_string += "export RP_AGENT_ID=%s\n"   % self._cfg['agent_name']
+            env_string += "export RP_SPAWNER_ID=%s\n" % self.uid
+            env_string += "export RP_UNIT_ID=%s\n"    % cu['uid']
+
+            # also add any env vars requested for export by the resource config
+            for k,v in self._env_cu_export.iteritems():
+                env_string += "export %s=%s\n" % (k,v)
+            if cu['description']['environment']:
+                for key,val in cu['description']['environment'].iteritems():
+                    env_string += 'export "%s=%s"\n' % (key, val)
+
+            launch_script.write('# Environment variables\n%s\n' % env_string)
+
             # Before the Big Bang there was nothing
+            if self._cfg.get('cu_pre_exec'):
+                for val in self._cfg['cu_pre_exec']:
+                    launch_script.write("%s\n"  % val)
+
             if cu['description']['pre_exec']:
                 pre_exec_string = ''
                 if isinstance(cu['description']['pre_exec'], list):
@@ -234,18 +272,6 @@ class Popen(AgentExecutingComponent) :
                 launch_script.write(pre_exec_string)
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
                     launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (self.gtod, sandbox))
-
-            # Create string for environment variable setting
-            env_string = 'export'
-            if cu['description']['environment']:
-                for key,val in cu['description']['environment'].iteritems():
-                    env_string += ' %s=%s' % (key, val)
-            env_string += " RP_SESSION_ID=%s" % self._cfg['session_id']
-            env_string += " RP_PILOT_ID=%s"   % self._cfg['pilot_id']
-            env_string += " RP_AGENT_ID=%s"   % self._cfg['agent_name']
-            env_string += " RP_SPAWNER_ID=%s" % self.uid
-            env_string += " RP_UNIT_ID=%s"    % cu['uid']
-            launch_script.write('# Environment variables\n%s\n' % env_string)
 
             # The actual command line, constructed per launch-method
             try:
@@ -280,13 +306,17 @@ class Popen(AgentExecutingComponent) :
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
                     launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (self.gtod, sandbox))
 
+            if self._cfg.get('cu_post_exec'):
+                for val in self._cfg['cu_post_exec']:
+                    launch_script.write("%s\n"  % val)
+
             launch_script.write("# Exit the script with the return code from the command\n")
             launch_script.write("exit $RETVAL\n")
 
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
-        self._prof.prof('control', msg='launch script constructed', uid=cu['uid'])
+        self._prof.prof('command', msg='launch script constructed', uid=cu['_id'])
 
         # prepare stdout/stderr
         stdout_file = cu['description'].get('stdout') or 'STDOUT'
@@ -295,11 +325,11 @@ class Popen(AgentExecutingComponent) :
         cu['stdout_file'] = os.path.join(sandbox, stdout_file)
         cu['stderr_file'] = os.path.join(sandbox, stderr_file)
 
-        _stdout_file_h = open(cu['stdout_file'], "w+")
-        _stderr_file_h = open(cu['stderr_file'], "w+")
-        self._prof.prof('control', msg='stdout and stderr files created', uid=cu['uid'])
+        _stdout_file_h = open(cu['stdout_file'], "w")
+        _stderr_file_h = open(cu['stderr_file'], "w")
+        self._prof.prof('command', msg='stdout and stderr files created', uid=cu['_id'])
 
-        self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, sandbox)
+        self._log.info("Launching unit %s via %s in %s", cu['_id'], cmdline, sandbox)
 
         cu['proc'] = subprocess.Popen(args               = cmdline,
                                       bufsize            = 0,
@@ -311,12 +341,12 @@ class Popen(AgentExecutingComponent) :
                                       close_fds          = True,
                                       shell              = True,
                                       cwd                = sandbox,
-                                      env                = self._cu_environment,
+                                    # env                = self._cu_environment,
                                       universal_newlines = False,
                                       startupinfo        = None,
                                       creationflags      = 0)
 
-        self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['uid'])
+        self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['_id'])
         self._watch_queue.put(cu)
 
 

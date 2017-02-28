@@ -3,6 +3,9 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import os
+
+
 # -----------------------------------------------------------------------------
 # common states
 NEW      = 'NEW'
@@ -11,6 +14,7 @@ FAILED   = 'FAILED'
 CANCELED = 'CANCELED'
 
 # shortcut
+INITIAL  = [NEW]
 FINAL    = [DONE, FAILED, CANCELED]
 
 
@@ -18,10 +22,10 @@ FINAL    = [DONE, FAILED, CANCELED]
 #
 # pilot states
 #
-PMGR_LAUNCHING_PENDING = 'LAUNCHING_PENDING'
-PMGR_LAUNCHING         = 'LAUNCHING'
-PMGR_ACTIVE_PENDING    = 'ACTIVE_PENDING'
-PMGR_ACTIVE            = 'ACTIVE'
+PMGR_LAUNCHING_PENDING = 'PMGR_LAUNCHING_PENDING'
+PMGR_LAUNCHING         = 'PMGR_LAUNCHING'
+PMGR_ACTIVE_PENDING    = 'PMGR_ACTIVE_PENDING'
+PMGR_ACTIVE            = 'PMGR_ACTIVE'
 
 # assign numeric values to states to support state ordering operations
 # ONLY final state get the same values.
@@ -235,31 +239,31 @@ def _unit_state_collapse(states):
     return ret
 
 
-
 # -----------------------------------------------------------------------------
 # backward compatibility
 #
 # pilot states
-CANCELING              = CANCELED
-PENDING                = PMGR_LAUNCHING_PENDING
-PENDING_LAUNCH         = PMGR_LAUNCHING_PENDING
-LAUNCHING              = PMGR_LAUNCHING
-PENDING_ACTIVE         = PMGR_ACTIVE_PENDING
-ACTIVE_PENDING         = PMGR_ACTIVE_PENDING
-ACTIVE                 = PMGR_ACTIVE
-
-# compute unit states
-UNSCHEDULED            = UMGR_SCHEDULING_PENDING
-SCHEDULING             = UMGR_SCHEDULING
-PENDING_INPUT_STAGING  = UMGR_STAGING_INPUT_PENDING
-STAGING_INPUT          = UMGR_STAGING_INPUT
-ALLOCATING_PENDING     = AGENT_SCHEDULING_PENDING
-ALLOCATING             = AGENT_SCHEDULING
-PENDING_EXECUTION      = AGENT_EXECUTING_PENDING
-EXECUTING_PENDING      = AGENT_EXECUTING_PENDING
-EXECUTING              = AGENT_EXECUTING
-PENDING_OUTPUT_STAGING = UMGR_STAGING_OUTPUT_PENDING
-STAGING_OUTPUT         = UMGR_STAGING_OUTPUT
+if 'RP_ENABLE_OLD_DEFINES' in os.environ:
+    CANCELING              = CANCELED
+    PENDING                = PMGR_LAUNCHING_PENDING
+    PENDING_LAUNCH         = PMGR_LAUNCHING_PENDING
+    LAUNCHING              = PMGR_LAUNCHING
+    PENDING_ACTIVE         = PMGR_ACTIVE_PENDING
+    ACTIVE_PENDING         = PMGR_ACTIVE_PENDING
+    ACTIVE                 = PMGR_ACTIVE
+    
+    # compute unit states
+    UNSCHEDULED            = UMGR_SCHEDULING_PENDING
+    SCHEDULING             = UMGR_SCHEDULING
+    PENDING_INPUT_STAGING  = UMGR_STAGING_INPUT_PENDING
+    STAGING_INPUT          = UMGR_STAGING_INPUT
+    ALLOCATING_PENDING     = AGENT_SCHEDULING_PENDING
+    ALLOCATING             = AGENT_SCHEDULING
+    PENDING_EXECUTION      = AGENT_EXECUTING_PENDING
+    EXECUTING_PENDING      = AGENT_EXECUTING_PENDING
+    EXECUTING              = AGENT_EXECUTING
+    PENDING_OUTPUT_STAGING = UMGR_STAGING_OUTPUT_PENDING
+    STAGING_OUTPUT         = UMGR_STAGING_OUTPUT
 
 # -----------------------------------------------------------------------------
 

@@ -3,6 +3,8 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import logging
+import time
 import threading
 
 import radical.utils as ru
@@ -18,6 +20,7 @@ SCHEDULER_NAME_CONTINUOUS   = "CONTINUOUS"
 SCHEDULER_NAME_SCATTERED    = "SCATTERED"
 SCHEDULER_NAME_TORUS        = "TORUS"
 SCHEDULER_NAME_YARN         = "YARN"
+SCHEDULER_NAME_SPARK        = "SPARK"
 
 
 # ==============================================================================
@@ -30,7 +33,7 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def __init__(self, cfg, session):
 
-        self._slots = None
+        self.slots = None
         self._lrms  = None
 
         self._uid = ru.generate_id('agent.scheduling.%(counter)s', ru.ID_CUSTOM)
@@ -45,7 +48,7 @@ class AgentSchedulingComponent(rpu.Component):
         self.register_input(rps.AGENT_SCHEDULING_PENDING, 
                             rpc.AGENT_SCHEDULING_QUEUE, self.work)
 
-        self.register_output(rps.EXECUTING_PENDING,  
+        self.register_output(rps.AGENT_EXECUTING_PENDING,  
                              rpc.AGENT_EXECUTING_QUEUE)
 
         # we need unschedule updates to learn about units which free their
@@ -76,6 +79,22 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def _dump_prof(self):
+        #  FIXME: this is specific for cprofile use in derived classes, and can
+        #         probably be solved cleaner.
+        pass
+
+ 
+    # --------------------------------------------------------------------------
+    #
+    def _dump_prof(self):
+        #  FIXME: this is specific for cprofile use in derived classes, and can
+        #         probably be solved cleaner.
+        pass
+
+ 
+    # --------------------------------------------------------------------------
+    #
     # This class-method creates the appropriate sub-class for the Scheduler.
     #
     @classmethod
@@ -91,13 +110,15 @@ class AgentSchedulingComponent(rpu.Component):
         from .scattered  import Scattered
         from .torus      import Torus
         from .yarn       import Yarn
+        from .spark      import Spark
 
         try:
             impl = {
                 SCHEDULER_NAME_CONTINUOUS : Continuous,
                 SCHEDULER_NAME_SCATTERED  : Scattered,
                 SCHEDULER_NAME_TORUS      : Torus,
-                SCHEDULER_NAME_YARN       : Yarn
+                SCHEDULER_NAME_YARN       : Yarn,
+                SCHEDULER_NAME_SPARK      : Spark
             }[name]
 
             impl = impl(cfg, session)
@@ -139,6 +160,9 @@ class AgentSchedulingComponent(rpu.Component):
         CU off to the ExecutionWorker.
         """
 
+        # Get timestamp to use for recording a successful scheduling attempt
+        before_ts = time.time()
+
         # needs to be locked as we try to acquire slots, but slots are freed
         # in a different thread.  But we keep the lock duration short...
         with self._slot_lock :
@@ -152,8 +176,16 @@ class AgentSchedulingComponent(rpu.Component):
             return False
 
         # got an allocation, go off and launch the process
+        self._prof.prof('schedule', msg="try", uid=cu['uid'], timestamp=before_ts)
         self._prof.prof('schedule', msg="allocated", uid=cu['uid'])
-        self._log.info("slot status after allocated  : %s" % self.slot_status ())
+
+        if self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug("slot status after allocated  : %s", self.slot_status())
+
+        self._log.debug("%s [%s] : %s [%s]", 
+                        cu['uid'], cu['description']['cores'], 
+                        cu['opaque_slots'], 
+                        len(cu['opaque_slots']['task_slots']))
 
         return True
 
@@ -169,7 +201,8 @@ class AgentSchedulingComponent(rpu.Component):
         cu = msg
 
         self._prof.prof('reschedule', uid=self._pilot_id)
-        self._log.info("slot status before reschedule: %s" % self.slot_status())
+        if self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug("slot status before reschedule: %s", self.slot_status())
 
         # cycle through wait queue, and see if we get anything running now.  We
         # cycle over a copy of the list, so that we can modify the list on the
@@ -179,7 +212,7 @@ class AgentSchedulingComponent(rpu.Component):
             if self._try_allocation(cu):
 
                 # allocated cu -- advance it
-                self.advance(cu, rps.EXECUTING_PENDING, publish=True, push=True)
+                self.advance(cu, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
 
                 # remove it from the wait queue
                 with self._wait_lock :
@@ -190,7 +223,8 @@ class AgentSchedulingComponent(rpu.Component):
                 break
 
         # Note: The extra space below is for visual alignment
-        self._log.info("slot status after  reschedule: %s" % self.slot_status ())
+        if self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug("slot status after  reschedule: %s", self.slot_status())
         self._prof.prof('reschedule done')
 
 
@@ -209,7 +243,8 @@ class AgentSchedulingComponent(rpu.Component):
             self._log.warn("cannot unschedule: %s (no slots)" % cu)
             return
 
-        self._log.info("slot status before unschedule: %s" % self.slot_status ())
+        if self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug("slot status before unschedule: %s", self.slot_status())
 
         # needs to be locked as we try to release slots, but slots are acquired
         # in a different thread....
@@ -222,7 +257,8 @@ class AgentSchedulingComponent(rpu.Component):
         self.publish(rpc.AGENT_RESCHEDULE_PUBSUB, cu)
 
         # Note: The extra space below is for visual alignment
-        self._log.info("slot status after  unschedule: %s" % self.slot_status ())
+        if self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug("slot status after  unschedule: %s", self.slot_status())
 
 
     # --------------------------------------------------------------------------
@@ -248,7 +284,7 @@ class AgentSchedulingComponent(rpu.Component):
         # put it on the wait queue.
         if self._try_allocation(cu):
             self._prof.prof('schedule', msg="allocation succeeded", uid=cu['uid'])
-            self.advance(cu, rps.EXECUTING_PENDING, publish=True, push=True)
+            self.advance(cu, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
 
         else:
             # No resources available, put in wait queue

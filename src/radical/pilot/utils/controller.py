@@ -474,6 +474,8 @@ class Controller(object):
 
             for msg in msgs:
 
+                self._log.debug('msg [%s] : %s', owner, pprint.pformat(msg))
+
                 cmd = msg['cmd']
                 arg = msg['arg']
 

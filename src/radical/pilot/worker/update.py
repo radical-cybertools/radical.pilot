@@ -86,7 +86,7 @@ class Update(rpu.Worker):
         now = time.time()
         age = now - self._last
 
-        # only push if flush is forced, or when Acollection time or size 
+        # only push if flush is forced, or when collection time or size 
         # have been exceeded
         if  not flush \
             and age < self._bct \
@@ -194,7 +194,6 @@ class Update(rpu.Worker):
         # FIXME: we don't have any error recovery -- any failure to update 
         #        state in the DB will thus result in an exception here and tear
         #        down the module.
-
         for thing in things:
 
             # got a new request.  Add to bulk (create as needed),

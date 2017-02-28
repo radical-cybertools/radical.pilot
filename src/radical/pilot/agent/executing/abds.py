@@ -83,6 +83,19 @@ class ABDS(AgentExecutingComponent):
         self.gtod   = "%s/gtod" % self._pwd
         self.tmpdir = tempfile.gettempdir()
 
+        # if we need to transplant any original env into the CU, we dig the
+        # respective keys from the dump made by bootstrap_1.sh
+        self._env_cu_export = dict()
+        if self._cfg.get('export_to_cu'):
+            with open('env.orig', 'r') as f:
+                for line in f.readlines():
+                    if '=' in line:
+                        k,v = line.split('=', 1)
+                        key = k.strip()
+                        val = v.strip()
+                        if key in self._cfg['export_to_cu']:
+                            self._env_cu_export[key] = val
+
 
     # --------------------------------------------------------------------------
     #
@@ -123,6 +136,10 @@ class ABDS(AgentExecutingComponent):
         if old_path:
             new_env['PATH'] = old_path
 
+        old_ppath = new_env.pop('_OLD_VIRTUAL_PYTHONPATH', None)
+        if old_ppath:
+            new_env['PYTHONPATH'] = old_ppath
+
         old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
         if old_home:
             new_env['PYTHON_HOME'] = old_home
@@ -156,8 +173,9 @@ class ABDS(AgentExecutingComponent):
         self.advance(units, rps.ALLOCATING, publish=True, push=False)
 
         for unit in units:
-
             self._handle_unit(unit)
+
+        self.advance(units, rps.EXECUTING_PENDING, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -248,15 +266,19 @@ class ABDS(AgentExecutingComponent):
             launch_script.write('chmod -R 777 .\n')
 
             # Create string for environment variable setting
-            env_string = 'export'
+            env_string  = "# CU environment\n"
+            env_string += "export RP_SESSION_ID=%s\n" % self._cfg['session_id']
+            env_string += "export RP_PILOT_ID=%s\n"   % self._cfg['pilot_id']
+            env_string += "export RP_AGENT_ID=%s\n"   % self._cfg['agent_name']
+            env_string += "export RP_SPAWNER_ID=%s\n" % self.uid
+            env_string += "export RP_UNIT_ID=%s\n"    % cu['uid']
+
+            # also add any env vars requested for export by the resource config
+            for k,v in self._env_cu_export.iteritems():
+                env_string += "export %s=%s\n" % (k,v)
             if cu['description']['environment']:
                 for key,val in cu['description']['environment'].iteritems():
-                    env_string += ' %s=%s' % (key, val)
-            env_string += " RP_SESSION_ID=%s" % self._cfg['session_id']
-            env_string += " RP_PILOT_ID=%s"   % self._cfg['pilot_id']
-            env_string += " RP_AGENT_ID=%s"   % self._cfg['agent_name']
-            env_string += " RP_SPAWNER_ID=%s" % self.uid
-            env_string += " RP_UNIT_ID=%s"    % cu['uid']
+                    env_string += 'export %s=%s\n' % (key, val)
             launch_script.write('# Environment variables\n%s\n' % env_string)
 
             # The actual command line, constructed per launch-method
@@ -276,6 +298,7 @@ class ABDS(AgentExecutingComponent):
             launch_script.write("# The command to run\n")
             launch_script.write("%s\n" % launch_command)
             launch_script.write("RETVAL=$?\n")
+            launch_script.write("\ncat Ystdout\n")
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 launch_script.write("echo script after_exec `%s` >> %s/PROF\n" % (self.gtod, sandbox))
 
@@ -405,8 +428,9 @@ class ABDS(AgentExecutingComponent):
             # This code snippet reads the YARN application report file and if
             # the application is RUNNING it update the state of the CU with the
             # right time stamp. In any other case it works as it was.
-            logfile = '%s/YarnApplicationReport.log' % sandbox
-            if cu['state'] == rps.ALLOCATING and os.path.isfile(logfile):
+            logfile = '%s/%s' % (cu['workdir'], '/YarnApplicationReport.log')
+            if cu['state']==rps.EXECUTING_PENDING \
+                    and os.path.isfile(logfile):
 
                 yarnreport = open(logfile,'r')
                 report_contents = yarnreport.readlines()

@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import time
 import json
 import time
 import urllib2 as ul
@@ -108,7 +109,7 @@ class Yarn(AgentSchedulingComponent):
         # If the application requests resources that exist in the cluster, not
         # necessarily free, then it returns true else it returns false
         #TODO: Add provision for memory request
-        if (cores_requested+1) <= self.avail_cores and \
+        if (cores_requested) <= self.avail_cores and \
               mem_requested<=self.avail_mem and \
               self.avail_app['apps'] != 0:
             self.avail_cores -=cores_requested

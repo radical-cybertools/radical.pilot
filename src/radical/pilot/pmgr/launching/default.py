@@ -357,7 +357,7 @@ class Default(PMGRLaunchingComponent):
         # pilots
         # FIXME: on untar, there is a race between multiple launcher components
         #        within the same session toward the same target resource.
-        tmp_dir  = tempfile.mkdtemp(prefix='rp_agent_tar_dir')
+        tmp_dir  = os.path.abspath(tempfile.mkdtemp(prefix='rp_agent_tar_dir'))
         tar_name = '%s.%s.tgz' % (sid, self.uid)
         tar_tgt  = '%s/%s'     % (tmp_dir, tar_name)
         tar_url  = rs.Url('file://localhost/%s' % tar_tgt)
@@ -373,6 +373,11 @@ class Default(PMGRLaunchingComponent):
 
         session_sandbox = self._session._get_session_sandbox(pilots[0]).path
 
+        # we will create the session sandbox before we untar, so we can use that
+        # as workdir, and pack all paths relative to that session sandbox.  That
+        # implies that we have to recheck that all URLs in fact do point into
+        # the session sandbox.
+
         ft_list = list()  # files to stage
         jd_list = list()  # jobs  to submit
         for pilot in pilots:
@@ -382,9 +387,12 @@ class Default(PMGRLaunchingComponent):
 
         for ft in ft_list:
             src     = os.path.abspath(ft['src'])
-            tgt     = os.path.normpath(ft['tgt'])
+            tgt     = os.path.relpath(os.path.normpath(ft['tgt']), session_sandbox)
             src_dir = os.path.dirname(src)
             tgt_dir = os.path.dirname(tgt)
+
+            if tgt_dir.startswith('..'):
+                raise ValueError('staging target %s outside of pilot sandbox' % ft['tgt'])
 
             if not os.path.isdir('%s/%s' % (tmp_dir, tgt_dir)):
                 os.makedirs('%s/%s' % (tmp_dir, tgt_dir))
@@ -437,9 +445,13 @@ class Default(PMGRLaunchingComponent):
         # now.  So, lets convert the URL:
         if '+' in js_url.scheme:
             parts = js_url.scheme.split('+')
-            if   'ssh'    in parts: js_url.scheme = 'ssh'
-            elif 'gsissh' in parts: js_url.scheme = 'gsissh'
-            elif 'fork'   in parts: js_url.scheme = 'fork'
+            if 'gsissh' in parts: js_url.scheme = 'gsissh'
+            elif  'ssh' in parts: js_url.scheme = 'ssh'
+        else:
+            # In the non-combined '+' case we need to distinguish between
+            # a url that was the result of a hop or a local lrms.
+            if js_url.scheme not in ['ssh', 'gsissh']:
+                js_url.scheme = 'fork'
 
         with self._cache_lock:
             if  js_url in self._saga_js_cache:
@@ -448,8 +460,8 @@ class Default(PMGRLaunchingComponent):
                 js_tmp  = rs.job.Service(js_url, session=self._session)
                 self._saga_js_cache[js_url] = js_tmp
      ## cmd = "tar zmxvf %s/%s -C / ; rm -f %s" % \
-        cmd = "tar zmxvf %s/%s -C /" % \
-                (session_sandbox, tar_name)
+        cmd = "tar zmxvf %s/%s -C %s" % \
+                (session_sandbox, tar_name, session_sandbox)
         j = js_tmp.run_job(cmd)
         j.wait()
 
@@ -481,6 +493,9 @@ class Default(PMGRLaunchingComponent):
             if j.state == rs.FAILED:
                 self._log.error('%s: %s : %s : %s', j.id, j.state, j.stderr, j.stdout)
                 raise RuntimeError ("SAGA Job state is FAILED.")
+
+            if not j.name:
+                raise RuntimeError('cannot get job name for %s' % j.id)
 
             pilot = None
             for p in pilots:
@@ -560,7 +575,7 @@ class Default(PMGRLaunchingComponent):
         python_dist             = rcfg.get('python_dist')
         spmd_variation          = rcfg.get('spmd_variation')
         shared_filesystem       = rcfg.get('shared_filesystem', True)
-        stage_cacerts           = rcfg.get ('stage_cacerts', False)
+        stage_cacerts           = rcfg.get('stage_cacerts', False)
 
 
         # get pilot and global sandbox
@@ -588,16 +603,25 @@ class Default(PMGRLaunchingComponent):
         elif isinstance(agent_config, basestring):
             try:
                 if os.path.exists(agent_config):
-                    # try to open as file name
-                    self._log.info("Read agent config file: %s" % agent_config)
-                    agent_cfg = ru.read_json(agent_config)
+                    agent_cfg_file = agent_config
+
                 else:
                     # otherwise interpret as a config name
-                    # FIXME: load in session just like resource
-                    #        configs, including user level overloads
                     agent_cfg_file = os.path.join(self._conf_dir, "agent_%s.json" % agent_config)
-                    self._log.info("Read agent config file: %s" % agent_cfg_file)
-                    agent_cfg = ru.read_json(agent_cfg_file)
+
+                self._log.info("Read agent config file: %s",  agent_cfg_file)
+                agent_cfg = ru.read_json(agent_cfg_file)
+
+                # no matter how we read the config file, we
+                # allow for user level overload
+                user_cfg_file = '%s/.radical/pilot/config/%s' \
+                              % (os.environ['HOME'], os.path.basename(agent_cfg_file))
+
+                if os.path.exists(user_cfg_file):
+                    self._log.info("merging user config: %s" % user_cfg_file)
+                    user_cfg = ru.read_json(user_cfg_file)
+                    ru.dict_merge (agent_cfg, user_cfg, policy='overwrite')
+
             except Exception as e:
                 self._log.exception("Error reading agent config file: %s" % e)
                 raise
@@ -694,6 +718,7 @@ class Default(PMGRLaunchingComponent):
 
         # ------------------------------------------------------------------
         # sanity checks
+        if not python_dist        : raise RuntimeError("missing python distribution")
         if not agent_spawner      : raise RuntimeError("missing agent spawner")
         if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
         if not lrms               : raise RuntimeError("missing LRMS")
@@ -790,6 +815,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['agent_launch_method']= agent_launch_method
         agent_cfg['task_launch_method'] = task_launch_method
         agent_cfg['mpi_launch_method']  = mpi_launch_method
+        agent_cfg['cores_per_node']     = cores_per_node
 
         # we'll also push the agent config into MongoDB
         pilot['cfg'] = agent_cfg

@@ -327,7 +327,7 @@ class Pubsub(mp.Process):
 
         topic = topic.replace(' ', '_')
 
-        self._log.debug("~~ %s", topic)
+      # self._log.debug("~~ %s", topic)
         _uninterruptible(self._q.setsockopt, zmq.SUBSCRIBE, topic)
 
 
