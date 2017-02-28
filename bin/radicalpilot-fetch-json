@@ -1,0 +1,28 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import radical.utils       as ru
+import radical.pilot       as rp
+import radical.pilot.utils as rpu
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__':
+
+    if len(sys.argv) < 2:
+        print '\n\tusage: %s <sid>\n\tmissing session ID\n' % sys.argv[0]
+        sys.exit(1)
+   
+    sid = sys.argv[1]
+    mongo, db, dbname, cname, pname = ru.mongodb_connect(os.environ['RADICAL_PILOT_DBURL'])
+
+    docs = rpu.get_session_docs(db, sid)
+    print "saving json to %s.json" % sid
+    ru.write_json(docs, "%s.json" % sid)
+
+    mongo.disconnect()
+
+# ------------------------------------------------------------------------------
+

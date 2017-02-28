@@ -19,7 +19,6 @@ import radical.utils as ru
 
 from ..states    import *
 from ..utils     import logger
-from ..utils     import timestamp
 from ..context   import Context
 from ..logentry  import Logentry
 
@@ -206,7 +205,7 @@ class PilotLauncherWorker(threading.Thread):
 
             if  pilot_failed :
                 out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
-                ts = timestamp()
+                ts = time.time()
                 pilot_col.update(
                     {"_id"  : pilot_id,
                      "state": {"$ne"     : DONE}},
@@ -236,7 +235,7 @@ class PilotLauncherWorker(threading.Thread):
                 # FIXME: this should only be done if the state is not yet
                 # done...
                 out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
-                ts = timestamp()
+                ts = time.time()
                 pilot_col.update(
                     {"_id"  : pilot_id,
                      "state": {"$ne"     : DONE}},
@@ -312,7 +311,7 @@ class PilotLauncherWorker(threading.Thread):
                     #       pending pilots.  In practice we only ever use one
                     #       pmgr though, and its during its shutdown that we get
                     #       here...
-                    ts = timestamp()
+                    ts = time.time()
                     compute_pilot = pilot_col.find_and_modify(
                         query={"pilotmanager": self.pilot_manager_id,
                                "state" : PENDING_LAUNCH},
@@ -333,7 +332,7 @@ class PilotLauncherWorker(threading.Thread):
                 # state to pending, otherwise to failed.
                 compute_pilot = None
 
-                ts = timestamp()
+                ts = time.time()
                 compute_pilot = pilot_col.find_and_modify(
                     query={"pilotmanager": self.pilot_manager_id,
                            "state" : PENDING_LAUNCH},
@@ -379,6 +378,11 @@ class PilotLauncherWorker(threading.Thread):
                         # copy..
                         resource_cfg = self._session.get_resource_config(resource_key, schema)
 
+                        enabled = resource_cfg.get('enabled', True)
+                        if not enabled:
+                            raise ValueError('resource %s is unsupported - enable manually' % resource_key)
+                            
+
                         # import pprint
                         # pprint.pprint (resource_cfg)
 
@@ -410,6 +414,9 @@ class PilotLauncherWorker(threading.Thread):
                         health_check            = resource_cfg.get ('health_check', True)
                         python_dist             = resource_cfg.get ('python_dist')
                         cu_tmp                  = resource_cfg.get ('cu_tmp')
+                        cu_pre_exec             = resource_cfg.get ('cu_pre_exec')
+                        cu_post_exec            = resource_cfg.get ('cu_post_exec')
+                        export_to_cu            = resource_cfg.get ('export_to_cu')
                         
 
                         # Agent configuration that is not part of the public API.
@@ -519,20 +526,15 @@ class PilotLauncherWorker(threading.Thread):
                         #   @tag/@branch/@commit: # no sdist staging
                         #       git clone $github_base radical.pilot.src
                         #       (cd radical.pilot.src && git checkout token)
-                        #       pip install -t $VIRTENV/rp_install/ radical.pilot.src
+                        #       pip install -t $SANDBOX/rp_install/ radical.pilot.src
                         #       rm -rf radical.pilot.src
-                        #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
+                        #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
                         #
                         #   release: # no sdist staging
-                        #       pip install -t $VIRTENV/rp_install radical.pilot
-                        #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
+                        #       pip install -t $SANDBOX/rp_install radical.pilot
+                        #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
                         #
                         #   local: # needs sdist staging
-                        #       tar zxf $sdist.tgz
-                        #       pip install -t $VIRTENV/rp_install $sdist/
-                        #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
-                        #
-                        #   debug: # needs sdist staging
                         #       tar zxf $sdist.tgz
                         #       pip install -t $SANDBOX/rp_install $sdist/
                         #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
@@ -571,17 +573,20 @@ class PilotLauncherWorker(threading.Thread):
                         # above syntax is ignored, and the fallback stage@local
                         # is used.
 
-                        if  not rp_version.startswith('@') and \
-                            not rp_version in ['installed', 'local', 'debug']:
-                            raise ValueError("invalid rp_version '%s'" % rp_version)
-
-                        stage_sdist=True
-                        if rp_version in ['installed', 'release']:
-                            stage_sdist = False
+                        # 'debug' is deprecated now
+                        if rp_version == 'debug':
+                            logger.warn ("rp_version flag 'debug' is deprecated, use 'local'")
+                            rp_version = 'local'
 
                         if rp_version.startswith('@'):
-                            stage_sdist = False
-                            rp_version  = rp_version[1:]  # strip '@'
+                            rp_version = rp_version[1:]  # strip '@'
+
+                        elif rp_version not in ['installed', 'local']:
+                            raise ValueError("invalid rp_version '%s'" % rp_version)
+
+                        stage_sdist=False
+                        if rp_version in ['local']:
+                            stage_sdist = True
 
 
                         # ------------------------------------------------------
@@ -668,7 +673,9 @@ class PilotLauncherWorker(threading.Thread):
 
                         # set some agent configuration
                         agent_cfg_dict['cores']              = number_cores
-                        agent_cfg_dict['debug']              = os.environ.get('RADICAL_PILOT_AGENT_VERBOSE', logger.getEffectiveLevel())
+                        agent_cfg_dict['resource_cfg']       = resource_cfg
+                        agent_cfg_dict['debug']              = os.environ.get('RADICAL_PILOT_AGENT_VERBOSE',
+                                                                              logger.getEffectiveLevel())
                         agent_cfg_dict['mongodb_url']        = str(agent_dburl)
                         agent_cfg_dict['lrms']               = lrms
                         agent_cfg_dict['spawner']            = agent_spawner
@@ -679,6 +686,10 @@ class PilotLauncherWorker(threading.Thread):
                         agent_cfg_dict['agent_launch_method']= agent_launch_method
                         agent_cfg_dict['task_launch_method'] = task_launch_method
                         agent_cfg_dict['cu_tmp']             = cu_tmp
+                        agent_cfg_dict['export_to_cu']       = export_to_cu
+                        agent_cfg_dict['cu_pre_exec']        = cu_pre_exec
+                        agent_cfg_dict['cu_post_exec']       = cu_post_exec
+
                         if mpi_launch_method:
                             agent_cfg_dict['mpi_launch_method']  = mpi_launch_method
                         if cores_per_node:
@@ -755,7 +766,7 @@ class PilotLauncherWorker(threading.Thread):
                                 #'%s < %s' % ('unit.000000/STDERR', 'unit.000000/STDERR')
 
                                 # TODO: This needs to go into a per pilot directory on the submit node
-                                '%s < %s' % ('pilot.0000.log.tgz', 'pilot.0000.log.tgz')
+                                '%s < %s' % ('%s.log.tgz' % pilot_id, '%s.log.tgz' % pilot_id)
                             ]
 
                             if stage_sdist:
@@ -773,7 +784,7 @@ class PilotLauncherWorker(threading.Thread):
 
                             if 'RADICAL_PILOT_PROFILE' in os.environ :
                                 # TODO: This needs to go into a per pilot directory on the submit node
-                                jd.file_transfer.append('%s < %s' % ('pilot.0000.prof.tgz', 'pilot.0000.prof.tgz'))
+                                jd.file_transfer.append('%s < %s' % ('%s.prof.tgz' % pilot_id, '%s.prof.tgz' % pilot_id))
 
                         # Set the SPMD variation only if required
                         if spmd_variation:
@@ -815,7 +826,7 @@ class PilotLauncherWorker(threading.Thread):
                             log_dicts.append (le.as_dict())
 
                         # Update the Pilot's state to 'PENDING_ACTIVE' if SAGA job submission was successful.
-                        ts = timestamp()
+                        ts = time.time()
                         ret = pilot_col.update(
                             {"_id"  : pilot_id,
                              "state": LAUNCHING},
@@ -845,7 +856,7 @@ class PilotLauncherWorker(threading.Thread):
                     except Exception as e:
                         # Update the Pilot's state 'FAILED'.
                         out, err, log = self._get_pilot_logs (pilot_col, pilot_id)
-                        ts = timestamp()
+                        ts = time.time()
 
                         # FIXME: we seem to be unable to bson/json handle saga
                         # log messages containing an '#'.  This shows up here.

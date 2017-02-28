@@ -16,13 +16,12 @@
         },
         "default_remote_workdir"      : "$HOME",
         "lrms"                        : "FORK",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "FORK",
         "task_launch_method"          : "FORK",
         "mpi_launch_method"           : "MPIEXEC",
-        "rp_version"                  : "debug",
+        "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_localhost",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
@@ -44,13 +43,12 @@
         },
         "default_remote_workdir"      : "$HOME",
         "lrms"                        : "YARN",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "YARN",
         "agent_spawner"               : "ABDS",
         "agent_launch_method"         : "FORK",
         "task_launch_method"          : "YARN",
         "mpi_launch_method"           : "MPIEXEC",
-        "rp_version"                  : "debug",
+        "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_localhost",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
@@ -72,16 +70,126 @@
         },
         "default_remote_workdir"      : "$HOME",
         "lrms"                        : "FORK",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "FORK",
         "task_launch_method"          : "FORK",
         "mpi_launch_method"           : "MPIEXEC",
-        "rp_version"                  : "debug",
+        "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_localhost",
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda"
-    }
-}
+    },
 
+    "localhost_spark": {
+        "description"                 : "Your local machine gets spark.",
+        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
+        "schemas"                     : ["local", "ssh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "ssh://localhost/",
+            "filesystem_endpoint"     : "sftp://localhost/"
+        },
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_remote_workdir"      : "$HOME",
+        "lrms"                        : "FORK",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "FORK",
+        "task_launch_method"          : "SPARK",
+        "mpi_launch_method"           : "MPIEXEC",
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_localhost",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
+    },
+
+    "localhost_spark_ana": {
+        "description"                 : "Your local machine gets spark.",
+        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
+        "schemas"                     : ["local", "ssh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "ssh://localhost/",
+            "filesystem_endpoint"     : "sftp://localhost/"
+        },
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_remote_workdir"      : "$HOME",
+        "lrms"                        : "FORK",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "FORK",
+        "task_launch_method"          : "SPARK",
+        "mpi_launch_method"           : "MPIEXEC",
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_localhost",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "anaconda"
+    },
+
+    "localhost_orte": {
+        "description"                 : "Your local machine.",
+        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
+        "schemas"                     : ["local", "ssh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "ssh://localhost/",
+            "filesystem_endpoint"     : "sftp://localhost/"
+        },
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_remote_workdir"      : "$HOME",
+        "lrms"                        : "FORK",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "ORTE",
+        "task_launch_method"          : "ORTE",
+        "mpi_launch_method"           : "ORTE",
+        "rp_version"                  : "debug",
+        "virtenv"                     : "%(global_sandbox)s/ve_localhost",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
+    },
+
+    "localhost_ortelib": {
+        "description"                 : "Your local machine.",
+        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
+        "schemas"                     : ["local", "ssh"],
+        "ssh"                         :
+        {
+           "job_manager_endpoint"    : "ssh://localhost/",
+           "filesystem_endpoint"     : "sftp://localhost/"
+        },
+        "local"                       :
+        {
+           "job_manager_endpoint"    : "fork://localhost/",
+           "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_remote_workdir"      : "$HOME",
+        "lrms"                        : "FORK",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "ORTE",
+        "agent_launch_method"         : "ORTE",
+        "task_launch_method"          : "ORTE_LIB",
+        "mpi_launch_method"           : "ORTE_LIB",
+        "rp_version"                  : "debug",
+        "virtenv"                     : "%(global_sandbox)s/ve_localhost",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
+  }
+}

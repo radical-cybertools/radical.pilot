@@ -195,7 +195,7 @@ def pilot_FAILED(mongo_p=None, pilot_uid=None, logger=None, msg=None):
 
     if mongo_p and pilot_uid:
 
-        now = rpu.timestamp()
+        now = time.time()
         out = None
         err = None
         log = None
@@ -239,7 +239,7 @@ def pilot_CANCELED(mongo_p=None, pilot_uid=None, logger=None, msg=None):
 
     if mongo_p and pilot_uid:
 
-        now = rpu.timestamp()
+        now = time.time()
         out = None
         err = None
         log = None
@@ -278,7 +278,7 @@ def pilot_DONE(mongo_p=None, pilot_uid=None, logger=None, msg=None):
 
     if mongo_p and pilot_uid:
 
-        now = rpu.timestamp()
+        now = time.time()
         out = None
         err = None
         log = None
@@ -287,7 +287,7 @@ def pilot_DONE(mongo_p=None, pilot_uid=None, logger=None, msg=None):
         except : pass
         try    : err = open('./agent.err', 'r').read()
         except : pass
-        try    : log = open('./agent.log',    'r').read()
+        try    : log = open('./agent.log', 'r').read()
         except : pass
 
         msg = [{"message": "pilot done",     "timestamp": now},
@@ -448,7 +448,7 @@ def bootstrap_3():
     pilot_id = cfg['pilot_id']
 
     # set up a logger and profiler
-    prof = rpu.Profiler ('%s.bootstrap_3' % agent_name)
+    prof = ru.Profiler ('%s.bootstrap_3' % agent_name)
     prof.prof('sync ref', msg='agent start', uid=pilot_id)
     log  = ru.get_logger('%s.bootstrap_3' % agent_name,
                          '%s.bootstrap_3.log' % agent_name, 'DEBUG')  # FIXME?
@@ -576,9 +576,15 @@ def bootstrap_3():
             write_sub_configs(cfg, bridges, nodeip, log)
 
             # Store some runtime information into the session
-            if 'version_info' in lrms.lm_info:
+            mongo_p.update({"_id": pilot_id},
+                           {"$set": {"lm_info"  : lrms.lm_info.get('version_info'),
+                                     "lm_detail": lrms.lm_info.get('lm_detail')}})
+
+            # OSG Specific
+            osg_resource_name = os.environ.get('GLIDEIN_ResourceName')
+            if osg_resource_name:
                 mongo_p.update({"_id": pilot_id},
-                               {"$set": {"lm_info": lrms.lm_info['version_info']}})
+                               {"$set": {"osg_resource_name": osg_resource_name}})
 
         # we now have correct bridge addresses added to the agent_0.cfg, and all
         # other agents will have picked that up from their config files -- we

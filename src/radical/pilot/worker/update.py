@@ -4,7 +4,9 @@ __license__   = "MIT"
 
 
 import time
+import pprint
 import threading
+import pymongo
 
 import radical.utils as ru
 
@@ -15,293 +17,237 @@ from .. import constants as rpc
 
 # ==============================================================================
 #
+DEFAULT_BULK_COLLECTION_TIME =  5.0 # seconds
+DEFAULT_BULK_COLLECTION_SIZE =  100 # seconds
+
+
+# ==============================================================================
+#
 class Update(rpu.Worker):
     """
     An UpdateWorker pushes CU and Pilot state updates to mongodb.  Its instances
     compete for update requests on the update_queue.  Those requests will be
     triplets of collection name, query dict, and update dict.  Update requests
-    will be collected into bulks over some time (BULK_COLLECTION_TIME), to
-    reduce number of roundtrips.
+    will be collected into bulks over some time (BULK_COLLECTION_TIME) and
+    number (BULK_COLLECTION_SIZE) to reduce number of roundtrips.
     """
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        rpu.Worker.__init__(self, 'AgentUpdateWorker', cfg)
+        self._uid = ru.generate_id('update.%(counter)s', ru.ID_CUSTOM)
+
+        rpu.Worker.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def create(cls, cfg):
+    def create(cls, cfg, session):
 
-        return cls(cfg)
+        return cls(cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
     def initialize_child(self):
 
-        self._session_id    = self._cfg['session_id']
-        self._mongodb_url   = self._cfg['mongodb_url']
-        self._pilot_id      = self._cfg['pilot_id']
+        self._session_id = self._cfg['session_id']
+        self._dburl      = self._cfg['dburl']
+        self._owner      = self._cfg['owner']
 
-        _, db, _, _, _      = ru.mongodb_connect(self._mongodb_url)
-        self._mongo_db      = db
-        self._cinfo         = dict()            # collection cache
-        self._lock          = threading.RLock() # protect _cinfo
-        self._state_cache   = dict()            # used to preserve state ordering
+        # TODO: get db handle from a connected session
+        _, db, _, _, _   = ru.mongodb_connect(self._dburl)
+        self._mongo_db   = db
+        self._coll       = self._mongo_db[self._session_id]
+        self._bulk       = self._coll.initialize_ordered_bulk_op()
+        self._last       = time.time()       # time of last bulk push
+        self._uids       = list()            # list of collected uids
+        self._lock       = threading.RLock() # protect _bulk
 
-        self.declare_subscriber('state', 'agent_state_pubsub', self.state_cb)
-        self.declare_idle_cb(self.idle_cb, self._cfg.get('bulk_collection_time'))
+        self._bct        = self._cfg.get('bulk_collection_time',
+                                          DEFAULT_BULK_COLLECTION_TIME)
+        self._bcs        = self._cfg.get('bulk_collection_size',
+                                          DEFAULT_BULK_COLLECTION_SIZE)
 
-        # all components use the command channel for control messages
-        self.declare_publisher ('command', rpc.AGENT_COMMAND_PUBSUB)
-
-        # communicate successful startup
-        self.publish('command', {'cmd' : 'alive',
-                                 'arg' : self.cname})
-
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize_child(self):
-
-        # communicate finalization
-        self.publish('command', {'cmd' : 'final',
-                                 'arg' : self.cname})
+        self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
+        self.register_timed_cb(self._idle_cb, timer=self._bct)
 
 
     # --------------------------------------------------------------------------
     #
-    def _ordered_update(self, cu, state, timestamp=None):
-        """
-        The update worker can receive states for a specific unit in any order.
-        If states are pushed straight to the DB, the state attribute of a unit
-        may not reflect the actual state.  This should be avoided by re-ordering
-        on the client side DB consumption -- but until that is implemented we
-        enforce ordered state pushes to MongoDB.  We do it like this:
+    def _timed_bulk_execute(self, flush=False):
 
-          - for each unit arriving in the update worker
-            - check if new state is final
-              - yes: push update, but never push any update again (only update
-                state history)
-              - no:
-                check if all expected earlier states are pushed already
-                - yes: push this state also
-                - no:  only update state history
-        """
-
-        s2i = {rps.NEW                          :  0,
-
-               rps.PENDING                      :  1,
-               rps.PENDING_LAUNCH               :  2,
-               rps.LAUNCHING                    :  3,
-               rps.PENDING_ACTIVE               :  4,
-               rps.ACTIVE                       :  5,
-
-               rps.UNSCHEDULED                  :  6,
-               rps.SCHEDULING                   :  7,
-               rps.PENDING_INPUT_STAGING        :  8,
-               rps.STAGING_INPUT                :  9,
-               rps.AGENT_STAGING_INPUT_PENDING  : 10,
-               rps.AGENT_STAGING_INPUT          : 11,
-               rps.ALLOCATING_PENDING           : 12,
-               rps.ALLOCATING                   : 13,
-               rps.EXECUTING_PENDING            : 14,
-               rps.EXECUTING                    : 15,
-               rps.AGENT_STAGING_OUTPUT_PENDING : 16,
-               rps.AGENT_STAGING_OUTPUT         : 17,
-               rps.PENDING_OUTPUT_STAGING       : 18,
-               rps.STAGING_OUTPUT               : 19,
-
-               rps.DONE                         : 20,
-               rps.CANCELING                    : 21,
-               rps.CANCELED                     : 22,
-               rps.FAILED                       : 23
-               }
-        i2s = {v:k for k,v in s2i.items()}
-        s_max = rps.FAILED
-
-        if not timestamp:
-            timestamp = rpu.timestamp()
-
-        # we always push state history
-        update_dict = {'$push': {
-                           'statehistory': {
-                               'state'    : state,
-                               'timestamp': timestamp}}}
-        uid = cu['_id']
-
-      # self._log.debug(" === inp %s: %s" % (uid, state))
-
-        if uid not in self._state_cache:
-            self._state_cache[uid] = {'unsent' : list(),
-                                      'final'  : False,
-                                      'last'   : rps.AGENT_STAGING_INPUT_PENDING} # we get the cu in this state
-        cache = self._state_cache[uid]
-
-        # if unit is already final, we don't push state
-        if cache['final']:
-          # self._log.debug(" === fin %s: %s" % (uid, state))
-            return update_dict
-
-        # if unit becomes final, push state and remember it
-        if state in [rps.DONE, rps.FAILED, rps.CANCELED]:
-            cache['final'] = True
-            cache['last']  = state
-            update_dict['$set'] = {'state': state}
-          # self._log.debug(" === Fin %s: %s" % (uid, state))
-            return update_dict
-
-        # check if we have any consecutive list beyond 'last' in unsent
-        cache['unsent'].append(state)
-      # self._log.debug(" === lst %s: %s %s" % (uid, cache['last'], cache['unsent']))
-        new_state = None
-        for i in range(s2i[cache['last']]+1, s2i[s_max]):
-          # self._log.debug(" === chk %s: %s in %s" % (uid, i2s[i], cache['unsent']))
-            if i2s[i] in cache['unsent']:
-                new_state = i2s[i]
-                cache['unsent'].remove(i2s[i])
-              # self._log.debug(" === uns %s: %s" % (uid, new_state))
-            else:
-              # self._log.debug(" === brk %s: %s" % (uid, new_state))
-                break
-
-        if new_state:
-          # self._log.debug(" === new %s: %s" % (uid, new_state))
-            state = new_state
-            cache['last'] = state
-          # self._log.debug(" === set %s: %s" % (uid, state))
-            update_dict['$set'] = {'state': state}
-
-        # record if final state is sent
-        if state in [rps.DONE, rps.FAILED, rps.CANCELED]:
-          # self._log.debug(" === FIN %s: %s" % (uid, state))
-            cache['final'] = True
-
-        return update_dict
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _timed_bulk_execute(self, cinfo):
-
-        # is there any bulk to look at?
-        if not cinfo['bulk']:
+        # is there anything to execute?
+        if not self._uids:
             return False
 
         now = time.time()
-        age = now - cinfo['last']
+        age = now - self._last
 
-        # only push if collection time has been exceeded
-        if not age > self._cfg['bulk_collection_time']:
+        # only push if flush is forced, or when collection time or size 
+        # have been exceeded
+        if  not flush \
+            and age < self._bct \
+            and len(self._uids) < self._bcs:
             return False
 
-        res = cinfo['bulk'].execute()
-        self._log.debug("bulk update result: %s", res)
+        try:
+            res = self._bulk.execute()
+            self._log.debug("bulk update result: %s", res)
+        except pymongo.errors.OperationFailure as e:
+            self._log.exception('bulk exec error: %s' % e.details)
+            raise
+        except Exception as e:
+            self._log.exception('mongodb error: %s', e)
+            raise
 
-        self._prof.prof('unit update bulk pushed (%d)' % len(cinfo['uids']), uid=self._pilot_id)
-        for entry in cinfo['uids']:
+        self._prof.prof('update bulk pushed (%d)' % len(self._uids),
+                        uid=self._owner)
+
+        for entry in self._uids:
             uid   = entry[0]
-            state = entry[1]
+            ttype = entry[1]
+            state = entry[2]
             if state:
-                self._prof.prof('update', msg='unit update pushed (%s)' % state, uid=uid)
+                self._prof.prof('update', msg='%s update pushed (%s)' \
+                                % (ttype, state), uid=uid)
             else:
-                self._prof.prof('update', msg='unit update pushed', uid=uid)
+                self._prof.prof('update', msg='%s update pushed' % ttype, 
+                                uid=uid)
 
-        cinfo['last'] = now
-        cinfo['bulk'] = None
-        cinfo['uids'] = list()
+        # empty bulk, refresh state
+        self._last = now
+        self._bulk = self._coll.initialize_ordered_bulk_op()
+        self._uids = list()
 
         return True
 
 
     # --------------------------------------------------------------------------
     #
-    def idle_cb(self):
+    def _idle_cb(self):
 
-        action = 0
         with self._lock:
-            for cname in self._cinfo:
-                action += self._timed_bulk_execute(self._cinfo[cname])
-
-        return bool(action)
+             return self._timed_bulk_execute()
 
 
     # --------------------------------------------------------------------------
     #
-    def state_cb(self, topic, msg):
+    def _state_cb(self, topic, msg):
+        """
 
-        cu = msg
+        # FIXME: this documentation is not final, nor does it reflect reality!
 
-        # FIXME: we don't have any error recovery -- any failure to update unit
-        #        state in the DB will thus result in an exception here and tear
-        #        down the pilot.
-        #
-        # FIXME: at the moment, the update worker only operates on units.
-        #        Should it accept other updates, eg. for pilot states?
-        #
-        # got a new request.  Add to bulk (create as needed),
-        # and push bulk if time is up.
-        uid       = cu['_id']
-        state     = cu.get('state')
-        timestamp = cu.get('state_timestamp', rpu.timestamp())
+        'msg' is expected to be of the form ['cmd', 'thing'], where 'thing' is
+        an entity to update in the DB, and 'cmd' specifies the mode of update.
 
-        if 'clone' in uid:
+        'things' are expected to be dicts with a 'type' and 'uid' field.  If
+        either one does not exist, an exception is raised.
+
+        Supported types are:
+
+          - unit
+          - pilot
+
+        supported 'cmds':
+
+          - delete      : delete can be delayed until bulk is collected/flushed
+          - update      : update can be delayed until bulk is collected/flushed
+          - state       : update can be delayed until bulk is collected/flushed
+                          only state and state history are updated
+          - delete_flush: delete is sent immediately (possibly in a bulk)
+          - update_flush: update is sent immediately (possibly in a bulk)
+          - state_flush : update is sent immediately (possibly in a bulk)
+                          only state and state history are updated
+          - flush       : flush pending bulk
+
+        The 'thing' can contains '$set' and '$push' fields, which will then be
+        used as given.  For all other fields, we use the following convention:
+
+          - scalar values: use '$set'
+          - dict   values: use '$set'
+          - list   values: use '$push'
+
+        That implies that all potential 'list' types should be defined in the
+        initial 'thing' insert as such, as (potentially empty) lists.
+
+        For 'cmd' in ['state', 'state_flush'], only the 'uid' and 'state' fields
+        of the given 'thing' are used, all other fields are ignored.  If 'state'
+        does not exist, an exception is raised.
+        """
+
+        cmd    = msg['cmd']
+        things = msg['arg']
+
+      # cmds = ['delete',       'update',       'state',
+      #         'delete_flush', 'update_flush', 'state_flush', 'flush']
+        if cmd not in ['update']:
+            self._log.info('ignore cmd %s', cmd)
             return
 
-        self._prof.prof('get', msg="update unit state to %s" % state, uid=uid)
+        if not isinstance(things, list):
+            things = [things]
 
-        cbase       = cu.get('cbase',  '.cu')
-        query_dict  = cu.get('query')
-        update_dict = cu.get('update')
 
-        if not query_dict:
-            query_dict  = {'_id' : uid} # make sure unit is not final?
-        if not update_dict:
-            update_dict = self._ordered_update (cu, state, timestamp)
+        # FIXME: we don't have any error recovery -- any failure to update 
+        #        state in the DB will thus result in an exception here and tear
+        #        down the module.
+        for thing in things:
 
-        # when the unit is about to leave the agent, we also update stdout,
-        # stderr exit code etc
-        # FIXME: this probably should be a parameter ('FULL') on 'msg'
-        if state in [rps.DONE, rps.FAILED, rps.CANCELED, rps.PENDING_OUTPUT_STAGING]:
-            if not '$set' in update_dict:
-                update_dict['$set'] = dict()
-            update_dict['$set']['stdout'   ] = cu.get('stdout')
-            update_dict['$set']['stderr'   ] = cu.get('stderr')
-            update_dict['$set']['exit_code'] = cu.get('exit_code')
+            # got a new request.  Add to bulk (create as needed),
+            # and push bulk if time is up.
+            uid       = thing['uid']
+            ttype     = thing['type']
+            state     = thing['state']
+            timestamp = thing.get('state_timestamp', time.time())
 
-        # check if we handled the collection before.  If not, initialize
-        cname = self._session_id + cbase
+            if 'clone' in uid:
+                # we don't push clone states to DB
+                return
+
+            self._prof.prof('get', msg="update %s state to %s" % (ttype, state), 
+                            uid=uid)
+
+            if not state:
+                # nothing to push
+                self._prof.prof('get', msg="update %s state ignored" % ttype, uid=uid)
+                return
+
+            # create an update document
+            update_dict          = dict()
+            update_dict['$set']  = dict()
+            update_dict['$push'] = dict()
+
+            for key,val in thing.iteritems():
+                # we never set _id, states (to avoid index clash, duplicated ops)
+                if key not in ['_id', 'states']:
+                    update_dict['$set'][key] = val
+
+            # we set state, put (more importantly) we push the state onto the
+            # 'states' list, so that we can later get state progression in sync with
+            # the state model, even if they have been pushed here out-of-order
+            update_dict['$push']['states'] = state
+
+            # check if we handled the collection before.  If not, initialize
+            # FIXME: we only have one collection now -- simplify!
+            cname = self._session_id
+
+            with self._lock:
+
+                # push the update request onto the bulk
+                self._uids.append([uid, ttype, state])
+                self._bulk.find  ({'uid'  : uid, 
+                                   'type' : ttype}) \
+                          .update(update_dict)
+
+            self._prof.prof('bulk', msg='bulked (%s)' % state, uid=uid)
+            self._log.debug('bulked %s [%s] %s', uid, state, self.uid)
 
         with self._lock:
-            if not cname in self._cinfo:
-                self._cinfo[cname] = {
-                        'coll' : self._mongo_db[cname],
-                        'bulk' : None,
-                        'last' : time.time(),  # time of last push
-                        'uids' : list()
-                        }
-
-
-            # check if we have an active bulk for the collection.  If not,
-            # create one.
-            cinfo = self._cinfo[cname]
-
-            if not cinfo['bulk']:
-                cinfo['bulk'] = cinfo['coll'].initialize_ordered_bulk_op()
-
-
-            # push the update request onto the bulk
-            cinfo['uids'].append([uid, state])
-            cinfo['bulk'].find  (query_dict) \
-                         .update(update_dict)
-            self._prof.prof('bulk', msg='bulked (%s)' % state, uid=uid)
-
             # attempt a timed update
-            self._timed_bulk_execute(cinfo)
+            self._timed_bulk_execute()
 
 
 # ------------------------------------------------------------------------------

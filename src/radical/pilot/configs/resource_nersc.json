@@ -9,7 +9,6 @@
         },
         "default_queue"               : "regular",
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "APRUN",
@@ -18,10 +17,10 @@
         "pre_bootstrap_1"             : ["module load python"],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/global", "/scratch",  "/scratch2"],
-        "rp_version"                  : "debug",
+        "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_hopper",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "cores_per_node"              : "24",
         "python_dist"                 : "default"
     },
@@ -40,7 +39,6 @@
         },
         "default_queue"               : "regular",
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_config"                : "cray",
@@ -66,7 +64,7 @@
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_hopper",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
     "hopper_ccm": {
@@ -80,7 +78,6 @@
         },
         "default_queue"               : "ccm_queue",
         "lrms"                        : "CCM",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -98,7 +95,7 @@
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_hopper",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "cores_per_node"              : "24",
         "python_dist"                 : "default"
     },
@@ -117,7 +114,6 @@
         },
         "default_queue"               : "regular",
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "APRUN",
@@ -129,7 +125,7 @@
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_edison",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
     "edison": {
@@ -147,7 +143,6 @@
         },
         "default_queue"               : "regular",
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_config"                : "cray",
@@ -171,7 +166,7 @@
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_edison",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
     "edison_ccm": {
@@ -184,7 +179,6 @@
         },
         "default_queue"               : "ccm_queue",
         "lrms"                        : "CCM",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -199,10 +193,10 @@
         "valid_roots"                 : ["/global", "/scratch1", "/scratch2"],
         "forward_tunnel_endpoint"     : "localhost",
         "tunnel_bind_device"          : "ipogif0",
-        "rp_version"                  : "debug",
+        "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_edison",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "python_dist"                 : "default"
     }
 }

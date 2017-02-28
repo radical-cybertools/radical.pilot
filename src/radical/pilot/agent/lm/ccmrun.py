@@ -3,7 +3,10 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import radical.utils as ru
+
 from .base import LaunchMethod
+
 
 # ==============================================================================
 #
@@ -11,16 +14,16 @@ class CCMRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, logger)
+        LaunchMethod.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
         # ccmrun: Cluster Compatibility Mode (CCM) job launcher for Cray systems
-        self.launch_command= self._which('ccmrun')
+        self.launch_command= ru.which('ccmrun')
 
 
     # --------------------------------------------------------------------------
