@@ -28,37 +28,38 @@ _info_pending = {
 
 _info_premature_final = {
         'Failed'   : '_fail',
-        'Canceled'   : '_canc'
+        'Canceled' : '_canc'
 }
 
 _info_states = [
-        ACTIVE,
-        AGENT_STAGING_INPUT,
-        AGENT_STAGING_INPUT_PENDING,
-        AGENT_STAGING_OUTPUT,
-        AGENT_STAGING_OUTPUT_PENDING,
-        ALLOCATING,
-        ALLOCATING_PENDING,
+        NEW,
         CANCELED,
         DONE,
-        EXECUTING,
-        EXECUTING_PENDING,
         FAILED,
-        LAUNCHING,
-        NEW,
-        PENDING,
-        PENDING_ACTIVE,
-        PENDING_EXECUTION,
-        PENDING_INPUT_STAGING,
-        PENDING_LAUNCH,
-        PENDING_OUTPUT_STAGING,
-        SCHEDULING,
-        STAGING_INPUT,
-        STAGING_OUTPUT,
-        UNSCHEDULED
+
+        UMGR_SCHEDULING_PENDING,
+        UMGR_SCHEDULING,
+        UMGR_STAGING_INPUT_PENDING,
+        UMGR_STAGING_INPUT,
+        AGENT_STAGING_INPUT_PENDING,
+        AGENT_STAGING_INPUT,
+        AGENT_SCHEDULING_PENDING,
+        AGENT_SCHEDULING,
+        AGENT_EXECUTING_PENDING,
+        AGENT_EXECUTING,
+        AGENT_STAGING_OUTPUT_PENDING,
+        AGENT_STAGING_OUTPUT,
+        UMGR_STAGING_OUTPUT_PENDING,
+        UMGR_STAGING_OUTPUT,
+
+        PMGR_LAUNCHING_PENDING,
+        PMGR_LAUNCHING,
+        PMGR_ACTIVE_PENDING,
+        PMGR_ACTIVE,
         ]
 
 _info_entries = [
+    # info,              name,                     event,       msg
     ('umgr_get_u',      'MainThread',             'advance',   'New'),
     ('umgr_adv_u_pend', 'MainThread',             'advance',   'PendingInputStaging'),
     ('usic_get_u',      'InputFileTransfer',      'advance',   'StagingInput'),
@@ -569,6 +570,9 @@ def get_info_df(df):
         for i in set(l):
             cols.add(i)
             if l.count(i)>1:
+                # TODO: this is a hack to workaround a problem in the state management
+                if i == 'mod_adv_u':
+                    continue
                 raise ValueError('doubled info entry %s (uid:%s)' % (i, uid))
 
         dicts[uid] = tmp1_d

@@ -22,7 +22,6 @@
         },
         "default_queue"               : "normal",
         "lrms"                        : "SLURM",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -48,6 +47,106 @@
                                          "LD_LIBRARY_PATH"], 
         "cu_pre_exec"                 : ["module restore"]
     },
+    "stampede_orte": {
+        "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["ssh", "gsissh", "go"],
+        "mandatory_args"              : ["project"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://stampede.tacc.utexas.edu/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://stampede.tacc.utexas.edu:2222/",
+            "filesystem_endpoint"     : "gsisftp://stampede.tacc.utexas.edu:2222/"
+        },
+        "go":
+        {
+            "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "go://xsede#stampede/"
+        },
+        "default_queue"               : "normal",
+        "lrms"                        : "SLURM",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "ORTE",
+        "task_launch_method"          : "ORTE",
+        "mpi_launch_method"           : "ORTE",
+        "pre_bootstrap_1"             : ["module purge",
+            "module load TACC",
+            "module load intel/15.0.2",
+            "module load python/2.7.9",
+            "module unload xalt",
+            # Load ICC license so we can build during bootstrap
+            "source ~train00/ssi_sourceme",
+            "export TACC_DELETE_FILES=TRUE",
+            "module use -a /home1/01740/marksant/openmpi/modulefiles",
+            "module load openmpi/rhc",
+            "export OMPI_MCA_plm=^slurm"
+        ],
+        "pre_bootstrap_2"             : ["export PATH=$PATH",
+            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+        ],
+        "default_remote_workdir"      : "$WORK",
+        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_stampede",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
+    },
+    "stampede_ortelib": {
+        "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail. To create a virtualenv for the first time, one needs to run towards the development queue.",
+        "schemas"                     : ["ssh", "gsissh", "go"],
+        "mandatory_args"              : ["project"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://stampede.tacc.utexas.edu/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://stampede.tacc.utexas.edu:2222/",
+            "filesystem_endpoint"     : "gsisftp://stampede.tacc.utexas.edu:2222/"
+        },
+        "go":
+        {
+            "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "go://xsede#stampede/"
+        },
+        "default_queue"               : "normal",
+        "lrms"                        : "SLURM",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "ORTE",
+        "agent_launch_method"         : "ORTE",
+        "task_launch_method"          : "ORTE_LIB",
+        "mpi_launch_method"           : "ORTE_LIB",
+        "pre_bootstrap_1"             : ["module purge",
+            "module load TACC",
+            "module load intel/15.0.2",
+            "module load python/2.7.9",
+            "module unload xalt",
+            # Load ICC license so we can build during bootstrap
+            "source ~train00/ssi_sourceme",
+            "export TACC_DELETE_FILES=TRUE",
+            "module use -a /home1/01740/marksant/openmpi/modulefiles",
+            "module load openmpi/rhc",
+            "export OMPI_MCA_plm=^slurm"
+        ],
+        "pre_bootstrap_2"             : ["export PATH=$PATH",
+            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+        ],
+        "default_remote_workdir"      : "$WORK",
+        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_stampede",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
+    },
 
     "stampede_yarn": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
@@ -71,7 +170,6 @@
         },
         "default_queue"               : "normal",
         "lrms"                        : "SLURM",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "YARN",
         "agent_spawner"               : "ABDS",
         "agent_launch_method"         : "SSH",
@@ -80,7 +178,7 @@
         "pre_bootstrap_1"             : ["module purge",
                                          "module load TACC",
                                          "module load intel/15.0.2",
-                                         "module load python/2.7.9",
+                                         "module load python/2.7.12",
                                          "module unload xalt",
                                          # Load ICC license so we can build during bootstrap
                                          "source ~train00/ssi_sourceme",
@@ -91,45 +189,6 @@
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_stampede",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "default"
-    },
-
-    "wrangler": {
-        "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["ssh", "gsissh", "go"],
-        "mandatory_args"              : ["project"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://wrangler.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://wrangler.tacc.utexas.edu/"
-        },
-        "gsissh"                      :
-        {
-            "job_manager_endpoint"    : "slurm+gsissh://wrangler.tacc.utexas.edu:2222/",
-            "filesystem_endpoint"     : "gsisftp://wrangler.tacc.utexas.edu:2222/"
-        },
-        "go":
-        {
-            "job_manager_endpoint"    : "slurm+ssh://wrangler.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "go://xsede#wrangler/"
-        },
-        "default_queue"               : "normal",
-        "lrms"                        : "SLURM",
-        "agent_type"                  : "multicore",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "MPIRUN_RSH",
-        "pre_bootstrap_1"             : ["module load python/2.7.9",
-                                         "export TACC_DELETE_FILES=TRUE"
-                                        ],
-        "default_remote_workdir"      : "$WORK",
-        "valid_roots"                 : ["/work", "$WORK", "$DATA"],
-        "rp_version"                  : "installed",
-        "virtenv"                     : "/work/03170/tg824689/wrangler/ve_wrangler",
-        "virtenv_mode"                : "use",
         "python_dist"                 : "default"
     },
 
@@ -164,9 +223,9 @@
         "pre_bootstrap_1"             : ["module purge",
                                          "module load TACC",
                                          "module load intel/15.0.2",
-					 "module load python/2.7.12",
-					 "module use /scratch/projects/xsede/modulefiles",
-					 "module load  jdk64/1.8.0",
+                                         "module load python/2.7.12",
+                                         "module use /scratch/projects/xsede/modulefiles",
+                                         "module load jdk64/1.8.0",
                                          # Load ICC license so we can build during bootstrap
                                          "source ~train00/ssi_sourceme",
                                          "export TACC_DELETE_FILES=TRUE"
@@ -270,7 +329,7 @@
     "wrangler_spark": {
         "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["ssh", "gsissh", "go"],
+        "schemas"                     : ["gsissh", "ssh", "go"],
         "mandatory_args"              : ["project"],
         "ssh"                         :
         {
@@ -296,12 +355,9 @@
         "task_launch_method"          : "SPARK",
         "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap_1"             : [ 
-                                        "module purge",
-                                        "module load TACC",
-                                        "module load python/2.7.12",
+                                        "module load python/2.7.9",
                                         "export TACC_DELETE_FILES=TRUE",
-                                        "module load jdk64/1.8.0",
-                                        "module unload xalt"
+                                        "module load jdk64/1.8.0"
                                         ],
         "pre_bootstrap_2"             : ["export PATH=$PATH",
                                          "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
@@ -331,7 +387,6 @@
         },
         "default_queue"               : "normal",
         "lrms"                        : "SGE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -368,7 +423,6 @@
         },
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -398,7 +452,6 @@
         },
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -406,7 +459,7 @@
         "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap_1"             : ["module purge", "module load python intel mvapich2_ib gnubase"],
         "valid_roots"                 : ["/home"],
-        "rp_version"                  : "debug",
+        "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_gordon",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
@@ -429,7 +482,6 @@
         "default_queue"               : "batch",
         "cores_per_node"              : "16",
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "DPLACE",
@@ -441,7 +493,7 @@
                                         ],
         "valid_roots"                 : ["/usr/users", "/brashear"],
         "stage_cacerts"               : "True",
-        "rp_version"                  : "debug",
+        "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_blacklight",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
@@ -476,7 +528,7 @@
                                         ],
         "valid_roots"                 : ["/home", "/crucible", "/arc"],
         "stage_cacerts"               : "True",
-        "rp_version"                  : "debug",
+        "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_greenfield",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
@@ -500,7 +552,6 @@
         "default_queue"               : "compute",
         "cores_per_node"              : "24",
         "lrms"                        : "SLURM",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -534,7 +585,6 @@
         "default_queue"               : "compute",
         "cores_per_node"              : "24",
         "lrms"                        : "SLURM",
-        "agent_type"                  : "multicore",
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
@@ -542,10 +592,9 @@
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",
         "pre_bootstrap_1"             : [
-            "module use --append /home/marksant/privatemodules",
+            "module use --append /home/amerzky/ompi/modules",
             "module load python",
-            "module load openmpi",
-            "module load mpi4py"
+            "module load openmpi/2017_02_17_6da4dbb"
         ],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
@@ -607,7 +656,6 @@
         "default_queue"               : "workq",
         "cores_per_node"              : "20",
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",

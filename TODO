@@ -14,12 +14,12 @@
   + make sure finalize is called on terminate (via atexit?)
   + make sure all profile entries exist, merge from module profiling branch
   + merge from devel
-  - merge from osgng
-  = forward tunnel endpoint from bootstrap_1 to agent?
+  + merge from osgng
+  + forward tunnel endpoint from bootstrap_1 to agent
   + make sure opaque_slot is a dict
   + make sure that the lrms_config_hook is called only once
-    - this is implicit right now(we only have one scheduler instance, and thus
-      only one (set of) LRMS instances)
+    (this is implicit now, as we only have one scheduler instance, and thus
+    only one (set of) LRMS instances)
   - At this point it might be simpler to have one LRMS instance which handles
     MPI and non-MPI?  Not sure about the diversity of combinations which need
     supporting...
@@ -28,6 +28,181 @@
   - advance() implicitly publishes unit state, but the publisher needs to be
     declared explicitly.
   + rename 'worker' to 'sub-agent' to avoid confusion?
-  - component: collapse declare_input and declare_worker
-
   - executor should write CU script in one go, not incrementally
+  - component: collapse declare_input and declare_worker
+  + cu['_id'] -> cu['uid'] etc
+
+  + state pubsub now has [cmd, ttype, thing] tuples fed from advance.
+  + self.advance(cu, FAILED, ...) will not find a suitable output channel.
+    Handle gracefully!  
+  + Always push final things fully to DB!
+  - we mostly don't need create() methods -- in many cases we can just use
+    constructors.
+  + default output staging component: __init__ calls Component __init__, but
+    should call base __init__, which then calls Component __init__
+    Same holds for other component implementations.
+  - component's base.create calls should pick up all component implementations
+    automatically, instead of having a static type map
+  + Bridges should be created by session, both on client and on agent side.
+  + on the component, add 'declare_thread' for actions which are needed more
+    frequent than idle callbacks, and also need some guarantees on the
+    frequency.  Prominent example: execution watcher threads.  Handle the
+    'work()' loop as just one of those threads (the default one).
+  + register_idle_callback -> register_timed_callback
+  + component watcher needs to clean out component threads even for failed
+    components
+  + shutdown command propagation is broken
+
+  + unit cancelation is best done on component level
+    + subscribe to control to get cancel requests
+    + for each cancel request
+      + add to self._cancel_requested
+    + whenver we see an advance or work request:
+      + if uid in self._cancel_requested: advance(CANCEL) + drop   
+    - we can still additionally add cancel actions during staging and
+      execution -- but the component base should provide support for that.
+
+  - use heartbeat mechanism also for bridges, agents, sub_agents
+  + define _cfg['heart'] and use that for heartbeat src instead of owner,
+    limiting traffic and noise
+  - component.stop() should *first* unregister component_checker_cb 
+    (and probably all other callbacks)
+    - in fact, we should be very careful to unregister callbacks in reverse
+      order of registration.
+  - pilot default error cb calls sys.exit -> no shutdown.
+
+  + update the backfilling scheduler
+  - state notifications should be obtained via a tailed cursor
+  - update worker could check if a unit has multiple state updates pending. If
+    so, only send the last one.  The client side cann still play callbacks for
+    all intermediate states.  That implies delayed filling of the bulk.
+  + update worker should not push state_hist on state updates, only on full
+    udpdates.
+  - pilot failing during wait_units results in timeout.
+
+  + the update worker should have a list of keys which it needs to push to
+    MongoDB, and it should ignore other dict entries.  Alternatively, components
+    should use underscore-prefixed keys for things which don't need to be stored
+    in MongoDB.
+
+  + separate single-process components from multi-processed, in terms of
+    initialization
+  + make sure we don't carry locks across fork calls.  If that turns out to be
+    difficult (hi logging), we have to execve after fork and start afresh.
+  - idle_cb -> timed_cb (we make no promise on idleness, really)
+  - kill pilots on pmgr.launching.finalize_child?
+  + saga_pid in pmgr.launcher control_cb
+  + heartbeat interval assertion
+  - dying agent bridge causes agent shutdown to hang
+  - lrms -> rm
+  + dying pilot watcher cb remains undetected
+  - separation of controller.[uid,heart,owner] is unclean
+
+  - cancellation leads to double wait, which is ok, but also reports twice,
+    which is not
+  - umgr wait and pmgr wait report different things, differently
+    (inclusion of previously final things, final state marker)
+
+  + ctrl 
+    + things -> watchable
+  - advance -> remove push/pull args, and make those separate calls?  
+    Probably not though...
+  + comment in cb in sch base
+  + remove release_slot in rr
+  + add_pilot -> add_pilots
+  + start/stop in mgrs...
+
+  + open saga ticket: condor staging target should point to the job cwd, not
+    to intermediate storage
+  - units can end up in 'CANCELED + agent_pending', so agent pulls unusable
+    units.  Final states should *always* set 'control' to 'umgr' or 'pmgr',
+    respectively
+
+  + worker/agent.py -> agent/agent_n.py
+  + agent_n controller has uid of pilot.000.ctrl -- should be agent_n.ctrl
+  + sub-agents: catch stdout/err for popen procs
+  - agent_n does not need a child process really?
+
+  + agent state ACTIVE is recorded twice
+  + agent state DONE   is recorded twice on timeout
+
+  + we should never have a wildcard `except`, as that will also catch inetrrupts
+    and system exits, which we though expect to fall through to the component
+    layer for lifetime management.
+
+
+Expected Termination Behavior:
+==============================
+
+application calls session close
+-------------------------------
+
+  - session.close() at any point in time
+    - in main thread:
+      - close all umgrs
+        - terminate all threads
+        - cancel any non-final units and wait for them
+          - advance them to CANCELED
+          - issue 'cancel' commands (no reschedule)
+          ? do we want notifications for the unit cancel?
+          ? do we rely on UpdateWorker to register/store CANCELED advance?
+        - stop all components (delegated to session controller)
+        - stop all bridges    (delegated to session controller)
+      - close all pmgrs
+        - cancel any non-final pilots and wait for them
+        ? do we want notifications for the pilot cancel?
+        - terminate all threads
+        - stop all components (delegated to session controller)
+        - stop all bridges    (delegated to session controller)
+      - terminate all threads
+      - close session controller
+        - terminate all threads
+        - stop all bridges
+        - stop all components
+    - in other threads
+      - as in main thread
+      - thread should then exit (default), call sys.exit, or raise.
+    - in other processes / components
+      - stop the component
+      - no message is sent, we expect the pmgr, umgr or session watcher to
+        detect the closed component (if needed), and to start teardown 
+        -> watcher calling session.close + raise
+
+        
+user interrupts via Ctrl-C
+--------------------------
+  - application must except, call session.close()
+
+
+pilot fails, exit_on_error is set
+---------------------------------
+  - call to sys.exit()
+  - application must except, call session.close()
+
+
+pilot times out
+---------------
+  - the agent_0 starts an idle callback (agent_command_cb) which checks runtime
+  - if runtime limit is reached
+    - set self._final_cause to 'timeout'
+    - call self.stop()
+    - agent_0 is a worker w/o child.  stop() triggers this sequence:
+      - call finalize_parent
+        - stop self._lrms
+        - update db for final state
+        - call session.close()
+
+      - call finalize_common
+        - terminate and join all subscribers
+        - close profiler
+
+
+tmp:
+----
+  - pilots canceled but state is not picked up during shutdown
+  - always get DEFAULT_DBURL from session config (use a  class method on session)
+
+  - staging directives should be expanded in umgr_input_staging -- at that point
+    we have enough information to make *all* src and tgt names into full URLs
+    (including fully quualified paths), and can then rely on those being URLs in 
+    all places.

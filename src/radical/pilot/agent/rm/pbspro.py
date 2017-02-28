@@ -15,9 +15,9 @@ class PBSPro(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg, session):
 
-        LRMS.__init__(self, cfg, logger)
+        LRMS.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
