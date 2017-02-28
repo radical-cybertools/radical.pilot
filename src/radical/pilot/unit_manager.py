@@ -683,7 +683,7 @@ class UnitManager(rpu.Component):
             if int(ud.cores) <= 0:
                 raise ValueError('compute unit core count must be positive')
 
-            if ud.sandbox and ud.sandbox[0] = '/':
+            if ud.sandbox and ud.sandbox[0] == '/':
                 raise BadParameter('compute unit sandbox must be relative.')
 
             unit = ComputeUnit.create(umgr=self, descr=ud)
