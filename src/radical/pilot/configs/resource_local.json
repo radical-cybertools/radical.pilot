@@ -136,7 +136,6 @@
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda"
     },
-<<<<<<< HEAD
 
     "localhost_streaming": {
         "description"                 : "Your local machine gets spark.",
@@ -222,3 +221,4 @@
         "python_dist"                 : "default"
   }
 }
+
