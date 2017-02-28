@@ -1,5 +1,6 @@
 {
   "xsede-virt-clust"     : {
+    "enabled"            : false,
     "description"        : "XSEDE OSG Virtual Cluster is a Condor pool overlay on top of OSG resources. (https://portal.xsede.org/OSG-User-Guide).",
     "notes"              : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
     "schemas"            : ["ssh", "gsissh"],
@@ -48,6 +49,7 @@
   },
 
   "connect": {
+    "enabled"            : false,
     "description"        : "OSG Connect. (https://osgconnect.net).",
     "notes"              : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
     "schemas"            : ["ssh", "gsissh"],

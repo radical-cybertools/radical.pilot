@@ -80,6 +80,7 @@
         "python_dist"                 : "default"
     },
     "titan_lib": {
+        "enabled"                     : false,
         "description"                 : "The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/titan/)",
         "notes"                       : "Requires the use of an RSA SecurID on every connection.",
         "schemas"                     : ["ssh", "local", "go"],
