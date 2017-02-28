@@ -378,6 +378,11 @@ class PilotLauncherWorker(threading.Thread):
                         # copy..
                         resource_cfg = self._session.get_resource_config(resource_key, schema)
 
+                        enabled = resource_cfg.get('enabled', True)
+                        if not enabled:
+                            raise ValueError('resource %s is unsupported - enable manually' % resource_key)
+                            
+
                         # import pprint
                         # pprint.pprint (resource_cfg)
 
@@ -408,6 +413,9 @@ class PilotLauncherWorker(threading.Thread):
                         shared_filesystem       = resource_cfg.get ('shared_filesystem', True)
                         health_check            = resource_cfg.get ('health_check', True)
                         python_dist             = resource_cfg.get ('python_dist')
+                        cu_pre_exec             = resource_cfg.get ('cu_pre_exec')
+                        cu_post_exec            = resource_cfg.get ('cu_post_exec')
+                        export_to_cu            = resource_cfg.get ('export_to_cu')
                         
 
                         # Agent configuration that is not part of the public API.
@@ -517,20 +525,15 @@ class PilotLauncherWorker(threading.Thread):
                         #   @tag/@branch/@commit: # no sdist staging
                         #       git clone $github_base radical.pilot.src
                         #       (cd radical.pilot.src && git checkout token)
-                        #       pip install -t $VIRTENV/rp_install/ radical.pilot.src
+                        #       pip install -t $SANDBOX/rp_install/ radical.pilot.src
                         #       rm -rf radical.pilot.src
-                        #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
+                        #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
                         #
                         #   release: # no sdist staging
-                        #       pip install -t $VIRTENV/rp_install radical.pilot
-                        #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
+                        #       pip install -t $SANDBOX/rp_install radical.pilot
+                        #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
                         #
                         #   local: # needs sdist staging
-                        #       tar zxf $sdist.tgz
-                        #       pip install -t $VIRTENV/rp_install $sdist/
-                        #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
-                        #
-                        #   debug: # needs sdist staging
                         #       tar zxf $sdist.tgz
                         #       pip install -t $SANDBOX/rp_install $sdist/
                         #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
@@ -569,17 +572,20 @@ class PilotLauncherWorker(threading.Thread):
                         # above syntax is ignored, and the fallback stage@local
                         # is used.
 
-                        if  not rp_version.startswith('@') and \
-                            not rp_version in ['installed', 'local', 'debug']:
-                            raise ValueError("invalid rp_version '%s'" % rp_version)
-
-                        stage_sdist=True
-                        if rp_version in ['installed', 'release']:
-                            stage_sdist = False
+                        # 'debug' is deprecated now
+                        if rp_version == 'debug':
+                            logger.warn ("rp_version flag 'debug' is deprecated, use 'local'")
+                            rp_version = 'local'
 
                         if rp_version.startswith('@'):
-                            stage_sdist = False
-                            rp_version  = rp_version[1:]  # strip '@'
+                            rp_version = rp_version[1:]  # strip '@'
+
+                        elif rp_version not in ['installed', 'local']:
+                            raise ValueError("invalid rp_version '%s'" % rp_version)
+
+                        stage_sdist=False
+                        if rp_version in ['local']:
+                            stage_sdist = True
 
 
                         # ------------------------------------------------------
@@ -678,6 +684,9 @@ class PilotLauncherWorker(threading.Thread):
                         agent_cfg_dict['session_id']         = session_id
                         agent_cfg_dict['agent_launch_method']= agent_launch_method
                         agent_cfg_dict['task_launch_method'] = task_launch_method
+                        agent_cfg_dict['export_to_cu']       = export_to_cu
+                        agent_cfg_dict['cu_pre_exec']        = cu_pre_exec
+                        agent_cfg_dict['cu_post_exec']       = cu_post_exec
                         if mpi_launch_method:
                             agent_cfg_dict['mpi_launch_method']  = mpi_launch_method
                         if cores_per_node:
@@ -754,7 +763,7 @@ class PilotLauncherWorker(threading.Thread):
                                 #'%s < %s' % ('unit.000000/STDERR', 'unit.000000/STDERR')
 
                                 # TODO: This needs to go into a per pilot directory on the submit node
-                                '%s < %s' % ('pilot.0000.log.tgz', 'pilot.0000.log.tgz')
+                                '%s < %s' % ('%s.log.tgz' % pilot_id, '%s.log.tgz' % pilot_id)
                             ]
 
                             if stage_sdist:
@@ -772,7 +781,7 @@ class PilotLauncherWorker(threading.Thread):
 
                             if 'RADICAL_PILOT_PROFILE' in os.environ :
                                 # TODO: This needs to go into a per pilot directory on the submit node
-                                jd.file_transfer.append('%s < %s' % ('pilot.0000.prof.tgz', 'pilot.0000.prof.tgz'))
+                                jd.file_transfer.append('%s < %s' % ('%s.prof.tgz' % pilot_id, '%s.prof.tgz' % pilot_id))
 
                         # Set the SPMD variation only if required
                         if spmd_variation:

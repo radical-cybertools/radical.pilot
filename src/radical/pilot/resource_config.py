@@ -10,11 +10,11 @@ from radical.pilot.exceptions import *
 # ------------------------------------------------------------------------------
 # Attribute description keys
 LABEL                       = 'label'
+ENABLED                     = 'enabled'
 AGENT_LAUNCH_METHOD         = 'agent_launch_method'
 AGENT_MONGODB_ENDPOINT      = 'agent_mongodb_endpoint'
 AGENT_SCHEDULER             = 'agent_scheduler'
 AGENT_SPAWNER               = 'agent_spawner'
-AGENT_TYPE                  = 'agent_type'
 AGENT_CONFIG                = 'agent_config'
 CORES_PER_NODE              = 'cores_per_node'
 DEFAULT_QUEUE               = 'default_queue'
@@ -22,6 +22,7 @@ DEFAULT_REMOTE_WORKDIR      = 'default_remote_workdir'
 DESCRIPTION                 = 'description'
 FILESYSTEM_ENDPOINT         = 'filesystem_endpoint'
 FORWARD_TUNNEL_ENDPOINT     = 'forward_tunnel_endpoint'
+JOB_MANAGER_HOP             = 'job_manager_hop'
 JOB_MANAGER_ENDPOINT        = 'job_manager_endpoint'
 LRMS                        = 'lrms'
 MANDATORY_ARGS              = 'mandatory_args'
@@ -78,6 +79,14 @@ class ResourceConfig(attributes.Attributes):
     .. parameter:: label
 
        [Type: `string`] [**`mandatory`**] A unique label for this configuration. 
+
+    .. data:: enabled
+
+       [Type: `string`] [optional] enable (default) or disable a resource entry.
+
+    .. data:: remote_job_manager_hop
+
+       [Type: `string`] [optional] TODO
 
     .. data:: remote_job_manager_endpoint
 
@@ -206,11 +215,11 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_camelcasing (True)
 
         self._attributes_register(LABEL                  , label, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(ENABLED                ,  None, attributes.BOOL  , attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_LAUNCH_METHOD    ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_MONGODB_ENDPOINT ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_SCHEDULER        ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_SPAWNER          ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(AGENT_TYPE             ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_CONFIG           ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(CORES_PER_NODE         ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(DEFAULT_QUEUE          ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
@@ -218,6 +227,7 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(DESCRIPTION            ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(FILESYSTEM_ENDPOINT    ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(FORWARD_TUNNEL_ENDPOINT,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(JOB_MANAGER_HOP        ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(JOB_MANAGER_ENDPOINT   ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(LRMS                   ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(MANDATORY_ARGS         ,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
@@ -230,12 +240,12 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(PYTHON_INTERPRETER     ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(SCHEMAS                ,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(SPMD_VARIATION         ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(STAGE_CACERTS          ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(TASK_LAUNCH_METHOD     ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(TUNNEL_BIND_DEVICE     ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(VALID_ROOTS            ,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(VIRTENV                ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(VIRTENV_MODE           ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(STAGE_CACERTS          ,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(SHARED_FILESYSTEM      ,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(HEALTH_CHECK           ,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PYTHON_DISTRIBUTION    ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)

@@ -17,18 +17,18 @@ def usage(msg=None, noexit=False):
         print "\n      Error: %s" % msg
 
     print """
-      usage   : %s <sid> [-t target] [-d dburl] [-c client] [-a scheme://host] [-s] [-h]
+      usage   : %s <sid> [-t tgt] [-d dburl] [-c src] [-a schema://host] [-s] [-h]
       example : %s $SID -d mongodb://localhost/rp -t /tmp/
 
       options :
 
           sid : session ID for which to fetch profiles
-          -c  : location from where to fetch the client profiles
+          -c  : location from where to fetch the client profiles from
                 This defaults to $PWD
-          -a  : alternative agent sandbox access method (scheme://host)
+          -a  : alternative agent sandbox access method (schema://host)
           -t  : target dir to fetch profiles to
                 A sub-dir <sid>/ will be created there.
-                This defaults to $PWD
+                This defaults to $PWD/
           -d  : mongodb URL to fetch session info
                 Those infos are used to get the pilot locations from where the
                 profiles are to be fetched.
@@ -54,8 +54,8 @@ if __name__ == '__main__':
 
     parser.add_option('-a', '--access',  dest='access')
     parser.add_option('-d', '--dburl',   dest='dburl')
-    parser.add_option('-c', '--client',  dest='client')
-    parser.add_option('-t', '--target',  dest='target')
+    parser.add_option('-c', '--src',     dest='src')
+    parser.add_option('-t', '--tgt',     dest='tgt')
     parser.add_option('-s', '--skip',    dest='skip', action="store_true")
     parser.add_option('-h', '--help',    dest='help', action="store_true")
 
@@ -70,26 +70,21 @@ if __name__ == '__main__':
     if options.help:
         usage()
 
-    if not options.client:
-        options.client = os.getcwd()
-    if not options.target:
-        options.target = os.getcwd()
-    if not options.dburl:
-        options.dburl = None
-    if not options.access:
-        options.access = None
-    if not options.skip:
-        options.skip = False
+    if not options.src:    options.src    = os.getcwd()
+    if not options.tgt:    options.tgt    = os.getcwd()
+    if not options.dburl:  options.dburl  = None
+    if not options.access: options.access = None
+    if not options.skip:   options.skip   = False
 
-    sid = args[0]
-    client = options.client
-    target = options.target
-    dburl = options.dburl
+    sid    = args[0]
+    src    = options.src
+    tgt    = options.tgt
+    dburl  = options.dburl
     access = options.access
-    skip = options.skip
+    skip   = options.skip
 
-    target += '/%s' % sid
+    tgt += '/%s' % sid
+    rpu.fetch_profiles(sid=sid, dburl=dburl, src=src, tgt=tgt, access=access, skip_existing=skip)
 
-    rpu.fetch_profiles(sid=sid, dburl=dburl, client=client, tgt=target, access=access, skip_existing=skip)
 
 # ------------------------------------------------------------------------------

@@ -11,7 +11,6 @@
         },
         "default_queue"               : "standard",
         "lrms"                        : "PBSPRO",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_config"                : "default",
         "agent_spawner"               : "POPEN",
@@ -27,7 +26,7 @@
         "valid_roots"                 : ["/work"],
         "virtenv"                     : "/work/e290/shared/shared_pilot_ve_20150924/",
         "virtenv_mode"                : "use",
-        "rp_version"                  : "debug",
+        "rp_version"                  : "local",
         "python_dist"                 : "default"
     },
     "archer_orte": {
@@ -42,7 +41,6 @@
         },
         "default_queue"               : "standard",
         "lrms"                        : "PBSPRO",
-        "agent_type"                  : "multicore",
         "agent_config"                : "cray",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
@@ -61,7 +59,7 @@
         "valid_roots"                 : ["/work"],
         "virtenv"                     : "/work/e290/shared/shared_pilot_ve_20150924/",
         "virtenv_mode"                : "use",
-        "rp_version"                  : "debug",
+        "rp_version"                  : "local",
         "python_dist"                 : "default"
     }
 }

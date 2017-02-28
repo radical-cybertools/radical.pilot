@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import os
 import time
 
 import radical.utils as ru
@@ -13,18 +14,57 @@ from ... import constants as rpc
 
 from .base import AgentSchedulingComponent
 
+import cProfile
+import inspect
+import threading as mt
 
-# ==============================================================================
+
+# ------------------------------------------------------------------------------
 #
+cprof = cProfile.Profile()
+
+def cprof_it(func):
+    def wrapper(*args, **kwargs):
+            retval = cprof.runcall(func, *args, **kwargs)
+            return retval
+
+    return wrapper
+
+def dec_all_methods(dec):
+    def dectheclass(cls):
+        self_thread = mt.current_thread()
+        if self_thread.name == 'MainThread' and \
+                "CONTINUOUS" in os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "").split():
+            for name, m in inspect.getmembers(cls, inspect.ismethod):
+                setattr(cls, name, dec(m))
+        return cls
+    return dectheclass
+
+
+# ------------------------------------------------------------------------------
+#
+@dec_all_methods(cprof_it)
 class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
         self.slots = None
 
-        AgentSchedulingComponent.__init__(self, cfg)
+        AgentSchedulingComponent.__init__(self, cfg, session)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize_child(self):
+
+        if "CONTINUOUS" in os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "").split():
+            self_thread = mt.current_thread()
+            cprof.dump_stats("python-%s.profile" % self_thread.name)
+
+        # make sure that parent finalizers are called
+        AgentSchedulingComponent.finalize_child(self)
 
 
     # --------------------------------------------------------------------------
@@ -140,7 +180,7 @@ class Continuous(AgentSchedulingComponent):
 
         if not 'task_slots' in opaque_slots:
             raise RuntimeError('insufficient information to release slots via %s: %s' \
-                    % (self.name, opaque_slots))
+                    % (self.uid, opaque_slots))
 
         self._change_slot_states(opaque_slots['task_slots'], rpc.FREE)
 
@@ -272,10 +312,10 @@ class Continuous(AgentSchedulingComponent):
         # Convenience alias
         all_slots = self.slots
 
-        # logger.debug("change_slot_states: unit slots: %s", task_slots)
+        # self._log.debug("change_slot_states: unit slots: %s", task_slots)
 
         for slot in task_slots:
-            # logger.debug("change_slot_states: slot content: %s", slot)
+            # self._log.debug("change_slot_states: slot content: %s", slot)
             # Get the node and the core part
             [slot_node, slot_core] = slot.split(':')
             # Find the entry in the the all_slots list
