@@ -8,6 +8,8 @@ import fractions
 import tempfile
 import collections
 
+import radical.utils as ru
+
 
 # 'enum' for launch method types
 LM_NAME_APRUN         = 'APRUN'
@@ -21,10 +23,13 @@ LM_NAME_MPIRUN_CCMRUN = 'MPIRUN_CCMRUN'
 LM_NAME_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
 LM_NAME_MPIRUN_RSH    = 'MPIRUN_RSH'
 LM_NAME_ORTE          = 'ORTE'
+LM_NAME_ORTE_LIB      = 'ORTE_LIB'
 LM_NAME_POE           = 'POE'
 LM_NAME_RUNJOB        = 'RUNJOB'
+LM_NAME_RSH           = 'RSH'
 LM_NAME_SSH           = 'SSH'
 LM_NAME_YARN          = 'YARN'
+LM_NAME_SPARK         = 'SPARK'
 
 
 # ==============================================================================
@@ -33,11 +38,11 @@ class LaunchMethod(object):
 
     # List of environment variables that designated Launch Methods should export
     EXPORT_ENV_VARIABLES = [
-        'LD_LIBRARY_PATH',
-        'PATH',
-        'PYTHONPATH',
-        'PYTHON_DIR',
-        'RADICAL_PILOT_PROFILE'
+      # 'LD_LIBRARY_PATH',
+      # 'PATH',
+      # 'PYTHONPATH',
+      # 'PYTHON_DIR',
+      # 'RADICAL_PILOT_PROFILE'
     ]
 
     # --------------------------------------------------------------------------
@@ -88,10 +93,13 @@ class LaunchMethod(object):
         from .mpirun_dplace  import MPIRunDPlace
         from .mpirun_rsh     import MPIRunRSH
         from .orte           import ORTE
+        from .orte_lib       import ORTELib
         from .poe            import POE
         from .runjob         import Runjob
+        from .rsh            import RSH
         from .ssh            import SSH
         from .yarn           import Yarn
+        from .spark          import Spark
 
         try:
             impl = {
@@ -106,10 +114,13 @@ class LaunchMethod(object):
                 LM_NAME_MPIRUN_DPLACE : MPIRunDPlace,
                 LM_NAME_MPIRUN_RSH    : MPIRunRSH,
                 LM_NAME_ORTE          : ORTE,
+                LM_NAME_ORTE_LIB      : ORTELib,
                 LM_NAME_POE           : POE,
                 LM_NAME_RUNJOB        : Runjob,
+                LM_NAME_RSH           : RSH,
                 LM_NAME_SSH           : SSH,
-                LM_NAME_YARN          : Yarn
+                LM_NAME_YARN          : Yarn,
+                LM_NAME_SPARK         : Spark
             }[name]
             return impl(cfg, session)
 
@@ -138,11 +149,13 @@ class LaunchMethod(object):
         from .fork           import Fork
         from .orte           import ORTE
         from .yarn           import Yarn
+        from .spark          import Spark
 
         impl = {
             LM_NAME_FORK          : Fork,
             LM_NAME_ORTE          : ORTE,
-            LM_NAME_YARN          : Yarn
+            LM_NAME_YARN          : Yarn,
+            LM_NAME_SPARK         : Spark
         }.get(name)
 
         if not impl:
@@ -168,10 +181,12 @@ class LaunchMethod(object):
 
         from .orte           import ORTE
         from .yarn           import Yarn
+        from .spark          import Spark
 
         impl = {
             LM_NAME_ORTE          : ORTE,
-            LM_NAME_YARN          : Yarn
+            LM_NAME_YARN          : Yarn,
+            LM_NAME_SPARK         : Spark
         }.get(name)
 
         if not impl:
@@ -198,42 +213,20 @@ class LaunchMethod(object):
     #
     @classmethod
     def _find_executable(cls, names):
-        """Takes a (list of) name(s) and looks for an executable in the path.
+        """
+        Takes a (list of) name(s) and looks for an executable in the path.  It
+        will return the first match found, or `None` if none of the given names
+        is found.
         """
 
         if not isinstance(names, list):
             names = [names]
 
         for name in names:
-            ret = cls._which(name)
-            if ret is not None:
+            ret = ru.which(name)
+            if ret:
                 return ret
 
-        return None
-
-
-    # --------------------------------------------------------------------------
-    #
-    @classmethod
-    def _which(cls, program):
-        """Finds the location of an executable.
-        Taken from:
-        http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python
-        """
-        # ----------------------------------------------------------------------
-        #
-        def is_exe(fpath):
-            return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
-
-        fpath, _ = os.path.split(program)
-        if fpath:
-            if is_exe(program):
-                return program
-        else:
-            for path in os.environ["PATH"].split(os.pathsep):
-                exe_file = os.path.join(path, program)
-                if is_exe(exe_file):
-                    return exe_file
         return None
 
 
@@ -311,6 +304,16 @@ class LaunchMethod(object):
             for arg in args:
                 if not arg:
                     # ignore empty args
+                    continue
+
+                if arg in ['>', '>>', '<', '<<', '|', '||', '&&', '&']:
+                    # Don't quote shell direction arguments, etc.
+                    arg_string += '%s ' % arg
+                    continue
+
+                if any([c in arg for c in ['?', '*']]):
+                    # Don't quote arguments with wildcards
+                    arg_string += '%s ' % arg
                     continue
 
                 arg = arg.replace('"', '\\"')    # Escape all double quotes

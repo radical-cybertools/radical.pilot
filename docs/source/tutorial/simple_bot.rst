@@ -13,14 +13,11 @@ The simplest usage of a pilot-job system is to submit multiple identical tasks
 (a 'Bag of Tasks' / 'BoT') collectively, i.e. as one big job! Such usage arises 
 for example to perform parameter sweep jobs, or to execute ensemble simulation.
 
-We will create an example which submits `N` jobs using RADICAL-Pilot. The jobs are
+We will create an example which submits `N` tasks using RADICAL-Pilot. The tasks are
 all identical, except that they each record their number in their output. This
 type of run is very useful if you are running many jobs using the same
 executable (but perhaps with different input files).  Rather than submit each job
-individually to the queuing system and then wait for every job to become active
-and complete, you submit just one container job (called a Pilot) that reserves
-the number of cores needed to run all of your jobs. When this pilot becomes
-active, it executes your tasks on the reserved cores.  RADICAL-Pilot names such 
+individually to the queuing system and then wait for every job to become active individually, you submit just one container job (called the Pilot). When this pilot becomes active, it executes your tasks on the reserved cores.  RADICAL-Pilot names such 
 tasks 'Compute Units', or short 'CUs'.
 
 ------------

@@ -3,6 +3,9 @@
 # specified.  It contains the minimal set of settings required for
 # a functional rp session, both on the client and on the agent side.
 {
+    # fallback db url
+    "default_dburl"      : "mongodb://rp:rp@ds015335.mlab.com:15335/rp",
+
     # time between consecutive heartbeats
     "heartbeat_interval" : 100,
 

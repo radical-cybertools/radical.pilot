@@ -14,14 +14,14 @@ import sys
 import shutil
 import subprocess as sp
 
+name     = 'radical.pilot'
+mod_root = 'src/radical/pilot/'
+
 try:
     from setuptools import setup, Command, find_packages
 except ImportError as e:
-    print("radical.pilot needs setuptools to install")
+    print("%s needs setuptools to install" % name)
     sys.exit(1)
-
-name     = 'radical.pilot'
-mod_root = 'src/radical/pilot/'
 
 # ------------------------------------------------------------------------------
 #
@@ -275,18 +275,19 @@ setup_args = {
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', 'VERSION', 'SDIST', sdist_name]},
     'cmdclass'           : {
         'test'           : our_test,
-    },
-    'install_requires'   : ['saga-python',
-                            'radical.utils',
+                           },
+    'install_requires'   : ['saga-python>=0.44',
+                            'radical.utils>=0.44',
                             'pymongo==2.8',
                             'python-hostlist',
-                            'netifaces',
+                            'netifaces==0.10.4',
                             'setproctitle',
                             'ntplib',
                             'msgpack-python',
-                            'pyzmq'],
+                            'pyzmq'
+                           ],
     'tests_require'      : [],
-    'test_suite'         : 'radical.pilot.tests',
+    'test_suite'         : '%s.tests' % name,
     'zip_safe'           : False,
 #   'build_sphinx'       : {
 #       'source-dir'     : 'docs/',
@@ -297,16 +298,16 @@ setup_args = {
 #       'upload-dir'     : 'docs/build/html',
 #   }
     # This copies the contents of the examples/ dir under
-    # sys.prefix/share/radical.pilot.
+    # sys.prefix/share/$name
     # It needs the MANIFEST.in entries to work.
-    'data_files'         : makeDataFiles('share/radical.pilot/examples/', 'examples'),
+    'data_files'         : makeDataFiles('share/%s/examples/' % name, 'examples'),
 }
 
 # ------------------------------------------------------------------------------
 
 setup (**setup_args)
 
-os.system('rm -rf src/radical.pilot.egg-info')
+os.system('rm -rf src/%s.egg-info' % name)
 
 # ------------------------------------------------------------------------------
 

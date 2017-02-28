@@ -14,9 +14,6 @@ import radical.utils   as ru
 from ..          import constants      as rpc
 from ..          import states         as rps
 
-from .misc       import hostip
-from .prof_utils import timestamp      as rpu_timestamp
-
 from .queue      import Queue          as rpu_Queue
 from .queue      import QUEUE_OUTPUT   as rpu_QUEUE_OUTPUT
 from .queue      import QUEUE_INPUT    as rpu_QUEUE_INPUT
@@ -42,6 +39,16 @@ def _sigusr2_handler(signum, frame):
   # print 'caught sigusr2'
     raise KeyboardInterrupt('sigusr2')
 
+import cProfile
+class ProfiledThread(mt.Thread):
+    # Overrides threading.Thread.run()
+    def run(self):
+        profiler = cProfile.Profile()
+        try:
+            return profiler.runcall(mt.Thread.run, self)
+        finally:
+            self_thread = mt.current_thread()
+            profiler.dump_stats('python-%s.profile' % (self_thread.name))
 
 # ==============================================================================
 #
@@ -1199,12 +1206,19 @@ class Component(mp.Process):
             if name in self._subscribers:
                 raise ValueError('cb %s already registered for %s' % (cb.__name__, pubsub))
 
+            if pubsub in os.getenv("RADICAL_PILOT_CPROFILE_SUBSCRIBERS", "").split():
+                ttype = ProfiledThread
+                tname = name="%s-%s.subscriber" % (self.uid, pubsub)
+            else:
+                ttype = mt.Thread
+                tname = name="%s.subscriber" % self.uid
+
             # create a pubsub subscriber (the pubsub name doubles as topic)
             q = rpu_Pubsub(self._session, pubsub, rpu_PUBSUB_SUB, self._cfg, addr=addr)
             q.subscribe(pubsub)
 
             e = mt.Event()
-            t = mt.Thread(target=_subscriber, args=[q,e,cb,cb_data], name=name)
+            t = ttype(target=_subscriber, args=[q,e,cb,cb_data], name=tname)
             t.start()
 
             self._subscribers[name] = {'term'   : e,  # termination signal
@@ -1270,16 +1284,24 @@ class Component(mp.Process):
         signal.signal(signal.SIGTERM, _sigterm_handler)
         signal.signal(signal.SIGUSR2, _sigusr2_handler)
 
+
         try:
             # we don't have a child, we *are* the child
             self._is_parent = False
             self._uid       = self._child_uid
-
+        
             spt.setproctitle('rp.%s' % self.uid)
 
             # this is now the child process context
             self._initialize_common()
             self._initialize_child()
+
+            if os.path.isdir(self._session.uid):
+                sys.stdout = open("%s/%s.out" % (self._session.uid, self.uid), "w")
+                sys.stderr = open("%s/%s.err" % (self._session.uid, self.uid), "w")
+            else:
+                sys.stdout = open("%s.out" % self.uid, "w")
+                sys.stderr = open("%s.err" % self.uid, "w")
 
             self._log.debug('START: %s run', self.uid)
 
@@ -1420,15 +1442,12 @@ class Component(mp.Process):
         """
 
         if not timestamp:
-            timestamp = rpu_timestamp()
+            timestamp = time.time()
 
         if not isinstance(things, list):
             things = [things]
 
         self._log.debug(' === advance bulk size: %s [%s, %s]', len(things), push, publish)
-
-        target = state
-        state  = None
 
         # assign state, sort things by state
         buckets = dict()
@@ -1440,18 +1459,16 @@ class Component(mp.Process):
             if ttype not in ['unit', 'pilot']:
                 raise TypeError("thing has unknown type (%s)" % uid)
 
-            if target:
+            if state:
                 # state advance done here
-                thing['state'] = target
-
-            state = thing['state']
+                thing['state'] = state
 
             self._log.debug(' === advance bulk: %s [%s]', uid, len(things))
-            self._prof.prof('advance', uid=uid, state=state, timestamp=timestamp)
+            self._prof.prof('advance', uid=uid, state=thing['state'], timestamp=timestamp)
 
-            if not state in buckets:
-                buckets[state] = list()
-            buckets[state].append(thing)
+            if not thing['state'] in buckets:
+                buckets[thing['state']] = list()
+            buckets[thing['state']].append(thing)
 
         # should we publish state information on the state pubsub?
         if publish:
@@ -1466,16 +1483,16 @@ class Component(mp.Process):
                     del(thing['$all'])
                     to_publish.append(thing)
 
-                elif state in rps.FINAL:
+                elif thing['state'] in rps.FINAL:
                     to_publish.append(thing)
 
                 else:
                     to_publish.append({'uid'   : thing['uid'],
                                        'type'  : thing['type'],
-                                       'state' : state})
+                                       'state' : thing['state']})
 
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'update', 'arg': to_publish})
-            ts = rpu_timestamp()
+            ts = time.time()
             for thing in things:
                 self._prof.prof('publish', uid=thing['uid'], state=thing['state'], timestamp=ts)
 
@@ -1491,51 +1508,49 @@ class Component(mp.Process):
             # the push target depends on the state of things, so we need to sort
             # the things into buckets by state before pushing them
             # now we can push the buckets as bulks
-            for state,things in buckets.iteritems():
+            for _state,_things in buckets.iteritems():
 
-                self._log.debug(" === bucket: %s : %s", state, [t['uid'] for t in things])
+                self._log.debug("bucket: %s : %s", _state, [t['uid'] for t in _things])
 
-                if state in rps.FINAL:
+                if _state in rps.FINAL:
                     # things in final state are dropped
-                    for thing in things:
-                        self._log.debug('push %s ===| %s', thing['uid'], thing['state'])
+                    for thing in _things:
+                        self._log.debug('push %s ===| %s', thing['uid'], _state)
                     continue
 
-                if state not in self._outputs:
+                if _state not in self._outputs:
                     # unknown target state -- error
                     self._log.error("%s", ru.get_stacktrace())
-                    self._log.error("%s can't route state for %s: %s (%s)" \
-                            % (self.uid, things[0]['uid'], state, self._outputs.keys()))
-
+                    self._log.error("%s can't route state %s (%s)" \
+                                 % (self.uid, _state, self._outputs.keys()))
                     continue
 
-                if not self._outputs[state]:
+                if not self._outputs[_state]:
                     # empty output -- drop thing
-                    for thing in things:
-                        self._log.debug('%s %s ~~~| %s' % ('push', thing['uid'], thing['state']))
+                    for thing in _things:
+                        self._log.debug('%s %s ~~~| %s', 'push', thing['uid'], _state)
                     continue
 
-                output = self._outputs[state]
+                output = self._outputs[_state]
 
                 # push the thing down the drain
                 # FIXME: we should assert that the things are in a PENDING state.
                 #        Better yet, enact the *_PENDING transition right here...
-                self._log.debug(' === put bulk %s: %s', state, len(things))
-                output.put(things)
+                self._log.debug(' === put bulk %s: %s', _state, len(_things))
+                output.put(_things)
 
-                ts = rpu_timestamp()
-                for thing in things:
+                ts = time.time()
+                for thing in _things:
                     
                     # never carry $all across component boundaries!
                     if '$all' in thing:
                         del(thing['$all'])
 
-                    uid   = thing['uid']
-                    state = thing['state']
+                    uid = thing['uid']
 
-                    self._log.debug('push %s ---> %s', uid, state)
-                    self._prof.prof('put', uid=uid, state=state,
-                            msg=output.name, timestamp=ts)
+                    self._log.debug('push %s ---> %s', uid, _state)
+                    self._prof.prof('put', uid=uid, state=_state,
+                                    msg=output.name, timestamp=ts)
 
 
     # --------------------------------------------------------------------------

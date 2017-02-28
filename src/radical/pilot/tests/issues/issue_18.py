@@ -67,7 +67,7 @@ class TestIssue18(unittest.TestCase):
 
         pilot = pm.submit_pilots(pilot_descriptions=cpd)
 
-        pilot.wait(state=radical.pilot.ACTIVE, timeout=5*60)
+        pilot.wait(state=radical.pilot.PMGR_ACTIVE, timeout=5*60)
 
         # Now we extract the saga job id from the logs and KILL THE PROCESS
         saga_id = None

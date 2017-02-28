@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import radical.utils as ru
 
 from .base import LaunchMethod
 
@@ -23,7 +24,7 @@ class Runjob(LaunchMethod):
     #
     def _configure(self):
         # runjob: job launcher for IBM BG/Q systems, e.g. Joule
-        self.launch_command= self._which('runjob')
+        self.launch_command= ru.which('runjob')
 
         raise NotImplementedError('RUNJOB LM needs to be decoupled from the scheduler/LRMS')
 
