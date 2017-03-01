@@ -544,6 +544,7 @@ class Default(PMGRLaunchingComponent):
         # ------------------------------------------------------------------
         # pilot description and resource configuration
         number_cores    = pilot['description']['cores']
+        number_gpus     = pilot['description']['gpus']
         runtime         = pilot['description']['runtime']
         queue           = pilot['description']['queue']
         project         = pilot['description']['project']
@@ -571,6 +572,7 @@ class Default(PMGRLaunchingComponent):
         virtenv_mode            = rcfg.get('virtenv_mode',        DEFAULT_VIRTENV_MODE)
         virtenv                 = rcfg.get('virtenv',             DEFAULT_VIRTENV)
         cores_per_node          = rcfg.get('cores_per_node', 0)
+        gpus_per_node           = rcfg.get('gpus_per_node',  0)
         health_check            = rcfg.get('health_check', True)
         python_dist             = rcfg.get('python_dist')
         spmd_variation          = rcfg.get('spmd_variation')
@@ -763,6 +765,13 @@ class Default(PMGRLaunchingComponent):
             number_cores   = int(cores_per_node
                            * math.ceil(float(number_cores)/cores_per_node))
 
+        # if gpus_per_node is set (!= None), then we need to
+        # allocation full nodes, and thus round up
+        if gpus_per_node:
+            gpus_per_node = int(gpus_per_node)
+            number_gpus   = int(gpus_per_node
+                           * math.ceil(float(number_gpus)/gpus_per_node))
+
         # set mandatory args
         bootstrap_args  = ""
         bootstrap_args += " -d '%s'" % ':'.join(sdist_names)
@@ -801,6 +810,7 @@ class Default(PMGRLaunchingComponent):
 
         agent_cfg['owner']              = 'agent_0'
         agent_cfg['cores']              = number_cores
+        agent_cfg['gpus']               = number_gpus
         agent_cfg['debug']              = os.environ.get('RADICAL_PILOT_AGENT_VERBOSE', 
                                                          self._log.getEffectiveLevel())
         agent_cfg['lrms']               = lrms
@@ -816,6 +826,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['task_launch_method'] = task_launch_method
         agent_cfg['mpi_launch_method']  = mpi_launch_method
         agent_cfg['cores_per_node']     = cores_per_node
+        agent_cfg['gpus_per_node']      = gpus_per_node
 
         # we'll also push the agent config into MongoDB
         pilot['cfg'] = agent_cfg
@@ -902,6 +913,7 @@ class Default(PMGRLaunchingComponent):
         jd.error                 = "bootstrap_1.err"
         jd.total_cpu_count       = number_cores
         jd.processes_per_host    = cores_per_node
+        jd.gpus                  = number_gpus
         jd.spmd_variation        = spmd_variation
         jd.wall_time_limit       = runtime
         jd.total_physical_memory = memory

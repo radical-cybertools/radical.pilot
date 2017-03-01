@@ -13,6 +13,7 @@ RESOURCE          = 'resource'
 ACCESS_SCHEMA     = 'access_schema'
 QUEUE             = 'queue'
 CORES             = 'cores'
+GPUD              = 'gpus'
 MEMORY            = 'memory'
 SANDBOX           = 'sandbox'
 OUTPUT            = 'output'
@@ -138,6 +139,7 @@ class ComputePilotDescription(attributes.Attributes):
         self._attributes_register    (RUNTIME,          None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (SANDBOX,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (CORES,            None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (GPUS,             None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (MEMORY,           None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (QUEUE,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (PROJECT,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
@@ -154,6 +156,7 @@ class ComputePilotDescription(attributes.Attributes):
         self.set_attribute (RUNTIME,          None)
         self.set_attribute (SANDBOX,          None)
         self.set_attribute (CORES,            None)
+        self.set_attribute (GPUS,             None)
         self.set_attribute (MEMORY,           None)
         self.set_attribute (QUEUE,            None)
         self.set_attribute (PROJECT,          None)
@@ -166,10 +169,9 @@ class ComputePilotDescription(attributes.Attributes):
         if from_dict:
             self.from_dict(from_dict)
 
-            if RESOURCE in from_dict and CORES in from_dict:
-                logger.report.plain(' [%s:%s]' % (from_dict[RESOURCE], from_dict[CORES]))
-            elif RESOURCE in from_dict:
-                logger.report.plain(' [%s]' % from_dict[RESOURCE])
+            logger.report.plain('[%s:%s:%s]' % (from_dict.get(RESOURCE, ''), 
+                                                from_dict.get(CORES,     1), 
+                                                from_dict.get(GPUS,      0)))
 
         logger.report.ok('>>ok\n')
 

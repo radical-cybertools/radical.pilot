@@ -12,6 +12,7 @@ EXECUTABLE             = 'executable'
 ARGUMENTS              = 'arguments'
 ENVIRONMENT            = 'environment'
 CORES                  = 'cores'
+GPUS                   = 'gpus'
 INPUT_STAGING          = 'input_staging'
 OUTPUT_STAGING         = 'output_staging'
 MPI                    = 'mpi'
@@ -151,6 +152,7 @@ class ComputeUnitDescription(attributes.Attributes):
 
         # resource requirements
         self._attributes_register(CORES,            None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(GPUS,             None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(MPI,              None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
       # self._attributes_register(CPU_ARCHITECTURE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
       # self._attributes_register(OPERATING_SYSTEM, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
@@ -174,6 +176,7 @@ class ComputeUnitDescription(attributes.Attributes):
         self.set_attribute (INPUT_STAGING,  None)
         self.set_attribute (OUTPUT_STAGING, None)
         self.set_attribute (CORES,             1)
+        self.set_attribute (GPUS,              0)
         self.set_attribute (MPI,           False)
         self.set_attribute (RESTARTABLE,   False)
         self.set_attribute (CLEANUP,       False)
