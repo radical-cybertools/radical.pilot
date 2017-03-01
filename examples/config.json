@@ -236,6 +236,14 @@
         "queue"    : null,
         "schema"   : "ssh",
         "cores"    : 16
+    }, 
+
+    "fub.allegro"   : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 36,
+        "gpus"     : 12
     }
 }
 
