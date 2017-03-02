@@ -912,8 +912,8 @@ class Default(PMGRLaunchingComponent):
         jd.output                = "bootstrap_1.out"
         jd.error                 = "bootstrap_1.err"
         jd.total_cpu_count       = number_cores
+        jd.total_gpu_count       = number_gpus
         jd.processes_per_host    = cores_per_node
-        jd.gpus                  = number_gpus
         jd.spmd_variation        = spmd_variation
         jd.wall_time_limit       = runtime
         jd.total_physical_memory = memory
