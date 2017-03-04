@@ -97,7 +97,7 @@ class Kafka(LaunchMethod):
             spark_env_file.write('export SPARK_MASTER_IP=' + master_ip + "\n")
             spark_env_file.write('export JAVA_HOME=' + java_home + "\n")
             spark_env_file.write('export SPARK_LOG_DIR='+os.getcwd()+'/spark-logs'+'\n')
-            spark_env_file.write('export PYSPARK_PYTHON=`which python`  \n')
+            #spark_env_file.write('export PYSPARK_PYTHON=`which python`  \n')
             spark_env_file.close()
 
             #### Start spark Cluster
@@ -124,7 +124,7 @@ class Kafka(LaunchMethod):
                              'launch_command': launch_command,
                              'nodename'      : lrms.node_list[0],
                              'spark_download': spark_startup,
-                             'cluster_startup': spark_start, 
+                             'cluster_startup': spark_start,
                              }
 
             return spark_lm_info
@@ -153,7 +153,9 @@ class Kafka(LaunchMethod):
 
         logger.info("Downloading Apache Kafka..")
         try:
+            kafka_download = time()
             subprocess.check_call('wget http://mirror.cc.columbia.edu/pub/software/apache/kafka/0.8.2.1/kafka_2.11-0.8.2.1.tgz'.split())
+            kafka_download = time() - kafka_download
             subprocess.check_call('tar -zxf kafka_2.11-0.8.2.1.tgz'.split())
             subprocess.check_call('rm kafka_2.11-0.8.2.1.tgz'.split())
             kafka_home = os.getcwd() + '/kafka_2.11-0.8.2.1'
@@ -189,67 +191,46 @@ class Kafka(LaunchMethod):
         os.system('mkdir -p ' + path)
         logger.info("Zookeeper dataDir: %s \n"  % path)
 
-
+        kafka_start = time()
         ## fix zookeeper properties 
         zk_properties_file = open(kafka_home + '/config/zookeeper.properties','w')
-        # unit for measuments properites, like heartbeats and timeouts.
-        tickTime = 2000
-        zk_properties_file.write('tickTime = %d \n' % tickTime)
-        dataDir = kafka_home + '/tmp/zookeeper/data'   
+        dataDir = kafka_home + '/tmp/zookeeper/data'
         zk_properties_file.write('dataDir=%s \n' % dataDir )
-        clientPort = 2181  
-        #TODO: add only odd number of zk nodes to satisfy quorum 
+        clientPort = 2181
         zk_properties_file.write('clientPort = %d \n' % clientPort)
-
-        #add these lines for multinode zk setup and remove the next one
-        #for i, nodename in enumerate(lrms.node_list):
-        #    zk_properties_file.write('server.' + str(i)  + '=' + nodename + ':2888:3888\n') #+ '    #ex. server.1=c242.stampede:2888:3888
-
-        zk_properties_file.write('server' + '=' + lrms.node_list[0] + '\n')
-        # initial limits : tick_time/init_limit (s)  . it is the amount time that takes zk  follower to connect to a leader initially when a cluster is started
-        initLimit = 5
-        zk_properties_file.write('initLimit = %d \n' % initLimit)
-        syncLimit = 23
-        zk_properties_file.write('syncLimit = %d \n' % syncLimit)
         maxClientCnxns = 0
-        #zk_properties_file.write('maxClientCnxns = %d \n' % maxClientCnxns)  ## TODO: fix this
+        zk_properties_file.write('maxClientCnxns = %d \n' % maxClientCnxns)
         zk_properties_file.close()
 
-        # prp na kanw copy paste afto to arxeio se kane node kai na alla3w to clientPort kai to dataDir
-        # for i in xrange(len(lrms.node_list)):
-        #     newDir =  dataDir + '/' + str(i+1)
-        #     os.system('mkdir  -p' + newDir)
-        #     os.system('echo ' + str(i+1)  + ' . ' + newDir + 'myid')
+        machine_name = subprocess.check_output('hostname --d'.split()).strip()
 
+        nodenames_string = lrms.node_list[0]+ '.'  + machine_name  + ':2181'   #TODO: this is for zk
 
-
-        nodenames_string = lrms.node_list[0]  + ':2181'   #TODO: this is for zk
-        
-        brokers_url = ''
         ports = 9092 #this is the first port
         #setup configuration of kafka for multibroker cluster 
         for i,nodename in enumerate(lrms.node_list):
             try:
                 os.system('cp ' + kafka_home +'/config/server.properties ' + kafka_home + '/config/server.properties_%d' % i)
-                vars = ['broker.id','port','log.dirs','zookeeper.connect' ]
-                new_values = [str(i),str(ports),'tmp/kafka-logs-'+str(i), nodenames_string]
+                vars = ['port','broker.id','log.dirs','zookeeper.connect' ]
+                new_values = [str(ports),str(i),'tmp/kafka-logs-'+str(i), nodenames_string]
                 what_to_change = dict(zip(vars,new_values))
-                ports+=1
                 filename = kafka_home + '/config/server.properties_' + str(i)
                 updating(filename,what_to_change)
                 with open(filename,'a') as f:
                     f.write('\n ## added by Radical-Pilot  ## \n')
-                    #f.write('host.name=%s\n' % nodename )  
                     f.write('delete.topic.enable = true\n')
-                    f.write('listeners=PLAINTEXT://%s:%d\n' % (nodename,ports))
-                    f.write('advertised.listeners=PLAINTEXT://%s:%d\n' % (nodename,ports))
+                    #f.write('listeners=PLAINTEXT://%s:%d\n' % (nodename,ports))
+                    #f.write('advertised.listeners=PLAINTEXT://%s:%d\n' % (nodename,ports))
+                    full_hostname = nodename.strip() + '.' + machine_name
+                    f.write('host.name=%s\n' % full_hostname)
+        #            ports+=1
             except Exception as e:
                 raise RuntimeError(e)
 
 
         #### Start Zookeeper Cluster Service
         zk_properties_path = os.path.join(kafka_home, 'config/zookeeper.properties')
-        logger.info('Zk properties path: %s  \n' % zk_properties_path ) 
+        logger.info('Zk properties path: %s  \n' % zk_properties_path )
 
 
         logger.info('Starting Zookeeper service..')
@@ -262,42 +243,45 @@ class Kafka(LaunchMethod):
         logger.info('Starting Kafka service..')
         try:
             for i,nodename in enumerate(lrms.node_list):
-                os.system(kafka_home + '/bin/kafka-server-start.sh' + '  -daemon  ' + kafka_home + '/config/server.properties_%d' %i )
+                os.system( 'ssh ' + nodename.strip() + ' ' + kafka_home + '/bin/kafka-server-start.sh'\
+                        + '  -daemon  ' + kafka_home + '/config/server.properties_%d' %i )
         except Exception as e:
             raise RuntimeError("Kafka service failed to start: %s" % e)
+
+        zk_kafka_startup = time() - zk_kafka_startup
+        kafka_start = time() - kafka_start
 
         launch_command = kafka_home + '/bin'
 
         zookeeper_url_string = nodenames_string
         
         spark_startup = 0
-        #zk_kafka_startup = time() - zk_kafka_startup  TODO: remove that
         
         spark_lm_info = lrms_apache_spark()
         zk_kafka_startup = str(datetime.datetime.now())   #TODO: remove this line
+
         pilot_startup = {'spark': spark_startup, 'zk_kafka': zk_kafka_startup}
 
-        lm_detail_dict = {'zk_url': zookeeper_url_string,
-                          'brokers': lrms.node_list, 
-                          'spark_download': spark_lm_info['spark_download'],
-                          'spark_master': spark_lm_info['lm_detail'],
-                          'startup_times' : pilot_startup,
+        lm_detail_dict = {'zk_url'         : zookeeper_url_string,
+                          'brokers'        : lrms.node_list,
+                          'spark_download' : spark_lm_info['spark_download'],
+                          'spark_master'   : spark_lm_info['lm_detail'],
+                          'startup_times'  : pilot_startup,
                           'cluster_startup': spark_lm_info['cluster_startup'],
+                          'zk_startup'     : kafka_start,
+                          'zk_download'    : kafka_download,
                           }
 
 
 
 
-        
-
-          
         # The LRMS instance is only available here -- everything which is later
         # needed by the scheduler or launch method is stored in an 'lm_info'
         # dict.  That lm_info dict will be attached to the scheduler's lrms_info
         # dict, and will be passed around as part of the opaque_slots structure,
         # so it is available on all LM create_command calls.
         lm_info = {'kafka_home'    : kafka_home,
-                   'lm_detail'     : lm_detail_dict,       
+                   'lm_detail'     : lm_detail_dict,
                    'zk_url'        : zookeeper_url_string,
                    'name'          : lrms.name,
                    'launch_command': launch_command,
