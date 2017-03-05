@@ -78,50 +78,51 @@
         "virtenv_mode"                : "create",
         "stage_cacerts"               : "True",
         "python_dist"                 : "default"
-    # },
-    # "titan_lib": {
-    #     "description"                 : "The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/titan/)",
-    #     "notes"                       : "Requires the use of an RSA SecurID on every connection.",
-    #     "schemas"                     : ["ssh", "local", "go"],
-    #     "ssh"                         : {
-    #         "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
-    #         "filesystem_endpoint"     : "sftp://titan.ccs.ornl.gov/"
-    #     },
-    #     "local"                       : {
-    #         "job_manager_endpoint"    : "torque://localhost",
-    #         "filesystem_endpoint"     : "file://localhost/"
-    #     },
-    #     "go"                          : {
-    #         "job_manager_endpoint"    : "pbs+ssh://titan.ccs.ornl.gov",
-    #         "filesystem_endpoint"     : "go://olcf#dtn/"
-    #     },
-    #     "default_queue"               : "batch",
-    #     "lrms"                        : "TORQUE",
-    #     "agent_type"                  : "multicore",
-    #     "agent_config"                : "cray",
-    #     "agent_scheduler"             : "CONTINUOUS",
-    #     "agent_spawner"               : "ORTE",
-    #     "agent_launch_method"         : "ORTE",
-    #     "task_launch_method"          : "ORTE_LIB",
-    #     "mpi_launch_method"           : "ORTE_LIB",
-    #     "pre_bootstrap_1"             : [
-    #         "module swap PrgEnv-pgi PrgEnv-gnu",
-    #         "module use --append /lustre/atlas/world-shared/bip103/modules",
-    #         "module load openmpi/STATIC",
-    #         "module load python",
-    #         # Workaround for ZMQ runtime failure
-    #         "export LD_PRELOAD=/lib64/librt.so.1",
-    #         # Workaround for missing system libffi-devel
-    #         "export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/lustre/atlas/world-shared/bip103/ffi/pkgconfig",
-    #         # Workaround for timer issue
-    #         "export OMPI_MCA_timer_require_monotonic=false"
-    #     ],
-    #     "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
-    #     "valid_roots"                 : ["/lustre/atlas/scratch"],
-    #     "rp_version"                  : "debug",
-    #     "virtenv"                     : "%(global_sandbox)s/ve_titan",
-    #     "virtenv_mode"                : "create",
-    #     "stage_cacerts"               : "True",
-    #     "python_dist"                 : "default"
+    },
+    "titan_lib": {
+        "enabled"                     : false,
+        "description"                 : "The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/titan/)",
+        "notes"                       : "Requires the use of an RSA SecurID on every connection.",
+        "schemas"                     : ["ssh", "local", "go"],
+        "ssh"                         : {
+            "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
+            "filesystem_endpoint"     : "sftp://titan.ccs.ornl.gov/"
+        },
+        "local"                       : {
+            "job_manager_endpoint"    : "torque://localhost",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "go"                          : {
+            "job_manager_endpoint"    : "pbs+ssh://titan.ccs.ornl.gov",
+            "filesystem_endpoint"     : "go://olcf#dtn/"
+        },
+        "default_queue"               : "batch",
+        "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
+        "agent_config"                : "cray",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "ORTE",
+        "agent_launch_method"         : "ORTE",
+        "task_launch_method"          : "ORTE_LIB",
+        "mpi_launch_method"           : "ORTE_LIB",
+        "pre_bootstrap_1"             : [
+            "module swap PrgEnv-pgi PrgEnv-gnu",
+            "module use --append /lustre/atlas/world-shared/bip103/modules",
+            "module load openmpi/STATIC",
+            "module load python",
+            # Workaround for ZMQ runtime failure
+            "export LD_PRELOAD=/lib64/librt.so.1",
+            # Workaround for missing system libffi-devel
+            "export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/lustre/atlas/world-shared/bip103/ffi/pkgconfig",
+            # Workaround for timer issue
+            "export OMPI_MCA_timer_require_monotonic=false"
+        ],
+        "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
+        "valid_roots"                 : ["/lustre/atlas/scratch"],
+        "rp_version"                  : "debug",
+        "virtenv"                     : "%(global_sandbox)s/ve_titan",
+        "virtenv_mode"                : "create",
+        "stage_cacerts"               : "True",
+        "python_dist"                 : "default"
     }
 }

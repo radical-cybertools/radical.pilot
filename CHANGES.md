@@ -5,6 +5,16 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.45.1 Release                                                        2017-03-05
+--------------------------------------------------------------------------------
+
+  - NOTE: OSG and ORTE_LIB on titan are considered unsupported.  You can enable
+          those resources for experiments by setting the `enabled` keys in the
+          respective config entries to `true`.
+
+  - hotfix the configurations markers above
+
+
 0.45 Release                                                          2017-02-28
 --------------------------------------------------------------------------------
 
