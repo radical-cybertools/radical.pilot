@@ -243,6 +243,13 @@
         "queue"    : "express",
         "schema"   : "ssh",
         "cores"    : 4
+    },
+
+    "das5.fs1"   : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 1
     }
 }
 
