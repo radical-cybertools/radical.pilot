@@ -236,6 +236,13 @@
         "queue"    : null,
         "schema"   : "ssh",
         "cores"    : 16
+    },
+
+    "lumc.gb-ui"   : {
+        "project"  : null,
+        "queue"    : "express",
+        "schema"   : "ssh",
+        "cores"    : 4
     }
 }
 
