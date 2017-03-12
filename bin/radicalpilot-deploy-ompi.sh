@@ -99,6 +99,18 @@ $OMPI_SOURCE/ompi/configure \
 make
 make install
 
+
+
+cd $OMPI_SOURCE
+git clone git@github.com:libffi/libffi.git
+cd libffi
+./autogen.sh
+./configure --prefix=$OMPI_INSTALLED/$OMPI_LABEL --disable-docs
+make
+make install
+
+
+
 mkdir -p $OMPI_MODULE
 cat <<EOT > $OMPI_MODULE/$OMPI_LABEL
 #%Module########################################################################
@@ -120,6 +132,9 @@ set version $OMPI_LABEL
 prepend-path    PATH            $OMPI_INSTALLED/$OMPI_LABEL/bin
 prepend-path    LD_LIBRARY_PATH $OMPI_INSTALLED/$OMPI_LABEL/lib
 prepend-path    MANPATH         $OMPI_INSTALLED/$OMPI_LABEL/share/man
+prepend-path    PKG_CONFIG_PATH $OMPI_INSTALLED/$OMPI_LABEL/share/pkgconfig
+
+setenv          OMPI_MCA_timer_require_monotonic false
 
 EOT
 
