@@ -231,6 +231,14 @@
         "cores"    : 64
     }, 
 
+    "fub.allegro"   : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 36,
+        "gpus"     : 12
+    },
+
     "lumc.shark"   : {
         "project"  : null,
         "queue"    : null,
@@ -238,12 +246,18 @@
         "cores"    : 16
     }, 
 
-    "fub.allegro"   : {
+    "lumc.gb-ui"   : {
+        "project"  : null,
+        "queue"    : "express",
+        "schema"   : "ssh",
+        "cores"    : 4
+    },
+
+    "das5.fs1"   : {
         "project"  : null,
         "queue"    : null,
         "schema"   : "ssh",
-        "cores"    : 36,
-        "gpus"     : 12
+        "cores"    : 1
     }
 }
 
