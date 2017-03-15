@@ -109,7 +109,7 @@
         "project"  : "TG-CCR140028",
         "queue"    : "workq",
         "schema"   : "gsissh",
-        "cores"    : 256
+        "cores"    : 64
     },
 
     "xsede.supermic_ortelib" : {
