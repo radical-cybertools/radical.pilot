@@ -98,7 +98,8 @@ class ORTE(AgentExecutingComponent):
         if not (self._cfg['task_launch_method'] ==
                 self._cfg['mpi_launch_method'] ==
                 "ORTE_LIB"):
-            raise Exception("ORTE_LIB spawner only works with ORTE_LIB LM's.")
+            raise Exception("ORTE_LIB spawner needs ORTE_LIB LM's (%s, %s)" \
+                    % (self._cfg['task_launch_method'], self._cfg['mpi_launch_method']))
 
         self._task_launcher = rp.agent.LM.create(
             name    = "ORTE_LIB",
