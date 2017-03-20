@@ -99,6 +99,22 @@ $OMPI_SOURCE/ompi/configure \
 make
 make install
 
+
+# install libffi on systems which don't have it, so that the pilot ve can
+# install the `orte_cffi` python module.
+# libffi documentation needs texi2html which is not commonly available, so we
+# disable documentation.
+#
+# cd $OMPI_SOURCE
+# git clone https://github.com/libffi/libffi.git
+# cd libffi
+# ./autogen.sh
+# ./configure --prefix=$OMPI_TOOLS_PREFIX --disable-docs
+# make
+# make install
+
+
+
 mkdir -p $OMPI_MODULE
 cat <<EOT > $OMPI_MODULE/$OMPI_LABEL
 #%Module########################################################################
@@ -123,5 +139,8 @@ prepend-path    MANPATH         $OMPI_INSTALLED/$OMPI_LABEL/share/man
 
 EOT
 
+
+# this should not be needed - but just in case someone sources this script,
+# we try to end up where we started.
 cd $orig
 
