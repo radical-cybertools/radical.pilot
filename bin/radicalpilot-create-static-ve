@@ -71,9 +71,9 @@ mkdir -p "$prefix/rp_install"
 
 virtualenv "$prefix"
 .          "$prefix"/bin/activate
-pip install --upgrade $setuptools || echo 'pip failed (ST)'  && exit
-pip install --upgrade $pip        || echo 'pip failed (PIP)' && exit
-pip install --upgrade $reqs       || echo 'pip failed (req)' && exit
+pip install --upgrade $setuptools || exit 1
+pip install --upgrade $pip        || exit 1
+pip install --upgrade $reqs       || exit 1
 
 # install the radical stack (utils, saga, pilot) into a separate tree
 # ($prefix/rp_install(, so that any local install can use the ve *w/o* 
@@ -99,9 +99,9 @@ echo 'pkg_resources.declare_namespace (__name__)' >> $ru_ns_init
 echo                                              >> $ru_ns_init
 
 PIP_INSTALL="pip install --install-option='--prefix=$prefix/rp_install'"
-$PIP_INSTALL radical.utils || echo 'pip failed (RU)' && exit
-$PIP_INSTALL saga-python   || echo 'pip failed (RS)' && exit
-$PIP_INSTALL radical.pilot || echo 'pip failed (RP)' && exit
+$PIP_INSTALL radical.utils || exit 1
+$PIP_INSTALL saga-python   || exit 1
+$PIP_INSTALL radical.pilot || exit 1
 
 OLD_SAGA_VERBOSE=$SAGA_VERBOSE
 OLD_RADICAL_VERBOSE=$RADICAL_VERBOSE
