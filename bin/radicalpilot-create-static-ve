@@ -82,6 +82,14 @@ python_version=`python -c 'import distutils.sysconfig as sc; print sc.get_python
 ve_mod_prefix=` python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
 rp_mod_prefix=`echo $ve_mod_prefix | sed -e "s|$prefix|$prefix/rp_install/|"`
 
+# we actually stop at this point.  RP has other dependencies nowadays, which are
+# not always solved by the simple script above, namely ORTE, and
+# morespecifically (and indirectly) libffi.  radical-pilot-deploy-ompi.sh needs
+# to run before rp installation has a chance to succeed (usually).
+exit
+
+
+# NOTE: the code below is left in, as it might get reactivated at some point.
 PYTHONPATH="$rp_mod_prefix:$PYTHONPATH"
 export PYTHONPATH
 
