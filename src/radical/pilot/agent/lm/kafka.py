@@ -155,10 +155,13 @@ class Kafka(LaunchMethod):
         try:
             kafka_download = time()
             subprocess.check_call('wget http://mirror.cc.columbia.edu/pub/software/apache/kafka/0.8.2.1/kafka_2.11-0.8.2.1.tgz'.split())
+            subprocess.check_call('wget \
+                    http://www-us.apache.org/dist/kafka/0.10.1.0/kafka_2.11-0.10.1.0.tgz'.split())
+
             kafka_download = time() - kafka_download
-            subprocess.check_call('tar -zxf kafka_2.11-0.8.2.1.tgz'.split())
-            subprocess.check_call('rm kafka_2.11-0.8.2.1.tgz'.split())
-            kafka_home = os.getcwd() + '/kafka_2.11-0.8.2.1'
+            subprocess.check_call('tar -zxf kafka_2.11-0.10.1.0.tgz'.split())
+            subprocess.check_call('rm kafka_2.11-0.10.1.0.tgz'.split())
+            kafka_home = os.getcwd() + '/kafka_2.11-0.10.1.0'
             logger.info("Kafka directory: %s \n " % kafka_home)
         except Exception as e:
             raise RuntimeError("Kafka wasn't installed properly.Please try again. %s " % e)
@@ -178,7 +181,7 @@ class Kafka(LaunchMethod):
                 if jpos[0].find('jre') != -1:
                     java_home = jpos[0][:jpos[0].find('jre')]
                 else:
-                    java_home = jpos[0]       
+                    java_home = jpos[0]
         else:
             if not java_home:
                 try:
@@ -211,18 +214,18 @@ class Kafka(LaunchMethod):
         for i,nodename in enumerate(lrms.node_list):
             try:
                 os.system('cp ' + kafka_home +'/config/server.properties ' + kafka_home + '/config/server.properties_%d' % i)
-                vars = ['port','broker.id','log.dirs','zookeeper.connect' ]
-                new_values = [str(ports),str(i),'tmp/kafka-logs-'+str(i), nodenames_string]
+                vars = ['broker.id','log.dirs','zookeeper.connect' ]
+                new_values = [str(i),kafka_home+ '/tmp/kafka-logs-'+str(i), nodenames_string]
                 what_to_change = dict(zip(vars,new_values))
                 filename = kafka_home + '/config/server.properties_' + str(i)
                 updating(filename,what_to_change)
                 with open(filename,'a') as f:
                     f.write('\n ## added by Radical-Pilot  ## \n')
                     f.write('delete.topic.enable = true\n')
-                    #f.write('listeners=PLAINTEXT://%s:%d\n' % (nodename,ports))
-                    #f.write('advertised.listeners=PLAINTEXT://%s:%d\n' % (nodename,ports))
-                    full_hostname = nodename.strip() + '.' + machine_name
-                    f.write('host.name=%s\n' % full_hostname)
+                    f.write('listeners=PLAINTEXT://%s:%d\n' % (nodename,ports))
+                    f.write('advertised.listeners=PLAINTEXT://%s:%d\n' % (nodename,ports))
+                    #full_hostname = nodename.strip() + '.' + machine_name
+                    #f.write('host.name=%s\n' % full_hostname)
         #            ports+=1
             except Exception as e:
                 raise RuntimeError(e)
@@ -366,7 +369,6 @@ class Kafka(LaunchMethod):
         if 'zk_url' not in opaque_slots['lm_info']:
             raise RuntimeError('zk_url not in lm_info for %s: %s' \
                     % (self.name, opaque_slots))
-        
 
 
 
