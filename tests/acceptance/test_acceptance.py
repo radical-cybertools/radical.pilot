@@ -174,5 +174,4 @@ class AcceptanceTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    suite = unittest.TestLoader().loadTestsFromTestCase(AcceptanceTests)
-    unittest.TextTestRunner(verbosity=2, failfast=True, catchbreak=True).run(suite)
+    unittest.main(verbosity=2, failfast=True, catchbreak=True)
