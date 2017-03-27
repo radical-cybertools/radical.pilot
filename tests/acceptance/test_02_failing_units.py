@@ -51,7 +51,7 @@ class GettingStarted(unittest.TestCase):
                                   os.path.dirname(os.path.abspath(__file__)))
 
         # Number of Compute Units (CUs)
-        cls.n = 128   # number of units to run
+        cls.n = 1   # number of units to run
 
     def test_getting_started(self):
         """  """
@@ -76,11 +76,15 @@ class GettingStarted(unittest.TestCase):
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
         cuds = list()
-        for i in range(0, self.n):
+        for i in range(1, self.n + 1):
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable = '/bin/date'
+            if i % 2:
+                cud.executable = '/bin/date'
+            else:
+                # trigger an error now and then
+                cud.executable = '/bin/data'  # does not exist
             cuds.append(cud)
 
         # Submit the previously created ComputeUnit descriptions to the
@@ -92,13 +96,13 @@ class GettingStarted(unittest.TestCase):
         # FAILED).
         self.umgr.wait_units()
 
-        # Verify that 100% of the pilots came back with 'DONE' status
+        # Verify that >= 50% of the pilots came back with 'DONE' status
         done_units = 0
         for description in self.umgr.get_units():
             if description.state() == "DONE":
                 done_units += 1
-        self.assertEquals(
-            (float(done_units) / float(self.n)), 1.0,
+        self.assertGreaterEqual(
+            (float(done_units) / float(self.n)), 0.50,
             "Only {0}% of CUs were DONE."
             .format(str((float(done_units) / float(self.n)) * 100.00)))
 
