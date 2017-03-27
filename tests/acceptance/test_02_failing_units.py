@@ -98,8 +98,9 @@ class GettingStarted(unittest.TestCase):
 
         # Verify that >= 50% of the pilots came back with 'DONE' status
         done_units = 0
+        something = self.umgr.get_units()
         for description in self.umgr.get_units():
-            if description.state() == "DONE":
+            if description.state == "DONE":
                 done_units += 1
         self.assertGreaterEqual(
             (float(done_units) / float(self.n)), 0.50,

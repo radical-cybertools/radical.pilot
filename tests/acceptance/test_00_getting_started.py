@@ -95,7 +95,7 @@ class GettingStarted(unittest.TestCase):
         # Verify that 100% of the pilots came back with 'DONE' status
         done_units = 0
         for description in self.umgr.get_units():
-            if description.state() == "DONE":
+            if description.state == "DONE":
                 done_units += 1
         self.assertEquals(
             (float(done_units) / float(self.n)), 1.0,
