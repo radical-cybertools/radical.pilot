@@ -5,12 +5,6 @@ __license__ = 'MIT'
 
 import os
 import unittest
-
-# Set-up logging
-os.environ['RADICAL_VERBOSE'] = 'ERROR'
-os.environ['RADICAL_PILOT_VRBOSE'] = 'ERROR'
-os.environ['RADICAL_LOG_TGT'] = '0'
-
 import radical.pilot as rp  # noqa
 import radical.utils as ru  # noqa
 
@@ -180,4 +174,5 @@ class AcceptanceTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(verbosity=2, failfast=True, catchbreak=True)
+    suite = unittest.TestLoader().loadTestsFromTestCase(AcceptanceTests)
+    unittest.TextTestRunner(verbosity=2, failfast=True, catchbreak=True).run(suite)
