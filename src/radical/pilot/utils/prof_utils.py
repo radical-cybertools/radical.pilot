@@ -6,7 +6,9 @@ import glob
 import time
 import threading
 
-import radical.utils as ru
+import radical.utils               as ru
+from   radical.pilot import states as rps
+
 
 
 # ------------------------------------------------------------------------------
@@ -177,7 +179,15 @@ def combine_profiles(profs):
     The method returnes the combined profile and accuracy, as tuple.
     """
 
+    # we abuse the profile combination to also derive a pilot-host map, which
+    # will tell us on what exact host each pilot has been running.  To do so, we
+    # check for the PMGR_ACTIVE advance event in agent_0.prof, and use the NTP
+    # sync info to associate a hostname.
+    # FIXME: This should be replaced by proper hostname logging in 
+    #        in `pilot.resource_details`.
+
     pd_rel   = dict() # profiles which have relative time refs
+    hostmap  = dict() # map pilot IDs to host names
 
     t_host   = dict() # time offset per host
     p_glob   = list() # global profile
@@ -282,6 +292,11 @@ def combine_profiles(profs):
             if row['event'] == 'QED':
                 c_qed += 1
 
+            if 'agent_0.prof' in pname    and \
+                row['event'] == 'advance' and \
+                row['state'] == rps.PMGR_ACTIVE:
+                hostmap[row['uid']] = host_id
+
           # if row['event'] == 'advance' and row['uid'] == os.environ.get('FILTER'):
           #     print "~~~ ", row
 
@@ -308,7 +323,7 @@ def combine_profiles(profs):
   #     # print 'unsynced hosts: %s' % list(unsynced)
   #     pass
 
-    return [p_glob, accuracy]
+    return [p_glob, accuracy, hostmap]
 
 
 # ------------------------------------------------------------------------------
@@ -427,11 +442,11 @@ def get_session_profile(sid, src=None):
         from .session import fetch_profiles
         profiles = fetch_profiles(sid=sid, skip_existing=True)
 
-    profs     = read_profiles(profiles)
-    prof, acc = combine_profiles(profs)
-    prof      = clean_profile(prof, sid)
+    profs              = read_profiles(profiles)
+    prof, acc, hostmap = combine_profiles(profs)
+    prof               = clean_profile(prof, sid)
 
-    return prof, acc
+    return prof, acc, hostmap
 
 
 # ------------------------------------------------------------------------------
