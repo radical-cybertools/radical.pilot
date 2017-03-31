@@ -362,7 +362,7 @@
     "wrangler_streaming": {
         "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["ssh", "gsissh", "go"],
+        "schemas"                     : ["gsissh", "ssh", "go"],
         "mandatory_args"              : ["project"],
         "ssh"                         :
         {
@@ -388,9 +388,7 @@
         "task_launch_method"          : "KAFKA",
         "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap_1"             : [ 
-                                        "module purge",
-                                        "module load TACC",
-                                        "module load python/2.7.12",
+                                        "module load python/2.7.9",
                                         "export TACC_DELETE_FILES=TRUE",
                                         "module load jdk64/1.8.0",
                                         "module unload xalt"
@@ -669,7 +667,9 @@
         "agent_launch_method"         : "FORK",
         "task_launch_method"          : "SPARK",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "pre_bootstrap_1"             : ["module load python"],
+        "pre_bootstrap_1"             : ["module load python",
+                                         "module load scipy"
+                                        ],
         "pre_bootstrap_2"             : [
             "export PATH=$PATH",
             "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
@@ -712,7 +712,8 @@
             "module use --append /home/marksant/privatemodules",
             "module load python",
             "module load openmpi",
-            "module load mpi4py"
+            "module load mpi4py",
+            "module load scipy"
         ],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
