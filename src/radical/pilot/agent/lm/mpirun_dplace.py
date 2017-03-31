@@ -3,6 +3,8 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import radical.utils as ru
+
 from .base import LaunchMethod
 
 
@@ -13,17 +15,17 @@ class MPIRunDPlace(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, logger)
+        LaunchMethod.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
         # dplace: job launcher for SGI systems (e.g. on Blacklight)
-        self.launch_command = self._which('dplace')
-        self.mpirun_command = self._which('mpirun')
+        self.launch_command = ru.which('dplace')
+        self.mpirun_command = ru.which('mpirun')
 
 
     # --------------------------------------------------------------------------

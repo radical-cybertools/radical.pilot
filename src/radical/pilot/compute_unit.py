@@ -1,36 +1,32 @@
-#pylint: disable=C0301, C0103, W0212
 
-"""
-.. module:: radical.pilot.compute_unit
-   :platform: Unix
-   :synopsis: Implementation of the ComputeUnit class.
+__copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
+__license__   = "MIT"
 
-.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
-"""
-
-__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
-__license__ = "MIT"
 
 import os
 import copy
 import time
+import threading
 
 import radical.utils as ru
 
-from .states             import *
-from .logentry           import *
-from .exceptions         import *
-from .utils              import logger
-from .db.database        import COMMAND_CANCEL_COMPUTE_UNIT
-from .staging_directives import expand_staging_directive
+from . import utils     as rpu
+from . import states    as rps
+from . import constants as rpc
+from . import types     as rpt
 
-# -----------------------------------------------------------------------------
+from .staging_directives import expand_description
+from .staging_directives import TRANSFER, COPY, LINK, MOVE, STAGING_AREA
+
+
+# ------------------------------------------------------------------------------
 #
 class ComputeUnit(object):
-    """A ComputeUnit represent a 'task' that is executed on a ComputePilot.
+    """
+    A ComputeUnit represent a 'task' that is executed on a ComputePilot.
     ComputeUnits allow to control and query the state of this task.
 
-    .. note:: A ComputeUnit cannot be created directly. The factory method
+    .. note:: A unit cannot be created directly. The factory method
               :meth:`radical.pilot.UnitManager.submit_units` has to be used instead.
 
                 **Example**::
@@ -44,404 +40,404 @@ class ComputeUnit(object):
                       unit = umgr.submit_units(ud)
     """
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    # In terms of implementation, a CU is not much more than a dict whose
+    # content are dynamically updated to reflect the state progression through
+    # the UMGR components.  As a CU is always created via a UMGR, it is
+    # considered to *belong* to that UMGR, and all activities are actually
+    # implemented by that UMGR.
     #
-    def __init__(self):
-        """ Le constructeur. Not meant to be called directly.
-        """
+    # Note that this implies that we could create CUs before submitting them
+    # to a UMGR, w/o any problems. (FIXME?)
+    # --------------------------------------------------------------------------
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, umgr, descr):
+
         # 'static' members
-        self._uid = None
-        self._name = None
-        self._description = None
-        self._manager = None
+        self._descr = descr.as_dict()
+        self._umgr  = umgr
 
-        # handle to the manager's worker
-        self._worker = None
+        # initialize state
+        self._session       = self._umgr.session
+        self._uid           = ru.generate_id('unit.%(counter)06d', ru.ID_CUSTOM)
+        self._state         = rps.NEW
+        self._log           = umgr._log
+        self._exit_code     = None
+        self._stdout        = None
+        self._stderr        = None
+        self._pilot         = None
+        self._sandbox       = None
+        self._callbacks     = dict()
+        self._cb_lock       = threading.RLock()
 
-        if os.getenv("RADICAL_PILOT_GCDEBUG", None) is not None:
-            logger.debug("GCDEBUG __init__(): ComputeUnit [object id: %s]." % id(self))
+        for m in rpt.UMGR_METRICS:
+            self._callbacks[m] = dict()
 
-    #--------------------------------------------------------------------------
+        # we always invke the default state cb
+        self._callbacks[rpt.UNIT_STATE][self._default_state_cb.__name__] = {
+                'cb'      : self._default_state_cb, 
+                'cb_data' : None}
+
+        # sanity checks on description
+        for check in ['cores']:
+            if not self._descr.get(check):
+                raise ValueError("ComputeUnitDescription needs '%s'" % check)
+
+        if  not self._descr.get('executable') and \
+            not self._descr.get('kernel')     :
+            raise ValueError("ComputeUnitDescription needs 'executable' or 'kernel'")
+
+        # If staging directives exist, expand them 
+        #
+        # FIXME: staging directives should be expanded later, during 
+        #        umgr_input_staging -- at that point we have enough information
+        #        to make *all* src and tgt names into full URLs (including fully
+        #        quualified paths), and can then rely on those being URLs in all
+        #        places.
+        expand_description(self._descr)
+
+        self._umgr.advance(self.as_dict(), rps.NEW, publish=False, push=False)
+
+    # --------------------------------------------------------------------------
     #
-    def __del__(self):
-        """Le destructeur.
+    @staticmethod
+    def create(umgr, descr):
+        """ 
+        PRIVATE: Create a new compute unit (in NEW state)
         """
-        if os.getenv("RADICAL_PILOT_GCDEBUG", None) is not None:
-            logger.debug("GCDEBUG __del__(): ComputeUnit [object id: %s]." % id(self))
+
+        return ComputeUnit(umgr=umgr, descr=descr)
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def __repr__(self):
 
-        return "%s (%-15s: %s %s) (%s)" % (self.uid, self.state,
-                                           self.description.executable, 
-                                           self.description.arguments, 
-                                           id(self))
-
-
-    # -------------------------------------------------------------------------
-    #
-    @staticmethod
-    def create(unit_manager_obj, unit_description, local_state):
-        """ PRIVATE: Create a new compute unit.
-        """
-        # create and return pilot object
-        computeunit = ComputeUnit()
-
-        # Make a copy of the UD to work on without side-effects.
-        ud_copy = copy.deepcopy(unit_description)
-
-        # sanity check on description
-        if  (not 'executable' in unit_description or \
-             not unit_description['executable']   )  and \
-            (not 'kernel'     in unit_description or \
-             not unit_description['kernel']       )  :
-            raise PilotException ("ComputeUnitDescription needs an executable or application kernel")
-
-        # Validate number of cores
-        if not unit_description.cores > 0:
-            raise BadParameter("Can't run a Compute Unit with %d cores." % unit_description.cores)
-
-        # If staging directives exist, try to expand them
-        if  ud_copy.input_staging:
-            ud_copy.input_staging = expand_staging_directive(ud_copy.input_staging)
-
-        if  ud_copy.output_staging:
-            ud_copy.output_staging = expand_staging_directive(ud_copy.output_staging)
-
-        computeunit._description = ud_copy
-        computeunit._manager     = unit_manager_obj
-        computeunit._session     = unit_manager_obj._session
-        computeunit._worker      = unit_manager_obj._worker
-        computeunit._uid         = ru.generate_id('unit.%(counter)06d', ru.ID_CUSTOM)
-        computeunit._name        = unit_description['name']
-        computeunit._local_state = local_state
-
-        computeunit._session.prof.prof('advance', msg=NEW, uid=computeunit._uid, state=NEW)
-
-        return computeunit
-
-    # -------------------------------------------------------------------------
-    #
-    @staticmethod
-    def _get(unit_manager_obj, unit_ids):
-        """ PRIVATE: Get one or more Compute Units via their UIDs.
-        """
-        units_json = unit_manager_obj._session._dbs.get_compute_units(
-            unit_manager_id=unit_manager_obj.uid,
-            unit_ids=unit_ids
-        )
-        # create and return unit objects
-        computeunits = []
-
-        for u in units_json:
-            computeunit = ComputeUnit()
-            computeunit._uid = str(u['_id'])
-            computeunit._description = u['description']
-            computeunit._manager = unit_manager_obj
-            computeunit._worker = unit_manager_obj._worker
-            computeunit._session = unit_manager_obj._session
-
-            computeunits.append(computeunit)
-
-        return computeunits
-
-    # -------------------------------------------------------------------------
-    #
-    def as_dict(self):
-        """Returns a Python dictionary representation of the object.
-        """
-        obj_dict = {
-            'uid':               self.uid,
-            'name':              self.name,
-            'state':             self.state,
-            'exit_code':         self.exit_code,
-            'log':               self.log,
-            'execution_details': self.execution_details,
-            'submission_time':   self.submission_time,
-            'working_directory': self.working_directory,
-            'start_time':        self.start_time,
-            'stop_time':         self.stop_time
-        }
-        return obj_dict
-
-    # -------------------------------------------------------------------------
-    #
-    def __str__(self):
-        """Returns a string representation of the object.
-        """
-        if not self._uid:
-            return None
-
         return str(self.as_dict())
 
-    # -------------------------------------------------------------------------
+
+    # --------------------------------------------------------------------------
+    #
+    def __str__(self):
+
+        return [self.uid, self.pilot, self.state]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _default_state_cb(self, unit, state):
+
+        self._log.info("[Callback]: unit %s state: %s.", self.uid, self.state)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _update(self, unit_dict):
+        """
+        This will update the facade object after state changes etc, and is
+        invoked by whatever component receiving that updated information.
+
+        Return True if state changed, False otherwise
+        """
+
+        assert(unit_dict['uid'] == self.uid)
+
+        # NOTE: this method relies on state updates to arrive in order, and
+        #       without gaps.
+        current = self.state
+        target  = unit_dict['state']
+
+        if target not in [rps.FAILED, rps.CANCELED]:
+            assert(rps._unit_state_value(target) - rps._unit_state_value(current) == 1)
+
+        self._state = target
+
+        # we update all fields
+        # FIXME: well, not all really :/
+        # FIXME: setattr is ugly...  we should maintain all state in a dict.
+        for key in ['state', 'stdout', 'stderr', 'exit_code', 'pilot', 'sandbox']:
+
+            val = unit_dict.get(key, None)
+            if val:
+                setattr(self, "_%s" % key, val)
+
+        # invoke unit specific callbacks
+        for cb_name, cb_val in self._callbacks[rpt.UNIT_STATE].iteritems():
+
+            cb      = cb_val['cb']
+            cb_data = cb_val['cb_data']
+
+          # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, self.state, cb_name)
+            
+            if cb_data: cb(self, self.state, cb_data)
+            else      : cb(self, self.state)
+
+        # ask umgr to invoke any global callbacks
+        self._umgr._call_unit_callbacks(self, self.state)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def as_dict(self):
+        """
+        Returns a Python dictionary representation of the object.
+        """
+
+        ret = {
+            'type':        'unit',
+            'umgr':        self.umgr.uid,
+            'uid':         self.uid,
+            'name':        self.name,
+            'state':       self.state,
+            'exit_code':   self.exit_code,
+            'stdout':      self.stdout,
+            'stderr':      self.stderr,
+            'pilot':       self.pilot,
+            'sandbox':     self.sandbox,
+            'description': self.description   # this is a deep copy
+        }
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def session(self):
+        """
+        Returns the unit's session.
+
+        **Returns:**
+            * A :class:`Session`.
+        """
+
+        return self._session
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def umgr(self):
+        """
+        Returns the unit's manager.
+
+        **Returns:**
+            * A :class:`UnitManager`.
+        """
+
+        return self._umgr
+
+
+    # --------------------------------------------------------------------------
     #
     @property
     def uid(self):
-        """Returns the unit's unique identifier.
+        """
+        Returns the unit's unique identifier.
 
-        The uid identifies the ComputeUnit within a :class:`UnitManager` and
-        can be used to retrieve an existing ComputeUnit.
+        The uid identifies the unit within a :class:`UnitManager`.
 
         **Returns:**
             * A unique identifier (string).
         """
-        # uid is static and doesn't change over the lifetime
-        # of a unit, hence it can be stored in a member var.
         return self._uid
 
-    # -------------------------------------------------------------------------
+
+    # --------------------------------------------------------------------------
     #
     @property
     def name(self):
-        """Returns the unit's application specified name.
+        """
+        Returns the unit's application specified name.
 
         **Returns:**
             * A name (string).
         """
-        # name is static and doesn't change over the lifetime
-        # of a unit, hence it can be stored in a member var.
-        return self._name
+        return self._descr.get('name')
 
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def working_directory(self):
-        """Returns the full working directory URL of this ComputeUnit.
-        """
-        if not self._uid:
-            return None
 
-        cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['sandbox']
-
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def pilot_id(self):
-        """Returns the pilot_id of this ComputeUnit.
-        """
-        if not self._uid:
-            return None
-
-        cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json.get ('pilot', None)
-
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def stdout(self):
-        """Returns a snapshot of the executable's STDOUT stream.
-
-        If this property is queried before the ComputeUnit has reached
-        'DONE' or 'FAILED' state it will return None.
-
-        .. warning: This can become very inefficient for lareg data volumes.
-        """
-        if not self._uid:
-            return None
-
-        return self._worker.get_compute_unit_stdout(self.uid)
-
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def stderr(self):
-        """Returns a snapshot of the executable's STDERR stream.
-
-        If this property is queried before the ComputeUnit has reached
-        'DONE' or 'FAILED' state it will return None.
-
-        .. warning: This can become very inefficient for large data volumes.
-        """
-        if not self._uid:
-            return None
-
-        return self._worker.get_compute_unit_stderr(self.uid)
-
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def description(self):
-        """Returns the ComputeUnitDescription the ComputeUnit was started with.
-        """
-        # description is static and doesn't change over the lifetime
-        # of a unit, hence it is stored as a member var.
-        return self._description
-
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def state(self):
-        """Returns the current state of the ComputeUnit.
         """
-        if not self._uid:
-            return None
+        Returns the current state of the unit.
 
-        # try to get state from worker.  If that fails, return local state.
-        # NOTE AM: why?  Isn't that an error which should not occur?
-        try :
-            cu_json = self._worker.get_compute_unit_data(self.uid)
-            return cu_json['state']
-        except Exception as e :
-            return self._local_state
-
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def state_history(self):
-        """Returns the complete state history of the ComputeUnit.
+        **Returns:**
+            * state (string enum)
         """
-        if not self._uid:
-            return None
 
-        states = []
+        return self._state
 
-        cu_json = self._worker.get_compute_unit_data(self.uid)
-        for state in cu_json['statehistory']:
-            states.append(State(state=state["state"], timestamp=state["timestamp"]))
 
-        return states
-
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def callback_history(self):
-        """Returns the complete callback history of the ComputeUnit.
-        """
-        if not self._uid:
-            return None
-
-        callbacks = []
-
-        cu_json = self._worker.get_compute_unit_data(self.uid)
-        if 'callbackhostory' in cu_json :
-            for callback in cu_json['callbackhistory']:
-                callbacks.append(State(state=callback["state"], timestamp=callback["timestamp"]))
-
-        return callbacks
-
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def exit_code(self):
-        """Returns the exit code of the ComputeUnit.
+        """
+        Returns the exit code of the unit, if that is already known, or
+        'None' otherwise.
 
-        If this property is queried before the ComputeUnit has reached
+        **Returns:**
+            * exit code (int)
+        """
+
+        return self._exit_code
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def stdout(self):
+        """
+        Returns a snapshot of the executable's STDOUT stream.
+
+        If this property is queried before the unit has reached
         'DONE' or 'FAILED' state it will return None.
+
+        .. warning: This can be inefficient.  Output may be incomplete and/or
+           filtered.
+
+        **Returns:**
+            * stdout (string)
         """
-        if not self._uid:
-            return None
 
-        cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['exit_code']
+        return self._stdout
 
-    # -------------------------------------------------------------------------
+
+    # --------------------------------------------------------------------------
     #
     @property
-    def log(self):
-        """Returns the logs of the ComputeUnit.
+    def stderr(self):
         """
-        if not self._uid:
-            return None
+        Returns a snapshot of the executable's STDERR stream.
 
-        logs = []
+        If this property is queried before the unit has reached
+        'DONE' or 'FAILED' state it will return None.
 
-        cu_json = self._worker.get_compute_unit_data(self.uid)
-        for log in cu_json['log']:
-            logs.append(Logentry.from_dict (log))
+        .. warning: This can be inefficient.  Output may be incomplete and/or
+           filtered.
 
-        return logs
+        **Returns:**
+            * stderr (string)
+        """
 
-    # -------------------------------------------------------------------------
+        return self._stderr
+
+
+    # --------------------------------------------------------------------------
     #
     @property
-    def execution_details(self):
-        """Returns the exeuction location(s) of the ComputeUnit.
+    def pilot(self):
         """
-        if not self._uid:
-            return None
+        Returns the pilot ID of this unit, if that is already known, or
+        'None' otherwise.
 
-        cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json
+        **Returns:**
+            * A pilot ID (string)
+        """
 
-    # -------------------------------------------------------------------------
+        return self._pilot
+
+
+    # --------------------------------------------------------------------------
     #
     @property
-    def execution_locations(self):
-        """Returns the exeuction location(s) of the ComputeUnit.
-           This is just an alias for execution_details.
+    def working_directory(self):
         """
-        return self.execution_details['exec_locs']
+        Returns the full working directory URL of this unit, if that is
+        already known, or 'None' otherwise
 
-    # -------------------------------------------------------------------------
+        **Returns:**
+            * A URL (radical.utils.Url).
+
+        **NOTE:** deprecated, use *`sandbox`*
+        """
+
+        return self.sandbox
+
+
+    # --------------------------------------------------------------------------
     #
     @property
-    def submission_time(self):
-        """ Returns the time the ComputeUnit was submitted.
+    def sandbox(self):
         """
-        if not self._uid:
-            return None
+        Returns the full sandbox URL of this unit, if that is already
+        known, or 'None' otherwise.
 
-        cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['submitted']
+        **Returns:**
+            * A URL (radical.utils.Url).
+        """
 
-    # -------------------------------------------------------------------------
+        # NOTE: The unit has a sandbox property, containing the full sandbox
+        #       path, which is used by the umgr to stage data back and forth.
+        #       However, the full path as visible from the umgr side might not
+        #       be what the agent is seeing, specifically in the case of
+        #       non-shared filesystems (OSG).  The agent thus uses
+        #       `$PWD/cu['uid']` as sandbox, with the assumption that this will
+        #       get mapped to whatever is here returned as sandbox URL.  
+        #
+        #       There is thus implicit knowledge shared between the RP client
+        #       and the RP agent on how the sandbox path is formed!
+
+        return self._sandbox
+
+
+    # --------------------------------------------------------------------------
     #
     @property
-    def start_time(self):
-        """ Returns the time the ComputeUnit was started on the backend.
+    def description(self):
         """
-        if not self._uid:
-            return None
+        Returns the description the unit was started with, as a dictionary.
 
-        cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['started']
-
-    # -------------------------------------------------------------------------
-    #
-    @property
-    def stop_time(self):
-        """ Returns the time the ComputeUnit was stopped.
+        **Returns:**
+            * description (dict)
         """
-        if not self._uid:
-            return None
 
-        cu_json = self._worker.get_compute_unit_data(self.uid)
-        return cu_json['finished']
+        return copy.deepcopy(self._descr)
 
-    # -------------------------------------------------------------------------
+
+    # --------------------------------------------------------------------------
     #
-    def register_callback(self, cb_func, cb_data=None):
-        """Registers a callback function that is triggered every time the
-        ComputeUnit's state changes.
+    def register_callback(self, cb, cb_data=None):
+        """
+        Registers a callback function that is triggered every time the
+        unit's state changes.
 
         All callback functions need to have the same signature::
 
-            def cb_func(obj, state)
+            def cb(obj, state)
 
         where ``object`` is a handle to the object that triggered the callback
-        and ``state`` is the new state of that object.
-        """
-        self._worker.register_unit_callback(self, cb_func, cb_data)
+        and ``state`` is the new state of that object.  If 'cb_data' is given,
+        then the 'cb' signature changes to 
 
-    # -------------------------------------------------------------------------
+            def cb(obj, state, cb_data)
+
+        and 'cb_data' are passed along.
+
+        """
+        self._umgr.register_callback(self.uid, rpt.UNIT_STATE, cb, cb_data)
+
+
+    # --------------------------------------------------------------------------
     #
-    def wait(self, state=[DONE, FAILED, CANCELED],
-             timeout=None):
-        """Returns when the ComputeUnit reaches a specific state or
+    def wait(self, state=None, timeout=None):
+        """
+        Returns when the unit reaches a specific state or
         when an optional timeout is reached.
 
         **Arguments:**
 
             * **state** [`list of strings`]
-              The state(s) that compute unit has to reach in order for the
+              The state(s) that unit has to reach in order for the
               call to return.
 
-              By default `wait` waits for the compute unit to reach
-              a **terminal** state, which can be one of the following:
+              By default `wait` waits for the unit to reach a **final**
+              state, which can be one of the following:
 
               * :data:`radical.pilot.states.DONE`
               * :data:`radical.pilot.states.FAILED`
@@ -449,83 +445,51 @@ class ComputeUnit(object):
 
             * **timeout** [`float`]
               Optional timeout in seconds before the call returns regardless
-              whether the compute unit has reached the desired state or not.
-              The default value **None** never times out.
+              whether the unit has reached the desired state or not.  The
+              default value **None** never times out.  """
 
-        **Raises:**
-        """
-        if not self._uid:
-            raise IncorrectState("Invalid instance.")
-
+        if not state:
+            states = rps.FINAL
         if not isinstance(state, list):
-            state = [state]
+            states = [state]
+        else:
+            states = state
+
+
+        if self.state in rps.FINAL:
+            # we will never see another state progression.  Raise an error
+            # (unless we waited for this)
+            if self.state in states:
+                return
+
+            # FIXME: do we want a raise here, really?  This introduces a race,
+            #        really, on application level
+            # raise RuntimeError("can't wait on a unit in final state")
+            return self.state
 
         start_wait = time.time()
-        # the self.state property pulls the state from the back end.
-        new_state = self.state
-        while new_state not in state:
+        while self.state not in states:
+
             time.sleep(0.1)
 
-            new_state = self.state
-            # logger.debug(
-            #     "Compute unit %s in state %s" % (self._uid, new_state))
-
-            if(None != timeout) and (timeout <= (time.time() - start_wait)):
+            if timeout and (timeout <= (time.time() - start_wait)):
                 break
 
-        # done waiting -- return the state
-        return new_state
+          # if self._umgr._terminate.is_set():
+          #     break
 
-    # -------------------------------------------------------------------------
+        return self.state
+
+
+    # --------------------------------------------------------------------------
     #
     def cancel(self):
-        """Cancel the ComputeUnit.
-
-        **Raises:**
-
-            * :class:`radical.pilot.radical.pilotException`
+        """
+        Cancel the unit.
         """
         
-        # Check if this instance is valid
-        if not self._uid:
-            raise BadParameter("Invalid Compute Unit instance.")
+        self._umgr.cancel_units(self.uid)
 
-        cu_json = self._worker.get_compute_unit_data(self.uid)
-        pilot_uid = cu_json['pilot']
 
-        if self.state in [DONE, FAILED, CANCELED]:
-            # nothing to do
-            logger.debug("Compute unit %s has state %s, can't cancel any longer." % (self._uid, self.state))
-
-        elif self.state in [NEW, UNSCHEDULED, PENDING_INPUT_STAGING]:
-            logger.debug("Compute unit %s has state %s, going to prevent from starting." % (self._uid, self.state))
-            self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
-
-        elif self.state == STAGING_INPUT:
-            logger.debug("Compute unit %s has state %s, will cancel the transfer." % (self._uid, self.state))
-            self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
-
-        elif self.state in [EXECUTING_PENDING, SCHEDULING]:
-            logger.debug("Compute unit %s has state %s, will abort start-up." % (self._uid, self.state))
-            self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
-
-        elif self.state in [ALLOCATING, EXECUTING]:
-            logger.debug("Compute unit %s has state %s, will terminate the task." % (self._uid, self.state))
-            self._manager._session._dbs.send_command_to_pilot(cmd=COMMAND_CANCEL_COMPUTE_UNIT, arg=self.uid, pilot_ids=pilot_uid)
-
-        elif self.state == PENDING_OUTPUT_STAGING:
-            logger.debug("Compute unit %s has state %s, will abort the transfer." % (self._uid, self.state))
-            self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
-
-        elif self.state == STAGING_OUTPUT:
-            logger.debug("Compute unit %s has state %s, will cancel the transfer." % (self._uid, self.state))
-            self._manager._session._dbs.set_compute_unit_state(self._uid, CANCELED, ["Received Cancel"])
-
-        else:
-            raise IncorrectState("Unknown Compute Unit state: %s, cannot cancel" % self.state)
-
-        self._session.prof.prof('advance', msg=CANCELED, uid=self._uid, state=CANCELED)
-
-        # done canceling
-        return
+# ------------------------------------------------------------------------------
 

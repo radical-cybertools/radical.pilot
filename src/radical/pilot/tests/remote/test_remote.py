@@ -135,8 +135,8 @@ class TestRemoteSubmission(unittest.TestCase):
         #assert cu.start_time is None
         #assert cu.start_time is None
 
-        pilot.wait(state=radical.pilot.ACTIVE, timeout=5*60)
-        assert pilot.state == radical.pilot.ACTIVE
+        pilot.wait(state=radical.pilot.PMGR_ACTIVE, timeout=5*60)
+        assert pilot.state == radical.pilot.PMGR_ACTIVE
         assert pilot.start_time is not None
         assert pilot.submission_time is not None
 
@@ -174,8 +174,8 @@ class TestRemoteSubmission(unittest.TestCase):
         #assert cu.start_time is None
         #assert cu.start_time is None
 
-        pilot.wait(state=radical.pilot.ACTIVE, timeout=5*60)
-        assert pilot.state == radical.pilot.ACTIVE, "Expected state 'ACTIVE' but got %s" % pilot.state
+        pilot.wait(state=radical.pilot.PMGR_ACTIVE, timeout=5*60)
+        assert pilot.state == radical.pilot.PMGR_ACTIVE, "Expected state 'PMGR_ACTIVE' but got %s" % pilot.state
         assert pilot.submission_time is not None
         assert pilot.start_time is not None
 
