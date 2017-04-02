@@ -551,8 +551,9 @@ class ComputePilot(object):
                 rel_path = os.path.relpath(tgt_dir_url.path, '/')
 
                 # Now base the target directory relative of the sandbox and staging prefix
-                tgt_dir_url = saga.Url(os.path.join(self.sandbox.path, 
-                                                    STAGING_AREA, rel_path))
+                tgt_dir_url      = saga.Url(self.sandbox)
+                tgt_dir_url.path = os.path.join(self.sandbox.path, 
+                                                STAGING_AREA, rel_path)
 
             # Define and open the staging directory for the pilot
             # We use the target dir construct here, so that we can create
