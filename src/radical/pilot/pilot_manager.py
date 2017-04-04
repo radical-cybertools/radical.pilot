@@ -78,7 +78,8 @@ class PilotManager(rpu.Component):
             * A new `PilotManager` object [:class:`radical.pilot.PilotManager`].
         """
 
-        self._components  = None
+        self._bridges     = dict()
+        self._components  = dict()
         self._pilots      = dict()
         self._pilots_lock = threading.RLock()
         self._callbacks   = dict()
@@ -96,25 +97,18 @@ class PilotManager(rpu.Component):
 
         assert(cfg['db_poll_sleeptime'])
 
-        # before we do any further setup, we get the session's ctrl config with
-        # bridge addresses, dburl and stuff.
-        ru.dict_merge(cfg, session.ctrl_cfg, ru.PRESERVE)
-
         # initialize the base class (with no intent to fork)
         self._uid    = ru.generate_id('pmgr')
         cfg['owner'] = self.uid
+        self._initialized = False
         rpu.Component.__init__(self, cfg, session)
         self.start(spawn=False)
+
+        assert(self._initialized)
 
         # only now we have a logger... :/
         self._log.report.info('<<create pilot manager')
         self._prof.prof('create pmgr', uid=self._uid)
-
-        # we can start bridges and components, as needed
-        self._controller = rpu.Controller(cfg=self._cfg, session=self.session)
-
-        # merge controller config back into our own config
-        ru.dict_merge(self._cfg, self._controller.ctrl_cfg, ru.OVERWRITE)
 
         # The output queue is used to forward submitted pilots to the
         # launching component.
@@ -137,7 +131,54 @@ class PilotManager(rpu.Component):
         self._log.report.ok('>>ok\n')
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    # 
+    def initialize_common(self):
+
+        # the manager must not carry bridge and component handles across forks
+        ru.atfork(self._atfork_prepare, self._atfork_parent, self._atfork_child)
+
+
+    # --------------------------------------------------------------------------
+    # 
+    def initialize_parent(self):
+
+        self._initialized = True
+
+        # we can start bridges and components, as needed
+        # FIXME: move into the Component base class?
+        ruc = rpu.Component
+        self._bridges    = ruc.start_bridges   (self._cfg, self._session, self._log)
+        self._components = ruc.start_components(self._cfg, self._session, self._log)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _atfork_prepare(self): pass
+    def _atfork_parent(self) : pass
+    def _atfork_child(self)  : 
+        self._bridges    = dict()
+        self._components = dict()
+
+
+    # --------------------------------------------------------------------------
+    # 
+    def finalize_parent(self):
+
+        # terminate pmgr components
+        for c in self._components:
+            print 'pmgr stopping %s' % c.name
+            c.stop()
+            c.join()
+
+        # terminate pmgr bridges
+        for b in self._bridges:
+            print 'pmgr stopping %s' % b.name
+            b.stop()
+            b.join()
+
+
+    # --------------------------------------------------------------------------
     #
     def close(self, terminate=True):
         """
@@ -161,11 +202,14 @@ class PilotManager(rpu.Component):
 
         # If terminate is set, we cancel all pilots. 
         if terminate:
+            print 'pmgr stop 0'
             self.cancel_pilots()
 
         self._terminate.set()
-        self._controller.stop()
+        print 'pmgr stop 1'
         self.stop()
+        print 'pmgr stop 2'
+
 
         self._session.prof.prof('closed pmgr', uid=self._uid)
         self._log.info("Closed PilotManager %s." % self._uid)
@@ -645,7 +689,7 @@ class PilotManager(rpu.Component):
     #
     def unregister_callback(self, cb, metric=rpt.PILOT_STATE):
 
-        if metric and metric not in rpt.UMGR_METRICS :
+        if metric and metric not in rpt.PMGR_METRICS :
             raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
 
         if not metric:

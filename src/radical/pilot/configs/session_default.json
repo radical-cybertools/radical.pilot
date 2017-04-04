@@ -20,7 +20,9 @@
 
     "components" : {
         # how many instances of the respective components should be started
-        "UpdateWorker" : 1
+        "UpdateWorker" : {
+            "count" : 1
+        }
     }
 }
 

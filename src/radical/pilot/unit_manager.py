@@ -84,7 +84,8 @@ class UnitManager(rpu.Component):
             * A new `UnitManager` object [:class:`radical.pilot.UnitManager`].
         """
 
-        self._components  = None
+        self._bridges     = dict()
+        self._components  = dict()
         self._pilots      = dict()
         self._pilots_lock = threading.RLock()
         self._units       = dict()
@@ -112,10 +113,6 @@ class UnitManager(rpu.Component):
 
         assert(cfg['db_poll_sleeptime'])
 
-        # before we do any further setup, we get the session's ctrl config with
-        # bridge addresses, dburl and stuff.
-        ru.dict_merge(cfg, session.ctrl_cfg, ru.PRESERVE)
-
         # initialize the base class (with no intent to fork)
         self._uid    = ru.generate_id('umgr')
         cfg['owner'] = self.uid
@@ -125,12 +122,6 @@ class UnitManager(rpu.Component):
         # only now we have a logger... :/
         self._log.report.info('<<create unit manager')
         self._prof.prof('create umgr', uid=self._uid)
-
-        # we can start bridges and components, as needed
-        self._controller = rpu.Controller(cfg=self._cfg, session=self.session)
-
-        # merge controller config back into our own config
-        ru.dict_merge(self._cfg, self._controller.ctrl_cfg, ru.OVERWRITE)
 
         # The output queue is used to forward submitted units to the
         # scheduling component.
@@ -165,6 +156,51 @@ class UnitManager(rpu.Component):
 
 
     # --------------------------------------------------------------------------
+    # 
+    def initialize_common(self):
+
+        # the manager must not carry bridge and component handles across forks
+        ru.atfork(self._atfork_prepare, self._atfork_parent, self._atfork_child)
+
+
+    # --------------------------------------------------------------------------
+    # 
+    def initialize_parent(self):
+
+        # we can start bridges and components, as needed
+        # FIXME: move into the Component base class?
+        ruc = rpu.Component
+        self._bridges    = ruc.start_bridges   (self._cfg, self._session, self._log)
+        self._components = ruc.start_components(self._cfg, self._session, self._log)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _atfork_prepare(self): pass
+    def _atfork_parent(self) : pass
+    def _atfork_child(self)  : 
+        self._bridges    = dict()
+        self._components = dict()
+
+
+    # --------------------------------------------------------------------------
+    # 
+    def finalize_parent(self):
+
+        # terminate pmgr components
+        for c in self._components:
+            print 'pmgr stopping %s' % c.name
+            c.stop()
+            c.join()
+
+        # terminate pmgr bridges
+        for b in self._bridges:
+            print 'pmgr stopping %s' % b.name
+            b.stop()
+            b.join()
+
+
+    # --------------------------------------------------------------------------
     #
     def close(self):
         """
@@ -187,7 +223,6 @@ class UnitManager(rpu.Component):
             self._callbacks = dict()
 
         self._terminate.set()
-        self._controller.stop()
         self.stop()
 
         self._session.prof.prof('closed umgr', uid=self._uid)
@@ -853,6 +888,8 @@ class UnitManager(rpu.Component):
                         self._log.report.idle(color='ok', c='+')
 
             to_check = check_again
+
+            self.is_valid()
 
         self._log.report.idle(mode='stop')
 

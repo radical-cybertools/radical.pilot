@@ -7,7 +7,7 @@
     "bulk_collection_time" : 5.0,
     "db_poll_sleeptime"    : 1.0,
 
-    "agent_layout" : {
+    "agents" : {
         "agent_1"   : {
             "target"     : "node",
             "components" : {

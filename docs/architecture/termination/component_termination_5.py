@@ -15,6 +15,10 @@
 #     difficult to control process termination in a process tree if the process
 #     chain gets interrupted, aven if the leaf PIDs are known.
 #
+#   - related, but not captured in a python ticket: processes can also only be
+#     checked (`is_alive()`) and stopped (`stop()`) by the parent process, as an
+#     explicit `assert` is in place to disable those operations otherwise.
+#
 #   - https://bugs.python.org/issue23395 (02/2015)
 #     `SIGINT` signal handlers conflict with the *only* documented inter-thread
 #     termination procedure `thread.interrupt_main()`.  This requires us to
@@ -213,7 +217,7 @@
 #
 # sub-threads and child processes will terminate themself if they meet a 
 # termination condition, and the MainThread will be notified by a thread
-# and process watcherm (which itself is a sub-thread of the MainThread).
+# and process watchers (which itself is a sub-thread of the MainThread).
 # Upon such a notification, the component's MainThread will raise an
 # exception.
 #
@@ -279,6 +283,11 @@
 #         - don't use the multiprocessing module
 #         - heartbeat monitoring
 #         - process-alive check different from process-exists
+#
+# NOTE: We will use at_fork handlers and monkeypatches to clean out the process
+#       hierarchies from logging locks and from child process handles, as far
+#       possible.  This requires the `radical.pilot` module to be loaded
+#       *first*, specifically before `os` and `logging`.
 #
 ################################################################################
 # 

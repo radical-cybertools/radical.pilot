@@ -8,6 +8,7 @@ import sys
 import copy
 import stat
 import time
+import types
 import pprint
 import subprocess         as sp
 
@@ -46,7 +47,7 @@ class Agent_0(rpu.Worker):
         assert(agent_name == 'agent_0')
         print "startup agent %s" % agent_name
 
-        # load config, create session and controller, init rpu.Worker
+        # load config, create session, init rpu.Worker
         agent_cfg  = "%s/%s.cfg" % (os.getcwd(), agent_name)
         cfg        = ru.read_json_str(agent_cfg)
 
@@ -72,7 +73,6 @@ class Agent_0(rpu.Worker):
         if not 'session_id'          in cfg: raise ValueError("Missing session id")
         if not 'spawner'             in cfg: raise ValueError("Missing agent spawner")
         if not 'task_launch_method'  in cfg: raise ValueError("Missing unit launch method")
-        if not 'agent_layout'        in cfg: raise ValueError("Missing agent layout")
 
         # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold
         # the address of the tunnelized DB endpoint. If it exists, we
@@ -89,15 +89,15 @@ class Agent_0(rpu.Worker):
         # communication channels and components/workers specified in the 
         # config -- we merge that information into our own config.
         session = rp_Session(cfg=cfg)
-        ru.dict_merge(cfg, session.ctrl_cfg, ru.PRESERVE)
+        ru.dict_merge(cfg, session._cfg, ru.PRESERVE)
         pprint.pprint(cfg)
 
         if not session.is_connected:
             raise RuntimeError('agent_0 could not connect to mongodb')
 
-        # at this point the session is up and connected, and the session
-        # controller should have brought up all communication bridges and the
-        # UpdateWorker.  We are ready to rumble!
+        # at this point the session is up and connected, and it should have
+        # brought up all communication bridges and the UpdateWorker.  We are
+        # ready to rumble!
         rpu.Worker.__init__(self, cfg, session)
 
 
@@ -212,25 +212,22 @@ class Agent_0(rpu.Worker):
     #
     def _write_sa_configs(self):
 
-        # use our own config sans components as a basis for the sub-agent
-        # configs.
-        sa_cfg = copy.deepcopy(self._cfg)
-        sa_cfg['components'] = list()
- 
         # we have all information needed by the subagents -- write the
         # sub-agent config files.
 
-        # write deep-copies of the config (with the corrected agent_name) for
-        # each sub-agent (apart from agent_0)
-        sa_cfg_0 = None
-        for sa in self._cfg.get('agent_layout', []):
+        # write deep-copies of the config for each sub-agent (sans from agent_0)
+        for sa in self._cfg.get('agents', {}):
 
             assert(sa != 'agent_0')
 
-            tmp_cfg = copy.deepcopy(sa_cfg)
+            # use our own config sans agents/components as a basis for
+            # the sub-agent config.
+            tmp_cfg = copy.deepcopy(self._cfg)
+            tmp_cfg['agents']     = dict()
+            tmp_cfg['components'] = dict()
 
-            # merge sub_agent layout into the confoig
-            ru.dict_merge(tmp_cfg, self._cfg['agent_layout'][sa], ru.OVERWRITE)
+            # merge sub_agent layout into the config
+            ru.dict_merge(tmp_cfg, self._cfg['agents'][sa], ru.OVERWRITE)
 
             tmp_cfg['agent_name'] = sa
             tmp_cfg['owner']      = 'agent_0'
@@ -251,7 +248,7 @@ class Agent_0(rpu.Worker):
     
         self._log.debug('start_sub_agents')
     
-        if not self._cfg['agent_layout'].keys():
+        if not self._cfg['agents']:
             self._log.debug('start_sub_agents noop')
             return
 
@@ -264,9 +261,9 @@ class Agent_0(rpu.Worker):
         # non-local sub_agents.
         agent_lm   = None
         sub_agents = list()
-        for sa in self._cfg['agent_layout']:
+        for sa in self._cfg['agents']:
     
-            target = self._cfg['agent_layout'][sa]['target']
+            target = self._cfg['agents'][sa]['target']
     
             if target == 'local':
     
@@ -326,14 +323,17 @@ class Agent_0(rpu.Worker):
             sa_err = open("%s.err" % sa, "w")
             sa_proc = sp.Popen(args=cmdline.split(), stdout=sa_out, stderr=sa_err)
     
-            # make sure the controller can stop and join the sa_proc
-            sa_proc.name = sa
-            sa_proc.stop = sa_proc.terminate
-            sa_proc.join = sa_proc.wait
+            # make sure the watcher can stop and join the sa_proc
+            def _is_alive(_popen):
+                return (_popen.poll() == None)
+            sa_proc.is_alive = types.MethodType(_is_alive, sa_proc)
+            sa_proc.name     = sa
+            sa_proc.stop     = sa_proc.terminate
+            sa_proc.join     = sa_proc.wait
             sub_agents.append(sa_proc)
     
-        # the agents are up - let the session controller manage them from here
-        self._session._controller.add_watchables(sub_agents, owner=self._uid)
+            # the agent is up - let the watcher manage it from here
+            self.register_watchable(sa_proc)
     
         self._log.debug('start_sub_agents done')
 

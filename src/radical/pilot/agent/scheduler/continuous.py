@@ -14,17 +14,20 @@ from ... import constants as rpc
 
 from .base import AgentSchedulingComponent
 
-import cProfile
 import inspect
 import threading as mt
 
+
+# ------------------------------------------------------------------------------
+#
+# FIXME: make runtime switch depending on cprofile availability
+import cProfile
 cprof = cProfile.Profile()
 
 def cprof_it(func):
     def wrapper(*args, **kwargs):
-            retval = cprof.runcall(func, *args, **kwargs)
-            return retval
-
+        retval = cprof.runcall(func, *args, **kwargs)
+        return retval
     return wrapper
 
 def dec_all_methods(dec):
@@ -37,7 +40,9 @@ def dec_all_methods(dec):
         return cls
     return dectheclass
 
-#==============================================================================
+
+# ==============================================================================
+#
 @dec_all_methods(cprof_it)
 class Continuous(AgentSchedulingComponent):
 
@@ -59,7 +64,7 @@ class Continuous(AgentSchedulingComponent):
             cprof.dump_stats("python-%s.profile" % self_thread.name)
 
         # make sure that parent finalizers are called
-        AgentSchedulingComponent.finalize_child(self)
+        super(Continuous, self).finalize_child()
 
 
     # --------------------------------------------------------------------------

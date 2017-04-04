@@ -24,7 +24,7 @@ def bootstrap_3(agent_name):
     that is the case, some additional python level bootstrap routines kick in,
     to set the stage for component and sub-agent spawning.
 
-    The agent interprets a config file, which will specify in an agent_layout
+    The agent interprets a config file, which will specify in an 'agents'
     section:
       - what nodes should be used for sub-agent startup
       - what bridges should be started

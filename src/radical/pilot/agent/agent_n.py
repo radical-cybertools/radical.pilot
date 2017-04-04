@@ -54,7 +54,7 @@ class Agent_n(rpu.Worker):
         session_cfg = copy.deepcopy(cfg)
         session_cfg['owner'] = self._uid
         session = rp_Session(cfg=session_cfg, _connect=False)
-        ru.dict_merge(cfg, session.ctrl_cfg, ru.PRESERVE)
+        ru.dict_merge(cfg, session._cfg, ru.PRESERVE)
         pprint.pprint(cfg)
 
         if session.is_connected:

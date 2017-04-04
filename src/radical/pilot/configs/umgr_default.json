@@ -36,9 +36,9 @@
 
     "components" : {
         # how many instances of the respective components should be started
-        "UMGRStagingInputComponent"  : 1,
-        "UMGRSchedulingComponent"    : 1,
-        "UMGRStagingOutputComponent" : 1
+        "UMGRStagingInputComponent"  : { "count" : 1},
+        "UMGRSchedulingComponent"    : { "count" : 1},
+        "UMGRStagingOutputComponent" : { "count" : 1}
     }
 }
 

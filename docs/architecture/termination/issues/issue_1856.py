@@ -29,7 +29,7 @@ def test():
 
     time.sleep(0.3)
 
-    # NOTE: We expect sys.exit() to exit and terminate/abandon damon threads.
+    # NOTE: We expect sys.exit() to exit and terminate/abandon daemon threads.
     #       That does not always happen
     sys.exit()
 

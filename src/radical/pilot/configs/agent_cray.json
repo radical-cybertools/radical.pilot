@@ -18,70 +18,43 @@
     # interface for binding zmq to
     "network_interface"    : "ipogif0",
 
-    "agent_layout": {
-        "agent_0": {
-            # Where to run this agent ("local" or "node")
-            "target": "local",
-            # Which sub_agents should I look for?
-            "sub_agents": ["agent_1"],
-            # One of the agents need to pull the actual tasks from MongoDB
-            "pull_units": true,
-            # which bridges are to be started by this agent
-            "bridges" : {
-                "agent_staging_input_queue"  : { "log_level" : "off",
-                                                 "stall_hwm" : 1,
-                                                 "bulk_size" : 1},
-                "agent_scheduling_queue"     : { "log_level" : "off",
-                                                 "stall_hwm" : 1,
-                                                 "bulk_size" : 1},
-                "agent_executing_queue"      : { "log_level" : "off",
-                                                 "stall_hwm" : 1,
-                                                 "bulk_size" : 1},
-                "agent_staging_output_queue" : { "log_level" : "off",
-                                                 "stall_hwm" : 1,
-                                                 "bulk_size" : 1},
+    "target"  : "local",
+    "bridges" : {
+        "agent_staging_input_queue"  : { "log_level" : "off",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 1},
+        "agent_scheduling_queue"     : { "log_level" : "off",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 1},
+        "agent_executing_queue"      : { "log_level" : "off",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 1},
+        "agent_staging_output_queue" : { "log_level" : "off",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 1},
 
-                "agent_unschedule_pubsub"    : {"log_level" : "off"},
-                "agent_reschedule_pubsub"    : {"log_level" : "off"},
+        "agent_unschedule_pubsub"    : {"log_level" : "off"},
+        "agent_reschedule_pubsub"    : {"log_level" : "off"},
 
-                "control_pubsub"             : {"log_level" : "off"},
-                "state_pubsub"               : {"log_level" : "off"}
-            },
+        "control_pubsub"             : {"log_level" : "off"},
+        "state_pubsub"               : {"log_level" : "off"}
+    },
 
-            # which components to start on this agent
-            "components": {
-                # how many instances of the respective components should be started
-                "UpdateWorker"                : 1,
-                "AgentStagingInputComponent"  : 1,
-                "AgentStagingOutputComponent" : 1
-            }
-        },
+    "components": {
+        "UpdateWorker"                : 1,
+        "AgentStagingInputComponent"  : 1,
+        "AgentStagingOutputComponent" : 1
+    }
+    
+
+    "agents": {
         "agent_1": {
-            # Where to run this agent ("local" or "node")
             "target": "node",
-            # which components to start on this agent
             "components": {
-                # how many instances of the respective components should be started
                 "AgentSchedulingComponent": 1,
                 "AgentExecutingComponent" : 1
             }
         }
-    },
-
-    "clone" : {
-        "AgentWorker"                 : {"input" : 1, "output" : 1024},
-        "AgentStagingInputComponent"  : {"input" : 1, "output" : 1},
-        "AgentSchedulingComponent"    : {"input" : 1, "output" : 1},
-        "AgentExecutingComponent"     : {"input" : 1, "output" : 1},
-        "AgentStagingOutputComponent" : {"input" : 1, "output" : 1}
-    },
-
-    "drop" : {
-        "AgentWorker"                 : {"input" : 0, "output" : 0},
-        "AgentStagingInputComponent"  : {"input" : 0, "output" : 0},
-        "AgentSchedulingComponent"    : {"input" : 0, "output" : 0},
-        "AgentExecutingComponent"     : {"input" : 0, "output" : 0},
-        "AgentStagingOutputComponent" : {"input" : 0, "output" : 1}
     }
 }
 

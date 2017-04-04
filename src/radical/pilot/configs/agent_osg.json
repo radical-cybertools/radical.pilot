@@ -21,7 +21,7 @@
     # interface for binding zmq to
     "network_interface"    : "lo",
 
-    "agent_layout" : {
+    "agents" : {
         "agent_1"   : {
             "target"     : "local",
             "components" : {

@@ -2,6 +2,17 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+# the session needs to get rid of child process handles after forks, as Python's
+# multiprocessing module does not allow to check for child process health from
+# processes which did not originally spawn the children.  For htis we use
+# `at_fork`, which monkeypatches `os.fork()` to support prepare, parent and
+# child hooks.  We then register a child hook during session initialization.
+#
+# Since the monkeypatch needs to be applies before `os` is imported, we do that
+# right here, in the (probably vain) hope that os was not imported before.  If
+# it was, at_fork will raise an error.
+#
+
 
 import os
 import copy
@@ -33,7 +44,6 @@ from .utils import version_detail as rp_version_detail
 class Session(rs.Session):
     """
     A Session encapsulates a RADICAL-Pilot instance and is the *root* object
-    for all other RADICAL-Pilot objects. 
 
     A Session holds :class:`radical.pilot.PilotManager` and
     :class:`radical.pilot.UnitManager` instances which in turn hold
@@ -41,6 +51,10 @@ class Session(rs.Session):
     instances.
     """
 
+    # We keep a static typemap for component startup. If we ever want to
+    # become reeeealy fancy, we can derive that typemap from rp module
+    # inspection.
+    #
     # --------------------------------------------------------------------------
     #
     def __init__(self, dburl=None, uid=None, cfg=None, _connect=True):
@@ -64,14 +78,13 @@ class Session(rs.Session):
 
         """
 
-        self._dh        = ru.DebugHelper()
-        self._valid     = True
+        self._dh    = ru.DebugHelper()
+        self._valid = True
 
         # class state
         self._dbs         = None
         self._uid         = None
         self._dburl       = None
-        self._controller  = None
         self._reconnected = False
 
         self._cache       = dict()  # cache sandboxes etc.
@@ -86,8 +99,10 @@ class Session(rs.Session):
         self._debug_helper = ru.DebugHelper()
 
         # Dictionaries holding all manager objects created during the session.
-        self._pmgrs = dict()
-        self._umgrs = dict()
+        # NOTE: should this also include agents?
+        self._pmgrs   = dict()
+        self._umgrs   = dict()
+        self._bridges = list()
 
         # The resource configuration dictionary associated with the session.
         self._resource_configs = {}
@@ -211,45 +226,38 @@ class Session(rs.Session):
             raise RuntimeError("Couldn't create new session (database URL '%s' incorrect?): %s" \
                             % (dburl, ex))  
 
+        # TODO: start all bridges, put addresses into cfg, 
+        #       put handles into self._bridges
+        # if any bridges are specified in the config, we start them here.
+        # NOTE: we pass the config since this method is agnostic of the callee:
+        #       it could also be called from a component process which needs to
+        #       start additional bridges.
+        #       Either way though, IFF bridges are started, the resulting
+        #       process handles are managed by the session and are added to
+        #       self._bridges.
+        ruc = rpu.Component
+        self._bridges = ruc.start_bridges(self._cfg, self, self._log)
+        self.is_valid()
+        print 'after starting bridges'
+        pprint.pprint(self._cfg)
+        print
+
         # FIXME: make sure the above code results in a usable session on
         #        reconnect
         self._log.report.ok('>>ok\n')
 
+        # the session must not carry bridge and component handles across forks
+        ru.atfork(self._atfork_prepare, self._atfork_parent, self._atfork_child)
 
     # --------------------------------------------------------------------------
-    @property
-    def ctrl_cfg(self):
-
-        if not self._controller:
-            self._create_controller()
-
-        cfg = self._controller.ctrl_cfg  # this is a deep copy
-        cfg['session_id'] = self._uid
-        cfg['dburl']      = str(self._dburl)
-
-        return cfg
-
-
-    # ---------------------------------------------------------------------------
     #
-    def _create_controller(self):
+    def _atfork_prepare(self): pass
+    def _atfork_parent(self) : pass
+    def _atfork_child(self)  : 
+        self._components = list()
+        self._bridges    = list()
 
-        # not all sessions need a controller for bridges and components.  Its
-        # really only required once we (i) create a unit manager, (ii) create
-        # a pilot manager, or (iii) create an agent instance.  All other
-        # sessions will not start any bridges etc.  Thus we make the startup of
-        # the controller explicit.  Once the controller is up, we merge the
-        # bridge addresses etc. into the session config.
-
-        if not self._controller:
-            self._cfg['session_id'] = self._uid
-            self._cfg['dburl']      = str(self._dburl)
-            self._controller = rpu.Controller(cfg=self._cfg, session=self)
-          # ru.dict_merge(self._cfg, self._controller.ctrl_cfg, ru.PRESERVE)
-
-        # we pass session_id and db_url as part of the controller cfg
-
-
+    
     # --------------------------------------------------------------------------
     # Allow Session to function as a context manager in a `with` clause
     def __enter__(self):
@@ -266,22 +274,35 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def _is_valid(self):
+    def is_valid(self, term=True):
 
-        # there are two conditions which make an session 'invalid', ie. unfit
-        # for use:
-        #
-        #   - the session was closed 
-        #   - the session controller died
-        #
+        if self._valid:
+            for _,umgr in self._umgrs.iteritems():
+                if not umgr.is_valid(term):
+                    self._valid = False
+                    break
+
+        if self._valid:
+            for _,pmgr in self._pmgrs.iteritems():
+                if not pmgr.is_valid(term):
+                    self._valid = False
+                    break
+
+        if self._valid:
+            for bridge in self._bridges:
+                if not bridge.is_valid(term):
+                    self._valid = False
+                    break
 
         if not self._valid:
-            raise RuntimeError("instance was closed")
+            raise RuntimeError("session %s is invalid" % self.uid)
 
 
     # --------------------------------------------------------------------------
     #
     def _load_resource_configs(self):
+
+        self.is_valid()
 
         # Loading all "default" resource configurations
         module_path  = os.path.dirname(os.path.abspath(__file__))
@@ -348,9 +369,6 @@ class Session(rs.Session):
               or doesn't exist. 
         """
 
-        if not self._valid:
-            return
-
         self._log.report.info('closing session %s' % self._uid)
         self._log.debug("session %s closing" % (str(self._uid)))
         self.prof.prof("close", uid=self._uid)
@@ -374,21 +392,21 @@ class Session(rs.Session):
             # cleanup implies terminate
             terminate = True
 
-        for umgr_uid, umgr in self._umgrs.iteritems():
+        for umgr_uid,umgr in self._umgrs.iteritems():
             self._log.debug("session %s closes umgr   %s", self._uid, umgr_uid)
             umgr.close()
             self._log.debug("session %s closed umgr   %s", self._uid, umgr_uid)
 
-        for pmgr_uid, pmgr in self._pmgrs.iteritems():
+        for pmgr_uid,pmgr in self._pmgrs.iteritems():
             self._log.debug("session %s closes pmgr   %s", self._uid, pmgr_uid)
             pmgr.close(terminate=terminate)
             self._log.debug("session %s closed pmgr   %s", self._uid, pmgr_uid)
 
-        # stop the controller
-        if self._controller:
-            self._log.debug("session %s closes ctrl   %s", self._uid, self._controller.uid)
-            self._controller.stop()  
-            self._log.debug("session %s closed ctrl   %s", self._uid, self._controller.uid)
+        for bridge in self._bridges:
+            self._log.debug("session %s closes bridge %s", self._uid, bridge.uid)
+            bridge.stop()
+            bridge.join()
+            self._log.debug("session %s closed bridge %s", self._uid, bridge.uid)
 
         self.prof.prof("closing", msg=cleanup, uid=self._uid)
         if self._dbs:
@@ -409,7 +427,7 @@ class Session(rs.Session):
         """Returns a Python dictionary representation of the object.
         """
 
-        self._is_valid()
+        self.is_valid()
 
         object_dict = {
             "uid"       : self._uid,
@@ -417,8 +435,7 @@ class Session(rs.Session):
             "connected" : self.connected,
             "closed"    : self.closed,
             "dburl"     : str(self.dburl),
-            "cfg"       : copy.deepcopy(self._cfg),
-            "ctrl_cfg"  : self.ctrl_cfg # this is a deep copy
+            "cfg"       : copy.deepcopy(self._cfg)
         }
         return object_dict
 
@@ -448,6 +465,8 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def get_db(self):
+
+        self.is_valid()
 
         if self._dbs: return self._dbs.get_db()
         else        : return None
@@ -479,6 +498,8 @@ class Session(rs.Session):
     #
     @property
     def is_connected(self):
+
+        self.is_valid()
 
         return self._dbs.is_connected
 
@@ -527,6 +548,8 @@ class Session(rs.Session):
         RP stack version info always get added.
         """
 
+        self.is_valid()
+
         if not isinstance(metadata, dict):
             raise Exception("Session metadata should be a dict!")
 
@@ -544,6 +567,8 @@ class Session(rs.Session):
     #
     def _register_pmgr(self, pmgr):
 
+        self.is_valid()
+
         self._dbs.insert_pmgr(pmgr.as_dict())
         self._pmgrs[pmgr.uid] = pmgr
 
@@ -559,7 +584,7 @@ class Session(rs.Session):
             * A list of :class:`radical.pilot.PilotManager` uids (`list` of `strings`).
         """
 
-        self._is_valid()
+        self.is_valid()
         return self._pmgrs.keys()
 
 
@@ -578,7 +603,7 @@ class Session(rs.Session):
             * One or more [:class:`radical.pilot.PilotManager`] objects.
         """
 
-        self._is_valid()
+        self.is_valid()
 
         return_scalar = False
         if not isinstance(pmgr_uids, list):
@@ -596,6 +621,8 @@ class Session(rs.Session):
     #
     def _register_umgr(self, umgr):
 
+        self.is_valid()
+
         self._dbs.insert_umgr(umgr.as_dict())
         self._umgrs[umgr.uid] = umgr
 
@@ -611,7 +638,7 @@ class Session(rs.Session):
             * A list of :class:`radical.pilot.UnitManager` uids (`list` of `strings`).
         """
 
-        self._is_valid()
+        self.is_valid()
         return self._umgrs.keys()
 
 
@@ -630,7 +657,7 @@ class Session(rs.Session):
             * One or more [:class:`radical.pilot.UnitManager`] objects.
         """
 
-        self._is_valid()
+        self.is_valid()
 
         return_scalar = False
         if not isinstance(umgr_uids, list):
@@ -669,6 +696,9 @@ class Session(rs.Session):
 
                   pilot = pm.submit_pilots(pd)
         """
+
+        self.is_valid()
+
         if isinstance(resource_config, basestring):
 
             # let exceptions fall through
@@ -687,6 +717,8 @@ class Session(rs.Session):
         """
         Returns a dictionary of the requested resource config
         """
+
+        self.is_valid()
 
         if  resource in self._resource_aliases:
             self._log.warning("using alias '%s' for deprecated resource key '%s'" \
@@ -734,6 +766,9 @@ class Session(rs.Session):
         for a given pilot dict, determine the global RP sandbox, based on the
         pilot's 'resource' attribute.
         """
+
+        self.is_valid()
+
         # FIXME: this should get 'resource, schema=None' as parameters
 
         resource = pilot['description'].get('resource')
@@ -802,6 +837,8 @@ class Session(rs.Session):
     #
     def _get_session_sandbox(self, pilot):
 
+        self.is_valid()
+
         # FIXME: this should get 'resource, schema=None' as parameters
 
         resource = pilot['description'].get('resource')
@@ -828,6 +865,8 @@ class Session(rs.Session):
     #
     def _get_pilot_sandbox(self, pilot):
 
+        self.is_valid()
+
         # FIXME: this should get 'pid, resource, schema=None' as parameters
 
         pid = pilot['uid']
@@ -849,6 +888,8 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def _get_unit_sandbox(self, unit, pilot):
+
+        self.is_valid()
 
         # we don't cache unit sandboxes, they are just a string concat.
         pilot_sandbox = self._get_pilot_sandbox(pilot)

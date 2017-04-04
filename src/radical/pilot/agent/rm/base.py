@@ -42,7 +42,7 @@ class LRMS(object):
     the LoadLevelerLRMS (which describes the BG/Q).
 
     The LRMS will reserve nodes for the agent execution, by deriving the
-    respectively required node count from the config's agent_layout section.
+    respectively required node count from the config's 'agents' section.
     Those nodes will be listed in LRMS.agent_node_list. Schedulers MUST NOT use
     the agent_node_list to place compute units -- CUs are limited to the nodes
     in LRMS.node_list.
@@ -79,22 +79,23 @@ class LRMS(object):
         self.agent_nodes     = {}
         self.cores_per_node  = None
 
-        # The LRMS will possibly need to reserve nodes for the agent, according to the
-        # agent layout.  We dig out the respective requirements from the config
-        # right here.
+        # The LRMS will possibly need to reserve nodes for the agent, according
+        # to the agent layout.  We dig out the respective requirements from the
+        # config right here.
         self._agent_reqs = []
-        layout = self._cfg['agent_layout']
+        agents = self._cfg['agents']
+
         # FIXME: this loop iterates over all agents *defined* in the layout, not
         #        over all agents which are to be actually executed, thus
         #        potentially reserving too many nodes.
-        for worker in layout:
-            target = layout[worker].get('target')
+        for agent in agents:
+            target = agents[agent].get('target')
             # make sure that the target either 'local', which we will ignore,
             # or 'node'.
             if target == 'local':
                 pass # ignore that one
             elif target == 'node':
-                self._agent_reqs.append(worker)
+                self._agent_reqs.append(agent)
             else :
                 raise ValueError("ill-formatted agent target '%s'" % target)
 
@@ -113,9 +114,9 @@ class LRMS(object):
         # the first couple of nodes from the nodelist as a fallback.
         if self._agent_reqs and not self.agent_nodes:
             self._log.info('Determine list of agent nodes generically.')
-            for worker in self._agent_reqs:
+            for agent in self._agent_reqs:
                 # Get a node from the end of the node list
-                self.agent_nodes[worker] = self.node_list.pop()
+                self.agent_nodes[agent] = self.node_list.pop()
                 # If all nodes are taken by workers now, we can safely stop,
                 # and let the raise below do its thing.
                 if not self.node_list:

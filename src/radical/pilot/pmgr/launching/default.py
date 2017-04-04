@@ -58,9 +58,6 @@ class Default(PMGRLaunchingComponent):
     #
     def initialize_child(self):
 
-        self.register_input(rps.PMGR_LAUNCHING_PENDING, 
-                            rpc.PMGR_LAUNCHING_QUEUE, self.work)
-
         # we don't really have an output queue, as we pass control over the
         # pilot jobs to the resource management system (RM).
 
@@ -76,6 +73,9 @@ class Default(PMGRLaunchingComponent):
         self._mod_dir       = os.path.dirname(os.path.abspath(__file__))
         self._root_dir      = "%s/../../"   % self._mod_dir  
         self._conf_dir      = "%s/configs/" % self._root_dir 
+
+        self.register_input(rps.PMGR_LAUNCHING_PENDING, 
+                            rpc.PMGR_LAUNCHING_QUEUE, self.work)
 
         # FIXME: make interval configurable
         self.register_timed_cb(self._pilot_watcher_cb, timer=10.0)
@@ -787,17 +787,6 @@ class Default(PMGRLaunchingComponent):
         for arg in pre_bootstrap_2:
             bootstrap_args += " -w '%s'" % arg
 
-        # complete agent configuration
-        # NOTE: the agent config is really based on our own config, with 
-        #       agent specific settings merged in
-
-        agent_base_cfg = copy.deepcopy(self._cfg)
-        del(agent_base_cfg['bridges'])    # agent needs separate bridges
-        del(agent_base_cfg['components']) # agent needs separate components
-        del(agent_base_cfg['number'])     # agent counts differently
-
-        ru.dict_merge(agent_cfg, agent_base_cfg, ru.PRESERVE)
-
         agent_cfg['owner']              = 'agent_0'
         agent_cfg['cores']              = number_cores
         agent_cfg['debug']              = os.environ.get('RADICAL_PILOT_AGENT_VERBOSE', 
@@ -806,6 +795,8 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['spawner']            = agent_spawner
         agent_cfg['scheduler']          = agent_scheduler
         agent_cfg['runtime']            = runtime
+        agent_cfg['dburl']              = str(database_url)
+        agent_cfg['session_id']         = sid
         agent_cfg['pilot_id']           = pid
         agent_cfg['logdir']             = '.'
         agent_cfg['pilot_sandbox']      = pilot_sandbox
@@ -828,6 +819,7 @@ class Default(PMGRLaunchingComponent):
 
         # Convert dict to json file
         self._log.debug("Write agent cfg to '%s'.", cfg_tmp_file)
+        self._log.debug(pprint.pformat(agent_cfg))
         ru.write_json(agent_cfg, cfg_tmp_file)
 
         ret['ft'].append({'src' : cfg_tmp_file, 
