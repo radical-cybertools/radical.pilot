@@ -249,7 +249,6 @@ class Component(ru.Process):
                 # merge the component config section (overwrite)
                 ru.dict_merge(tmp_cfg, ccfg, ru.OVERWRITE)
 
-                print 'starting %s.%d' % (cname, i)
                 comp = ctype.create(tmp_cfg, session)
                 comp.start()
 
@@ -353,6 +352,10 @@ class Component(ru.Process):
         valid = super(Component, self).is_valid()
 
         if valid:
+            if not self._session.is_valid(term):
+                valid = False
+
+        if valid:
             for bridge in self._bridges:
                 if not bridge.is_valid(term):
                     valid = False
@@ -365,7 +368,7 @@ class Component(ru.Process):
                     break
 
         if not valid:
-            raise RuntimeError("umgr %s is invalid" % self.uid)
+            raise RuntimeError("component %s is invalid" % self.uid)
 
         return valid
 

@@ -78,8 +78,9 @@ class Session(rs.Session):
 
         """
 
-        self._dh    = ru.DebugHelper()
-        self._valid = True
+        self._dh          = ru.DebugHelper()
+        self._valid       = True
+        self._valid_iter  = 0  # detect recursive calls of `is_valid()`
 
         # class state
         self._dbs         = None
@@ -100,9 +101,10 @@ class Session(rs.Session):
 
         # Dictionaries holding all manager objects created during the session.
         # NOTE: should this also include agents?
-        self._pmgrs   = dict()
-        self._umgrs   = dict()
-        self._bridges = list()
+        self._pmgrs      = dict()
+        self._umgrs      = dict()
+        self._bridges    = list()
+        self._components = list()
 
         # The resource configuration dictionary associated with the session.
         self._resource_configs = {}
@@ -238,9 +240,6 @@ class Session(rs.Session):
         ruc = rpu.Component
         self._bridges = ruc.start_bridges(self._cfg, self, self._log)
         self.is_valid()
-        print 'after starting bridges'
-        pprint.pprint(self._cfg)
-        print
 
         # FIXME: make sure the above code results in a usable session on
         #        reconnect
@@ -276,26 +275,44 @@ class Session(rs.Session):
     #
     def is_valid(self, term=True):
 
-        if self._valid:
-            for _,umgr in self._umgrs.iteritems():
-                if not umgr.is_valid(term):
-                    self._valid = False
-                    break
+        self._valid_iter += 1
 
-        if self._valid:
-            for _,pmgr in self._pmgrs.iteritems():
-                if not pmgr.is_valid(term):
-                    self._valid = False
-                    break
+        try:
+            if self._valid_iter >= 2:
+                # we are too deep - abort this line or tests
+                return True
 
-        if self._valid:
-            for bridge in self._bridges:
-                if not bridge.is_valid(term):
-                    self._valid = False
-                    break
+            if self._valid:
+                for _,umgr in self._umgrs.iteritems():
+                    if not umgr.is_valid(term):
+                        self._valid = False
+                        break
 
-        if not self._valid:
+            if self._valid:
+                for _,pmgr in self._pmgrs.iteritems():
+                    if not pmgr.is_valid(term):
+                        self._valid = False
+                        break
+
+            if self._valid:
+                for bridge in self._bridges:
+                    if not bridge.is_valid(term):
+                        self._valid = False
+                        break
+
+            if self._valid:
+                for component in self._components:
+                    if not bridge.is_valid(term):
+                        self._valid = False
+                        break
+
+        finally:
+            self._valid_iter -= 1
+
+        if not self._valid and term:
             raise RuntimeError("session %s is invalid" % self.uid)
+
+        return self._valid
 
 
     # --------------------------------------------------------------------------

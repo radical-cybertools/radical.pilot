@@ -167,13 +167,11 @@ class PilotManager(rpu.Component):
 
         # terminate pmgr components
         for c in self._components:
-            print 'pmgr stopping %s' % c.name
             c.stop()
             c.join()
 
         # terminate pmgr bridges
         for b in self._bridges:
-            print 'pmgr stopping %s' % b.name
             b.stop()
             b.join()
 
@@ -202,13 +200,10 @@ class PilotManager(rpu.Component):
 
         # If terminate is set, we cancel all pilots. 
         if terminate:
-            print 'pmgr stop 0'
             self.cancel_pilots()
 
         self._terminate.set()
-        print 'pmgr stop 1'
         self.stop()
-        print 'pmgr stop 2'
 
 
         self._session.prof.prof('closed pmgr', uid=self._uid)

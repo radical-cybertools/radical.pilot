@@ -247,8 +247,6 @@ class Queue(ru.Process):
 
         assert(self._role == QUEUE_BRIDGE)
 
-        print 'init child'
-
         spt.setproctitle('rp.%s' % self._name)
         self._log.info('start bridge %s on %s', self._name, self._addr)
 

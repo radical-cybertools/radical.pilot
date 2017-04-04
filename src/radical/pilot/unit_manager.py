@@ -187,15 +187,13 @@ class UnitManager(rpu.Component):
     # 
     def finalize_parent(self):
 
-        # terminate pmgr components
+        # terminate umgr components
         for c in self._components:
-            print 'pmgr stopping %s' % c.name
             c.stop()
             c.join()
 
-        # terminate pmgr bridges
+        # terminate umgr bridges
         for b in self._bridges:
-            print 'pmgr stopping %s' % b.name
             b.stop()
             b.join()
 
