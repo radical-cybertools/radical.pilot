@@ -53,12 +53,13 @@ def bootstrap_3(agent_name):
         # component or sub-agent, or we get a kill signal from the RM.  In all
         # three cases, we'll end up in agent.stop() -- agent.wait() will wait
         # until then.
+        # FIXME: the comment above can't be correct: wait won't do a thing for
+        #        for an unspawned component...
         agent.join()
         while True:
             time.sleep(1)
 
     finally:
-
         # in all cases, make sure we perform an orderly shutdown.  I hope python
         # does not mind doing all those things in a finally clause of
         # (essentially) main...

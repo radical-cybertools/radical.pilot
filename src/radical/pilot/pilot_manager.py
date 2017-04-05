@@ -100,11 +100,8 @@ class PilotManager(rpu.Component):
         # initialize the base class (with no intent to fork)
         self._uid    = ru.generate_id('pmgr')
         cfg['owner'] = self.uid
-        self._initialized = False
         rpu.Component.__init__(self, cfg, session)
         self.start(spawn=False)
-
-        assert(self._initialized)
 
         # only now we have a logger... :/
         self._log.report.info('<<create pilot manager')
@@ -137,19 +134,6 @@ class PilotManager(rpu.Component):
 
         # the manager must not carry bridge and component handles across forks
         ru.atfork(self._atfork_prepare, self._atfork_parent, self._atfork_child)
-
-
-    # --------------------------------------------------------------------------
-    # 
-    def initialize_parent(self):
-
-        self._initialized = True
-
-        # we can start bridges and components, as needed
-        # FIXME: move into the Component base class?
-        ruc = rpu.Component
-        self._bridges    = ruc.start_bridges   (self._cfg, self._session, self._log)
-        self._components = ruc.start_components(self._cfg, self._session, self._log)
 
 
     # --------------------------------------------------------------------------

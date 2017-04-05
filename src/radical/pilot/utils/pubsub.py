@@ -102,7 +102,7 @@ class Pubsub(ru.Process):
 
         self._log.info("create %s - %s - %s", self._channel, self._role, self._addr)
 
-        ru.Process.__init__(self, name=self._name)
+        super(Pubsub, self).__init__(name=self._name, log=self._log)
 
 
         # ----------------------------------------------------------------------

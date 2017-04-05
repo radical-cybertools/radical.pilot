@@ -164,17 +164,6 @@ class UnitManager(rpu.Component):
 
 
     # --------------------------------------------------------------------------
-    # 
-    def initialize_parent(self):
-
-        # we can start bridges and components, as needed
-        # FIXME: move into the Component base class?
-        ruc = rpu.Component
-        self._bridges    = ruc.start_bridges   (self._cfg, self._session, self._log)
-        self._components = ruc.start_components(self._cfg, self._session, self._log)
-
-
-    # --------------------------------------------------------------------------
     #
     def _atfork_prepare(self): pass
     def _atfork_parent(self) : pass

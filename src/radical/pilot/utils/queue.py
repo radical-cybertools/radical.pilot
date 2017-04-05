@@ -137,7 +137,7 @@ class Queue(ru.Process):
         self._log     = self._session._get_logger(self._name, 
                                                   level=self._cfg.get('log_level', 'off'))
 
-        ru.Process.__init__(self, name=self._name)
+        super(Queue, self).__init__(name=self._name, log=self._log)
 
         # avoid superfluous logging calls in critical code sections
         if self._log.getEffectiveLevel() == 10: # logging.DEBUG:

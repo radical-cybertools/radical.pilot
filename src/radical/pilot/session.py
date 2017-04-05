@@ -80,6 +80,7 @@ class Session(rs.Session):
 
         self._dh          = ru.DebugHelper()
         self._valid       = True
+        self._closed      = False
         self._valid_iter  = 0  # detect recursive calls of `is_valid()`
 
         # class state
@@ -123,7 +124,9 @@ class Session(rs.Session):
 
         # fall back to config data where possible
         # sanity check on parameters
-        if not uid : uid = self._cfg.get('session_id')
+        if not uid : 
+            uid = self._cfg.get('session_id')
+
         if uid:
             self._uid         = uid
             self._reconnected = True
@@ -134,14 +137,11 @@ class Session(rs.Session):
             self._uid = ru.generate_id('rp.session',  mode=ru.ID_PRIVATE)
             ru.reset_id_counters(prefix='rp.session', reset_all_others=True)
 
-        if not self._cfg.get('owner'):
-            self._cfg['owner'] = self._uid
-
-        if not self._cfg.get('debug'):
-            self._cfg['debug'] = 'DEBUG'
-
-        if not self._cfg.get('logdir'):
-            self._cfg['logdir'] = '%s/%s' % (os.getcwd(), self._uid)
+        if not self._cfg.get('session_id'): self._cfg['session_id'] = self._uid 
+        if not self._cfg.get('owner')     : self._cfg['owner']      = self._uid 
+        if not self._cfg.get('debug')     : self._cfg['debug']      = 'DEBUG' 
+        if not self._cfg.get('logdir')    : self._cfg['logdir']     = '%s/%s' \
+                                                     % (os.getcwd(), self._uid)
 
         self._logdir = self._cfg['logdir']
         self._log    = self._get_logger(self._cfg['owner'], self._cfg['debug'])
@@ -164,6 +164,7 @@ class Session(rs.Session):
 
 
         self._dburl = ru.Url(dburl)
+        self._cfg['dburl'] = str(self._dburl)
 
         # ----------------------------------------------------------------------
         # create new session
@@ -228,30 +229,27 @@ class Session(rs.Session):
             raise RuntimeError("Couldn't create new session (database URL '%s' incorrect?): %s" \
                             % (dburl, ex))  
 
-        # TODO: start all bridges, put addresses into cfg, 
-        #       put handles into self._bridges
-        # if any bridges are specified in the config, we start them here.
-        # NOTE: we pass the config since this method is agnostic of the callee:
-        #       it could also be called from a component process which needs to
-        #       start additional bridges.
-        #       Either way though, IFF bridges are started, the resulting
-        #       process handles are managed by the session and are added to
-        #       self._bridges.
+        # the session must not carry bridge and component handles across forks
+        ru.atfork(self._atfork_prepare, self._atfork_parent, self._atfork_child)
+
+        # if bridges and components are specified in the config, start them
         ruc = rpu.Component
-        self._bridges = ruc.start_bridges(self._cfg, self, self._log)
+        self._bridges    = ruc.start_bridges   (self._cfg, self, self._log)
+        self._components = ruc.start_components(self._cfg, self, self._log)
         self.is_valid()
 
         # FIXME: make sure the above code results in a usable session on
         #        reconnect
         self._log.report.ok('>>ok\n')
 
-        # the session must not carry bridge and component handles across forks
-        ru.atfork(self._atfork_prepare, self._atfork_parent, self._atfork_child)
-
     # --------------------------------------------------------------------------
     #
-    def _atfork_prepare(self): pass
-    def _atfork_parent(self) : pass
+    def _atfork_prepare(self): 
+        pass
+
+    def _atfork_parent(self) :
+        pass
+
     def _atfork_child(self)  : 
         self._components = list()
         self._bridges    = list()
@@ -275,6 +273,8 @@ class Session(rs.Session):
     #
     def is_valid(self, term=True):
 
+        # if we check any manager or agent, it will likely also check the
+        # session in turn.  We break that loop here.
         self._valid_iter += 1
 
         try:
@@ -302,7 +302,7 @@ class Session(rs.Session):
 
             if self._valid:
                 for component in self._components:
-                    if not bridge.is_valid(term):
+                    if not component.is_valid(term):
                         self._valid = False
                         break
 
@@ -310,7 +310,9 @@ class Session(rs.Session):
             self._valid_iter -= 1
 
         if not self._valid and term:
-            raise RuntimeError("session %s is invalid" % self.uid)
+            self._log.warn("session %s is invalid" % self.uid)
+            self.close()
+          # raise RuntimeError("session %s is invalid" % self.uid)
 
         return self._valid
 
@@ -385,6 +387,11 @@ class Session(rs.Session):
             * :class:`radical.pilot.IncorrectState` if the session is closed
               or doesn't exist. 
         """
+
+        # close only once
+        if self._closed:
+            return
+        self._closed = True
 
         self._log.report.info('closing session %s' % self._uid)
         self._log.debug("session %s closing" % (str(self._uid)))

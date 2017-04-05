@@ -368,7 +368,9 @@ class Component(ru.Process):
                     break
 
         if not valid:
-            raise RuntimeError("component %s is invalid" % self.uid)
+            self._log.warn("component %s is invalid" % self.uid)
+            self.stop()
+          # raise RuntimeError("component %s is invalid" % self.uid)
 
         return valid
 
@@ -458,10 +460,15 @@ class Component(ru.Process):
         This method must be called *after* fork (this is asserted).
         """
 
+        # NOTE: this method somewhat breaks the initialize_child vs.
+        #        initialize_parent paradigm, in that it will behave differently
+        #        for parent and child.  We do this to ensure existence of
+        #        bridges and sub-components for the initializers of the
+        #        inheriting classes
+
         # make sure we have a unique logfile etc for the child
         if self.is_child:
             self._uid = self._uid + '.child'
-
 
         # get debugging, logging, profiling set up
       # self._dh   = ru.DebugHelper(name=self.uid)
@@ -473,6 +480,9 @@ class Component(ru.Process):
         self._log.info('cfg: %s', pprint.pformat(self._cfg))
 
         try:
+            # make sure our config records the uid
+            self._cfg['uid'] = self.uid
+
             # all components need at least be able to talk to a control, log and
             # state pubsub.  We expect those channels to be provided by the
             # session, and the respective addresses to be available in the
@@ -483,8 +493,26 @@ class Component(ru.Process):
             # potentially attach those basic pubsubs to a root component
             # (although this is not done at the moment).
             #
-            self._bridges    = Component.start_bridges(   self._cfg, self._session, self._log)
-            self._components = Component.start_components(self._cfg, self._session, self._log)
+            # bridges can *only* be started by non-spawning components --
+            # otherwise we would not be able to communicate bridge addresses to
+            # the parent or child process (remember, this is *after* fork, the
+            # cfg is already passed on).
+            if self._ru_is_parent and not self._ru_spawned:
+                self._bridges = Component.start_bridges(self._cfg, 
+                                                        self._session, 
+                                                        self._log)
+
+            # only one side will start sub-components: either the child, if it
+            # exists, and only otherwise the parent
+            if self._ru_is_parent and not self._ru_spawned:
+                self._components = Component.start_components(self._cfg, 
+                                                              self._session, 
+                                                              self._log)
+            
+            elif self._ru_is_child:
+                self._components = Component.start_components(self._cfg, 
+                                                              self._session, 
+                                                              self._log)
 
             # bridges should now be available and known - assert!
             assert('bridges' in self._cfg)
@@ -823,8 +851,9 @@ class Component(ru.Process):
         class Idler(ru.Thread):
 
             # ------------------------------------------------------------------
-            def __init__(self, name, timer, cb, cb_data, cb_lock):
+            def __init__(self, name, log, timer, cb, cb_data, cb_lock):
                 self._name    = name
+                self._log     = log
                 self._timeout = timer
                 self._cb      = cb
                 self._cb_data = cb_data
@@ -832,7 +861,7 @@ class Component(ru.Process):
                 self._last    = 0.0
                 self._term    = mt.Event()
 
-                super(Idler, self).__init__(name=self._name)
+                super(Idler, self).__init__(name=self._name, log=self._log)
 
                 # immediately start the thread upon construction
                 self.start()
@@ -855,7 +884,7 @@ class Component(ru.Process):
                 return True
         # ----------------------------------------------------------------------
 
-        idler = Idler(name=name, timer=timer, 
+        idler = Idler(name=name, timer=timer, log=self._log,
                       cb=cb, cb_data=cb_data, cb_lock=self._cb_lock)
 
         self.register_watchable(idler)
@@ -986,14 +1015,15 @@ class Component(ru.Process):
         class Subscriber(ru.Thread):
 
             # ------------------------------------------------------------------
-            def __init__(self, name, q, cb, cb_data, cb_lock):
+            def __init__(self, name, l, q, cb, cb_data, cb_lock):
                 self._name     = name
+                self._log      = l
                 self._q        = q
                 self._cb       = cb
                 self._cb_data  = cb_data
                 self._cb_lock  = cb_lock
 
-                super(Subscriber, self).__init__(name=self._name)
+                super(Subscriber, self).__init__(name=self._name, log=self._log)
 
                 # immediately start the thread upon construction
                 self.start()
@@ -1018,7 +1048,8 @@ class Component(ru.Process):
         q = rpu_Pubsub(self._session, pubsub, rpu_PUBSUB_SUB, self._cfg, addr=addr)
         q.subscribe(pubsub)
 
-        subscriber = Subscriber(name=name, q=q, cb=cb, cb_data=cb_data, cb_lock=self._cb_lock)
+        subscriber = Subscriber(name=name, l=self._log, q=q, 
+                                cb=cb, cb_data=cb_data, cb_lock=self._cb_lock)
 
         self.register_watchable(subscriber)
         self._log.debug('%s registered %s subscriber %s' % (self.uid, pubsub, name))
