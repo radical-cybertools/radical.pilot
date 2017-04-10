@@ -41,7 +41,7 @@ class AcceptanceTests(unittest.TestCase):
 
         # Read in configuration
         cls.config = ru.read_json('%s/config.json' %
-                                   os.path.dirname(os.path.abspath(__file__)))
+                                  os.path.dirname(os.path.abspath(__file__)))
 
         # Number of Compute Units (CUs)
         cls.n = 128   # number of units to run
@@ -75,8 +75,6 @@ class AcceptanceTests(unittest.TestCase):
             'access_schema': self.config[self.resource]['schema'],
             'cores': self.config[self.resource]['cores'],
         }
-
-
 
     def test_00_getting_started(self):
         """Test a standard pilot run"""
@@ -118,10 +116,9 @@ class AcceptanceTests(unittest.TestCase):
             "Only {0}% of CUs were DONE."
             .format(str((float(done_units) / float(self.n)) * 100.00)))
 
-
-
     def test_01_unit_details(self):
-        """Test failing units, about ~50% of the units will fail"""
+        """Test unit details, units have details accessible via api
+        """
 
         # Create description object from template description
         pilot_desc = rp.ComputePilotDescription(self.pd_init)
@@ -160,6 +157,10 @@ class AcceptanceTests(unittest.TestCase):
         # Get some more details for one unit:
         for unit in units:
             unit_dict = unit.as_dict()
+            print(unit_dict['sandbox'])
+            print(unit_dict['pilot'])
+            print(unit_dict['exit_code'])
+            print("=================================")
             self.assertIsNotNone(unit_dict['sandbox'])
             self.assertIsNotNone(unit_dict['pilot'])
             self.assertIsNotNone(unit_dict['exit_code'])
@@ -209,7 +210,6 @@ class AcceptanceTests(unittest.TestCase):
             (float(done_units) / float(self.n)), 0.50,
             "Only {0}% of CUs were DONE."
             .format(str((float(done_units) / float(self.n)) * 100.00)))
-
 
     def test_03_multiple_pilots(self):
         """Test multiple pilots"""
@@ -268,10 +268,9 @@ class AcceptanceTests(unittest.TestCase):
             "Only {0}% of CUs were DONE."
             .format(str((float(done_units) / float(self.n)) * 100.00)))
 
-        # Finally assert that the number of requested vs submitted pilots are the same
+        # Finally assert that the number of requested vs submitted pilots are
+        # the same
         self.assertEquals(resource_count, pilot_count)
-
-
 
     def tearDown(self):
         # Close pilot session
