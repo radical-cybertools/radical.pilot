@@ -41,7 +41,7 @@ def dec_all_methods(dec):
     return dectheclass
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 @dec_all_methods(cprof_it)
 class Continuous(AgentSchedulingComponent):

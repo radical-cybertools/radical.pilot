@@ -1,21 +1,10 @@
-# This config is an examplary for a pilot on a Cray machine
 {
-    # directory for staging files inside the agent sandbox
     "staging_area"         : "staging_area",
-
-    # url schema to indicate the use of staging_area
     "staging_schema"       : "staging",
-
-    # max number of cu out/err chars to push to db
     "max_io_loglength"     : 1024,
-
-    # max time period to collect db notifications into bulks (seconds)
-    "bulk_collection_time" : 1.0,
-
-    # time to sleep between database polls (seconds)
+    "bulk_collection_size" :  100,
+    "bulk_collection_time" : 5.0,
     "db_poll_sleeptime"    : 1.0,
-
-    # interface for binding zmq to
     "network_interface"    : "ipogif0",
 
     "target"  : "local",
@@ -44,9 +33,8 @@
         "UpdateWorker"                : 1,
         "AgentStagingInputComponent"  : 1,
         "AgentStagingOutputComponent" : 1
-    }
+    },
     
-
     "agents": {
         "agent_1": {
             "target": "node",
@@ -57,4 +45,3 @@
         }
     }
 }
-

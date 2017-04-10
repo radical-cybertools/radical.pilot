@@ -8,6 +8,8 @@ import time
 import threading
 import subprocess
 
+import radical.utils as ru
+
 from .base import LaunchMethod
 
 
@@ -19,9 +21,14 @@ class ORTELib(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, logger)
+        LaunchMethod.__init__(self, cfg, session)
+
+        # We remove all ORTE related environment variables from the launcher
+        # environment, so that we can use ORTE for both launch of the
+        # (sub-)agent and CU execution.
+        self.env_removables.extend(["OMPI_", "OPAL_", "PMIX_"])
 
 
     # --------------------------------------------------------------------------
@@ -37,7 +44,7 @@ class ORTELib(LaunchMethod):
                the DVM.
         """
 
-        dvm_command = cls._which('orte-dvm')
+        dvm_command = ru.which('orte-dvm')
         if not dvm_command:
             raise Exception("Couldn't find orte-dvm")
 
@@ -150,6 +157,10 @@ class ORTELib(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
+    # NOTE: ORTE_LIB LM relies on the ORTE LaunchMethod's lrms_config_hook and
+    # lrms_shutdown_hook. These are "always" called, as even in the ORTE_LIB
+    # case we use ORTE for the sub-agent launch.
+    #
     @classmethod
     def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
         """
@@ -160,7 +171,7 @@ class ORTELib(LaunchMethod):
         if 'dvm_uri' in lm_info:
             try:
                 logger.info('terminating dvm')
-                orte_submit = cls._which('orterun')
+                orte_submit = ru.which('orterun')
                 if not orte_submit:
                     raise Exception("Couldn't find orterun")
                 subprocess.Popen([orte_submit, "--hnp", lm_info['dvm_uri'], "--terminate"])
@@ -172,7 +183,7 @@ class ORTELib(LaunchMethod):
     #
     def _configure(self):
 
-        self.launch_command = self._which('orterun')
+        self.launch_command = ru.which('orterun')
 
         # Request to create a background asynchronous event loop
         os.putenv("OMPI_MCA_ess_tool_async_progress", "enabled")
@@ -186,9 +197,9 @@ class ORTELib(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_mpi     = cud.get('mpi') or False
+        task_mpi     = cud.get('mpi')       or False
         task_args    = cud.get('arguments') or []
-        task_argstr  = " ".join(task_args)
+        task_argstr  = self._create_arg_string(task_args)
 
         if 'task_slots' not in opaque_slots:
             raise RuntimeError('No task_slots to launch via %s: %s' \

@@ -862,7 +862,6 @@ class Component(ru.Process):
                 self._cb_data = cb_data
                 self._cb_lock = cb_lock
                 self._last    = 0.0
-                self._term    = mt.Event()
 
                 super(Idler, self).__init__(name=self._name, log=self._log)
 
@@ -1249,16 +1248,13 @@ class Component(ru.Process):
             if state:
                 # state advance done here
                 thing['state'] = state
-            else:
-                # state advance was done by caller
-                state = thing['state']
 
             self._log.debug(' === advance bulk: %s [%s]', uid, len(things))
-            self._prof.prof('advance', uid=uid, state=state, timestamp=timestamp)
+            self._prof.prof('advance', uid=uid, state=thing['state'], timestamp=timestamp)
 
-            if not state in buckets:
-                buckets[state] = list()
-            buckets[state].append(thing)
+            if not thing['state'] in buckets:
+                buckets[thing['state']] = list()
+            buckets[thing['state']].append(thing)
 
         # should we publish state information on the state pubsub?
         if publish:
@@ -1273,13 +1269,13 @@ class Component(ru.Process):
                     del(thing['$all'])
                     to_publish.append(thing)
 
-                elif state in rps.FINAL:
+                elif thing['state'] in rps.FINAL:
                     to_publish.append(thing)
 
                 else:
                     to_publish.append({'uid'   : thing['uid'],
                                        'type'  : thing['type'],
-                                       'state' : state})
+                                       'state' : thing['state']})
 
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'update', 'arg': to_publish})
             ts = time.time()
@@ -1298,51 +1294,49 @@ class Component(ru.Process):
             # the push target depends on the state of things, so we need to sort
             # the things into buckets by state before pushing them
             # now we can push the buckets as bulks
-            for state,things in buckets.iteritems():
+            for _state,_things in buckets.iteritems():
 
-                self._log.debug(" === bucket: %s : %s", state, [t['uid'] for t in things])
+                self._log.debug("bucket: %s : %s", _state, [t['uid'] for t in _things])
 
-                if state in rps.FINAL:
+                if _state in rps.FINAL:
                     # things in final state are dropped
-                    for thing in things:
-                        self._log.debug('push %s ===| %s', thing['uid'], thing['state'])
+                    for thing in _things:
+                        self._log.debug('push %s ===| %s', thing['uid'], _state)
                     continue
 
-                if state not in self._outputs:
+                if _state not in self._outputs:
                     # unknown target state -- error
                     self._log.error("%s", ru.get_stacktrace())
-                    self._log.error("%s can't route state for %s: %s (%s)" \
-                            % (self.uid, things[0]['uid'], state, self._outputs.keys()))
-
+                    self._log.error("%s can't route state %s (%s)" \
+                                 % (self.uid, _state, self._outputs.keys()))
                     continue
 
-                if not self._outputs[state]:
+                if not self._outputs[_state]:
                     # empty output -- drop thing
-                    for thing in things:
-                        self._log.debug('%s %s ~~~| %s' % ('push', thing['uid'], thing['state']))
+                    for thing in _things:
+                        self._log.debug('%s %s ~~~| %s', 'push', thing['uid'], _state)
                     continue
 
-                output = self._outputs[state]
+                output = self._outputs[_state]
 
                 # push the thing down the drain
                 # FIXME: we should assert that the things are in a PENDING state.
                 #        Better yet, enact the *_PENDING transition right here...
-                self._log.debug(' === put bulk %s: %s', state, len(things))
-                output.put(things)
+                self._log.debug(' === put bulk %s: %s', _state, len(_things))
+                output.put(_things)
 
                 ts = time.time()
-                for thing in things:
+                for thing in _things:
                     
                     # never carry $all across component boundaries!
                     if '$all' in thing:
                         del(thing['$all'])
 
-                    uid   = thing['uid']
-                    state = thing['state']
+                    uid = thing['uid']
 
-                    self._log.debug('push %s ---> %s', uid, state)
-                    self._prof.prof('put', uid=uid, state=state,
-                            msg=output.name, timestamp=ts)
+                    self._log.debug('push %s ---> %s', uid, _state)
+                    self._prof.prof('put', uid=uid, state=_state,
+                                    msg=output.name, timestamp=ts)
 
 
     # --------------------------------------------------------------------------

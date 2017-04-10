@@ -26,7 +26,7 @@
         "valid_roots"                 : ["/work"],
         "virtenv"                     : "/work/e290/shared/shared_pilot_ve_20150924/",
         "virtenv_mode"                : "use",
-        "rp_version"                  : "debug",
+        "rp_version"                  : "local",
         "python_dist"                 : "default"
     },
     "archer_orte": {
@@ -59,7 +59,7 @@
         "valid_roots"                 : ["/work"],
         "virtenv"                     : "/work/e290/shared/shared_pilot_ve_20150924/",
         "virtenv_mode"                : "use",
-        "rp_version"                  : "debug",
+        "rp_version"                  : "local",
         "python_dist"                 : "default"
     }
 }

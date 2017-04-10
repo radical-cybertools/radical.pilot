@@ -67,24 +67,12 @@ PREBOOTSTRAP2=""
 
 
 # seconds to wait for lock files
-# 3 min should be enough for anybody to create/update a virtenv...
-LOCK_TIMEOUT=180 # 3 min
+# 10 min should be enough for anybody to create/update a virtenv...
+LOCK_TIMEOUT=600 # 10 min
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
 VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
 VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces==0.10.4 setproctitle orte_cffi msgpack-python"
-
-# before we change anything else in the pilot environment, we safe a couple of
-# env vars to later re-create a close-to-pristine env for unit execution.
-_OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
-_OLD_VIRTUAL_PYTHONHOME="$PYTHONHOME"
-_OLD_VIRTUAL_PATH="$PATH"
-_OLD_VIRTUAL_PS1="$PS1"
-
-export _OLD_VIRTUAL_PYTHONPATH
-export _OLD_VIRTUAL_PYTHONHOME
-export _OLD_VIRTUAL_PATH
-export _OLD_VIRTUAL_PS1
 
 
 # ------------------------------------------------------------------------------
@@ -339,7 +327,7 @@ rehash()
     #       directory, so we may find the dists in pwd
     CA_CERT_GZ="$SESSION_SANDBOX/cacert.pem.gz"
     CA_CERT_PEM="$SESSION_SANDBOX/cacert.pem"
-    if ! test -f "$CA_CERT_GZ"
+    if ! test -f "$CA_CERT_GZ" -o -f "$CA_CERT_PEM"
     then
         CA_CERT_GZ="./cacert.pem.gz"
         CA_CERT_PEM="./cacert.pem"
@@ -552,8 +540,8 @@ virtenv_setup()
     virtenv_mode="$3"
     python_dist="$4"
 
-    virtenv_create=UNDEFINED
-    virtenv_update=UNDEFINED
+    ve_create=UNDEFINED
+    ve_update=UNDEFINED
 
     if test "$virtenv_mode" = "private"
     then
@@ -562,18 +550,18 @@ virtenv_setup()
             printf "\nERROR: private virtenv already exists at $virtenv\n\n"
             exit 1
         fi
-        virtenv_create=TRUE
-        virtenv_update=FALSE
+        ve_create=TRUE
+        ve_update=FALSE
 
     elif test "$virtenv_mode" = "update"
     then
-        virtenv_create=FALSE
-        virtenv_update=TRUE
-        test -d "$virtenv/" || virtenv_create=TRUE
+        ve_create=FALSE
+        ve_update=TRUE
+        test -d "$virtenv/" || ve_create=TRUE
     elif test "$virtenv_mode" = "create"
     then
-        virtenv_create=TRUE
-        virtenv_update=FALSE
+        ve_create=TRUE
+        ve_update=FALSE
 
     elif test "$virtenv_mode" = "use"
     then
@@ -582,29 +570,29 @@ virtenv_setup()
             printf "\nERROR: given virtenv does not exist at $virtenv\n\n"
             exit 1
         fi
-        virtenv_create=FALSE
-        virtenv_update=FALSE
+        ve_create=FALSE
+        ve_update=FALSE
 
     elif test "$virtenv_mode" = "recreate"
     then
         test -d "$virtenv/" && rm -r "$virtenv"
-        virtenv_create=TRUE
-        virtenv_update=FALSE
+        ve_create=TRUE
+        ve_update=FALSE
     else
-        virtenv_create=FALSE
-        virtenv_update=FALSE
+        ve_create=FALSE
+        ve_update=FALSE
         printf "\nERROR: virtenv mode invalid: $virtenv_mode\n\n"
         exit 1
     fi
 
-    if test "$virtenv_create" = 'TRUE'
+    if test "$ve_create" = 'TRUE'
     then
         # no need to update a fresh ve
-        virtenv_update=FALSE
+        ve_update=FALSE
     fi
 
-    echo "virtenv_create   : $virtenv_create"
-    echo "virtenv_update   : $virtenv_update"
+    echo "virtenv_create   : $ve_create"
+    echo "virtenv_update   : $ve_update"
 
 
     # radical_pilot installation and update is governed by PILOT_VERSION.  If
@@ -630,33 +618,13 @@ virtenv_setup()
                 fi
                 RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
             done
-            RP_INSTALL_TARGET='VIRTENV'
-            RP_INSTALL_SDIST='TRUE'
-            ;;
-
-        debug)
-            for sdist in `echo $SDISTS | tr ':' ' '`
-            do
-                src=${sdist%.tgz}
-                src=${sdist%.tar.gz}
-                # NOTE: Condor does not support staging into some arbitrary
-                #       directory, so we may find the dists in pwd
-                if test -e "$SESSION_SANDBOX/$sdist"
-                then
-                    tar zxmf "$SESSION_SANDBOX/$sdist"
-                else
-                    tar zxmf "./$sdist"
-                    rm  -v   "./$sdist"
-                fi
-                RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
-            done
             RP_INSTALL_TARGET='SANDBOX'
             RP_INSTALL_SDIST='TRUE'
             ;;
 
         release)
             RP_INSTALL_SOURCES='radical.pilot'
-            RP_INSTALL_TARGET='VIRTENV'
+            RP_INSTALL_TARGET='SANDBOX'
             RP_INSTALL_SDIST='FALSE'
             ;;
 
@@ -673,7 +641,7 @@ virtenv_setup()
             git clone https://github.com/radical-cybertools/radical.pilot.git
             (cd radical.pilot; git checkout $RP_VERSION)
             RP_INSTALL_SOURCES="radical.pilot/"
-            RP_INSTALL_TARGET='VIRTENV'
+            RP_INSTALL_TARGET='SANDBOX'
             RP_INSTALL_SDIST='FALSE'
     esac
 
@@ -718,7 +686,7 @@ virtenv_setup()
 
 
     # create virtenv if needed.  This also activates the virtenv.
-    if test "$virtenv_create" = "TRUE"
+    if test "$ve_create" = "TRUE"
     then
         if ! test -d "$virtenv/"
         then
@@ -744,7 +712,7 @@ virtenv_setup()
 
 
     # update virtenv if needed.  This also activates the virtenv.
-    if test "$virtenv_update" = "TRUE"
+    if test "$ve_update" = "TRUE"
     then
         echo 'rp lock for ve update'
         lock "$pid" "$virtenv" # use default timeout
@@ -952,19 +920,29 @@ virtenv_create()
     #       pip complains about some parameter mismatch).  So we fix on the last
     #       known workable version -- which seems to be acceptable to other
     #       hosts, too
-    run_cmd "update setuptools" \
+
+    if ! test "$python_dist" = "anaconda"
+    then
+        run_cmd "update setuptools" \
             "$PIP install --upgrade setuptools==0.6c11" \
          || echo "Couldn't update setuptools -- using default version"
-
-
+    else
+        echo "Setuptools will not be updated"
+    fi
+    
     # NOTE: new releases of pip deprecate options we depend upon.  While the pip
     #       developers discuss if those options will get un-deprecated again,
     #       fact is that there are released pip versions around which do not
     #       work for us (hello supermuc!).  So we fix the version to one we know
     #       is functional.
-    run_cmd "update pip" \
-            "$PIP install --upgrade pip==1.4.1" \
-         || echo "Couldn't update pip -- using default version"
+    if ! test "$python_dist" = "anaconda"
+    then
+        run_cmd "update pip" \
+                "$PIP install --upgrade pip==1.4.1" \
+             || echo "Couldn't update pip -- using default version"
+    else
+        echo "PIP will not be updated"
+    fi
 
     # make sure the new pip version is used (but keep the python executable)
     rehash "$PYTHON"
@@ -1033,23 +1011,18 @@ virtenv_update()
 #   @tag/@branch/@commit: # no sdist staging
 #       git clone $github_base radical.pilot.src
 #       (cd radical.pilot.src && git checkout token)
-#       pip install -t $VIRTENV/rp_install/ radical.pilot.src
+#       pip install -t $SANDBOX/rp_install/ radical.pilot.src
 #       rm -rf radical.pilot.src
-#       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
+#       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
 #
 #   release: # no sdist staging
-#       pip install -t $VIRTENV/rp_install radical.pilot
-#       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
+#       pip install -t $SANDBOX/rp_install radical.pilot
+#       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
 #
 #   local: # needs sdist staging
 #       tar zxmf $sdist.tgz
-#       pip install -t $VIRTENV/rp_install $sdist/
-#       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
-#
-#   debug: # needs sdist staging
-#       tar zxmf $sdist.tgz
-#       pip install -t $PILOT_SANDBOX/rp_install $sdist/
-#       export PYTHONPATH=$PILOT_SANDBOX/rp_install:$PYTHONPATH
+#       pip install -t $SANDBOX/rp_install $sdist/
+#       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
 #
 #   installed: # no sdist staging
 #       true
@@ -1373,6 +1346,18 @@ while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
     esac
 done
 
+# before we change anything else in the pilot environment, we safe a couple of
+# env vars to later re-create a close-to-pristine env for unit execution.
+_OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
+_OLD_VIRTUAL_PYTHONHOME="$PYTHONHOME"
+_OLD_VIRTUAL_PATH="$PATH"
+_OLD_VIRTUAL_PS1="$PS1"
+
+export _OLD_VIRTUAL_PYTHONPATH
+export _OLD_VIRTUAL_PYTHONHOME
+export _OLD_VIRTUAL_PATH
+export _OLD_VIRTUAL_PS1
+
 # derive some var names from given args
 if test -z "$SESSION_SANDBOX"
 then  
@@ -1380,8 +1365,8 @@ then
 fi
 
 # TODO: Move earlier, because if pre_bootstrap fails, this is not yet set
-LOGFILES_TARBALL="$PILOTID.log.tgz"
-PROFILES_TARBALL="$PILOTID.prof.tgz"
+LOGFILES_TARBALL="$PILOT_ID.log.tgz"
+PROFILES_TARBALL="$PILOT_ID.prof.tgz"
 
 # some backends (condor) never finalize a job when output files are missing --
 # so we touch them here to prevent that

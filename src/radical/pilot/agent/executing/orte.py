@@ -60,6 +60,10 @@ class ORTE(AgentExecutingComponent):
 
         AgentExecutingComponent.__init__(self, cfg, session)
 
+        self._watcher   = None
+        self._terminate = threading.Event()
+
+
     # --------------------------------------------------------------------------
     #
     def initialize_child(self):
@@ -82,10 +86,10 @@ class ORTE(AgentExecutingComponent):
         self._pilot_id = self._cfg['pilot_id']
 
         self.task_map = {}
+        self.task_map_lock = threading.Lock()
 
         # run watcher thread
-        self._terminate = threading.Event()
-        self._watcher   = threading.Thread(target=self._watch, name="Watcher")
+        self._watcher = threading.Thread(target=self._watch, name="Watcher")
         self._watcher.daemon = True
         self._watcher.start ()
 
@@ -108,21 +112,12 @@ class ORTE(AgentExecutingComponent):
         self.gtod   = "%s/gtod" % self._pwd
         self.tmpdir = tempfile.gettempdir()
 
-    # --------------------------------------------------------------------------
-    #
-    def finalize_child(self):
-
-        # terminate watcher thread
-        self._terminate.set()
-        # self._watcher.join()
-
-        # communicate finalization
-        self.publish('command', {'cmd' : 'final',
-                                 'arg' : self.cname})
 
     # --------------------------------------------------------------------------
     #
     def command_cb(self, topic, msg):
+
+        self._log.info('command_cb [%s]: %s', topic, msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -132,6 +127,7 @@ class ORTE(AgentExecutingComponent):
             self._log.info("cancel unit command (%s)" % arg)
             with self._cancel_lock:
                 self._cus_to_cancel.append(arg)
+
 
     # --------------------------------------------------------------------------
     #
@@ -239,23 +235,29 @@ class ORTE(AgentExecutingComponent):
     #
     def unit_spawned_cb(self, task, status):
 
-        cu = self.task_map[task]
+        with self.task_map_lock:
+            cu = self.task_map[task]
+        cu_id = cu['_id']
 
         if status:
-            del self.task_map[task]
+            with self.task_map_lock:
+                del self.task_map[task]
 
             # unit launch failed
-            self._prof.prof('final', msg="startup failed", uid=cu['_id'])
-            cu['target_state'] = rps.FAILED
+            self._prof.prof('final', msg="startup failed", uid=cu_id)
+            self._log.debug("[%s] Unit %s startup failed: %s." % (time.ctime(), cu_id, status))
 
+            # Free the Slots, Flee the Flots, Ree the Frots!
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+
+            cu['target_state'] = rps.FAILED
             self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
 
         else:
             cu['started'] = time.time()
 
-            cu_id = cu['_id']
-            self._log.debug("[%s] Unit %s has spawned." % (time.ctime(), cu_id))
             self._prof.prof('passed', msg="ExecWatcher picked up unit", uid=cu_id)
+            self._log.debug("[%s] Unit %s has spawned." % (time.ctime(), cu_id))
 
             self.advance(cu, rps.AGENT_EXECUTING, publish=True, push=False)
 
@@ -266,8 +268,9 @@ class ORTE(AgentExecutingComponent):
 
         timestamp = time.time()
 
-        cu = self.task_map[task]
-        del self.task_map[task]
+        with self.task_map_lock:
+            cu = self.task_map[task]
+            del self.task_map[task]
 
         self._prof.prof('exec', msg='execution complete', uid=cu['_id'])
 
@@ -316,6 +319,9 @@ class ORTE(AgentExecutingComponent):
                                % (self.name, opaque_slots))
 
         dvm_uri    = opaque_slots['lm_info']['dvm_uri']
+
+        # Notify the runtime that we are using threads and that we require mutexes
+        orte_lib.opal_set_using_threads(True)
 
         argv_keepalive = [
             ffi.new("char[]", "RADICAL-Pilot"), # Will be stripped off by the library
@@ -456,20 +462,25 @@ class ORTE(AgentExecutingComponent):
 
         # prepare stdout/stderr
         # TODO: when mpi==true && cores>1 there will be multiple files that need to be concatenated.
-        cu['stdout_file'] = os.path.join(sandbox, 'rank.0/stdout')
-        cu['stderr_file'] = os.path.join(sandbox, 'rank.0/stderr')
+        cu['stdout_file'] = os.path.join(cu_tmpdir, 'rank.0/stdout')
+        cu['stderr_file'] = os.path.join(cu_tmpdir, 'rank.0/stderr')
 
         # Submit to the DVM!
         index = ffi.new("int *")
-        rc = orte_lib.orte_submit_job(argv, index, orte_lib.launch_cb, self._myhandle, orte_lib.finish_cb, self._myhandle)
-        if rc:
-            raise Exception("submit job failed with error: %d" % rc)
-        task = index[0]
+        with self.task_map_lock:
+
+            rc = orte_lib.orte_submit_job(argv, index, orte_lib.launch_cb, self._myhandle, orte_lib.finish_cb, self._myhandle)
+            if rc:
+                raise Exception("submit job failed with error: %d" % rc)
+            task = index[0]
+
+            # Record the mapping of ORTE index to CU
+            self.task_map[task] = cu
+
+            # Record the mapping of ORTE index to CU
+            self.task_map[task] = cu
 
         self._prof.prof('spawn', msg='spawning passed to orte', uid=cu['_id'])
-
-        # Record the mapping of ORTE index to CU
-        self.task_map[task] = cu
 
         self._log.debug("Task %d submitted!", task)
 
