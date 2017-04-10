@@ -171,7 +171,7 @@ class AcceptanceTests(unittest.TestCase):
             for key, val in unit_dict.iteritems():
                 self.assertIn(key, expected_detail_keys)
                 self.assertIsNotNone(
-                    val, msg="{0} unexpectedly None".format(key))
+                    val, msg="'{0}' unexpectedly None".format(key))
 
     def test_02_failing_units(self):
         """Test failing units, about ~50% of the units will fail"""
