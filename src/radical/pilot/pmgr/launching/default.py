@@ -823,6 +823,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['export_to_cu']       = export_to_cu
         agent_cfg['cu_pre_exec']        = cu_pre_exec
         agent_cfg['cu_post_exec']       = cu_post_exec
+        agent_cfg['resource_cfg']       = copy.deepcopy(rcfg)
 
         # we'll also push the agent config into MongoDB
         pilot['cfg'] = agent_cfg
