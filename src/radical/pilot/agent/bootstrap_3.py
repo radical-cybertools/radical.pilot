@@ -4,7 +4,6 @@ __license__   = "MIT"
 
 import time
 import pprint
-import signal
 import setproctitle
 
 from   .agent_0 import Agent_0

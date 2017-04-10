@@ -7,7 +7,6 @@ import math
 import time
 import errno
 import pprint
-import signal
 import msgpack
 
 import Queue           as pyq
@@ -83,9 +82,9 @@ class Pubsub(ru.Process):
 
         assert(self._role in PUBSUB_ROLES)
 
-        self._name = "%s.%s" % (self._channel.replace('_', '.'), self._role)
-        self._log  = self._session._get_logger(self._name, 
-                                               level=self._cfg.get('log_level', 'debug'))
+        self._uid = "%s.%s" % (self._channel.replace('_', '.'), self._role)
+        self._log = self._session._get_logger(self._uid, 
+                         level=self._cfg.get('log_level', 'debug'))
 
         # avoid superfluous logging calls in critical code sections
         if self._log.getEffectiveLevel() == 10: # logging.DEBUG:
@@ -102,7 +101,7 @@ class Pubsub(ru.Process):
 
         self._log.info("create %s - %s - %s", self._channel, self._role, self._addr)
 
-        super(Pubsub, self).__init__(name=self._name, log=self._log)
+        super(Pubsub, self).__init__(name=self._uid, log=self._log)
 
 
         # ----------------------------------------------------------------------
@@ -158,11 +157,11 @@ class Pubsub(ru.Process):
     #
     @property
     def name(self):
-        return self._name
+        return self._uid
 
     @property
     def uid(self):
-        return self._name
+        return self._uid
 
     @property
     def channel(self):
@@ -193,8 +192,12 @@ class Pubsub(ru.Process):
 
         assert(self._role == PUBSUB_BRIDGE)
 
-        spt.setproctitle('rp.%s' % self._name)
-        self._log.info('start bridge %s on %s', self._name, self._addr)
+        self._uid = self._uid + '.child'
+        self._log = self._session._get_logger(self._uid, 
+                         level=self._cfg.get('log_level', 'debug'))
+
+        spt.setproctitle('rp.%s' % self._uid)
+        self._log.info('start bridge %s on %s', self._uid, self._addr)
 
         ctx = zmq.Context()
         self._in = ctx.socket(zmq.XSUB)
@@ -213,7 +216,7 @@ class Pubsub(ru.Process):
 
         self._pqueue.put([_addr_in, _addr_out])
 
-        self._log.info('bound bridge %s to %s : %s', self._name, _addr_in, _addr_out)
+        self._log.info('bound bridge %s to %s : %s', self._uid, _addr_in, _addr_out)
 
         # start polling for messages
         self._poll = zmq.Poller()

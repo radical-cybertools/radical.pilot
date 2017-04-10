@@ -1780,7 +1780,7 @@ then
     while ! test "$nprofs" = "$nqed"
     do
         nsleep=$((nsleep+1))
-        if test "$nsleep" = "30"
+        if test "$nsleep" = "10"
         then
             echo "abort profile sync @ $nsleep: $nprofs != $nqed"
             break

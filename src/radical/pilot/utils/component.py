@@ -252,6 +252,8 @@ class Component(ru.Process):
                 comp = ctype.create(tmp_cfg, session)
                 comp.start()
 
+                log.info(' ==== %-30s starts %s',  tmp_cfg['owner'], comp.uid)
+
                 components.append(comp)
 
         # components are started -- we return the handles to the callee for
@@ -348,6 +350,9 @@ class Component(ru.Process):
 
         # TODO: add a time check to avoid checking validity too frequently.
         #       make frequency configurable.
+
+        if self._ru_terminating:
+            return True
 
         valid = super(Component, self).is_valid()
 
@@ -590,8 +595,6 @@ class Component(ru.Process):
     def ru_finalize_common(self):
 
         self._log.debug('ru_finalize_common()')
-        for l in ru.get_stacktrace():
-            self._log.debug(l)
 
         # reverse order from initialize_common
       # self.unregister_publisher(rpc.LOG_PUBSUB)

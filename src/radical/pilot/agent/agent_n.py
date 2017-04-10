@@ -51,9 +51,16 @@ class Agent_n(rpu.Worker):
         # This session will not connect to MongoDB, but will create any
         # communication channels and components/workers specified in the 
         # config -- we merge that information into our own config.
+        # We don't want the session to start components though, so remove them
+        # from the config copy.
         session_cfg = copy.deepcopy(cfg)
-        session_cfg['owner'] = self._uid
+        session_cfg['owner']      = self._uid
+        session_cfg['components'] = dict()
         session = rp_Session(cfg=session_cfg, _connect=False)
+
+        # we still want the bridge addresses known though, so make sure they are
+        # merged into our own copy, along with any other additions done by the
+        # session.
         ru.dict_merge(cfg, session._cfg, ru.PRESERVE)
         pprint.pprint(cfg)
 

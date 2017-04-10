@@ -173,7 +173,6 @@ class PilotManager(rpu.Component):
         if self._closed:
             return
 
-        self._log.debug("closing %s\n%s", self.uid, '\n'.join(ru.get_stacktrace()))
         self._log.report.info('<<close pilot manager')
 
         # we don't want any callback invokations during shutdown
@@ -619,7 +618,6 @@ class PilotManager(rpu.Component):
             for uid in uids:
                 if uid not in self._pilots:
                     raise ValueError('pilot %s not known' % uid)
-
 
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots', 
                                           'arg' : {'pmgr' : self.uid,

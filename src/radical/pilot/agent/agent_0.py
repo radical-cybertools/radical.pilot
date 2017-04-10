@@ -88,7 +88,15 @@ class Agent_0(rpu.Worker):
         # This session will connect to MongoDB, and will also create any
         # communication channels and components/workers specified in the 
         # config -- we merge that information into our own config.
-        session = rp_Session(cfg=cfg)
+        # We don't want the session to start components though, so remove them
+        # from the config copy.
+        session_cfg = copy.deepcopy(cfg)
+        session_cfg['components'] = dict()
+        session = rp_Session(cfg=session_cfg)
+
+        # we still want the bridge addresses known though, so make sure they are
+        # merged into our own copy, along with any other additions done by the
+        # session.
         ru.dict_merge(cfg, session._cfg, ru.PRESERVE)
         pprint.pprint(cfg)
 
@@ -260,7 +268,6 @@ class Agent_0(rpu.Worker):
         # actually, we only create the agent_lm once we really need it for
         # non-local sub_agents.
         agent_lm   = None
-        sub_agents = list()
         for sa in self._cfg['agents']:
     
             target = self._cfg['agents'][sa]['target']
@@ -319,21 +326,45 @@ class Agent_0(rpu.Worker):
     
             # spawn the sub-agent
             self._log.info ("create sub-agent %s: %s" % (sa, cmdline))
-            sa_out = open("%s.out" % sa, "w")
-            sa_err = open("%s.err" % sa, "w")
-            sa_proc = sp.Popen(args=cmdline.split(), stdout=sa_out, stderr=sa_err)
-    
-            # make sure the watcher can stop and join the sa_proc
-            def _is_alive(_popen):
-                return (_popen.poll() == None)
-            sa_proc.is_alive = types.MethodType(_is_alive, sa_proc)
-            sa_proc.name     = sa
-            sa_proc.stop     = sa_proc.terminate
-            sa_proc.join     = sa_proc.wait
-            sub_agents.append(sa_proc)
+            class _SA(ru.Process):
+                def __init__(self, sa, cmd, log):
+                    self._sa   = sa
+                    self._cmd  = cmd.split()
+                    self._log  = log
+                    self._proc = None
+                    super(_SA, self).__init__(name=sa, log=self._log)
+                    self.start()
+
+                def ru_initialize_child(self):
+                    sys.stdout = open('%s.out' % self._ru_name, 'w')
+                    sys.stderr = open('%s.err' % self._ru_name, 'w')
+                    print ' ==== ru_inialize_child'
+                    self._log.debug(' ==== ru_inialize_child')
+                    out = open("%s.out" % self._sa, "w")
+                    err = open("%s.err" % self._sa, "w")
+                    self._proc = sp.Popen(args=self._cmd, stdout=out, stderr=err)
+
+                def work_cb(self):
+                    print " ==== work"
+                    self._log.debug(' ==== work')
+                    time.sleep(1)
+                    if self._proc.poll() == None:
+                        print " ==== work True"
+                        self._log.debug(' ==== work True')
+                        return True  # all is well
+                    else:
+                        print " ==== work False"
+                        self._log.debug(' ==== work False')
+                        return False # proc is gone - terminate
+
+                def ru_finalize_child(self):
+                    print ' ==== ru_finalize_child %s' % os.getpid()
+                    self._log.debug(' ==== ru_finalize_child')
+                    if self._proc:
+                        self._proc.terminate()
     
             # the agent is up - let the watcher manage it from here
-            self.register_watchable(sa_proc)
+            self.register_watchable(_SA(sa, cmdline, log=self._log))
     
         self._log.debug('start_sub_agents done')
 
@@ -341,6 +372,8 @@ class Agent_0(rpu.Worker):
     # --------------------------------------------------------------------------
     #
     def _agent_command_cb(self):
+
+        self.is_valid()
 
         self._prof.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!',
                         uid=self._owner)
@@ -410,6 +443,8 @@ class Agent_0(rpu.Worker):
     # --------------------------------------------------------------------------
     #
     def _check_units_cb(self):
+
+        self.is_valid()
 
         # Check if there are compute units waiting for input staging
         # and log that we pulled it.

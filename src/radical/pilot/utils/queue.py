@@ -7,7 +7,6 @@ import math
 import time
 import errno
 import pprint
-import signal
 import msgpack
 
 import Queue           as pyq
@@ -133,11 +132,11 @@ class Queue(ru.Process):
         # FIXME
         self._cfg['log_level'] = 'debug'
 
-        self._name    = "%s.%s" % (self._qname.replace('_', '.'), self._role)
-        self._log     = self._session._get_logger(self._name, 
-                                                  level=self._cfg.get('log_level', 'off'))
+        self._uid = "%s.%s" % (self._qname.replace('_', '.'), self._role)
+        self._log = self._session._get_logger(self._uid, 
+                         level=self._cfg.get('log_level', 'debug'))
 
-        super(Queue, self).__init__(name=self._name, log=self._log)
+        super(Queue, self).__init__(name=self._uid, log=self._log)
 
         # avoid superfluous logging calls in critical code sections
         if self._log.getEffectiveLevel() == 10: # logging.DEBUG:
@@ -212,11 +211,11 @@ class Queue(ru.Process):
     #
     @property
     def name(self):
-        return self._name
+        return self._uid
 
     @property
     def uid(self):
-        return self._name
+        return self._uid
 
     @property
     def qname(self):
@@ -247,8 +246,12 @@ class Queue(ru.Process):
 
         assert(self._role == QUEUE_BRIDGE)
 
-        spt.setproctitle('rp.%s' % self._name)
-        self._log.info('start bridge %s on %s', self._name, self._addr)
+        self._uid = self._uid + '.child'
+        self._log = self._session._get_logger(self._uid, 
+                         level=self._cfg.get('log_level', 'debug'))
+
+        spt.setproctitle('rp.%s' % self._uid)
+        self._log.info('start bridge %s on %s', self._uid, self._addr)
 
         # FIXME: should we cache messages coming in at the pull/push 
         #        side, so as not to block the push end?
@@ -270,7 +273,7 @@ class Queue(ru.Process):
 
         self._pqueue.put([_addr_in, _addr_out])
 
-        self._log.info('bound bridge %s to %s : %s', self._name, _addr_in, _addr_out)
+        self._log.info('bound bridge %s to %s : %s', self._uid, _addr_in, _addr_out)
 
         # start polling for messages
         self._poll = zmq.Poller()
