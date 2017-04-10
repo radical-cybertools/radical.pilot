@@ -4,7 +4,6 @@ __copyright__ = 'Copyright 2013-2014, http://radical.rutgers.edu'
 __license__ = 'MIT'
 
 import os
-import time
 import unittest
 import radical.pilot as rp  # noqa
 import radical.utils as ru  # noqa
@@ -117,8 +116,23 @@ class AcceptanceTests(unittest.TestCase):
             .format(str((float(done_units) / float(self.n)) * 100.00)))
 
     def test_01_unit_details(self):
-        """Test unit details, units have details accessible via api
+        """Test unit details, units has all details accessible via api
         """
+
+        # Detail keys to be checked in unit dictionary
+        expected_detail_keys = [
+            'type',
+            'umgr',
+            'uid',
+            'name',
+            'state',
+            'exit_code',
+            'stdout',
+            'stderr',
+            'pilot',
+            'sandbox',
+            'description',
+        ]
 
         # Create description object from template description
         pilot_desc = rp.ComputePilotDescription(self.pd_init)
@@ -130,17 +144,12 @@ class AcceptanceTests(unittest.TestCase):
 
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
-        # About ~50% of them will fail
         cuds = list()
         for i in range(1, self.n + 1):
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            if i % 2:
-                cud.executable = '/bin/date'
-            else:
-                # trigger an error now and then
-                cud.executable = '/bin/data'  # does not exist
+            cud.executable = '/bin/date'
             cuds.append(cud)
 
         # Submit the previously created ComputeUnit descriptions to the
@@ -154,16 +163,14 @@ class AcceptanceTests(unittest.TestCase):
 
         # Not asserting for 100% completion, that is not the idea here...
 
-        # Get some more details for one unit:
+        # Check that all items in the dictionary
+        # match the expected keys and that all
+        # values are *not NONE*
         for unit in units:
             unit_dict = unit.as_dict()
-            print(unit_dict['sandbox'])
-            print(unit_dict['pilot'])
-            print(unit_dict['exit_code'])
-            print("=================================")
-            self.assertIsNotNone(unit_dict['sandbox'])
-            self.assertIsNotNone(unit_dict['pilot'])
-            self.assertIsNotNone(unit_dict['exit_code'])
+            for key, val in unit_dict:
+                self.assertIn(key, expected_detail_keys)
+                self.assertIsNotNone(val)
 
     def test_02_failing_units(self):
         """Test failing units, about ~50% of the units will fail"""
