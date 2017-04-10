@@ -60,9 +60,6 @@ class AcceptanceTests(unittest.TestCase):
         # Create a UnitManager object.
         self.umgr = rp.UnitManager(session=self.session)
 
-        # Number of Compute Units (CUs)
-        self.n = 128   # number of units to run
-
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         self.pd_init = {
