@@ -168,7 +168,7 @@ class AcceptanceTests(unittest.TestCase):
         # values are *not NONE*
         for unit in units:
             unit_dict = unit.as_dict()
-            for key, val in unit_dict:
+            for key, val in unit_dict.iteritems():
                 self.assertIn(key, expected_detail_keys)
                 self.assertIsNotNone(val)
 
