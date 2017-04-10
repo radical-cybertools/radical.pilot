@@ -158,11 +158,11 @@ class AcceptanceTests(unittest.TestCase):
         # Not asserting for 100% completion, that is not the idea here...
 
         # Get some more details for one unit:
-        unit_dict = units[0].as_dict()
-        self.assertIsNotNone(unit_dict['working_directory'])
-        self.assertIsNotNone(unit_dict['execution_details']['pilot'])
-        self.assertIsNotNone(unit_dict['execution_details']['statehistory'])
-
+        for unit in units:
+            unit_dict = unit.as_dict()
+            self.assertIsNotNone(unit_dict['sandbox'])
+            self.assertIsNotNone(unit_dict['pilot'])
+            self.assertIsNotNone(unit_dict['exit_code'])
 
     def test_02_failing_units(self):
         """Test failing units, about ~50% of the units will fail"""
