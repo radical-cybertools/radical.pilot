@@ -340,8 +340,6 @@ def clean_profile(profile, sid):
       - makes sure that state transitions have an `ename` set to `state`
     """
 
-    from radical.pilot import states as rps
-
     entities = dict()  # things which have a uid
 
     for event in profile:
