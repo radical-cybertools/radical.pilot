@@ -35,6 +35,9 @@ class AgentExecutingComponent(rpu.Component):
 
         rpu.Component.__init__(self, cfg, session)
 
+        # if so configured, let the CU know what to use as tmp dir
+        self._cu_tmp = cfg.get('cu_tmp', os.environ.get('TMP', '/tmp'))
+
 
     # --------------------------------------------------------------------------
     #

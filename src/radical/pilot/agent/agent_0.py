@@ -481,6 +481,10 @@ class Agent_0(rpu.Worker):
 
         for unit in unit_list:
 
+            # we need to make sure to have the correct state:
+            unit['state'] = rps._unit_state_collapse(unit['states'])
+            self._prof.prof('get', msg="bulk size: %d" % len(unit_list), uid=unit['uid'])
+
             # FIXME: raise or fail unit!
             if unit['control'] != 'agent_pending':
                 self._log.error(' === invalid control: %s', (pprint.pformat(unit)))
@@ -489,10 +493,6 @@ class Agent_0(rpu.Worker):
                 self._log.error(' === invalid state: %s', (pprint.pformat(unit)))
 
             unit['control'] = 'agent'
-
-            # we need to make sure to have the correct state:
-            unit['state'] = rps._unit_state_collapse(unit['states'])
-            self._prof.prof('get', msg="bulk size: %d" % len(unit_list), uid=unit['uid'])
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline).  We don't publish nor profile as advance,

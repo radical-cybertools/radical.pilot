@@ -60,14 +60,18 @@ class ComputePilot(object):
 
         # 'static' members
         self._descr = descr.as_dict()
-        self._pmgr  = pmgr
+
+        # sanity checks on description
+        for check in ['resource', 'cores', 'runtime']:
+            if not self._descr.get(check):
+                raise ValueError("ComputePilotDescription needs '%s'" % check)
 
         # initialize state
+        self._pmgr          = pmgr
         self._session       = self._pmgr.session
         self._uid           = ru.generate_id('pilot.%(counter)04d', ru.ID_CUSTOM)
         self._state         = rps.NEW
         self._log           = pmgr._log
-
         self._pilot_dict    = dict()
         self._callbacks     = dict()
         self._cb_lock       = threading.RLock()
@@ -81,10 +85,11 @@ class ComputePilot(object):
                 'cb'      : self._default_state_cb, 
                 'cb_data' : None}
 
-        # sanity checks on description
-        for check in ['resource', 'cores', 'runtime']:
-            if not self._descr.get(check):
-                raise ValueError("ComputePilotDescription needs '%s'" % check)
+        # `as_dict()` needs `pilot_dict` and other attributes.  Those should all
+        # be available at this point (apart from the sandbox itself), so we now
+        # query for that sandbox.
+        self._sandbox       = None
+        self._sandbox       = self._session._get_pilot_sandbox(self.as_dict())
 
 
     # --------------------------------------------------------------------------
@@ -181,7 +186,7 @@ class ComputePilot(object):
             'stdout':           self.stdout,
             'stderr':           self.stderr,
             'resource':         self.resource,
-            'sandbox':          self.sandbox,
+            'sandbox':          str(self.sandbox), # for mongodb insertion
             'description':      self.description,  # this is a deep copy
             'resource_details': self.resource_details
         }
@@ -350,7 +355,7 @@ class ComputePilot(object):
         #       implicitly also holds for the staging area, which is relative
         #       to the pilot sandbox.
 
-        return self._pilot_dict.get('sandbox')
+        return self._sandbox
 
 
     # --------------------------------------------------------------------------
@@ -543,7 +548,9 @@ class ComputePilot(object):
                 rel_path = os.path.relpath(tgt_dir_url.path, '/')
 
                 # Now base the target directory relative of the sandbox and staging prefix
-                tgt_dir_url = saga.Url(os.path.join(self.sandbox, STAGING_AREA, rel_path))
+                tgt_dir_url      = saga.Url(self.sandbox)
+                tgt_dir_url.path = os.path.join(self.sandbox.path, 
+                                                STAGING_AREA, rel_path)
 
             # Define and open the staging directory for the pilot
             # We use the target dir construct here, so that we can create
