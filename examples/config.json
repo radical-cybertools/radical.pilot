@@ -190,21 +190,21 @@
     },
 
     "ornl.titan_aprun" : {
-        "project"  : "BIP103",
+        "project"  : "CSC230",
         "queue"    : "debug",
         "schema"   : "local",
         "cores"    : 64
     },
 
     "ornl.titan_lib" : {
-        "project"  : "BIP103",
+        "project"  : "CSC230",
         "queue"    : "debug",
         "schema"   : "local",
         "cores"    : 64
     },
 
     "ornl.titan"   : {
-        "project"  : "BIP103",
+        "project"  : "CSC230",
         "queue"    : "debug",
         "schema"   : "local",
         "cores"    : 64
