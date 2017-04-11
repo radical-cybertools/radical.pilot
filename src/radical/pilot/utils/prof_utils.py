@@ -10,7 +10,6 @@ import radical.utils               as ru
 from   radical.pilot import states as rps
 
 
-
 # ------------------------------------------------------------------------------
 #
 # when recombining profiles, we will get one NTP sync offset per profile, and
@@ -34,7 +33,7 @@ _prof_fields  = ['time', 'name', 'uid', 'state', 'event', 'msg']
 
 def prof2frame(prof):
     """
-    expect a profile, ie. a list of profile rows which are dicts.  
+    expect a profile, ie. a list of profile rows which are dicts.
     Write that profile to a temp csv and let pandas parse it into a frame.
     """
 
@@ -99,7 +98,7 @@ def get_experiment_frames(experiments, datadir=None):
       'test 6' : [ [ 'rp.session.ip-10-184-31-85.merzky.016611.0013', 'stampede - isolated',            ],
                    [ 'rp.session.ip-10-184-31-85.merzky.016612.0012', 'stampede - integrated',          ],
                    [ 'rp.session.titan-ext4.marksant1.016607.0006',   'blue waters - integrated'        ] ]
-    }  name in 
+    }  name in
 
     ie. iname in t is a list of experiment names, and each label has a list of
     session/label pairs, where the label will be later used to label (duh) plots.
@@ -121,12 +120,12 @@ def get_experiment_frames(experiments, datadir=None):
 
         for sid, label in experiments[exp]:
             print "   - %s" % sid
-            
+
             for prof in glob.glob ("%s/%s-pilot.*.prof" % (datadir, sid)):
                 print "     - %s" % prof
                 frame = pd.read_csv(prof)
                 exp_frames[exp].append ([frame, label])
-                
+
     return exp_frames
 
 
@@ -135,8 +134,7 @@ def get_experiment_frames(experiments, datadir=None):
 def read_profiles(profiles):
     """
     We read all profiles as CSV files and parse them.  For each profile,
-    we back-calculate global time (epoch) from the synch timestamps.  
-    
+    we back-calculate global time (epoch) from the synch timestamps.
     """
     ret    = dict()
     fields = ru.Profiler.fields
@@ -152,7 +150,7 @@ def read_profiles(profiles):
                     continue
 
                 row['time'] = float(row['time'])
-    
+
                 # store row in profile
                 rows.append(row)
     
@@ -168,7 +166,7 @@ def combine_profiles(profs):
     We merge all profiles and sorted by time.
 
     This routine expectes all profiles to have a synchronization time stamp.
-    Two kinds of sync timestamps are supported: absolute and relative.  
+    Two kinds of sync timestamps are supported: absolute and relative.
 
     Time syncing is done based on 'sync abs' timestamps, which we expect one to
     be available per host (the first profile entry will contain host
@@ -582,8 +580,6 @@ def get_session_description(sid, src=None, dburl=None):
     ret['config'] = dict() # magic to get session config goes here
 
     return ret
-
-
 
 
 # ------------------------------------------------------------------------------

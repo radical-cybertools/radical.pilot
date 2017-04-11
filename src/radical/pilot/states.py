@@ -265,5 +265,27 @@ if 'RP_ENABLE_OLD_DEFINES' in os.environ:
     PENDING_OUTPUT_STAGING = UMGR_STAGING_OUTPUT_PENDING
     STAGING_OUTPUT         = UMGR_STAGING_OUTPUT
 
+_legacy_states = {
+    'New'                        : NEW, 
+    'AllocatingPending'          : UMGR_SCHEDULING_PENDING,
+    'Allocating'                 : UMGR_SCHEDULING,
+    'PendingInputStaging'        : UMGR_STAGING_INPUT_PENDING,
+    'StagingInput'               : UMGR_STAGING_INPUT,
+    'AgentStagingInputPending'   : AGENT_STAGING_INPUT_PENDING,
+    'AgentStagingInput'          : AGENT_STAGING_INPUT,
+    'ExecutingPending'           : AGENT_EXECUTING_PENDING,
+    'Executing'                  : AGENT_EXECUTING,
+    'AgentStagingOutputPending'  : AGENT_STAGING_OUTPUT_PENDING,
+    'AgentStagingOutput'         : AGENT_STAGING_OUTPUT,
+    'PendingOutputStaging'       : UMGR_STAGING_OUTPUT_PENDING,
+    'StagingOutput'              : UMGR_STAGING_OUTPUT,
+    'Done'                       : DONE, 
+    'Canceled'                   : CANCELED,
+    'CANCELED'                   : CANCELED,
+    'Failed'                     : FAILED,
+    'FAILED'                     : FAILED
+}
+
+
 # -----------------------------------------------------------------------------
 
