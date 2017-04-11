@@ -576,6 +576,10 @@ class Default(PMGRLaunchingComponent):
         spmd_variation          = rcfg.get('spmd_variation')
         shared_filesystem       = rcfg.get('shared_filesystem', True)
         stage_cacerts           = rcfg.get('stage_cacerts', False)
+        cu_pre_exec             = rcfg.get('cu_pre_exec')
+        cu_post_exec            = rcfg.get('cu_post_exec')
+        export_to_cu            = rcfg.get('export_to_cu')
+
 
 
         # get pilot and global sandbox
@@ -816,6 +820,10 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['task_launch_method'] = task_launch_method
         agent_cfg['mpi_launch_method']  = mpi_launch_method
         agent_cfg['cores_per_node']     = cores_per_node
+        agent_cfg['export_to_cu']       = export_to_cu
+        agent_cfg['cu_pre_exec']        = cu_pre_exec
+        agent_cfg['cu_post_exec']       = cu_post_exec
+        agent_cfg['resource_cfg']       = copy.deepcopy(rcfg)
 
         # we'll also push the agent config into MongoDB
         pilot['cfg'] = agent_cfg
