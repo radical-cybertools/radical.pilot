@@ -100,14 +100,18 @@ make
 make install
 
 
-
-cd $OMPI_SOURCE
-git clone git@github.com:libffi/libffi.git
-cd libffi
-./autogen.sh
-./configure --prefix=$OMPI_INSTALLED/$OMPI_LABEL --disable-docs
-make
-make install
+# install libffi on systems which don't have it, so that the pilot ve can
+# install the `orte_cffi` python module.
+# libffi documentation needs texi2html which is not commonly available, so we
+# disable documentation.
+#
+# cd $OMPI_SOURCE
+# git clone https://github.com/libffi/libffi.git
+# cd libffi
+# ./autogen.sh
+# ./configure --prefix=$OMPI_TOOLS_PREFIX --disable-docs
+# make
+# make install
 
 
 
@@ -138,5 +142,8 @@ setenv          OMPI_MCA_timer_require_monotonic false
 
 EOT
 
+
+# this should not be needed - but just in case someone sources this script,
+# we try to end up where we started.
 cd $orig
 
