@@ -136,6 +136,9 @@ set version $OMPI_LABEL
 prepend-path    PATH            $OMPI_INSTALLED/$OMPI_LABEL/bin
 prepend-path    LD_LIBRARY_PATH $OMPI_INSTALLED/$OMPI_LABEL/lib
 prepend-path    MANPATH         $OMPI_INSTALLED/$OMPI_LABEL/share/man
+prepend-path    PKG_CONFIG_PATH $OMPI_INSTALLED/$OMPI_LABEL/share/pkgconfig
+
+setenv          OMPI_MCA_timer_require_monotonic false
 
 EOT
 
