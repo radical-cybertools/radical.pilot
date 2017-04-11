@@ -348,24 +348,41 @@ class DBSession(object):
         if self.closed:
             raise Exception('No active session.')
 
-        bulk = self._c.initialize_ordered_bulk_op()
+        # We can only insert DB bulks up to a certain size, which is hardcoded
+        # here.  In principle, the update should go to the update worker anyway
+        # -- but as long as we use the DB as communication channel, we need to
+        # make sure that the insert is executed before handing off control over
+        # the unit to other components, thus the synchronous insert call.
+        # (FIXME)
+        bcs = 1024  # bulk_collection_size
+        cur = 0     # bulk index
 
-        for doc in unit_docs:
-            doc['_id']     = doc['uid']
-            doc['type']    = 'unit'
-            doc['control'] = 'umgr'
-            doc['states']  = [doc['state']]
-            doc['cmd']     = list()
+        while True:
 
-            bulk.insert(doc)
+            subset = unit_docs[cur : cur+bcs]
+            bulk   = self._c.initialize_ordered_bulk_op()
+            cur   += bcs
 
-        try:
-            res = bulk.execute()
-            self._log.debug('bulk unit insert result: %s', res)
-            # FIXME: evaluate res
-        except pymongo.errors.OperationFailure as e:
-            self._log.exception('pymongo error: %s' % e.details)
-            raise RuntimeError('pymongo error: %s' % e.details)
+            if not subset:
+                # all units are done
+                break
+
+            for doc in subset:
+                doc['_id']     = doc['uid']
+                doc['type']    = 'unit'
+                doc['control'] = 'umgr'
+                doc['states']  = [doc['state']]
+                doc['cmd']     = list()
+                bulk.insert(doc)
+
+            try:
+                res = bulk.execute()
+                self._log.debug('bulk unit insert result: %s', res)
+                # FIXME: evaluate res
+
+            except pymongo.errors.OperationFailure as e:
+                self._log.exception('pymongo error: %s' % e.details)
+                raise RuntimeError( 'pymongo error: %s' % e.details)
 
     # --------------------------------------------------------------------------
     #

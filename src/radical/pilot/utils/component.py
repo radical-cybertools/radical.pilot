@@ -174,7 +174,7 @@ class Component(mp.Process):
 
         # state we carry over the fork
         self._started   = False
-        self._debug     = cfg.get('debug', 'DEBUG')
+        self._debug     = cfg.get('debug')
         self._owner     = cfg.get('owner', self.uid)
         self._cname     = cfg.get('cname', self.__class__.__name__)
         self._ctype     = "%s.%s" % (self.__class__.__module__,
