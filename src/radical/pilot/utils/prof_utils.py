@@ -29,8 +29,6 @@ _prof_fields  = ['time', 'name', 'uid', 'state', 'event', 'msg']
 
 # ------------------------------------------------------------------------------
 #
-# profile class
-
 def prof2frame(prof):
     """
     expect a profile, ie. a list of profile rows which are dicts.
