@@ -12,7 +12,7 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "go"                          : {
-            "job_manager_endpoint"    : "pbs+ssh://titan.ccs.ornl.gov",
+            "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
             "filesystem_endpoint"     : "go://olcf#dtn/"
         },
         "default_queue"               : "batch",
@@ -50,7 +50,7 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "go"                          : {
-            "job_manager_endpoint"    : "pbs+ssh://titan.ccs.ornl.gov",
+            "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
             "filesystem_endpoint"     : "go://olcf#dtn/"
         },
         "default_queue"               : "batch",
@@ -92,7 +92,7 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "go"                          : {
-            "job_manager_endpoint"    : "pbs+ssh://titan.ccs.ornl.gov",
+            "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
             "filesystem_endpoint"     : "go://olcf#dtn/"
         },
         "default_queue"               : "batch",
