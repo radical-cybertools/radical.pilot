@@ -140,6 +140,13 @@
         "cores"    : 64
     },
 
+    "xsede.comet_ortelib"  : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "debug",
+        "schema"   : "gsissh",
+        "cores"    : 96
+    },
+
     "xsede.gordon" : {
         "project"  : "unc100",
         "queue"    : "normal",
@@ -236,6 +243,20 @@
         "queue"    : null,
         "schema"   : "ssh",
         "cores"    : 16
+    },
+
+    "lumc.gb-ui"   : {
+        "project"  : null,
+        "queue"    : "express",
+        "schema"   : "ssh",
+        "cores"    : 4
+    },
+
+    "das5.fs1"   : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 1
     }
 }
 
