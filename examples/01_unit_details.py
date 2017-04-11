@@ -79,7 +79,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 128   # number of units to run
+        n = 128  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -109,14 +109,10 @@ if __name__ == '__main__':
                         unit.exit_code, unit.stdout.strip()[:35]))
 
         # get some more details for one unit:
-        import time
         unit_dict = units[0].as_dict()
-        report.plain("unit workdir : %s\n" % unit_dict['working_directory'])
-        report.plain("pilot id     : %s\n" % unit_dict['execution_details']['pilot'])
-        report.plain("state history: \n")
-        for state_info in unit_dict['execution_details']['statehistory']:
-            report.plain("\t\t%s : %s\n" % \
-                    (time.ctime(state_info['timestamp']), state_info['state']))
+        report.plain("unit workdir : %s\n" % unit_dict['sandbox'])
+        report.plain("pilot id     : %s\n" % unit_dict['pilot'])
+        report.plain("exit code    : %s\n" % unit_dict['exit_code'])
     
 
     except Exception as e:
