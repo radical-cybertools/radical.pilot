@@ -264,11 +264,11 @@ class ABDS(AgentExecutingComponent):
 
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,start_script," >> $RP_PROF\n' %  \
-                                    (cu['uid'], rps.EXECUTING))
+                                    (cu['uid'], rps.AGENT_EXECUTING))
             launch_script.write('\n# Change to unit sandbox\ncd %s\n' % sandbox)
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,after_cd," >> $RP_PROF\n' %  \
-                                    (cu['uid'], rps.EXECUTING))
+                                    (cu['uid'], rps.AGENT_EXECUTING))
 
             # Before the Big Bang there was nothing
             if cu['description']['pre_exec']:
@@ -282,11 +282,11 @@ class ABDS(AgentExecutingComponent):
                 launch_script.write("\n# Pre-exec commands\n")
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
                     launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,pre_start," >> $RP_PROF\n' %  \
-                                        (cu['uid'], rps.EXECUTING))
+                                        (cu['uid'], rps.AGENT_EXECUTING))
                 launch_script.write(pre_exec_string)
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
                     launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,pre_stop," >> $RP_PROF\n' %  \
-                                        (cu['uid'], rps.EXECUTING))
+                                        (cu['uid'], rps.AGENT_EXECUTING))
 
             # YARN pre execution folder permission change
             launch_script.write('\n## Changing Working Directory permissions for YARN\n')
@@ -313,7 +313,7 @@ class ABDS(AgentExecutingComponent):
             launch_script.write("\ncat Ystdout\n")
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,after_exec," >> $RP_PROF\n' %  \
-                                    (cu['uid'], rps.EXECUTING))
+                                    (cu['uid'], rps.AGENT_EXECUTING))
 
             # After the universe dies the infrared death, there will be nothing
             if cu['description']['post_exec']:
@@ -326,11 +326,11 @@ class ABDS(AgentExecutingComponent):
                 launch_script.write("\n# Post-exec commands\n")
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
                     launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,post_start," >> $RP_PROF\n' %  \
-                                        (cu['uid'], rps.EXECUTING))
+                                        (cu['uid'], rps.AGENT_EXECUTING))
                 launch_script.write('%s\n' % post_exec_string)
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
                     launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,post_stop," >> $RP_PROF\n' %  \
-                                        (cu['uid'], rps.EXECUTING))
+                                        (cu['uid'], rps.AGENT_EXECUTING))
 
             # YARN pre execution folder permission change
             launch_script.write('\n## Changing Working Directory permissions for YARN\n')
@@ -462,7 +462,8 @@ class ABDS(AgentExecutingComponent):
                         proc = cu['proc']
                         self._log.debug('Proc Print {0}'.format(proc))
                         del(cu['proc'])  # proc is not json serializable
-                        self.advance(cu, rps.EXECUTING, publish=True, push=False,timestamp=timestamp)
+                        self.advance(cu, rps.AGENT_EXECUTING, publish=True, 
+                                     push=False,timestamp=timestamp)
                         cu['proc']    = proc
 
                         # FIXME: Ioannis, what is this supposed to do?
