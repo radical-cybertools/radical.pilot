@@ -105,9 +105,9 @@ class Default(AgentStagingOutputComponent):
                         txt = prof_f.read()
                         for line in txt.split("\n"):
                             if line:
-                                x1, x2, x3 = line.split()
-                                self._prof.prof(x1, msg=x2, timestamp=float(x3),
-                                        uid=unit['uid'])
+                                ts, name, uid, state, event, msg = line.split(',')
+                                self._prof.prof(name=name, uid=uid, state=state,
+                                        event=event, msg=msg, timestamp=float(ts))
                 except Exception as e:
                     self._log.error("Pre/Post profiling file read failed: `%s`" % e)
 
