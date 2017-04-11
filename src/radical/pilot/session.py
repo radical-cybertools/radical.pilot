@@ -120,14 +120,11 @@ class Session(rs.Session):
         if not self._cfg.get('owner'):
             self._cfg['owner'] = self._uid
 
-        if not self._cfg.get('debug'):
-            self._cfg['debug'] = 'DEBUG'
-
         if not self._cfg.get('logdir'):
             self._cfg['logdir'] = '%s/%s' % (os.getcwd(), self._uid)
 
         self._logdir = self._cfg['logdir']
-        self._log    = self._get_logger(self._cfg['owner'], self._cfg['debug'])
+        self._log    = self._get_logger(self._cfg['owner'], self._cfg.get('debug'))
 
         if _connect:
             # we need a dburl to connect to.
@@ -491,6 +488,11 @@ class Session(rs.Session):
         This is a thin wrapper around `ru.get_logger()` which makes sure that
         log files end up in a separate directory with the name of `session.uid`.
         """
+
+        # FIXME: this is only needed because components may use a different
+        #        logger namespace - which they should not I guess?
+        if not level: level = os.environ.get('RADICAL_PILOT_VERBOSE')
+        if not level: level = os.environ.get('RADICAL_VERBOSE', 'REPORT')
 
         log = ru.get_logger(name, target='.', level=level, path=self._logdir)
         log.info('radical.pilot        version: %s' % rp_version_detail)
