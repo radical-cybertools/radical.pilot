@@ -573,7 +573,7 @@ class Default(PMGRLaunchingComponent):
         cores_per_node          = rcfg.get('cores_per_node', 0)
         health_check            = rcfg.get('health_check', True)
         python_dist             = rcfg.get('python_dist')
-        python_dist             = rcfg.get('cu_tmp')
+        cu_tmp                  = rcfg.get('cu_tmp')
         spmd_variation          = rcfg.get('spmd_variation')
         shared_filesystem       = rcfg.get('shared_filesystem', True)
         stage_cacerts           = rcfg.get('stage_cacerts', False)
