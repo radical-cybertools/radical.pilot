@@ -239,12 +239,13 @@ class Popen(AgentExecutingComponent) :
             env_string += 'export RP_UNIT_ID="%s"\n'    % cu['uid']
             env_string += 'export RP_GTOD="%s"\n'       % cu['gtod']
             env_string += 'export RP_PROF="%s/PROF"\n'  % sandbox
+            env_string += 'export RP_TMP="%s"\n'        % self._cu_tmp
 
             # also add any env vars requested for export by the resource config
             for k,v in self._env_cu_export.iteritems():
                 env_string += "export %s=%s\n" % (k,v)
 
-            # also add any env vars requested by the unit description
+            # also add any env vars requested in the unit description
             if cu['description']['environment']:
                 for key,val in cu['description']['environment'].iteritems():
                     env_string += 'export "%s=%s"\n' % (key, val)
