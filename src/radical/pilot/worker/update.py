@@ -130,7 +130,9 @@ class Update(rpu.Worker):
     def _idle_cb(self):
 
         with self._lock:
-             return self._timed_bulk_execute()
+             self._timed_bulk_execute()
+
+        return True
 
 
     # --------------------------------------------------------------------------

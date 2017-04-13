@@ -415,6 +415,8 @@ class Component(ru.Process):
             pass
           # self._log.debug('command ignored: %s', cmd)
 
+        return True
+
 
     # --------------------------------------------------------------------------
     #
@@ -878,12 +880,12 @@ class Component(ru.Process):
 
                 with self._cb_lock:
                     if self._cb_data != None:
-                        self._cb(cb_data=self._cb_data)
+                        ret = self._cb(cb_data=self._cb_data)
                     else:
-                        self._cb()
+                        ret = self._cb()
                 if self._timeout:
                     self._last = time.time()
-                return True
+                return ret
         # ----------------------------------------------------------------------
 
         idler = Idler(name=name, timer=timer, log=self._log,
@@ -1040,9 +1042,12 @@ class Component(ru.Process):
                     for m in msg:
                         with self._cb_lock:
                             if self._cb_data != None:
-                                cb(topic=topic, msg=m, cb_data=self._cb_data)
+                                ret = cb(topic=topic, msg=m, cb_data=self._cb_data)
                             else:
-                                self._cb(topic=topic, msg=m)
+                                ret = self._cb(topic=topic, msg=m)
+                        # we abort whenever a callback indicates thus
+                        if not ret:
+                            return False
                 return True
         # ----------------------------------------------------------------------
         # create a pubsub subscriber (the pubsub name doubles as topic)
@@ -1194,7 +1199,6 @@ class Component(ru.Process):
                     for thing in things:
                         self._prof.prof(event='failed', msg=str(e), 
                                         uid=thing['uid'], state=state)
-
 
         # keep work_cb registered
         return True

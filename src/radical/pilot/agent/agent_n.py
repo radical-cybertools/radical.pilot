@@ -78,7 +78,7 @@ class Agent_n(rpu.Worker):
     def initialize_parent(self):
 
         # FIXME: avoid a race with communication channel setup
-        time.sleep(10)
+        time.sleep(0)
 
         # once bootstrap_3 is done, we signal success to the parent agent
         self._prof.prof('setup done - send alive', uid=self._uid)

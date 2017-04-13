@@ -340,28 +340,18 @@ class Agent_0(rpu.Worker):
                 def ru_initialize_child(self):
                     sys.stdout = open('%s.out' % self._ru_name, 'w')
                     sys.stderr = open('%s.err' % self._ru_name, 'w')
-                    print ' ==== ru_inialize_child'
-                    self._log.debug(' ==== ru_inialize_child')
                     out = open("%s.out" % self._sa, "w")
                     err = open("%s.err" % self._sa, "w")
                     self._proc = sp.Popen(args=self._cmd, stdout=out, stderr=err)
 
                 def work_cb(self):
-                    print " ==== work"
-                    self._log.debug(' ==== work')
-                    time.sleep(1)
+                    time.sleep(0.1)
                     if self._proc.poll() == None:
-                        print " ==== work True"
-                        self._log.debug(' ==== work True')
                         return True  # all is well
                     else:
-                        print " ==== work False"
-                        self._log.debug(' ==== work False')
                         return False # proc is gone - terminate
 
                 def ru_finalize_child(self):
-                    print ' ==== ru_finalize_child %s' % os.getpid()
-                    self._log.debug(' ==== ru_finalize_child')
                     if self._proc:
                         self._proc.terminate()
     
@@ -379,8 +369,10 @@ class Agent_0(rpu.Worker):
 
         self._prof.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!',
                         uid=self._owner)
-        self._check_commands()
-        self._check_state   ()
+
+        if not self._check_commands(): return False 
+        if not self._check_state   (): return False
+
         return True
 
 
@@ -400,7 +392,7 @@ class Agent_0(rpu.Worker):
                     )
 
         if not retdoc:
-            return
+            return True # this is not an error
 
         for spec in retdoc.get('cmd', []):
 
@@ -419,14 +411,17 @@ class Agent_0(rpu.Worker):
               # ru.attach_pudb(logger=self._log)
 
                 self.stop()
+                return False  # we are done
 
             elif cmd == 'cancel_unit':
                 self._log.info('cancel unit cmd')
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_unit',
                                                   'arg' : arg})
-
-            else:
+            else: 
                 self._log.error('could not interpret cmd "%s" - ignore', cmd)
+                return False  # abort
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -440,6 +435,9 @@ class Agent_0(rpu.Worker):
                 self._log.info("reached runtime limit (%ss).", self._runtime*60)
                 self._final_cause = 'timeout'
                 self.stop()
+                return False # we are done
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -447,6 +445,11 @@ class Agent_0(rpu.Worker):
     def _check_units_cb(self):
 
         self.is_valid()
+
+        # FIXME: this should probably go into a custom `is_valid()`
+        if not self._session._dbs._c:
+            self._log.warn('db connection gone - abort')
+            return False
 
         # Check if there are compute units waiting for input staging
         # and log that we pulled it.
@@ -463,7 +466,7 @@ class Agent_0(rpu.Worker):
         if not unit_cursor.count():
             # no units whatsoever...
             self._log.info("units pulled:    0")
-            return False
+            return True  # this is not an error
 
         # update the units to avoid pulling them again next time.
         unit_list = list(unit_cursor)
@@ -499,7 +502,6 @@ class Agent_0(rpu.Worker):
         # since that happened already on the module side when the state was set.
         self.advance(unit_list, publish=False, push=True, prof=False)
 
-        # indicate that we did some work (if we did...)
         return True
 
 

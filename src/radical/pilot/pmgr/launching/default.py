@@ -128,7 +128,7 @@ class Default(PMGRLaunchingComponent):
 
             if pmgr != self._pmgr:
                 # this request is not for us to enact
-                return
+                return True
 
             if not isinstance(pids, list):
                 pids = [pids]
@@ -144,6 +144,8 @@ class Default(PMGRLaunchingComponent):
             with self._pilots_lock:
                 for pid in pids:
                     self._pilots[pid]['pilot']['cancel_requested'] = now
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -227,7 +229,7 @@ class Default(PMGRLaunchingComponent):
                     to_cancel.append(pid)
 
         if not to_cancel:
-            return
+            return True
 
         tc = rs.task.Container()
         with self._pilots_lock:
@@ -262,6 +264,8 @@ class Default(PMGRLaunchingComponent):
                 to_advance.append(pilot)
 
         self.advance(to_advance, state=rps.CANCELED, push=False, publish=True)
+
+        return True
 
 
     # --------------------------------------------------------------------------

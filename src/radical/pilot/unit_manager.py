@@ -270,7 +270,7 @@ class UnitManager(rpu.Component):
         if self._closed:
             self._log.debug('umgr closed, ignore pilot state (%s: %s)', 
                             pilot.uid, pilot.state)
-            return
+            return True
 
 
         if state in rps.FINAL:
@@ -291,7 +291,7 @@ class UnitManager(rpu.Component):
             self._log.debug(" === units pulled: %3d (pilot dead)" % len(units))
 
             if not units:
-                return
+                return True
 
             # update the units to avoid pulling them again next time.
             # NOTE:  this needs not locking with the unit pulling in the
@@ -326,9 +326,10 @@ class UnitManager(rpu.Component):
                 for u in restarted:
                     self._log.debug('restart unit %s', u.uid)
 
-
             # final units are not pushed
             self.advance(units, publish=True, push=False) 
+
+            return True
 
 
     #---------------------------------------------------------------------------
@@ -345,7 +346,10 @@ class UnitManager(rpu.Component):
 
         for unit in units:
             self._log.debug(" === state pulled %s: %s", unit['uid'], unit['state'])
-            self._update_unit(unit, publish=True)
+            if not self._update_unit(unit, publish=True):
+                return False
+
+        return True
 
 
     #---------------------------------------------------------------------------
@@ -370,7 +374,7 @@ class UnitManager(rpu.Component):
         if not unit_cursor.count():
             # no units whatsoever...
             self._log.info(" === units pulled:    0")
-            return False
+            return True  # this is not an error
 
         # update the units to avoid pulling them again next time.
         units = list(unit_cursor)
@@ -417,7 +421,7 @@ class UnitManager(rpu.Component):
 
         if cmd != 'update':
             self._log.debug('ignore state cb msg with cmd %s', cmd)
-            return
+            return True
 
         if isinstance(arg, list): things =  arg
         else                    : things = [arg]
@@ -428,7 +432,10 @@ class UnitManager(rpu.Component):
 
                 # we got the state update from the state callback - don't
                 # publish it again
-                self._update_unit(thing, publish=False)
+                if not self._update_unit(thing, publish=False):
+                    return False
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -443,14 +450,13 @@ class UnitManager(rpu.Component):
 
             # we don't care about units we don't know
             if uid not in self._units:
-              # print 'unknown unit %s' % uid
-                return False
+                return True
 
             # only update on state changes
             current = self._units[uid].state
             target  = unit_dict['state']
             if current == target:
-                return
+                return True
 
             self._log.debug(' === unit %s current: %s', uid, current)
             self._log.debug(' === unit %s target : %s', uid, target)
@@ -467,6 +473,8 @@ class UnitManager(rpu.Component):
                 unit_dict['state'] = s
                 self._units[uid]._update(unit_dict)
                 self.advance(unit_dict, s, publish=publish, push=False)
+
+            return True
 
 
     # --------------------------------------------------------------------------

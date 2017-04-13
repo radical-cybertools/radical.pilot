@@ -1713,7 +1713,7 @@ do
         then
             echo "send SIGTERM to $AGENT_PID"
             kill -15 $AGENT_PID
-            sleep  5
+            sleep  1
             echo "send SIGKILL to $AGENT_PID"
             kill  -9 $AGENT_PID
             break

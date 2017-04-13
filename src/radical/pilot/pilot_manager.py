@@ -237,7 +237,10 @@ class PilotManager(rpu.Component):
         pilot_dicts = self._session._dbs.get_pilots(pmgr_uid=self.uid)
 
         for pilot_dict in pilot_dicts:
-            self._update_pilot(pilot_dict, publish=True)
+            if not self._update_pilot(pilot_dict, publish=True):
+                return False
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -249,7 +252,7 @@ class PilotManager(rpu.Component):
 
         if cmd != 'update':
             self._log.debug('ignore state cb msg with cmd %s', cmd)
-            return
+            return True
 
         if isinstance(arg, list): things =  arg
         else                    : things = [arg]
@@ -260,7 +263,10 @@ class PilotManager(rpu.Component):
 
                 # we got the state update from the state callback - don't
                 # publish it again
-                self._update_pilot(thing, publish=False)
+                if not self._update_pilot(thing, publish=False):
+                    return False
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -276,13 +282,13 @@ class PilotManager(rpu.Component):
 
             # we don't care about pilots we don't know
             if pid not in self._pilots:
-                return False
+                return True  # this is not an error
 
             # only update on state changes
             current = self._pilots[pid].state
             target  = pilot_dict['state']
             if current == target:
-                return
+                return True
 
             target, passed = rps._pilot_state_progress(pid, current, target)
           # print '%s current: %s' % (pid, current)
@@ -308,6 +314,7 @@ class PilotManager(rpu.Component):
                             pid, s, pilot_dict.get('lm_info'), 
                                     pilot_dict.get('lm_detail')) 
 
+            return True
 
 
     # --------------------------------------------------------------------------
