@@ -17,7 +17,7 @@
 # procedure!
 
 export OMPI_DIR=$HOME/ompi/                          # target location for install
-export OMPI_COMMIT=6da4dbb                           # OpenMPI commit to install
+export OMPI_COMMIT=539f71d                           # OpenMPI commit to install
 export OMPI_LABEL=$(date '+%Y_%m_%d'_${OMPI_COMMIT}) # module flag for installed version
 export MAKEFLAGS=-j16                                # speed up build on multicore machines
 
