@@ -1764,10 +1764,10 @@ then
     echo "#"
     echo "# -------------------------------------------------------------------"
     echo
-    FINAL_SLEEP=30
+    FINAL_SLEEP=3
     echo "# -------------------------------------------------------------------"
     echo "#"
-    echo "# We wait for at most 30 seconds for the FS to flush profiles."
+    echo "# We wait for some seconds for the FS to flush profiles."
     echo "# Success is assumed when all profiles end with a 'QED' event."
     echo "#"
     echo "# -------------------------------------------------------------------"
@@ -1777,7 +1777,7 @@ then
     while ! test "$nprofs" = "$nqed"
     do
         nsleep=$((nsleep+1))
-        if test "$nsleep" = "10"
+        if test "$nsleep" = "$FINAL_SLEEP"
         then
             echo "abort profile sync @ $nsleep: $nprofs != $nqed"
             break

@@ -83,11 +83,13 @@ class LRMS(object):
         # to the agent layout.  We dig out the respective requirements from the
         # config right here.
         self._agent_reqs = []
-        agents = self._cfg['agents']
+        agents = self._cfg.get('agents', {})
 
         # FIXME: this loop iterates over all agents *defined* in the layout, not
         #        over all agents which are to be actually executed, thus
-        #        potentially reserving too many nodes.
+        #        potentially reserving too many nodes.a
+        # NOTE:  this code path is *within* the agent, so at least agent_0
+        #        cannot possibly land on a different node.
         for agent in agents:
             target = agents[agent].get('target')
             # make sure that the target either 'local', which we will ignore,

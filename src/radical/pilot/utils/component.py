@@ -1082,7 +1082,7 @@ class Component(ru.Process):
             entry['thread'].join()
             del(self._threads[name])
 
-        self._log.debug("unregistered %s", name)
+        self._log.debug("unregistered subscriber %s", name)
 
 
     # --------------------------------------------------------------------------

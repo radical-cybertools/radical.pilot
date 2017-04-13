@@ -258,7 +258,7 @@ class Agent_0(rpu.Worker):
     
         self._log.debug('start_sub_agents')
     
-        if not self._cfg['agents']:
+        if not self._cfg.get('agents'):
             self._log.debug('start_sub_agents noop')
             return
 
