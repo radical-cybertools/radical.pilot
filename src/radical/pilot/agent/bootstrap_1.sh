@@ -1730,6 +1730,17 @@ wait $AGENT_PID
 AGENT_EXITCODE=$?
 echo "agent $AGENT_PID is final ($AGENT_EXITCODE)"
 
+
+if test -e "./killme.signal"
+then
+    # this agent has been canceled.  We don't care (much) how it died)
+    if ! test "$AGENT_EXITCODE" = "0"
+    then
+        echo "chaning exit code from $AGENT_EXITCODE to 0 for canceled pilot"
+        AGENT_EXITCODE=0
+    fi
+fi
+
 # # stop the packer.  We don't want to just kill it, as that might leave us with
 # # corrupted tarballs...
 # touch exit.signal
