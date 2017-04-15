@@ -3,14 +3,20 @@
 # specified for an agent.  It contains the minimal set of settings required for
 # a functional pilot agent, without any component redundency.
 
+# we should call this `pilot_config` instead of `agent_config`, since it 
+# *contains* the agent layout for a pilot.
+
 {
     # directory for staging files inside the agent sandbox
+    # FIXME: should be a module define, not a config option
     "staging_area"         : "staging_area",
 
     # url schema to indicate the use of staging_area
+    # FIXME: should be a module define, not a config option
     "staging_schema"       : "staging",
 
     # max number of cu out/err chars to push to db
+    # FIXME: should be a module define, not a per-pilot config option
     "max_io_loglength"     : 1024,
 
     # max number of updates to put into a db bulk

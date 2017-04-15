@@ -176,7 +176,6 @@ class Component(ru.Process):
     @staticmethod
     def start_components(cfg, session, log):
         '''
-
         `start_components()` is very similar to `start_bridges()`, in that it
         interprets a given configuration and creates all listed component
         instances.  Components are, however,  *always* created, independent of
