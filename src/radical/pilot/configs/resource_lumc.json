@@ -1,5 +1,5 @@
 {
-    "shark": {
+    "shark_ssh": {
         "description"                 : "Shark Cluster at LUMC (https://git.lumc.nl/shark/SHARK/wikis/home).",
         "notes"                       : "",
         "schemas"                     : ["ssh", "local"],
@@ -36,7 +36,7 @@
         "python_dist"                 : "default"
     },
 
-    "gb-ui": {
+    "gb-ui_ssh": {
         "description"                 : "LUMC node of Life Science Grid (LSG) (http://doc.grid.surfsara.nl/en/latest/Pages/General/life_science_grid.html).",
         "notes"                       : "",
         "schemas"                     : ["ssh", "local"],
@@ -70,3 +70,4 @@
         "python_dist"                 : "anaconda"
     }
 }
+

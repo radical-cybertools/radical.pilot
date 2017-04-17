@@ -1,6 +1,6 @@
 
 {
-    "stampede": {
+    "stampede_ssh": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["gsissh", "ssh", "go"],
@@ -47,6 +47,7 @@
                                          "LD_LIBRARY_PATH"], 
         "cu_pre_exec"                 : ["module restore"]
     },
+
     "stampede_orte": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
@@ -97,6 +98,7 @@
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
+
     "stampede_ortelib": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail. To create a virtualenv for the first time, one needs to run towards the development queue.",
@@ -241,7 +243,7 @@
         "python_dist"                 : "default"
     },
 
-       "wrangler": {
+    "wrangler_ssh": {
         "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh", "go"],
@@ -371,7 +373,7 @@
     },
 
 
-    "lonestar": {
+    "lonestar_ssh": {
         "description"                 : "The XSEDE 'Lonestar' cluster at TACC (https://www.tacc.utexas.edu/resources/hpc/lonestar).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
@@ -407,7 +409,7 @@
         "python_dist"                 : "default"
     },
 
-    "trestles": {
+    "trestles_ssh": {
         "description"                 : "The XSEDE 'Trestles' cluster at SDSC (http://www.sdsc.edu/us/resources/trestles/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
@@ -436,7 +438,7 @@
         "python_dist"                 : "default"
     },
 
-    "gordon": {
+    "gordon_ssh": {
         "description"                 : "The XSEDE 'Gordon' cluster at SDSC (http://www.sdsc.edu/us/resources/gordon/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
@@ -465,7 +467,7 @@
         "python_dist"                 : "default"
     },
 
-    "blacklight": {
+    "blacklight_ssh": {
         "description"                 : "The XSEDE 'Blacklight' cluster at PSC (https://www.psc.edu/index.php/computing-resources/blacklight).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
@@ -568,7 +570,7 @@
         "cu_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
     },
 
-    "comet": {
+    "comet_orte": {
         "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
@@ -678,7 +680,7 @@
         "python_dist"                 : "default"
     },
 
-    "supermic": {
+    "supermic_ssh": {
         "description"                 : "SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)",
         "notes"                       : "Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.",
         "schemas"                     : ["gsissh", "ssh"],

@@ -1,5 +1,5 @@
 {
-  "allegro": {
+  "allegro_rsh": {
     "description": "The FU Berlin 'Allegro' cluster at IMP (http://www.allegro.imp.fu-berlin.de).",
     "notes": "This one uses experimental RSH support to execute tasks.",
     "schemas": [
