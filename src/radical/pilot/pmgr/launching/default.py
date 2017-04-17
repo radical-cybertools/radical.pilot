@@ -807,7 +807,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['owner']              = 'agent_0'
         agent_cfg['cores']              = number_cores
         agent_cfg['debug']              = os.environ.get('RADICAL_PILOT_AGENT_VERBOSE', 
-                                                         self._log.getEffectiveLevel())
+                                          self._log.getEffectiveLevel()).upper()
         agent_cfg['lrms']               = lrms
         agent_cfg['spawner']            = agent_spawner
         agent_cfg['scheduler']          = agent_scheduler
