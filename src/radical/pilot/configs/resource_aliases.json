@@ -22,7 +22,7 @@
         "rice.davinci"                      : "rice.davinci_ssh",
         "rice.biou"                         : "rice.biou_ssh",
         "stfc.joule"                        : "stfc.joule_runjob",
-        "xsede.stampede"                    : "xsede.stampede_orte",
+        "xsede.stampede"                    : "xsede.stampede_ssh",
         "xsede.wrangler"                    : "xsede.wrangler_ssh",
         "xsede.lonestar"                    : "xsede.lonestar_ssh",
         "xsede.trestles"                    : "xsede.trestles_ssh",
