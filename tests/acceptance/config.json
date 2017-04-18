@@ -5,6 +5,26 @@
         "queue"    : null,
         "schema"   : null,
         "cores"    : 2
-    }
-}
+    },
 
+     "xsede.comet"  : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "compute",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "xsede.supermic" : {
+        "project"  : "TG-CCR140028",
+        "queue"    : "workq",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "epsrc.archer" : {
+        "project"  : "e290",
+        "queue"    : "short",
+        "schema"   : null,
+        "cores"    : 64
+    },
+}

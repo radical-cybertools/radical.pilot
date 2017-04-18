@@ -50,7 +50,10 @@ class AcceptanceTests(unittest.TestCase):
         test use setUpClass() and store the result as class variable
         """
         # Set-up the resource, hard-coding 'localhost' for now...
-        self.resource = 'local.localhost'
+        self.resource = os.getenv(
+            'RADICAL_PILOT_RESOURCE',
+            default='local.localhost'
+        )
 
         # Create a new session. No need to try/except this: if session creation
         # fails, there is not much we can do anyways...
