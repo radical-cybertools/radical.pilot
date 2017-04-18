@@ -573,6 +573,7 @@ class Default(PMGRLaunchingComponent):
         cores_per_node          = rcfg.get('cores_per_node', 0)
         health_check            = rcfg.get('health_check', True)
         python_dist             = rcfg.get('python_dist')
+        cu_tmp                  = rcfg.get('cu_tmp')
         spmd_variation          = rcfg.get('spmd_variation')
         shared_filesystem       = rcfg.get('shared_filesystem', True)
         stage_cacerts           = rcfg.get('stage_cacerts', False)
@@ -820,6 +821,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['task_launch_method'] = task_launch_method
         agent_cfg['mpi_launch_method']  = mpi_launch_method
         agent_cfg['cores_per_node']     = cores_per_node
+        agent_cfg['cu_tmp']             = cu_tmp
         agent_cfg['export_to_cu']       = export_to_cu
         agent_cfg['cu_pre_exec']        = cu_pre_exec
         agent_cfg['cu_post_exec']       = cu_post_exec

@@ -26,5 +26,5 @@
         "queue"    : "short",
         "schema"   : null,
         "cores"    : 64
-    },
+    }
 }

@@ -54,7 +54,6 @@ class AcceptanceTests(unittest.TestCase):
             'RADICAL_PILOT_RESOURCE',
             default='local.localhost'
         )
-
         # Create a new session. No need to try/except this: if session creation
         # fails, there is not much we can do anyways...
         self.session = rp.Session()

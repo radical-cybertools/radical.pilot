@@ -162,7 +162,7 @@ def get_session_slothist(db, sid, cache=None, cachedir=None) :
                     if started :
                         finished = event['timestamp']
                         break
-                    if event['state'] == EXECUTING :
+                    if event['state'] == AGENT_EXECUTING :
                         started = event['timestamp']
 
                 if not started or not finished :

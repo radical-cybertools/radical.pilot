@@ -2,6 +2,7 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os
 
 import radical.utils as ru
 
@@ -34,6 +35,9 @@ class AgentExecutingComponent(rpu.Component):
         self._uid = ru.generate_id('agent.executing.%(counter)s', ru.ID_CUSTOM)
 
         rpu.Component.__init__(self, cfg, session)
+
+        # if so configured, let the CU know what to use as tmp dir
+        self._cu_tmp = cfg.get('cu_tmp', os.environ.get('TMP', '/tmp'))
 
 
     # --------------------------------------------------------------------------
