@@ -353,7 +353,11 @@ class Agent_0(rpu.Worker):
 
                 def ru_finalize_child(self):
                     if self._proc:
-                        self._proc.terminate()
+                        try:
+                            self._proc.terminate()
+                        except Exception as e:
+                            # we are likely racing on termination...
+                            self._log.warn('%s term failed: %s', self._sa, e)
     
             # the agent is up - let the watcher manage it from here
             self.register_watchable(_SA(sa, cmdline, log=self._log))

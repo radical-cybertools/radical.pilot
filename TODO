@@ -238,15 +238,9 @@ term iv
 
     - can base bridges still be owned by the session?
 
-  - where are .child logs? (client)
-
-  - what happens if a ru.Process class is parent and child?
-    - are two watchers active?  
-    - On what self._endpoint?
-
-  - move pmgr/umgr start_components calls to the component base class, into
-    initialize_child / parent (depending on spawn).
-    - make sure to also call start_bridges, before start_components.
-    - keep component and bridge handles in the component and clean out after
-      fork
+    - move pmgr/umgr start_components calls to the component base class, into
+      initialize_child / parent (depending on spawn).
+      - make sure to also call start_bridges, before start_components.
+      - keep component and bridge handles in the component and clean out after
+        fork
 
