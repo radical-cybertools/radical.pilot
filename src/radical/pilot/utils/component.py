@@ -1266,6 +1266,7 @@ class Component(ru.Process):
 
             # If '$all' is set, we update the complete thing_dict.  
             # Things in final state are also published in full.
+            # If '$set' is set, we also publish all keys listed in there.
             # In all other cases, we only send 'uid', 'type' and 'state'.
             for thing in things:
                 if '$all' in thing:
@@ -1276,9 +1277,12 @@ class Component(ru.Process):
                     to_publish.append(thing)
 
                 else:
-                    to_publish.append({'uid'   : thing['uid'],
-                                       'type'  : thing['type'],
-                                       'state' : thing['state']})
+                    tmp = {'uid'   : thing['uid'],
+                           'type'  : thing['type'],
+                           'state' : thing['state']}
+                    for key in thing.get('$set', []):
+                        tmp[key] = thing[key]
+                    to_publish.append(tmp)
 
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'update', 'arg': to_publish})
             ts = time.time()

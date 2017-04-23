@@ -146,15 +146,6 @@ class ComputePilot(object):
         # keep all information around
         self._pilot_dict = copy.deepcopy(pilot_dict)
 
-        # and extract som for convenience
-        if not 'resource_details' in self._pilot_dict:
-            # FIXME: fill on agent side
-            self._pilot_dict['resource_details'] = {
-                    'nodes':          self._pilot_dict.get('nodes'),
-                    'cores_per_node': self._pilot_dict.get('cores_per_node'),
-                    'lm_detail':      self._pilot_dict.get('lm_detail')
-                }
-
         # invoke pilot specific callbacks
         for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
 

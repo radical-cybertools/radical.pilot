@@ -141,15 +141,16 @@ class Agent_0(rpu.Worker):
 
         # sub-agents are started, components are started, bridges are up: we are
         # ready to roll!
-        pilot = {'type'      : 'pilot',
-                 'uid'       : self._pid,
-                 'state'     : rps.PMGR_ACTIVE,
-                 'lm_info'   : self._lrms.lm_info.get('version_info'),
-                 'lm_detail' : self._lrms.lm_info.get('lm_detail'),
-                 '$set'      : ['lm_info', 'lm_detail']}
+        pilot = {'type'             : 'pilot',
+                 'uid'              : self._pid,
+                 'state'            : rps.PMGR_ACTIVE,
+                 'resource_details' : {
+                     'lm_info'      : self._lrms.lm_info.get('version_info'),
+                     'lm_detail'    : self._lrms.lm_info.get('lm_detail')},
+                 '$set'             : ['resource_details']}
         self.advance(pilot, publish=True, push=False, prof=True)
 
-        # register idle callback, to pull for units -- which is the only action
+        # register idle callback to pull for units -- which is the only action
         # we have to perform, really
         self.register_timed_cb(self._check_units_cb, 
                                timer=self._cfg['db_poll_sleeptime'])
