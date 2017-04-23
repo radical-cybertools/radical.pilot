@@ -230,10 +230,6 @@ class Update(rpu.Worker):
             # the state model, even if they have been pushed here out-of-order
             update_dict['$push']['states'] = state
 
-            # check if we handled the collection before.  If not, initialize
-            # FIXME: we only have one collection now -- simplify!
-            cname = self._session_id
-
             with self._lock:
 
                 # push the update request onto the bulk
