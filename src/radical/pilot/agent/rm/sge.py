@@ -38,7 +38,7 @@ class SGE(LRMS):
             # Doing complex stuff like termination even less so.  So for now we
             # hook into the ru.Process class and signal termination gracefully.
             # TODO: provide cleaner hook in RU
-            term = getattr(self, _ru_term)
+            term = getattr(self, '_ru_term')
             if term is not None and not term.is_set():
                 term.set()
         signal.signal(signal.SIGUSR1, _sigusr2_handler)
