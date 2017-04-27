@@ -83,8 +83,8 @@
             # Load ICC license so we can build during bootstrap
             "source ~train00/ssi_sourceme",
             "export TACC_DELETE_FILES=TRUE",
-            "module use -a /home1/01740/marksant/openmpi/modulefiles",
-            "module load openmpi/rhc",
+            "module use -a /home1/01083/tg803521/ompi/modules/",
+            "module load openmpi/2017_04_20_539f71d",
             "export OMPI_MCA_plm=^slurm"
         ],
         "pre_bootstrap_2"             : ["export PATH=$PATH",
@@ -133,8 +133,8 @@
             # Load ICC license so we can build during bootstrap
             "source ~train00/ssi_sourceme",
             "export TACC_DELETE_FILES=TRUE",
-            "module use -a /home1/01740/marksant/openmpi/modulefiles",
-            "module load openmpi/rhc",
+            "module use -a /home1/01083/tg803521/ompi/modules/",
+            "module load openmpi/2017_04_20_539f71d",
             "export OMPI_MCA_plm=^slurm"
         ],
         "pre_bootstrap_2"             : ["export PATH=$PATH",
