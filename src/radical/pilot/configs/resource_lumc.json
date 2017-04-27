@@ -1,14 +1,14 @@
 {
     "shark": {
         "description"                 : "Shark Cluster at LUMC (https://git.lumc.nl/shark/SHARK/wikis/home).",
-        "notes"                       : "",
+        "notes"                       : "Need to specify at least 16GB for the pilot agent to start (pd.memory=16000).",
         "schemas"                     : ["ssh", "local"],
         "local"                       : {
             "job_manager_endpoint"    : "sge://localhost",
             "filesystem_endpoint"     : "file://localhost/"
         },
         "ssh"                         : {
-            "job_manager_endpoint"    : "sge+ssh://shark.researchlumc.nl",
+            "job_manager_endpoint"    : "sge+ssh://shark.researchlumc.nl?memreqs=h_vmem",
             "filesystem_endpoint"     : "sftp://shark.researchlumc.nl/"
         },
         "default_queue"               : "all.q",

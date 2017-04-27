@@ -34,7 +34,7 @@
             "filesystem_endpoint"     : "sftp://hopper.nersc.gov/"
         },
         "go"                         : {
-            "job_manager_endpoint"    : "pbs+ssh://hopper.nersc.gov/",
+            "job_manager_endpoint"    : "torque+ssh://hopper.nersc.gov/",
             "filesystem_endpoint"     : "go://nersc#hopper/"
         },
         "default_queue"               : "regular",
@@ -109,7 +109,7 @@
             "filesystem_endpoint"     : "sftp://edison.nersc.gov/"
         },
         "go"                         : {
-            "job_manager_endpoint"    : "pbs+ssh://edison.nersc.gov/",
+            "job_manager_endpoint"    : "torque+ssh://edison.nersc.gov/",
             "filesystem_endpoint"     : "go://nersc#edison/"
         },
         "default_queue"               : "regular",
@@ -138,7 +138,7 @@
             "filesystem_endpoint"     : "sftp://edison.nersc.gov/"
         },
         "go"                         : {
-            "job_manager_endpoint"    : "pbs+ssh://edison.nersc.gov/",
+            "job_manager_endpoint"    : "torque+ssh://edison.nersc.gov/",
             "filesystem_endpoint"     : "go://nersc#edison/"
         },
         "default_queue"               : "regular",
