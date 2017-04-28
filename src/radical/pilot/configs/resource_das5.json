@@ -1,5 +1,5 @@
 {
-    "fs1": {
+    "fs1_ssh": {
         "description"                 : "The Distributed ASCI Supercomputer 5 (http://www.cs.vu.nl/das5/).",
         "notes"                       : "None",
         "schemas"                     : ["ssh"],

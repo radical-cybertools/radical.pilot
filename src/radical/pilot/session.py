@@ -341,7 +341,8 @@ class Session(rs.Session):
                 self._log.info("Load resource configurations for %s" % rc)
                 self._resource_configs[rc] = rcs[rc].as_dict() 
 
-        user_cfgs    = "%s/.radical/pilot/configs/resource_*.json" % os.environ.get('HOME')
+        home         = os.environ.get('HOME', '')
+        user_cfgs    = "%s/.radical/pilot/configs/resource_*.json" % home
         config_files = glob.glob(user_cfgs)
 
         for config_file in config_files:
@@ -366,6 +367,13 @@ class Session(rs.Session):
 
         default_aliases = "%s/configs/resource_aliases.json" % module_path
         self._resource_aliases = ru.read_json_str(default_aliases)['aliases']
+
+        # check if we have aliases to merge
+        usr_aliases = '%s/.radical/pilot/configs/resource_aliases.json' % home
+        if os.path.isfile(usr_aliases):
+            ru.dict_merge(self._resource_aliases,
+                          ru.read_json_str(usr_aliases).get('aliases', {}),
+                          policy='overwrite')
 
         self.prof.prof('configs parsed', uid=self._uid)
 

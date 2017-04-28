@@ -546,16 +546,6 @@ class Default(PMGRLaunchingComponent):
         database_url  = self._session.dburl
 
         # ------------------------------------------------------------------
-        # pilot description and resource configuration
-        number_cores    = pilot['description']['cores']
-        runtime         = pilot['description']['runtime']
-        queue           = pilot['description']['queue']
-        project         = pilot['description']['project']
-        cleanup         = pilot['description']['cleanup']
-        memory          = pilot['description']['memory']
-        candidate_hosts = pilot['description']['candidate_hosts']
-
-        # ------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
         agent_launch_method     = rcfg.get('agent_launch_method')
         agent_dburl             = rcfg.get('agent_mongodb_endpoint', database_url)
@@ -584,8 +574,27 @@ class Default(PMGRLaunchingComponent):
         cu_pre_exec             = rcfg.get('cu_pre_exec')
         cu_post_exec            = rcfg.get('cu_post_exec')
         export_to_cu            = rcfg.get('export_to_cu')
+        mandatory_args          = rcfg.get('mandatory_args', [])
 
+        # ------------------------------------------------------------------
+        # get parameters from the pilot description
+        number_cores    = pilot['description']['cores']
+        runtime         = pilot['description']['runtime']
+        queue           = pilot['description']['queue']
+        project         = pilot['description']['project']
+        cleanup         = pilot['description']['cleanup']
+        memory          = pilot['description']['memory']
+        candidate_hosts = pilot['description']['candidate_hosts']
 
+        # make sure that mandatory args are known
+        print 'mas: %s' % mandatory_args
+        import sys
+        sys.stdout.write('mas: %s\n' % mandatory_args)
+        sys.stdout.flush()
+        for ma in mandatory_args:
+            if pilot['description'].get(ma) is None:
+                raise  ValueError('attribute "%s" is required for "%s"' \
+                                 % (ma, resource))
 
         # get pilot and global sandbox
         global_sandbox   = self._session._get_global_sandbox (pilot).path
@@ -798,8 +807,6 @@ class Default(PMGRLaunchingComponent):
 
         agent_cfg['owner']              = 'agent_0'
         agent_cfg['cores']              = number_cores
-        agent_cfg['debug']              = os.environ.get('RADICAL_PILOT_AGENT_VERBOSE', 
-                                                         self._log.getEffectiveLevel())
         agent_cfg['lrms']               = lrms
         agent_cfg['spawner']            = agent_spawner
         agent_cfg['scheduler']          = agent_scheduler
@@ -820,6 +827,13 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['cu_pre_exec']        = cu_pre_exec
         agent_cfg['cu_post_exec']       = cu_post_exec
         agent_cfg['resource_cfg']       = copy.deepcopy(rcfg)
+
+        debug = os.environ.get('RADICAL_PILOT_AGENT_VERBOSE', 
+                               self._log.getEffectiveLevel())
+        if isinstance(debug, basestring):
+            agent_cfg['debug'] = debug.upper()
+        else:
+            agent_cfg['debug'] = debug
 
         # we'll also push the agent config into MongoDB
         pilot['cfg'] = agent_cfg
@@ -845,7 +859,10 @@ class Default(PMGRLaunchingComponent):
         ret['ft'].append({'src' : '/dev/null',
                           'tgt' : '%s/%s' % (pilot_sandbox, '%s.log.tgz' % pid),
                           'rem' : False})  # don't remove /dev/null
-        ret['ft'].append({'src' : '/dev/null',
+        # only stage profiles if we profile
+        if self._prof.enabled:
+            ret['ft'].append({
+                          'src' : '/dev/null',
                           'tgt' : '%s/%s' % (pilot_sandbox, '%s.prof.tgz' % pid),
                           'rem' : False})  # don't remove /dev/null
 
