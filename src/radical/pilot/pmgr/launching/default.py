@@ -864,7 +864,10 @@ class Default(PMGRLaunchingComponent):
         ret['ft'].append({'src' : '/dev/null',
                           'tgt' : '%s/%s' % (pilot_sandbox, '%s.log.tgz' % pid),
                           'rem' : False})  # don't remove /dev/null
-        ret['ft'].append({'src' : '/dev/null',
+        # only stage profiles if we profile
+        if self._prof.enabled:
+            ret['ft'].append({
+                          'src' : '/dev/null',
                           'tgt' : '%s/%s' % (pilot_sandbox, '%s.prof.tgz' % pid),
                           'rem' : False})  # don't remove /dev/null
 
