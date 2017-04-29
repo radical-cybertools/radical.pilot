@@ -208,10 +208,35 @@ class Backfilling(UMGRSchedulingComponent):
 
         self.advance(units, rps.UMGR_SCHEDULING, publish=True, push=False)
 
-        with self._wait_lock:
+        with self._pilots_lock, self._wait_lock:
+
             for unit in units:
-                self._prof.prof('wait', uid=unit['uid'])
-                self._wait_pool[unit['uid']] = unit
+
+                # check if units are already scheduled, ie. by the application
+                uid = unit.get('uid')
+                pid = unit.get('pilot')
+
+                if pid:
+                    # make sure we know this pilot
+                    if pid not in self._pilots:
+                        self._log.error('got unit %s for unknown pilot %s', uid, pid)
+                        self.advance(unit, rps.FAILED, publish=True, push=True)
+                        continue
+                    
+                    pilot = self._pilots[pid]['pilot']
+
+                    # make sure we have a sandbox defined, too
+                    if not unit.get('sandbox'):
+                        pilot = self._pilots[pid]['pilot']
+                        unit['sandbox'] = self._session._get_unit_sandbox(unit, pilot)
+
+                    self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING, 
+                                 publish=True, push=True)
+
+                else:
+                    # not yet scheduled - put in wait pool
+                    self._prof.prof('wait', uid=unit['uid'])
+                    self._wait_pool[unit['uid']] = unit
                         
         self._schedule_units()
 
@@ -283,7 +308,6 @@ class Backfilling(UMGRSchedulingComponent):
             # check if we have any eligible pilots to schedule over
             if not pids:
                 return
-
 
             # cycle over available pids and add units until we either ran
             # out of units to schedule, or out of pids to schedule over

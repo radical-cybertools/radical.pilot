@@ -68,7 +68,7 @@ class ComputeUnit(object):
         self._exit_code     = None
         self._stdout        = None
         self._stderr        = None
-        self._pilot         = None
+        self._pilot         = descr.get('pilot')
         self._sandbox       = None
         self._callbacks     = dict()
         self._cb_lock       = threading.RLock()
@@ -100,6 +100,7 @@ class ComputeUnit(object):
         expand_description(self._descr)
 
         self._umgr.advance(self.as_dict(), rps.NEW, publish=False, push=False)
+
 
     # --------------------------------------------------------------------------
     #
