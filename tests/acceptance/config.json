@@ -10,21 +10,21 @@
      "xsede.comet"  : {
         "project"  : "TG-MCB090174",
         "queue"    : "compute",
-        "schema"   : "gsissh",
+        "schema"   : "ssh",
         "cores"    : 64
     },
 
     "xsede.supermic" : {
         "project"  : "TG-CCR140028",
         "queue"    : "workq",
-        "schema"   : "gsissh",
+        "schema"   : "ssh",
         "cores"    : 64
     },
 
     "epsrc.archer" : {
         "project"  : "e290",
         "queue"    : "short",
-        "schema"   : null,
+        "schema"   : "ssh",
         "cores"    : 64
     }
 }
