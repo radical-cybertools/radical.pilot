@@ -1,6 +1,6 @@
 
 {
-    "india": {
+    "india_ssh": {
         "description"                 : "The FutureGrid 'india' cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "None",
         "schemas"                     : ["ssh"],
@@ -23,7 +23,7 @@
         "virtenv_mode"                : "update",
         "python_dist"                 : "default"
     },
-    "bravo": {
+    "bravo_ssh": {
         "description"                 : "FutureGrid Hewlett-Packard ProLiant compute cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "Works only up to 64 cores, beyond that Torque configuration is broken.",
         "schemas"                     : ["ssh"],
@@ -49,7 +49,7 @@
         "virtenv_mode"                : "update",
         "python_dist"                 : "default"
     },
-    "delta": {
+    "delta_ssh": {
         "description"                 : "FutureGrid Supermicro GPU cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "Untested.",
         "schemas"                     : ["ssh"],
@@ -71,7 +71,7 @@
         "virtenv_mode"                : "update",
         "python_dist"                 : "default"
     },
-    "echo": {
+    "echo_ssh": {
         "description"                 : "FutureGrid Supermicro ScaleMP cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "Untested",
         "schemas"                     : ["ssh"],
@@ -94,7 +94,7 @@
         "python_dist"                 : "default"
 
     },
-    "xray": {
+    "xray_aprun": {
         "description"                 : "FutureGrid Cray XT5m cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "One needs to add 'module load torque' to ~/.profile on xray.",
         "schemas"                     : ["ssh"],
