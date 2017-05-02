@@ -78,9 +78,6 @@ class Default(UMGRStagingInputComponent):
             actionables = list()
             for sd in unit['description'].get('input_staging', []):
 
-                import pprint
-                pprint.pprint(sd)
-
                 action = sd['action']
                 flags  = sd['flags']
                 src    = ru.Url(sd['source'])

@@ -55,6 +55,15 @@ def make_abs_url(path):
     directives (which are strings at that point).
     """
 
+    # nothing done for URLs, those are always absolute
+    if isinstance(path, ru.Url):
+        return str(path)
+
+    # if `://` is part of `path`, its likely a URL anyway, and we
+    # convert/reparse it
+    if '://' in path:
+        path = ru.Url(path).path
+
     if path.startswith('/'): is_abs = True
     else                   : is_abs = False
 
@@ -65,7 +74,9 @@ def make_abs_url(path):
         url.schema = 'file'
         url.host   = 'localhost'
         if is_abs: url.path = path
-        else     : url.path = '%s/%s' % (os.getcwd(), path)
+        else     : url.path = '%s/%s' % (os.getcwd(), url.path)
+        # FIXME: the above uses pwd on the client side, but the staging
+        #        directive may get interpreted at the agent side
 
     return str(url)
 
