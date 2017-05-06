@@ -88,8 +88,8 @@ class ComputePilot(object):
         # `as_dict()` needs `pilot_dict` and other attributes.  Those should all
         # be available at this point (apart from the sandbox itself), so we now
         # query for that sandbox.
-        self._sandbox       = None
-        self._sandbox       = self._session._get_pilot_sandbox(self.as_dict())
+        self._sandbox = None
+        self._sandbox = self._session._get_pilot_sandbox(self.as_dict())
 
 
     # --------------------------------------------------------------------------
@@ -177,7 +177,7 @@ class ComputePilot(object):
             'stdout':           self.stdout,
             'stderr':           self.stderr,
             'resource':         self.resource,
-            'sandbox':          str(self.sandbox), # for mongodb insertion
+            'sandbox':          self.sandbox,
             'description':      self.description,  # this is a deep copy
             'resource_details': self.resource_details
         }
@@ -330,7 +330,7 @@ class ComputePilot(object):
         known, or 'None' otherwise.
 
         **Returns:**
-            * A URL (radical.utils.Url).
+            * A string
         """
 
         # NOTE: The pilot has a sandbox property, containing the full sandbox
@@ -345,8 +345,10 @@ class ComputePilot(object):
         #       and the RP agent that `$PWD` *is* the sandbox!  The same 
         #       implicitly also holds for the staging area, which is relative
         #       to the pilot sandbox.
-
-        return self._sandbox
+        if self._sandbox:
+            return str(self._sandbox)
+        else:
+            return None
 
 
     # --------------------------------------------------------------------------
@@ -539,8 +541,8 @@ class ComputePilot(object):
                 rel_path = os.path.relpath(tgt_dir_url.path, '/')
 
                 # Now base the target directory relative of the sandbox and staging prefix
-                tgt_dir_url      = saga.Url(self.sandbox)
-                tgt_dir_url.path = os.path.join(self.sandbox.path, 
+                tgt_dir_url      = saga.Url(self._sandbox)
+                tgt_dir_url.path = os.path.join(self._sandbox.path,
                                                 STAGING_AREA, rel_path)
 
             # Define and open the staging directory for the pilot

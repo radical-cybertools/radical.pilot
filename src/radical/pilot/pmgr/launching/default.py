@@ -143,7 +143,8 @@ class Default(PMGRLaunchingComponent):
             now = time.time()
             with self._pilots_lock:
                 for pid in pids:
-                    self._pilots[pid]['pilot']['cancel_requested'] = now
+                    if pid in self._pilots:
+                        self._pilots[pid]['pilot']['cancel_requested'] = now
 
         return True
 

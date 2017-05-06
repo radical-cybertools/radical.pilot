@@ -24,7 +24,9 @@ python dicts.  All 'things' are guaranteed to have the following fields:
 
 ## PubSub channels
 
-The communication over pubsub channels has a wider, more flexible, and more dynamic scope than the communication over queues.  We thus always add a certain amount of meta data, to keep inspection of arriving messages uniform.
+The communication over pubsub channels has a wider, more flexible, and more
+dynamic scope than the communication over queues.  We thus always add a certain
+amount of meta data, to keep inspection of arriving messages uniform.
 
 All messages are structured into:
 

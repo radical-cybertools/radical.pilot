@@ -86,12 +86,7 @@ class RoundRobin(UMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def work(self, units):
-
-        if not isinstance(units, list):
-            units = [units]
-
-        self.advance(units, rps.UMGR_SCHEDULING, publish=True, push=False)
+    def _work(self, units):
 
         unscheduled = list()
         with self._pilots_lock:
