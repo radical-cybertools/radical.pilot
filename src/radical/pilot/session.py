@@ -273,6 +273,10 @@ class Session(rs.Session):
     #
     def is_valid(self, term=True):
 
+        # don't check validity during termination
+        if self._closed:
+            return True
+
         # if we check any manager or agent, it will likely also check the
         # session in turn.  We break that loop here.
         self._valid_iter += 1
