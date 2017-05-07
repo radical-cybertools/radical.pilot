@@ -184,7 +184,9 @@ class PilotManager(rpu.Component):
 
         # If terminate is set, we cancel all pilots. 
         if terminate:
-            self.cancel_pilots()
+            self.cancel_pilots(_timeout=10)
+            # if this cancel op fails and the pilots are s till alive after
+            # timeout, the pmgr.launcher termination will kill them
 
         self._terminate.set()
         self.stop()
@@ -609,7 +611,7 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def cancel_pilots(self, uids=None):
+    def cancel_pilots(self, uids=None, _timeout=None):
         """
         Cancel one or more :class:`radical.pilot.ComputePilots`.
 
@@ -634,7 +636,8 @@ class PilotManager(rpu.Component):
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots', 
                                           'arg' : {'pmgr' : self.uid,
                                                    'uids' : uids}})
-        self.wait_pilots(uids=uids)
+
+        self.wait_pilots(uids=uids, timeout=_timeout)
 
 
     # --------------------------------------------------------------------------

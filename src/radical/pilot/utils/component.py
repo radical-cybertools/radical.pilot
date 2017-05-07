@@ -251,7 +251,7 @@ class Component(ru.Process):
                 comp = ctype.create(tmp_cfg, session)
                 comp.start()
 
-                log.info(' ==== %-30s starts %s',  tmp_cfg['owner'], comp.uid)
+                log.info('%-30s starts %s',  tmp_cfg['owner'], comp.uid)
 
                 components.append(comp)
 
@@ -597,6 +597,9 @@ class Component(ru.Process):
 
         self._log.debug('ru_finalize_common()')
 
+        # call component level finalize, before we tear down channels
+        self.finalize_common()
+
         # reverse order from initialize_common
       # self.unregister_publisher(rpc.LOG_PUBSUB)
         self.unregister_publisher(rpc.STATE_PUBSUB)
@@ -608,9 +611,6 @@ class Component(ru.Process):
             self._prof.close()
         except Exception:
             pass
-
-        # call component level finalize
-        self.finalize_common()
 
     def finalize_common(self):
         pass # can be overloaded
@@ -1141,8 +1141,6 @@ class Component(ru.Process):
             if not isinstance(things, list):
                 things = [things]
 
-          # self._log.debug(' === input bulk %s things on %s' % (len(things), name))
-
             # the worker target depends on the state of things, so we 
             # need to sort the things into buckets by state before 
             # pushing them
@@ -1182,7 +1180,6 @@ class Component(ru.Process):
                         self.advance(to_cancel, rps.CANCELED, publish=True, push=False)
 
                     with self._cb_lock:
-                      # self._log.debug(' === work on bulk [%s]', len(things))
                         self._workers[state](things)
 
                     for thing in things:
@@ -1236,7 +1233,7 @@ class Component(ru.Process):
         if not isinstance(things, list):
             things = [things]
 
-        self._log.debug(' === advance bulk size: %s [%s, %s]', len(things), push, publish)
+        self._log.debug('advance bulk size: %s [%s, %s]', len(things), push, publish)
 
         # assign state, sort things by state
         buckets = dict()
@@ -1252,7 +1249,7 @@ class Component(ru.Process):
                 # state advance done here
                 thing['state'] = state
 
-            self._log.debug(' === advance bulk: %s [%s]', uid, len(things))
+            self._log.debug('advance bulk: %s [%s]', uid, len(things))
             self._prof.prof('advance', uid=uid, state=thing['state'], timestamp=timestamp)
 
             if not thing['state'] in buckets:
@@ -1329,7 +1326,7 @@ class Component(ru.Process):
                 # push the thing down the drain
                 # FIXME: we should assert that the things are in a PENDING state.
                 #        Better yet, enact the *_PENDING transition right here...
-                self._log.debug(' === put bulk %s: %s', _state, len(_things))
+                self._log.debug('put bulk %s: %s', _state, len(_things))
                 output.put(_things)
 
                 ts = time.time()

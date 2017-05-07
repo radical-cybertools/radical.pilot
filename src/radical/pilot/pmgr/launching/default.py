@@ -91,11 +91,18 @@ class Default(PMGRLaunchingComponent):
     #
     def finalize_child(self):
 
-        self._log.debug('finalize child')
         # avoid shutdown races:
         
         self.unregister_timed_cb(self._pilot_watcher_cb)
         self.unregister_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
+
+        # FIXME: always kill all saga jobs for non-final pilots at termination,
+        #        and set the pilot states to CANCELED.  This will confluct with
+        #        disconnect/reconnect semantics.
+        with self._pilots_lock:
+            pids = self._pilots.keys()
+
+        self._kill_pilots(pids)
 
         with self._cache_lock:
             for url,js in self._saga_js_cache.iteritems():
@@ -231,41 +238,55 @@ class Default(PMGRLaunchingComponent):
         if not to_cancel:
             return True
 
-        tc = rs.task.Container()
-        with self._pilots_lock:
+        self._kill_pilots(to_cancel)
 
-            for pid in to_cancel:
+        return True
 
-                if pid not in self._pilots:
-                    self._log.error('unknown: %s', pid)
-                    raise ValueError('unknown pilot %s' % pid)
 
-                pilot = self._pilots[pid]['pilot']
-                job   = self._pilots[pid]['job']
-                to_advance.append(pilot)
-                tc.add(job)
+    # --------------------------------------------------------------------------
+    #
+    def _kill_pilots(self, pids):
 
-        tc.cancel()
-        tc.wait()
+        if not pids:
+            return  # nothing to do
 
-        # we don't want the watcher checking for this pilot anymore
+        if not isinstance(pids, list):
+            pids = [pids]
+
+        to_advance = list()
+
+        # we don't want the watcher checking for these pilot anymore
         with self._check_lock:
-            for pid in to_cancel:
+            for pid in pids:
                 if pid in self._checking:
                     self._checking.remove(pid)
 
-        # set canceled state
-        to_advance = list()
-        with self._pilots_lock:
+        try:
+            with self._pilots_lock:
+                tc = rs.job.Container()
+                for pid in pids:
 
-            for pid in to_cancel:
+                    if pid not in self._pilots:
+                        self._log.error('unknown: %s', pid)
+                        raise ValueError('unknown pilot %s' % pid)
 
-                pilot = self._pilots[pid]['pilot']
-                to_advance.append(pilot)
+                    pilot = self._pilots[pid]['pilot']
+                    job   = self._pilots[pid]['job']
 
-        self.advance(to_advance, state=rps.CANCELED, push=False, publish=True)
+                    if pilot['state'] in rp.FINAL:
+                        continue
 
-        return True
+                    to_advance.append(pilot)
+                    tc.add(job)
+
+                tc.cancel()
+                tc.wait()
+
+            # set canceled state
+            self.advance(to_advance, state=rps.CANCELED, push=False, publish=True)
+
+        except Exception as e:
+            self._log.exception('pilot kill failed')
 
 
     # --------------------------------------------------------------------------

@@ -398,25 +398,18 @@ class UnitManager(rpu.Component):
                                     'uid'   : {'$in'     : uids}},
                         document = {'$set'  : {'control' : 'umgr'}})
 
-        self._log.info(" === units pulled: %4d %s", len(units), [u['uid'] for u in units])
+        self._log.info("units pulled: %4d %s", len(units), [u['uid'] for u in units])
         self._prof.prof('get', msg="bulk size: %d" % len(units), uid=self.uid)
         for unit in units:
 
-            self._log.debug('\n\n=======================================')
-            self._log.debug(' === details %s: %s', unit['uid'], pprint.pformat(unit))
-            
             # we need to make sure to have the correct state:
             old = unit['state']
             new = rps._unit_state_collapse(unit['states'])
-            self._log.debug(' === %s state: %s -> %s', unit['uid'], old, new)
+            self._log.debug("unit pulled %s: %s / %s", unit['uid'], old, new)
 
-            self._log.debug(" === unit  pulled %s: %s / %s", unit['uid'], old, new)
-
-            unit['state'] = new
+            unit['state']   = new
             unit['control'] = 'umgr'
             self._prof.prof('get', msg="bulk size: %d" % len(units), uid=unit['uid'])
-
-            self._log.debug('\n=======================================\n\n')
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline).
@@ -471,11 +464,7 @@ class UnitManager(rpu.Component):
             if current == target:
                 return True
 
-            self._log.debug(' === unit %s current: %s', uid, current)
-            self._log.debug(' === unit %s target : %s', uid, target)
             target, passed = rps._unit_state_progress(uid, current, target)
-            self._log.debug(' === unit %s target : %s', uid, target)
-            self._log.debug(' === unit %s passed : %s', uid, passed)
 
             if target in [rps.CANCELED, rps.FAILED]:
                 # don't replay intermediate states
