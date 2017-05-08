@@ -58,9 +58,6 @@ class Default(PMGRLaunchingComponent):
     #
     def initialize_child(self):
 
-        self.register_input(rps.PMGR_LAUNCHING_PENDING, 
-                            rpc.PMGR_LAUNCHING_QUEUE, self.work)
-
         # we don't really have an output queue, as we pass control over the
         # pilot jobs to the resource management system (RM).
 
@@ -77,6 +74,9 @@ class Default(PMGRLaunchingComponent):
         self._root_dir      = "%s/../../"   % self._mod_dir  
         self._conf_dir      = "%s/configs/" % self._root_dir 
 
+        self.register_input(rps.PMGR_LAUNCHING_PENDING, 
+                            rpc.PMGR_LAUNCHING_QUEUE, self.work)
+
         # FIXME: make interval configurable
         self.register_timed_cb(self._pilot_watcher_cb, timer=10.0)
         
@@ -91,11 +91,18 @@ class Default(PMGRLaunchingComponent):
     #
     def finalize_child(self):
 
-        self._log.debug('finalize child')
         # avoid shutdown races:
         
         self.unregister_timed_cb(self._pilot_watcher_cb)
         self.unregister_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
+
+        # FIXME: always kill all saga jobs for non-final pilots at termination,
+        #        and set the pilot states to CANCELED.  This will confluct with
+        #        disconnect/reconnect semantics.
+        with self._pilots_lock:
+            pids = self._pilots.keys()
+
+        self._kill_pilots(pids)
 
         with self._cache_lock:
             for url,js in self._saga_js_cache.iteritems():
@@ -128,7 +135,7 @@ class Default(PMGRLaunchingComponent):
 
             if pmgr != self._pmgr:
                 # this request is not for us to enact
-                return
+                return True
 
             if not isinstance(pids, list):
                 pids = [pids]
@@ -144,6 +151,8 @@ class Default(PMGRLaunchingComponent):
             with self._pilots_lock:
                 for pid in pids:
                     self._pilots[pid]['pilot']['cancel_requested'] = now
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -227,41 +236,57 @@ class Default(PMGRLaunchingComponent):
                     to_cancel.append(pid)
 
         if not to_cancel:
-            return
+            return True
 
-        tc = rs.task.Container()
-        with self._pilots_lock:
+        self._kill_pilots(to_cancel)
 
-            for pid in to_cancel:
+        return True
 
-                if pid not in self._pilots:
-                    self._log.error('unknown: %s', pid)
-                    raise ValueError('unknown pilot %s' % pid)
 
-                pilot = self._pilots[pid]['pilot']
-                job   = self._pilots[pid]['job']
-                to_advance.append(pilot)
-                tc.add(job)
+    # --------------------------------------------------------------------------
+    #
+    def _kill_pilots(self, pids):
 
-        tc.cancel()
-        tc.wait()
+        if not pids:
+            return  # nothing to do
 
-        # we don't want the watcher checking for this pilot anymore
+        if not isinstance(pids, list):
+            pids = [pids]
+
+        to_advance = list()
+
+        # we don't want the watcher checking for these pilot anymore
         with self._check_lock:
-            for pid in to_cancel:
+            for pid in pids:
                 if pid in self._checking:
                     self._checking.remove(pid)
 
-        # set canceled state
-        to_advance = list()
-        with self._pilots_lock:
+        try:
+            with self._pilots_lock:
+                tc = rs.job.Container()
+                for pid in pids:
 
-            for pid in to_cancel:
+                    if pid not in self._pilots:
+                        self._log.error('unknown: %s', pid)
+                        raise ValueError('unknown pilot %s' % pid)
 
-                pilot = self._pilots[pid]['pilot']
-                to_advance.append(pilot)
+                    pilot = self._pilots[pid]['pilot']
+                    job   = self._pilots[pid]['job']
 
-        self.advance(to_advance, state=rps.CANCELED, push=False, publish=True)
+                    if pilot['state'] in rp.FINAL:
+                        continue
+
+                    to_advance.append(pilot)
+                    tc.add(job)
+
+                tc.cancel()
+                tc.wait()
+
+            # set canceled state
+            self.advance(to_advance, state=rps.CANCELED, push=False, publish=True)
+
+        except Exception as e:
+            self._log.exception('pilot kill failed')
 
 
     # --------------------------------------------------------------------------
@@ -542,16 +567,6 @@ class Default(PMGRLaunchingComponent):
         database_url  = self._session.dburl
 
         # ------------------------------------------------------------------
-        # pilot description and resource configuration
-        number_cores    = pilot['description']['cores']
-        runtime         = pilot['description']['runtime']
-        queue           = pilot['description']['queue']
-        project         = pilot['description']['project']
-        cleanup         = pilot['description']['cleanup']
-        memory          = pilot['description']['memory']
-        candidate_hosts = pilot['description']['candidate_hosts']
-
-        # ------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
         agent_launch_method     = rcfg.get('agent_launch_method')
         agent_dburl             = rcfg.get('agent_mongodb_endpoint', database_url)
@@ -573,15 +588,34 @@ class Default(PMGRLaunchingComponent):
         cores_per_node          = rcfg.get('cores_per_node', 0)
         health_check            = rcfg.get('health_check', True)
         python_dist             = rcfg.get('python_dist')
-        python_dist             = rcfg.get('cu_tmp')
+        cu_tmp                  = rcfg.get('cu_tmp')
         spmd_variation          = rcfg.get('spmd_variation')
         shared_filesystem       = rcfg.get('shared_filesystem', True)
         stage_cacerts           = rcfg.get('stage_cacerts', False)
         cu_pre_exec             = rcfg.get('cu_pre_exec')
         cu_post_exec            = rcfg.get('cu_post_exec')
         export_to_cu            = rcfg.get('export_to_cu')
+        mandatory_args          = rcfg.get('mandatory_args', [])
 
+        # ------------------------------------------------------------------
+        # get parameters from the pilot description
+        number_cores    = pilot['description']['cores']
+        runtime         = pilot['description']['runtime']
+        queue           = pilot['description']['queue']
+        project         = pilot['description']['project']
+        cleanup         = pilot['description']['cleanup']
+        memory          = pilot['description']['memory']
+        candidate_hosts = pilot['description']['candidate_hosts']
 
+        # make sure that mandatory args are known
+        print 'mas: %s' % mandatory_args
+        import sys
+        sys.stdout.write('mas: %s\n' % mandatory_args)
+        sys.stdout.flush()
+        for ma in mandatory_args:
+            if pilot['description'].get(ma) is None:
+                raise  ValueError('attribute "%s" is required for "%s"' \
+                                 % (ma, resource))
 
         # get pilot and global sandbox
         global_sandbox   = self._session._get_global_sandbox (pilot).path
@@ -792,26 +826,14 @@ class Default(PMGRLaunchingComponent):
         for arg in pre_bootstrap_2:
             bootstrap_args += " -w '%s'" % arg
 
-        # complete agent configuration
-        # NOTE: the agent config is really based on our own config, with 
-        #       agent specific settings merged in
-
-        agent_base_cfg = copy.deepcopy(self._cfg)
-        del(agent_base_cfg['bridges'])    # agent needs separate bridges
-        del(agent_base_cfg['components']) # agent needs separate components
-        del(agent_base_cfg['number'])     # agent counts differently
-        del(agent_base_cfg['heart'])      # agent needs separate heartbeat
-
-        ru.dict_merge(agent_cfg, agent_base_cfg, ru.PRESERVE)
-
         agent_cfg['owner']              = 'agent_0'
         agent_cfg['cores']              = number_cores
-        agent_cfg['debug']              = os.environ.get('RADICAL_PILOT_AGENT_VERBOSE', 
-                                                         self._log.getEffectiveLevel())
         agent_cfg['lrms']               = lrms
         agent_cfg['spawner']            = agent_spawner
         agent_cfg['scheduler']          = agent_scheduler
         agent_cfg['runtime']            = runtime
+        agent_cfg['dburl']              = str(database_url)
+        agent_cfg['session_id']         = sid
         agent_cfg['pilot_id']           = pid
         agent_cfg['logdir']             = '.'
         agent_cfg['pilot_sandbox']      = pilot_sandbox
@@ -827,6 +849,13 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['cu_post_exec']       = cu_post_exec
         agent_cfg['resource_cfg']       = copy.deepcopy(rcfg)
 
+        debug = os.environ.get('RADICAL_PILOT_AGENT_VERBOSE', 
+                               self._log.getEffectiveLevel())
+        if isinstance(debug, basestring):
+            agent_cfg['debug'] = debug.upper()
+        else:
+            agent_cfg['debug'] = debug
+
         # we'll also push the agent config into MongoDB
         pilot['cfg'] = agent_cfg
 
@@ -839,6 +868,7 @@ class Default(PMGRLaunchingComponent):
 
         # Convert dict to json file
         self._log.debug("Write agent cfg to '%s'.", cfg_tmp_file)
+        self._log.debug(pprint.pformat(agent_cfg))
         ru.write_json(agent_cfg, cfg_tmp_file)
 
         ret['ft'].append({'src' : cfg_tmp_file, 
@@ -850,7 +880,10 @@ class Default(PMGRLaunchingComponent):
         ret['ft'].append({'src' : '/dev/null',
                           'tgt' : '%s/%s' % (pilot_sandbox, '%s.log.tgz' % pid),
                           'rem' : False})  # don't remove /dev/null
-        ret['ft'].append({'src' : '/dev/null',
+        # only stage profiles if we profile
+        if self._prof.enabled:
+            ret['ft'].append({
+                          'src' : '/dev/null',
                           'tgt' : '%s/%s' % (pilot_sandbox, '%s.prof.tgz' % pid),
                           'rem' : False})  # don't remove /dev/null
 

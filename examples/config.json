@@ -190,21 +190,21 @@
     },
 
     "ornl.titan_aprun" : {
-        "project"  : "BIP103",
+        "project"  : "CSC230",
         "queue"    : "debug",
         "schema"   : "local",
         "cores"    : 64
     },
 
     "ornl.titan_lib" : {
-        "project"  : "BIP103",
+        "project"  : "CSC230",
         "queue"    : "debug",
         "schema"   : "local",
         "cores"    : 64
     },
 
     "ornl.titan"   : {
-        "project"  : "BIP103",
+        "project"  : "CSC230",
         "queue"    : "debug",
         "schema"   : "local",
         "cores"    : 64
@@ -225,7 +225,8 @@
     },
 
     "osg.xsede-virt-clust"   : {
-        "project"  : "TG-CCR140028",
+      # "project"  : "TG-CCR140028",
+        "project"  : "TG-MCB090174",
         "queue"    : null,
         "schema"   : "gsissh",
         "cores"    : 1

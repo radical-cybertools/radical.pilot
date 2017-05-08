@@ -110,6 +110,8 @@ class Popen(AgentExecutingComponent) :
             with self._cancel_lock:
                 self._cus_to_cancel.append(arg)
 
+        return True
+
 
     # --------------------------------------------------------------------------
     #
@@ -237,7 +239,7 @@ class Popen(AgentExecutingComponent) :
             env_string += 'export RP_AGENT_ID="%s"\n'   % self._cfg['agent_name']
             env_string += 'export RP_SPAWNER_ID="%s"\n' % self.uid
             env_string += 'export RP_UNIT_ID="%s"\n'    % cu['uid']
-            env_string += 'export RP_GTOD="%s"\n'       % cu['gtod']
+            env_string += 'export RP_GTOD="%s"\n'       % self.gtod
             env_string += 'export RP_PROF="%s/PROF"\n'  % sandbox
             env_string += 'export RP_TMP="%s"\n'        % self._cu_tmp
 
@@ -255,12 +257,12 @@ class Popen(AgentExecutingComponent) :
 
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,start_script," >> $RP_PROF\n' %  \
-                                    (cu['uid'], rps.EXECUTING))
+                                    (cu['uid'], rps.AGENT_EXECUTING))
 
             launch_script.write('\n# Change to unit sandbox\ncd %s\n' % sandbox)
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,after_cd," >> $RP_PROF\n' %  \
-                                    (cu['uid'], rps.EXECUTING))
+                                    (cu['uid'], rps.AGENT_EXECUTING))
 
             # Before the Big Bang there was nothing
             if self._cfg.get('cu_pre_exec'):
@@ -278,11 +280,11 @@ class Popen(AgentExecutingComponent) :
                 launch_script.write("\n# Pre-exec commands\n")
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
                     launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,pre_start," >> $RP_PROF\n' %  \
-                                        (cu['uid'], rps.EXECUTING))
+                                        (cu['uid'], rps.AGENT_EXECUTING))
                 launch_script.write(pre_exec_string)
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
                     launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,pre_stop," >> $RP_PROF\n' %  \
-                                        (cu['uid'], rps.EXECUTING))
+                                        (cu['uid'], rps.AGENT_EXECUTING))
 
             # The actual command line, constructed per launch-method
             try:
@@ -301,7 +303,7 @@ class Popen(AgentExecutingComponent) :
             launch_script.write("RETVAL=$?\n")
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,after_exec," >> $RP_PROF\n' %  \
-                                    (cu['uid'], rps.EXECUTING))
+                                    (cu['uid'], rps.AGENT_EXECUTING))
 
             # After the universe dies the infrared death, there will be nothing
             if cu['description']['post_exec']:
@@ -314,11 +316,11 @@ class Popen(AgentExecutingComponent) :
                 launch_script.write("\n# Post-exec commands\n")
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
                     launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,post_start," >> $RP_PROF\n' %  \
-                                        (cu['uid'], rps.EXECUTING))
+                                        (cu['uid'], rps.AGENT_EXECUTING))
                 launch_script.write('%s\n' % post_exec_string)
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
                     launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,post_stop," >> $RP_PROF\n' %  \
-                                        (cu['uid'], rps.EXECUTING))
+                                        (cu['uid'], rps.AGENT_EXECUTING))
 
             launch_script.write("\n# Exit the script with the return code from the command\n")
             launch_script.write("exit $RETVAL\n")

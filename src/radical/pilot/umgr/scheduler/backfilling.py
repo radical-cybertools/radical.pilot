@@ -231,7 +231,7 @@ class Backfilling(UMGRSchedulingComponent):
               generations of them, 'n' being a tunable parameter called
               'RADICAL_PILOT_BACKFILLING_HWM'.  
 
-          - for each unit being completed (goes out of EXECUTING state)
+          - for each unit being completed (goes out of AGENT_EXECUTING state)
             - determine the pilot which executed it
             - backfill units from the wait queue until the backfilling HWM is
               reached again.
