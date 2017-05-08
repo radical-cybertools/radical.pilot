@@ -109,7 +109,7 @@
         "python_dist"                 : "default"
     },
 
-    "localhost_spark_ana": {
+    "localhost_spark_anaconda": {
         "description"                 : "Your local machine gets spark.",
         "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
         "schemas"                     : ["local", "ssh"],
@@ -193,3 +193,4 @@
         "python_dist"                 : "default"
   }
 }
+

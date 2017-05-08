@@ -1,3 +1,4 @@
+
 {
     "hopper_aprun": {
         "description"                 : "The NERSC Hopper Cray XE6 (https://www.nersc.gov/users/computational-systems/hopper/)",
@@ -24,7 +25,8 @@
         "cores_per_node"              : "24",
         "python_dist"                 : "default"
     },
-    "hopper": {
+
+    "hopper_orte": {
         "description"                 : "The NERSC Hopper Cray XE6 (https://www.nersc.gov/users/computational-systems/hopper/)",
         "notes"                       : "",
         "schemas"                     : ["ssh", "go"],
@@ -34,7 +36,7 @@
             "filesystem_endpoint"     : "sftp://hopper.nersc.gov/"
         },
         "go"                         : {
-            "job_manager_endpoint"    : "pbs+ssh://hopper.nersc.gov/",
+            "job_manager_endpoint"    : "torque+ssh://hopper.nersc.gov/",
             "filesystem_endpoint"     : "go://nersc#hopper/"
         },
         "default_queue"               : "regular",
@@ -67,7 +69,8 @@
         "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
-    "hopper_ccm": {
+
+    "hopper_ccm_ssh": {
         "description"                 : "The NERSC Hopper Cray XE6 in Cluster Compatibility Mode (https://www.nersc.gov/users/computational-systems/hopper/)",
         "notes"                       : "For CCM you need to use special ccm_ queues.",
         "schemas"                     : ["ssh"],
@@ -99,6 +102,7 @@
         "cores_per_node"              : "24",
         "python_dist"                 : "default"
     },
+
     "edison_aprun": {
         "description"                 : "The NERSC Edison Cray XC30 (https://www.nersc.gov/users/computational-systems/edison/)",
         "notes"                       : "Only one CU per node in APRUN mode",
@@ -109,7 +113,7 @@
             "filesystem_endpoint"     : "sftp://edison.nersc.gov/"
         },
         "go"                         : {
-            "job_manager_endpoint"    : "pbs+ssh://edison.nersc.gov/",
+            "job_manager_endpoint"    : "torque+ssh://edison.nersc.gov/",
             "filesystem_endpoint"     : "go://nersc#edison/"
         },
         "default_queue"               : "regular",
@@ -128,7 +132,8 @@
         "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
-    "edison": {
+
+    "edison_orte": {
         "description"                 : "The NERSC Edison Cray XC30 (https://www.nersc.gov/users/computational-systems/edison/)",
         "notes"                       : "",
         "schemas"                     : ["ssh", "go"],
@@ -138,7 +143,7 @@
             "filesystem_endpoint"     : "sftp://edison.nersc.gov/"
         },
         "go"                         : {
-            "job_manager_endpoint"    : "pbs+ssh://edison.nersc.gov/",
+            "job_manager_endpoint"    : "torque+ssh://edison.nersc.gov/",
             "filesystem_endpoint"     : "go://nersc#edison/"
         },
         "default_queue"               : "regular",
@@ -169,7 +174,8 @@
         "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
-    "edison_ccm": {
+
+    "edison_ccm_ssh": {
         "description"                 : "The NERSC Edison Cray XC30 in Cluster Compatibility Mode (https://www.nersc.gov/users/computational-systems/edison/)",
         "notes"                       : "For CCM you need to use special ccm_ queues.",
         "schemas"                     : ["ssh"],
@@ -200,3 +206,4 @@
         "python_dist"                 : "default"
     }
 }
+

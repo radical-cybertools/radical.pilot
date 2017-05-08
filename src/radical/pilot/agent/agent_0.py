@@ -8,6 +8,7 @@ import sys
 import copy
 import stat
 import time
+import types
 import pprint
 import subprocess         as sp
 
@@ -46,7 +47,7 @@ class Agent_0(rpu.Worker):
         assert(agent_name == 'agent_0')
         print "startup agent %s" % agent_name
 
-        # load config, create session and controller, init rpu.Worker
+        # load config, create session, init rpu.Worker
         agent_cfg  = "%s/%s.cfg" % (os.getcwd(), agent_name)
         cfg        = ru.read_json_str(agent_cfg)
 
@@ -74,7 +75,6 @@ class Agent_0(rpu.Worker):
         if not 'session_id'          in cfg: raise ValueError("Missing session id")
         if not 'spawner'             in cfg: raise ValueError("Missing agent spawner")
         if not 'task_launch_method'  in cfg: raise ValueError("Missing unit launch method")
-        if not 'agent_layout'        in cfg: raise ValueError("Missing agent layout")
 
         # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold
         # the address of the tunnelized DB endpoint. If it exists, we
@@ -90,16 +90,24 @@ class Agent_0(rpu.Worker):
         # This session will connect to MongoDB, and will also create any
         # communication channels and components/workers specified in the 
         # config -- we merge that information into our own config.
-        session = rp_Session(cfg=cfg)
-        ru.dict_merge(cfg, session.ctrl_cfg, ru.PRESERVE)
+        # We don't want the session to start components though, so remove them
+        # from the config copy.
+        session_cfg = copy.deepcopy(cfg)
+        session_cfg['components'] = dict()
+        session = rp_Session(cfg=session_cfg)
+
+        # we still want the bridge addresses known though, so make sure they are
+        # merged into our own copy, along with any other additions done by the
+        # session.
+        ru.dict_merge(cfg, session._cfg, ru.PRESERVE)
         pprint.pprint(cfg)
 
         if not session.is_connected:
             raise RuntimeError('agent_0 could not connect to mongodb')
 
-        # at this point the session is up and connected, and the session
-        # controller should have brought up all communication bridges and the
-        # UpdateWorker.  We are ready to rumble!
+        # at this point the session is up and connected, and it should have
+        # brought up all communication bridges and the UpdateWorker.  We are
+        # ready to rumble!
         rpu.Worker.__init__(self, cfg, session)
 
 
@@ -124,7 +132,7 @@ class Agent_0(rpu.Worker):
 
         # register the command callback which pulls the DB for commands
         self.register_timed_cb(self._agent_command_cb, 
-                               timer=self._cfg['heartbeat_interval'])
+                               timer=self._cfg['db_poll_sleeptime'])
 
         # registers the staging_input_queue as this is what we want to push
         # units to
@@ -133,15 +141,16 @@ class Agent_0(rpu.Worker):
 
         # sub-agents are started, components are started, bridges are up: we are
         # ready to roll!
-        pilot = {'type'      : 'pilot',
-                 'uid'       : self._pid,
-                 'state'     : rps.PMGR_ACTIVE,
-                 'lm_info'   : self._lrms.lm_info.get('version_info'),
-                 'lm_detail' : self._lrms.lm_info.get('lm_detail'),
-                 '$set'      : ['lm_info', 'lm_detail']}
+        pilot = {'type'             : 'pilot',
+                 'uid'              : self._pid,
+                 'state'            : rps.PMGR_ACTIVE,
+                 'resource_details' : {
+                     'lm_info'      : self._lrms.lm_info.get('version_info'),
+                     'lm_detail'    : self._lrms.lm_info.get('lm_detail')},
+                 '$set'             : ['resource_details']}
         self.advance(pilot, publish=True, push=False, prof=True)
 
-        # register idle callback, to pull for units -- which is the only action
+        # register idle callback to pull for units -- which is the only action
         # we have to perform, really
         self.register_timed_cb(self._check_units_cb, 
                                timer=self._cfg['db_poll_sleeptime'])
@@ -214,25 +223,22 @@ class Agent_0(rpu.Worker):
     #
     def _write_sa_configs(self):
 
-        # use our own config sans components as a basis for the sub-agent
-        # configs.
-        sa_cfg = copy.deepcopy(self._cfg)
-        sa_cfg['components'] = list()
- 
         # we have all information needed by the subagents -- write the
         # sub-agent config files.
 
-        # write deep-copies of the config (with the corrected agent_name) for
-        # each sub-agent (apart from agent_0)
-        sa_cfg_0 = None
-        for sa in self._cfg.get('agent_layout', []):
+        # write deep-copies of the config for each sub-agent (sans from agent_0)
+        for sa in self._cfg.get('agents', {}):
 
             assert(sa != 'agent_0')
 
-            tmp_cfg = copy.deepcopy(sa_cfg)
+            # use our own config sans agents/components as a basis for
+            # the sub-agent config.
+            tmp_cfg = copy.deepcopy(self._cfg)
+            tmp_cfg['agents']     = dict()
+            tmp_cfg['components'] = dict()
 
-            # merge sub_agent layout into the confoig
-            ru.dict_merge(tmp_cfg, self._cfg['agent_layout'][sa], ru.OVERWRITE)
+            # merge sub_agent layout into the config
+            ru.dict_merge(tmp_cfg, self._cfg['agents'][sa], ru.OVERWRITE)
 
             tmp_cfg['agent_name'] = sa
             tmp_cfg['owner']      = 'agent_0'
@@ -253,7 +259,7 @@ class Agent_0(rpu.Worker):
     
         self._log.debug('start_sub_agents')
     
-        if not self._cfg['agent_layout'].keys():
+        if not self._cfg.get('agents'):
             self._log.debug('start_sub_agents noop')
             return
 
@@ -265,10 +271,9 @@ class Agent_0(rpu.Worker):
         # actually, we only create the agent_lm once we really need it for
         # non-local sub_agents.
         agent_lm   = None
-        sub_agents = list()
-        for sa in self._cfg['agent_layout']:
+        for sa in self._cfg['agents']:
     
-            target = self._cfg['agent_layout'][sa]['target']
+            target = self._cfg['agents'][sa]['target']
     
             if target == 'local':
     
@@ -324,18 +329,39 @@ class Agent_0(rpu.Worker):
     
             # spawn the sub-agent
             self._log.info ("create sub-agent %s: %s" % (sa, cmdline))
-            sa_out = open("%s.out" % sa, "w")
-            sa_err = open("%s.err" % sa, "w")
-            sa_proc = sp.Popen(args=cmdline.split(), stdout=sa_out, stderr=sa_err)
+            class _SA(ru.Process):
+                def __init__(self, sa, cmd, log):
+                    self._sa   = sa
+                    self._cmd  = cmd.split()
+                    self._log  = log
+                    self._proc = None
+                    super(_SA, self).__init__(name=sa, log=self._log)
+                    self.start()
+
+                def ru_initialize_child(self):
+                    sys.stdout = open('%s.out' % self._ru_name, 'w')
+                    sys.stderr = open('%s.err' % self._ru_name, 'w')
+                    out = open("%s.out" % self._sa, "w")
+                    err = open("%s.err" % self._sa, "w")
+                    self._proc = sp.Popen(args=self._cmd, stdout=out, stderr=err)
+
+                def work_cb(self):
+                    time.sleep(0.1)
+                    if self._proc.poll() == None:
+                        return True  # all is well
+                    else:
+                        return False # proc is gone - terminate
+
+                def ru_finalize_child(self):
+                    if self._proc:
+                        try:
+                            self._proc.terminate()
+                        except Exception as e:
+                            # we are likely racing on termination...
+                            self._log.warn('%s term failed: %s', self._sa, e)
     
-            # make sure the controller can stop and join the sa_proc
-            sa_proc.name = sa
-            sa_proc.stop = sa_proc.terminate
-            sa_proc.join = sa_proc.wait
-            sub_agents.append(sa_proc)
-    
-        # the agents are up - let the session controller manage them from here
-        self._session._controller.add_watchables(sub_agents, owner=self._uid)
+            # the agent is up - let the watcher manage it from here
+            self.register_watchable(_SA(sa, cmdline, log=self._log))
     
         self._log.debug('start_sub_agents done')
 
@@ -344,10 +370,14 @@ class Agent_0(rpu.Worker):
     #
     def _agent_command_cb(self):
 
+        self.is_valid()
+
         self._prof.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!',
                         uid=self._owner)
-        self._check_commands()
-        self._check_state   ()
+
+        if not self._check_commands(): return False 
+        if not self._check_state   (): return False
+
         return True
 
 
@@ -367,7 +397,7 @@ class Agent_0(rpu.Worker):
                     )
 
         if not retdoc:
-            return
+            return True # this is not an error
 
         for spec in retdoc.get('cmd', []):
 
@@ -386,14 +416,17 @@ class Agent_0(rpu.Worker):
               # ru.attach_pudb(logger=self._log)
 
                 self.stop()
+                return False  # we are done
 
             elif cmd == 'cancel_unit':
                 self._log.info('cancel unit cmd')
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_unit',
                                                   'arg' : arg})
-
-            else:
+            else: 
                 self._log.error('could not interpret cmd "%s" - ignore', cmd)
+                return False  # abort
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -407,11 +440,21 @@ class Agent_0(rpu.Worker):
                 self._log.info("reached runtime limit (%ss).", self._runtime*60)
                 self._final_cause = 'timeout'
                 self.stop()
+                return False # we are done
+
+        return True
 
 
     # --------------------------------------------------------------------------
     #
     def _check_units_cb(self):
+
+        self.is_valid()
+
+        # FIXME: this should probably go into a custom `is_valid()`
+        if not self._session._dbs._c:
+            self._log.warn('db connection gone - abort')
+            return False
 
         # Check if there are compute units waiting for input staging
         # and log that we pulled it.
@@ -428,7 +471,7 @@ class Agent_0(rpu.Worker):
         if not unit_cursor.count():
             # no units whatsoever...
             self._log.info("units pulled:    0")
-            return False
+            return True  # this is not an error
 
         # update the units to avoid pulling them again next time.
         unit_list = list(unit_cursor)
@@ -464,7 +507,6 @@ class Agent_0(rpu.Worker):
         # since that happened already on the module side when the state was set.
         self.advance(unit_list, publish=False, push=True, prof=False)
 
-        # indicate that we did some work (if we did...)
         return True
 
 

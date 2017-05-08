@@ -1,6 +1,6 @@
 
 {
-    "joule": {
+    "joule_runjob": {
         "description"                 : "The STFC Joule IBM BG/Q system (http://community.hartree.stfc.ac.uk/wiki/site/admin/home.html)",
         "notes"                       : "This currently needs a centrally administered outbound ssh tunnel.",
         "schemas"                     : ["ssh"],

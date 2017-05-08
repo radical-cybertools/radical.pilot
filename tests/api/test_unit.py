@@ -82,8 +82,8 @@ class TestUnit(unittest.TestCase):
         assert cu.submission_time is not None
         assert cu.start_time is None # MS: I dont understand this assertion
 
-        cu.wait(state=[radical.pilot.EXECUTING, radical.pilot.FAILED], timeout=5*60)
-        assert cu.state == radical.pilot.EXECUTING
+        cu.wait(state=[radical.pilot.AGENT_EXECUTING, radical.pilot.FAILED], timeout=5*60)
+        assert cu.state == radical.pilot.AGENT_EXECUTING
         assert cu.start_time is not None
 
         cu.wait(timeout=5*60)
@@ -130,8 +130,8 @@ class TestUnit(unittest.TestCase):
         assert cu.submission_time is not None
 
         # Make sure it is running!
-        cu.wait(state=radical.pilot.EXECUTING, timeout=60)
-        assert cu.state == radical.pilot.EXECUTING
+        cu.wait(state=radical.pilot.AGENT_EXECUTING, timeout=60)
+        assert cu.state == radical.pilot.AGENT_EXECUTING
         assert cu.start_time is not None
 
         # Cancel the CU!
@@ -181,8 +181,8 @@ class TestUnit(unittest.TestCase):
         assert cu.submission_time is not None
 
         # Make sure it is running!
-        cu.wait(state=radical.pilot.EXECUTING, timeout=60)
-        assert cu.state == radical.pilot.EXECUTING
+        cu.wait(state=radical.pilot.AGENT_EXECUTING, timeout=60)
+        assert cu.state == radical.pilot.AGENT_EXECUTING
         assert cu.start_time is not None
 
         # Cancel the CU!

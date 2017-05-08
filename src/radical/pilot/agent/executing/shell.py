@@ -191,6 +191,8 @@ class Shell(AgentExecutingComponent):
             with self._cancel_lock:
                 self._cus_to_cancel.append(arg)
 
+        return True
+
 
     # --------------------------------------------------------------------------
     #
@@ -332,7 +334,7 @@ class Shell(AgentExecutingComponent):
         cwd  += "cd       %s\n" % sandbox
         if 'RADICAL_PILOT_PROFILE' in os.environ:
             cmd += 'echo "`$GTOD`,unit_script,%s,%s,after_cd," >> $RP_PROF\n' %  \
-                   (cu['uid'], rps.EXECUTING)
+                   (cu['uid'], rps.AGENT_EXECUTING)
         if 'RADICAL_PILOT_PROFILE' in os.environ:
             cwd  += "echo script after_cd `%s` >> %s/PROF\n" % (self.gtod, sandbox)
         cwd  += "\n"
@@ -362,24 +364,24 @@ class Shell(AgentExecutingComponent):
             pre  += "\n# CU pre-exec\n"
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 pre += 'echo "`$GTOD`,unit_script,%s,%s,pre_start," >> $RP_PROF\n' %  \
-                       (cu['uid'], rps.EXECUTING)
+                       (cu['uid'], rps.AGENT_EXECUTING)
             pre  += '\n'.join(descr['pre_exec' ])
             pre  += "\n"
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 pre += 'echo "`$GTOD`,unit_script,%s,%s,pre_stop," >> $RP_PROF\n' %  \
-                       (cu['uid'], rps.EXECUTING)
+                       (cu['uid'], rps.AGENT_EXECUTING)
             pre  += "\n"
 
         if  descr['post_exec'] :
             post += "\n# CU post-exec\n"
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 post += 'echo "`$GTOD`,unit_script,%s,%s,post_start," >> $RP_PROF\n' %  \
-                       (cu['uid'], rps.EXECUTING)
+                       (cu['uid'], rps.AGENT_EXECUTING)
             post += '\n'.join(descr['post_exec' ])
             post += "\n"
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 post += 'echo "`$GTOD`,unit_script,%s,%s,post_stop," >> $RP_PROF\n' %  \
-                       (cu['uid'], rps.EXECUTING)
+                       (cu['uid'], rps.AGENT_EXECUTING)
             post += "\n"
 
         if  descr['arguments']  :
@@ -397,7 +399,7 @@ class Shell(AgentExecutingComponent):
         script = '\n%s\n' % env
         if 'RADICAL_PILOT_PROFILE' in os.environ:
             script += 'echo "`$GTOD`,unit_script,%s,%s,start_script," >> $RP_PROF\n' %  \
-                      (cu['uid'], rps.EXECUTING)
+                      (cu['uid'], rps.AGENT_EXECUTING)
 
         if hop_cmd :
             # the script will itself contain a remote callout which calls again
@@ -421,7 +423,7 @@ class Shell(AgentExecutingComponent):
         script += "RETVAL=$?\n"
         if 'RADICAL_PILOT_PROFILE' in os.environ:
             script += '\necho "`$GTOD`,unit_script,%s,%s,after_exec," >> $RP_PROF\n' %  \
-                      (cu['uid'], rps.EXECUTING)
+                      (cu['uid'], rps.AGENT_EXECUTING)
         script += "%s"        %  post
         script += "exit $RETVAL\n"
         script += "# ------------------------------------------------------\n\n"
