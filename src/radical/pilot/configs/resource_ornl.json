@@ -12,7 +12,7 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "go"                          : {
-            "job_manager_endpoint"    : "pbs+ssh://titan.ccs.ornl.gov",
+            "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
             "filesystem_endpoint"     : "go://olcf#dtn/"
         },
         "default_queue"               : "batch",
@@ -37,7 +37,8 @@
         "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
-    "titan": {
+
+    "titan_orte": {
         "description"                 : "The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/titan/)",
         "notes"                       : "Requires the use of an RSA SecurID on every connection.",
         "schemas"                     : ["ssh", "local", "go"],
@@ -50,7 +51,7 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "go"                          : {
-            "job_manager_endpoint"    : "pbs+ssh://titan.ccs.ornl.gov",
+            "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
             "filesystem_endpoint"     : "go://olcf#dtn/"
         },
         "default_queue"               : "batch",
@@ -79,7 +80,8 @@
         "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
-    "titan_lib": {
+
+    "titan_ortelib": {
         "description"                 : "The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/titan/)",
         "notes"                       : "Requires the use of an RSA SecurID on every connection.",
         "schemas"                     : ["ssh", "local", "go"],
@@ -92,7 +94,7 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "go"                          : {
-            "job_manager_endpoint"    : "pbs+ssh://titan.ccs.ornl.gov",
+            "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
             "filesystem_endpoint"     : "go://olcf#dtn/"
         },
         "default_queue"               : "batch",
@@ -122,3 +124,4 @@
         "python_dist"                 : "default"
     }
 }
+

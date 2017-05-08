@@ -200,6 +200,7 @@ class UnitManager(rpu.Component):
 
         if self._closed:
             return
+        self._closed = True
 
         self._log.debug("closing %s\n%s", self.uid, '\n'.join(ru.get_stacktrace()))
         self._log.report.info('<<close unit manager')
@@ -215,8 +216,18 @@ class UnitManager(rpu.Component):
         self._session.prof.prof('closed umgr', uid=self._uid)
         self._log.info("Closed UnitManager %s." % self._uid)
 
-        self._closed = True
         self._log.report.ok('>>ok\n')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def is_valid(self, term=True):
+
+        # don't check during termination
+        if self._closed:
+            return True
+
+        return super(UnitManager, self).is_valid(term)
 
 
     # --------------------------------------------------------------------------
@@ -267,6 +278,8 @@ class UnitManager(rpu.Component):
         # we only look into pilot states when the umgr is still active
         # FIXME: note that there is a race in that the umgr can be closed while
         #        we are in the cb.
+        # FIXME: should is_valid be used?  Either way, `self._closed` is not an
+        #        `mt.Event`!
         if self._closed:
             self._log.debug('umgr closed, ignore pilot state (%s: %s)', 
                             pilot.uid, pilot.state)
@@ -385,25 +398,18 @@ class UnitManager(rpu.Component):
                                     'uid'   : {'$in'     : uids}},
                         document = {'$set'  : {'control' : 'umgr'}})
 
-        self._log.info(" === units pulled: %4d %s", len(units), [u['uid'] for u in units])
+        self._log.info("units pulled: %4d %s", len(units), [u['uid'] for u in units])
         self._prof.prof('get', msg="bulk size: %d" % len(units), uid=self.uid)
         for unit in units:
 
-            self._log.debug('\n\n=======================================')
-            self._log.debug(' === details %s: %s', unit['uid'], pprint.pformat(unit))
-            
             # we need to make sure to have the correct state:
             old = unit['state']
             new = rps._unit_state_collapse(unit['states'])
-            self._log.debug(' === %s state: %s -> %s', unit['uid'], old, new)
+            self._log.debug("unit pulled %s: %s / %s", unit['uid'], old, new)
 
-            self._log.debug(" === unit  pulled %s: %s / %s", unit['uid'], old, new)
-
-            unit['state'] = new
+            unit['state']   = new
             unit['control'] = 'umgr'
             self._prof.prof('get', msg="bulk size: %d" % len(units), uid=unit['uid'])
-
-            self._log.debug('\n=======================================\n\n')
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline).
@@ -458,11 +464,7 @@ class UnitManager(rpu.Component):
             if current == target:
                 return True
 
-            self._log.debug(' === unit %s current: %s', uid, current)
-            self._log.debug(' === unit %s target : %s', uid, target)
             target, passed = rps._unit_state_progress(uid, current, target)
-            self._log.debug(' === unit %s target : %s', uid, target)
-            self._log.debug(' === unit %s passed : %s', uid, passed)
 
             if target in [rps.CANCELED, rps.FAILED]:
                 # don't replay intermediate states
@@ -535,8 +537,7 @@ class UnitManager(rpu.Component):
               added to the unit manager.
         """
 
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         if not isinstance(pilots, list):
             pilots = [pilots]
@@ -577,8 +578,7 @@ class UnitManager(rpu.Component):
               * A list of :class:`radical.pilot.ComputePilot` UIDs [`string`].
         """
 
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         with self._pilots_lock:
             return self._pilots.keys()
@@ -593,8 +593,8 @@ class UnitManager(rpu.Component):
         **Returns:**
               * A list of :class:`radical.pilot.ComputePilot` instances.
         """
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+
+        self.is_valid()
 
         with self._pilots_lock:
             return self._pilots.values()
@@ -624,8 +624,7 @@ class UnitManager(rpu.Component):
         if drain:
             raise RuntimeError("'drain' is not yet implemented")
 
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         if not isinstance(pilot_ids, list):
             pilot_ids = [pilot_ids]
@@ -661,8 +660,7 @@ class UnitManager(rpu.Component):
               * A list of :class:`radical.pilot.ComputeUnit` UIDs [`string`].
         """
 
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         with self._pilots_lock:
             return self._units.keys()
@@ -686,8 +684,7 @@ class UnitManager(rpu.Component):
 
         from .compute_unit import ComputeUnit
 
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         ret_list = True
         if not isinstance(descriptions, list):
@@ -757,8 +754,7 @@ class UnitManager(rpu.Component):
               * A list of :class:`radical.pilot.ComputeUnit` objects.
         """
         
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         if not uids:
             with self._units_lock:
@@ -820,8 +816,7 @@ class UnitManager(rpu.Component):
               state changes. The default value **None** waits forever.
         """
 
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         if not uids:
             with self._units_lock:
@@ -923,8 +918,8 @@ class UnitManager(rpu.Component):
             * **uids** [`string` or `list of strings`]: The IDs of the
               compute units objects to cancel.
         """
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+
+        self.is_valid()
 
         if not uids:
             with self._units_lock:
