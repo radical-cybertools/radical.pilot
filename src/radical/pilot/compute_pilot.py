@@ -80,7 +80,7 @@ class ComputePilot(object):
         for m in rpt.PMGR_METRICS:
             self._callbacks[m] = dict()
 
-        # we always invke the default state cb
+        # we always invoke the default state cb
         self._callbacks[rpt.PILOT_STATE][self._default_state_cb.__name__] = {
                 'cb'      : self._default_state_cb, 
                 'cb_data' : None}
@@ -112,15 +112,12 @@ class ComputePilot(object):
 
         self._log.info("[Callback]: pilot %s state: %s.", self.uid, self.state)
 
-
-    # --------------------------------------------------------------------------
-    #
-    def _default_error_cb(self):
-
         if self.state == rps.FAILED and self._exit_on_error:
             self._log.error("[Callback]: pilot '%s' failed", self.uid)
+            # FIXME: how to tell main?  Where are we in the first place?
+          # ru.cancel_main_thread('int')
             raise RuntimeError('pilot %s failed - fatal!' % self.uid)
-            sys.exit()
+          # sys.exit()
 
 
     # --------------------------------------------------------------------------
@@ -148,15 +145,6 @@ class ComputePilot(object):
 
         # keep all information around
         self._pilot_dict = copy.deepcopy(pilot_dict)
-
-        # and extract som for convenience
-        if not 'resource_details' in self._pilot_dict:
-            # FIXME: fill on agent side
-            self._pilot_dict['resource_details'] = {
-                    'nodes':          self._pilot_dict.get('nodes'),
-                    'cores_per_node': self._pilot_dict.get('cores_per_node'),
-                    'lm_detail':      self._pilot_dict.get('lm_detail')
-                }
 
         # invoke pilot specific callbacks
         for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
