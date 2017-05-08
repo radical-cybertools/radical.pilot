@@ -234,25 +234,6 @@ def combine_profiles(profs):
       # print 'store time sync %-35s (%-35s) %6.1f' \
       #         % (os.path.basename(pname), host_id, t_off)
 
-        t_host[host_id] = t_off
-
- #  # FIXME: this should be removed once #1117 is fixed
- #  for pname, prof in profs.iteritems():
- #      i=0
- #      l=len(prof)
- #      while i<l:
- #          if prof[i]['time'] == 1.0:
- #              if i < l-1:
- #                  prof[i]['time'] = prof[i+1]['time']
- #              elif i > 0:
- #                  prof[i]['time'] = prof[i-1]['time']
- #              else:
- #                  prof[i]['time'] = t_0
- #          i += 1
-
-  # for h in t_host:
-  #     print 'clock offset: %-30s : %12.2f'  % (h, t_host[h])
-
     unsynced = set()
     for pname, prof in profs.iteritems():
 

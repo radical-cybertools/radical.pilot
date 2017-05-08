@@ -1,3 +1,4 @@
+
 {
     "bw_aprun": {
         "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system (https://bluewaters.ncsa.illinois.edu/)",
@@ -27,7 +28,7 @@
         "python_dist"                 : "default"
     },
 
-    "bw_lib": {
+    "bw_ortelib": {
         "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system (https://bluewaters.ncsa.illinois.edu/)",
         "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
         "schemas"                     : ["gsissh"],
@@ -62,7 +63,7 @@
         "python_dist"                 : "default"
     },
 
-    "bw": {
+    "bw_orte": {
         "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system (https://bluewaters.ncsa.illinois.edu/)",
         "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
         "schemas"                     : ["gsissh"],
@@ -96,7 +97,7 @@
         "python_dist"                 : "default"
     },
 
-    "bw_local": {
+    "bw_local_orte": {
         "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system (https://bluewaters.ncsa.illinois.edu/)",
         "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
         "schemas"                     : ["local"],
@@ -131,7 +132,7 @@
         "python_dist"                 : "default"
     },
 
-    "bw_ccm": {
+    "bw_ccm_ssh": {
         "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system in CCM (https://bluewaters.ncsa.illinois.edu/)",
         "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
         "schemas"                     : ["gsissh"],
@@ -164,3 +165,4 @@
         "python_dist"                 : "default"
     }
 }
+

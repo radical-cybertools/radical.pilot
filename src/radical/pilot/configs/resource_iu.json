@@ -1,6 +1,6 @@
 
 {
-    "bigred2": {
+    "bigred2_aprun": {
         "description"                 : "Indiana University's Cray XE6/XK7 cluster (https://kb.iu.edu/d/bcqt).",
         "notes"                       : "None",
         "schemas"                     : ["ssh"],
@@ -23,7 +23,7 @@
         "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
-    "bigred2_ccm": {
+    "bigred2_ccm_ssh": {
         "description"                 : "Indiana University's Cray XE6/XK7 cluster in Cluster Compatibility Mode (CCM) (https://kb.iu.edu/d/bcqt).",
         "notes"                       : "None",
         "schemas"                     : ["ssh"],
@@ -56,3 +56,4 @@
         "python_dist"                 : "default"
     }
 }
+

@@ -87,15 +87,15 @@ class TestIssue114(unittest.TestCase):
             all_tasks.append(cudesc)
 
         units  = um.submit_units(all_tasks)
-        states = um.wait_units (state=[rp.SCHEDULING, rp.EXECUTING], 
+        states = um.wait_units (state=[rp.SCHEDULING, rp.AGENT_EXECUTING], 
                                 timeout=2*60)
 
         assert rp.SCHEDULING in states, "states: %s" % states
 
-        states = um.wait_units (state=[rp.EXECUTING, rp.DONE], 
+        states = um.wait_units (state=[rp.AGENT_EXECUTING, rp.DONE], 
                                 timeout=1*60)
 
-        assert rp.EXECUTING  in states, "states: %s" % states
+        assert rp.AGENT_EXECUTING  in states, "states: %s" % states
 
         session.close()
 
@@ -136,10 +136,10 @@ class TestIssue114(unittest.TestCase):
         cudesc.arguments  = ['60']
 
         cu    = um.submit_units(cudesc)
-        state = um.wait_units(state=[rp.EXECUTING], timeout=60)
+        state = um.wait_units(state=[rp.AGENT_EXECUTING], timeout=60)
 
-        assert state    == [rp.EXECUTING], 'state   : %s' % state
-        assert cu.state ==  rp.EXECUTING , 'cu state: %s' % cu.state
+        assert state    == [rp.AGENT_EXECUTING], 'state   : %s' % state
+        assert cu.state ==  rp.AGENT_EXECUTING , 'cu state: %s' % cu.state
 
         state = um.wait_units(timeout=2*60)
 
