@@ -1,5 +1,6 @@
+
 {
-    "grace": {
+    "grace_ssh": {
         "description"                 : "Grace is a shared-use facility within Yale’s Faculty of Arts and Sciences (FAS).",
         "notes"                       : "",
         "schemas"                     : ["ssh"],
@@ -26,3 +27,4 @@
         "python_dist"                 : "default"
     }
 }
+

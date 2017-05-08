@@ -91,11 +91,18 @@ class Default(PMGRLaunchingComponent):
     #
     def finalize_child(self):
 
-        self._log.debug('finalize child')
         # avoid shutdown races:
         
         self.unregister_timed_cb(self._pilot_watcher_cb)
         self.unregister_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
+
+        # FIXME: always kill all saga jobs for non-final pilots at termination,
+        #        and set the pilot states to CANCELED.  This will confluct with
+        #        disconnect/reconnect semantics.
+        with self._pilots_lock:
+            pids = self._pilots.keys()
+
+        self._kill_pilots(pids)
 
         with self._cache_lock:
             for url,js in self._saga_js_cache.iteritems():
@@ -145,6 +152,8 @@ class Default(PMGRLaunchingComponent):
                 for pid in pids:
                     if pid in self._pilots:
                         self._pilots[pid]['pilot']['cancel_requested'] = now
+
+        return True
 
         return True
 
@@ -232,39 +241,55 @@ class Default(PMGRLaunchingComponent):
         if not to_cancel:
             return True
 
-        tc = rs.task.Container()
-        with self._pilots_lock:
+        self._kill_pilots(to_cancel)
 
-            for pid in to_cancel:
+        return True
 
-                if pid not in self._pilots:
-                    self._log.error('unknown: %s', pid)
-                    raise ValueError('unknown pilot %s' % pid)
 
-                pilot = self._pilots[pid]['pilot']
-                job   = self._pilots[pid]['job']
-                to_advance.append(pilot)
-                tc.add(job)
+    # --------------------------------------------------------------------------
+    #
+    def _kill_pilots(self, pids):
 
-        tc.cancel()
-        tc.wait()
+        if not pids:
+            return  # nothing to do
 
-        # we don't want the watcher checking for this pilot anymore
+        if not isinstance(pids, list):
+            pids = [pids]
+
+        to_advance = list()
+
+        # we don't want the watcher checking for these pilot anymore
         with self._check_lock:
-            for pid in to_cancel:
+            for pid in pids:
                 if pid in self._checking:
                     self._checking.remove(pid)
 
-        # set canceled state
-        to_advance = list()
-        with self._pilots_lock:
+        try:
+            with self._pilots_lock:
+                tc = rs.job.Container()
+                for pid in pids:
 
-            for pid in to_cancel:
+                    if pid not in self._pilots:
+                        self._log.error('unknown: %s', pid)
+                        raise ValueError('unknown pilot %s' % pid)
 
-                pilot = self._pilots[pid]['pilot']
-                to_advance.append(pilot)
+                    pilot = self._pilots[pid]['pilot']
+                    job   = self._pilots[pid]['job']
 
-        self.advance(to_advance, state=rps.CANCELED, push=False, publish=True)
+                    if pilot['state'] in rp.FINAL:
+                        continue
+
+                    to_advance.append(pilot)
+                    tc.add(job)
+
+                tc.cancel()
+                tc.wait()
+
+            # set canceled state
+            self.advance(to_advance, state=rps.CANCELED, push=False, publish=True)
+
+        except Exception as e:
+            self._log.exception('pilot kill failed')
 
         return True
 
@@ -547,16 +572,6 @@ class Default(PMGRLaunchingComponent):
         database_url  = self._session.dburl
 
         # ------------------------------------------------------------------
-        # pilot description and resource configuration
-        number_cores    = pilot['description']['cores']
-        runtime         = pilot['description']['runtime']
-        queue           = pilot['description']['queue']
-        project         = pilot['description']['project']
-        cleanup         = pilot['description']['cleanup']
-        memory          = pilot['description']['memory']
-        candidate_hosts = pilot['description']['candidate_hosts']
-
-        # ------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
         agent_launch_method     = rcfg.get('agent_launch_method')
         agent_dburl             = rcfg.get('agent_mongodb_endpoint', database_url)
@@ -585,8 +600,27 @@ class Default(PMGRLaunchingComponent):
         cu_pre_exec             = rcfg.get('cu_pre_exec')
         cu_post_exec            = rcfg.get('cu_post_exec')
         export_to_cu            = rcfg.get('export_to_cu')
+        mandatory_args          = rcfg.get('mandatory_args', [])
 
+        # ------------------------------------------------------------------
+        # get parameters from the pilot description
+        number_cores    = pilot['description']['cores']
+        runtime         = pilot['description']['runtime']
+        queue           = pilot['description']['queue']
+        project         = pilot['description']['project']
+        cleanup         = pilot['description']['cleanup']
+        memory          = pilot['description']['memory']
+        candidate_hosts = pilot['description']['candidate_hosts']
 
+        # make sure that mandatory args are known
+        print 'mas: %s' % mandatory_args
+        import sys
+        sys.stdout.write('mas: %s\n' % mandatory_args)
+        sys.stdout.flush()
+        for ma in mandatory_args:
+            if pilot['description'].get(ma) is None:
+                raise  ValueError('attribute "%s" is required for "%s"' \
+                                 % (ma, resource))
 
         # get pilot and global sandbox
         global_sandbox   = self._session._get_global_sandbox (pilot).path
@@ -799,8 +833,6 @@ class Default(PMGRLaunchingComponent):
 
         agent_cfg['owner']              = 'agent_0'
         agent_cfg['cores']              = number_cores
-        agent_cfg['debug']              = os.environ.get('RADICAL_PILOT_AGENT_VERBOSE', 
-                                                         self._log.getEffectiveLevel())
         agent_cfg['lrms']               = lrms
         agent_cfg['spawner']            = agent_spawner
         agent_cfg['scheduler']          = agent_scheduler
@@ -821,6 +853,13 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['cu_pre_exec']        = cu_pre_exec
         agent_cfg['cu_post_exec']       = cu_post_exec
         agent_cfg['resource_cfg']       = copy.deepcopy(rcfg)
+
+        debug = os.environ.get('RADICAL_PILOT_AGENT_VERBOSE', 
+                               self._log.getEffectiveLevel())
+        if isinstance(debug, basestring):
+            agent_cfg['debug'] = debug.upper()
+        else:
+            agent_cfg['debug'] = debug
 
         # we'll also push the agent config into MongoDB
         pilot['cfg'] = agent_cfg
@@ -846,7 +885,10 @@ class Default(PMGRLaunchingComponent):
         ret['ft'].append({'src' : '/dev/null',
                           'tgt' : '%s/%s' % (pilot_sandbox, '%s.log.tgz' % pid),
                           'rem' : False})  # don't remove /dev/null
-        ret['ft'].append({'src' : '/dev/null',
+        # only stage profiles if we profile
+        if self._prof.enabled:
+            ret['ft'].append({
+                          'src' : '/dev/null',
                           'tgt' : '%s/%s' % (pilot_sandbox, '%s.prof.tgz' % pid),
                           'rem' : False})  # don't remove /dev/null
 

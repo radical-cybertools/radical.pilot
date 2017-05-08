@@ -1,5 +1,5 @@
 {
-    "archer": {
+    "archer_aprun": {
         "description"                 : "The EPSRC Archer Cray XC30 system (https://www.archer.ac.uk/)",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh"],

@@ -172,6 +172,7 @@ class PilotManager(rpu.Component):
 
         if self._closed:
             return
+        self._closed = True
 
         self._log.report.info('<<close pilot manager')
 
@@ -183,7 +184,9 @@ class PilotManager(rpu.Component):
 
         # If terminate is set, we cancel all pilots. 
         if terminate:
-            self.cancel_pilots()
+            self.cancel_pilots(_timeout=10)
+            # if this cancel op fails and the pilots are s till alive after
+            # timeout, the pmgr.launcher termination will kill them
 
         self._terminate.set()
         self.stop()
@@ -192,8 +195,18 @@ class PilotManager(rpu.Component):
         self._session.prof.prof('closed pmgr', uid=self._uid)
         self._log.info("Closed PilotManager %s." % self._uid)
 
-        self._closed = True
         self._log.report.ok('>>ok\n')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def is_valid(self, term=True):
+
+        # don't check during termination
+        if self._closed:
+            return True
+
+        return super(PilotManager, self).is_valid(term)
 
 
     # --------------------------------------------------------------------------
@@ -355,8 +368,7 @@ class PilotManager(rpu.Component):
               * A list of :class:`radical.pilot.ComputePilot` UIDs [`string`].
         """
 
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         with self._pilots_lock:
             ret = self._pilots.keys()
@@ -382,8 +394,7 @@ class PilotManager(rpu.Component):
 
         from .compute_pilot import ComputePilot
 
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         ret_list = True
         if not isinstance(descriptions, list):
@@ -466,8 +477,7 @@ class PilotManager(rpu.Component):
               * A list of :class:`radical.pilot.ComputePilot` objects.
         """
         
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         if not uids:
             with self._pilots_lock:
@@ -529,8 +539,7 @@ class PilotManager(rpu.Component):
               state changes. The default value **None** waits forever.
         """
 
-        if self._closed:
-            raise RuntimeError("instance is already losed")
+        self.is_valid()
 
         if not uids:
             with self._pilots_lock:
@@ -603,7 +612,7 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def cancel_pilots(self, uids=None):
+    def cancel_pilots(self, uids=None, _timeout=None):
         """
         Cancel one or more :class:`radical.pilot.ComputePilots`.
 
@@ -611,8 +620,7 @@ class PilotManager(rpu.Component):
             * **uids** [`string` or `list of strings`]: The IDs of the
               compute pilot objects to cancel.
         """
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         if not uids:
             with self._pilots_lock:
@@ -629,7 +637,8 @@ class PilotManager(rpu.Component):
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots', 
                                           'arg' : {'pmgr' : self.uid,
                                                    'uids' : uids}})
-        self.wait_pilots(uids=uids)
+
+        self.wait_pilots(uids=uids, timeout=_timeout)
 
 
     # --------------------------------------------------------------------------
