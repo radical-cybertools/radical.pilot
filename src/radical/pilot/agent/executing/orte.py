@@ -128,6 +128,8 @@ class ORTE(AgentExecutingComponent):
             with self._cancel_lock:
                 self._cus_to_cancel.append(arg)
 
+        return True
+
 
     # --------------------------------------------------------------------------
     #

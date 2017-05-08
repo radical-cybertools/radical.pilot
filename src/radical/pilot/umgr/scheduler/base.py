@@ -119,7 +119,7 @@ class UMGRSchedulingComponent(rpu.Component):
         if cmd not in ['update', 'state_update']:
           # self._log.debug(' === base state cb: ignore %s' % cmd)
             self._log.debug('ignore cmd %s', cmd)
-            return
+            return True
 
         if not isinstance(arg, list): things = [arg]
         else                        : things =  arg
@@ -138,6 +138,8 @@ class UMGRSchedulingComponent(rpu.Component):
       # self._log.debug(' === base state cb: update  units:  %s' % [u['uid'] for u in units])
         self._update_unit_states(units)
       # self._log.debug(' === base state cb: updated units:  %s' % [u['uid'] for u in units])
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -206,7 +208,7 @@ class UMGRSchedulingComponent(rpu.Component):
         cmd = msg['cmd']
 
         if cmd not in ['add_pilots', 'remove_pilots']:
-            return
+            return True
 
         arg   = msg['arg']
         umgr  = arg['umgr']
@@ -215,7 +217,7 @@ class UMGRSchedulingComponent(rpu.Component):
 
         if umgr != self._umgr:
             # this is not the command we are looking for
-            return
+            return True
 
 
         if cmd == 'add_pilots':
@@ -267,6 +269,8 @@ class UMGRSchedulingComponent(rpu.Component):
 
             # let the scheduler know
             self.remove_pilots(pids)
+
+        return True
 
 
     # --------------------------------------------------------------------------
