@@ -78,7 +78,8 @@ class PilotManager(rpu.Component):
             * A new `PilotManager` object [:class:`radical.pilot.PilotManager`].
         """
 
-        self._components  = None
+        self._bridges     = dict()
+        self._components  = dict()
         self._pilots      = dict()
         self._pilots_lock = threading.RLock()
         self._callbacks   = dict()
@@ -96,10 +97,6 @@ class PilotManager(rpu.Component):
 
         assert(cfg['db_poll_sleeptime'])
 
-        # before we do any further setup, we get the session's ctrl config with
-        # bridge addresses, dburl and stuff.
-        ru.dict_merge(cfg, session.ctrl_cfg, ru.PRESERVE)
-
         # initialize the base class (with no intent to fork)
         self._uid    = ru.generate_id('pmgr')
         cfg['owner'] = self.uid
@@ -109,12 +106,6 @@ class PilotManager(rpu.Component):
         # only now we have a logger... :/
         self._log.report.info('<<create pilot manager')
         self._prof.prof('create pmgr', uid=self._uid)
-
-        # we can start bridges and components, as needed
-        self._controller = rpu.Controller(cfg=self._cfg, session=self.session)
-
-        # merge controller config back into our own config
-        ru.dict_merge(self._cfg, self._controller.ctrl_cfg, ru.OVERWRITE)
 
         # The output queue is used to forward submitted pilots to the
         # launching component.
@@ -137,7 +128,39 @@ class PilotManager(rpu.Component):
         self._log.report.ok('>>ok\n')
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    # 
+    def initialize_common(self):
+
+        # the manager must not carry bridge and component handles across forks
+        ru.atfork(self._atfork_prepare, self._atfork_parent, self._atfork_child)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _atfork_prepare(self): pass
+    def _atfork_parent(self) : pass
+    def _atfork_child(self)  : 
+        self._bridges    = dict()
+        self._components = dict()
+
+
+    # --------------------------------------------------------------------------
+    # 
+    def finalize_parent(self):
+
+        # terminate pmgr components
+        for c in self._components:
+            c.stop()
+            c.join()
+
+        # terminate pmgr bridges
+        for b in self._bridges:
+            b.stop()
+            b.join()
+
+
+    # --------------------------------------------------------------------------
     #
     def close(self, terminate=True):
         """
@@ -149,8 +172,8 @@ class PilotManager(rpu.Component):
 
         if self._closed:
             return
+        self._closed = True
 
-        self._log.debug("closing %s\n%s", self.uid, '\n'.join(ru.get_stacktrace()))
         self._log.report.info('<<close pilot manager')
 
         # we don't want any callback invokations during shutdown
@@ -161,17 +184,28 @@ class PilotManager(rpu.Component):
 
         # If terminate is set, we cancel all pilots. 
         if terminate:
-            self.cancel_pilots()
+            self.cancel_pilots(_timeout=10)
+            # if this cancel op fails and the pilots are s till alive after
+            # timeout, the pmgr.launcher termination will kill them
 
         self._terminate.set()
-        self._controller.stop()
         self.stop()
 
         self._session.prof.prof('closed pmgr', uid=self._uid)
         self._log.info("Closed PilotManager %s." % self._uid)
 
-        self._closed = True
         self._log.report.ok('>>ok\n')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def is_valid(self, term=True):
+
+        # don't check during termination
+        if self._closed:
+            return True
+
+        return super(PilotManager, self).is_valid(term)
 
 
     # --------------------------------------------------------------------------
@@ -215,7 +249,10 @@ class PilotManager(rpu.Component):
         pilot_dicts = self._session._dbs.get_pilots(pmgr_uid=self.uid)
 
         for pilot_dict in pilot_dicts:
-            self._update_pilot(pilot_dict, publish=True)
+            if not self._update_pilot(pilot_dict, publish=True):
+                return False
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -227,7 +264,7 @@ class PilotManager(rpu.Component):
 
         if cmd != 'update':
             self._log.debug('ignore state cb msg with cmd %s', cmd)
-            return
+            return True
 
         if isinstance(arg, list): things =  arg
         else                    : things = [arg]
@@ -238,7 +275,10 @@ class PilotManager(rpu.Component):
 
                 # we got the state update from the state callback - don't
                 # publish it again
-                self._update_pilot(thing, publish=False)
+                if not self._update_pilot(thing, publish=False):
+                    return False
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -254,13 +294,13 @@ class PilotManager(rpu.Component):
 
             # we don't care about pilots we don't know
             if pid not in self._pilots:
-                return False
+                return True  # this is not an error
 
             # only update on state changes
             current = self._pilots[pid].state
             target  = pilot_dict['state']
             if current == target:
-                return
+                return True
 
             target, passed = rps._pilot_state_progress(pid, current, target)
           # print '%s current: %s' % (pid, current)
@@ -286,6 +326,7 @@ class PilotManager(rpu.Component):
                             pid, s, pilot_dict.get('lm_info'), 
                                     pilot_dict.get('lm_detail')) 
 
+            return True
 
 
     # --------------------------------------------------------------------------
@@ -326,8 +367,7 @@ class PilotManager(rpu.Component):
               * A list of :class:`radical.pilot.ComputePilot` UIDs [`string`].
         """
 
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         with self._pilots_lock:
             ret = self._pilots.keys()
@@ -353,8 +393,7 @@ class PilotManager(rpu.Component):
 
         from .compute_pilot import ComputePilot
 
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         ret_list = True
         if not isinstance(descriptions, list):
@@ -437,8 +476,7 @@ class PilotManager(rpu.Component):
               * A list of :class:`radical.pilot.ComputePilot` objects.
         """
         
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         if not uids:
             with self._pilots_lock:
@@ -500,8 +538,7 @@ class PilotManager(rpu.Component):
               state changes. The default value **None** waits forever.
         """
 
-        if self._closed:
-            raise RuntimeError("instance is already losed")
+        self.is_valid()
 
         if not uids:
             with self._pilots_lock:
@@ -574,7 +611,7 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def cancel_pilots(self, uids=None):
+    def cancel_pilots(self, uids=None, _timeout=None):
         """
         Cancel one or more :class:`radical.pilot.ComputePilots`.
 
@@ -582,8 +619,7 @@ class PilotManager(rpu.Component):
             * **uids** [`string` or `list of strings`]: The IDs of the
               compute pilot objects to cancel.
         """
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         if not uids:
             with self._pilots_lock:
@@ -597,11 +633,11 @@ class PilotManager(rpu.Component):
                 if uid not in self._pilots:
                     raise ValueError('pilot %s not known' % uid)
 
-
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots', 
                                           'arg' : {'pmgr' : self.uid,
                                                    'uids' : uids}})
-        self.wait_pilots(uids=uids)
+
+        self.wait_pilots(uids=uids, timeout=_timeout)
 
 
     # --------------------------------------------------------------------------
@@ -645,7 +681,7 @@ class PilotManager(rpu.Component):
     #
     def unregister_callback(self, cb, metric=rpt.PILOT_STATE):
 
-        if metric and metric not in rpt.UMGR_METRICS :
+        if metric and metric not in rpt.PMGR_METRICS :
             raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
 
         if not metric:

@@ -227,6 +227,8 @@ class AgentSchedulingComponent(rpu.Component):
             self._log.debug("slot status after  reschedule: %s", self.slot_status())
         self._prof.prof('reschedule done')
 
+        return True
+
 
     # --------------------------------------------------------------------------
     #
@@ -241,7 +243,7 @@ class AgentSchedulingComponent(rpu.Component):
         if not cu['opaque_slots']:
             # Nothing to do -- how come?
             self._log.warn("cannot unschedule: %s (no slots)" % cu)
-            return
+            return True
 
         if self._log.isEnabledFor(logging.DEBUG):
             self._log.debug("slot status before unschedule: %s", self.slot_status())
@@ -259,6 +261,8 @@ class AgentSchedulingComponent(rpu.Component):
         # Note: The extra space below is for visual alignment
         if self._log.isEnabledFor(logging.DEBUG):
             self._log.debug("slot status after  unschedule: %s", self.slot_status())
+
+        return True
 
 
     # --------------------------------------------------------------------------

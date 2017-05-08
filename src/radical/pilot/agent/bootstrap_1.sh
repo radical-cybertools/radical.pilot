@@ -1178,6 +1178,7 @@ rp_install()
     pip_flags="$pip_flags --src '$PILOT_SANDBOX/rp_install/src'"
     pip_flags="$pip_flags --build '$PILOT_SANDBOX/rp_install/build'"
     pip_flags="$pip_flags --install-option='--prefix=$RP_INSTALL'"
+    pip_flags="$pip_flags --no-deps"
 
     for src in $rp_install_sources
     do
@@ -1712,7 +1713,7 @@ do
         then
             echo "send SIGTERM to $AGENT_PID"
             kill -15 $AGENT_PID
-            sleep  5
+            sleep  1
             echo "send SIGKILL to $AGENT_PID"
             kill  -9 $AGENT_PID
             break
@@ -1728,6 +1729,17 @@ echo "agent $AGENT_PID is final"
 wait $AGENT_PID
 AGENT_EXITCODE=$?
 echo "agent $AGENT_PID is final ($AGENT_EXITCODE)"
+
+
+if test -e "./killme.signal"
+then
+    # this agent has been canceled.  We don't care (much) how it died)
+    if ! test "$AGENT_EXITCODE" = "0"
+    then
+        echo "chaning exit code from $AGENT_EXITCODE to 0 for canceled pilot"
+        AGENT_EXITCODE=0
+    fi
+fi
 
 # # stop the packer.  We don't want to just kill it, as that might leave us with
 # # corrupted tarballs...
@@ -1763,10 +1775,10 @@ then
     echo "#"
     echo "# -------------------------------------------------------------------"
     echo
-    FINAL_SLEEP=30
+    FINAL_SLEEP=3
     echo "# -------------------------------------------------------------------"
     echo "#"
-    echo "# We wait for at most 30 seconds for the FS to flush profiles."
+    echo "# We wait for some seconds for the FS to flush profiles."
     echo "# Success is assumed when all profiles end with a 'QED' event."
     echo "#"
     echo "# -------------------------------------------------------------------"
@@ -1776,7 +1788,7 @@ then
     while ! test "$nprofs" = "$nqed"
     do
         nsleep=$((nsleep+1))
-        if test "$nsleep" = "30"
+        if test "$nsleep" = "$FINAL_SLEEP"
         then
             echo "abort profile sync @ $nsleep: $nprofs != $nqed"
             break
