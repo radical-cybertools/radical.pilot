@@ -21,10 +21,10 @@ class Scattered(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
         self.slots = None
-        AgentSchedulingComponent.__init__(self, cfg)
+        AgentSchedulingComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------

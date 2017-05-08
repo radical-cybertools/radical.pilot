@@ -1,6 +1,6 @@
 
 {
-    "stampede": {
+    "stampede_ssh": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["gsissh", "ssh", "go"],
@@ -47,6 +47,7 @@
                                          "LD_LIBRARY_PATH"], 
         "cu_pre_exec"                 : ["module restore"]
     },
+
     "stampede_orte": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
@@ -78,13 +79,13 @@
         "pre_bootstrap_1"             : ["module purge",
             "module load TACC",
             "module load intel/15.0.2",
-            "module load python/2.7.9",
+            "module load python/2.7.12",
             "module unload xalt",
             # Load ICC license so we can build during bootstrap
             "source ~train00/ssi_sourceme",
             "export TACC_DELETE_FILES=TRUE",
-            "module use -a /home1/01740/marksant/openmpi/modulefiles",
-            "module load openmpi/rhc",
+            "module use -a /home1/01083/tg803521/ompi/modules/",
+            "module load openmpi/2017_04_20_539f71d",
             "export OMPI_MCA_plm=^slurm"
         ],
         "pre_bootstrap_2"             : ["export PATH=$PATH",
@@ -97,6 +98,7 @@
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
+
     "stampede_ortelib": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail. To create a virtualenv for the first time, one needs to run towards the development queue.",
@@ -128,13 +130,13 @@
         "pre_bootstrap_1"             : ["module purge",
             "module load TACC",
             "module load intel/15.0.2",
-            "module load python/2.7.9",
+            "module load python/2.7.12",
             "module unload xalt",
             # Load ICC license so we can build during bootstrap
             "source ~train00/ssi_sourceme",
             "export TACC_DELETE_FILES=TRUE",
-            "module use -a /home1/01740/marksant/openmpi/modulefiles",
-            "module load openmpi/rhc",
+            "module use -a /home1/01083/tg803521/ompi/modules/",
+            "module load openmpi/2017_04_20_539f71d",
             "export OMPI_MCA_plm=^slurm"
         ],
         "pre_bootstrap_2"             : ["export PATH=$PATH",
@@ -241,7 +243,7 @@
         "python_dist"                 : "default"
     },
 
-       "wrangler": {
+    "wrangler_ssh": {
         "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh", "go"],
@@ -270,7 +272,7 @@
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap_1"             : [
-                                       # "module load python/2.7.9",
+                                       # "module load python/2.7.12",
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
         "pre_bootstrap_2"             : ["export PATH=$PATH",
@@ -312,7 +314,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "YARN",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "pre_bootstrap_1"             : ["module load python/2.7.9",
+        "pre_bootstrap_1"             : ["module load python/2.7.12",
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
         "pre_bootstrap_2"             : ["export PATH=$PATH",
@@ -356,7 +358,7 @@
         "task_launch_method"          : "SPARK",
         "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap_1"             : [ 
-                                        "module load python/2.7.9",
+                                        "module load python/2.7.12",
                                         "export TACC_DELETE_FILES=TRUE",
                                         "module load jdk64/1.8.0"
                                         ],
@@ -372,7 +374,7 @@
     },
 
 
-    "lonestar": {
+    "lonestar_ssh": {
         "description"                 : "The XSEDE 'Lonestar' cluster at TACC (https://www.tacc.utexas.edu/resources/hpc/lonestar).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
@@ -408,7 +410,7 @@
         "python_dist"                 : "default"
     },
 
-    "trestles": {
+    "trestles_ssh": {
         "description"                 : "The XSEDE 'Trestles' cluster at SDSC (http://www.sdsc.edu/us/resources/trestles/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
@@ -429,7 +431,8 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "pre_bootstrap_1"             : ["module purge", "module load python pgi mvapich2_ib gnubase"],
+        "pre_bootstrap_1"             : ["module purge", 
+                                         "module load python pgi mvapich2_ib gnubase"],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_trestles",
@@ -437,7 +440,7 @@
         "python_dist"                 : "default"
     },
 
-    "gordon": {
+    "gordon_ssh": {
         "description"                 : "The XSEDE 'Gordon' cluster at SDSC (http://www.sdsc.edu/us/resources/gordon/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
@@ -458,7 +461,8 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "pre_bootstrap_1"             : ["module purge", "module load python intel mvapich2_ib gnubase"],
+        "pre_bootstrap_1"             : ["module purge", 
+                                         "module load python intel mvapich2_ib gnubase"],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_gordon",
@@ -466,7 +470,7 @@
         "python_dist"                 : "default"
     },
 
-    "blacklight": {
+    "blacklight_ssh": {
         "description"                 : "The XSEDE 'Blacklight' cluster at PSC (https://www.psc.edu/index.php/computing-resources/blacklight).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
@@ -569,7 +573,7 @@
         "cu_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
     },
 
-    "comet": {
+    "comet_orte": {
         "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
@@ -593,10 +597,9 @@
         "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",
-        "pre_bootstrap_1"             : [
-            "module use --append /home/amerzky/ompi/modules",
-            "module load python",
-            "module load openmpi/2017_02_17_6da4dbb"
+        "pre_bootstrap_1"             : ["module use --append /home/amerzky/ompi/modules",
+                                         "module load python",
+                                         "module load openmpi/2017_02_17_6da4dbb"
         ],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
@@ -629,10 +632,9 @@
         "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE_LIB",
         "mpi_launch_method"           : "ORTE_LIB",
-        "pre_bootstrap_1"             : [
-            "module use --append /home/amerzky/ompi/modules",
-            "module load python",
-            "module load openmpi/2017_02_17_6da4dbb"
+        "pre_bootstrap_1"             : ["module use --append /home/amerzky/ompi/modules",
+                                         "module load python",
+                                         "module load openmpi/2017_02_17_6da4dbb"
         ],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
@@ -679,7 +681,7 @@
         "python_dist"                 : "default"
     },
 
-    "supermic": {
+    "supermic_ssh": {
         "description"                 : "SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)",
         "notes"                       : "Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.",
         "schemas"                     : ["gsissh", "ssh"],
@@ -698,6 +700,35 @@
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIEXEC",
+        "pre_bootstrap_1"             : ["module load python"],
+        "default_remote_workdir"      : "/work/$USER",
+        "valid_roots"                 : ["/work"],
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_supermic",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
+    },
+
+    "supermic_spark": {
+        "description"                 : "SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)",
+        "notes"                       : "Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.",
+        "schemas"                     : ["gsissh", "ssh"],
+        "gsissh"                      : {
+            "job_manager_endpoint"    : "torque+gsissh://supermic.cct-lsu.xsede.org:2222/",
+            "filesystem_endpoint"     : "gsisftp://supermic.cct-lsu.xsede.org:2222/"
+        },
+        "ssh"                         : {
+            "job_manager_endpoint"    : "torque+ssh://supermic.cct-lsu.xsede.org/",
+            "filesystem_endpoint"     : "sftp://supermic.cct-lsu.xsede.org/"
+        },
+        "default_queue"               : "workq",
+        "cores_per_node"              : "20",
+        "lrms"                        : "TORQUE",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SPARK",
         "mpi_launch_method"           : "MPIEXEC",
         "pre_bootstrap_1"             : ["module load python"],
         "default_remote_workdir"      : "/work/$USER",
