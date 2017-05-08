@@ -501,7 +501,7 @@ def get_session_description(sid, src=None, dburl=None):
     tree      = dict()
     tree[sid] = {'uid'      : sid,
                  'etype'    : 'session',
-                 'cfg'      : json['session']['cfg'],
+               # 'cfg'      : json['session']['cfg'],
                  'has'      : ['umgr', 'pmgr'],
                  'children' : list()
                 }
@@ -511,7 +511,7 @@ def get_session_description(sid, src=None, dburl=None):
         tree[sid]['children'].append(uid)
         tree[uid] = {'uid'      : uid,
                      'etype'    : 'pmgr',
-                     'cfg'      : pmgr['cfg'],
+                   # 'cfg'      : pmgr['cfg'],
                      'has'      : ['pilot'],
                      'children' : list()
                     }
@@ -521,25 +521,21 @@ def get_session_description(sid, src=None, dburl=None):
         tree[sid]['children'].append(uid)
         tree[uid] = {'uid'      : uid,
                      'etype'    : 'umgr',
-                     'cfg'      : umgr['cfg'],
+               #     'cfg'      : umgr['cfg'],
                      'has'      : ['unit'],
                      'children' : list()
                     }
-        # also inject the pilot description, and resource specifically
-        tree[uid]['description'] = dict()
 
     for pilot in sorted(json['pilot'], key=lambda k: k['uid']):
         uid  = pilot['uid']
         pmgr = pilot['pmgr']
         tree[pmgr]['children'].append(uid)
-        tree[uid] = {'uid'        : uid,
-                     'etype'      : 'pilot',
-                     'cfg'        : pilot['cfg'],
-                     'description': pilot['description'],
-                     'has'        : ['unit'],
-                     'children'   : list()
+        tree[uid] = {'uid'      : uid,
+                     'etype'    : 'pilot',
+               #     'cfg'      : pilot['cfg'],
+                     'has'      : ['unit'],
+                     'children' : list()
                     }
-        # also inject the pilot description, and resource specifically
 
     for unit in sorted(json['unit'], key=lambda k: k['uid']):
         uid  = unit['uid']
@@ -547,25 +543,27 @@ def get_session_description(sid, src=None, dburl=None):
         umgr = unit['pilot']
         tree[pid ]['children'].append(uid)
         tree[umgr]['children'].append(uid)
-        tree[uid] = {'uid'         : uid,
-                     'etype'       : 'unit',
-                     'cfg'         : unit['description'],
-                     'description' : unit['description'],
-                     'has'         : list(),
-                     'children'    : list()
+        tree[uid] = {'uid'      : uid,
+                     'etype'    : 'unit',
+               #     'cfg'      : unit['description'],
+                     'has'      : list(),
+                     'children' : list()
                     }
 
     ret['tree'] = tree
 
+    import pprint, sys
+    pprint.pprint(tree)
+
     ret['entities']['pilot'] = {
-            'state_model'  : rps._pilot_state_values,
-            'state_values' : rps._pilot_state_inv_full,
+            'state_model'  : rps.pilot_state_by_value,
+            'state_values' : rps.pilot_state_value,
             'event_model'  : dict(),
             }
 
     ret['entities']['unit'] = {
-            'state_model'  : rps._unit_state_values,
-            'state_values' : rps._unit_state_inv_full,
+            'state_model'  : rps.unit_state_by_value,
+            'state_values' : rps.unit_state_value,
             'event_model'  : dict(),
             }
 

@@ -14,8 +14,6 @@ import radical.utils   as ru
 from ..          import constants      as rpc
 from ..          import states         as rps
 
-from .misc       import hostip
-
 from .queue      import Queue          as rpu_Queue
 from .queue      import QUEUE_OUTPUT   as rpu_QUEUE_OUTPUT
 from .queue      import QUEUE_INPUT    as rpu_QUEUE_INPUT
@@ -304,8 +302,8 @@ class Controller(object):
                 # we just started the bridge -- use the local hostip for 
                 # the address!
                 # FIXME: this should be done in the bridge already
-                addr_in.host  = hostip()
-                addr_out.host = hostip()
+                addr_in.host  = ru.get_hostip()
+                addr_out.host = ru.get_hostip()
 
                 self._ctrl_cfg['bridges'][bname]['addr_in']  = str(addr_in)
                 self._ctrl_cfg['bridges'][bname]['addr_out'] = str(addr_out)

@@ -415,7 +415,7 @@ class PilotManager(rpu.Component):
         # components (ie. advance state).
         for pd in pilot_docs:
             pd['state'] = rps.PMGR_LAUNCHING_PENDING
-            self._update_pilot(pd, advance=False)
+            self._update_pilot(pd, publish=False)
         self.advance(pilot_docs, publish=True, push=True)
 
         self._log.report.ok('>>ok\n')
