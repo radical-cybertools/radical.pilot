@@ -82,7 +82,6 @@ class Default(UMGRStagingInputComponent):
                 flags  = sd['flags']
                 src    = ru.Url(sd['source'])
                 tgt    = ru.Url(sd['target'])
-                print tgt
 
                 if action == rpc.TRANSFER and src.schema == 'file':
                     actionables.append([src, tgt, flags])

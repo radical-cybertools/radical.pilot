@@ -84,7 +84,8 @@ class UnitManager(rpu.Component):
             * A new `UnitManager` object [:class:`radical.pilot.UnitManager`].
         """
 
-        self._components  = None
+        self._bridges     = dict()
+        self._components  = dict()
         self._pilots      = dict()
         self._pilots_lock = threading.RLock()
         self._units       = dict()
@@ -112,10 +113,6 @@ class UnitManager(rpu.Component):
 
         assert(cfg['db_poll_sleeptime'])
 
-        # before we do any further setup, we get the session's ctrl config with
-        # bridge addresses, dburl and stuff.
-        ru.dict_merge(cfg, session.ctrl_cfg, ru.PRESERVE)
-
         # initialize the base class (with no intent to fork)
         self._uid    = ru.generate_id('umgr')
         cfg['owner'] = self.uid
@@ -125,12 +122,6 @@ class UnitManager(rpu.Component):
         # only now we have a logger... :/
         self._log.report.info('<<create unit manager')
         self._prof.prof('create umgr', uid=self._uid)
-
-        # we can start bridges and components, as needed
-        self._controller = rpu.Controller(cfg=self._cfg, session=self.session)
-
-        # merge controller config back into our own config
-        ru.dict_merge(self._cfg, self._controller.ctrl_cfg, ru.OVERWRITE)
 
         # The output queue is used to forward submitted units to the
         # scheduling component.
@@ -165,6 +156,38 @@ class UnitManager(rpu.Component):
 
 
     # --------------------------------------------------------------------------
+    # 
+    def initialize_common(self):
+
+        # the manager must not carry bridge and component handles across forks
+        ru.atfork(self._atfork_prepare, self._atfork_parent, self._atfork_child)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _atfork_prepare(self): pass
+    def _atfork_parent(self) : pass
+    def _atfork_child(self)  : 
+        self._bridges    = dict()
+        self._components = dict()
+
+
+    # --------------------------------------------------------------------------
+    # 
+    def finalize_parent(self):
+
+        # terminate umgr components
+        for c in self._components:
+            c.stop()
+            c.join()
+
+        # terminate umgr bridges
+        for b in self._bridges:
+            b.stop()
+            b.join()
+
+
+    # --------------------------------------------------------------------------
     #
     def close(self):
         """
@@ -177,6 +200,7 @@ class UnitManager(rpu.Component):
 
         if self._closed:
             return
+        self._closed = True
 
         self._log.debug("closing %s\n%s", self.uid, '\n'.join(ru.get_stacktrace()))
         self._log.report.info('<<close unit manager')
@@ -187,14 +211,23 @@ class UnitManager(rpu.Component):
             self._callbacks = dict()
 
         self._terminate.set()
-        self._controller.stop()
         self.stop()
 
         self._session.prof.prof('closed umgr', uid=self._uid)
         self._log.info("Closed UnitManager %s." % self._uid)
 
-        self._closed = True
         self._log.report.ok('>>ok\n')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def is_valid(self, term=True):
+
+        # don't check during termination
+        if self._closed:
+            return True
+
+        return super(UnitManager, self).is_valid(term)
 
 
     # --------------------------------------------------------------------------
@@ -245,10 +278,12 @@ class UnitManager(rpu.Component):
         # we only look into pilot states when the umgr is still active
         # FIXME: note that there is a race in that the umgr can be closed while
         #        we are in the cb.
+        # FIXME: should is_valid be used?  Either way, `self._closed` is not an
+        #        `mt.Event`!
         if self._closed:
             self._log.debug('umgr closed, ignore pilot state (%s: %s)', 
                             pilot.uid, pilot.state)
-            return
+            return True
 
 
         if state in rps.FINAL:
@@ -269,7 +304,7 @@ class UnitManager(rpu.Component):
             self._log.debug(" === units pulled: %3d (pilot dead)" % len(units))
 
             if not units:
-                return
+                return True
 
             # update the units to avoid pulling them again next time.
             # NOTE:  this needs not locking with the unit pulling in the
@@ -304,9 +339,10 @@ class UnitManager(rpu.Component):
                 for u in restarted:
                     self._log.debug('restart unit %s', u.uid)
 
-
             # final units are not pushed
             self.advance(units, publish=True, push=False) 
+
+            return True
 
 
     #---------------------------------------------------------------------------
@@ -323,7 +359,10 @@ class UnitManager(rpu.Component):
 
         for unit in units:
             self._log.debug(" === state pulled %s: %s", unit['uid'], unit['state'])
-            self._update_unit(unit, publish=True)
+            if not self._update_unit(unit, publish=True):
+                return False
+
+        return True
 
 
     #---------------------------------------------------------------------------
@@ -348,7 +387,7 @@ class UnitManager(rpu.Component):
         if not unit_cursor.count():
             # no units whatsoever...
             self._log.info(" === units pulled:    0")
-            return False
+            return True  # this is not an error
 
         # update the units to avoid pulling them again next time.
         units = list(unit_cursor)
@@ -359,25 +398,18 @@ class UnitManager(rpu.Component):
                                     'uid'   : {'$in'     : uids}},
                         document = {'$set'  : {'control' : 'umgr'}})
 
-        self._log.info(" === units pulled: %4d %s", len(units), [u['uid'] for u in units])
+        self._log.info("units pulled: %4d %s", len(units), [u['uid'] for u in units])
         self._prof.prof('get', msg="bulk size: %d" % len(units), uid=self.uid)
         for unit in units:
 
-            self._log.debug('\n\n=======================================')
-            self._log.debug(' === details %s: %s', unit['uid'], pprint.pformat(unit))
-            
             # we need to make sure to have the correct state:
             old = unit['state']
             new = rps._unit_state_collapse(unit['states'])
-            self._log.debug(' === %s state: %s -> %s', unit['uid'], old, new)
+            self._log.debug("unit pulled %s: %s / %s", unit['uid'], old, new)
 
-            self._log.debug(" === unit  pulled %s: %s / %s", unit['uid'], old, new)
-
-            unit['state'] = new
+            unit['state']   = new
             unit['control'] = 'umgr'
             self._prof.prof('get', msg="bulk size: %d" % len(units), uid=unit['uid'])
-
-            self._log.debug('\n=======================================\n\n')
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline).
@@ -395,7 +427,7 @@ class UnitManager(rpu.Component):
 
         if cmd != 'update':
             self._log.debug('ignore state cb msg with cmd %s', cmd)
-            return
+            return True
 
         if isinstance(arg, list): things =  arg
         else                    : things = [arg]
@@ -406,7 +438,10 @@ class UnitManager(rpu.Component):
 
                 # we got the state update from the state callback - don't
                 # publish it again
-                self._update_unit(thing, publish=False)
+                if not self._update_unit(thing, publish=False):
+                    return False
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -421,20 +456,15 @@ class UnitManager(rpu.Component):
 
             # we don't care about units we don't know
             if uid not in self._units:
-              # print 'unknown unit %s' % uid
-                return False
+                return True
 
             # only update on state changes
             current = self._units[uid].state
             target  = unit_dict['state']
             if current == target:
-                return
+                return True
 
-            self._log.debug(' === unit %s current: %s', uid, current)
-            self._log.debug(' === unit %s target : %s', uid, target)
             target, passed = rps._unit_state_progress(uid, current, target)
-            self._log.debug(' === unit %s target : %s', uid, target)
-            self._log.debug(' === unit %s passed : %s', uid, passed)
 
             if target in [rps.CANCELED, rps.FAILED]:
                 # don't replay intermediate states
@@ -445,6 +475,8 @@ class UnitManager(rpu.Component):
                 unit_dict['state'] = s
                 self._units[uid]._update(unit_dict)
                 self.advance(unit_dict, s, publish=publish, push=False)
+
+            return True
 
 
     # --------------------------------------------------------------------------
@@ -505,8 +537,7 @@ class UnitManager(rpu.Component):
               added to the unit manager.
         """
 
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         if not isinstance(pilots, list):
             pilots = [pilots]
@@ -547,8 +578,7 @@ class UnitManager(rpu.Component):
               * A list of :class:`radical.pilot.ComputePilot` UIDs [`string`].
         """
 
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         with self._pilots_lock:
             return self._pilots.keys()
@@ -563,8 +593,8 @@ class UnitManager(rpu.Component):
         **Returns:**
               * A list of :class:`radical.pilot.ComputePilot` instances.
         """
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+
+        self.is_valid()
 
         with self._pilots_lock:
             return self._pilots.values()
@@ -594,8 +624,7 @@ class UnitManager(rpu.Component):
         if drain:
             raise RuntimeError("'drain' is not yet implemented")
 
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         if not isinstance(pilot_ids, list):
             pilot_ids = [pilot_ids]
@@ -631,8 +660,7 @@ class UnitManager(rpu.Component):
               * A list of :class:`radical.pilot.ComputeUnit` UIDs [`string`].
         """
 
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         with self._pilots_lock:
             return self._units.keys()
@@ -656,8 +684,7 @@ class UnitManager(rpu.Component):
 
         from .compute_unit import ComputeUnit
 
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         ret_list = True
         if not isinstance(descriptions, list):
@@ -727,8 +754,7 @@ class UnitManager(rpu.Component):
               * A list of :class:`radical.pilot.ComputeUnit` objects.
         """
         
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         if not uids:
             with self._units_lock:
@@ -790,8 +816,7 @@ class UnitManager(rpu.Component):
               state changes. The default value **None** waits forever.
         """
 
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+        self.is_valid()
 
         if not uids:
             with self._units_lock:
@@ -854,6 +879,8 @@ class UnitManager(rpu.Component):
 
             to_check = check_again
 
+            self.is_valid()
+
         self._log.report.idle(mode='stop')
 
         if to_check: self._log.report.warn('>>timeout\n')
@@ -891,8 +918,8 @@ class UnitManager(rpu.Component):
             * **uids** [`string` or `list of strings`]: The IDs of the
               compute units objects to cancel.
         """
-        if self._closed:
-            raise RuntimeError("instance is already closed")
+
+        self.is_valid()
 
         if not uids:
             with self._units_lock:

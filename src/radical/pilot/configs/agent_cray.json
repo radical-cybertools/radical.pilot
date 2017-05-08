@@ -5,55 +5,44 @@
     "bulk_collection_size" :  100,
     "bulk_collection_time" : 5.0,
     "db_poll_sleeptime"    : 1.0,
+    "network_interface"    : "ipogif0",
 
-    "agent_layout" : {
-        # Offload as much as possible to a Compute Node,
-        # to keep thread number low on MOM node.
-        "agent_1"   : {
-            "target"     : "node",
-            "components" : {
-                "AgentStagingInputComponent"  : 1,
-                "AgentSchedulingComponent"    : 1,
-                "AgentExecutingComponent"     : 1,
-                "AgentStagingOutputComponent" : 1
+    "target"  : "local",
+    "bridges" : {
+        "agent_staging_input_queue"  : { "log_level" : "off",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 1},
+        "agent_scheduling_queue"     : { "log_level" : "off",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 1},
+        "agent_executing_queue"      : { "log_level" : "off",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 1},
+        "agent_staging_output_queue" : { "log_level" : "off",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 1},
+
+        "agent_unschedule_pubsub"    : {"log_level" : "off"},
+        "agent_reschedule_pubsub"    : {"log_level" : "off"},
+
+        "control_pubsub"             : {"log_level" : "off"},
+        "state_pubsub"               : {"log_level" : "off"},
+        "log_pubsub"                 : {"log_level" : "off"}
+    },
+
+    "components": {
+        "UpdateWorker"                : {"count" : 1},
+        "AgentStagingInputComponent"  : {"count" : 1},
+        "AgentStagingOutputComponent" : {"count" : 1}
+    },
+    
+    "agents": {
+        "agent_1": {
+            "target": "node",
+            "components": {
+                "AgentSchedulingComponent": {"count" : 1},
+                "AgentExecutingComponent" : {"count" : 1}
             }
         }
-    },
-
-    "bridges" : {
-        "agent_staging_input_queue"  : { "log_level" : "debug",
-                                         "stall_hwm" : 1,
-                                         "bulk_size" : 0},
-        "agent_scheduling_queue"     : { "log_level" : "debug",
-                                         "stall_hwm" : 1,
-                                         "bulk_size" : 0},
-        "agent_executing_queue"      : { "log_level" : "debug",
-                                         "stall_hwm" : 1,
-                                         "bulk_size" : 0},
-        "agent_staging_output_queue" : { "log_level" : "debug",
-                                         "stall_hwm" : 1,
-                                         "bulk_size" : 0},
-
-        "agent_unschedule_pubsub"    : {"log_level"  : "debug",
-                                         "stall_hwm" : 1,
-                                         "bulk_size" : 0},
-        "agent_reschedule_pubsub"    : {"log_level"  : "debug",
-                                         "stall_hwm" : 1,
-                                         "bulk_size" : 0},
-
-        "log_pubsub"                 : {"log_level"  : "debug",
-                                         "stall_hwm" : 1,
-                                         "bulk_size" : 0},
-        "state_pubsub"               : {"log_level"  : "debug",
-                                         "stall_hwm" : 1,
-                                         "bulk_size" : 0},
-        "control_pubsub"             : {"log_level"  : "debug",
-                                         "stall_hwm" : 1,
-                                         "bulk_size" : 0}
-    },
-
-    "agent_name" : "agent_0",
-    "components" : {
-        "UpdateWorker"            : 1
     }
 }

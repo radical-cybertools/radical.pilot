@@ -58,9 +58,6 @@ class Default(PMGRLaunchingComponent):
     #
     def initialize_child(self):
 
-        self.register_input(rps.PMGR_LAUNCHING_PENDING, 
-                            rpc.PMGR_LAUNCHING_QUEUE, self.work)
-
         # we don't really have an output queue, as we pass control over the
         # pilot jobs to the resource management system (RM).
 
@@ -77,6 +74,9 @@ class Default(PMGRLaunchingComponent):
         self._root_dir      = "%s/../../"   % self._mod_dir  
         self._conf_dir      = "%s/configs/" % self._root_dir 
 
+        self.register_input(rps.PMGR_LAUNCHING_PENDING, 
+                            rpc.PMGR_LAUNCHING_QUEUE, self.work)
+
         # FIXME: make interval configurable
         self.register_timed_cb(self._pilot_watcher_cb, timer=10.0)
         
@@ -91,11 +91,18 @@ class Default(PMGRLaunchingComponent):
     #
     def finalize_child(self):
 
-        self._log.debug('finalize child')
         # avoid shutdown races:
         
         self.unregister_timed_cb(self._pilot_watcher_cb)
         self.unregister_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
+
+        # FIXME: always kill all saga jobs for non-final pilots at termination,
+        #        and set the pilot states to CANCELED.  This will confluct with
+        #        disconnect/reconnect semantics.
+        with self._pilots_lock:
+            pids = self._pilots.keys()
+
+        self._kill_pilots(pids)
 
         with self._cache_lock:
             for url,js in self._saga_js_cache.iteritems():
@@ -128,7 +135,7 @@ class Default(PMGRLaunchingComponent):
 
             if pmgr != self._pmgr:
                 # this request is not for us to enact
-                return
+                return True
 
             if not isinstance(pids, list):
                 pids = [pids]
@@ -144,6 +151,8 @@ class Default(PMGRLaunchingComponent):
             with self._pilots_lock:
                 for pid in pids:
                     self._pilots[pid]['pilot']['cancel_requested'] = now
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -227,41 +236,57 @@ class Default(PMGRLaunchingComponent):
                     to_cancel.append(pid)
 
         if not to_cancel:
-            return
+            return True
 
-        tc = rs.task.Container()
-        with self._pilots_lock:
+        self._kill_pilots(to_cancel)
 
-            for pid in to_cancel:
+        return True
 
-                if pid not in self._pilots:
-                    self._log.error('unknown: %s', pid)
-                    raise ValueError('unknown pilot %s' % pid)
 
-                pilot = self._pilots[pid]['pilot']
-                job   = self._pilots[pid]['job']
-                to_advance.append(pilot)
-                tc.add(job)
+    # --------------------------------------------------------------------------
+    #
+    def _kill_pilots(self, pids):
 
-        tc.cancel()
-        tc.wait()
+        if not pids:
+            return  # nothing to do
 
-        # we don't want the watcher checking for this pilot anymore
+        if not isinstance(pids, list):
+            pids = [pids]
+
+        to_advance = list()
+
+        # we don't want the watcher checking for these pilot anymore
         with self._check_lock:
-            for pid in to_cancel:
+            for pid in pids:
                 if pid in self._checking:
                     self._checking.remove(pid)
 
-        # set canceled state
-        to_advance = list()
-        with self._pilots_lock:
+        try:
+            with self._pilots_lock:
+                tc = rs.job.Container()
+                for pid in pids:
 
-            for pid in to_cancel:
+                    if pid not in self._pilots:
+                        self._log.error('unknown: %s', pid)
+                        raise ValueError('unknown pilot %s' % pid)
 
-                pilot = self._pilots[pid]['pilot']
-                to_advance.append(pilot)
+                    pilot = self._pilots[pid]['pilot']
+                    job   = self._pilots[pid]['job']
 
-        self.advance(to_advance, state=rps.CANCELED, push=False, publish=True)
+                    if pilot['state'] in rp.FINAL:
+                        continue
+
+                    to_advance.append(pilot)
+                    tc.add(job)
+
+                tc.cancel()
+                tc.wait()
+
+            # set canceled state
+            self.advance(to_advance, state=rps.CANCELED, push=False, publish=True)
+
+        except Exception as e:
+            self._log.exception('pilot kill failed')
 
 
     # --------------------------------------------------------------------------
@@ -801,24 +826,14 @@ class Default(PMGRLaunchingComponent):
         for arg in pre_bootstrap_2:
             bootstrap_args += " -w '%s'" % arg
 
-        # complete agent configuration
-        # NOTE: the agent config is really based on our own config, with 
-        #       agent specific settings merged in
-
-        agent_base_cfg = copy.deepcopy(self._cfg)
-        del(agent_base_cfg['bridges'])    # agent needs separate bridges
-        del(agent_base_cfg['components']) # agent needs separate components
-        del(agent_base_cfg['number'])     # agent counts differently
-        del(agent_base_cfg['heart'])      # agent needs separate heartbeat
-
-        ru.dict_merge(agent_cfg, agent_base_cfg, ru.PRESERVE)
-
         agent_cfg['owner']              = 'agent_0'
         agent_cfg['cores']              = number_cores
         agent_cfg['lrms']               = lrms
         agent_cfg['spawner']            = agent_spawner
         agent_cfg['scheduler']          = agent_scheduler
         agent_cfg['runtime']            = runtime
+        agent_cfg['dburl']              = str(database_url)
+        agent_cfg['session_id']         = sid
         agent_cfg['pilot_id']           = pid
         agent_cfg['logdir']             = '.'
         agent_cfg['pilot_sandbox']      = pilot_sandbox
@@ -853,6 +868,7 @@ class Default(PMGRLaunchingComponent):
 
         # Convert dict to json file
         self._log.debug("Write agent cfg to '%s'.", cfg_tmp_file)
+        self._log.debug(pprint.pformat(agent_cfg))
         ru.write_json(agent_cfg, cfg_tmp_file)
 
         ret['ft'].append({'src' : cfg_tmp_file, 
