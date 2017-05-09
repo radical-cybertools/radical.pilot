@@ -31,6 +31,7 @@ if __name__ == "__main__":
     NUMBER_CHAINS =
     CU_A_EXECUTABLE =
     CU_B_EXECUTABLE =
+    QUEUE = None
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
