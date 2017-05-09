@@ -4,7 +4,6 @@ __license__   = "MIT"
 
 
 import os
-import netifaces
 
 import radical.utils as ru
 
@@ -43,15 +42,10 @@ class LRMS(object):
     the LoadLevelerLRMS (which describes the BG/Q).
 
     The LRMS will reserve nodes for the agent execution, by deriving the
-    respectively required node count from the config's agent_layout section.
+    respectively required node count from the config's 'agents' section.
     Those nodes will be listed in LRMS.agent_node_list. Schedulers MUST NOT use
     the agent_node_list to place compute units -- CUs are limited to the nodes
     in LRMS.node_list.
-
-    Additionally, the LRMS can inform the agent about the current hostname
-    (LRMS.hostname()) and ip (LRMS.hostip()).  Once we start to spread the agent
-    over some compute nodes, we may want to block the respective nodes on LRMS
-    level, so that is only reports the remaining nodes to the scheduler.
     """
 
     # TODO: Core counts dont have to be the same number for all hosts.
@@ -68,11 +62,12 @@ class LRMS(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg, session):
 
         self.name            = type(self).__name__
         self._cfg            = cfg
-        self._log            = logger
+        self._session        = session
+        self._log            = self._session._log
         self.requested_cores = self._cfg['cores']
 
         self._log.info("Configuring LRMS %s.", self.name)
@@ -84,29 +79,32 @@ class LRMS(object):
         self.agent_nodes     = {}
         self.cores_per_node  = None
 
-        # The LRMS will possibly need to reserve nodes for the agent, according to the
-        # agent layout.  We dig out the respective requirements from the config
-        # right here.
+        # The LRMS will possibly need to reserve nodes for the agent, according
+        # to the agent layout.  We dig out the respective requirements from the
+        # config right here.
         self._agent_reqs = []
-        layout = self._cfg['agent_layout']
+        agents = self._cfg.get('agents', {})
+
         # FIXME: this loop iterates over all agents *defined* in the layout, not
         #        over all agents which are to be actually executed, thus
-        #        potentially reserving too many nodes.
-        for worker in layout:
-            target = layout[worker].get('target')
+        #        potentially reserving too many nodes.a
+        # NOTE:  this code path is *within* the agent, so at least agent_0
+        #        cannot possibly land on a different node.
+        for agent in agents:
+            target = agents[agent].get('target')
             # make sure that the target either 'local', which we will ignore,
             # or 'node'.
             if target == 'local':
                 pass # ignore that one
             elif target == 'node':
-                self._agent_reqs.append(worker)
+                self._agent_reqs.append(agent)
             else :
                 raise ValueError("ill-formatted agent target '%s'" % target)
 
         # We are good to get rolling, and to detect the runtime environment of
         # the local LRMS.
         self._configure()
-        logger.info("Discovered execution environment: %s", self.node_list)
+        self._log.info("Discovered execution environment: %s", self.node_list)
 
         # Make sure we got a valid nodelist and a valid setting for
         # cores_per_node
@@ -118,9 +116,9 @@ class LRMS(object):
         # the first couple of nodes from the nodelist as a fallback.
         if self._agent_reqs and not self.agent_nodes:
             self._log.info('Determine list of agent nodes generically.')
-            for worker in self._agent_reqs:
+            for agent in self._agent_reqs:
                 # Get a node from the end of the node list
-                self.agent_nodes[worker] = self.node_list.pop()
+                self.agent_nodes[agent] = self.node_list.pop()
                 # If all nodes are taken by workers now, we can safely stop,
                 # and let the raise below do its thing.
                 if not self.node_list:
@@ -189,7 +187,7 @@ class LRMS(object):
     # This class-method creates the appropriate sub-class for the LRMS.
     #
     @classmethod
-    def create(cls, name, cfg, logger):
+    def create(cls, name, cfg, session):
 
         from .ccm         import CCM        
         from .fork        import Fork       
@@ -219,10 +217,10 @@ class LRMS(object):
                 RM_NAME_YARN        : Yarn,
                 RM_NAME_SPARK       : Spark
             }[name]
-            return impl(cfg, logger)
+            return impl(cfg, session)
 
         except KeyError:
-            logger.exception('lrms construction error')
+            session._log.exception('lrms construction error')
             raise RuntimeError("LRMS type '%s' unknown or defunct" % name)
 
 
@@ -255,84 +253,7 @@ class LRMS(object):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        raise NotImplementedError("_Configure not implemented for LRMS type: %s." % self.name)
-
-
-    # --------------------------------------------------------------------------
-    #
-    @staticmethod
-    def hostip(req=None, logger=None):
-        """
-        Look up the ip number for a given requested interface name.
-        If interface is not given, do some magic.
-        """
-
-        AF_INET = netifaces.AF_INET
-
-        # We create a ordered preference list, consisting of:
-        #   - given arglist
-        #   - white list (hardcoded preferred interfaces)
-        #   - black_list (hardcoded unfavorable interfaces)
-        #   - all others (whatever is not in the above)
-        # Then this list is traversed, we check if the interface exists and has an
-        # IP address.  The first match is used.
-
-        if req: 
-            if not isinstance(req, list):
-                req = [req]
-        else:
-            req = []
-
-        white_list = [
-                'ipogif0', # Cray's
-                'br0',     # SuperMIC
-                'eth0',    # desktops etc.
-                'wlan0'    # laptops etc.
-                ]
-
-        black_list = [
-                'lo',      # takes the 'inter' out of the 'net'
-                'sit0'     # ?
-                ]
-
-        all  = netifaces.interfaces()
-        rest = [iface for iface in all \
-                       if iface not in req and \
-                          iface not in white_list and \
-                          iface not in black_list]
-
-        preflist = req + white_list + black_list + rest
-
-        for iface in preflist:
-
-            if iface not in all:
-                if logger:
-                    logger.debug('check iface %s: does not exist', iface)
-                continue
-
-            info = netifaces.ifaddresses(iface)
-            if AF_INET not in info:
-                if logger:
-                    logger.debug('check iface %s: no information', iface)
-                continue
-
-            if not len(info[AF_INET]):
-                if logger:
-                    logger.debug('check iface %s: insufficient information', iface)
-                continue
-
-            if not info[AF_INET][0].get('addr'):
-                if logger:
-                    logger.debug('check iface %s: disconnected', iface)
-                continue
-
-          
-            ip = info[AF_INET][0].get('addr')
-            logger.debug('check iface %s: ip is %s', iface, ip)
-            if ip:
-                return ip
-
-        raise RuntimeError('could not determine ip addresses on %s' % preflist)
+        raise NotImplementedError("_Configure missing for %s" % self.name)
 
 
 # ------------------------------------------------------------------------------

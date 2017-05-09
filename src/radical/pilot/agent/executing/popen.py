@@ -29,29 +29,28 @@ class Popen(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        AgentExecutingComponent.__init__ (self, cfg)
+        AgentExecutingComponent.__init__ (self, cfg, session)
+
+        self._watcher   = None
+        self._terminate = threading.Event()
 
 
     # --------------------------------------------------------------------------
     #
     def initialize_child(self):
 
-      # self.declare_input (rps.AGENT_EXECUTING_PENDING, rpc.AGENT_EXECUTING_QUEUE)
-      # self.declare_worker(rps.AGENT_EXECUTING_PENDING, self.work)
+        self._pwd = os.getcwd()
 
-        self.declare_input (rps.EXECUTING_PENDING, rpc.AGENT_EXECUTING_QUEUE)
-        self.declare_worker(rps.EXECUTING_PENDING, self.work)
+        self.register_input(rps.AGENT_EXECUTING_PENDING,
+                            rpc.AGENT_EXECUTING_QUEUE, self.work)
 
-        self.declare_output(rps.AGENT_STAGING_OUTPUT_PENDING, rpc.AGENT_STAGING_OUTPUT_QUEUE)
+        self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
+                             rpc.AGENT_STAGING_OUTPUT_QUEUE)
 
-        self.declare_publisher ('unschedule', rpc.AGENT_UNSCHEDULE_PUBSUB)
-        self.declare_publisher ('state',      rpc.AGENT_STATE_PUBSUB)
-
-        # all components use the command channel for control messages
-        self.declare_publisher ('command', rpc.AGENT_COMMAND_PUBSUB)
-        self.declare_subscriber('command', rpc.AGENT_COMMAND_PUBSUB, self.command_cb)
+        self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
         self._cancel_lock    = threading.RLock()
         self._cus_to_cancel  = list()
@@ -61,29 +60,25 @@ class Popen(AgentExecutingComponent) :
         self._pilot_id = self._cfg['pilot_id']
 
         # run watcher thread
-        self._terminate = threading.Event()
-        self._watcher   = threading.Thread(target=self._watch, name="Watcher")
+        self._watcher = threading.Thread(target=self._watch, name="Watcher")
         self._watcher.daemon = True
         self._watcher.start ()
 
         # The AgentExecutingComponent needs the LaunchMethods to construct
         # commands.
         self._task_launcher = rp.agent.LM.create(
-                name   = self._cfg.get('task_launch_method'),
-                cfg    = self._cfg,
-                logger = self._log)
+                name    = self._cfg.get('task_launch_method'),
+                cfg     = self._cfg,
+                session = self._session)
 
         self._mpi_launcher = rp.agent.LM.create(
-                name   = self._cfg.get('mpi_launch_method'),
-                cfg    = self._cfg,
-                logger = self._log)
-
-        # communicate successful startup
-        self.publish('command', {'cmd' : 'alive',
-                                 'arg' : self.cname})
+                name    = self._cfg.get('mpi_launch_method'),
+                cfg     = self._cfg,
+                session = self._session)
 
         self._cu_environment = self._populate_cu_environment()
 
+        self.gtod   = "%s/gtod" % self._pwd
         self.tmpdir = tempfile.gettempdir()
 
         # if we need to transplant any original env into the CU, we dig the
@@ -102,20 +97,9 @@ class Popen(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
-
-        # terminate watcher thread
-        self._terminate.set()
-        self._watcher.join()
-
-        # communicate finalization
-        self.publish('command', {'cmd' : 'final',
-                                 'arg' : self.cname})
-
-
-    # --------------------------------------------------------------------------
-    #
     def command_cb(self, topic, msg):
+
+        self._log.info('command_cb [%s]: %s', topic, msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -125,6 +109,8 @@ class Popen(AgentExecutingComponent) :
             self._log.info("cancel unit command (%s)" % arg)
             with self._cancel_lock:
                 self._cus_to_cancel.append(arg)
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -171,10 +157,24 @@ class Popen(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def work(self, cu):
+    def work(self, units):
 
-      # self.advance(cu, rps.AGENT_EXECUTING, publish=True, push=False)
-        self.advance(cu, rps.EXECUTING, publish=True, push=False)
+        if not isinstance(units, list):
+            units = [units]
+
+        self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
+
+        ru.raise_on('work bulk')
+
+        for unit in units:
+            self._handle_unit(unit)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _handle_unit(self, cu):
+
+        ru.raise_on('work unit')
 
         try:
             if cu['description']['mpi']:
@@ -188,7 +188,7 @@ class Popen(AgentExecutingComponent) :
             self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
             assert(cu['opaque_slots']) # FIXME: no assert, but check
-            self._prof.prof('exec', msg='unit launch', uid=cu['_id'])
+            self._prof.prof('exec', msg='unit launch', uid=cu['uid'])
 
             # Start a new subprocess to launch the unit
             self.spawn(launcher=launcher, cu=cu)
@@ -204,7 +204,7 @@ class Popen(AgentExecutingComponent) :
 
             # Free the Slots, Flee the Flots, Ree the Frots!
             if cu['opaque_slots']:
-                self.publish('unschedule', cu)
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
 
@@ -213,42 +213,56 @@ class Popen(AgentExecutingComponent) :
     #
     def spawn(self, launcher, cu):
 
-        self._prof.prof('spawn', msg='unit spawn', uid=cu['_id'])
+        self._prof.prof('spawn', msg='unit spawn', uid=cu['uid'])
 
-        if False:
-            cu_tmpdir = '%s/%s' % (self.tmpdir, cu['_id'])
-        else:
-            cu_tmpdir = cu['workdir']
+        # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
+        #       class definition.
+        sandbox = '%s/%s' % (self._pwd, cu['uid'])
 
-        rpu.rec_makedir(cu_tmpdir)
-        launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % cu_tmpdir
+        # make sure the sandbox exists
+        rpu.rec_makedir(sandbox)
+        launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % sandbox
+
+        # prep stdout/err so that we can append w/o checking for None
+        cu['stdout'] = ''
+        cu['stderr'] = ''
+
         self._log.debug("Created launch_script: %s", launch_script_name)
 
         with open(launch_script_name, "w") as launch_script:
             launch_script.write('#!/bin/sh\n\n')
 
-            if 'RADICAL_PILOT_PROFILE' in os.environ:
-                launch_script.write("echo script start_script `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
-            launch_script.write('\n# Change to working directory for unit\ncd %s\n' % cu_tmpdir)
-            if 'RADICAL_PILOT_PROFILE' in os.environ:
-                launch_script.write("echo script after_cd `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
-
             # Create string for environment variable setting
             env_string = ''
-            if cu['description']['environment']:
-                for key,val in cu['description']['environment'].iteritems():
-                    env_string += 'export "%s=%s"\n' % (key, val)
-            env_string += "export RP_SESSION_ID=%s\n" % self._cfg['session_id']
-            env_string += "export RP_PILOT_ID=%s\n"   % self._cfg['pilot_id']
-            env_string += "export RP_AGENT_ID=%s\n"   % self._cfg['agent_name']
-            env_string += "export RP_SPAWNER_ID=%s\n" % self.cname
-            env_string += "export RP_UNIT_ID=%s\n"    % cu['_id']
+            env_string += 'export RP_SESSION_ID="%s"\n' % self._cfg['session_id']
+            env_string += 'export RP_PILOT_ID="%s"\n'   % self._cfg['pilot_id']
+            env_string += 'export RP_AGENT_ID="%s"\n'   % self._cfg['agent_name']
+            env_string += 'export RP_SPAWNER_ID="%s"\n' % self.uid
+            env_string += 'export RP_UNIT_ID="%s"\n'    % cu['uid']
+            env_string += 'export RP_GTOD="%s"\n'       % self.gtod
+            env_string += 'export RP_PROF="%s/PROF"\n'  % sandbox
+            env_string += 'export RP_TMP="%s"\n'        % self._cu_tmp
 
             # also add any env vars requested for export by the resource config
             for k,v in self._env_cu_export.iteritems():
                 env_string += "export %s=%s\n" % (k,v)
 
-            launch_script.write('# Environment variables\n%s\n' % env_string)
+            # also add any env vars requested in the unit description
+            if cu['description']['environment']:
+                for key,val in cu['description']['environment'].iteritems():
+                    env_string += 'export "%s=%s"\n' % (key, val)
+
+            launch_script.write('\n# Environment variables\n%s\n' % env_string)
+            launch_script.write('\ntouch $RP_PROF\n')
+
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,start_script," >> $RP_PROF\n' %  \
+                                    (cu['uid'], rps.AGENT_EXECUTING))
+
+            launch_script.write('\n# Change to unit sandbox\ncd %s\n' % sandbox)
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,after_cd," >> $RP_PROF\n' %  \
+                                    (cu['uid'], rps.AGENT_EXECUTING))
 
             # Before the Big Bang there was nothing
             if self._cfg.get('cu_pre_exec'):
@@ -263,12 +277,14 @@ class Popen(AgentExecutingComponent) :
                 else:
                     pre_exec_string += "%s\n" % cu['description']['pre_exec']
                 # Note: extra spaces below are for visual alignment
-                launch_script.write("# Pre-exec commands\n")
+                launch_script.write("\n# Pre-exec commands\n")
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write("echo pre  start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+                    launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,pre_start," >> $RP_PROF\n' %  \
+                                        (cu['uid'], rps.AGENT_EXECUTING))
                 launch_script.write(pre_exec_string)
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+                    launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,pre_stop," >> $RP_PROF\n' %  \
+                                        (cu['uid'], rps.AGENT_EXECUTING))
 
             # The actual command line, constructed per launch-method
             try:
@@ -282,11 +298,12 @@ class Popen(AgentExecutingComponent) :
                 self._log.exception(msg)
                 raise RuntimeError(msg)
 
-            launch_script.write("# The command to run\n")
+            launch_script.write("\n# The command to run\n")
             launch_script.write("%s\n" % launch_command)
             launch_script.write("RETVAL=$?\n")
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                launch_script.write("echo script after_exec `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+                launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,after_exec," >> $RP_PROF\n' %  \
+                                    (cu['uid'], rps.AGENT_EXECUTING))
 
             # After the universe dies the infrared death, there will be nothing
             if cu['description']['post_exec']:
@@ -296,51 +313,52 @@ class Popen(AgentExecutingComponent) :
                         post_exec_string += "%s\n" % elem
                 else:
                     post_exec_string += "%s\n" % cu['description']['post_exec']
-                launch_script.write("# Post-exec commands\n")
+                launch_script.write("\n# Post-exec commands\n")
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write("echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+                    launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,post_start," >> $RP_PROF\n' %  \
+                                        (cu['uid'], rps.AGENT_EXECUTING))
                 launch_script.write('%s\n' % post_exec_string)
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+                    launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,post_stop," >> $RP_PROF\n' %  \
+                                        (cu['uid'], rps.AGENT_EXECUTING))
 
-            if self._cfg.get('cu_post_exec'):
-                for val in self._cfg['cu_post_exec']:
-                    launch_script.write("%s\n"  % val)
-
-            launch_script.write("# Exit the script with the return code from the command\n")
+            launch_script.write("\n# Exit the script with the return code from the command\n")
             launch_script.write("exit $RETVAL\n")
 
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
-        self._prof.prof('command', msg='launch script constructed', uid=cu['_id'])
+        self._prof.prof('command', msg='launch script constructed', uid=cu['uid'])
+
+        # prepare stdout/stderr
+        stdout_file = cu['description'].get('stdout') or 'STDOUT'
+        stderr_file = cu['description'].get('stderr') or 'STDERR'
+
+        cu['stdout_file'] = os.path.join(sandbox, stdout_file)
+        cu['stderr_file'] = os.path.join(sandbox, stderr_file)
 
         _stdout_file_h = open(cu['stdout_file'], "w")
         _stderr_file_h = open(cu['stderr_file'], "w")
-        self._prof.prof('command', msg='stdout and stderr files created', uid=cu['_id'])
+        self._prof.prof('command', msg='stdout and stderr files created', uid=cu['uid'])
 
-        self._log.info("Launching unit %s via %s in %s", cu['_id'], cmdline, cu_tmpdir)
+        self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, sandbox)
 
-        proc = subprocess.Popen(args               = cmdline,
-                                bufsize            = 0,
-                                executable         = None,
-                                stdin              = None,
-                                stdout             = _stdout_file_h,
-                                stderr             = _stderr_file_h,
-                                preexec_fn         = None,
-                                close_fds          = True,
-                                shell              = True,
-                                cwd                = cu_tmpdir,
-                              # env                = self._cu_environment,
-                                universal_newlines = False,
-                                startupinfo        = None,
-                                creationflags      = 0)
+        cu['proc'] = subprocess.Popen(args               = cmdline,
+                                      bufsize            = 0,
+                                      executable         = None,
+                                      stdin              = None,
+                                      stdout             = _stdout_file_h,
+                                      stderr             = _stderr_file_h,
+                                      preexec_fn         = None,
+                                      close_fds          = True,
+                                      shell              = True,
+                                      cwd                = sandbox,
+                                    # env                = self._cu_environment,
+                                      universal_newlines = False,
+                                      startupinfo        = None,
+                                      creationflags      = 0)
 
-        self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['_id'])
-
-        cu['started'] = time.time()
-        cu['proc']    = proc
-
+        self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['uid'])
         self._watch_queue.put(cu)
 
 
@@ -375,7 +393,7 @@ class Popen(AgentExecutingComponent) :
                 # add all cus we found to the watchlist
                 for cu in cus :
 
-                    self._prof.prof('passed', msg="ExecWatcher picked up unit", uid=cu['_id'])
+                    self._prof.prof('passed', msg="ExecWatcher picked up unit", uid=cu['uid'])
                     self._cus_to_watch.append (cu)
 
                 # check on the known cus.
@@ -406,7 +424,7 @@ class Popen(AgentExecutingComponent) :
             if exit_code is None:
                 # Process is still running
 
-                if cu['_id'] in self._cus_to_cancel:
+                if cu['uid'] in self._cus_to_cancel:
 
                     # FIXME: there is a race condition between the state poll
                     # above and the kill command below.  We probably should pull
@@ -418,45 +436,44 @@ class Popen(AgentExecutingComponent) :
                     cu['proc'].wait() # make sure proc is collected
 
                     with self._cancel_lock:
-                        self._cus_to_cancel.remove(cu['_id'])
+                        self._cus_to_cancel.remove(cu['uid'])
 
-                    self._prof.prof('final', msg="execution canceled", uid=cu['_id'])
+                    self._prof.prof('final', msg="execution canceled", uid=cu['uid'])
 
                     del(cu['proc'])  # proc is not json serializable
-                    self.publish('unschedule', cu)
+                    self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
                     self.advance(cu, rps.CANCELED, publish=True, push=False)
 
                     # we don't need to watch canceled CUs
                     self._cus_to_watch.remove(cu)
 
             else:
-                self._prof.prof('exec', msg='execution complete', uid=cu['_id'])
+                self._prof.prof('exec', msg='execution complete', uid=cu['uid'])
 
                 # make sure proc is collected
                 cu['proc'].wait()
 
                 # we have a valid return code -- unit is final
                 action += 1
-                self._log.info("Unit %s has return code %s.", cu['_id'], exit_code)
+                self._log.info("Unit %s has return code %s.", cu['uid'], exit_code)
 
                 cu['exit_code'] = exit_code
-                cu['finished']  = now
 
                 # Free the Slots, Flee the Flots, Ree the Frots!
                 self._cus_to_watch.remove(cu)
                 del(cu['proc'])  # proc is not json serializable
-                self.publish('unschedule', cu)
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
                 if exit_code != 0:
                     # The unit failed - fail after staging output
-                    self._prof.prof('final', msg="execution failed", uid=cu['_id'])
+                    self._prof.prof('final', msg="execution failed", uid=cu['uid'])
                     cu['target_state'] = rps.FAILED
 
                 else:
                     # The unit finished cleanly, see if we need to deal with
                     # output data.  We always move to stageout, even if there are no
                     # directives -- at the very least, we'll upload stdout/stderr
-                    self._prof.prof('final', msg="execution succeeded", uid=cu['_id'])
+                    self._prof.prof('final', msg="execution succeeded", uid=cu['uid'])
                     cu['target_state'] = rps.DONE
 
                 self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)

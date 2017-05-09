@@ -6,14 +6,13 @@ __license__   = "MIT"
 import os
 import shutil
 
+import saga          as rs
 import radical.utils as ru
 
 from .... import pilot     as rp
 from ...  import utils     as rpu
 from ...  import states    as rps
 from ...  import constants as rpc
-
-import saga
 
 from .base import AgentStagingInputComponent
 
@@ -31,157 +30,156 @@ class Default(AgentStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        rpu.Component.__init__(self, rpc.AGENT_STAGING_INPUT_COMPONENT, cfg)
-
-
-    # --------------------------------------------------------------------------
-    #
-    @classmethod
-    def create(cls, cfg):
-
-        return cls(cfg)
+        AgentStagingInputComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
     def initialize_child(self):
 
-        self.declare_input (rps.AGENT_STAGING_INPUT_PENDING, rpc.AGENT_STAGING_INPUT_QUEUE)
-        self.declare_worker(rps.AGENT_STAGING_INPUT_PENDING, self.work)
+        self._pwd = os.getcwd()
 
-        self.declare_output(rps.ALLOCATING_PENDING, rpc.AGENT_SCHEDULING_QUEUE)
+        self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
+                            rpc.AGENT_STAGING_INPUT_QUEUE, self.work)
 
-        self.declare_publisher('state', rpc.AGENT_STATE_PUBSUB)
-
-        # all components use the command channel for control messages
-        self.declare_publisher ('command', rpc.AGENT_COMMAND_PUBSUB)
-
-        # communicate successful startup
-        self.publish('command', {'cmd' : 'alive',
-                                 'arg' : self.cname})
+        self.register_output(rps.AGENT_SCHEDULING_PENDING, 
+                             rpc.AGENT_SCHEDULING_QUEUE)
 
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
+    def work(self, units):
 
-        # communicate finalization
-        self.publish('command', {'cmd' : 'final',
-                                 'arg' : self.cname})
+        if not isinstance(units, list):
+            units = [units]
 
+        self.advance(units, rps.AGENT_STAGING_INPUT, publish=True, push=False)
+
+        ru.raise_on('work bulk')
+
+        # we first filter out any units which don't need any input staging, and
+        # advance them again as a bulk.  We work over the others one by one, and
+        # advance them individually, to avoid stalling from slow staging ops.
+        
+        no_staging_units = list()
+        staging_units    = list()
+
+        for unit in units:
+
+            # check if we have any staging directives to be enacted in this
+            # component
+            actionables = list()
+            for sd in unit['description'].get('input_staging', []):
+
+                src    = ru.Url(sd['source'])
+                tgt    = ru.Url(sd['target'])
+                action = sd['action']
+                flags  = sd['flags']
+                did    = sd['uid']
+
+                if action in [rpc.LINK, rpc.COPY, rpc.MOVE]:
+                    actionables.append([src, tgt, action, flags, did])
+
+            if actionables:
+                staging_units.append([unit, actionables])
+            else:
+                no_staging_units.append(unit)
+
+
+        if no_staging_units:
+            self.advance(no_staging_units, rps.AGENT_SCHEDULING_PENDING, 
+                         publish=True, push=True)
+
+        for unit,actionables in staging_units:
+            self._handle_unit(unit, actionables)
 
 
     # --------------------------------------------------------------------------
     #
-    def work(self, cu):
+    def _handle_unit(self, unit, actionables):
 
-        self.advance(cu, rps.AGENT_STAGING_INPUT, publish=True, push=False)
-        self._log.info('handle %s' % cu['_id'])
+        ru.raise_on('work unit')
 
-        workdir      = os.path.join(self._cfg['workdir'], '%s' % cu['_id'])
-        gtod         = os.path.join(self._cfg['workdir'], 'gtod')
-        staging_area = os.path.join(self._cfg['workdir'], self._cfg['staging_area'])
-        staging_ok   = True
+        uid = unit['uid']
 
-        cu['workdir']     = workdir
-        cu['stdout']      = ''
-        cu['stderr']      = ''
-        cu['opaque_clot'] = None
-        # TODO: See if there is a more central place to put this
-        cu['gtod']        = gtod
+        # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
+        #       class definition.
+        sandbox = '%s/%s' % (self._pwd, uid)
 
-        stdout_file       = cu['description'].get('stdout')
-        stdout_file       = stdout_file if stdout_file else 'STDOUT'
-        stderr_file       = cu['description'].get('stderr')
-        stderr_file       = stderr_file if stderr_file else 'STDERR'
+        # we have actionables, thus we need sandbox and staging area
+        # TODO: optimization: sandbox,staging_area might already exist
+        staging_area = '%s/%s' % (self._pwd, self._cfg['staging_area'])
 
-        cu['stdout_file'] = os.path.join(workdir, stdout_file)
-        cu['stderr_file'] = os.path.join(workdir, stderr_file)
+        self._prof.prof("create  sandbox", uid=uid, msg=sandbox)
+        rpu.rec_makedir(sandbox)
+        self._prof.prof("created sandbox", uid=uid)
 
-        # create unit workdir
-        rpu.rec_makedir(workdir)
-        self._prof.prof('unit mkdir', uid=cu['_id'])
+        self._prof.prof("create  staging_area", uid=uid, msg=staging_area)
+        # FIXME: this is only required once
+        rpu.rec_makedir(staging_area)
+        self._prof.prof("created staging_area", uid=uid)
 
-        try:
-            for directive in cu['Agent_Input_Directives']:
+        # Loop over all transfer directives and execute them.
+        for src, tgt, action, flags, did in actionables:
 
-                self._prof.prof('begin', uid=cu['_id'], msg=str(directive['_id']))
+            self._prof.prof('begin', uid=uid, msg=did)
 
-                # Perform input staging
-                self._log.info("unit input staging directives %s for cu: %s to %s",
-                               directive, cu['_id'], workdir)
+            # Handle special 'staging' schema
+            if src.schema == self._cfg['staging_schema']:
+                # remove leading '/' to convert into rel path
+                source = os.path.join(staging_area, src.path[1:])
+            elif action != rpc.TRANSFER:
+                source = src.path
+            else:
+                source = src
 
-                # Convert the source_url into a SAGA Url object
-                source_url = ru.Url(directive['source'])
+            target = os.path.join(sandbox, tgt.path)
 
-                # Handle special 'staging' scheme
-                if source_url.scheme == self._cfg['staging_scheme']:
-                    self._log.info('Operating from staging')
-                    # Remove the leading slash to get a relative path from the staging area
-                    rel2staging = source_url.path.split('/',1)[1]
-                    source = os.path.join(staging_area, rel2staging)
-                elif directive['action'] != rpc.TRANSFER:
-                    self._log.info('Operating from absolute path')
-                    source = source_url.path
-                elif directive['action'] == rpc.TRANSFER:
-                    self._log.info('Operating from remote location')
-                    source = directive['source']
+            if rpc.CREATE_PARENTS in flags:
+                tgtdir = os.path.dirname(target)
+                if tgtdir != sandbox:
+                    # TODO: optimization point: create each dir only once
+                    self._log.debug("mkdir %s" % tgtdir)
+                    rpu.rec_makedir(tgtdir)
 
-                # Get the target from the directive and convert it to the location
-                # in the workdir
-                target = directive['target']
-                abs_target = os.path.join(workdir, target)
+            self._log.info("%sing %s to %s", action, src, tgt)
 
-                # Create output directory in case it doesn't exist yet
-                rpu.rec_makedir(os.path.dirname(abs_target))
+            # for local files, check for existence first
+            if action in [rpc.LINK, rpc.COPY, rpc.MOVE]:
+                if not os.path.isfile(source):
+                    # check if NON_FATAL flag is set, in that case ignore
+                    # missing files
+                    if rpc.NON_FATAL in flags:
+                        self._log.warn("ignoring that source %s does not exist.", source)
+                        continue
+                    else:
+                        log_message = "source %s does not exist." % source
+                        self._log.error(log_message)
+                        raise Exception(log_message)
 
-                self._log.info("Going to '%s' %s to %s", directive['action'], source, abs_target)
-
-                # For local files, check for existence first
-                if directive['action'] in [rpc.LINK, rpc.COPY, rpc.MOVE]:
-                    if not os.path.isfile(source):
-                        # check if NON_FATAL flag is set, in that case ignore
-                        # missing files
-                        if rpc.NON_FATAL in directive['flags']:
-                            self._log.warn("Ignoring that source %s does not exists.", source)
-                            continue
-                        else:
-                            log_message = "Source %s does not exists." % source
-                            self._log.error(log_message)
-                            raise Exception(log_message)
-
-                if   directive['action'] == rpc.LINK: os.symlink     (source, abs_target)
-                elif directive['action'] == rpc.COPY: shutil.copyfile(source, abs_target)
-                elif directive['action'] == rpc.MOVE: shutil.move    (source, abs_target)
-                elif directive['action'] == rpc.TRANSFER:
-                    srm_dir = saga.filesystem.Directory('srm://proxy/?SFN=bogus')
+            if   action == rpc.LINK: os.symlink     (source, target)
+            elif action == rpc.COPY: shutil.copyfile(source, target)
+            elif action == rpc.MOVE: shutil.move    (source, target)
+            elif action == rpc.TRANSFER:
+                # we only handle srm staging right now -- other TRANSFER
+                # directives are left to umgr input staging
+                if src.schema == 'srm':
+                    srm_dir = rs.filesystem.Directory('srm://proxy/?SFN=bogus')
                     if srm_dir.exists(source):
-                        tgt_url = saga.Url(abs_target)
+                        tgt_url = rs.Url(target)
                         tgt_url.schema = 'file'
                         srm_dir.copy(source, tgt_url)
                     else:
-                        raise saga.exceptions.DoesNotExist("%s does not exist" % source)
+                        raise rs.exceptions.DoesNotExist("%s does not exist" % source)
+            else:
+                raise NotImplementedError('unsupported action %s' % action)
 
-                self._prof.prof('end', uid=cu['_id'], msg=str(directive['_id']))
+            self._prof.prof('end', uid=uid, msg=did)
 
-                log_message = "%s'ed %s to %s - success" % (directive['action'], source, abs_target)
-                self._log.info(log_message)
-
-
-        except Exception as e:
-            self._log.exception("staging input failed -> unit failed")
-            staging_ok = False
-
-        # TODO: don't raise for non-fatal staging
-
-        # Agent input staging is done (or failed)
-        if staging_ok:
-          # self.advance(cu, rps.AGENT_SCHEDULING_PENDING, publish=True, push=True)
-            self.advance(cu, rps.ALLOCATING_PENDING, publish=True, push=True)
-        else:
-            self.advance(cu, rps.FAILED, publish=True, push=False)
+        # all staging is done -- pass on to the scheduler
+        self.advance(unit, rps.AGENT_SCHEDULING_PENDING, publish=True, push=True)
 
 
 # ------------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 
 {
-    "bigred2": {
+    "bigred2_aprun": {
         "description"                 : "Indiana University's Cray XE6/XK7 cluster (https://kb.iu.edu/d/bcqt).",
         "notes"                       : "None",
         "schemas"                     : ["ssh"],
@@ -10,7 +10,6 @@
             "filesystem_endpoint"     : "sftp://bigred2.uits.iu.edu/"
         },
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "APRUN",
@@ -21,10 +20,10 @@
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_br2",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
-    "bigred2_ccm": {
+    "bigred2_ccm_ssh": {
         "description"                 : "Indiana University's Cray XE6/XK7 cluster in Cluster Compatibility Mode (CCM) (https://kb.iu.edu/d/bcqt).",
         "notes"                       : "None",
         "schemas"                     : ["ssh"],
@@ -34,7 +33,6 @@
             "filesystem_endpoint"     : "sftp://bigred2.uits.iu.edu/"
         },
         "lrms"                        : "CCM",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -54,7 +52,8 @@
         "rp_version"                  : "local",
         "virtenv"                     : "%(global_sandbox)s/ve_br2",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "python_dist"                 : "default"
     }
 }
+

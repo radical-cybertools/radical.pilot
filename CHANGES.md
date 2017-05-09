@@ -314,7 +314,7 @@
   - only mkdir in input staging controller when we intent to stage data 
   - protect agent cb invokation by lock
   - (re)add command line for profile fetching 
-  - cleanup of data staging, with better support for different schemes
+  - cleanup of data staging, with better support for different schemas
     (incl. GlobusOnline)
   - work toward better OSG support
   - Use netifaces for ip address mangling. 

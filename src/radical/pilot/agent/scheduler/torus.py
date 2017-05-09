@@ -32,12 +32,12 @@ class Torus(AgentSchedulingComponent):
 
 
     # --------------------------------------------------------------------------
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
         self.slots            = None
         self._cores_per_node  = None
 
-        AgentSchedulingComponent.__init__(self, cfg)
+        AgentSchedulingComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
