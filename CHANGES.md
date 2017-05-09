@@ -5,7 +5,7 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
-0.45.2 Release                                                        2017-05-09
+0.45.3 Release                                                        2017-05-09
 --------------------------------------------------------------------------------
 
   - Documentation update for the BW tutorial
