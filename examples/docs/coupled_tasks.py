@@ -31,7 +31,7 @@ if __name__ == "__main__":
     CU_A_CORES = 
     CU_B_CORES = 
     CU_C_CORES = 
-
+    QUEUE = None
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -66,6 +66,7 @@ if __name__ == "__main__":
         pdesc.runtime  = 30 # minutes
         pdesc.cores    = PILOT_CORES
         pdesc.cleanup  = True
+        pdesc.queue    = QUEUE
 
         # submit the pilot.
         print "Submitting Compute Pilot to Pilot Manager ..."
