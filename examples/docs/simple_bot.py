@@ -28,7 +28,8 @@ if __name__ == "__main__":
     PILOT_CORES = 2
     BAG_SIZE = 10 # The number of units
     CU_CORES = 1 # The cores each CU will take.
- 
+    QUEUE = None
+    
     # we use a reporter class for nicer output
     report = ru.LogReporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
@@ -58,6 +59,7 @@ if __name__ == "__main__":
         pdesc.cores    =  PILOT_CORES
         pdesc.runtime  = 30    # minutes
         pdesc.cleanup  = True  # clean pilot sandbox and database entries
+        pdesc.queue = QUEUE
 
         # submit the pilot.
         report.header("Submitting Compute Pilot to Pilot Manager ...")
