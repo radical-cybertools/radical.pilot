@@ -9,6 +9,7 @@ import socket
 import random
 import radical.utils as ru
 from time import time
+from time import  sleep
 import datetime
 
 
@@ -182,7 +183,7 @@ class Kafka(LaunchMethod):
                 if jpos[0].find('jre') != -1:
                     java_home = jpos[0][:jpos[0].find('jre')]
                 else:
-                    java_home = jpos[0]       
+                    java_home = jpos[0]
         else:
             if not java_home:
                 try:
@@ -242,6 +243,8 @@ class Kafka(LaunchMethod):
             os.system(kafka_home + '/bin/zookeeper-server-start.sh ' + ' -daemon  ' + zk_properties_path)
         except Exception as e:
             raise RuntimeError("Zookeeper service failed to start: %s " % e)
+
+        sleep(5)
 
         ## start kafka server:
         logger.info('Starting Kafka service..')
