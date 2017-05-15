@@ -608,10 +608,6 @@ class Default(PMGRLaunchingComponent):
         candidate_hosts = pilot['description']['candidate_hosts']
 
         # make sure that mandatory args are known
-        print 'mas: %s' % mandatory_args
-        import sys
-        sys.stdout.write('mas: %s\n' % mandatory_args)
-        sys.stdout.flush()
         for ma in mandatory_args:
             if pilot['description'].get(ma) is None:
                 raise  ValueError('attribute "%s" is required for "%s"' \
