@@ -126,16 +126,15 @@ class RoundRobin(UMGRSchedulingComponent):
                     self._idx += 1
 
                     # we assign the unit to the pilot.
-                    # this is also a good opportunity to determine the unit sandbox
-                    unit['pilot']   = pid
-                    unit['sandbox'] = self._session._get_unit_sandbox(unit, pilot)
+                    self._assign_pilot(unit, pilot)
 
                     units_ok.append(unit)
 
                 except Exception as e:
                     self._log.exception('unit schedule preparation failed')
                     units_fail.append(unit)
-    
+
+            # make sure that all scheduled units have sandboxes known
 
             # advance all units
             self.advance(units_fail, rps.FAILED, publish=True, push=False)

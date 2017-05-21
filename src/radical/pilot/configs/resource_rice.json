@@ -20,7 +20,7 @@
         "valid_roots"                 : ["/dascratch"],
         "default_remote_workdir"      : "$SHARED_SCRATCH/$USER",
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_davinci",
+        "virtenv"                     : "%(resource_sandbox)s/ve_davinci",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -48,7 +48,7 @@
         "valid_roots"                 : ["/gpfs-biou"],
         "default_remote_workdir"      : "$SHARED_SCRATCH/$USER",
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_biou",
+        "virtenv"                     : "%(resource_sandbox)s/ve_biou",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     }

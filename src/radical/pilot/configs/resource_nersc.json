@@ -19,7 +19,7 @@
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/global", "/scratch",  "/scratch2"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_hopper",
+        "virtenv"                     : "%(resource_sandbox)s/ve_hopper",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
         "cores_per_node"              : "24",
@@ -64,7 +64,7 @@
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/global", "/scratch1", "/scratch2"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_hopper",
+        "virtenv"                     : "%(resource_sandbox)s/ve_hopper",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
         "python_dist"                 : "default"
@@ -96,7 +96,7 @@
         "forward_tunnel_endpoint"     : "BIND_ADDRESS",
         "tunnel_bind_device"          : "ipogif0",
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_hopper",
+        "virtenv"                     : "%(resource_sandbox)s/ve_hopper",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
         "cores_per_node"              : "24",
@@ -127,7 +127,7 @@
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/global", "/scratch1", "/scratch2"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_edison",
+        "virtenv"                     : "%(resource_sandbox)s/ve_edison",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
         "python_dist"                 : "default"
@@ -169,7 +169,7 @@
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/global", "/scratch1", "/scratch2"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_edison",
+        "virtenv"                     : "%(resource_sandbox)s/ve_edison",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
         "python_dist"                 : "default"
@@ -200,7 +200,7 @@
         "forward_tunnel_endpoint"     : "localhost",
         "tunnel_bind_device"          : "ipogif0",
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_edison",
+        "virtenv"                     : "%(resource_sandbox)s/ve_edison",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
         "python_dist"                 : "default"

@@ -76,8 +76,8 @@ if __name__ == '__main__':
 
         # Synchronously stage the data to the pilot
         report.info('stage shared data')
-        pilot.stage_in({'source': 'file://%s/input.dat' % os.getcwd(),
-                        'target': 'staging:///input.dat',
+        pilot.stage_in({'source': 'client:///input.dat' % os.getcwd(),
+                        'target': 'pilot:///input.dat',
                         'action': rp.TRANSFER})
         report.ok('>>ok\n')
 
@@ -99,8 +99,8 @@ if __name__ == '__main__':
             cud = rp.ComputeUnitDescription()
             cud.executable     = '/usr/bin/wc'
             cud.arguments      = ['-c', 'input.dat']
-            cud.input_staging  = {'source': 'staging:///input.dat', 
-                                  'target': 'input.dat',
+            cud.input_staging  = {'source': 'pilot:///input.dat', 
+                                  'target': 'unit:///input.dat',
                                   'action': rp.LINK
                                  }
             cuds.append(cud)

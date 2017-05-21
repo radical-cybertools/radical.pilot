@@ -108,7 +108,7 @@ class Default(UMGRStagingInputComponent):
 
         # we have actionable staging directives, and thus we need a unit
         # sandbox.
-        sandbox = rs.Url(unit["sandbox"])
+        sandbox = rs.Url(unit["unit_sandbox"])
         self._prof.prof("create sandbox", msg=str(sandbox))
 
         # url used for cache (sandbox url w/o path)
