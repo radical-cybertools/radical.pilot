@@ -31,7 +31,7 @@ from .base import PMGRLaunchingComponent
 # local constants
 DEFAULT_AGENT_SPAWNER = 'POPEN'
 DEFAULT_RP_VERSION    = 'local'
-DEFAULT_VIRTENV       = '%(global_sandbox)s/ve'
+DEFAULT_VIRTENV       = '%(resource_sandbox)s/ve'
 DEFAULT_VIRTENV_MODE  = 'update'
 DEFAULT_AGENT_CONFIG  = 'default'
 
@@ -67,7 +67,7 @@ class Default(PMGRLaunchingComponent):
         self._check_lock    = threading.RLock()  # lock on maipulating the above
         self._saga_fs_cache = dict()             # cache of saga directories
         self._saga_js_cache = dict()             # cache of saga job services
-        self._sandboxes     = dict()             # cache of global sandbox URLs
+        self._sandboxes     = dict()             # cache of resource sandbox URLs
         self._cache_lock    = threading.RLock()  # lock for cache
 
         self._mod_dir       = os.path.dirname(os.path.abspath(__file__))
@@ -617,11 +617,14 @@ class Default(PMGRLaunchingComponent):
                 raise  ValueError('attribute "%s" is required for "%s"' \
                                  % (ma, resource))
 
-        # get pilot and global sandbox
-        global_sandbox   = self._session._get_global_sandbox (pilot).path
+        # get pilot sandboxes
+        resource_sandbox = self._session._get_resource_sandbox (pilot).path
         session_sandbox  = self._session._get_session_sandbox(pilot).path
         pilot_sandbox    = self._session._get_pilot_sandbox  (pilot).path
-        pilot['sandbox'] = str(self._session._get_pilot_sandbox(pilot))
+
+        pilot['resource_sandbox'] = str(self._session._get_resource_sandbox(pilot))
+        pilot['pilot_sandbox']    = str(self._session._get_pilot_sandbox(pilot))
+        pilot['client_sandbox']   = str(self._session._get_client_sandbox())
 
         # Agent configuration that is not part of the public API.
         # The agent config can either be a config dict, or
@@ -670,9 +673,9 @@ class Default(PMGRLaunchingComponent):
             raise TypeError('agent config must be string (filename) or dict')
 
         # expand variables in virtenv string
-        virtenv = virtenv % {'pilot_sandbox'   :   pilot_sandbox,
-                             'session_sandbox' : session_sandbox,
-                             'global_sandbox'  :  global_sandbox}
+        virtenv = virtenv % {'pilot_sandbox'   :    pilot_sandbox,
+                             'session_sandbox' :  session_sandbox,
+                             'resource_sandbox': resource_sandbox}
 
         # Check for deprecated global_virtenv
         if 'global_virtenv' in rcfg:
@@ -838,7 +841,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['logdir']             = '.'
         agent_cfg['pilot_sandbox']      = pilot_sandbox
         agent_cfg['session_sandbox']    = session_sandbox
-        agent_cfg['global_sandbox']     = global_sandbox
+        agent_cfg['resource_sandbox']   = resource_sandbox
         agent_cfg['agent_launch_method']= agent_launch_method
         agent_cfg['task_launch_method'] = task_launch_method
         agent_cfg['mpi_launch_method']  = mpi_launch_method

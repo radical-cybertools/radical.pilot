@@ -20,7 +20,7 @@
         "valid_roots"           : ["$HOME",
                                    "/data/scratch"],
         "rp_version"            : "local",
-        "virtenv"               : "%(global_sandbox)s/ve_allegro",
+        "virtenv"               : "%(resource_sandbox)s/ve_allegro",
         "virtenv_mode"          : "create",
         "python_dist"           : "default",
         "export_to_cu"          : [],

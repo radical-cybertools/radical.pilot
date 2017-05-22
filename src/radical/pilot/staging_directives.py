@@ -21,39 +21,91 @@ from .constants import *
 #
 def expand_description(descr):
     """
-    call expand_staging_directive for the 'input_staging' and 'output_staging'
-    elements of the given description
+    convert any simple, string based staging directive in the description into 
+    its dictionary equivalent
+
+    In this context, the following kinds of expansions are performed:
+
+      in:  ['input.dat'] 
+      out: {'source' : 'client:///input.dat', 
+            'target' : 'unit:///input.dat',
+            'action' : rp.TRANSFER}
+
+      in:  ['input.dat > staged.dat']
+      out: {'source' : 'client:///input.dat', 
+            'target' : 'unit:///staged.dat',
+            'action' : rp.TRANSFER}
+
+    This method changes the given description in place - repeated calls on the
+    same description instance will have no effect.  However, we expect this
+    method to be called only once during unit construction.
     """
 
-    input_directives  = expand_staging_directives(descr.get('input_staging' ))
-    output_directives = expand_staging_directives(descr.get('output_staging'))
-
-    # we now have full sd dicts.  Make sure that we have absolute path
-    # for the relevant local targets and sources.
-    for sd in input_directives:
-        sd['source'] = make_abs_url(sd['source'])
-
-    for sd in output_directives:
-        sd['target'] = make_abs_url(sd['target'])
-
-    descr['input_staging']  = input_directives
-    descr['output_staging'] = output_directives
+    descr['input_staging']  = expand_staging_directives(descr.get('input_staging' ))
+    descr['output_staging'] = expand_staging_directives(descr.get('output_staging'))
 
 
 # ------------------------------------------------------------------------------
-def make_abs_url(path):
-    """
-    Some paths in data staging directives are to be interpreted as relative to
-    the applications working directory.  This specifically holds for *input
-    staging sources* and *output staging targets*, at least in those cases where
-    they are aspecified as relative path, ie. not as an URL with schema and/or
-    host element.
+#
+def complete_description(descr, unit):
+    '''
+    For all staging directives in the description, expand the given URLs to
+    point to the right sandboxes, where required.  We do not alter the
+    description itself, so we can perform the same completion again later on,
+    possibly after the sandbox locations changed due to rescheduling etc.
+    Instead, we return two lists of staging directives, for input and output 
+    staging, respectively.
 
-    This helper is testing exactly that condition.  If it applies, it converts
-    the path to an absolute URL with `file://localhost/$PWD/` root.  It returns
-    that Url as a string, so that it can be readily placed back into the staging
-    directives (which are strings at that point).
-    """
+    Completion is performed on URLs of the following types:
+
+        resource:///path
+        pilot:///path
+        unit:///path
+        client:///path
+
+    The userauth and hostname elements of the URL must be empty, the schema must
+    match one of the ones given above.  In those cases, the `path` specification
+    is interpreted as *relative* path (ie. withtou the leasing slash), in
+    relation to the known resource, pilot, and unit sandboxes, or in relation to
+    the client workdir.  All other URLs are interpreted verbatim, and the `path`
+    element is interpreted as absolute path in the respective file system.
+    '''
+
+    input_sds  = list()
+    output_sds = list()
+
+    for sd in descr.get('input_staging'):
+
+        source = _complete_url(sd['source'], unit)
+        target = _complete_url(sd['target'], unit)
+
+        input_sds.append({'source' : source, 
+                          'target' : target, 
+                          'action' : sd['action']}
+
+    for sd in descr.get('output_staging'):
+
+        source = _complete_url(sd['source'], unit)
+        target = _complete_url(sd['target'], unit)
+
+        output_sds.append({'source' : source, 
+                           'target' : target, 
+                           'action' : sd['action']}
+
+    return [input_sds, output_sds]
+
+
+# ------------------------------------------------------------------------------
+def _complete_url(path, unit):
+    '''
+    Some paths in data staging directives are to be interpreted as relative to
+    `complete_description()` above.  
+    '''
+
+    # FIXME: consider evaluation of env vars
+    # FIXME: maybe support abs path on completed URLs, too
+
+
 
     # nothing done for URLs, those are always absolute
     if isinstance(path, ru.Url):
@@ -93,12 +145,10 @@ def expand_staging_directives(staging_directives):
     if not staging_directives:
         return []
 
-    # Convert single entries into a list
     if not isinstance(staging_directives, list):
         staging_directives = [staging_directives]
 
-    # Use this to collect the return value
-    new_staging_directive = []
+    ret = []
 
     # We loop over the list of staging directives
     for sd in staging_directives:
@@ -137,7 +187,7 @@ def expand_staging_directives(staging_directives):
                       'priority': DEFAULT_PRIORITY
             }
             log.debug("Converting string '%s' into dict '%s'" % (sd, new_sd))
-            new_staging_directive.append(new_sd)
+            ret.append(new_sd)
 
         elif isinstance(sd, dict):
 
@@ -197,7 +247,7 @@ def expand_staging_directives(staging_directives):
                           'flags':    flags,
                           'priority': priority,
                 }
-                new_staging_directive.append(new_sd)
+                ret.append(new_sd)
                 log.debug("Completing entry '%s'" % new_sd)
 
             elif isinstance(source, list):
@@ -252,7 +302,7 @@ def expand_staging_directives(staging_directives):
                 log.debug("Converting list '%s' into dicts '%s'" % (source, new_sds))
 
                 # Add the content of the local list to global list
-                new_staging_directive.extend(new_sds)
+                ret.extend(new_sds)
 
             else:
                 raise Exception("Source %s is neither an entry nor a list (%s)!" %
@@ -261,7 +311,7 @@ def expand_staging_directives(staging_directives):
         else:
             raise Exception("Unknown type of staging directive: %s (%s)" % (sd, type(sd)))
 
-    return new_staging_directive
+    return ret
 
 
 # ------------------------------------------------------------------------------

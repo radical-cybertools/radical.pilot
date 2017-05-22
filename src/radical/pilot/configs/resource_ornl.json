@@ -32,7 +32,7 @@
         "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_titan",
+        "virtenv"                     : "%(resource_sandbox)s/ve_titan",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
         "python_dist"                 : "default"
@@ -74,7 +74,7 @@
         "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_titan",
+        "virtenv"                     : "%(resource_sandbox)s/ve_titan",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
         "python_dist"                 : "default"
@@ -117,7 +117,7 @@
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "debug",
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_titan",
+        "virtenv"                     : "%(resource_sandbox)s/ve_titan",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
         "python_dist"                 : "default"

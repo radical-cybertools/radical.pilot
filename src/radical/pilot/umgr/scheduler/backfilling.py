@@ -316,8 +316,8 @@ class Backfilling(UMGRSchedulingComponent):
                         pilot = self._pilots[pid]['pilot']
                         info['units'].append(unit['uid'])
                         info['used']   += cores
-                        unit['pilot']   = pid
-                        unit['sandbox'] = self._session._get_unit_sandbox(unit, pilot)
+
+                        self._assign_pilot(unit, pilot)
                         scheduled.append(unit)
                         success = True
 

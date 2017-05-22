@@ -31,7 +31,7 @@
             "/home"
         ],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_shark",
+        "virtenv"                     : "%(resource_sandbox)s/ve_shark",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -65,7 +65,7 @@
             "/home"
         ],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_gb-ui",
+        "virtenv"                     : "%(resource_sandbox)s/ve_gb-ui",
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda"
     }

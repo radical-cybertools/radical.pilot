@@ -23,7 +23,7 @@
         "default_remote_workdir"      : "/var/scratch/$USER",
         "valid_roots"                 : ["/home", "/var/scratch"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_fs1",
+        "virtenv"                     : "%(resource_sandbox)s/ve_fs1",
         "virtenv_mode"                : "update",
         "python_dist"                 : "default"
     }

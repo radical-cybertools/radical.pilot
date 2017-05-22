@@ -102,8 +102,8 @@ class Default(UMGRStagingOutputComponent):
 
         # we have actionable staging directives
         # url used for cache (sandbox url w/o path)
-        sandbox  = rs.Url(unit["sandbox"])
-        tmp      = rs.Url(unit["sandbox"])
+        sandbox  = rs.Url(unit["unit_sandbox"])
+        tmp      = rs.Url(unit["unit_sandbox"])
         tmp.path = '/'
         key = str(tmp)
 

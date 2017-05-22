@@ -86,10 +86,15 @@ class ComputePilot(object):
                 'cb_data' : None}
 
         # `as_dict()` needs `pilot_dict` and other attributes.  Those should all
-        # be available at this point (apart from the sandbox itself), so we now
-        # query for that sandbox.
-        self._sandbox       = None
-        self._sandbox       = self._session._get_pilot_sandbox(self.as_dict())
+        # be available at this point (apart from the sandboxes), so we now
+        # query for those sandboxes.
+        self._resource_sandbox = None
+        self._pilot_sandbox    = None
+        self._client_sandbox   = None
+
+        self._resource_sandbox = self._session._get_resource_sandbox(self.as_dict())
+        self._pilot_sandbox    = self._session._get_pilot_sandbox(self.as_dict())
+        self._client_sandbox   = self._session._get_client_sandbox()
 
 
     # --------------------------------------------------------------------------
@@ -177,7 +182,9 @@ class ComputePilot(object):
             'stdout':           self.stdout,
             'stderr':           self.stderr,
             'resource':         self.resource,
-            'sandbox':          str(self.sandbox), # for mongodb insertion
+            'resource_sandbox': str(self.resource_sandbox),
+            'pilot_sandbox':    str(self.pilot_sandbox),
+            'client_sandbox':   str(self.client_sandbox),
             'description':      self.description,  # this is a deep copy
             'resource_details': self.resource_details
         }
@@ -325,6 +332,10 @@ class ComputePilot(object):
     #
     @property
     def sandbox(self):
+        return self.pilot_sandbox
+
+    @property
+    def pilot_sandbox(self):
         """
         Returns the full sandbox URL of this pilot, if that is already
         known, or 'None' otherwise.
@@ -346,8 +357,15 @@ class ComputePilot(object):
         #       implicitly also holds for the staging area, which is relative
         #       to the pilot sandbox.
 
-        return self._sandbox
+        return self._pilot_sandbox
 
+    @property
+    def resource_sandbox(self):
+        return self._resource_sandbox
+
+    @property
+    def client_sandbox(self):
+        return self._client_sandbox
 
     # --------------------------------------------------------------------------
     #
@@ -528,7 +546,7 @@ class ComputePilot(object):
                 tgt_dir_url.path = os.path.dirname(tgt_dir_url.path)
 
             # Handle special 'staging' schema
-            if tgt_dir_url.schema == 'staging':
+            if tgt_dir_url.schema == 'pilot':
 
                 # We expect a staging:///relative/path/file.txt URI,
                 # as hostname would have unclear semantics currently.
@@ -539,8 +557,8 @@ class ComputePilot(object):
                 rel_path = os.path.relpath(tgt_dir_url.path, '/')
 
                 # Now base the target directory relative of the sandbox and staging prefix
-                tgt_dir_url      = saga.Url(self.sandbox)
-                tgt_dir_url.path = os.path.join(self.sandbox.path, 
+                tgt_dir_url      = saga.Url(self.pilot_sandbox)
+                tgt_dir_url.path = os.path.join(self.pilot_sandbox.path, 
                                                 STAGING_AREA, rel_path)
 
             # Define and open the staging directory for the pilot
