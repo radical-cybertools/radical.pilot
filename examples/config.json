@@ -196,14 +196,14 @@
         "cores"    : 64
     },
 
-    "ornl.titan_lib" : {
+    "ornl.titan_ortelib" : {
         "project"  : "CSC230",
         "queue"    : "debug",
         "schema"   : "local",
         "cores"    : 64
     },
 
-    "ornl.titan"   : {
+    "ornl.titan_orte"   : {
         "project"  : "CSC230",
         "queue"    : "debug",
         "schema"   : "local",
