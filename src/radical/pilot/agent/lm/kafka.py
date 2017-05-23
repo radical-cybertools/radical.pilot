@@ -216,8 +216,8 @@ class Kafka(LaunchMethod):
         for i,nodename in enumerate(lrms.node_list):
             try:
                 os.system('cp ' + kafka_home +'/config/server.properties ' + kafka_home + '/config/server.properties_%d' % i)
-                vars = ['port','broker.id','log.dirs','zookeeper.connect' ]
-                new_values = [str(ports),str(i),'tmp/kafka-logs-'+str(i), nodenames_string]
+                vars = ['port','broker.id', 'log.dirs','zookeeper.connect' ]
+                new_values = [str(ports),str(i), kafka_home + '/tmp/kafka-logs-'+str(i), nodenames_string]
                 what_to_change = dict(zip(vars,new_values))
                 filename = kafka_home + '/config/server.properties_' + str(i)
                 updating(filename,what_to_change)
@@ -225,7 +225,7 @@ class Kafka(LaunchMethod):
                     f.write('\n ## added by Radical-Pilot  ## \n')
                     f.write('delete.topic.enable = true\n')
                     f.write('listeners=PLAINTEXT://%s:%d\n' % (nodename,ports))
-                    #f.write('advertised.listeners=PLAINTEXT://%s:%d\n' % (nodename,ports))
+                    f.write('advertised.listeners=PLAINTEXT://%s:%d\n' % (nodename,ports))
                     full_hostname = nodename.strip() + '.' + machine_name
                     f.write('host.name=%s\n' % full_hostname)
         #            ports+=1
@@ -250,6 +250,7 @@ class Kafka(LaunchMethod):
         logger.info('Starting Kafka service..')
         try:
             for i,nodename in enumerate(lrms.node_list):
+                #os.system(kafka_home + '/bin/kafka-server-start.sh -daemon ' + kafka_home + '/config/server.properties_%d' %i)
                 os.system( 'ssh ' + nodename.strip() + ' ' + kafka_home + '/bin/kafka-server-start.sh'\
                         + '  -daemon  ' + kafka_home + '/config/server.properties_%d' %i )
         except Exception as e:
