@@ -78,6 +78,19 @@ class Session(rs.Session):
 
         """
 
+        if os.uname()[0] == 'Darwin':
+            # on MacOS, we are running out of file descriptors soon.  The code
+            # below attempts to increase the limit of open files - but any error
+            # is silently ignored, so this is an best-effort, no guarantee.  We
+            # leave responsibility for system limits with the user.
+            try:
+                import resource
+                limits    = list(resource.getrlimit(resource.RLIMIT_NOFILE))
+                limits[0] = 512
+                resource.setrlimit(resource.RLIMIT_NOFILE, limits)
+            except:
+                pass
+
         self._dh          = ru.DebugHelper()
         self._valid       = True
         self._closed      = False
