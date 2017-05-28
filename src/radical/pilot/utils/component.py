@@ -1320,7 +1320,7 @@ class Component(ru.Process):
 
                 if _state not in self._outputs:
                     # unknown target state -- error
-                    self._log.error("%s", ru.get_stacktrace())
+                    self._log.error("caller: %s", ru.get_caller_name())
                     self._log.error("%s can't route state %s (%s)" \
                                  % (self.uid, _state, self._outputs.keys()))
                     continue
