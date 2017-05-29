@@ -738,7 +738,7 @@
         "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap_1"             : ["module purge",
                                          "module load gcc",
-                                         "module load mpi",
+                                         "module load mpi/gcc_openmpi",
                                          "module load slurm",
                                          "module load python2"
                                         ],
