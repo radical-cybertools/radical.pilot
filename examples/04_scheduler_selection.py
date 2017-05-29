@@ -75,10 +75,11 @@ if __name__ == '__main__':
 
         # use different schedulers, depending on number of pilots
         report.info('select scheduler')
-        if   len(pilots) == 1: SCHED = rp.SCHED_DIRECT
-        elif len(pilots) == 2: SCHED = rp.SCHED_ROUND_ROBIN
-        else                 : SCHED = rp.SCHED_BACKFILLING
-        report.ok('>>%s\n'   % SCHED)
+        if len(pilots) in [1, 2]:
+            SCHED = rp.SCHEDULER_ROUND_ROBIN
+        else:
+            SCHED = rp.SCHEDULER_BACKFILLING
+        report.ok('>>%s\n' % SCHED)
     
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
