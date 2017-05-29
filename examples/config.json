@@ -127,6 +127,7 @@
     },
 
     "xsede.bridges" : {
+      # "project"  : "MCB110096P",
         "project"  : null,
         "queue"    : "RM",
         "schema"   : "gsissh",

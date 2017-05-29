@@ -713,7 +713,7 @@
         "description"                 : "The XSEDE 'Bridges' cluster at PSC (https://portal.xsede.org/psc-bridges/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription.",
         "schemas"                     : ["gsissh", "ssh", "go"],
-        "mandatory_args"              : ["project"],
+      # "mandatory_args"              : [],
         "gsissh"                      :
         {
             "job_manager_endpoint"    : "slurm+gsissh://bridges.psc.xsede.org:2222/",
