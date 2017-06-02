@@ -735,7 +735,7 @@
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "MPIRUN_RSH",
+        "mpi_launch_method"           : "MPIRUN",
         "pre_bootstrap_1"             : ["module purge",
                                          "module load gcc",
                                          "module load mpi/gcc_openmpi",
