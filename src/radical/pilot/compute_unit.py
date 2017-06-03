@@ -143,7 +143,7 @@ class ComputeUnit(object):
         Return True if state changed, False otherwise
         """
 
-        assert(unit_dict['uid'] == self.uid)
+        assert(unit_dict['uid'] == self.uid), 'update called on wrong instance'
 
         # NOTE: this method relies on state updates to arrive in order, and
         #       without gaps.
@@ -151,7 +151,8 @@ class ComputeUnit(object):
         target  = unit_dict['state']
 
         if target not in [rps.FAILED, rps.CANCELED]:
-            assert(rps._unit_state_value(target) - rps._unit_state_value(current) == 1)
+            assert(rps._unit_state_value(target) - rps._unit_state_value(current) == 1), \
+                            'invalid state transition'
 
         self._state = target
 

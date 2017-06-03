@@ -44,7 +44,7 @@ class Agent_0(rpu.Worker):
     #
     def __init__(self, agent_name):
 
-        assert(agent_name == 'agent_0')
+        assert(agent_name == 'agent_0'), 'expect agent_0, not subagent'
         print "startup agent %s" % agent_name
 
         # load config, create session, init rpu.Worker
@@ -229,7 +229,7 @@ class Agent_0(rpu.Worker):
         # write deep-copies of the config for each sub-agent (sans from agent_0)
         for sa in self._cfg.get('agents', {}):
 
-            assert(sa != 'agent_0')
+            assert(sa != 'agent_0'), 'expect subagent, not agent_0'
 
             # use our own config sans agents/components as a basis for
             # the sub-agent config.

@@ -139,7 +139,7 @@ class Component(ru.Process):
 
             if addr_in:
                 # bridge is running
-                assert(addr_out)
+                assert(addr_out), 'addr_out not set, invalid bridge'
                 continue
 
             # bridge needs starting
@@ -521,13 +521,13 @@ class Component(ru.Process):
                                                               self._log)
 
             # bridges should now be available and known - assert!
-            assert('bridges' in self._cfg)
-            assert(rpc.LOG_PUBSUB     in self._cfg['bridges'])
-            assert(rpc.STATE_PUBSUB   in self._cfg['bridges'])
-            assert(rpc.CONTROL_PUBSUB in self._cfg['bridges'])
-            assert(self._cfg['bridges'][rpc.LOG_PUBSUB    ]['addr_in'])
-            assert(self._cfg['bridges'][rpc.STATE_PUBSUB  ]['addr_in'])
-            assert(self._cfg['bridges'][rpc.CONTROL_PUBSUB]['addr_in'])
+            assert('bridges' in self._cfg),                              'missing bridges'
+            assert(rpc.LOG_PUBSUB     in self._cfg['bridges']),          'missing log pubsub'
+            assert(rpc.STATE_PUBSUB   in self._cfg['bridges']),          'missing state pubsub'
+            assert(rpc.CONTROL_PUBSUB in self._cfg['bridges']),          'missing control pubsub'
+            assert(self._cfg['bridges'][rpc.LOG_PUBSUB    ]['addr_in']), 'log pubsub invalid'
+            assert(self._cfg['bridges'][rpc.STATE_PUBSUB  ]['addr_in']), 'state pubsub invalid'
+            assert(self._cfg['bridges'][rpc.CONTROL_PUBSUB]['addr_in']), 'control pubsub invalid'
 
         except Exception as e:
             self._log.exception('bridge / component startup incomplete:\n%s' \
@@ -1155,8 +1155,8 @@ class Component(ru.Process):
 
             for state,things in buckets.iteritems():
 
-                assert(state in states)
-                assert(state in self._workers)
+                assert(state in states), 'inconsistent state'
+                assert(state in self._workers), 'no worker for state %s' % state
 
                 try:
                     to_cancel = list()

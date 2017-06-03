@@ -164,7 +164,7 @@ class Default(AgentStagingOutputComponent):
                 elif action != rpc.TRANSFER:
                     self._log.info('Operating to absolute path')
                     target = tgt.path
-                    assert(target.startswith('/'))
+                    assert(target.startswith('/')), 'expected relative target'
                 elif action == rpc.TRANSFER:
                     self._log.info('Operating to remote location')
                     target = tgt
