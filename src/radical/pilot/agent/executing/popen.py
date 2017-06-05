@@ -60,9 +60,8 @@ class Popen(AgentExecutingComponent) :
         self._pilot_id = self._cfg['pilot_id']
 
         # run watcher thread
-        self._watcher = threading.Thread(target=self._watch, name="Watcher")
-        self._watcher.daemon = True
-        self._watcher.start ()
+        self._watcher = ru.Thread(target=self._watch, name="Watcher")
+        self._watcher.start()
 
         # The AgentExecutingComponent needs the LaunchMethods to construct
         # commands.
@@ -366,7 +365,6 @@ class Popen(AgentExecutingComponent) :
     #
     def _watch(self):
 
-        self._prof.prof('run', uid=self._pilot_id)
         try:
 
             while not self._terminate.is_set():
@@ -374,7 +372,6 @@ class Popen(AgentExecutingComponent) :
                 cus = list()
 
                 try:
-
                     # we don't want to only wait for one CU -- then we would
                     # pull CU state too frequently.  OTOH, we also don't want to
                     # learn about CUs until all slots are filled, because then
@@ -386,13 +383,11 @@ class Popen(AgentExecutingComponent) :
                         cus.append (self._watch_queue.get_nowait())
 
                 except Queue.Empty:
-
                     # nothing found -- no problem, see if any CUs finished
                     pass
 
                 # add all cus we found to the watchlist
                 for cu in cus :
-
                     self._prof.prof('passed', msg="ExecWatcher picked up unit", uid=cu['uid'])
                     self._cus_to_watch.append (cu)
 
