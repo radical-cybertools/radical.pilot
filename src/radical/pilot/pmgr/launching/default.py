@@ -31,7 +31,6 @@ from .base import PMGRLaunchingComponent
 # local constants
 DEFAULT_AGENT_SPAWNER = 'POPEN'
 DEFAULT_RP_VERSION    = 'local'
-DEFAULT_VIRTENV       = '%(global_sandbox)s/ve'
 DEFAULT_VIRTENV_MODE  = 'update'
 DEFAULT_AGENT_CONFIG  = 'default'
 
@@ -83,7 +82,8 @@ class Default(PMGRLaunchingComponent):
         # we listen for pilot cancel commands
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
 
-        _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
+        self._log.info(ru.get_version([self._root_dir, self._mod_dir]))
+        self._rp_version, _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
                 ru.get_version([self._root_dir, self._mod_dir])
 
 
@@ -567,6 +567,10 @@ class Default(PMGRLaunchingComponent):
         sid           = self._session.uid
         database_url  = self._session.dburl
 
+        # some default values are determined at runtime
+        default_virtenv = '%%(global_sandbox)s/ve.%s.%s' % \
+                          (resource, self._rp_version)
+
         # ------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
         agent_launch_method     = rcfg.get('agent_launch_method')
@@ -585,7 +589,7 @@ class Default(PMGRLaunchingComponent):
         task_launch_method      = rcfg.get('task_launch_method')
         rp_version              = rcfg.get('rp_version',          DEFAULT_RP_VERSION)
         virtenv_mode            = rcfg.get('virtenv_mode',        DEFAULT_VIRTENV_MODE)
-        virtenv                 = rcfg.get('virtenv',             DEFAULT_VIRTENV)
+        virtenv                 = rcfg.get('virtenv',             default_virtenv)
         cores_per_node          = rcfg.get('cores_per_node', 0)
         health_check            = rcfg.get('health_check', True)
         python_dist             = rcfg.get('python_dist')
@@ -609,10 +613,6 @@ class Default(PMGRLaunchingComponent):
         candidate_hosts = pilot['description']['candidate_hosts']
 
         # make sure that mandatory args are known
-        print 'mas: %s' % mandatory_args
-        import sys
-        sys.stdout.write('mas: %s\n' % mandatory_args)
-        sys.stdout.flush()
         for ma in mandatory_args:
             if pilot['description'].get(ma) is None:
                 raise  ValueError('attribute "%s" is required for "%s"' \
