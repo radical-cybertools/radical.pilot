@@ -165,9 +165,6 @@ class Default(AgentStagingInputComponent):
             src = complete_url(src, src_context, self._log)
             tgt = complete_url(tgt, tgt_context, self._log)
 
-            self._log.debug(' === src: %s', src)
-            self._log.debug(' === tgt: %s', tgt)
-
             assert(tgt.schema == 'file'), 'staging tgt must be file://'
 
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:

@@ -172,8 +172,6 @@ class ComputeUnit(object):
             cb      = cb_val['cb']
             cb_data = cb_val['cb_data']
 
-          # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, self.state, cb_name)
-            
             if cb_data: cb(self, self.state, cb_data)
             else      : cb(self, self.state)
 

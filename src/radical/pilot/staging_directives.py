@@ -73,7 +73,6 @@ def expand_staging_directives(sds):
                         'flags':    DEFAULT_FLAGS,
                         'priority': DEFAULT_PRIORITY})
 
-
         elif isinstance(sd, dict):
 
             # sanity check on dict syntax
@@ -106,72 +105,6 @@ def expand_staging_directives(sds):
 
 # ------------------------------------------------------------------------------
 #
-def get_sds(descr, unit, action, mode, context):
-    '''
-    For all staging directives in the description, expand the given URLs to
-    point to the right sandboxes, where required.  We do not alter the
-    description itself, so we can perform the same completion again later on,
-    possibly after the sandbox locations changed due to rescheduling etc.
-    Instead, we return two lists of staging directives, for input and output 
-    staging, respectively.
-
-    Completion is performed on URLs of the following types:
-
-        resource:///path
-        pilot:///path
-        unit:///path
-        client:///path
-
-    The userauth and hostname elements of the URL must be empty, the schema must
-    match one of the ones given above.  In those cases, the `path` specification
-    is interpreted as *relative* path (ie. withtou the leasing slash), in
-    relation to the known resource, pilot, and unit sandboxes, or in relation to
-    the client workdir.  All other URLs are interpreted verbatim, and the `path`
-    element is interpreted as absolute path in the respective file system.
-    '''
-
-    if not isinstance(action, list):
-        action = [action]
-
-    mode = mode.lower()
-    if mode not in ['in', 'out']:
-        raise ValueError('invalid staging mode (%s)' % mode)
-
-    context = context.lower()
-    if conext not in ['client', 'pilot']:
-        raise ValueError('invalid staging context (%s)' % mode)
-
-    sds = list()
-
-    if mode == 'in':
-
-         for sd in descr.get('input_staging'):
-
-             if sd['action'] not in action:
-                 continue
-
-             source = _complete_url(sd['source'], unit, context)
-             target = _complete_url(sd['target'], unit, context)
-
-             sds.append({'source' : source, 
-                         'target' : target, 
-                         'action' : sd['action']})
-
-    elif mode == 'out':
-
-        for sd in descr.get('output_staging'):
-
-            source = _complete_url(sd['source'], unit)
-            target = _complete_url(sd['target'], unit)
-
-            sds.append({'source' : source, 
-                        'target' : target, 
-                        'action' : sd['action']})
-
-    return sds
-
-
-# ------------------------------------------------------------------------------
 def complete_url(path, context, log=None):
     '''
     Some paths in data staging directives are to be interpreted relative to
