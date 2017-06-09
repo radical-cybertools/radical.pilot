@@ -358,7 +358,6 @@ class UnitManager(rpu.Component):
         units  = self._session._dbs.get_units(umgr_uid=self.uid)
 
         for unit in units:
-            self._log.debug(" === state pulled %s: %s", unit['uid'], unit['state'])
             if not self._update_unit(unit, publish=True):
                 return False
 
