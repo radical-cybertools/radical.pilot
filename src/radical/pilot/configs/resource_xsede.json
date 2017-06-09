@@ -709,6 +709,49 @@
         "python_dist"                 : "default"
     },
 
+    "bridges": {
+        "description"                 : "The XSEDE 'Bridges' cluster at PSC (https://portal.xsede.org/psc-bridges/).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription.",
+        "schemas"                     : ["gsissh", "ssh", "go"],
+      # "mandatory_args"              : [],
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://bridges.psc.xsede.org:2222/",
+            "filesystem_endpoint"     : "gsisftp://bridges.psc.xsede.org:2222/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://bridges.psc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://bridges.psc.xsede.org/"
+        },
+        "go":
+        {
+            "job_manager_endpoint"    : "slurm+ssh://bridges.psc.xsede.org/",
+            "filesystem_endpoint"     : "go://xsede#bridges/"
+        },
+        "default_queue"               : "normal",
+        "lrms"                        : "SLURM",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN",
+        "pre_bootstrap_1"             : ["module purge",
+                                         "module load gcc",
+                                         "module load mpi/gcc_openmpi",
+                                         "module load slurm",
+                                         "module load python2"
+                                        ],
+        "default_remote_workdir"      : "$HOME",
+        "valid_roots"                 : ["/home", "/pylon1", "/pylon2"],
+        "rp_version"                  : "local",
+        "virtenv"                     : "%(global_sandbox)s/ve_bridges",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default", 
+        "export_to_cu"                : [], 
+        "cu_pre_exec"                 : []
+    },
+
     "supermic_spark": {
         "description"                 : "SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)",
         "notes"                       : "Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.",
