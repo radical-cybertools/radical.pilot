@@ -19,7 +19,6 @@
         "pre_bootstrap_1"             : ["module purge", "module load python", "module load openmpi/1.4.3-gnu"],
         "valid_roots"                 : ["/N"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(resource_sandbox)s/ve_india",
         "virtenv_mode"                : "update",
         "python_dist"                 : "default"
     },
@@ -67,7 +66,6 @@
         "default_queue"               : "delta",
         "valid_roots"                 : ["/N"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(resource_sandbox)s/ve_delta",
         "virtenv_mode"                : "update",
         "python_dist"                 : "default"
     },
@@ -89,7 +87,6 @@
         "default_queue"               : "echo",
         "valid_roots"                 : ["/N"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(resource_sandbox)s/ve_echo",
         "virtenv_mode"                : "update",
         "python_dist"                 : "default"
 

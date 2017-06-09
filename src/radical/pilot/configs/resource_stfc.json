@@ -31,7 +31,6 @@
         "valid_roots"                 : ["/gpfs/home"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py",
         "rp_version"                  : "local",
-        "virtenv"                     : "%(resource_sandbox)s/ve_joule",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     }

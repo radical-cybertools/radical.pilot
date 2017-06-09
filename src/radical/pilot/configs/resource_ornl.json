@@ -18,6 +18,7 @@
         "default_queue"               : "batch",
         "lrms"                        : "TORQUE",
         "agent_type"                  : "multicore",
+        "agent_config"                : "cray_aprun",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "APRUN",
@@ -32,7 +33,6 @@
         "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(resource_sandbox)s/ve_titan",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
         "python_dist"                 : "default"
@@ -74,7 +74,6 @@
         "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(resource_sandbox)s/ve_titan",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
         "python_dist"                 : "default"
@@ -117,7 +116,6 @@
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "debug",
         "rp_version"                  : "local",
-        "virtenv"                     : "%(resource_sandbox)s/ve_titan",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
         "python_dist"                 : "default"

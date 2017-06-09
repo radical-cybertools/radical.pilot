@@ -929,14 +929,20 @@ class Session(rs.Session):
 
         # FIXME: this should get 'pid, resource, schema=None' as parameters
 
+        self.is_valid()
+
+        pilot_sandbox = pilot.get('sandbox')
+        if pilot_sandbox:
+            return rs.Url(pilot_sandbox)
+
         pid = pilot['uid']
         with self._cache_lock:
             if  pid in self._cache['pilot_sandbox']:
                 return self._cache['pilot_sandbox'][pid]
 
         # cache miss
-        session_sandbox = self._get_session_sandbox(pilot)
-        pilot_sandbox  = rs.Url (session_sandbox)
+        session_sandbox     = self._get_session_sandbox(pilot)
+        pilot_sandbox       = rs.Url(session_sandbox)
         pilot_sandbox.path += '/%s/' % pilot['uid']
 
         with self._cache_lock:

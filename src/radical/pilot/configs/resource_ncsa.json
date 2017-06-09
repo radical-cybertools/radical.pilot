@@ -22,7 +22,6 @@
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(resource_sandbox)s/ve_bw",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : "True",
         "python_dist"                 : "default"
@@ -57,7 +56,6 @@
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(resource_sandbox)s/ve_bw",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
         "python_dist"                 : "default"
@@ -91,7 +89,6 @@
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(resource_sandbox)s/ve_bw",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
         "python_dist"                 : "default"
@@ -159,7 +156,6 @@
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(resource_sandbox)s/ve_bw",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : "True",
         "python_dist"                 : "default"

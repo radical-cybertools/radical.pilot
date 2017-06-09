@@ -126,6 +126,13 @@
         "cores"    : 64
     },
 
+    "xsede.bridges" : {
+        "project"  : null,
+        "queue"    : "RM",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
     "xsede.wrangler" : {
         "project"  : "TG-MCB090174",
         "queue"    : "debug",
@@ -204,6 +211,13 @@
     },
 
     "ornl.titan_orte"   : {
+        "project"  : "CSC230",
+        "queue"    : "debug",
+        "schema"   : "local",
+        "cores"    : 64
+    },
+
+    "ornl.titan_aprun"   : {
         "project"  : "CSC230",
         "queue"    : "debug",
         "schema"   : "local",

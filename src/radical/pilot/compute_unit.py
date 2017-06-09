@@ -68,7 +68,7 @@ class ComputeUnit(object):
         self._exit_code        = None
         self._stdout           = None
         self._stderr           = None
-        self._pilot            = None
+        self._pilot            = descr.get('pilot')
         self._resource_sandbox = None
         self._pilot_sandbox    = None
         self._unit_sandbox     = None

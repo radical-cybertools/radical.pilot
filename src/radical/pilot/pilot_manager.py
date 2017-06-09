@@ -191,6 +191,7 @@ class PilotManager(rpu.Component):
         self._terminate.set()
         self.stop()
 
+
         self._session.prof.prof('closed pmgr', uid=self._uid)
         self._log.info("Closed PilotManager %s." % self._uid)
 

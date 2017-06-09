@@ -191,6 +191,7 @@ class ComputePilot(object):
             'resource_sandbox': str(self.resource_sandbox),
             'pilot_sandbox':    str(self.pilot_sandbox),
             'client_sandbox':   str(self.client_sandbox),
+            'sandbox':          self.sandbox,      # FIXME: this is redundant
             'description':      self.description,  # this is a deep copy
             'resource_details': self.resource_details
         }
@@ -347,7 +348,7 @@ class ComputePilot(object):
         known, or 'None' otherwise.
 
         **Returns:**
-            * A URL (radical.utils.Url).
+            * A string
         """
 
         # NOTE: The pilot has a sandbox property, containing the full sandbox
@@ -362,8 +363,10 @@ class ComputePilot(object):
         #       and the RP agent that `$PWD` *is* the sandbox!  The same 
         #       implicitly also holds for the staging area, which is relative
         #       to the pilot sandbox.
-
-        return self._pilot_sandbox
+        if self._pilot_sandbox:
+            return str(self._pilot_sandbox)
+        else:
+            return None
 
     @property
     def resource_sandbox(self):

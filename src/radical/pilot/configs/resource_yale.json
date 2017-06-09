@@ -22,7 +22,6 @@
         "pre_bootstrap_2"             : [],
         "valid_roots"                 : ["/"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(resource_sandbox)s/ve_grace",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     }
