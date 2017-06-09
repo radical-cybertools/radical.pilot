@@ -19,6 +19,7 @@ PRE_EXEC               = 'pre_exec'
 POST_EXEC              = 'post_exec'
 KERNEL                 = 'kernel'
 CLEANUP                = 'cleanup'
+PILOT                  = 'pilot'
 STDOUT                 = 'stdout'
 STDERR                 = 'stderr'
 RESTARTABLE            = 'restartable'
@@ -115,6 +116,11 @@ class ComputeUnitDescription(attributes.Attributes):
        generated output data in that sandbox.  Output staging will be performed
        before cleanup.
 
+    .. data:: pilot
+
+       [Type: `string`] [optional] If specified, the unit is submitted to the
+       pilot with the given ID.  If that pilot is not known to the unit manager,
+       an exception is raised.
     """
 
     # --------------------------------------------------------------------------
@@ -139,6 +145,7 @@ class ComputeUnitDescription(attributes.Attributes):
         self._attributes_register(POST_EXEC,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(RESTARTABLE,      None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(CLEANUP,          None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(PILOT,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
       # self._attributes_register(START_TIME,       None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
       # self._attributes_register(RUN_TIME,         None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
@@ -177,6 +184,7 @@ class ComputeUnitDescription(attributes.Attributes):
         self.set_attribute (MPI,           False)
         self.set_attribute (RESTARTABLE,   False)
         self.set_attribute (CLEANUP,       False)
+        self.set_attribute (PILOT,          None)
 
         # apply initialization dict
         if from_dict:

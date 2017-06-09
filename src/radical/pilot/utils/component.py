@@ -252,7 +252,6 @@ class Component(ru.Process):
                 comp.start()
 
                 log.info('%-30s starts %s',  tmp_cfg['owner'], comp.uid)
-
                 components.append(comp)
 
         # components are started -- we return the handles to the callee for

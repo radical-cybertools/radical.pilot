@@ -201,17 +201,17 @@ class Backfilling(UMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def work(self, units):
+    def _work(self, units):
 
-        if not isinstance(units, list): 
-            units = [units]
+        with self._pilots_lock, self._wait_lock:
 
-        self.advance(units, rps.UMGR_SCHEDULING, publish=True, push=False)
-
-        with self._wait_lock:
             for unit in units:
-                self._prof.prof('wait', uid=unit['uid'])
-                self._wait_pool[unit['uid']] = unit
+
+                uid = unit['uid']
+                    
+                # not yet scheduled - put in wait pool
+                self._prof.prof('wait', uid=uid)
+                self._wait_pool[uid] = unit
                         
         self._schedule_units()
 
@@ -283,7 +283,6 @@ class Backfilling(UMGRSchedulingComponent):
             # check if we have any eligible pilots to schedule over
             if not pids:
                 return
-
 
             # cycle over available pids and add units until we either ran
             # out of units to schedule, or out of pids to schedule over

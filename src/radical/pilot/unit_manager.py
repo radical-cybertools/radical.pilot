@@ -403,13 +403,16 @@ class UnitManager(rpu.Component):
         for unit in units:
 
             # we need to make sure to have the correct state:
+            uid = unit['uid']
             old = unit['state']
             new = rps._unit_state_collapse(unit['states'])
-            self._log.debug("unit pulled %s: %s / %s", unit['uid'], old, new)
+
+            if old != new:
+                self._log.debug(" === unit  pulled %s: %s / %s", uid, old, new)
 
             unit['state']   = new
             unit['control'] = 'umgr'
-            self._prof.prof('get', msg="bulk size: %d" % len(units), uid=unit['uid'])
+            self._prof.prof('get', msg="bulk size: %d" % len(units), uid=uid)
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline).
