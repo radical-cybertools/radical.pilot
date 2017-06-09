@@ -101,8 +101,7 @@ if __name__ == '__main__':
             cud.arguments      = ['-c', 'input.dat']
             cud.input_staging  = {'source': 'pilot:///input.dat', 
                                   'target': 'unit:///input.dat',
-                                  'action': rp.LINK
-                                 }
+                                  'action': rp.LINK}
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')

@@ -369,8 +369,6 @@ class UnitManager(rpu.Component):
     #
     def _unit_pull_cb(self):
 
-        self._log.info(" === units pulled: ?")
-
         # pull units those units from the agent which are about to get back
         # under umgr control, and push them into the respective queues
         # FIXME: this should also be based on a tailed cursor
@@ -471,7 +469,6 @@ class UnitManager(rpu.Component):
                 passed = passed[-1:]
 
             for s in passed:
-              # print '%s advance: %s' % (uid, s )
                 unit_dict['state'] = s
                 self._units[uid]._update(unit_dict)
                 self.advance(unit_dict, s, publish=publish, push=False)

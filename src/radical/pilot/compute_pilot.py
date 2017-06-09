@@ -7,17 +7,19 @@ import os
 import sys
 import copy
 import time
-import saga
 import threading
 
+import saga          as rs
 import radical.utils as ru
+
+rs.fs = rs.filesystem
 
 from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
 from . import types     as rpt
 
-from .staging_directives import expand_staging_directives
+from .staging_directives import expand_staging_directives, complete_url
 from .staging_directives import TRANSFER, COPY, LINK, MOVE, STAGING_AREA
 
 
@@ -69,13 +71,16 @@ class ComputePilot(object):
         # initialize state
         self._pmgr          = pmgr
         self._session       = self._pmgr.session
+        self._prof          = self._session.prof
         self._uid           = ru.generate_id('pilot.%(counter)04d', ru.ID_CUSTOM)
         self._state         = rps.NEW
         self._log           = pmgr._log
         self._pilot_dict    = dict()
         self._callbacks     = dict()
+        self._cache         = dict()    # cache of SAGA dir handles
         self._cb_lock       = threading.RLock()
         self._exit_on_error = self._descr.get('exit_on_error')
+
 
         for m in rpt.PMGR_METRICS:
             self._callbacks[m] = dict()
@@ -505,6 +510,14 @@ class ComputePilot(object):
         Cancel the pilot.
         """
         
+        # clean connection cache
+        try:
+            for key in self._cache:
+                self._cache[key].close()
+            self._cache = dict()
+        except:
+            pass
+
       # print 'pilot: cancel'
         self._pmgr.cancel_pilots(self.uid)
 
@@ -523,77 +536,58 @@ class ComputePilot(object):
         elif self.state in rps.FINAL:
             raise Exception("Pilot already finished, no need to stage anymore!")
 
+        # NOTE: no unit sandboxes defined!
+        src_context = {'pwd'      : self._client_sandbox,     # !!!
+                       'pilot'    : self._pilot_sandbox,
+                       'resource' : self._resource_sandbox}
+        tgt_context = {'pwd'      : self._pilot_sandbox,      # !!!
+                       'pilot'    : self._pilot_sandbox,
+                       'resource' : self._resource_sandbox}
+
         # Iterate over all directives
-        for directive in expand_staging_directives(directives):
+        for sd in expand_staging_directives(directives):
 
             # TODO: respect flags in directive
 
-            src_url = saga.Url(directive['source'])
-            action = directive['action']
+            action = sd['action']
+            flags  = sd['flags']
+            did    = sd['uid']
+            src    = sd['source']
+            tgt    = sd['target']
 
-            # Convert the target url into a SAGA Url object
-            tgt_url = saga.Url(directive['target'])
-            # Create a pointer to the directory object that we will use
-            tgt_dir_url = tgt_url
+            assert(action in [COPY, LINK, MOVE, TRANSFER])
 
-            if tgt_url.path.endswith('/'):
-                # If the original target was a directory (ends with /),
-                # we assume that the user wants the same filename as the source.
-                tgt_filename = os.path.basename(src_url.path)
-            else:
-                # Otherwise, extract the filename and update the directory
-                tgt_filename = os.path.basename(tgt_dir_url.path)
-                tgt_dir_url.path = os.path.dirname(tgt_dir_url.path)
+            self._prof.prof('staging_begin', uid=self.uid, msg=did)
 
-            # Handle special 'staging' schema
-            if tgt_dir_url.schema == 'pilot':
+            src = complete_url(src, src_context, self._log)
+            tgt = complete_url(tgt, tgt_context, self._log)
 
-                # We expect a staging:///relative/path/file.txt URI,
-                # as hostname would have unclear semantics currently.
-                if tgt_dir_url.host:
-                    raise Exception("hostname not supported with staging:// schema")
+            if action in [COPY, LINK, MOVE]:
+                self._prof.prof('staging_end', uid=self.uid, msg=did)
+                raise ValueError("invalid action '%s' on pilot level" % action)
 
-                # Remove the leading slash to get a relative path from the staging area
-                rel_path = os.path.relpath(tgt_dir_url.path, '/')
+            self._log.info('transfer %s to %s', src, tgt)
 
-                # Now base the target directory relative of the sandbox and staging prefix
-                tgt_dir_url      = saga.Url(self.pilot_sandbox)
-                tgt_dir_url.path = os.path.join(self.pilot_sandbox.path, 
-                                                STAGING_AREA, rel_path)
+            # FIXME: make sure that tgt URL points to the right resource
+            # FIXME: honor sd flags if given (recursive...)
+            flags = rs.fs.CREATE_PARENTS
 
             # Define and open the staging directory for the pilot
             # We use the target dir construct here, so that we can create
             # the directory if it does not yet exist.
-            target_dir = saga.filesystem.Directory(tgt_dir_url, flags=saga.filesystem.CREATE_PARENTS)
 
-            if action == LINK:	
-                # TODO: Does this make sense?
-                #log_message = 'Linking %s to %s' % (source, abs_target)
-                #os.symlink(source, abs_target)
-                self._log.error("action 'LINK' not supported on pilot level staging")
-                raise ValueError("action 'LINK' not supported on pilot level staging")
+            # url used for cache (sandbox url w/o path)
+            tmp      = rs.Url(self._pilot_sandbox)
+            tmp.path = '/'
+            key = str(tmp)
+            if key not in self._cache:
+                self._cache[key] = rs.fs.Directory(tmp, session=self._session,
+                                                   flags=flags)
+            saga_dir = self._cache[key]
+            saga_dir.copy(src, tgt, flags=flags)
 
-            elif action == COPY:
-                # TODO: Does this make sense?
-                #log_message = 'Copying %s to %s' % (source, abs_target)
-                #shutil.copyfile(source, abs_target)
-                self._log.error("action 'COPY' not supported on pilot level staging")
-                raise ValueError("action 'COPY' not supported on pilot level staging")
+            self._prof.prof('staging_end', uid=self.uid, msg=did)
 
-            elif action == MOVE:
-                # TODO: Does this make sense?
-                #log_message = 'Moving %s to %s' % (source, abs_target)
-                #shutil.move(source, abs_target)
-                self._log.error("action 'MOVE' not supported on pilot level staging")
-                raise ValueError("action 'MOVE' not supported on pilot level staging")
-
-            elif action == TRANSFER:
-                self._log.info('Transferring %s to %s/%s', 
-                               src_url, tgt_dir_url, tgt_filename)
-                # Transfer the source file to the target staging area
-                target_dir.copy(src_url, tgt_filename)
-            else:
-                raise Exception('Action %s not supported' % action)
 
 # ------------------------------------------------------------------------------
 

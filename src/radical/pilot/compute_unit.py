@@ -163,7 +163,7 @@ class ComputeUnit(object):
                     'client_sandbox']:
 
             val = unit_dict.get(key, None)
-            if val:
+            if val != None:
                 setattr(self, "_%s" % key, val)
 
         # invoke unit specific callbacks
