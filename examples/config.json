@@ -217,6 +217,13 @@
         "cores"    : 64
     },
 
+    "ornl.titan_aprun"   : {
+        "project"  : "CSC230",
+        "queue"    : "debug",
+        "schema"   : "local",
+        "cores"    : 64
+    },
+
     "nersc.hopper" : {
         "project"  : null,
         "queue"    : "debug",

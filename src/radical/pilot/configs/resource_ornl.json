@@ -18,6 +18,7 @@
         "default_queue"               : "batch",
         "lrms"                        : "TORQUE",
         "agent_type"                  : "multicore",
+        "agent_config"                : "cray_aprun",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "APRUN",
