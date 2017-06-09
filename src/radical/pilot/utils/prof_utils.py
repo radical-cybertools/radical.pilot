@@ -351,8 +351,8 @@ def clean_profile(profile, sid):
         if name == 'advance':
 
             # this is a state progression
-            assert(state)
-            assert(uid)
+            assert(state), 'cannot advance w/o state'
+            assert(uid),   'cannot advance w/o uid'
 
             event['event_type'] = 'state'
             skip = False
@@ -474,7 +474,7 @@ def get_session_description(sid, src=None, dburl=None):
 
     ru.write_json(json, '/tmp/t.json')
 
-    assert(sid == json['session']['uid'])
+    assert(sid == json['session']['uid']), 'sid inconsistent'
 
     ret             = dict()
     ret['entities'] = dict()

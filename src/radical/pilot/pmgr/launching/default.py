@@ -394,7 +394,8 @@ class Default(PMGRLaunchingComponent):
         # sub-bulks
         schema = pilots[0]['description'].get('access_schema')
         for pilot in pilots[1:]:
-            assert(schema == pilot['description'].get('access_schema'))
+            assert(schema == pilot['description'].get('access_schema')), \
+                    'inconsistent scheme on launch / staging'
 
         session_sandbox = self._session._get_session_sandbox(pilots[0]).path
 

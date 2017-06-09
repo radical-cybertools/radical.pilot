@@ -215,7 +215,8 @@ class Default(AgentStagingOutputComponent):
 
             self._prof.prof('staging_begin', uid=uid, msg=did)
 
-            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER])
+            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER]), \
+                              'invalid staging action'
 
             # we only handle staging which does *not* include 'client://' src or
             # tgt URLs - those are handled by the umgr staging components

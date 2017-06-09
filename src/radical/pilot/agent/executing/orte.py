@@ -211,7 +211,7 @@ class ORTE(AgentExecutingComponent):
 
             self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
-            assert(cu['opaque_slots']) # FIXME: no assert, but check
+            assert(cu['opaque_slots']), 'unit unscheduled'
             self._prof.prof('exec', msg='unit launch', uid=cu['_id'])
 
             # Start a new subprocess to launch the unit

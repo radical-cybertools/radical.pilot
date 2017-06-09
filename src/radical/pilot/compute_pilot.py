@@ -140,7 +140,7 @@ class ComputePilot(object):
         Return True if state changed, False otherwise
         """
 
-        assert(pilot_dict['uid'] == self.uid)
+        assert(pilot_dict['uid'] == self.uid), 'update called on wrong instance'
 
         # NOTE: this method relies on state updates to arrive in order, and
         #       without gaps.
@@ -148,7 +148,8 @@ class ComputePilot(object):
         target  = pilot_dict['state']
 
         if target not in [rps.FAILED, rps.CANCELED]:
-            assert(rps._pilot_state_value(target) - rps._pilot_state_value(current))
+            assert(rps._pilot_state_value(target) - rps._pilot_state_value(current)), \
+                            'invalid state transition'
             # FIXME
 
         self._state = target

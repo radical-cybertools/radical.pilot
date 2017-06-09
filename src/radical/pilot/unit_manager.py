@@ -111,7 +111,7 @@ class UnitManager(rpu.Component):
             # set default scheduler if needed
             cfg['scheduler'] = rpus.SCHEDULER_DEFAULT
 
-        assert(cfg['db_poll_sleeptime'])
+        assert(cfg['db_poll_sleeptime']), 'db_poll_sleeptime not configured'
 
         # initialize the base class (with no intent to fork)
         self._uid    = ru.generate_id('umgr')
