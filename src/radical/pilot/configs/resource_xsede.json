@@ -39,7 +39,6 @@
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_stampede",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default", 
         "export_to_cu"                : ["LMOD_CMD",
@@ -94,7 +93,6 @@
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_stampede",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -145,7 +143,6 @@
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_stampede",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -189,7 +186,6 @@
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_stampede",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -238,7 +234,6 @@
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_stampede",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -280,7 +275,6 @@
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/work", "$WORK", "/data", "$DATA"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_wrangler",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -322,7 +316,6 @@
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/work", "$WORK"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_wrangler",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -367,7 +360,6 @@
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/work", "$WORK"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_wrangler",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -404,7 +396,6 @@
                                         ],
         "valid_roots"                 : ["/home1", "/scratch", "/work"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_lonestar",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -434,7 +425,6 @@
                                          "module load python pgi mvapich2_ib gnubase"],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_trestles",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -464,7 +454,6 @@
                                          "module load python intel mvapich2_ib gnubase"],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_gordon",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -498,7 +487,6 @@
         "valid_roots"                 : ["/usr/users", "/brashear"],
         "stage_cacerts"               : "True",
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_blacklight",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -533,7 +521,6 @@
         "valid_roots"                 : ["/home", "/crucible", "/arc"],
         "stage_cacerts"               : "True",
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_greenfield",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -566,7 +553,6 @@
        #"valid_roots"                 : ["/oasis/scratch/comet"],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_comet",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
         "cu_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
@@ -602,7 +588,6 @@
         ],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_comet",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -637,7 +622,6 @@
         ],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_comet",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -675,7 +659,6 @@
         #"valid_roots"                 : ["/oasis/scratch/comet"],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_comet",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -704,7 +687,6 @@
         "default_remote_workdir"      : "/work/$USER",
         "valid_roots"                 : ["/work"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_supermic",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -776,7 +758,6 @@
         "default_remote_workdir"      : "/work/$USER",
         "valid_roots"                 : ["/work"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_supermic",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     }
