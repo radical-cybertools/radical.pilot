@@ -573,7 +573,7 @@ class Default(PMGRLaunchingComponent):
         database_url  = self._session.dburl
 
         # some default values are determined at runtime
-        default_virtenv = '%%(global_sandbox)s/ve.%s.%s' % \
+        default_virtenv = '%%(resource_sandbox)s/ve.%s.%s' % \
                           (resource, self._rp_version)
 
         # ------------------------------------------------------------------
@@ -624,7 +624,7 @@ class Default(PMGRLaunchingComponent):
                                  % (ma, resource))
 
         # get pilot and global sandbox
-        global_sandbox   = self._session._get_global_sandbox (pilot).path
+        resource_sandbox = self._session._get_resource_sandbox (pilot).path
         session_sandbox  = self._session._get_session_sandbox(pilot).path
         pilot_sandbox    = self._session._get_pilot_sandbox  (pilot).path
         pilot['sandbox'] = str(self._session._get_pilot_sandbox(pilot))
@@ -676,9 +676,9 @@ class Default(PMGRLaunchingComponent):
             raise TypeError('agent config must be string (filename) or dict')
 
         # expand variables in virtenv string
-        virtenv = virtenv % {'pilot_sandbox'   :   pilot_sandbox,
+        virtenv = virtenv % {'pilot_sandbox'   : pilot_sandbox,
                              'session_sandbox' : session_sandbox,
-                             'global_sandbox'  :  global_sandbox}
+                             'resource_sandbox': resource_sandbox}
 
         # Check for deprecated global_virtenv
         if 'global_virtenv' in rcfg:
@@ -844,7 +844,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['logdir']             = '.'
         agent_cfg['pilot_sandbox']      = pilot_sandbox
         agent_cfg['session_sandbox']    = session_sandbox
-        agent_cfg['global_sandbox']     = global_sandbox
+        agent_cfg['resource_sandbox']   = resource_sandbox
         agent_cfg['agent_launch_method']= agent_launch_method
         agent_cfg['task_launch_method'] = task_launch_method
         agent_cfg['mpi_launch_method']  = mpi_launch_method

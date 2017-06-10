@@ -105,9 +105,9 @@ class Session(rs.Session):
         self._cache       = dict()  # cache sandboxes etc.
         self._cache_lock  = threading.RLock()
 
-        self._cache['global_sandbox']  = dict()
-        self._cache['session_sandbox'] = dict()
-        self._cache['pilot_sandbox']   = dict()
+        self._cache['resource_sandbox'] = dict()
+        self._cache['session_sandbox']  = dict()
+        self._cache['pilot_sandbox']    = dict()
 
         # before doing anything else, set up the debug helper for the lifetime
         # of the session.
@@ -815,7 +815,7 @@ class Session(rs.Session):
 
     # -------------------------------------------------------------------------
     #
-    def _get_global_sandbox(self, pilot):
+    def _get_resource_sandbox(self, pilot):
         """
         for a given pilot dict, determine the global RP sandbox, based on the
         pilot's 'resource' attribute.
@@ -835,7 +835,7 @@ class Session(rs.Session):
         # we cache it
         with self._cache_lock:
 
-            if resource not in self._cache['global_sandbox']:
+            if resource not in self._cache['resource_sandbox']:
 
                 # cache miss -- determine sandbox and fill cache
                 rcfg   = self.get_resource_config(resource, schema)
@@ -882,9 +882,9 @@ class Session(rs.Session):
                 fs_url.path = "%s/radical.pilot.sandbox" % sandbox_base
         
                 # before returning, keep the URL string in cache
-                self._cache['global_sandbox'][resource] = fs_url
+                self._cache['resource_sandbox'][resource] = fs_url
 
-            return self._cache['global_sandbox'][resource]
+            return self._cache['resource_sandbox'][resource]
 
 
     # --------------------------------------------------------------------------
@@ -905,8 +905,8 @@ class Session(rs.Session):
             if resource not in self._cache['session_sandbox']:
 
                 # cache miss
-                global_sandbox  = self._get_global_sandbox(pilot)
-                session_sandbox = rs.Url(global_sandbox)
+                resource_sandbox      = self._get_resource_sandbox(pilot)
+                session_sandbox       = rs.Url(resource_sandbox)
                 session_sandbox.path += '/%s' % self.uid
 
                 with self._cache_lock:
