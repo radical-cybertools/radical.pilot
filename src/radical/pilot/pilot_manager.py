@@ -95,7 +95,7 @@ class PilotManager(rpu.Component):
                 % (os.path.dirname(__file__),
                    os.environ.get('RADICAL_PILOT_PMGR_CFG', 'default')))
 
-        assert(cfg['db_poll_sleeptime'])
+        assert(cfg['db_poll_sleeptime']), 'db_poll_sleeptime not configured'
 
         # initialize the base class (with no intent to fork)
         self._uid    = ru.generate_id('pmgr')
@@ -190,6 +190,7 @@ class PilotManager(rpu.Component):
 
         self._terminate.set()
         self.stop()
+
 
         self._session.prof.prof('closed pmgr', uid=self._uid)
         self._log.info("Closed PilotManager %s." % self._uid)

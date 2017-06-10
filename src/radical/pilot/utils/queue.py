@@ -127,7 +127,7 @@ class Queue(ru.Process):
         self._cfg     = copy.deepcopy(cfg)
         self._addr    = addr
 
-        assert(self._role in QUEUE_ROLES)
+        assert(self._role in QUEUE_ROLES), 'invalid role %s' % self._role
 
         # FIXME
         self._cfg['log_level'] = 'debug'
@@ -231,12 +231,12 @@ class Queue(ru.Process):
 
     @property
     def addr_in(self):
-        assert(self._role == QUEUE_BRIDGE)
+        assert(self._role == QUEUE_BRIDGE), 'addr_in only set on bridges'
         return self._addr_in
 
     @property
     def addr_out(self):
-        assert(self._role == QUEUE_BRIDGE)
+        assert(self._role == QUEUE_BRIDGE), 'addr_out only set on bridges'
         return self._addr_out
 
 
@@ -244,7 +244,7 @@ class Queue(ru.Process):
     # 
     def ru_initialize_child(self):
 
-        assert(self._role == QUEUE_BRIDGE)
+        assert(self._role == QUEUE_BRIDGE), 'only bridges can be started'
 
         self._uid = self._uid + '.child'
         self._log = self._session._get_logger(self._uid, 
@@ -294,7 +294,6 @@ class Queue(ru.Process):
         # of messages, we wait for self._stall_hwm messages, and
         # then forward those to whatever output channel requesting
         # them (individually),
-        # FIXME: make hwm configurable
         # FIXME: we may want to release all stalled messages after
         #        some (configurable) timeout?
         # FIXME: is it worth introducing a 'flush' command or
@@ -323,7 +322,6 @@ class Queue(ru.Process):
             if not data:
                 if not self.is_alive(strict=False):
                     raise RuntimeError('not alive anymore?')
-            assert(data)
             msg = msgpack.unpackb(data) 
             if isinstance(msg, list): 
                 msgs += msg

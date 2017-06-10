@@ -39,7 +39,6 @@
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_stampede",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default", 
         "export_to_cu"                : ["LMOD_CMD",
@@ -94,7 +93,6 @@
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_stampede",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -145,7 +143,6 @@
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_stampede",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -189,7 +186,6 @@
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_stampede",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -238,16 +234,11 @@
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_stampede",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
 
-<<<<<<< HEAD
-    "wrangler": {
-=======
     "wrangler_ssh": {
->>>>>>> devel
         "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh", "go"],
@@ -284,7 +275,6 @@
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/work", "$WORK", "/data", "$DATA"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_wrangler",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -326,7 +316,6 @@
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/work", "$WORK"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_wrangler",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -371,7 +360,6 @@
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/work", "$WORK"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_wrangler",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -408,7 +396,6 @@
                                         ],
         "valid_roots"                 : ["/home1", "/scratch", "/work"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_lonestar",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -438,7 +425,6 @@
                                          "module load python pgi mvapich2_ib gnubase"],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_trestles",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -468,7 +454,6 @@
                                          "module load python intel mvapich2_ib gnubase"],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_gordon",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -502,7 +487,6 @@
         "valid_roots"                 : ["/usr/users", "/brashear"],
         "stage_cacerts"               : "True",
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_blacklight",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -537,7 +521,6 @@
         "valid_roots"                 : ["/home", "/crucible", "/arc"],
         "stage_cacerts"               : "True",
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_greenfield",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -570,7 +553,6 @@
        #"valid_roots"                 : ["/oasis/scratch/comet"],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_comet",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
         "cu_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
@@ -606,7 +588,6 @@
         ],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_comet",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -641,7 +622,6 @@
         ],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_comet",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -679,7 +659,6 @@
         #"valid_roots"                 : ["/oasis/scratch/comet"],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_comet",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -708,7 +687,6 @@
         "default_remote_workdir"      : "/work/$USER",
         "valid_roots"                 : ["/work"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_supermic",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -744,7 +722,6 @@
         "default_remote_workdir"      : "/work/$USER",
         "valid_roots"                 : ["/work"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_supermic",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -780,9 +757,50 @@
         "default_remote_workdir"      : "/work/$USER",
         "valid_roots"                 : ["/work"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_supermic",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
+    },
+
+    "bridges": {
+        "description"                 : "The XSEDE 'Bridges' cluster at PSC (https://portal.xsede.org/psc-bridges/).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription.",
+        "schemas"                     : ["gsissh", "ssh", "go"],
+      # "mandatory_args"              : [],
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://bridges.psc.xsede.org:2222/",
+            "filesystem_endpoint"     : "gsisftp://bridges.psc.xsede.org:2222/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://bridges.psc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://bridges.psc.xsede.org/"
+        },
+        "go":
+        {
+            "job_manager_endpoint"    : "slurm+ssh://bridges.psc.xsede.org/",
+            "filesystem_endpoint"     : "go://xsede#bridges/"
+        },
+        "default_queue"               : "normal",
+        "lrms"                        : "SLURM",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN",
+        "pre_bootstrap_1"             : ["module purge",
+                                         "module load gcc",
+                                         "module load mpi/gcc_openmpi",
+                                         "module load slurm",
+                                         "module load python2"
+                                        ],
+        "default_remote_workdir"      : "$HOME",
+        "valid_roots"                 : ["/home", "/pylon1", "/pylon2"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default", 
+        "export_to_cu"                : [], 
+        "cu_pre_exec"                 : []
     },
 
     "supermic_spark": {
@@ -809,7 +827,6 @@
         "default_remote_workdir"      : "/work/$USER",
         "valid_roots"                 : ["/work"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_supermic",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     }

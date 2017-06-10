@@ -60,9 +60,8 @@ class Popen(AgentExecutingComponent) :
         self._pilot_id = self._cfg['pilot_id']
 
         # run watcher thread
-        self._watcher = threading.Thread(target=self._watch, name="Watcher")
-        self._watcher.daemon = True
-        self._watcher.start ()
+        self._watcher = ru.Thread(target=self._watch, name="Watcher")
+        self._watcher.start()
 
         # The AgentExecutingComponent needs the LaunchMethods to construct
         # commands.
@@ -247,9 +246,11 @@ class Popen(AgentExecutingComponent) :
             for k,v in self._env_cu_export.iteritems():
                 env_string += "export %s=%s\n" % (k,v)
 
+            descr = cu['description']
+
             # also add any env vars requested in the unit description
-            if cu['description']['environment']:
-                for key,val in cu['description']['environment'].iteritems():
+            if descr['environment']:
+                for key,val in descr['environment'].iteritems():
                     env_string += 'export "%s=%s"\n' % (key, val)
 
             launch_script.write('\n# Environment variables\n%s\n' % env_string)
@@ -269,19 +270,17 @@ class Popen(AgentExecutingComponent) :
                 for val in self._cfg['cu_pre_exec']:
                     launch_script.write("%s\n"  % val)
 
-            if cu['description']['pre_exec']:
-                pre_exec_string = ''
-                if isinstance(cu['description']['pre_exec'], list):
-                    for elem in cu['description']['pre_exec']:
-                        pre_exec_string += "%s\n" % elem
-                else:
-                    pre_exec_string += "%s\n" % cu['description']['pre_exec']
+            if descr['pre_exec']:
+                fail = ' (echo "pre_exec failed"; false) || exit'
+                pre  = ''
+                for elem in descr['pre_exec']:
+                    pre += "%s || %s\n" % (elem, fail)
                 # Note: extra spaces below are for visual alignment
                 launch_script.write("\n# Pre-exec commands\n")
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
                     launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,pre_start," >> $RP_PROF\n' %  \
                                         (cu['uid'], rps.AGENT_EXECUTING))
-                launch_script.write(pre_exec_string)
+                launch_script.write(pre)
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
                     launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,pre_stop," >> $RP_PROF\n' %  \
                                         (cu['uid'], rps.AGENT_EXECUTING))
@@ -306,18 +305,16 @@ class Popen(AgentExecutingComponent) :
                                     (cu['uid'], rps.AGENT_EXECUTING))
 
             # After the universe dies the infrared death, there will be nothing
-            if cu['description']['post_exec']:
-                post_exec_string = ''
-                if isinstance(cu['description']['post_exec'], list):
-                    for elem in cu['description']['post_exec']:
-                        post_exec_string += "%s\n" % elem
-                else:
-                    post_exec_string += "%s\n" % cu['description']['post_exec']
+            if descr['post_exec']:
+                fail = ' (echo "post_exec failed"; false) || exit'
+                post = ''
+                for elem in descr['post_exec']:
+                    post += "%s || %s\n" % (elem, fail)
                 launch_script.write("\n# Post-exec commands\n")
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
                     launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,post_start," >> $RP_PROF\n' %  \
                                         (cu['uid'], rps.AGENT_EXECUTING))
-                launch_script.write('%s\n' % post_exec_string)
+                launch_script.write('%s\n' % post)
                 if 'RADICAL_PILOT_PROFILE' in os.environ:
                     launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,post_stop," >> $RP_PROF\n' %  \
                                         (cu['uid'], rps.AGENT_EXECUTING))
@@ -331,8 +328,8 @@ class Popen(AgentExecutingComponent) :
         self._prof.prof('command', msg='launch script constructed', uid=cu['uid'])
 
         # prepare stdout/stderr
-        stdout_file = cu['description'].get('stdout') or 'STDOUT'
-        stderr_file = cu['description'].get('stderr') or 'STDERR'
+        stdout_file = descr.get('stdout') or 'STDOUT'
+        stderr_file = descr.get('stderr') or 'STDERR'
 
         cu['stdout_file'] = os.path.join(sandbox, stdout_file)
         cu['stderr_file'] = os.path.join(sandbox, stderr_file)
@@ -366,7 +363,6 @@ class Popen(AgentExecutingComponent) :
     #
     def _watch(self):
 
-        self._prof.prof('run', uid=self._pilot_id)
         try:
 
             while not self._terminate.is_set():
@@ -374,7 +370,6 @@ class Popen(AgentExecutingComponent) :
                 cus = list()
 
                 try:
-
                     # we don't want to only wait for one CU -- then we would
                     # pull CU state too frequently.  OTOH, we also don't want to
                     # learn about CUs until all slots are filled, because then
@@ -386,13 +381,11 @@ class Popen(AgentExecutingComponent) :
                         cus.append (self._watch_queue.get_nowait())
 
                 except Queue.Empty:
-
                     # nothing found -- no problem, see if any CUs finished
                     pass
 
                 # add all cus we found to the watchlist
                 for cu in cus :
-
                     self._prof.prof('passed', msg="ExecWatcher picked up unit", uid=cu['uid'])
                     self._cus_to_watch.append (cu)
 
