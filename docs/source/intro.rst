@@ -19,7 +19,7 @@ execute directly on the ``ComputePilots``.
 
 ``ComputeUnits`` are often single-core / multi-threaded executables, but
 RADICAL-Pilot also supports execution of parallel executables, for example based
-on MPI or OpenMP.
+on MPI, OpenMP, YARN/HADOOP and Spark.
 
 RADICAL-Pilot is not a static system, but it rather provides the user with
 a programming library ("Pilot-API") that provides abstractions for resource
