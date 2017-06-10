@@ -10,8 +10,6 @@ matches submitted units to pilots for execution.  On constructing the unit
 manager, it can be configured to use a specific scheduling policy for that.  The
 following policies are implemented:
 
- * `rp.SCHED_DIRECT`: directly schedule all units to one pilot.  This is only
-   valid if exactly one pilot exists, and is the quickest scheduler.
  * `rp.SCHED_ROUND_ROBIN`: alternate units between all available pilot.  This
    policy leads to a static and fair, but not necessarily load-balanced unit
    assignment.  
