@@ -16,7 +16,8 @@ cases, this can drastically shorten overall exeuction time as the individual
 ``ComputeUnits`` don't have to wait in the system's scheduler queue but can
 execute directly on the ``ComputePilots``.
 
-``ComputeUnits`` can be sequential, multi-threaded (e.g. OpenMP) or parallel process (e.g. MPI) executables.
+``ComputeUnits`` can be sequential, multi-threaded (e.g. OpenMP), parallel process 
+(e.g. MPI) executables, Hadoop or Spark applications.
 
 RADICAL-Pilot is not a static system, but it rather provides the user with
 a programming library ("Pilot-API") that provides abstractions for resource

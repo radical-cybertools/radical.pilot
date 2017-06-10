@@ -143,7 +143,8 @@ A configuration file has to be valid JSON. The structure is as follows:
             "agent_type"                  : "multicore",
             "agent_scheduler"             : "CONTINUOUS",
             "agent_spawner"               : "POPEN",
-            "pilot_agent"                 : "radical-pilot-agent-multicore.py"
+            "pilot_agent"                 : "radical-pilot-agent-multicore.py",
+            "pilot_dist"                  : "default"
         },
         "ANOTHER_KEY_NAME":
         {
@@ -168,6 +169,7 @@ All fields are mandatory, unless indicated otherwise below.
 * ``task_launch_method``: type of compute node access, required for non-MPI units. Valid values are: ``SSH``,``APRUN`` or ``LOCAL``.
 * ``mpi_launch_method``: type of MPI support, required for MPI units. Valid values are: ``MPIRUN``, ``MPIEXEC``, ``APRUN``, ``IBRUN`` or ``POE``.
 * ``python_interpreter``: path to python (optional).
+* ``python_dist``: `anaconda` or `default`, ie. not `anaconda` (mandatory).
 * ``pre_bootstrap_1``: list of commands to execute for initialization of main agent (optional).
 * ``pre_bootstrap_2``: list of commands to execute for initialization of sub-agent (optional).
 * ``valid_roots``: list of shared file system roots (optional). Note: pilot sandboxes must lie under these roots.
