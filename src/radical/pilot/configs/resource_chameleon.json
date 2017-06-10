@@ -17,7 +17,6 @@
         "task_launch_method"          : "YARN",
         "mpi_launch_method"           : "MPIEXEC",
         "rp_version"                  : "debug",
-        "virtenv"                     : "%(global_sandbox)s/ve_chameleon",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     }

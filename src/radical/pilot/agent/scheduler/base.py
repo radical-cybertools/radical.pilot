@@ -90,14 +90,6 @@ class AgentSchedulingComponent(rpu.Component):
  
     # --------------------------------------------------------------------------
     #
-    def _dump_prof(self):
-        #  FIXME: this is specific for cprofile use in derived classes, and can
-        #         probably be solved cleaner.
-        pass
-
- 
-    # --------------------------------------------------------------------------
-    #
     # This class-method creates the appropriate sub-class for the Scheduler.
     #
     @classmethod
