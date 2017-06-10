@@ -80,7 +80,7 @@ class Pubsub(ru.Process):
         self._cfg     = copy.deepcopy(cfg)
         self._addr    = addr
 
-        assert(self._role in PUBSUB_ROLES)
+        assert(self._role in PUBSUB_ROLES), 'invalid role %s' % self._role
 
         self._uid = "%s.%s" % (self._channel.replace('_', '.'), self._role)
         self._log = self._session._get_logger(self._uid, 
@@ -177,12 +177,12 @@ class Pubsub(ru.Process):
 
     @property
     def addr_in(self):
-        assert(self._role == PUBSUB_BRIDGE)
+        assert(self._role == PUBSUB_BRIDGE), 'addr_in only set on bridges'
         return self._addr_in
 
     @property
     def addr_out(self):
-        assert(self._role == PUBSUB_BRIDGE)
+        assert(self._role == PUBSUB_BRIDGE), 'addr_out only set on bridges'
         return self._addr_out
 
 
@@ -190,7 +190,7 @@ class Pubsub(ru.Process):
     # 
     def ru_initialize_child(self):
 
-        assert(self._role == PUBSUB_BRIDGE)
+        assert(self._role == PUBSUB_BRIDGE), 'only bridges can be started'
 
         self._uid = self._uid + '.child'
         self._log = self._session._get_logger(self._uid, 
@@ -266,7 +266,7 @@ class Pubsub(ru.Process):
     #
     def subscribe(self, topic):
 
-        assert(self._role == PUBSUB_SUB)
+        assert(self._role == PUBSUB_SUB), 'incorrect role on subscribe'
 
         topic = topic.replace(' ', '_')
 
@@ -278,8 +278,8 @@ class Pubsub(ru.Process):
     #
     def put(self, topic, msg):
 
-        assert(self._role == PUBSUB_PUB)
-        assert(isinstance(msg,dict))
+        assert(self._role == PUBSUB_PUB), 'incorrect role on put'
+        assert(isinstance(msg,dict)),     'invalide message type'
 
       # self._log.debug("?> %s" % pprint.pformat(msg))
 
@@ -301,7 +301,7 @@ class Pubsub(ru.Process):
     #
     def get(self):
 
-        assert(self._role == PUBSUB_SUB)
+        assert(self._role == PUBSUB_SUB), 'invalid role on get'
 
         # FIXME: add timeout to allow for graceful termination
 
@@ -322,7 +322,7 @@ class Pubsub(ru.Process):
     #
     def get_nowait(self, timeout=None): # timeout in ms
 
-        assert(self._role == PUBSUB_SUB)
+        assert(self._role == PUBSUB_SUB), 'invalid role on get_nowait'
 
         if _uninterruptible(self._q.poll, flags=zmq.POLLIN, timeout=timeout):
 
