@@ -362,7 +362,7 @@ class Component(ru.Process):
 
         if valid:
             if not self._session.is_valid(term):
-                self._log.warn("session %s is invalid" % session.uid)
+                self._log.warn("session %s is invalid" % self._session.uid)
                 valid = False
 
         if valid:
@@ -815,10 +815,10 @@ class Component(ru.Process):
         for state in states:
             self._log.debug('TERM : %s unregister output %s', self.uid, state)
 
-            if name not in self._inputs:
+            if state not in self._inputs:
 
-                self._log.warn('input %s is not registered', name)
-              # raise ValueError('input %s is not registered' % name)
+                self._log.warn('input %s is not registered', state)
+              # raise ValueError('input %s is not registered' % state)
                 continue
 
             if not state in self._outputs:

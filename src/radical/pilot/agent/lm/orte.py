@@ -124,7 +124,7 @@ class ORTE(LaunchMethod):
                     raise Exception("ORTE DVM process disappeared")
 
         # ----------------------------------------------------------------------
-        def _watch_dvm(dvm_process):
+        def _watch_dvm():
 
             logger.info('starting DVM watcher')
 
@@ -148,8 +148,7 @@ class ORTE(LaunchMethod):
             logger.info('DVM stopped (%d)' % dvm_process.returncode)
         # ----------------------------------------------------------------------
 
-        dvm_watcher = ru.Thread(target=_watch_dvm, args=(dvm_process,),
-                                name="DVMWatcher")
+        dvm_watcher = ru.Thread(target=_watch_dvm, name="DVMWatcher")
         dvm_watcher.start()
 
         lm_info = {'dvm_uri'     : dvm_uri,

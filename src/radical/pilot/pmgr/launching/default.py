@@ -573,7 +573,7 @@ class Default(PMGRLaunchingComponent):
         database_url  = self._session.dburl
 
         # some default values are determined at runtime
-        default_virtenv = '%%(global_sandbox)s/ve.%s.%s' % \
+        default_virtenv = '%%(resource_sandbox)s/ve.%s.%s' % \
                           (resource, self._rp_version)
 
         # ------------------------------------------------------------------
@@ -623,7 +623,7 @@ class Default(PMGRLaunchingComponent):
                 raise  ValueError('attribute "%s" is required for "%s"' \
                                  % (ma, resource))
 
-        # get pilot sandboxes
+        # get pilot and global sandbox
         resource_sandbox = self._session._get_resource_sandbox (pilot).path
         session_sandbox  = self._session._get_session_sandbox(pilot).path
         pilot_sandbox    = self._session._get_pilot_sandbox  (pilot).path
@@ -679,8 +679,8 @@ class Default(PMGRLaunchingComponent):
             raise TypeError('agent config must be string (filename) or dict')
 
         # expand variables in virtenv string
-        virtenv = virtenv % {'pilot_sandbox'   :    pilot_sandbox,
-                             'session_sandbox' :  session_sandbox,
+        virtenv = virtenv % {'pilot_sandbox'   : pilot_sandbox,
+                             'session_sandbox' : session_sandbox,
                              'resource_sandbox': resource_sandbox}
 
         # Check for deprecated global_virtenv

@@ -911,8 +911,8 @@ class Session(rs.Session):
             if resource not in self._cache['session_sandbox']:
 
                 # cache miss
-                resource_sandbox = self._get_resource_sandbox(pilot)
-                session_sandbox  = rs.Url(resource_sandbox)
+                resource_sandbox      = self._get_resource_sandbox(pilot)
+                session_sandbox       = rs.Url(resource_sandbox)
                 session_sandbox.path += '/%s' % self.uid
 
                 with self._cache_lock:
