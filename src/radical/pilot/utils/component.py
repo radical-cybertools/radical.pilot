@@ -139,7 +139,7 @@ class Component(ru.Process):
 
             if addr_in:
                 # bridge is running
-                assert(addr_out)
+                assert(addr_out), 'addr_out not set, invalid bridge'
                 continue
 
             # bridge needs starting
@@ -322,6 +322,7 @@ class Component(ru.Process):
             self._owner = 'root'
 
         self._log  = self._session._get_logger(self.uid, level=self._debug)
+        self._prof = self._session._get_profiler(self.uid)
 
         # initialize the Process base class for later fork.
         super(Component, self).__init__(name=self._uid, log=self._log)
@@ -352,21 +353,29 @@ class Component(ru.Process):
         if self._ru_terminating:
             return True
 
-        valid = super(Component, self).is_valid()
+        valid = True
+
+        if valid:
+            if not super(Component, self).is_valid():
+                self._log.warn("super %s is invalid" % self.uid)
+                valid = False
 
         if valid:
             if not self._session.is_valid(term):
+                self._log.warn("session %s is invalid" % self._session.uid)
                 valid = False
 
         if valid:
             for bridge in self._bridges:
                 if not bridge.is_valid(term):
+                    self._log.warn("bridge %s is invalid" % bridge.uid)
                     valid = False
                     break
 
         if valid:
             for component in self._components:
                 if not component.is_valid(term):
+                    self._log.warn("sub component %s is invalid" % component.uid)
                     valid = False
                     break
 
@@ -466,19 +475,23 @@ class Component(ru.Process):
         """
 
         # NOTE: this method somewhat breaks the initialize_child vs.
-        #        initialize_parent paradigm, in that it will behave differently
-        #        for parent and child.  We do this to ensure existence of
-        #        bridges and sub-components for the initializers of the
-        #        inheriting classes
+        #       initialize_parent paradigm, in that it will behave differently
+        #       for parent and child.  We do this to ensure existence of
+        #       bridges and sub-components for the initializers of the
+        #       inheriting classes
 
         # make sure we have a unique logfile etc for the child
         if self.is_child:
-            self._uid = self._uid + '.child'
+            self._uid = self.ru_childname  # derived from parent name
 
-        # get debugging, logging, profiling set up
-      # self._dh   = ru.DebugHelper(name=self.uid)
-        self._log  = self._session._get_logger(self.uid, level=self._debug)
-        self._prof = self._session._get_profiler(self.uid)
+            # get debugging, logging, profiling set up
+          # self._dh   = ru.DebugHelper(name=self.uid)
+            self._log  = self._session._get_logger(self.uid, level=self._debug)
+            self._prof = self._session._get_profiler(self.uid)
+
+            # make sure that the Process base class uses the same logger
+            # FIXME: do same for profiler?
+            super(Component, self)._ru_set_logger(self._log)
 
         self._prof.prof('initialize', uid=self.uid)
         self._log.info('initialize %s',   self.uid)
@@ -520,13 +533,13 @@ class Component(ru.Process):
                                                               self._log)
 
             # bridges should now be available and known - assert!
-            assert('bridges' in self._cfg)
-            assert(rpc.LOG_PUBSUB     in self._cfg['bridges'])
-            assert(rpc.STATE_PUBSUB   in self._cfg['bridges'])
-            assert(rpc.CONTROL_PUBSUB in self._cfg['bridges'])
-            assert(self._cfg['bridges'][rpc.LOG_PUBSUB    ]['addr_in'])
-            assert(self._cfg['bridges'][rpc.STATE_PUBSUB  ]['addr_in'])
-            assert(self._cfg['bridges'][rpc.CONTROL_PUBSUB]['addr_in'])
+            assert('bridges' in self._cfg),                              'missing bridges'
+            assert(rpc.LOG_PUBSUB     in self._cfg['bridges']),          'missing log pubsub'
+            assert(rpc.STATE_PUBSUB   in self._cfg['bridges']),          'missing state pubsub'
+            assert(rpc.CONTROL_PUBSUB in self._cfg['bridges']),          'missing control pubsub'
+            assert(self._cfg['bridges'][rpc.LOG_PUBSUB    ]['addr_in']), 'log pubsub invalid'
+            assert(self._cfg['bridges'][rpc.STATE_PUBSUB  ]['addr_in']), 'state pubsub invalid'
+            assert(self._cfg['bridges'][rpc.CONTROL_PUBSUB]['addr_in']), 'control pubsub invalid'
 
         except Exception as e:
             self._log.exception('bridge / component startup incomplete:\n%s' \
@@ -645,14 +658,11 @@ class Component(ru.Process):
         with termination.
         '''
 
-        self._log.debug('stop %s (%s : %s : %s) [%s]', self.uid, os.getpid(),
-                        self.pid, mt.current_thread().name,
-                        ru.get_caller_name())
+        self._log.info('stop %s (%s : %s : %s) [%s]', self.uid, os.getpid(),
+                       self.pid, ru.get_thread_name(), ru.get_caller_name())
 
-        for _,t in self._threads.iteritems(): 
-            t['term'  ].set()
-        for _,t in self._threads.iteritems(): 
-            t['thread'].join()
+        for _,t in self._threads.iteritems(): t['term'  ].set()
+        for _,t in self._threads.iteritems(): t['thread'].join()
 
         super(Component, self).stop(timeout)
 
@@ -805,10 +815,10 @@ class Component(ru.Process):
         for state in states:
             self._log.debug('TERM : %s unregister output %s', self.uid, state)
 
-            if name not in self._inputs:
+            if state not in self._inputs:
 
-                self._log.warn('input %s is not registered', name)
-              # raise ValueError('input %s is not registered' % name)
+                self._log.warn('input %s is not registered', state)
+              # raise ValueError('input %s is not registered' % state)
                 continue
 
             if not state in self._outputs:
@@ -1154,8 +1164,8 @@ class Component(ru.Process):
 
             for state,things in buckets.iteritems():
 
-                assert(state in states)
-                assert(state in self._workers)
+                assert(state in states), 'inconsistent state'
+                assert(state in self._workers), 'no worker for state %s' % state
 
                 try:
                     to_cancel = list()
@@ -1309,7 +1319,7 @@ class Component(ru.Process):
 
                 if _state not in self._outputs:
                     # unknown target state -- error
-                    self._log.error("%s", ru.get_stacktrace())
+                    self._log.error("caller: %s", ru.get_caller_name())
                     self._log.error("%s can't route state %s (%s)" \
                                  % (self.uid, _state, self._outputs.keys()))
                     continue
