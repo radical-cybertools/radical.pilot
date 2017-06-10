@@ -143,7 +143,7 @@ class ORTE(LaunchMethod):
                 # of the stadard termination sequence.  If the signal is
                 # swallowed, the next `orte-submit` call will trigger
                 # termination anyway.
-                os.kill(os.getpid()
+                os.kill(os.getpid())
 
             logger.info('DVM stopped (%d)' % dvm_process.returncode)
         # ----------------------------------------------------------------------
