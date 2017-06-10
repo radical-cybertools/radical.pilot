@@ -120,6 +120,12 @@ class Session(rs.Session):
         self._bridges    = list()
         self._components = list()
 
+        # cache the client sandbox
+        # FIXME: this needs to be overwritten if configured differently in the
+        #        session config, as should be the case for any agent side
+        #        session instance.
+        self._client_sandbox = os.getcwd()
+
         # The resource configuration dictionary associated with the session.
         self._resource_configs = {}
 
@@ -954,6 +960,22 @@ class Session(rs.Session):
         # we don't cache unit sandboxes, they are just a string concat.
         pilot_sandbox = self._get_pilot_sandbox(pilot)
         return "%s/%s/" % (pilot_sandbox, unit['uid'])
+
+
+    # -------------------------------------------------------------------------
+    #
+    def _get_client_sandbox(self):
+        """
+        For the session in the client application, this is os.getcwd().  For the
+        session in any other component, specifically in pilot components, the
+        client sandbox needs to be read from the session config (or pilot
+        config).  The latter is not yet implemented, so the pilot can not yet
+        interpret client sandboxes.  Since pilot-side stagting to and from the
+        client sandbox is not yet supported anyway, this seems acceptable
+        (FIXME).
+        """
+
+        return self._client_sandbox
 
 
 # -----------------------------------------------------------------------------

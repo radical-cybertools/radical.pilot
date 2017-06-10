@@ -95,7 +95,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
         log.report.info("+ %s [%s]\n" % (pilot['uid'], pilot['description']['resource']))
         log.debug("processing pilot '%s'", pilot['uid'])
 
-        sandbox_url = saga.Url(pilot['sandbox'])
+        sandbox_url = saga.Url(pilot['pilot_sandbox'])
 
         if access:
             # Allow to use a different access schema than used for the the run.
@@ -265,7 +265,7 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
 
       # print "processing pilot '%s'" % pilot['uid']
 
-        sandbox_url = saga.Url(pilot['sandbox'])
+        sandbox_url = saga.Url(pilot['pilot_sandbox'])
 
         if access:
             # Allow to use a different access schema than used for the the run.

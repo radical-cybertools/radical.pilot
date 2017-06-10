@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import os
 import copy
 import threading
 
@@ -70,6 +71,9 @@ class UMGRSchedulingComponent(rpu.Component):
         # Schedulers use that command channel to get information about
         # pilots being added or removed.
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._base_command_cb)
+
+        # cache the local client sandbox to avoid repeated os calls
+        self._client_sandbox = os.getcwd()
 
 
     # --------------------------------------------------------------------------
@@ -293,6 +297,21 @@ class UMGRSchedulingComponent(rpu.Component):
     #
     def _configure(self):
         raise NotImplementedError("_configure() missing for '%s'" % self.uid)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _assign_pilot(self, unit, pilot):
+        '''
+        assign a unit to a pilot.
+        This is also a good opportunity to determine the unit sandbox(es).
+        '''
+
+        unit['pilot'           ] = pilot['uid']
+        unit['client_sandbox'  ] = str(self._session._get_client_sandbox())
+        unit['resource_sandbox'] = str(self._session._get_resource_sandbox(pilot))
+        unit['pilot_sandbox'   ] = str(self._session._get_pilot_sandbox(pilot))
+        unit['unit_sandbox'    ] = str(self._session._get_unit_sandbox(unit, pilot))
 
 
     # --------------------------------------------------------------------------

@@ -66,7 +66,7 @@ class Default(PMGRLaunchingComponent):
         self._check_lock    = threading.RLock()  # lock on maipulating the above
         self._saga_fs_cache = dict()             # cache of saga directories
         self._saga_js_cache = dict()             # cache of saga job services
-        self._sandboxes     = dict()             # cache of global sandbox URLs
+        self._sandboxes     = dict()             # cache of resource sandbox URLs
         self._cache_lock    = threading.RLock()  # lock for cache
 
         self._mod_dir       = os.path.dirname(os.path.abspath(__file__))
@@ -627,7 +627,10 @@ class Default(PMGRLaunchingComponent):
         resource_sandbox = self._session._get_resource_sandbox (pilot).path
         session_sandbox  = self._session._get_session_sandbox(pilot).path
         pilot_sandbox    = self._session._get_pilot_sandbox  (pilot).path
-        pilot['sandbox'] = str(self._session._get_pilot_sandbox(pilot))
+
+        pilot['resource_sandbox'] = str(self._session._get_resource_sandbox(pilot))
+        pilot['pilot_sandbox']    = str(self._session._get_pilot_sandbox(pilot))
+        pilot['client_sandbox']   = str(self._session._get_client_sandbox())
 
         # Agent configuration that is not part of the public API.
         # The agent config can either be a config dict, or

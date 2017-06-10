@@ -272,6 +272,20 @@
         "queue"    : null,
         "schema"   : "ssh",
         "cores"    : 1
+    },
+
+    "radical.one" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 8
+    }, 
+
+    "radical.two" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 8
     }
 }
 

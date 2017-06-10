@@ -309,7 +309,6 @@ class BackfillingScheduler(Scheduler):
             self.pilots[pid]['caps']     = pilot.description.cores
             self.pilots[pid]['state']    = pilot.state
             self.pilots[pid]['resource'] = pilot.resource
-            self.pilots[pid]['sandbox']  = pilot.sandbox
 
             self.pilots[pid]['caps'] += int((100+OVERSUBSCRIPTION_RATE) \
                                             * pilot.description.cores   \
