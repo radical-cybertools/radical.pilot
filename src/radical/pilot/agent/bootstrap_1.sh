@@ -7,6 +7,12 @@ then
     exec 2>&1
 fi
 
+if test "`uname`" = 'Darwin'
+then
+    echo 'Darwin: increasing open file limit'
+    ulimit -n 512
+fi
+
 echo "bootstrap_1 stderr redirected to stdout"
 
 # ------------------------------------------------------------------------------

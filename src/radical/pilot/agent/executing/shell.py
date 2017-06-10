@@ -361,11 +361,14 @@ class Shell(AgentExecutingComponent):
         env  += "\n"
 
         if  descr['pre_exec'] :
+            fail  = ' (echo "pre_exec failed"; false) || exit'
             pre  += "\n# CU pre-exec\n"
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 pre += 'echo "`$GTOD`,unit_script,%s,%s,pre_start," >> $RP_PROF\n' %  \
                        (cu['uid'], rps.AGENT_EXECUTING)
-            pre  += '\n'.join(descr['pre_exec' ])
+            pre = ''
+            for elem in descr['pre_exec']:
+                pre += "%s || %s\n" % (elem, fail)
             pre  += "\n"
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 pre += 'echo "`$GTOD`,unit_script,%s,%s,pre_stop," >> $RP_PROF\n' %  \
@@ -373,11 +376,13 @@ class Shell(AgentExecutingComponent):
             pre  += "\n"
 
         if  descr['post_exec'] :
+            fail  = ' (echo "post_exec failed"; false) || exit'
             post += "\n# CU post-exec\n"
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 post += 'echo "`$GTOD`,unit_script,%s,%s,post_start," >> $RP_PROF\n' %  \
                        (cu['uid'], rps.AGENT_EXECUTING)
-            post += '\n'.join(descr['post_exec' ])
+            for elem in descr['post_exec']:
+                post += "%s || %s\n" % (elem, fail)
             post += "\n"
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 post += 'echo "`$GTOD`,unit_script,%s,%s,post_stop," >> $RP_PROF\n' %  \
