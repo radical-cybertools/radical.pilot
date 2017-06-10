@@ -1,14 +1,14 @@
 {
-    "shark": {
+    "shark_ssh": {
         "description"                 : "Shark Cluster at LUMC (https://git.lumc.nl/shark/SHARK/wikis/home).",
-        "notes"                       : "",
+        "notes"                       : "Need to specify at least 16GB for the pilot agent to start (pd.memory=16000).",
         "schemas"                     : ["ssh", "local"],
         "local"                       : {
             "job_manager_endpoint"    : "sge://localhost",
             "filesystem_endpoint"     : "file://localhost/"
         },
         "ssh"                         : {
-            "job_manager_endpoint"    : "sge+ssh://shark.researchlumc.nl",
+            "job_manager_endpoint"    : "sge+ssh://shark.researchlumc.nl?memreqs=h_vmem",
             "filesystem_endpoint"     : "sftp://shark.researchlumc.nl/"
         },
         "default_queue"               : "all.q",
@@ -31,8 +31,41 @@
             "/home"
         ],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_shark",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
+    },
+
+    "gb-ui_ssh": {
+        "description"                 : "LUMC node of Life Science Grid (LSG) (http://doc.grid.surfsara.nl/en/latest/Pages/General/life_science_grid.html).",
+        "notes"                       : "",
+        "schemas"                     : ["ssh", "local"],
+        "local"                       : {
+            "job_manager_endpoint"    : "torque://localhost",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "ssh"                         : {
+            "job_manager_endpoint"    : "torque+ssh://gb-ui-lumc.lumc.nl",
+            "filesystem_endpoint"     : "sftp://gb-ui-lumc.lumc.nl/"
+        },
+        "default_queue"               : "medium",
+        "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN",
+        "pre_bootstrap_1"             : [
+            "export PATH=/home/marksant/miniconda2/bin:$PATH",
+            "module load openmpi-1.10-x86_64"
+        ],
+        "default_remote_workdir"      : "$HOME",
+        "valid_roots"                 : [
+            "/home"
+        ],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "anaconda"
     }
 }
+

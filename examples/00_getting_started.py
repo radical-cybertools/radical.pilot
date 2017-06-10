@@ -6,12 +6,10 @@ __license__   = 'MIT'
 import os
 import sys
 
-verbose  = os.environ.get('RADICAL_PILOT_VERBOSE', 'REPORT')
-os.environ['RADICAL_PILOT_VERBOSE'] = verbose
-
 import radical.pilot as rp
 import radical.utils as ru
 
+dh = ru.DebugHelper()
 
 # ------------------------------------------------------------------------------
 #
@@ -25,7 +23,7 @@ import radical.utils as ru
 if __name__ == '__main__':
 
     # we use a reporter class for nicer output
-    report = ru.LogReporter(name='radical.pilot', level=verbose)
+    report = ru.LogReporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
@@ -69,7 +67,6 @@ if __name__ == '__main__':
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-
         report.header('submit units')
 
         # Register the ComputePilot in a UnitManager object.
@@ -79,7 +76,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 128   # number of units to run
+        n = 5   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -106,15 +103,17 @@ if __name__ == '__main__':
     except Exception as e:
         # Something unexpected happened in the pilot code above
         report.error('caught Exception: %s\n' % e)
+        ru.print_exception_trace()
         raise
-
+   
     except (KeyboardInterrupt, SystemExit) as e:
         # the callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
+        ru.print_exception_trace()
         report.warn('exit requested\n')
-
+ 
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.

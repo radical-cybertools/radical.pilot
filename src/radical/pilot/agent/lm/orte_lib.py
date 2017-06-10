@@ -21,9 +21,14 @@ class ORTELib(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, logger)
+        LaunchMethod.__init__(self, cfg, session)
+
+        # We remove all ORTE related environment variables from the launcher
+        # environment, so that we can use ORTE for both launch of the
+        # (sub-)agent and CU execution.
+        self.env_removables.extend(["OMPI_", "OPAL_", "PMIX_"])
 
 
     # --------------------------------------------------------------------------
@@ -121,24 +126,31 @@ class ORTELib(LaunchMethod):
 
 
         # ----------------------------------------------------------------------
-        def _watch_dvm(dvm_process):
+        def _watch_dvm():
 
             logger.info('starting DVM watcher')
 
-            while dvm_process.poll() is None:
+            retval = dvm_process.poll()
+            while retval is None:
                 line = dvm_process.stdout.readline().strip()
                 if line:
                     logger.debug('dvm output: %s' % line)
                 else:
                     time.sleep(1.0)
 
+            if retval != 0:
+                # send a kill signal to the main thread.
+                # We know that Python and threading are likely not to play well
+                # with signals - but this is an exceptional case, and not part
+                # of the stadard termination sequence.  If the signal is
+                # swallowed, the next `orte-submit` call will trigger
+                # termination anyway.
+                os.kill(os.getpid())
+
             logger.info('DVM stopped (%d)' % dvm_process.returncode)
-            # TODO: Tear down everything?
         # ----------------------------------------------------------------------
 
-        dvm_watcher = threading.Thread(target=_watch_dvm, args=(dvm_process,),
-                                       name="DVMWatcher")
-        dvm_watcher.daemon = True
+        dvm_watcher = ru.Thread(target=_watch_dvm, name="DVMWatcher")
         dvm_watcher.start()
 
         lm_info = {'dvm_uri'     : dvm_uri,
@@ -151,6 +163,10 @@ class ORTELib(LaunchMethod):
 
 
     # --------------------------------------------------------------------------
+    #
+    # NOTE: ORTE_LIB LM relies on the ORTE LaunchMethod's lrms_config_hook and
+    # lrms_shutdown_hook. These are "always" called, as even in the ORTE_LIB
+    # case we use ORTE for the sub-agent launch.
     #
     @classmethod
     def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
@@ -166,6 +182,7 @@ class ORTELib(LaunchMethod):
                 if not orte_submit:
                     raise Exception("Couldn't find orterun")
                 subprocess.Popen([orte_submit, "--hnp", lm_info['dvm_uri'], "--terminate"])
+
             except Exception as e:
                 logger.exception('dmv termination failed')
 
@@ -188,9 +205,9 @@ class ORTELib(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_mpi     = cud.get('mpi') or False
+        task_mpi     = cud.get('mpi')       or False
         task_args    = cud.get('arguments') or []
-        task_argstr  = " ".join(task_args)
+        task_argstr  = self._create_arg_string(task_args)
 
         if 'task_slots' not in opaque_slots:
             raise RuntimeError('No task_slots to launch via %s: %s' \
@@ -220,7 +237,7 @@ class ORTELib(LaunchMethod):
             #'--mca oob_base_verbose 100',
             #'--mca rml_base_verbose 100'
         ]
-        orte_command = '%s %s %s -np %d -host %s' % (
+        orte_command = '%s %s %s --bind-to none -np %d -host %s' % (
             self.launch_command, ' '.join(debug_strings), export_vars, task_cores if task_mpi else 1, hosts_string)
 
         return orte_command, task_command

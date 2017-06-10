@@ -19,9 +19,9 @@ class Yarn(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, logger)
+        LaunchMethod.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -436,7 +436,7 @@ class Yarn(LaunchMethod):
         for key,val in task_env.iteritems():
             env_string+= '-shell_env '+key+'='+str(val)+' '
 
-        #app_name = '-appname '+ cud['_id']
+        #app_name = '-appname '+ cud['uid']
         # Construct the ncores_string which is the number of cores used by the
         # container to run the script
         if task_cores:

@@ -37,33 +37,22 @@ def bson2json (bson_data) :
 
 # ------------------------------------------------------------------------------
 #
-def get_session_ids (db) :
+def get_session_ids(db) :
 
     # this is not bein cashed, as the session list can and will change freqently
-
-    print db
-    print type(db)
-    cnames = db.collection_names ()
-    sids   = list()
-    for cname in cnames :
-        if cname      not in ['system.indexes']    and \
-           cname[-3:] not in ['.pm', '.um', '.cu'] and \
-           cname[-2:] not in ['.p']:
-            sids.append (cname)
-
-    return sids
+    return db.collection_names(include_system_collections=False)
 
 
 # ------------------------------------------------------------------------------
-def get_last_session (db) :
+def get_last_session(db) :
 
     # this assumes that sessions are ordered by time -- which is the case at
     # this point...
-    return get_session_ids (db)[-1]
+    return get_session_ids(db)[-1]
 
 
 # ------------------------------------------------------------------------------
-def get_session_docs (db, sid, cache=None, cachedir=None) :
+def get_session_docs(db, sid, cache=None, cachedir=None) :
 
     # session docs may have been cached in /tmp/rp_cache_<uid>/<sid>.json -- in that
     # case we pull it from there instead of the database, which will be much
@@ -78,6 +67,7 @@ def get_session_docs (db, sid, cache=None, cachedir=None) :
 
     try :
         if  os.path.isfile (cache) :
+            print 'using cache: %s' % cache
             return ru.read_json (cache)
     except Exception as e :
         # continue w/o cache
@@ -88,11 +78,11 @@ def get_session_docs (db, sid, cache=None, cachedir=None) :
     json_data = dict()
 
     # convert bson to json, i.e. serialize the ObjectIDs into strings.
-    json_data['session'] = bson2json (list(db["%s"    % sid].find ()))
-    json_data['pmgr'   ] = bson2json (list(db["%s.pm" % sid].find ()))
-    json_data['pilot'  ] = bson2json (list(db["%s.p"  % sid].find ()))
-    json_data['umgr'   ] = bson2json (list(db["%s.um" % sid].find ()))
-    json_data['unit'   ] = bson2json (list(db["%s.cu" % sid].find ()))
+    json_data['session'] = bson2json(list(db[sid].find({'type' : 'session'})))
+    json_data['pmgr'   ] = bson2json(list(db[sid].find({'type' : 'pmgr'   })))
+    json_data['pilot'  ] = bson2json(list(db[sid].find({'type' : 'pilot'  })))
+    json_data['umgr'   ] = bson2json(list(db[sid].find({'type' : 'umgr'   })))
+    json_data['unit'   ] = bson2json(list(db[sid].find({'type' : 'unit'   })))
 
     if  len(json_data['session']) == 0 :
         raise ValueError ('no session %s in db (was `cleanup` disabled on `session.close()`?)' % sid)
@@ -110,8 +100,8 @@ def get_session_docs (db, sid, cache=None, cachedir=None) :
 
         for unit in json_data['unit'] :
 
-            if  unit['pilot'] == str(pilot['_id']) :
-                pilot['unit_ids'].append (str(unit['_id']))
+            if  unit['pilot'] == pilot['uid']:
+                pilot['unit_ids'].append (unit['uid'])
 
     # if we got here, we did not find a cached version -- thus add this dataset
     # to the cache
@@ -128,7 +118,7 @@ def get_session_docs (db, sid, cache=None, cachedir=None) :
 
 # ------------------------------------------------------------------------------
 #
-def get_session_slothist (db, sid, cache=None, cachedir=None) :
+def get_session_slothist(db, sid, cache=None, cachedir=None) :
     """
     For all pilots in the session, get the slot lists and slot histories. and
     return as list of tuples like:
@@ -137,13 +127,13 @@ def get_session_slothist (db, sid, cache=None, cachedir=None) :
       tuple (string  , list (tuple (string  , int    ) ), list (tuple (string   , datetime ) ) )
     """
 
-    docs = get_session_docs (db, sid, cache, cachedir)
+    docs = get_session_docs(db, sid, cache, cachedir)
 
     ret = dict()
 
     for pilot_doc in docs['pilot'] :
 
-        pilot_id     = pilot_doc['_id'] 
+        pilot_id     = pilot_doc['uid'] 
         slot_names   = list()
         slot_infos   = dict()
         slot_started = dict()
@@ -163,20 +153,20 @@ def get_session_slothist (db, sid, cache=None, cachedir=None) :
                 slot_started[slot_name] = sys.maxint
 
         for unit_doc in docs['unit'] :
-            if unit_doc['pilot'] == pilot_doc['_id'] :
+            if unit_doc['pilot'] == pilot_doc['uid'] :
 
                 started  = None
                 finished = None
-                for event in sorted (unit_doc['statehistory'], 
+                for event in sorted (unit_doc['state_history'], 
                                      key=lambda x: x['timestamp']) :
                     if started :
                         finished = event['timestamp']
                         break
-                    if event['state'] == EXECUTING :
+                    if event['state'] == AGENT_EXECUTING :
                         started = event['timestamp']
 
                 if not started or not finished :
-                  # print "no start/finish for cu %s - ignored" % unit_doc['_id']
+                  # print "no start/finish for cu %s - ignored" % unit_doc['uid']
                     continue
 
                 for slot_id in unit_doc['slots'] :
@@ -205,7 +195,7 @@ def get_session_slothist (db, sid, cache=None, cachedir=None) :
 
 
 # ------------------------------------------------------------------------------
-def get_session_events (db, sid, cache=None, cachedir=None) :
+def get_session_events(db, sid, cache=None, cachedir=None) :
     """
     For all entities in the session, create simple event tuples, and return
     them as a list
@@ -215,7 +205,7 @@ def get_session_events (db, sid, cache=None, cachedir=None) :
       
     """
 
-    docs = get_session_docs (db, sid, cache, cachedir)
+    docs = get_session_docs(db, sid, cache, cachedir)
 
     ret = list()
 
@@ -223,14 +213,14 @@ def get_session_events (db, sid, cache=None, cachedir=None) :
         doc   = docs['session']
         odoc  = dict()
         otype = 'session'
-        oid   = str(doc['_id'])
+        oid   = doc['uid']
         ret.append (['state', otype, oid, None, doc['created'],   'created',   odoc])
         ret.append (['state', otype, oid, None, doc['connected'], 'connected', odoc])
 
     for doc in docs['pilot'] :
         odoc  = dict()
         otype = 'pilot'
-        oid   = str(doc['_id'])
+        oid   = doc['uid']
 
         for event in [# 'submitted', 'started',    'finished',  # redundant to states..
                       'input_transfer_started',  'input_transfer_finished', 
@@ -240,7 +230,7 @@ def get_session_events (db, sid, cache=None, cachedir=None) :
             else : 
                 ret.append (['state', otype, oid, oid, None,       event, odoc])
 
-        for event in doc['statehistory'] :
+        for event in doc['state_history'] :
             ret.append (['state',     otype, oid, oid, event['timestamp'], event['state'], odoc])
 
         if  'callbackhistory' in doc :
@@ -251,8 +241,8 @@ def get_session_events (db, sid, cache=None, cachedir=None) :
     for doc in docs['unit'] :
         odoc  = dict()
         otype = 'unit'
-        oid   = str(doc['_id'])
-        pid   = str(doc['pilot'])
+        oid   = doc['uid']
+        pid   = doc['pilot']
 
         # TODO: change states to look for
         for event in [# 'submitted', 'started',    'finished',  # redundant to states..
@@ -264,7 +254,7 @@ def get_session_events (db, sid, cache=None, cachedir=None) :
             else :                                
                 ret.append (['state', otype, oid, pid, None,       event, doc])
 
-        for event in doc['statehistory'] :
+        for event in doc['state_history'] :
             ret.append (['state',     otype, oid, pid, event['timestamp'], event['state'], doc])
 
         # TODO: this probably needs to be "doc"

@@ -1,5 +1,6 @@
+
 {
-    "yellowstone": {
+    "yellowstone_ssh": {
         "description"                 : "The Yellowstone IBM iDataPlex cluster at UCAR (https://www2.cisl.ucar.edu/resources/yellowstone).",
         "notes"                       : "We only support one concurrent CU per node currently.",
         "schemas"                     : ["ssh"],
@@ -10,7 +11,6 @@
         },
         "default_queue"               : "premium",
         "lrms"                        : "LSF",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -25,3 +25,4 @@
         "python_dist"                 : "default"
     }
 }
+

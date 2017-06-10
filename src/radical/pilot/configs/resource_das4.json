@@ -1,6 +1,6 @@
 
 {
-    "fs2": {
+    "fs2_ssh": {
         "description"                 : "The Distributed ASCI Supercomputer 4 (http://www.cs.vu.nl/das4/).",
         "notes"                       : "None",
         "schemas"                     : ["ssh"],
@@ -12,7 +12,6 @@
         "default_queue"               : "all.q",
         "spmd_variation"              : "openmpi",
         "lrms"                        : "SGE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -22,7 +21,6 @@
         "pre_bootstrap_1"             : ["module load openmpi/gcc"],
         "valid_roots"                 : ["/home", "/var/scratch"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_fs2",
         "virtenv_mode"                : "update",
         "python_dist"                 : "default"
     }

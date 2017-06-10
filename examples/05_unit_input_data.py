@@ -93,6 +93,11 @@ if __name__ == '__main__':
             cud.executable     = '/usr/bin/wc'
             cud.arguments      = ['-c', 'input.dat']
             cud.input_staging  = ['input.dat']
+            
+          # this is a shortcut for:
+          # cud.input_staging  = {'source': 'client:///input.dat', 
+          #                       'target': 'unit:///input.dat',
+          #                       'action': rp.Transfer}
 
             cuds.append(cud)
             report.progress()

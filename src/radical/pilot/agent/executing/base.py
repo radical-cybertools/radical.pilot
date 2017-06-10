@@ -2,6 +2,9 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os
+
+import radical.utils as ru
 
 from ... import utils     as rpu
 from ... import constants as rpc
@@ -27,9 +30,14 @@ class AgentExecutingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        rpu.Component.__init__(self, rpc.AGENT_EXECUTING_COMPONENT, cfg)
+        self._uid = ru.generate_id('agent.executing.%(counter)s', ru.ID_CUSTOM)
+
+        rpu.Component.__init__(self, cfg, session)
+
+        # if so configured, let the CU know what to use as tmp dir
+        self._cu_tmp = cfg.get('cu_tmp', os.environ.get('TMP', '/tmp'))
 
 
     # --------------------------------------------------------------------------
@@ -37,7 +45,7 @@ class AgentExecutingComponent(rpu.Component):
     # This class-method creates the appropriate sub-class for the Spawner
     #
     @classmethod
-    def create(cls, cfg):
+    def create(cls, cfg, session):
 
         name = cfg['spawner']
 
@@ -47,16 +55,16 @@ class AgentExecutingComponent(rpu.Component):
 
         if name == EXECUTING_NAME_POPEN:
             from .popen import Popen
-            impl = Popen(cfg)
+            impl = Popen(cfg, session)
         elif name == EXECUTING_NAME_SHELL:
             from .shell import Shell
-            impl = Shell(cfg)
+            impl = Shell(cfg, session)
         elif name == EXECUTING_NAME_ABDS:
             from .abds import ABDS
-            impl = ABDS(cfg)
+            impl = ABDS(cfg, session)
         elif name == EXECUTING_NAME_ORTE:
             from .orte import ORTE
-            impl = ORTE(cfg)
+            impl = ORTE(cfg, session)
         else:
             raise ValueError("AgentExecutingComponent '%s' unknown or defunct" % name)
 

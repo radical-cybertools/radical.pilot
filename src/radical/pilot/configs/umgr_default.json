@@ -1,0 +1,44 @@
+
+# this is the default unit manager config which is used if no other config is
+# specified.  It contains the minimal set of settings required for
+# a functional unit manager.
+{
+    # default scheduler
+    "scheduler" : "round_robin",
+
+    # max number of updates to put into a db bulk
+    "bulk_collection_size" : 100,
+
+    # max time period to collect db notifications into bulks (seconds)
+    "bulk_collection_time" : 1.0,
+
+    # time to sleep between database polls (seconds)
+    "db_poll_sleeptime" : 1.0,
+
+    "bridges" : {
+        "umgr_staging_input_queue"  : {"log_level" : "debug",
+                                       "stall_hwm" : 1,
+                                       "bulk_size" : 0},
+        "umgr_scheduling_queue"     : {"log_level" : "debug",
+                                       "stall_hwm" : 1,
+                                       "bulk_size" : 0},
+        "umgr_staging_output_queue" : {"log_level" : "debug",
+                                       "stall_hwm" : 1,
+                                       "bulk_size" : 0},
+
+        "umgr_unschedule_pubsub"    : {"log_level" : "debug",
+                                       "stall_hwm" : 1,
+                                       "bulk_size" : 0},
+        "umgr_reschedule_pubsub"    : {"log_level" : "debug",
+                                       "stall_hwm" : 1,
+                                       "bulk_size" : 0}
+    },
+
+    "components" : {
+        # how many instances of the respective components should be started
+        "UMGRStagingInputComponent"  : { "count" : 1},
+        "UMGRSchedulingComponent"    : { "count" : 1},
+        "UMGRStagingOutputComponent" : { "count" : 1}
+    }
+}
+

@@ -1,0 +1,20 @@
+
+# this is the default pilot manager config which is used if no other config is
+# specified.  It contains the minimal set of settings required for
+# a functional pilot manager.
+{
+    # time to sleep between database polls (seconds)
+    "db_poll_sleeptime" : 1.0,
+
+    "bridges" : {
+        "pmgr_launching_queue" : {"log_level" : "debug",
+                                  "stall_hwm" : 1,
+                                  "bulk_size" : 0}
+    },
+
+    "components" : {
+        # how many instances of the respective components should be started
+        "PMGRLaunchingComponent" : {"count" : 1}
+    }
+}
+

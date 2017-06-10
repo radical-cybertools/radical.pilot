@@ -1,0 +1,28 @@
+
+# this is the default session config which is used if no other config is
+# specified.  It contains the minimal set of settings required for
+# a functional rp session, both on the client and on the agent side.
+{
+    # fallback db url
+    "default_dburl"      : "mongodb://rp:rp@ds015335.mlab.com:15335/rp",
+
+    "bridges" : {
+        "log_pubsub"     : {"log_level" : "debug",
+                            "stall_hwm" : 1,
+                            "bulk_size" : 0},
+        "state_pubsub"   : {"log_level" : "debug",
+                            "stall_hwm" : 1,
+                            "bulk_size" : 0},
+        "control_pubsub" : {"log_level" : "debug",
+                            "stall_hwm" : 1,
+                            "bulk_size" : 0}
+    },
+
+    "components" : {
+        # how many instances of the respective components should be started
+        "UpdateWorker" : {
+            "count" : 1
+        }
+    }
+}
+

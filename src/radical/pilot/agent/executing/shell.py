@@ -26,9 +26,9 @@ class Shell(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        AgentExecutingComponent.__init__ (self, cfg)
+        AgentExecutingComponent.__init__ (self, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -37,20 +37,19 @@ class Shell(AgentExecutingComponent):
 
         from .... import pilot as rp
 
-        self.declare_input (rps.EXECUTING_PENDING, rpc.AGENT_EXECUTING_QUEUE)
-        self.declare_worker(rps.EXECUTING_PENDING, self.work)
+        self._pwd = os.getcwd() 
 
-        self.declare_output(rps.AGENT_STAGING_OUTPUT_PENDING, rpc.AGENT_STAGING_OUTPUT_QUEUE)
+        self.register_input(rps.EXECUTING_PENDING, 
+                            rpc.AGENT_EXECUTING_QUEUE, self.work)
 
-        self.declare_publisher ('unschedule', rpc.AGENT_UNSCHEDULE_PUBSUB)
-        self.declare_publisher ('state',      rpc.AGENT_STATE_PUBSUB)
+        self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
+                             rpc.AGENT_STAGING_OUTPUT_QUEUE)
 
-        # all components use the command channel for control messages
-        self.declare_publisher ('command', rpc.AGENT_COMMAND_PUBSUB)
-        self.declare_subscriber('command', rpc.AGENT_COMMAND_PUBSUB, self.command_cb)
+        self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
         # Mimic what virtualenv's "deactivate" would do
-        self._deactivate = "# deactivate pilot virtualenv\n"
+        self._deactivate = "\n# deactivate pilot virtualenv\n"
 
         old_path  = os.environ.get('_OLD_VIRTUAL_PATH',       None)
         old_ppath = os.environ.get('_OLD_VIRTUAL_PYTHONPATH', None)
@@ -98,14 +97,14 @@ class Shell(AgentExecutingComponent):
         # place...
 
         self._task_launcher = rp.agent.LM.create(
-                name   = self._cfg['task_launch_method'],
-                cfg    = self._cfg,
-                logger = self._log)
+                name    = self._cfg['task_launch_method'],
+                cfg     = self._cfg,
+                session = self._session)
 
         self._mpi_launcher = rp.agent.LM.create(
-                name   = self._cfg['mpi_launch_method'],
-                cfg    = self._cfg,
-                logger = self._log)
+                name    = self._cfg['mpi_launch_method'],
+                cfg     = self._cfg,
+                session = self._session)
 
         # TODO: test that this actually works
         # Remove the configured set of environment variables from the
@@ -152,18 +151,18 @@ class Shell(AgentExecutingComponent):
         # tmp = tempfile.gettempdir()
         # Moving back to shared file system again, until it reaches maturity,
         # as this breaks launch methods with a hop, e.g. ssh.
-        tmp = os.getcwd() # FIXME: see #658
+        # FIXME: see #658
         self._pilot_id    = self._cfg['pilot_id']
-        self._spawner_tmp = "/%s/%s-%s" % (tmp, self._pilot_id, self._cname)
+        self._spawner_tmp = "/%s/%s-%s" % (self._pwd, self._pilot_id, self.uid)
 
         ret, out, _  = self.launcher_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
+                           ("/bin/sh %s/agent/executing/shell_spawner.sh %s" \
                            % (os.path.dirname (rp.__file__), self._spawner_tmp))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
 
         ret, out, _  = self.monitor_shell.run_sync \
-                           ("/bin/sh %s/agent/radical-pilot-spawner.sh %s" \
+                           ("/bin/sh %s/agent/executing/shell_spawner.sh %s" \
                            % (os.path.dirname (rp.__file__), self._spawner_tmp))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
@@ -174,20 +173,9 @@ class Shell(AgentExecutingComponent):
         self._watcher.daemon = True
         self._watcher.start ()
 
+        self.gtod = "%s/gtod" % self._pwd
+
         self._prof.prof('run setup done', uid=self._pilot_id)
-
-        # communicate successful startup
-        self.publish('command', {'cmd' : 'alive',
-                                 'arg' : self.cname})
-
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize_child(self):
-
-        # communicate finalization
-        self.publish('command', {'cmd' : 'final',
-                                 'arg' : self.cname})
 
 
     # --------------------------------------------------------------------------
@@ -203,18 +191,34 @@ class Shell(AgentExecutingComponent):
             with self._cancel_lock:
                 self._cus_to_cancel.append(arg)
 
+        return True
+
 
     # --------------------------------------------------------------------------
     #
-    def work(self, cu):
+    def work(self, units):
+
+        if not isinstance(units, list):
+            units = [units]
+
+        self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
+
+        for unit in units:
+
+            self._handle_unit(unit)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _handle_unit(self, cu):
 
         # check that we don't start any units which need cancelling
-        if cu['_id'] in self._cus_to_cancel:
+        if cu['uid'] in self._cus_to_cancel:
 
             with self._cancel_lock:
-                self._cus_to_cancel.remove(cu['_id'])
+                self._cus_to_cancel.remove(cu['uid'])
 
-            self.publish('unschedule', cu)
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
             self.advance(cu, rps.CANCELED, publish=True, push=False)
             return True
 
@@ -249,10 +253,6 @@ class Shell(AgentExecutingComponent):
             # FIXME: We could optimize a little by publishing the unschedule
             #        right here...
 
-
-      # self.advance(cu, rps.AGENT_EXECUTING, publish=True, push=False)
-        self.advance(cu, rps.EXECUTING, publish=True, push=False)
-
         try:
             if cu['description']['mpi']:
                 launcher = self._mpi_launcher
@@ -265,7 +265,7 @@ class Shell(AgentExecutingComponent):
             self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
             assert(cu['opaque_slots']) # FIXME: no assert, but check
-            self._prof.prof('exec', msg='unit launch', uid=cu['_id'])
+            self._prof.prof('exec', msg='unit launch', uid=cu['uid'])
 
             # Start a new subprocess to launch the unit
             self.spawn(launcher=launcher, cu=cu)
@@ -281,7 +281,7 @@ class Shell(AgentExecutingComponent):
 
             # Free the Slots, Flee the Flots, Ree the Frots!
             if cu['opaque_slots']:
-                self.publish('unschedule', cu)
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
 
@@ -327,48 +327,66 @@ class Shell(AgentExecutingComponent):
         cmd   = ""
         descr = cu['description']
 
-        if  cu['workdir'] :
-            cwd  += "# CU workdir\n"
-            cwd  += "mkdir -p %s\n" % cu['workdir']
-            # TODO: how do we align this timing with the mkdir with POPEN? (do we at all?)
-            cwd  += "cd       %s\n" % cu['workdir']
-            if 'RADICAL_PILOT_PROFILE' in os.environ:
-                cwd  += "echo script after_cd `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
-            cwd  += "\n"
+        sandbox  = '%s/%s' % (self._pwd, cu['uid'])
+
+        cwd  += "# CU sandbox\n"
+        cwd  += "mkdir -p %s\n" % sandbox
+        cwd  += "cd       %s\n" % sandbox
+        if 'RADICAL_PILOT_PROFILE' in os.environ:
+            cmd += 'echo "`$GTOD`,unit_script,%s,%s,after_cd," >> $RP_PROF\n' %  \
+                   (cu['uid'], rps.AGENT_EXECUTING)
+        if 'RADICAL_PILOT_PROFILE' in os.environ:
+            cwd  += "echo script after_cd `%s` >> %s/PROF\n" % (self.gtod, sandbox)
+        cwd  += "\n"
 
         env  += "# CU environment\n"
-        if descr['environment']:
-            for e in descr['environment'] :
-                env += "export %s=%s\n"  %  (e, descr['environment'][e])
         env  += "export RP_SESSION_ID=%s\n" % self._cfg['session_id']
         env  += "export RP_PILOT_ID=%s\n"   % self._cfg['pilot_id']
         env  += "export RP_AGENT_ID=%s\n"   % self._cfg['agent_name']
-        env  += "export RP_SPAWNER_ID=%s\n" % self.cname
-        env  += "export RP_UNIT_ID=%s\n"    % cu['_id']
+        env  += "export RP_SPAWNER_ID=%s\n" % self.uid
+        env  += "export RP_UNIT_ID=%s\n"    % cu['uid']
+        env  += 'export RP_GTOD="%s"\n'     % cu['gtod']
+        env  += 'export RP_PROF="%s"\n'     % sandbox
+        env  += '\n'
+        env  += '\ntouch $RP_PROF\n'
 
         # also add any env vars requested for export by the resource config
         for k,v in self._env_cu_export.iteritems():
             env += "export %s=%s\n" % (k,v)
+
+        # also add any env vars requested in hte unit description
+        if descr['environment']:
+            for e in descr['environment'] :
+                env += "export %s=%s\n"  %  (e, descr['environment'][e])
         env  += "\n"
 
         if  descr['pre_exec'] :
-            pre  += "# CU pre-exec\n"
+            fail  = ' (echo "pre_exec failed"; false) || exit'
+            pre  += "\n# CU pre-exec\n"
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                pre  += "echo pre  start `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
-            pre  += '\n'.join(descr['pre_exec' ])
+                pre += 'echo "`$GTOD`,unit_script,%s,%s,pre_start," >> $RP_PROF\n' %  \
+                       (cu['uid'], rps.AGENT_EXECUTING)
+            pre = ''
+            for elem in descr['pre_exec']:
+                pre += "%s || %s\n" % (elem, fail)
             pre  += "\n"
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                pre  += "echo pre  stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+                pre += 'echo "`$GTOD`,unit_script,%s,%s,pre_stop," >> $RP_PROF\n' %  \
+                       (cu['uid'], rps.AGENT_EXECUTING)
             pre  += "\n"
 
         if  descr['post_exec'] :
-            post += "# CU post-exec\n"
+            fail  = ' (echo "post_exec failed"; false) || exit'
+            post += "\n# CU post-exec\n"
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                post += "echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
-            post += '\n'.join(descr['post_exec' ])
+                post += 'echo "`$GTOD`,unit_script,%s,%s,post_start," >> $RP_PROF\n' %  \
+                       (cu['uid'], rps.AGENT_EXECUTING)
+            for elem in descr['post_exec']:
+                post += "%s || %s\n" % (elem, fail)
             post += "\n"
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                post += "echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+                post += 'echo "`$GTOD`,unit_script,%s,%s,post_stop," >> $RP_PROF\n' %  \
+                       (cu['uid'], rps.AGENT_EXECUTING)
             post += "\n"
 
         if  descr['arguments']  :
@@ -383,9 +401,10 @@ class Shell(AgentExecutingComponent):
 
         cmd, hop_cmd  = launcher.construct_command(cu, '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"')
 
-        script = ''
+        script = '\n%s\n' % env
         if 'RADICAL_PILOT_PROFILE' in os.environ:
-            script += "echo script start_script `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+            script += 'echo "`$GTOD`,unit_script,%s,%s,start_script," >> $RP_PROF\n' %  \
+                      (cu['uid'], rps.AGENT_EXECUTING)
 
         if hop_cmd :
             # the script will itself contain a remote callout which calls again
@@ -393,7 +412,7 @@ class Shell(AgentExecutingComponent):
             # thus introduce a guard for the first execution.  The hop_cmd MUST
             # set RP_SPAWNER_HOP to some value for the startup to work
 
-            script += "# ------------------------------------------------------\n"
+            script += "\n# ------------------------------------------------------\n"
             script += '# perform one hop for the actual command launch\n'
             script += 'if test -z "$RP_SPAWNER_HOP"\n'
             script += 'then\n'
@@ -401,15 +420,15 @@ class Shell(AgentExecutingComponent):
             script += '    exit\n'
             script += 'fi\n\n'
 
-        script += "# ------------------------------------------------------\n"
+        script += "\n# ------------------------------------------------------\n"
         script += "%s"        %  cwd
-        script += "%s"        %  env
         script += "%s"        %  pre
-        script += "# CU execution\n"
+        script += "\n# CU execution\n"
         script += "%s %s\n\n" % (cmd, io)
         script += "RETVAL=$?\n"
         if 'RADICAL_PILOT_PROFILE' in os.environ:
-            script += "echo script after_exec `%s` >> %s/PROF\n" % (cu['gtod'], cu['workdir'])
+            script += '\necho "`$GTOD`,unit_script,%s,%s,after_exec," >> $RP_PROF\n' %  \
+                      (cu['uid'], rps.AGENT_EXECUTING)
         script += "%s"        %  post
         script += "exit $RETVAL\n"
         script += "# ------------------------------------------------------\n\n"
@@ -423,16 +442,21 @@ class Shell(AgentExecutingComponent):
     #
     def spawn(self, launcher, cu):
 
-        uid = cu['_id']
+        uid     = cu['uid']
+        sandbox = '%s/%s' % (self._pwd, uid)
 
         self._prof.prof('spawn', msg='unit spawn', uid=uid)
+
+        # prep stdout/err so that we can append w/o checking for None
+        cu['stdout'] = ''
+        cu['stderr'] = ''
 
         # we got an allocation: go off and launch the process.  we get
         # a multiline command, so use the wrapper's BULK/LRUN mode.
         cmd       = self._cu_to_cmd (cu, launcher)
         run_cmd   = "BULK\nLRUN\n%s\nLRUN_EOT\nBULK_RUN\n" % cmd
 
-        self._prof.prof('command', msg='launch script constructed', uid=cu['_id'])
+        self._prof.prof('control', msg='launch script constructed', uid=cu['uid'])
 
       # TODO: Remove this commented out block?
       # if  self.lrms.target_is_macos :
@@ -455,9 +479,8 @@ class Shell(AgentExecutingComponent):
             raise RuntimeError ("Failed to run unit (%s)" % lines)
 
         # FIXME: verify format of returned pid (\d+)!
-        pid           = lines[-1].strip ()
-        cu['pid']     = pid
-        cu['started'] = time.time()
+        pid       = lines[-1].strip ()
+        cu['pid'] = pid
 
         # before we return, we need to clean the
         # 'BULK COMPLETED message from lrun
@@ -468,17 +491,17 @@ class Shell(AgentExecutingComponent):
 
         self._prof.prof('spawn', msg='spawning passed to pty', uid=uid)
 
-        # for convenience, we link the ExecWorker job-cwd to the unit workdir
+        # for convenience, we link the ExecWorker job-cwd to the unit sandbox
         try:
             os.symlink("%s/%s" % (self._spawner_tmp, cu['pid']),
-                       "%s/%s" % (cu['workdir'], 'SHELL_SPAWNER_TMP'))
+                       "%s/%s" % (sandbox, 'SHELL_SPAWNER_TMP'))
         except Exception as e:
             self._log.exception('shell cwd symlink failed: %s' % e)
 
         # FIXME: this is too late, there is already a race with the monitoring
         # thread for this CU execution.  We need to communicate the PIDs/CUs via
         # a queue again!
-        self._prof.prof('pass', msg="to watcher (%s)" % cu['state'], uid=cu['_id'])
+        self._prof.prof('pass', msg="to watcher (%s)" % cu['state'], uid=cu['uid'])
         with self._registry_lock :
             self._registry[pid] = cu
 
@@ -577,7 +600,7 @@ class Shell(AgentExecutingComponent):
 
                     if cu:
                         self._prof.prof('passed', msg="ExecWatcher picked up unit",
-                                state=cu['state'], uid=cu['_id'])
+                                state=cu['state'], uid=cu['uid'])
                         self._handle_event (cu, pid, state, data)
                     else:
                         self._cached_events.append ([pid, state, data])
@@ -593,7 +616,7 @@ class Shell(AgentExecutingComponent):
     def _handle_event (self, cu, pid, state, data) :
 
         # got an explicit event to handle
-        self._log.info ("monitoring handles event for %s: %s:%s:%s", cu['_id'], pid, state, data)
+        self._log.info ("monitoring handles event for %s: %s:%s:%s", cu['uid'], pid, state, data)
 
         rp_state = {'DONE'     : rps.DONE,
                     'FAILED'   : rps.FAILED,
@@ -605,27 +628,24 @@ class Shell(AgentExecutingComponent):
                              pid, state, data)
             return
 
-        self._prof.prof('exec', msg='execution complete', uid=cu['_id'])
+        self._prof.prof('exec', msg='execution complete', uid=cu['uid'])
 
         # for final states, we can free the slots.
-        self.publish('unschedule', cu)
-
-        # record timestamp, exit code on final states
-        cu['finished'] = time.time()
+        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
         if data : cu['exit_code'] = int(data)
         else    : cu['exit_code'] = None
 
         if rp_state in [rps.FAILED, rps.CANCELED] :
             # The unit failed - fail after staging output
-            self._prof.prof('final', msg="execution failed", uid=cu['_id'])
+            self._prof.prof('final', msg="execution failed", uid=cu['uid'])
             cu['target_state'] = rps.FAILED
 
         else:
             # The unit finished cleanly, see if we need to deal with
             # output data.  We always move to stageout, even if there are no
             # directives -- at the very least, we'll upload stdout/stderr
-            self._prof.prof('final', msg="execution succeeded", uid=cu['_id'])
+            self._prof.prof('final', msg="execution succeeded", uid=cu['uid'])
             cu['target_state'] = rps.DONE
 
         self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)

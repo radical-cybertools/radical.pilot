@@ -17,7 +17,7 @@
 # procedure!
 
 export OMPI_DIR=$HOME/ompi/                          # target location for install
-export OMPI_COMMIT=6da4dbb                           # OpenMPI commit to install
+export OMPI_COMMIT=539f71d                           # OpenMPI commit to install
 export OMPI_LABEL=$(date '+%Y_%m_%d'_${OMPI_COMMIT}) # module flag for installed version
 export MAKEFLAGS=-j16                                # speed up build on multicore machines
 
@@ -99,6 +99,22 @@ $OMPI_SOURCE/ompi/configure \
 make
 make install
 
+
+# install libffi on systems which don't have it, so that the pilot ve can
+# install the `orte_cffi` python module.
+# libffi documentation needs texi2html which is not commonly available, so we
+# disable documentation.
+#
+# cd $OMPI_SOURCE
+# git clone https://github.com/libffi/libffi.git
+# cd libffi
+# ./autogen.sh
+# ./configure --prefix=$OMPI_TOOLS_PREFIX --disable-docs
+# make
+# make install
+
+
+
 mkdir -p $OMPI_MODULE
 cat <<EOT > $OMPI_MODULE/$OMPI_LABEL
 #%Module########################################################################
@@ -120,8 +136,14 @@ set version $OMPI_LABEL
 prepend-path    PATH            $OMPI_INSTALLED/$OMPI_LABEL/bin
 prepend-path    LD_LIBRARY_PATH $OMPI_INSTALLED/$OMPI_LABEL/lib
 prepend-path    MANPATH         $OMPI_INSTALLED/$OMPI_LABEL/share/man
+prepend-path    PKG_CONFIG_PATH $OMPI_INSTALLED/$OMPI_LABEL/share/pkgconfig
+
+setenv          OMPI_MCA_timer_require_monotonic false
 
 EOT
 
+
+# this should not be needed - but just in case someone sources this script,
+# we try to end up where we started.
 cd $orig
 

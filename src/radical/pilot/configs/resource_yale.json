@@ -1,5 +1,6 @@
+
 {
-    "grace": {
+    "grace_ssh": {
         "description"                 : "Grace is a shared-use facility within Yale’s Faculty of Arts and Sciences (FAS).",
         "notes"                       : "",
         "schemas"                     : ["ssh"],
@@ -10,7 +11,6 @@
         },
         "default_queue"               : "shared",
         "lrms"                        : "LSF",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -22,8 +22,8 @@
         "pre_bootstrap_2"             : [],
         "valid_roots"                 : ["/"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_grace",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     }
 }
+

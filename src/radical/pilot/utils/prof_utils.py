@@ -6,7 +6,8 @@ import glob
 import time
 import threading
 
-import radical.utils as ru
+import radical.utils               as ru
+from   radical.pilot import states as rps
 
 
 # ------------------------------------------------------------------------------
@@ -18,9 +19,19 @@ import radical.utils as ru
 NTP_DIFF_WARN_LIMIT = 1.0
 
 
+# ------------------------------------------------------------------------------
+#
+# we expect profiles in CSV formatted files.  The CSV field names are defined
+# here:
+#
+_prof_fields  = ['time', 'name', 'uid', 'state', 'event', 'msg']
+
+
+# ------------------------------------------------------------------------------
+#
 def prof2frame(prof):
     """
-    expect a profile, ie. a list of profile rows which are dicts.  
+    expect a profile, ie. a list of profile rows which are dicts.
     Write that profile to a temp csv and let pandas parse it into a frame.
     """
 
@@ -85,7 +96,7 @@ def get_experiment_frames(experiments, datadir=None):
       'test 6' : [ [ 'rp.session.ip-10-184-31-85.merzky.016611.0013', 'stampede - isolated',            ],
                    [ 'rp.session.ip-10-184-31-85.merzky.016612.0012', 'stampede - integrated',          ],
                    [ 'rp.session.titan-ext4.marksant1.016607.0006',   'blue waters - integrated'        ] ]
-    }  name in 
+    }  name in
 
     ie. iname in t is a list of experiment names, and each label has a list of
     session/label pairs, where the label will be later used to label (duh) plots.
@@ -107,164 +118,13 @@ def get_experiment_frames(experiments, datadir=None):
 
         for sid, label in experiments[exp]:
             print "   - %s" % sid
-            
-            import glob
+
             for prof in glob.glob ("%s/%s-pilot.*.prof" % (datadir, sid)):
                 print "     - %s" % prof
                 frame = pd.read_csv(prof)
                 exp_frames[exp].append ([frame, label])
-                
+
     return exp_frames
-
-
-# ------------------------------------------------------------------------------
-#
-def drop_units(cfg, units, name, mode, drop_cb=None, prof=None, logger=None):
-    """
-    For each unit in units, check if the queue is configured to drop
-    units in the given mode ('in' or 'out').  If drop is set to 0, the units
-    list is returned as is.  If drop is set to one, all cloned units are
-    removed from the list.  If drop is set to two, an empty list is returned.
-
-    For each dropped unit, we check if 'drop_cb' is defined, and call
-    that callback if that is the case, with the signature:
-
-      drop_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
-    """
-
-    # blowup is only enabled on profiling
-    if 'RADICAL_PILOT_PROFILE' not in os.environ:
-        if logger:
-            logger.debug('no profiling - no dropping')
-        return units
-
-    if not units:
-      # if logger:
-      #     logger.debug('no units - no dropping')
-        return units
-
-    drop = cfg.get('drop', {}).get(name, {}).get(mode, 1)
-
-    if drop == 0:
-      # if logger:
-      #     logger.debug('dropped nothing')
-        return units
-
-    return_list = True
-    if not isinstance(units, list):
-        return_list = False
-        units = [units]
-
-    if drop == 2:
-        if drop_cb:
-            for unit in units:
-                drop_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
-        if logger:
-            logger.debug('dropped all')
-            for unit in units:
-                logger.debug('dropped %s', unit['_id'])
-        if return_list: return []
-        else          : return None
-
-    if drop != 1:
-        raise ValueError('drop[%s][%s] not in [0, 1, 2], but is %s' \
-                      % (name, mode, drop))
-
-    ret = list()
-    for unit in units :
-        if '.clone_' not in unit['_id']:
-            ret.append(unit)
-          # if logger:
-          #     logger.debug('dropped not %s', unit['_id'])
-        else:
-            if drop_cb:
-                drop_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
-            if logger:
-                logger.debug('dropped %s', unit['_id'])
-
-    if return_list: 
-        return ret
-    else: 
-        if ret: return ret[0]
-        else  : return None
-
-
-# ------------------------------------------------------------------------------
-#
-def clone_units(cfg, units, name, mode, prof=None, clone_cb=None, logger=None):
-    """
-    For each unit in units, add 'factor' clones just like it, just with
-    a different ID (<id>.clone_001).  The factor depends on the context of
-    this clone call (ie. the queue name), and on mode (which is 'input' or
-    'output').  This methid will always return a list.
-
-    For each cloned unit, we check if 'clone_cb' is defined, and call
-    that callback if that is the case, with the signature:
-
-      clone_cb(unit=unit, name=name, mode=mode, prof=prof, logger=logger)
-    """
-
-    if units == None:
-        if logger:
-            logger.debug('no units - no cloning')
-        return list()
-
-    if not isinstance(units, list):
-        units = [units]
-
-    # blowup is only enabled on profiling
-    if 'RADICAL_PILOT_PROFILE' not in os.environ:
-        if logger:
-            logger.debug('no profiling - no cloning')
-        return units
-
-    if not units:
-        # nothing to clone...
-        if logger:
-            logger.debug('No units - no cloning')
-        return units
-
-    factor = cfg.get('clone', {}).get(name, {}).get(mode, 1)
-
-    if factor == 1:
-        if logger:
-            logger.debug('cloning with factor [%s][%s]: 1' % (name, mode))
-        return units
-
-    if factor < 1:
-        raise ValueError('clone factor must be >= 1 (not %s)' % factor)
-
-    ret = list()
-    for unit in units :
-
-        uid = unit['_id']
-
-        for idx in range(factor-1) :
-
-            clone    = copy.deepcopy(dict(unit))
-            clone_id = '%s.clone_%05d' % (uid, idx+1)
-
-            for key in clone :
-                if isinstance (clone[key], basestring) :
-                    clone[key] = clone[key].replace (uid, clone_id)
-
-            idx += 1
-            ret.append(clone)
-
-            if clone_cb:
-                clone_cb(unit=clone, name=name, mode=mode, prof=prof, logger=logger)
-
-        # Append the original cu last, to increase the likelyhood that
-        # application state only advances once all clone states have also
-        # advanced (they'll get pushed onto queues earlier).  This cannot be
-        # relied upon, obviously.
-        ret.append(unit)
-
-    if logger:
-        logger.debug('cloning with factor [%s][%s]: %s gives %s units',
-                     name, mode, factor, len(ret))
-
-    return ret
 
 
 # ------------------------------------------------------------------------------
@@ -272,9 +132,8 @@ def clone_units(cfg, units, name, mode, prof=None, clone_cb=None, logger=None):
 def read_profiles(profiles):
     """
     We read all profiles as CSV files and parse them.  For each profile,
-    we back-calculate global time (epoch) from the synch timestamps.  
+    we back-calculate global time (epoch) from the synch timestamps.
     """
-
     ret    = dict()
     fields = ru.Profiler.fields
 
@@ -289,7 +148,7 @@ def read_profiles(profiles):
                     continue
 
                 row['time'] = float(row['time'])
-    
+
                 # store row in profile
                 rows.append(row)
     
@@ -305,29 +164,42 @@ def combine_profiles(profs):
     We merge all profiles and sorted by time.
 
     This routine expectes all profiles to have a synchronization time stamp.
-    Two kinds of sync timestamps are supported: absolute and relative.  
+    Two kinds of sync timestamps are supported: absolute and relative.
 
     Time syncing is done based on 'sync abs' timestamps, which we expect one to
     be available per host (the first profile entry will contain host
     information).  All timestamps from the same host will be corrected by the
-    respectively determined ntp offset.
+    respectively determined ntp offset.  We define an 'accuracy' measure which
+    is the maximum difference of clock correction offsets across all hosts.
+
+    The method returnes the combined profile and accuracy, as tuple.
     """
 
-    pd_rel = dict() # profiles which have relative time refs
+    # we abuse the profile combination to also derive a pilot-host map, which
+    # will tell us on what exact host each pilot has been running.  To do so, we
+    # check for the PMGR_ACTIVE advance event in agent_0.prof, and use the NTP
+    # sync info to associate a hostname.
+    # FIXME: This should be replaced by proper hostname logging in 
+    #        in `pilot.resource_details`.
 
-    t_host = dict() # time offset per host
-    p_glob = list() # global profile
-    t_min  = None   # absolute starting point of prof session
-    c_qed  = 0      # counter for profile closing tag
+    pd_rel   = dict() # profiles which have relative time refs
+    hostmap  = dict() # map pilot IDs to host names
+
+    t_host   = dict() # time offset per host
+    p_glob   = list() # global profile
+    t_min    = None   # absolute starting point of prof session
+    c_qed    = 0      # counter for profile closing tag
+    accuracy = 0      # max uncorrected clock deviation
 
     for pname, prof in profs.iteritems():
 
         if not len(prof):
-            print 'empty profile %s' % pname
+          # print 'empty profile %s' % pname
             continue
 
         if not prof[0]['msg']:
-            print 'unsynced profile %s' % pname
+            # FIXME: https://github.com/radical-cybertools/radical.analytics/issues/20 
+          # print 'unsynced profile %s' % pname
             continue
 
         t_prof = prof[0]['time']
@@ -340,7 +212,8 @@ def combine_profiles(profs):
         else:
             t_min = t_prof
 
-        if t_mode != 'sys':
+        if t_mode == 'sys':
+          # print 'sys synced profile (%s)' % t_mode
             continue
 
         # determine the correction for the given host
@@ -358,24 +231,8 @@ def combine_profiles(profs):
 
             continue # we always use the first match
 
-        t_host[host_id] = t_off
-
       # print 'store time sync %-35s (%-35s) %6.1f' \
       #         % (os.path.basename(pname), host_id, t_off)
-
-    # FIXME: this should be removed once #1117 is fixed
-    for pname, prof in profs.iteritems():
-        i=0
-        l=len(prof)
-        while i<l:
-            if prof[i]['time'] == 1.0:
-                if i < l-1:
-                    prof[i]['time'] = prof[i+1]['time']
-                elif i > 0:
-                    prof[i]['time'] = prof[i-1]['time']
-                else:
-                    prof[i]['time'] = t_0
-            i += 1
 
     unsynced = set()
     for pname, prof in profs.iteritems():
@@ -388,6 +245,7 @@ def combine_profiles(profs):
 
         host, ip, _, _, _ = prof[0]['msg'].split(':')
         host_id = '%s:%s' % (host, ip)
+      # print ' --> pname: %s [%s] : %s' % (pname, host_id, bool(host_id in t_host))
         if host_id in t_host:
             t_off   = t_host[host_id]
         else:
@@ -396,6 +254,8 @@ def combine_profiles(profs):
 
         t_0 = prof[0]['time']
         t_0 -= t_min
+
+      # print 'correct %12.2f : %12.2f for %-30s : %-15s' % (t_min, t_off, host, pname) 
 
         # correct profile timestamps
         for row in prof:
@@ -408,6 +268,14 @@ def combine_profiles(profs):
             # count closing entries
             if row['event'] == 'QED':
                 c_qed += 1
+
+            if 'agent_0.prof' in pname    and \
+                row['event'] == 'advance' and \
+                row['state'] == rps.PMGR_ACTIVE:
+                hostmap[row['uid']] = host_id
+
+          # if row['event'] == 'advance' and row['uid'] == os.environ.get('FILTER'):
+          #     print "~~~ ", row
 
         # add profile to global one
         p_glob += prof
@@ -422,10 +290,17 @@ def combine_profiles(profs):
     # sort by time and return
     p_glob = sorted(p_glob[:], key=lambda k: k['time']) 
 
-    if unsynced:
-        print 'unsynced hosts: %s' % list(unsynced)
+  # for event in p_glob:
+  #     if event['event'] == 'advance' and event['uid'] == os.environ.get('FILTER'):
+  #         print '#=- ', event
 
-    return p_glob
+
+  # if unsynced:
+  #     # FIXME: https://github.com/radical-cybertools/radical.analytics/issues/20 
+  #     # print 'unsynced hosts: %s' % list(unsynced)
+  #     pass
+
+    return [p_glob, accuracy, hostmap]
 
 
 # ------------------------------------------------------------------------------
@@ -441,8 +316,6 @@ def clean_profile(profile, sid):
       - assignes the session uid to all events without uid
       - makes sure that state transitions have an `ename` set to `state`
     """
-
-    from radical.pilot import states as rps
 
     entities = dict()  # things which have a uid
 
@@ -478,8 +351,8 @@ def clean_profile(profile, sid):
         if name == 'advance':
 
             # this is a state progression
-            assert(state)
-            assert(uid)
+            assert(state), 'cannot advance w/o state'
+            assert(uid),   'cannot advance w/o uid'
 
             event['event_type'] = 'state'
             skip = False
@@ -544,16 +417,17 @@ def get_session_profile(sid, src=None):
         from .session import fetch_profiles
         profiles = fetch_profiles(sid=sid, skip_existing=True)
 
-    profs = read_profiles(profiles)
-    prof  = combine_profiles(profs)
-    prof  = clean_profile(prof, sid)
+    profs              = read_profiles(profiles)
+    prof, acc, hostmap = combine_profiles(profs)
+    prof               = clean_profile(prof, sid)
 
-    return prof
+    return prof, acc, hostmap
 
 
 # ------------------------------------------------------------------------------
 # 
 def get_session_description(sid, src=None, dburl=None):
+    1
     """
     This will return a description which is usable for radical.analytics
     evaluation.  It informs about
@@ -578,7 +452,6 @@ def get_session_description(sid, src=None, dburl=None):
     ftmp = fetch_json(sid=sid, dburl=dburl, tgt=src, skip_existing=True)
     json = ru.read_json(ftmp)
 
-
     # make sure we have uids
     def fix_json(json):
         def fix_uids(json):
@@ -601,7 +474,7 @@ def get_session_description(sid, src=None, dburl=None):
 
     ru.write_json(json, '/tmp/t.json')
 
-    assert(sid == json['session']['uid'])
+    assert(sid == json['session']['uid']), 'sid inconsistent'
 
     ret             = dict()
     ret['entities'] = dict()
@@ -609,7 +482,7 @@ def get_session_description(sid, src=None, dburl=None):
     tree      = dict()
     tree[sid] = {'uid'      : sid,
                  'etype'    : 'session',
-               # 'cfg'      : json['session']['cfg'],
+                 'cfg'      : json['session']['cfg'],
                  'has'      : ['umgr', 'pmgr'],
                  'children' : list()
                 }
@@ -619,7 +492,7 @@ def get_session_description(sid, src=None, dburl=None):
         tree[sid]['children'].append(uid)
         tree[uid] = {'uid'      : uid,
                      'etype'    : 'pmgr',
-                   # 'cfg'      : pmgr['cfg'],
+                     'cfg'      : pmgr['cfg'],
                      'has'      : ['pilot'],
                      'children' : list()
                     }
@@ -629,21 +502,25 @@ def get_session_description(sid, src=None, dburl=None):
         tree[sid]['children'].append(uid)
         tree[uid] = {'uid'      : uid,
                      'etype'    : 'umgr',
-               #     'cfg'      : umgr['cfg'],
+                     'cfg'      : umgr['cfg'],
                      'has'      : ['unit'],
                      'children' : list()
                     }
+        # also inject the pilot description, and resource specifically
+        tree[uid]['description'] = dict()
 
     for pilot in sorted(json['pilot'], key=lambda k: k['uid']):
         uid  = pilot['uid']
         pmgr = pilot['pmgr']
         tree[pmgr]['children'].append(uid)
-        tree[uid] = {'uid'      : uid,
-                     'etype'    : 'pilot',
-               #     'cfg'      : pilot['cfg'],
-                     'has'      : ['unit'],
-                     'children' : list()
+        tree[uid] = {'uid'        : uid,
+                     'etype'      : 'pilot',
+                     'cfg'        : pilot['cfg'],
+                     'description': pilot['description'],
+                     'has'        : ['unit'],
+                     'children'   : list()
                     }
+        # also inject the pilot description, and resource specifically
 
     for unit in sorted(json['unit'], key=lambda k: k['uid']):
         uid  = unit['uid']
@@ -651,27 +528,25 @@ def get_session_description(sid, src=None, dburl=None):
         umgr = unit['pilot']
         tree[pid ]['children'].append(uid)
         tree[umgr]['children'].append(uid)
-        tree[uid] = {'uid'      : uid,
-                     'etype'    : 'unit',
-               #     'cfg'      : unit['description'],
-                     'has'      : list(),
-                     'children' : list()
+        tree[uid] = {'uid'         : uid,
+                     'etype'       : 'unit',
+                     'cfg'         : unit['description'],
+                     'description' : unit['description'],
+                     'has'         : list(),
+                     'children'    : list()
                     }
 
     ret['tree'] = tree
 
-    import pprint, sys
-    pprint.pprint(tree)
-
     ret['entities']['pilot'] = {
-            'state_model'  : rps.pilot_state_by_value,
-            'state_values' : rps.pilot_state_value,
+            'state_model'  : rps._pilot_state_values,
+            'state_values' : rps._pilot_state_inv_full,
             'event_model'  : dict(),
             }
 
     ret['entities']['unit'] = {
-            'state_model'  : rps.unit_state_by_value,
-            'state_values' : rps.unit_state_value,
+            'state_model'  : rps._unit_state_values,
+            'state_values' : rps._unit_state_inv_full,
             'event_model'  : dict(),
             }
 
