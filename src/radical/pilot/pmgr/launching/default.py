@@ -31,7 +31,6 @@ from .base import PMGRLaunchingComponent
 # local constants
 DEFAULT_AGENT_SPAWNER = 'POPEN'
 DEFAULT_RP_VERSION    = 'local'
-DEFAULT_VIRTENV       = '%(global_sandbox)s/ve'
 DEFAULT_VIRTENV_MODE  = 'update'
 DEFAULT_AGENT_CONFIG  = 'default'
 
@@ -67,7 +66,7 @@ class Default(PMGRLaunchingComponent):
         self._check_lock    = threading.RLock()  # lock on maipulating the above
         self._saga_fs_cache = dict()             # cache of saga directories
         self._saga_js_cache = dict()             # cache of saga job services
-        self._sandboxes     = dict()             # cache of global sandbox URLs
+        self._sandboxes     = dict()             # cache of resource sandbox URLs
         self._cache_lock    = threading.RLock()  # lock for cache
 
         self._mod_dir       = os.path.dirname(os.path.abspath(__file__))
@@ -83,7 +82,8 @@ class Default(PMGRLaunchingComponent):
         # we listen for pilot cancel commands
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
 
-        _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
+        self._log.info(ru.get_version([self._root_dir, self._mod_dir]))
+        self._rp_version, _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
                 ru.get_version([self._root_dir, self._mod_dir])
 
 
@@ -150,7 +150,10 @@ class Default(PMGRLaunchingComponent):
             now = time.time()
             with self._pilots_lock:
                 for pid in pids:
-                    self._pilots[pid]['pilot']['cancel_requested'] = now
+                    if pid in self._pilots:
+                        self._pilots[pid]['pilot']['cancel_requested'] = now
+
+        return True
 
         return True
 
@@ -288,6 +291,8 @@ class Default(PMGRLaunchingComponent):
         except Exception as e:
             self._log.exception('pilot kill failed')
 
+        return True
+
 
     # --------------------------------------------------------------------------
     #
@@ -394,7 +399,8 @@ class Default(PMGRLaunchingComponent):
         # sub-bulks
         schema = pilots[0]['description'].get('access_schema')
         for pilot in pilots[1:]:
-            assert(schema == pilot['description'].get('access_schema'))
+            assert(schema == pilot['description'].get('access_schema')), \
+                    'inconsistent scheme on launch / staging'
 
         session_sandbox = self._session._get_session_sandbox(pilots[0]).path
 
@@ -566,6 +572,10 @@ class Default(PMGRLaunchingComponent):
         sid           = self._session.uid
         database_url  = self._session.dburl
 
+        # some default values are determined at runtime
+        default_virtenv = '%%(resource_sandbox)s/ve.%s.%s' % \
+                          (resource, self._rp_version)
+
         # ------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
         agent_launch_method     = rcfg.get('agent_launch_method')
@@ -584,7 +594,7 @@ class Default(PMGRLaunchingComponent):
         task_launch_method      = rcfg.get('task_launch_method')
         rp_version              = rcfg.get('rp_version',          DEFAULT_RP_VERSION)
         virtenv_mode            = rcfg.get('virtenv_mode',        DEFAULT_VIRTENV_MODE)
-        virtenv                 = rcfg.get('virtenv',             DEFAULT_VIRTENV)
+        virtenv                 = rcfg.get('virtenv',             default_virtenv)
         cores_per_node          = rcfg.get('cores_per_node', 0)
         health_check            = rcfg.get('health_check', True)
         python_dist             = rcfg.get('python_dist')
@@ -608,20 +618,19 @@ class Default(PMGRLaunchingComponent):
         candidate_hosts = pilot['description']['candidate_hosts']
 
         # make sure that mandatory args are known
-        print 'mas: %s' % mandatory_args
-        import sys
-        sys.stdout.write('mas: %s\n' % mandatory_args)
-        sys.stdout.flush()
         for ma in mandatory_args:
             if pilot['description'].get(ma) is None:
                 raise  ValueError('attribute "%s" is required for "%s"' \
                                  % (ma, resource))
 
         # get pilot and global sandbox
-        global_sandbox   = self._session._get_global_sandbox (pilot).path
+        resource_sandbox = self._session._get_resource_sandbox (pilot).path
         session_sandbox  = self._session._get_session_sandbox(pilot).path
         pilot_sandbox    = self._session._get_pilot_sandbox  (pilot).path
-        pilot['sandbox'] = str(self._session._get_pilot_sandbox(pilot))
+
+        pilot['resource_sandbox'] = str(self._session._get_resource_sandbox(pilot))
+        pilot['pilot_sandbox']    = str(self._session._get_pilot_sandbox(pilot))
+        pilot['client_sandbox']   = str(self._session._get_client_sandbox())
 
         # Agent configuration that is not part of the public API.
         # The agent config can either be a config dict, or
@@ -670,9 +679,9 @@ class Default(PMGRLaunchingComponent):
             raise TypeError('agent config must be string (filename) or dict')
 
         # expand variables in virtenv string
-        virtenv = virtenv % {'pilot_sandbox'   :   pilot_sandbox,
+        virtenv = virtenv % {'pilot_sandbox'   : pilot_sandbox,
                              'session_sandbox' : session_sandbox,
-                             'global_sandbox'  :  global_sandbox}
+                             'resource_sandbox': resource_sandbox}
 
         # Check for deprecated global_virtenv
         if 'global_virtenv' in rcfg:
@@ -838,7 +847,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['logdir']             = '.'
         agent_cfg['pilot_sandbox']      = pilot_sandbox
         agent_cfg['session_sandbox']    = session_sandbox
-        agent_cfg['global_sandbox']     = global_sandbox
+        agent_cfg['resource_sandbox']   = resource_sandbox
         agent_cfg['agent_launch_method']= agent_launch_method
         agent_cfg['task_launch_method'] = task_launch_method
         agent_cfg['mpi_launch_method']  = mpi_launch_method

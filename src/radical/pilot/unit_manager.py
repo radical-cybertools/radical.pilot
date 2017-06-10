@@ -111,7 +111,7 @@ class UnitManager(rpu.Component):
             # set default scheduler if needed
             cfg['scheduler'] = rpus.SCHEDULER_DEFAULT
 
-        assert(cfg['db_poll_sleeptime'])
+        assert(cfg['db_poll_sleeptime']), 'db_poll_sleeptime not configured'
 
         # initialize the base class (with no intent to fork)
         self._uid    = ru.generate_id('umgr')
@@ -358,7 +358,6 @@ class UnitManager(rpu.Component):
         units  = self._session._dbs.get_units(umgr_uid=self.uid)
 
         for unit in units:
-            self._log.debug(" === state pulled %s: %s", unit['uid'], unit['state'])
             if not self._update_unit(unit, publish=True):
                 return False
 
@@ -368,8 +367,6 @@ class UnitManager(rpu.Component):
     #---------------------------------------------------------------------------
     #
     def _unit_pull_cb(self):
-
-        self._log.info(" === units pulled: ?")
 
         # pull units those units from the agent which are about to get back
         # under umgr control, and push them into the respective queues
@@ -403,13 +400,16 @@ class UnitManager(rpu.Component):
         for unit in units:
 
             # we need to make sure to have the correct state:
+            uid = unit['uid']
             old = unit['state']
             new = rps._unit_state_collapse(unit['states'])
-            self._log.debug("unit pulled %s: %s / %s", unit['uid'], old, new)
+
+            if old != new:
+                self._log.debug(" === unit  pulled %s: %s / %s", uid, old, new)
 
             unit['state']   = new
             unit['control'] = 'umgr'
-            self._prof.prof('get', msg="bulk size: %d" % len(units), uid=unit['uid'])
+            self._prof.prof('get', msg="bulk size: %d" % len(units), uid=uid)
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline).
@@ -471,7 +471,6 @@ class UnitManager(rpu.Component):
                 passed = passed[-1:]
 
             for s in passed:
-              # print '%s advance: %s' % (uid, s )
                 unit_dict['state'] = s
                 self._units[uid]._update(unit_dict)
                 self.advance(unit_dict, s, publish=publish, push=False)

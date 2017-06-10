@@ -20,6 +20,7 @@ PRE_EXEC               = 'pre_exec'
 POST_EXEC              = 'post_exec'
 KERNEL                 = 'kernel'
 CLEANUP                = 'cleanup'
+PILOT                  = 'pilot'
 STDOUT                 = 'stdout'
 STDERR                 = 'stderr'
 RESTARTABLE            = 'restartable'
@@ -33,8 +34,8 @@ class ComputeUnitDescription(attributes.Attributes):
     :meth:`radical.pilot.UnitManager.submit_units` to instantiate and run
     a new unit.
 
-    .. note:: A ComputeUnitDescription **MUST** define at least
-              :data:`executable` or :data:`kernel`.
+    .. note:: A ComputeUnitDescription **MUST** define at least an
+              `executable` or `kernel` -- all other elements are optional.
 
     **Example**::
 
@@ -42,27 +43,55 @@ class ComputeUnitDescription(attributes.Attributes):
 
     .. data:: executable 
 
-       (`Attribute`) The executable to launch (`string`) [`mandatory`].
+       The executable to launch (`string`).  The executable is expected to be
+       either available via `$PATH` on the target resource, or to be an absolute
+       path.
+
+       default: `None`
+
 
     .. data:: cores 
 
-       (`Attribute`) The number of cores (int) required by the executable. (int) [`mandatory`].
+       The number of cores required by the executable. (int).  RP will not
+       control how the executable makes use of the assigned cores, it only
+       ensures that those are available to the executable (but see `mpi` below).
+
+       default: `1`
+
 
     .. data:: mpi
 
-       (`Attribute`) Set to true if the task is an MPI task. (bool) [`optional`].
+       Set to true if the task is an MPI task (bool).  If this is set, RP will
+       ensure that the executable is run via mpirun or equivalent.  What MPI is
+       used to start the executable depends on the pilot configuration, and
+       cannot currently be switched on a per-unit basis.
+
+       default: `False`
+
 
     .. data:: name 
 
-       (`Attribute`) A descriptive name for the compute unit (`string`) [`optional`].
+       A descriptive name for the compute unit (`string`).  This attribute can
+       be used to map individual units back to application level workloads.
+
+       default: `None`
+
 
     .. data:: arguments 
 
-       (`Attribute`) The arguments for :data:`executable` (`list` of `strings`) [`optional`].
+       The command line arguments for the given `executable` (`list` of
+       `strings`).
+
+       default: `[]`
+
 
     .. data:: environment 
 
-       (`Attribute`) Environment variables to set in the execution environment (`dict`) [`optional`].
+       Environment variables to set in the environment before execution
+       (`dict`).
+
+       default: `{}`
+
 
     .. data:: sandbox
 
@@ -73,58 +102,159 @@ class ComputeUnitDescription(attributes.Attributes):
 
     .. data:: stdout
 
-       (`Attribute`) the name of the file to store stdout in.
+       The name of the file to store stdout in (`string`).
+
+       default: `STDOUT`
+
 
     .. data:: stderr
 
-       (`Attribute`) the name of the file to store stderr in.
+       The name of the file to store stderr in (`string`).
+
+       default: `STDERR`
+
 
     .. data:: input_staging
 
-       (`Attribute`) The files that need to be staged before execution (`list` of `staging directives`) [`optional`].
+       The files that need to be staged before execution (`list` of `staging
+       directives`, see below).
 
-       .. note:: TODO: Explain input staging.
+       default: `{}`
+
 
     .. data:: output_staging
 
-       (`Attribute`) The files that need to be staged after execution (`list` of `staging directives`) [`optional`].
+       The files that need to be staged after execution (`list` of `staging
+       directives`, see below).
+       
+       default: `{}`
 
-       .. note:: TODO: Explain output staging.
 
     .. data:: pre_exec
 
-       (`Attribute`) Actions to perform before this task starts (`list` of `strings`) [`optional`].
+       Actions (shell commands) to perform before this task starts (`list` of
+       `strings`).  Note that the set of shell commands given here are expected
+       to load environments, check for work directories and data, etc.  They are
+       not expected to consume any significant amount of CPU time or other
+       resources!  Deviating from that rule will likely result in reduced
+       overall throughput.
+       
+       No assumption should be made as to where these commands are executed
+       (although RP attempts to perform them in the unit's execution
+       environment).  
+       
+       No assumption should be made on the specific shell environment the
+       commands are executed in.
+
+       Errors in executing these commands will result in the unit to enter
+       `FAILED` state, and no execution of the actual workload will be
+       attempted.
+
+       default: `[]`
+
 
     .. data:: post_exec
 
-       (`Attribute`) Actions to perform after this task finishes (`list` of `strings`) [`optional`].
+       Actions (shell commands) to perform after this task finishes (`list` of
+       `strings`).  The same remarks as on `pre_exec` apply, inclusive the point
+       on error handling, which again will cause the unit to fail, even if the
+       actual execution was successful..
 
-       .. note:: Before the BigBang, there was nothing ...
+       default: `[]`
+
 
     .. data:: kernel
 
-       (`Attribute`) Name of a simulation kernel which expands to description
-       attributes once the unit is scheduled to a pilot (and resource).
+       Name of a simulation kernel which expands to description attributes once
+       the unit is scheduled to a pilot (and resource).
 
-       .. note:: TODO: explain in detal, reference ENMDTK.
+       .. note:: TODO: explain in detail, reference ENMDTK.
+
+       default: `None`
+
 
     .. data:: restartable
 
-       (`Attribute`) If the unit starts to execute on a pilot, but cannot finish
-       because the pilot fails or is canceled, can the unit be restarted on
-       a different pilot / resource? (default: False)
+       If the unit starts to execute on a pilot, but cannot finish because the
+       pilot fails or is canceled, can the unit be restarted on a different
+       pilot / resource? 
+       
+       default: `False`
 
-       .. note:: TODO: explain in detal, reference ENMDTK.
 
        .. note:: TODO: explain in detal, reference ENMDTK.
 
     .. data:: cleanup
 
-       [Type: `bool`] [optional] If cleanup is set to True, the pilot will
-       delete the entire unit sandbox upon termination. This includes all
-       generated output data in that sandbox.  Output staging will be performed
-       before cleanup.
+       If cleanup (a `bool`) is set to `True`, the pilot will delete the entire
+       unit sandbox upon termination. This includes all generated output data in
+       that sandbox.  Output staging will be performed before cleanup.
 
+       Note that unit sandboxes are also deleted if the pilot's own `cleanup`
+       flag is set.
+
+       default: `False`
+
+
+    .. data:: pilot
+
+       If specified as `string` (pilot uid), the unit is submitted to the pilot
+       with the given ID.  If that pilot is not known to the unit manager, an
+       exception is raised.
+
+
+    Staging Directives
+    ==================
+
+    The Staging Directives are specified using a dict in the following form:
+    
+        staging_directive = {
+            'source'  : None, # see 'Location' below
+            'target'  : None, # see 'Location' below
+            'action'  : None, # See 'Action operators' below
+            'flags'   : None, # See 'Flags' below
+            'priority': 0     # Control ordering of actions (unused)
+        }
+    
+    
+    Locations
+    ---------
+    
+      `source` and `target` locations can be given as strings or `ru.URL`
+      instances.  Strings containing `://` are converted into URLs immediately.
+      Otherwise they are considered absolute or relative paths and are then
+      interpreted in the context of the client's working directory.
+    
+      RP accepts the following special URL schemas:
+    
+        * `client://`  : relative to the client's working directory
+        * `resource://`: relative to the RP    sandbox on the target resource
+        * `pilot://`   : relative to the pilot sandbox on the target resource
+        * `unit://`    : relative to the unit  sandbox on the target resource
+    
+      In all these cases, the `hostname` element of the URL is expected to be
+      empty, and the path is *always* considered relative to the locations
+      specified above (even though URLs usually don't have a notion of relative
+      paths).
+    
+    
+    Action operators
+    ----------------
+    
+      RP accepts the following action operators:
+
+        * rp.TRANSFER: remote file transfer from `source` URL to `target` URL.
+        * rp.COPY    : local file copy, ie. not crossing host boundaries
+        * rp.MOVE    : local file move
+        * rp.LINK    : local file symlink
+      
+    
+    Flags
+    -----
+    
+      rp.CREATE_PARENTS: create the directory hierarchy for targets on the fly
+      rp.RECURSIVE     : if `source` is a directory, handle it recursively
+    
     """
 
     # --------------------------------------------------------------------------
@@ -150,6 +280,7 @@ class ComputeUnitDescription(attributes.Attributes):
         self._attributes_register(POST_EXEC,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(RESTARTABLE,      None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(CLEANUP,          None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(PILOT,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
       # self._attributes_register(START_TIME,       None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
       # self._attributes_register(RUN_TIME,         None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
@@ -189,6 +320,7 @@ class ComputeUnitDescription(attributes.Attributes):
         self.set_attribute (MPI,           False)
         self.set_attribute (RESTARTABLE,   False)
         self.set_attribute (CLEANUP,       False)
+        self.set_attribute (PILOT,          None)
 
         # apply initialization dict
         if from_dict:

@@ -78,6 +78,19 @@ class Session(rs.Session):
 
         """
 
+        if os.uname()[0] == 'Darwin':
+            # on MacOS, we are running out of file descriptors soon.  The code
+            # below attempts to increase the limit of open files - but any error
+            # is silently ignored, so this is an best-effort, no guarantee.  We
+            # leave responsibility for system limits with the user.
+            try:
+                import resource
+                limits    = list(resource.getrlimit(resource.RLIMIT_NOFILE))
+                limits[0] = 512
+                resource.setrlimit(resource.RLIMIT_NOFILE, limits)
+            except:
+                pass
+
         self._dh          = ru.DebugHelper()
         self._valid       = True
         self._closed      = False
@@ -92,9 +105,9 @@ class Session(rs.Session):
         self._cache       = dict()  # cache sandboxes etc.
         self._cache_lock  = threading.RLock()
 
-        self._cache['global_sandbox']  = dict()
-        self._cache['session_sandbox'] = dict()
-        self._cache['pilot_sandbox']   = dict()
+        self._cache['resource_sandbox'] = dict()
+        self._cache['session_sandbox']  = dict()
+        self._cache['pilot_sandbox']    = dict()
 
         # before doing anything else, set up the debug helper for the lifetime
         # of the session.
@@ -106,6 +119,12 @@ class Session(rs.Session):
         self._umgrs      = dict()
         self._bridges    = list()
         self._components = list()
+
+        # cache the client sandbox
+        # FIXME: this needs to be overwritten if configured differently in the
+        #        session config, as should be the case for any agent side
+        #        session instance.
+        self._client_sandbox = os.getcwd()
 
         # The resource configuration dictionary associated with the session.
         self._resource_configs = {}
@@ -802,7 +821,7 @@ class Session(rs.Session):
 
     # -------------------------------------------------------------------------
     #
-    def _get_global_sandbox(self, pilot):
+    def _get_resource_sandbox(self, pilot):
         """
         for a given pilot dict, determine the global RP sandbox, based on the
         pilot's 'resource' attribute.
@@ -822,7 +841,7 @@ class Session(rs.Session):
         # we cache it
         with self._cache_lock:
 
-            if resource not in self._cache['global_sandbox']:
+            if resource not in self._cache['resource_sandbox']:
 
                 # cache miss -- determine sandbox and fill cache
                 rcfg   = self.get_resource_config(resource, schema)
@@ -869,9 +888,9 @@ class Session(rs.Session):
                 fs_url.path = "%s/radical.pilot.sandbox" % sandbox_base
         
                 # before returning, keep the URL string in cache
-                self._cache['global_sandbox'][resource] = fs_url
+                self._cache['resource_sandbox'][resource] = fs_url
 
-            return self._cache['global_sandbox'][resource]
+            return self._cache['resource_sandbox'][resource]
 
 
     # --------------------------------------------------------------------------
@@ -892,8 +911,8 @@ class Session(rs.Session):
             if resource not in self._cache['session_sandbox']:
 
                 # cache miss
-                global_sandbox  = self._get_global_sandbox(pilot)
-                session_sandbox = rs.Url(global_sandbox)
+                resource_sandbox      = self._get_resource_sandbox(pilot)
+                session_sandbox       = rs.Url(resource_sandbox)
                 session_sandbox.path += '/%s' % self.uid
 
                 with self._cache_lock:
@@ -910,14 +929,20 @@ class Session(rs.Session):
 
         # FIXME: this should get 'pid, resource, schema=None' as parameters
 
+        self.is_valid()
+
+        pilot_sandbox = pilot.get('sandbox')
+        if pilot_sandbox:
+            return rs.Url(pilot_sandbox)
+
         pid = pilot['uid']
         with self._cache_lock:
             if  pid in self._cache['pilot_sandbox']:
                 return self._cache['pilot_sandbox'][pid]
 
         # cache miss
-        session_sandbox = self._get_session_sandbox(pilot)
-        pilot_sandbox  = rs.Url (session_sandbox)
+        session_sandbox     = self._get_session_sandbox(pilot)
+        pilot_sandbox       = rs.Url(session_sandbox)
         pilot_sandbox.path += '/%s/' % pilot['uid']
 
         with self._cache_lock:
@@ -935,6 +960,22 @@ class Session(rs.Session):
         # we don't cache unit sandboxes, they are just a string concat.
         pilot_sandbox = self._get_pilot_sandbox(pilot)
         return "%s/%s/" % (pilot_sandbox, unit['uid'])
+
+
+    # -------------------------------------------------------------------------
+    #
+    def _get_client_sandbox(self):
+        """
+        For the session in the client application, this is os.getcwd().  For the
+        session in any other component, specifically in pilot components, the
+        client sandbox needs to be read from the session config (or pilot
+        config).  The latter is not yet implemented, so the pilot can not yet
+        interpret client sandboxes.  Since pilot-side stagting to and from the
+        client sandbox is not yet supported anyway, this seems acceptable
+        (FIXME).
+        """
+
+        return self._client_sandbox
 
 
 # -----------------------------------------------------------------------------
