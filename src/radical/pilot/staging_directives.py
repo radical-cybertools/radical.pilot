@@ -1,5 +1,6 @@
 
 import os
+import sys
 
 import radical.utils as ru
 
@@ -66,12 +67,12 @@ def expand_staging_directives(sds):
             elif '<'  in sd: tgt, src = sd.split('<' , 2)
             else           : src, tgt = sd, os.path.basename(ru.Url(sd).path)
 
-            ret.append({'uid':      ru.generate_id('sd'),
+            expanded = {'uid':      ru.generate_id('sd'),
                         'source':   src.strip(),
                         'target':   tgt.strip(),
                         'action':   DEFAULT_ACTION,
                         'flags':    DEFAULT_FLAGS,
-                        'priority': DEFAULT_PRIORITY})
+                        'priority': DEFAULT_PRIORITY}
 
         elif isinstance(sd, dict):
 
@@ -90,15 +91,29 @@ def expand_staging_directives(sds):
             if not source:
                 raise Exception("Staging directive dict has no source member!")
 
-            ret.append({'uid':      ru.generate_id('sd'),
+            expanded = {'uid':      ru.generate_id('sd'),
                         'source':   source,
                         'target':   target,
                         'action':   action,
                         'flags':    flags,
-                        'priority': priority})
+                        'priority': priority}
 
         else:
             raise Exception("Unknown type of staging directive: %s (%s)" % (sd, type(sd)))
+
+        # we warn the user when  src or tgt are using the deprecated
+        # `staging://` schema
+        if str(expanded['source']).startswith('staging://'):
+            sys.stderr.write('staging:// schema is deprecated - use pilot://\n')
+            expanded['source'] = str(expanded['source']).replace('staging://', 
+                                                                 'pilot://')
+
+        if str(expanded['target']).startswith('staging://'):
+            sys.stderr.write('staging:// schema is deprecated - use pilot://\n')
+            expanded['target'] = str(expanded['target']).replace('staging://', 
+                                                                 'pilot://')
+
+        ret.append(expanded)
 
     return ret
 
