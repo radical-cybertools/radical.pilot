@@ -62,10 +62,13 @@ class LoadLeveler(LRMS):
     #
     # BG/Q Config
     #
+    # FIXME: not used?
+    #
     BGQ_CORES_PER_NODE      = 16
-    BGQ_NODES_PER_BOARD     = 32 # NODE == Compute Card == Chip module
+    BGQ_GPUS_PER_NODE       =  0 # FIXME GPU
+    BGQ_NODES_PER_BOARD     = 32 # NODE       == Compute Card == Chip module
     BGQ_BOARDS_PER_MIDPLANE = 16 # NODE BOARD == NODE CARD
-    BGQ_MIDPLANES_PER_RACK  = 2
+    BGQ_MIDPLANES_PER_RACK  =  2
 
 
     # --------------------------------------------------------------------------
@@ -178,7 +181,7 @@ class LoadLeveler(LRMS):
             raise RuntimeError(msg)
 
         # Determine the size of the pilot allocation
-        if loadl_hostfile is not None:
+        if loadl_hostfile:
             # Non Blue Gene Load Leveler installation.
 
             loadl_total_tasks_str = os.environ.get('LOADL_TOTAL_TASKS')
@@ -203,86 +206,78 @@ class LoadLeveler(LRMS):
             # Determine the number of cpus per node.  Assume:
             # cores_per_node = lenght(nodefile) / len(unique_nodes_in_nodefile)
             loadl_cpus_per_node = len(loadl_nodes) / len(loadl_node_list)
+            loadl_gpus_per_node = self._cfg.get('gpus_per_node', 0) # FIXME GPU
 
-        elif self.loadl_bg_block is not None:
+        elif self.loadl_bg_block:
             # Blue Gene specific.
             loadl_bg_midplane_list_str = None
-            loadl_bg_block_size_str = None
+            loadl_bg_block_size_str    = None
+            loadl_bg_board_list_str    = None
+            loadl_bg_block_shape_str   = None
+            loadl_job_name             = os.environ.get('LOADL_JOB_NAME')
 
-            loadl_job_name = os.environ.get('LOADL_JOB_NAME')
-            if loadl_job_name is None:
-                msg = "$LOADL_JOB_NAME not set!"
-                self._log.error(msg)
-                raise RuntimeError(msg)
+            if not loadl_job_name:
+                raise RuntimeError("$LOADL_JOB_NAME not set!")
 
             # Get the board list and block shape from 'llq -l' output
             output = subprocess.check_output(["llq", "-l", loadl_job_name])
-            loadl_bg_board_list_str = None
-            loadl_bg_block_shape_str = None
+
             for line in output.splitlines():
-                # Detect BG board list
                 if "BG Node Board List: " in line:
-                    loadl_bg_board_list_str = line.split(':')[1].strip()
+                    loadl_bg_board_list_str    = line.split(':')[1].strip()
                 elif "BG Midplane List: " in line:
                     loadl_bg_midplane_list_str = line.split(':')[1].strip()
                 elif "BG Shape Allocated: " in line:
-                    loadl_bg_block_shape_str = line.split(':')[1].strip()
+                    loadl_bg_block_shape_str   = line.split(':')[1].strip()
                 elif "BG Size Allocated: " in line:
-                    loadl_bg_block_size_str = line.split(':')[1].strip()
+                    loadl_bg_block_size_str    = line.split(':')[1].strip()
+
             if not loadl_bg_board_list_str:
-                msg = "No board list found in llq output!"
-                self._log.error(msg)
-                raise RuntimeError(msg)
-            self._log.debug("BG Node Board List: %s" % loadl_bg_board_list_str)
+                raise RuntimeError("No board list found in llq output!")
             if not loadl_bg_midplane_list_str:
-                msg = "No midplane list found in llq output!"
-                self._log.error(msg)
-                raise RuntimeError(msg)
-            self._log.debug("BG Midplane List: %s" % loadl_bg_midplane_list_str)
+                raise RuntimeError("No midplane list found in llq output!")
             if not loadl_bg_block_shape_str:
-                msg = "No board shape found in llq output!"
-                self._log.error(msg)
-                raise RuntimeError(msg)
-            self._log.debug("BG Shape Allocated: %s" % loadl_bg_block_shape_str)
+                raise RuntimeError("No board shape found in llq output!")
             if not loadl_bg_block_size_str:
-                msg = "No board size found in llq output!"
-                self._log.error(msg)
-                raise RuntimeError(msg)
+                raise RuntimeError("No board size found in llq output!")
+
             loadl_bg_block_size = int(loadl_bg_block_size_str)
-            self._log.debug("BG Size Allocated: %d" % loadl_bg_block_size)
+
+            self._log.debug("BG Node Board List: %s" % loadl_bg_board_list_str)
+            self._log.debug("BG Midplane List  : %s" % loadl_bg_midplane_list_str)
+            self._log.debug("BG Shape Allocated: %s" % loadl_bg_block_shape_str)
+            self._log.debug("BG Size Allocated : %d" % loadl_bg_block_size)
+
 
             # Build nodes data structure to be handled by Torus Scheduler
             try:
                 self.torus_block = self._bgq_construct_block(
                     loadl_bg_block_shape_str, loadl_bg_board_list_str,
-                    loadl_bg_block_size, loadl_bg_midplane_list_str)
+                    loadl_bg_block_size,      loadl_bg_midplane_list_str)
             except Exception as e:
-                msg = "Couldn't construct block: %s" % e.message
-                self._log.error(msg)
-                raise RuntimeError(msg)
+                raise RuntimeError("Couldn't construct block: %s" % e.message)
+
             self._log.debug("Torus block constructed:")
             for e in self.torus_block:
                 self._log.debug("%s %s %s %s" %
-                                (e[0], [e[1][key] for key in sorted(e[1])], e[2], e[3]))
+                     (e[0], [e[1][key] for key in sorted(e[1])], e[2], e[3]))
 
             try:
-                loadl_node_list = [entry[SchedulerTorus.TORUS_BLOCK_NAME] for entry in self.torus_block]
+                loadl_node_list = [entry[SchedulerTorus.TORUS_BLOCK_NAME] \
+                                   for entry in self.torus_block]
             except Exception as e:
-                msg = "Couldn't construct node list."
-                self._log.error(msg)
-                raise RuntimeError(msg)
-            #self._log.debug("Node list constructed: %s" % loadl_node_list)
+                raise RuntimeError("Couldn't construct node list")
 
             # Construct sub-block table
             try:
                 self.shape_table = self._bgq_create_sub_block_shape_table(loadl_bg_block_shape_str)
             except Exception as e:
-                msg = "Couldn't construct shape table: %s" % e.message
-                self._log.error(msg)
-                raise RuntimeError(msg)
+                raise RuntimeError("Couldn't construct shape table")
+
+            self._log.debug("Node list constructed: %s" % loadl_node_list)
             self._log.debug("Shape table constructed: ")
             for (size, dim) in [(key, self.shape_table[key]) for key in sorted(self.shape_table)]:
-                self._log.debug("%s %s" % (size, [dim[key] for key in sorted(dim)]))
+                self._log.debug("%s %s" % (size, [dim[key]   for key in sorted(dim)]))
 
             # Determine the number of cpus per node
             loadl_cpus_per_node = self.BGQ_CORES_PER_NODE
@@ -290,8 +285,9 @@ class LoadLeveler(LRMS):
             # BGQ Specific Torus labels
             self.torus_dimension_labels = self.BGQ_DIMENSION_LABELS
 
-        self.node_list = loadl_node_list
+        self.node_list      = loadl_node_list
         self.cores_per_node = loadl_cpus_per_node
+        self.gpus_per_node  = loadl_gpus_per_node
 
         self._log.debug("Sleeping for #473 ...")
         time.sleep(5)

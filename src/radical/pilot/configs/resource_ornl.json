@@ -35,7 +35,8 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
-        "python_dist"                 : "default"
+        "python_dist"                 : "default", 
+        "gpus_per_node"               : 1
     },
 
     "titan_orte": {

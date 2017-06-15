@@ -115,11 +115,15 @@ class Continuous(AgentSchedulingComponent):
             raise RuntimeError("LRMS %s didn't _configure cores_per_node." % \
                                self._lrms_info['name'])
 
+        if not self._lrms_gpus_per_node:
+            raise RuntimeError("LRMS %s didn't _configure gpus_per_node." % \
+                               self._lrms_info['name'])
+
         # Slots represents the internal process management structure.
-        # The structure is as follows:
+        # The structure is as follows (cpn: cores per node, gpn: gpus per node
         # [
-        #    {'node': 'node1', 'cores': [p_1, p_2, p_3, ... , p_cores_per_node]},
-        #    {'node': 'node2', 'cores': [p_1, p_2, p_3. ... , p_cores_per_node]
+        #    {'node':'n_1', 'cores':[p_1,... ,p_cpn], 'gpus':[g_1,... ,g_gpn]},
+        #    {'node':'n_2', 'cores':[p_1,... ,p_cpn], 'gpus':[g_1,... ,g_gpn]}
         # ]
         #
         # We put it in a list because we care about (and make use of) the order.
@@ -128,9 +132,9 @@ class Continuous(AgentSchedulingComponent):
         for node in self._lrms_node_list:
             self.slots.append({
                 'node': node,
-                # TODO: Maybe use the real core numbers in the case of
-                # non-exclusive host reservations?
-                'cores': [rpc.FREE for _ in range(0, self._lrms_cores_per_node)]
+                # TODO: use real core numbers for non-exclusive reservations
+                'cores': [rpc.FREE for _ in range(0, self._lrms_cores_per_node)],
+                'gpus' : [rpc.FREE for _ in range(0, self._lrms_gpus_per_node)]
             })
 
 
@@ -155,31 +159,15 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _allocate_slot(self, cores_requested):
+    def _allocate_slot(self, cores_requested, gpus_requested):
 
         # TODO: single_node should be enforced for e.g. non-message passing
         #       tasks, but we don't have that info here.
-        if cores_requested <= self._lrms_cores_per_node:
-            single_node = True
+        if  cores_requested <= self._lrms_cores_per_node and \
+            gpus_requested  <= self._lrms_gpus_per_node:
+            task_slots = self._find_slots_single_cont(cores_requested, gpus_requested)
         else:
-            single_node = False
-
-        # Given that we are the continuous scheduler, this is fixed.
-        # TODO: Argument can be removed altogether?
-        continuous = True
-
-        # Switch between searching for continuous or scattered slots
-        # Switch between searching for single or multi-node
-        if single_node:
-            if continuous:
-                task_slots = self._find_slots_single_cont(cores_requested)
-            else:
-                raise NotImplementedError('No scattered single node scheduler implemented yet.')
-        else:
-            if continuous:
-                task_slots = self._find_slots_multi_cont(cores_requested)
-            else:
-                raise NotImplementedError('No scattered multi node scheduler implemented yet.')
+            task_slots = self._find_slots_multi_cont(cores_requested, gpus_requested)
 
         if not task_slots:
             # allocation failed
@@ -244,7 +232,8 @@ class Continuous(AgentSchedulingComponent):
     # Transform the number of cores into a continuous list of "status"es,
     # and use that to find a sub-list.
     #
-    def _find_cores_cont(self, slot_cores, cores_requested, status):
+    def _find_cores_cont(self, slot_cores, cores_requested, gpus_requested, status):
+        # FIXME: GPU
         return self._find_sublist(slot_cores, [status for _ in range(cores_requested)])
 
 
@@ -252,18 +241,21 @@ class Continuous(AgentSchedulingComponent):
     #
     # Find an available continuous slot within node boundaries.
     #
-    def _find_slots_single_cont(self, cores_requested):
+    def _find_slots_single_cont(self, cores_requested, gpus_requested):
+
+        # FIXME GPU
 
         for slot in self.slots:
             slot_node = slot['node']
             slot_cores = slot['cores']
 
             slot_cores_offset = self._find_cores_cont(slot_cores,
-                    cores_requested, rpc.FREE)
+                    cores_requested, gpus_requested, rpc.FREE)
 
             if slot_cores_offset is not None:
-              # self._log.info('Node %s satisfies %d cores at offset %d',
-              #               slot_node, cores_requested, slot_cores_offset)
+              # self._log.info('Node %s satisfies %d cores / %d gpus at offset %d',
+              #               slot_node, cores_requested, gpus_requested, slot_cores_offset)
+                # FIXME GPU
                 return ['%s:%d' % (slot_node, core) for core in
                         range(slot_cores_offset, slot_cores_offset + cores_requested)]
 
@@ -274,7 +266,7 @@ class Continuous(AgentSchedulingComponent):
     #
     # Find an available continuous slot across node boundaries.
     #
-    def _find_slots_multi_cont(self, cores_requested):
+    def _find_slots_multi_cont(self, cores_requested, gpu_requested):
 
         # Convenience aliases
         cores_per_node = self._lrms_cores_per_node
@@ -286,7 +278,7 @@ class Continuous(AgentSchedulingComponent):
 
         # Find the start of the first available region
         all_slots_first_core_offset = self._find_cores_cont(all_slot_cores, 
-                cores_requested, rpc.FREE)
+                                      cores_requested, gpus_requested, rpc.FREE)
         self._log.debug("all_slots_first_core_offset: %s", all_slots_first_core_offset)
         if all_slots_first_core_offset is None:
             return None

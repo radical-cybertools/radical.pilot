@@ -52,3 +52,8 @@ class Spark(LRMS):
         else:
             self.node_list = [hostname]
         self.cores_per_node = selected_cpus
+        self.gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
+
+
+# ------------------------------------------------------------------------------
+

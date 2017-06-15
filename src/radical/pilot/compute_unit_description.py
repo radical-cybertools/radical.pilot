@@ -61,12 +61,25 @@ class ComputeUnitDescription(attributes.Attributes):
 
     .. data:: mpi
 
-       Set to true if the task is an MPI task (bool).  If this is set, RP will
-       ensure that the executable is run via mpirun or equivalent.  What MPI is
-       used to start the executable depends on the pilot configuration, and
-       cannot currently be switched on a per-unit basis.
+       A flag (string) which can be set to any of the following values:
 
-       default: `False`
+         * SERIAL    : one CPU process, no MPI/OpenMP/...
+         * MPI       : one process per core
+         * OpenMP    : one process per node
+         * GPU       : one GPU process, no MPI/OpenMP/...
+         * GPU_MPI   : one process per GPU
+         * GPU_OpenMP: one process per GPU and Node
+
+       If this flag indicates an MPI application, RP will ensure that the
+       executable is run via mpirun or equivalent.  What MPI is used to start
+       the executable depends on the pilot configuration, and cannot currently
+       be switched on a per-unit basis.
+
+       NOTE: This is an experimental feature, and support is not fully
+             implemented for all configurations, specifically wrt. the GPU
+             related flavors.
+
+       default: `SERIAL`.
 
 
     .. data:: name 
@@ -308,7 +321,7 @@ class ComputeUnitDescription(attributes.Attributes):
         self.set_attribute (OUTPUT_STAGING, None)
         self.set_attribute (CORES,             1)
         self.set_attribute (GPUS,              0)
-        self.set_attribute (MPI,           False)
+        self.set_attribute (MPI,            None)
         self.set_attribute (RESTARTABLE,   False)
         self.set_attribute (CLEANUP,       False)
         self.set_attribute (PILOT,          None)

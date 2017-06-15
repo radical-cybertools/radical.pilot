@@ -72,6 +72,7 @@ class PBSPro(LRMS):
             self._log.warning("NUM_PES != NODE_COUNT * NUM_PPN != len($PBS_NODEFILE)")
 
         self.cores_per_node = pbspro_num_ppn
+        self.gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
         self.node_list = pbspro_vnodes
 
 

@@ -117,7 +117,7 @@ class Default(AgentStagingOutputComponent):
             self.advance(no_staging_units, publish=True, push=True)
 
         for unit,actionables in staging_units:
-            self._handle_unit(unit, actionables)
+            self._handle_unit_staging(unit, actionables)
 
 
     # --------------------------------------------------------------------------

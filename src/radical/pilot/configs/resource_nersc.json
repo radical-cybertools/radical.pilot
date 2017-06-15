@@ -21,7 +21,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
-        "cores_per_node"              : "24",
+        "cores_per_node"              : 24,
         "python_dist"                 : "default"
     },
 
@@ -96,7 +96,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
-        "cores_per_node"              : "24",
+        "cores_per_node"              : 24,
         "python_dist"                 : "default"
     },
 

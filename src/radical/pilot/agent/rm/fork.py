@@ -35,17 +35,17 @@ class Fork(LRMS):
         # if cores_per_node is set in the agent config, we slice the number of
         # cores into that many virtual nodes.  cpn defaults to requested_cores,
         # to preserve the previous behavior (1 node).
-        self.cores_per_node = self._cfg.get('cores_per_node')
-        if not self.cores_per_node:
-            self.cores_per_node = self.requested_cores
+        self.cores_per_node = self._cfg.get('cores_per_node', self.requested_cores)
+        self.gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
 
-        requested_nodes = int(math.ceil(float(self.requested_cores) / float(self.cores_per_node)))
         self.node_list  = list()
+        requested_nodes = int(math.ceil(float(self.requested_cores) / \
+                                        float(self.cores_per_node ) ) )
         for i in range(requested_nodes):
             self.node_list.append("localhost")
 
-        self._log.debug('configure localhost to behave as %s nodes with %s cores each.',
-                len(self.node_list), self.cores_per_node)
+        self._log.debug('configure localhost as %s nodes (%s cores, %s gpus).',
+                len(self.node_list), self.cores_per_node, self.gpus_per_node)
 
-
+# ------------------------------------------------------------------------------
 

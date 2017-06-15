@@ -17,6 +17,7 @@ AGENT_SCHEDULER             = 'agent_scheduler'
 AGENT_SPAWNER               = 'agent_spawner'
 AGENT_CONFIG                = 'agent_config'
 CORES_PER_NODE              = 'cores_per_node'
+GPUS_PER_NODE               = 'gpus_per_node'
 DEFAULT_QUEUE               = 'default_queue'
 DEFAULT_REMOTE_WORKDIR      = 'default_remote_workdir'
 DESCRIPTION                 = 'description'
@@ -221,7 +222,8 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(AGENT_SCHEDULER        ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_SPAWNER          ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_CONFIG           ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(CORES_PER_NODE         ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(CORES_PER_NODE         ,     1, attributes.INT   , attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(GPUS_PER_NODE          ,     0, attributes.INT   , attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(DEFAULT_QUEUE          ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(DEFAULT_REMOTE_WORKDIR ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(DESCRIPTION            ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)

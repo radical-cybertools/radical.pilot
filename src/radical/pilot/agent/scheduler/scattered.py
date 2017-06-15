@@ -79,9 +79,9 @@ class Scattered(AgentSchedulingComponent):
     #
     # Find cores and allocate them if available
     #
-    def _allocate_slot(self, cores_requested):
+    def _allocate_slot(self, cores_requested, gpus_requested):
 
-        offsets = self._find_slots_scattered(cores_requested)
+        offsets = self._find_slots_scattered(cores_requested, gpus_requested)
 
         if not offsets:
             # allocation failed
@@ -119,7 +119,9 @@ class Scattered(AgentSchedulingComponent):
     #
     # Find available cores
     #
-    def _find_slots_scattered(self, cores_requested):
+    def _find_slots_scattered(self, cores_requested, gpus_requested):
+
+        # FIXME GPU
 
         offsets = []
         for offset, slot in enumerate(self.slots):

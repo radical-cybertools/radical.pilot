@@ -53,7 +53,10 @@ class CCM(LRMS):
 
         # Some simple arithmetic
         self.cores_per_node = ccm_nodes_length / ccm_node_list_length
+        self.gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
 
         self.node_list = ccm_node_list
 
+
+# ------------------------------------------------------------------------------
 

@@ -238,7 +238,7 @@ class Yarn(LaunchMethod):
             config_core_site(node_name)
             config_hdfs_site(lrms.node_list)
             config_mapred_site()
-            config_yarn_site(lrms.cores_per_node,lrms.node_list,host)
+            config_yarn_site(lrms.cores_per_node,lrms.node_list,host) # FIXME GPU
 
             logger.info('Start Formatting DFS')
             namenode_format = os.system(hadoop_home + '/bin/hdfs namenode -format -force')

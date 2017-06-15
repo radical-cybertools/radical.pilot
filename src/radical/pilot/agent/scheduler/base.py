@@ -67,7 +67,9 @@ class AgentSchedulingComponent(rpu.Component):
         self._lrms_lm_info        = self._cfg['lrms_info']['lm_info']
         self._lrms_node_list      = self._cfg['lrms_info']['node_list']
         self._lrms_cores_per_node = self._cfg['lrms_info']['cores_per_node']
+        self._lrms_gpus_per_node  = self._cfg['lrms_info']['gpus_per_node']
         # FIXME: this information is insufficient for the torus scheduler!
+        # FIXME: GPU
 
         self._wait_pool = list()            # set of units which wait for the resource
         self._wait_lock = threading.RLock() # look on the above set
@@ -134,7 +136,7 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _allocate_slot(self, cores_requested):
+    def _allocate_slot(self, cores_requested, gpus_requested):
         raise NotImplementedError("_allocate_slot() missing for '%s'" % self.uid)
 
 
@@ -161,7 +163,8 @@ class AgentSchedulingComponent(rpu.Component):
 
             # schedule this unit, and receive an opaque handle that has meaning to
             # the LRMS, Scheduler and LaunchMethod.
-            cu['opaque_slots'] = self._allocate_slot(cu['description']['cores'])
+            cu['opaque_slots'] = self._allocate_slot(cu['description']['cores'], 
+                                                     cu['description']['gpus'])
 
         if not cu['opaque_slots']:
             # signal the CU remains unhandled
