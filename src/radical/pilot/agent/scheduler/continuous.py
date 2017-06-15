@@ -20,6 +20,43 @@ import threading as mt
 
 # ------------------------------------------------------------------------------
 #
+# An RP agent scheduler will place incoming units onto a set of cores and gpus.
+# To do so, the scheduler needs three pieces of information:
+#
+#   - the layout of the resource (nodes, cores, gpus)
+#   - the current state of those (what cores/gpus are used by other units)
+#   - the requirements of the unit (single/multi node, cores, gpus)
+#
+# The first part (layout) is provided by the LRMS, in the form of a nodelist:
+#
+#    nodelist = [{name : 'node_1', cores: 16, gpus : 2},
+#                {name : 'node_2', cores: 16, gpus : 2},
+#                ...
+#               ]
+#
+# That is then mapped into an internal representation, which is really the same
+# but allows to keep track of resource usage:
+#
+#    nodelist = [{name : 'node_1', cores: [................], gpus : [..]},
+#                {name : 'node_2', cores: {................], gpus : [..]},
+#                ...
+#               ]
+#
+# When allocating a set of resource for a unit (2 cores, 1 gpu), we can now
+# record those as used:
+#
+#    nodelist = [{name : 'node_1', cores: [##..............], gpus : [#.]},
+#                {name : 'node_2', cores: {................], gpus : [..]},
+#                ...
+#               ]
+#
+# This solves the second part from our list above.  The third part, unit
+# requirements, are obtained from the unit dict passed for scheduling.
+#
+
+
+# ------------------------------------------------------------------------------
+#
 # FIXME: make runtime switch depending on cprofile availability
 import cProfile
 cprof = cProfile.Profile()
