@@ -224,6 +224,14 @@
         "cores"    : 64
     },
 
+
+    "ornl.rhea"   : {
+        "project"  : "BIP149",
+        "queue"    : "batch",
+        "schema"   : "local",
+        "cores"    : 64
+    },
+
     "nersc.hopper" : {
         "project"  : null,
         "queue"    : "debug",
