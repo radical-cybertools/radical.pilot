@@ -54,8 +54,7 @@ class Spark(AgentSchedulingComponent):
         self._num_of_cores  = metrics['clusterMetrics']['allocatedVirtualCores']
         self._mem_size      = metrics['clusterMetrics']['allocatedMB']
 
-        self.avail_app   = {'apps'     : max_num_app - num_app,
-                            'timestamp': sample_time}
+        self.avail_app   = max_num_app         - num_app
         self.avail_cores = self._mnum_of_cores - self._num_of_cores
         self.avail_mem   = self._mmem_size     - self._mem_size
 
@@ -69,9 +68,9 @@ class Spark(AgentSchedulingComponent):
         self._log.info('Releasing : %s Cores, %s RAM',
                        opaque_slot['task_slots'][0],
                        opaque_slot['task_slots'][1])
-        self.avail_cores +=opaque_slot['task_slots'][0]
-        self.avail_mem   +=opaque_slot['task_slots'][1]
-        self.avail_app['apps']+=1
+        self.avail_cores += opaque_slot['task_slots'][0]
+        self.avail_mem   += opaque_slot['task_slots'][1]
+        self.avail_app   += 1
         return True
 
     # --------------------------------------------------------------------------
