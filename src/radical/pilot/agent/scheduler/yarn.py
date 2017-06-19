@@ -70,6 +70,8 @@ class Yarn(AgentSchedulingComponent):
         self.avail_cores = self._mnum_of_cores - self._num_of_cores
         self.avail_mem   = self._mmem_size     - self._mem_size
 
+        self._last_update = time.time()  # time of last update to self.avail_*
+
 
     # --------------------------------------------------------------------------
     #
@@ -88,13 +90,17 @@ class Yarn(AgentSchedulingComponent):
         #        that would, for example, break on certain log levels.  Also, it
         #        would slow down the overall execution. (AM)
         #
-      # yarn_status = ul.urlopen('http://{0}:8088/ws/v1/cluster/scheduler'.format(self._rm_ip))
-      # yarn_schedul_json = json.loads(yarn_status.read())
-
-      # max_num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['maxApplications']
-      # num_app     = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['numApplications']
-
-      # self.avail_app  = max_num_app - num_app
+        now = time.time()
+        if now - self._last_update > 60:
+            yarn_status = ul.urlopen('http://%s:8088/ws/v1/cluster/scheduler' \
+                                   % self._rm_ip)
+            yarn_schedul_json = json.loads(yarn_status.read())
+            yarn_queue        = yarn_schedul_json['scheduler']['schedulerInfo']\
+                                                 ['queues']['queue'][0]
+            max_num_app       = yarn_queue['maxApplications']
+            num_app           = yarn_queue['numApplications']
+            self.avail_app    = max_num_app - num_app
+            self._last_update = now
 
         return 'free app / cores / mem: %s / %s / %s' % \
                 (self.avail_app, self.avail_cores, self.avail_mem)
