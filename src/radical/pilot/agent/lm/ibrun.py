@@ -12,8 +12,9 @@ from .base import LaunchMethod
 # ==============================================================================
 #
 class IBRun(LaunchMethod):
+
     # NOTE: Don't think that with IBRUN it is possible to have
-    # processes != cores ...
+    #       processes != cores ...
 
     # --------------------------------------------------------------------------
     #
@@ -45,13 +46,13 @@ class IBRun(LaunchMethod):
                     % (self.name, opaque_slots))
 
         task_offsets = opaque_slots['task_offsets']
+        assert(len(task_offsets) == 1)
+        ibrun_offset = task_offsets[0]
 
         if task_argstr:
             task_command = "%s %s" % (task_exec, task_argstr)
         else:
             task_command = task_exec
-
-        ibrun_offset = task_offsets
 
         ibrun_command = "%s -n %s -o %d %s" % \
                         (self.launch_command, task_cores,

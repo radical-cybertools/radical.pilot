@@ -42,13 +42,14 @@ class DPlace(LaunchMethod):
                     % (self.name, opaque_slots))
 
         task_offsets = opaque_slots['task_offsets']
+        assert(len(task_offsets) == 1)
+        dplace_offset = task_offsets[0]
 
         if task_argstr:
             task_command = "%s %s" % (task_exec, task_argstr)
         else:
             task_command = task_exec
 
-        dplace_offset = task_offsets
 
         dplace_command = "%s -c %d-%d %s" % (
             self.launch_command, dplace_offset,

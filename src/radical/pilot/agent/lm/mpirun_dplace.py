@@ -44,13 +44,13 @@ class MPIRunDPlace(LaunchMethod):
                     % (self.name, opaque_slots))
 
         task_offsets = opaque_slots['task_offsets']
+        assert(len(task_offsets == 1))
+        dplace_offset = task_offsets[0]
 
         if task_argstr:
             task_command = "%s %s" % (task_exec, task_argstr)
         else:
             task_command = task_exec
-
-        dplace_offset = task_offsets
 
         mpirun_dplace_command = "%s -np %d %s -c %d-%d %s" % \
             (self.mpirun_command, task_cores, self.launch_command,
