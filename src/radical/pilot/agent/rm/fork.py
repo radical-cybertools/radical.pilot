@@ -42,7 +42,8 @@ class Fork(LRMS):
         requested_nodes = int(math.ceil(float(self.requested_cores) / \
                                         float(self.cores_per_node ) ) )
         for i in range(requested_nodes):
-            self.node_list.append("localhost")
+            # enumerate the node list entries for a unique uis
+            self.node_list.append(["localhost", 'localhost_%d' % i])
 
         self._log.debug('configure localhost as %s nodes (%s cores, %s gpus).',
                 len(self.node_list), self.cores_per_node, self.gpus_per_node)

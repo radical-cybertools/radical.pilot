@@ -45,7 +45,7 @@
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"], 
         "cu_pre_exec"                 : ["module restore"],
-        "gpus_per_node"               : 1,
+        "gpus_per_node"               : 1
     },
 
     "stampede_orte": {
@@ -96,7 +96,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "gpus_per_node"               : 1,
+        "gpus_per_node"               : 1
     },
 
     "stampede_ortelib": {
@@ -147,7 +147,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "gpus_per_node"               : 1,
+        "gpus_per_node"               : 1
     },
 
     "stampede_yarn": {
@@ -191,7 +191,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "gpus_per_node"               : 1,
+        "gpus_per_node"               : 1
     },
 
     "stampede_spark": {
@@ -240,7 +240,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "gpus_per_node"               : 1,
+        "gpus_per_node"               : 1
     },
 
     "wrangler_ssh": {

@@ -85,7 +85,10 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable = '/bin/date'
+            cud.executable       = '/bin/date'
+            cud.gpus             = 1
+            cud.cores            = 4
+            cud.threads_per_proc = 2
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -119,6 +122,7 @@ if __name__ == '__main__':
         # not.  This will kill all remaining pilots.
         report.header('finalize')
         session.close(cleanup=False)
+        rp.utils.fetch_json(session.uid)
 
     report.header()
 

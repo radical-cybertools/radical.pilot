@@ -77,25 +77,6 @@ class Shell(AgentExecutingComponent):
         # simplify shell startup / prompt detection
         os.environ['PS1'] = '$ '
 
-        # FIXME:
-        #
-        # The AgentExecutingComponent needs the LaunchMethods to construct
-        # commands.  Those need the scheduler for some lookups and helper
-        # methods, and the scheduler needs the LRMS.  The LRMS can in general
-        # only initialized in the original agent environment -- which ultimately
-        # limits our ability to place the CU execution on other nodes.
-        #
-        # As a temporary workaround we pass a None-Scheduler -- this will only
-        # work for some launch methods, and specifically not for ORTE, DPLACE
-        # and RUNJOB.
-        #
-        # The clean solution seems to be to make sure that, on 'allocating', the
-        # scheduler derives all information needed to use the allocation and
-        # attaches them to the CU, so that the launch methods don't need to look
-        # them up again.  This will make the 'opaque_slots' more opaque -- but
-        # that is the reason of their existence (and opaqueness) in the first
-        # place...
-
         self._task_launcher = rp.agent.LM.create(
                 name    = self._cfg['task_launch_method'],
                 cfg     = self._cfg,
@@ -264,7 +245,7 @@ class Shell(AgentExecutingComponent):
 
             self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
-            assert(cu['opaque_slots']) # FIXME: no assert, but check
+            assert(cu['slots']) # FIXME: no assert, but check
             self._prof.prof('exec', msg='unit launch', uid=cu['uid'])
 
             # Start a new subprocess to launch the unit
@@ -280,7 +261,7 @@ class Shell(AgentExecutingComponent):
                             % (str(e), traceback.format_exc())
 
             # Free the Slots, Flee the Flots, Ree the Frots!
-            if cu['opaque_slots']:
+            if cu.get('slots'):
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             self.advance(cu, rps.FAILED, publish=True, push=False)

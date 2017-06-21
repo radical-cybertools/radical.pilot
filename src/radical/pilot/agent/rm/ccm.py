@@ -48,14 +48,15 @@ class CCM(LRMS):
         ccm_nodes_length = len(ccm_nodes)
 
         # Unique nodes
-        ccm_node_list = list(set(ccm_nodes))
+        ccm_node_list        = list(set(ccm_nodes))
         ccm_node_list_length = len(ccm_node_list)
 
         # Some simple arithmetic
         self.cores_per_node = ccm_nodes_length / ccm_node_list_length
         self.gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
 
-        self.node_list = ccm_node_list
+        # node names are unique, so can serve as node uids
+        self.node_list = [[node, node] for node in ccm_node_list]
 
 
 # ------------------------------------------------------------------------------

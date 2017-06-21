@@ -34,7 +34,7 @@ class Torus(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     def __init__(self, cfg, session):
 
-        self.slots            = None
+        self.nodes            = None
         self._cores_per_node  = None
 
         AgentSchedulingComponent.__init__(self, cfg, session)
@@ -50,7 +50,7 @@ class Torus(AgentSchedulingComponent):
         self._cores_per_node = self._lrms_cores_per_node
 
         # TODO: get rid of field below
-        self.slots = 'bogus'
+        self.nodes = 'bogus'
 
 
     # --------------------------------------------------------------------------

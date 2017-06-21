@@ -128,7 +128,7 @@ class Spark(LaunchMethod):
         # The LRMS instance is only available here -- everything which is later
         # needed by the scheduler or launch method is stored in an 'lm_info'
         # dict.  That lm_info dict will be attached to the scheduler's lrms_info
-        # dict, and will be passed around as part of the opaque_slots structure,
+        # dict, and will be passed around as part of the slots structure,
         # so it is available on all LM create_command calls.
         lm_info = {'spark_home'    : spark_home,
                    'master_ip'     : master_ip,
@@ -167,7 +167,7 @@ class Spark(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
         task_args    = cud.get('arguments')
@@ -176,24 +176,22 @@ class Spark(LaunchMethod):
         # Construct the args_string which is the arguments given as input to the
         # shell script. Needs to be a string
         self._log.debug("Constructing SPARK command")
-        self._log.debug('Opaque Slots {0}'.format(opaque_slots))
+        self._log.debug('Opaque Slots {0}'.format(slots))
 
-        if 'lm_info' not in opaque_slots:
+        if 'lm_info' not in slots:
             raise RuntimeError('No lm_info to launch via %s: %s' \
-                    % (self.name, opaque_slots))
+                    % (self.name, slots))
 
-        if not opaque_slots['lm_info']:
+        if not slots['lm_info']:
             raise RuntimeError('lm_info missing for %s: %s' \
-                               % (self.name, opaque_slots))
+                               % (self.name, slots))
 
-        if 'master_ip' not in opaque_slots['lm_info']:
+        if 'master_ip' not in slots['lm_info']:
             raise RuntimeError('master_ip not in lm_info for %s: %s' \
-                    % (self.name, opaque_slots))
+                    % (self.name, slots))
 
 
-        master_ip   = opaque_slots['lm_info']['master_ip']
-
-
+        master_ip   = slots['lm_info']['master_ip']
 
         if task_env:
             env_string = ''
@@ -215,7 +213,6 @@ class Spark(LaunchMethod):
         
         spark_command = self.launch_command + '/' + task_exec + '  ' + spark_configurations + ' '  +  command
 
-
-        self._log.debug("Spark  Command %s"%spark_command)
+        self._log.debug("Spark  Command %s" % spark_command)
 
         return spark_command, None

@@ -30,7 +30,7 @@ class CCMRun(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']

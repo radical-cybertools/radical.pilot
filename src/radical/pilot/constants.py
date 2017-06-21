@@ -44,8 +44,8 @@ LOG_PUBSUB                     = 'log_pubsub'
 #
 # two-state for resource occupation.
 #
-FREE = 'Free'
-BUSY = 'Busy'
+FREE = 0
+BUSY = 1
 
 
 # ------------------------------------------------------------------------------

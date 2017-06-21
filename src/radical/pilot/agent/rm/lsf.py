@@ -61,7 +61,8 @@ class LSF(LRMS):
         self._log.info("Found unique core counts: %s Using: %d",
                       lsf_core_counts, lsf_cores_per_node)
 
-        self.node_list = lsf_node_list
+        # node names are unique, so can serve as node uids
+        self.node_list      = [[node, node] for node in lsf_node_list]
         self.cores_per_node = lsf_cores_per_node
         self.gpus_per_node  = lsf_gpus_per_node
 

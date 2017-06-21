@@ -285,7 +285,8 @@ class LoadLeveler(LRMS):
             # BGQ Specific Torus labels
             self.torus_dimension_labels = self.BGQ_DIMENSION_LABELS
 
-        self.node_list      = loadl_node_list
+        # node names are unique, so can serve as node uids
+        self.node_list      = [[node, node] for node in loadl_node_list]
         self.cores_per_node = loadl_cpus_per_node
         self.gpus_per_node  = loadl_gpus_per_node
 

@@ -176,11 +176,11 @@ class Yarn(AgentSchedulingComponent):
             # accept. It needs to go either from the configuration file or find a
             # way to take this value for the YARN scheduler config.
 
-            cu['opaque_slots']={'lm_info':{'service_url':self._service_url,
-                                            'rm_url'    :self._rm_url,
-                                            'nodename'  :self._client_node},
-                                'task_slots':[cu['description']['cores'],2048]
-                               }
+            cu['slots']={'lm_info':{'service_url':self._service_url,
+                                     'rm_url'    :self._rm_url,
+                                     'nodename'  :self._client_node},
+                         'task_slots':[cu['description']['cores'],2048]
+                        }
 
             alloc = self._allocate_slot(cu['description']['cores'],2048)
 

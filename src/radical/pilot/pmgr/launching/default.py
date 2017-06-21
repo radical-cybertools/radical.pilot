@@ -619,6 +619,10 @@ class Default(PMGRLaunchingComponent):
         export_to_cu            = rcfg.get('export_to_cu')
         mandatory_args          = rcfg.get('mandatory_args', [])
 
+        import pprint
+        self._log.debug(cores_per_node)
+        self._log.debug(pprint.pformat(rcfg))
+
         # make sure that mandatory args are known
         for ma in mandatory_args:
             if pilot['description'].get(ma) is None:

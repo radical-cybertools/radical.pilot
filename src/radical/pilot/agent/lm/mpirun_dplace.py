@@ -32,18 +32,18 @@ class MPIRunDPlace(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_args    = cud.get('arguments') or []
+        task_args    = cud.get('arguments', [])
         task_argstr  = self._create_arg_string(task_args)
 
-        if not 'task_offsets' in opaque_slots:
+        if not 'task_offsets' in slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
-                    % (self.name, opaque_slots))
+                    % (self.name, slots))
 
-        task_offsets = opaque_slots['task_offsets']
+        task_offsets = slots['task_offsets']
         assert(len(task_offsets == 1))
         dplace_offset = task_offsets[0]
 

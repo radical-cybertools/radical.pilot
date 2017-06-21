@@ -94,7 +94,8 @@ class Torque(LRMS):
             # Old style Torque (Should we just use this for all versions?)
             self.cores_per_node = torque_nodes_length / torque_node_list_length
 
-        self.node_list     = torque_node_list
+        # node names are unique, so can serve as node uids
+        self.node_list     = [[node, node] for node in torque_node_list]
         self.gpus_per_node = torque_gpus_per_node
 
 

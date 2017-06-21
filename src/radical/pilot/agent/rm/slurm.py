@@ -76,7 +76,9 @@ class Slurm(LRMS):
         self.cores_per_node = min(slurm_cpus_on_node, slurm_nprocs)
         self.gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
 
-        self.node_list = slurm_nodes
+        # node names are unique, so can serve as node uids
+        self.node_list = [[node, node] for node in slurm_nodes]
 
 
+# ------------------------------------------------------------------------------
 

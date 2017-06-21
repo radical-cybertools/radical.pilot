@@ -211,7 +211,7 @@ class ORTE(AgentExecutingComponent):
 
             self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
-            assert(cu['opaque_slots']), 'unit unscheduled'
+            assert(cu['slots']), 'unit unscheduled'
             self._prof.prof('exec', msg='unit launch', uid=cu['_id'])
 
             # Start a new subprocess to launch the unit
@@ -227,7 +227,7 @@ class ORTE(AgentExecutingComponent):
                             % (str(e), traceback.format_exc())
 
             # Free the Slots, Flee the Flots, Ree the Frots!
-            if cu['opaque_slots']:
+            if cu['slots']:
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
@@ -306,21 +306,21 @@ class ORTE(AgentExecutingComponent):
     def init_orte(self, cu):
         # TODO: it feels as a hack to get the DVM URI from the first CU
 
-        opaque_slots = cu['opaque_slots']
+        slots = cu['slots']
 
-        if 'lm_info' not in opaque_slots:
+        if 'lm_info' not in slots:
             raise RuntimeError('No lm_info to init via %s: %s' \
-                               % (self.name, opaque_slots))
+                               % (self.name, slots))
 
-        if not opaque_slots['lm_info']:
+        if not slots['lm_info']:
             raise RuntimeError('lm_info missing for %s: %s' \
-                               % (self.name, opaque_slots))
+                               % (self.name, slots))
 
-        if 'dvm_uri' not in opaque_slots['lm_info']:
+        if 'dvm_uri' not in slots['lm_info']:
             raise RuntimeError('dvm_uri not in lm_info for %s: %s' \
-                               % (self.name, opaque_slots))
+                               % (self.name, slots))
 
-        dvm_uri    = opaque_slots['lm_info']['dvm_uri']
+        dvm_uri = slots['lm_info']['dvm_uri']
 
         # Notify the runtime that we are using threads and that we require mutexes
         orte_lib.opal_set_using_threads(True)

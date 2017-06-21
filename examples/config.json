@@ -4,7 +4,7 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 2
+        "cores"    : 32
     },
 
     "local.localhost_anaconda" : {
