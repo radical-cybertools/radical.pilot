@@ -35,7 +35,8 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
-        "python_dist"                 : "default"
+        "python_dist"                 : "default",
+        "virtenv_dist"                : "system"
     },
 
     "titan_orte": {
@@ -76,7 +77,8 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
-        "python_dist"                 : "default"
+        "python_dist"                 : "default",
+        "virtenv_dist"                : "system"
     },
 
     "titan_ortelib": {
@@ -118,7 +120,8 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
-        "python_dist"                 : "default"
+        "python_dist"                 : "default",
+        "virtenv_dist"                : "system"
     }
 }
 

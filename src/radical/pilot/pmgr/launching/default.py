@@ -32,6 +32,7 @@ from .base import PMGRLaunchingComponent
 DEFAULT_AGENT_SPAWNER = 'POPEN'
 DEFAULT_RP_VERSION    = 'local'
 DEFAULT_VIRTENV_MODE  = 'update'
+DEFAULT_VIRTENV_DIST  = 'default'
 DEFAULT_AGENT_CONFIG  = 'default'
 
 JOB_CANCEL_DELAY      = 12000# seconds between cancel signal and job kill
@@ -598,6 +599,7 @@ class Default(PMGRLaunchingComponent):
         cores_per_node          = rcfg.get('cores_per_node', 0)
         health_check            = rcfg.get('health_check', True)
         python_dist             = rcfg.get('python_dist')
+        virtenv_dist            = rcfg.get('virtenv_dist',        DEFAULT_VIRTENV_DIST)
         cu_tmp                  = rcfg.get('cu_tmp')
         spmd_variation          = rcfg.get('spmd_variation')
         shared_filesystem       = rcfg.get('shared_filesystem', True)
@@ -767,6 +769,7 @@ class Default(PMGRLaunchingComponent):
         # ------------------------------------------------------------------
         # sanity checks
         if not python_dist        : raise RuntimeError("missing python distribution")
+        if not virtenv_dist       : raise RuntimeError("missing virtualenv distribution")
         if not agent_spawner      : raise RuntimeError("missing agent spawner")
         if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
         if not lrms               : raise RuntimeError("missing LRMS")
@@ -819,6 +822,7 @@ class Default(PMGRLaunchingComponent):
         bootstrap_args += " -m '%s'" % virtenv_mode
         bootstrap_args += " -r '%s'" % rp_version
         bootstrap_args += " -b '%s'" % python_dist
+        bootstrap_args += " -g '%s'" % virtenv_dist
         bootstrap_args += " -v '%s'" % virtenv
         bootstrap_args += " -y '%d'" % runtime
 
