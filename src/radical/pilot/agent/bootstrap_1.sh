@@ -975,7 +975,7 @@ virtenv_create()
         if test "$?" = 1
         then
             # this is titan
-            wheeled="--no-use-wheel"
+            wheeled="--no-binary :all:"
         else
             wheeled=""
         fi
