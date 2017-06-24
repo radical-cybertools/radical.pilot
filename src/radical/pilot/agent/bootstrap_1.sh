@@ -970,8 +970,18 @@ virtenv_create()
     # of the RADICAL stack
     for dep in $VIRTENV_RADICAL_DEPS
     do
+        # NOTE: we have to make sure not to use wheels on titan
+        hostname | grep titan 2&>1 >/dev/null
+        if test "$?" = 1
+        then
+            # this is titan
+            wheeled="--no-use-wheel"
+        else
+            wheeled=""
+        fi
+
         run_cmd "install $dep" \
-                "$PIP install $dep" \
+                "$PIP install $wheeled $dep" \
              || echo "Couldn't install $dep! Lets see how far we get ..."
     done
 }
