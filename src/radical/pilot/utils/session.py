@@ -14,7 +14,7 @@ from db_utils import *
 # ------------------------------------------------------------------------------
 #
 def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None, 
-        session=None, skip_existing=False, fetch_client=False):
+        session=None, skip_existing=False, fetch_client=False, log=None):
     '''
     sid: session for which all profiles are fetched
     src: dir to look for client session profiles ($src/$sid/*.prof)
@@ -25,7 +25,11 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
     returns list of file names
     '''
 
-    log = ru.get_logger('radical.pilot.utils')
+    if not log and session:
+        log = session._log
+    elif not log:
+        log = ru.get_logger('radical.pilot.utils')
+
     ret = list()
 
     if not dburl:
@@ -66,10 +70,8 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
             if skip_existing and os.path.isfile(ftgt.path) \
                     and os.stat(ftgt.path).st_size > 0:
-                log.report.info("\t- %s\n" % client_profile.split('/')[-1])
-
+                pass
             else:
-                log.report.info("\t+ %s\n" % client_profile.split('/')[-1])
                 prof_file = saga.filesystem.File(client_profile, session=session)
                 prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
                 prof_file.close()
@@ -88,104 +90,97 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
     for pilot in pilots:
 
-        if not 'uid' in pilot:
-            pilot['uid'] = pilot.get('_id')
-
-        log.report.info("+ %s [%s]\n" % (pilot['uid'], pilot['description']['resource']))
-        log.debug("processing pilot '%s'", pilot['uid'])
-
-        sandbox_url = saga.Url(pilot['pilot_sandbox'])
-
-        if access:
-            # Allow to use a different access schema than used for the the run.
-            # Useful if you ran from the headnode, but would like to retrieve
-            # the profiles to your desktop (Hello Titan).
-            access_url = saga.Url(access)
-            sandbox_url.schema = access_url.schema
-            sandbox_url.host = access_url.host
-
-          # print "Overriding remote sandbox: %s" % sandbox_url
-
-        sandbox = saga.filesystem.Directory (sandbox_url, session=session)
-
-        # Try to fetch a tarball of profiles, so that we can get them all in one (SAGA) go!
-        PROFILES_TARBALL = '%s.prof.tgz' % pilot['uid']
-        tarball_available = False
         try:
-            if sandbox.is_file(PROFILES_TARBALL):
-                log.warn("Profiles tarball exists")
+            log.debug("processing pilot '%s'", pilot['uid'])
 
-                ftgt = saga.Url('%s/%s' % (tgt_url, PROFILES_TARBALL))
+            sandbox_url = saga.Url(pilot['pilot_sandbox'])
 
-                if skip_existing and os.path.isfile(ftgt.path) \
-                        and os.stat(ftgt.path).st_size > 0:
+            if access:
+                # Allow to use a different access schema than used for the the run.
+                # Useful if you ran from the headnode, but would like to retrieve
+                # the profiles to your desktop (Hello Titan).
+                access_url = saga.Url(access)
+                sandbox_url.schema = access_url.schema
+                sandbox_url.host   = access_url.host
 
-                    log.info("skip fetching of '%s/%s' to '%s'.", 
-                             sandbox_url, PROFILES_TARBALL, tgt_url)
-                    tarball_available = True
+              # print "Overriding remote sandbox: %s" % sandbox_url
+
+            sandbox = saga.filesystem.Directory (sandbox_url, session=session)
+
+            # Try to fetch a tarball of profiles, so that we can get them all in one (SAGA) go!
+            PROFILES_TARBALL = '%s.prof.tgz' % pilot['uid']
+            tarball_available = False
+            try:
+                if sandbox.is_file(PROFILES_TARBALL):
+                    log.warn("Profiles tarball exists")
+
+                    ftgt = saga.Url('%s/%s' % (tgt_url, PROFILES_TARBALL))
+
+                    if skip_existing and os.path.isfile(ftgt.path) \
+                            and os.stat(ftgt.path).st_size > 0:
+
+                        log.info("skip fetching of '%s/%s' to '%s'.", 
+                                 sandbox_url, PROFILES_TARBALL, tgt_url)
+                        tarball_available = True
+                    else:
+
+                        log.info("fetch '%s%s' to '%s'.", sandbox_url, 
+                                 PROFILES_TARBALL, tgt_url)
+
+                        prof_file = saga.filesystem.File("%s%s" % (sandbox_url, PROFILES_TARBALL), session=session)
+                        prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
+                        prof_file.close()
+
+                        tarball_available = True
                 else:
+                    log.warn("profiles tarball doesnt exists!")
 
-                    log.info("fetch '%s%s' to '%s'.", sandbox_url, 
-                             PROFILES_TARBALL, tgt_url)
+            except saga.DoesNotExist:
+                log.exception("exception(TODO): profiles tarball doesnt exists!")
 
-                    prof_file = saga.filesystem.File("%s%s" % (sandbox_url, PROFILES_TARBALL), session=session)
-                    prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
-                    prof_file.close()
-
-                    tarball_available = True
-            else:
-                log.warn("profiles tarball doesnt exists!")
-
-        except saga.DoesNotExist:
-            log.exception("exception(TODO): profiles tarball doesnt exists!")
-
-        try:
-            os.mkdir("%s/%s" % (tgt_url.path, pilot['uid']))
-        except OSError:
-            pass
-
-        # We now have a local tarball
-        if tarball_available:
-            log.info("Extract tarball %s to '%s'.", ftgt.path, tgt_url.path)
             try:
-                tarball = tarfile.open(ftgt.path, mode='r:gz')
-                tarball.extractall("%s/%s" % (tgt_url.path, pilot['uid']))
+                os.mkdir("%s/%s" % (tgt_url.path, pilot['uid']))
+            except OSError:
+                pass
 
-                profiles = glob.glob("%s/%s/*.prof" % (tgt_url.path, pilot['uid']))
-                ret.extend(profiles)
-                os.unlink(ftgt.path)
+            # We now have a local tarball
+            if tarball_available:
+                log.info("Extract tarball %s to '%s'.", ftgt.path, tgt_url.path)
+                try:
+                    tarball = tarfile.open(ftgt.path, mode='r:gz')
+                    tarball.extractall("%s/%s" % (tgt_url.path, pilot['uid']))
 
-            except Exception as e:
-                log.warn('could not extract tarball %s [%s]', ftgt.path, e)
+                    profiles = glob.glob("%s/%s/*.prof" % (tgt_url.path, pilot['uid']))
+                    ret.extend(profiles)
+                    os.unlink(ftgt.path)
 
-            # If extract succeeded, no need to fetch individual profiles
-            continue
+                except Exception as e:
+                    log.warn('could not extract tarball %s [%s]', ftgt.path, e)
 
-        # If we dont have a tarball (for whichever reason), fetch individual profiles
-        try:
+                # If extract succeeded, no need to fetch individual profiles
+                log.report.ok("+ %s (profiles)\n" % pilot['uid'])
+                continue
+
+            # If we dont have a tarball (for whichever reason), fetch individual profiles
             profiles = sandbox.list('*.prof')
-        except Exception as e:
-            log.error('cannot list profiles in %s [%s]' % (sandbox.url, e))
-            profiles = []
+            for prof in profiles:
 
-        for prof in profiles:
-
-            try:
                 ret.append("%s" % ftgt.path)
                 ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['uid'], prof))
 
                 if skip_existing and os.path.isfile(ftgt.path) \
                                  and os.stat(ftgt.path).st_size > 0:
-                    log.report.info("\t- %s\n" % str(prof).split('/')[-1])
-
+                    pass
                 else:
-                    log.report.info("\t+ %s\n" % str(prof).split('/')[-1])
                     prof_file = saga.filesystem.File("%s%s" % (sandbox_url, prof), session=session)
                     prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
                     prof_file.close()
 
-            except Exception as e:
-                log.error('skip %s [%s]' % (ftgt, e))
+            log.report.ok("+ %s (profiles)\n" % pilot['uid'])
+
+        except Exception as e:
+            log.report.error("- %s (profiles)\n" % pilot['uid'])
+            log.exception('failed to fet profile for %s', pilot['uid'])
 
     return ret
 
@@ -193,7 +188,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 # ------------------------------------------------------------------------------
 #
 def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None, 
-        session=None, skip_existing=False, fetch_client=False):
+        session=None, skip_existing=False, fetch_client=False, log=None):
     '''
     sid: session for which all logfiles are fetched
     src: dir to look for client session logfiles
@@ -202,7 +197,11 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
     returns list of file names
     '''
 
-    log = ru.get_logger('radical.pilot.utils')
+    if not log and session:
+        log = session._log
+    elif not log:
+        log = ru.get_logger('radical.pilot.utils')
+
     ret = list()
 
     if not dburl:
@@ -239,12 +238,8 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
 
         if skip_existing and os.path.isfile(ftgt.path) \
                 and os.stat(ftgt.path).st_size > 0:
-
-            log.report.info("\t- %s\n" % client_logfile.split('/')[-1])
-
+            pass
         else:
-
-            log.report.info("\t+ %s\n" % client_logfile.split('/')[-1])
             log_file = saga.filesystem.File(client_logfile, session=session)
             log_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
             log_file.close()
@@ -258,97 +253,99 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
     log.info("Session: %s", sid)
     log.info("Number of pilots in session: %d", num_pilots)
 
+
     for pilot in pilots:
 
-      # print "processing pilot '%s'" % pilot['uid']
-
-        sandbox_url = saga.Url(pilot['pilot_sandbox'])
-
-        if access:
-            # Allow to use a different access schema than used for the the run.
-            # Useful if you ran from the headnode, but would like to retrieve
-            # the logfiles to your desktop (Hello Titan).
-            access_url = saga.Url(access)
-            sandbox_url.schema = access_url.schema
-            sandbox_url.host   = access_url.host
-
-          # print "Overriding remote sandbox: %s" % sandbox_url
-
-        sandbox  = saga.filesystem.Directory (sandbox_url, session=session)
-
-        # Try to fetch a tarball of logfiles, so that we can get them all in one (SAGA) go!
-        LOGILES_TARBALL   = '%s.log.tgz' % pilot['uid']
-        tarball_available = False
         try:
-            if sandbox.is_file(LOGILES_TARBALL):
+            sandbox_url = saga.Url(pilot['pilot_sandbox'])
 
-                log.info("logfiles tarball exists")
-                ftgt = saga.Url('%s/%s' % (tgt_url, LOGILES_TARBALL))
+            if access:
+                # Allow to use a different access schema than used for the the run.
+                # Useful if you ran from the headnode, but would like to retrieve
+                # the logfiles to your desktop (Hello Titan).
+                access_url = saga.Url(access)
+                sandbox_url.schema = access_url.schema
+                sandbox_url.host   = access_url.host
 
-                if skip_existing and os.path.isfile(ftgt.path) \
-                        and os.stat(ftgt.path).st_size > 0:
+            sandbox  = saga.filesystem.Directory (sandbox_url, session=session)
 
-                    log.info("Skip fetching of '%s/%s' to '%s'.", 
-                             sandbox_url, LOGILES_TARBALL, tgt_url)
-                    tarball_available = True
+            # Try to fetch a tarball of logfiles, so that we can get them all in one (SAGA) go!
+            LOGILES_TARBALL   = '%s.log.tgz' % pilot['uid']
+            tarball_available = False
+            try:
+                if sandbox.is_file(LOGILES_TARBALL):
+
+                    log.info("logfiles tarball exists")
+                    ftgt = saga.Url('%s/%s' % (tgt_url, LOGILES_TARBALL))
+
+                    if skip_existing and os.path.isfile(ftgt.path) \
+                            and os.stat(ftgt.path).st_size > 0:
+
+                        log.info("Skip fetching of '%s/%s' to '%s'.", 
+                                 sandbox_url, LOGILES_TARBALL, tgt_url)
+                        tarball_available = True
+                    else:
+
+                        log.info("Fetching '%s%s' to '%s'.", 
+                                sandbox_url, LOGILES_TARBALL, tgt_url)
+                        log_file = saga.filesystem.File("%s%s" % (sandbox_url, LOGILES_TARBALL), session=session)
+                        log_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
+                        log_file.close()
+
+                        tarball_available = True
                 else:
+                    log.warn("logiles tarball doesnt exists")
 
-                    log.info("Fetching '%s%s' to '%s'.", 
-                            sandbox_url, LOGILES_TARBALL, tgt_url)
-                    log_file = saga.filesystem.File("%s%s" % (sandbox_url, LOGILES_TARBALL), session=session)
-                    log_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
-                    log_file.close()
-
-                    tarball_available = True
-            else:
-                log.warn("logiles tarball doesnt exists")
-
-        except saga.DoesNotExist:
-            log.warn("logfiles tarball doesnt exists")
-
-        try:
-            os.mkdir("%s/%s" % (tgt_url.path, pilot['uid']))
-        except OSError:
-            pass
-
-        # We now have a local tarball
-        if tarball_available:
-            log.debug("Extract tarball %s to %s", ftgt.path, tgt_url.path)
+            except saga.DoesNotExist:
+                log.warn("logfiles tarball doesnt exists")
 
             try:
-                tarball = tarfile.open(ftgt.path)
-                tarball.extractall("%s/%s" % (tgt_url.path, pilot['uid']))
+                os.mkdir("%s/%s" % (tgt_url.path, pilot['uid']))
+            except OSError:
+                pass
 
-                logfiles = glob.glob("%s/%s/*.log" % (tgt_url.path, pilot['uid']))
-                log.info("tarball %s extracted to '%s/%s/'.", 
-                        ftgt.path, tgt_url.path, pilot['uid'])
-                ret.extend(logfiles)
-                os.unlink(ftgt.path)
+            # We now have a local tarball
+            if tarball_available:
+                log.debug("Extract tarball %s to %s", ftgt.path, tgt_url.path)
 
-            except Exception as e:
-                log.warn('could not extract tarball %s [%s]', ftgt.path, e)
+                try:
+                    tarball = tarfile.open(ftgt.path)
+                    tarball.extractall("%s/%s" % (tgt_url.path, pilot['uid']))
 
-            # If extract succeeded, no need to fetch individual logfiles
-            continue
+                    logfiles = glob.glob("%s/%s/*.log" % (tgt_url.path, pilot['uid']))
+                    log.info("tarball %s extracted to '%s/%s/'.", 
+                            ftgt.path, tgt_url.path, pilot['uid'])
+                    ret.extend(logfiles)
+                    os.unlink(ftgt.path)
 
-        # If we dont have a tarball (for whichever reason), fetch individual logfiles
-        logfiles = sandbox.list('*.log')
+                except Exception as e:
+                    log.warn('could not extract tarball %s [%s]', ftgt.path, e)
 
-        for log in logfiles:
-
-            ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['uid'], log))
-            ret.append("%s" % ftgt.path)
-
-            if skip_existing and os.path.isfile(ftgt.path) \
-                             and os.stat(ftgt.path).st_size > 0:
-
-                log.report.info("\t- %s\n" % str(log).split('/')[-1])
+                # If extract succeeded, no need to fetch individual logfiles
+                log.report.ok("+ %s (logfiles)\n" % pilot['uid'])
                 continue
 
-            log.report.info("\t+ %s\n" % str(log).split('/')[-1])
-            log_file = saga.filesystem.File("%s%s" % (sandbox_url, log), session=session)
-            log_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
-            log_file.close()
+            # If we dont have a tarball (for whichever reason), fetch individual logfiles
+            logfiles = sandbox.list('*.log')
+
+            for log in logfiles:
+
+                ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['uid'], log))
+                ret.append("%s" % ftgt.path)
+
+                if skip_existing and os.path.isfile(ftgt.path) \
+                                 and os.stat(ftgt.path).st_size > 0:
+
+                    continue
+
+                log_file = saga.filesystem.File("%s%s" % (sandbox_url, log), session=session)
+                log_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
+                log_file.close()
+
+            log.report.ok("+ %s (logfiles)\n" % pilot['uid'])
+
+        except Exception as e:
+            log.report.error("- %s (logfiles)\n" % pilot['uid'])
 
     return ret
 
@@ -356,12 +353,16 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
 
 # ------------------------------------------------------------------------------
 #
-def fetch_json(sid, dburl=None, tgt=None, skip_existing=False):
+def fetch_json(sid, dburl=None, tgt=None, skip_existing=False, session=None,
+        log=None):
     '''
     returns file name
     '''
 
-    log = ru.get_logger('radical.pilot.utils')
+    if not log and session:
+        log = session._log
+    elif not log:
+        log = ru.get_logger('radical.pilot.utils')
 
     if not tgt:
         tgt = '.'
@@ -400,6 +401,7 @@ def fetch_json(sid, dburl=None, tgt=None, skip_existing=False):
 
         mongo.close()
 
+    log.report.ok("+ %s (json)\n" % sid)
     return dst
 
 

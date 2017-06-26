@@ -809,13 +809,15 @@ class Session(rs.Session):
     # -------------------------------------------------------------------------
     #
     def fetch_profiles(self, tgt=None, fetch_client=False):
-        return rpu.fetch_profiles(self._uid, dburl=self.dburl, tgt=tgt, session=self)
+        return rpu.fetch_profiles(self._uid, dburl=self.dburl, tgt=tgt, 
+                                  session=self)
 
 
     # -------------------------------------------------------------------------
     #
     def fetch_logfiles(self, tgt=None, fetch_client=False):
-        return rpu.fetch_logfiles(self._uid, dburl=self.dburl, tgt=tgt, session=self)
+        return rpu.fetch_logfiles(self._uid, dburl=self.dburl, tgt=tgt, 
+                                  session=self)
 
 
     # -------------------------------------------------------------------------
@@ -823,7 +825,10 @@ class Session(rs.Session):
     def fetch_json(self, tgt=None, fetch_client=False):
         if not tgt:
             tgt = '%s/%s' % (os.getcwd(), self.uid)
-        return rpu.fetch_json(self._uid, dburl=self.dburl, tgt=tgt)
+
+        return rpu.fetch_json(self._uid, dburl=self.dburl, tgt=tgt,
+                              session=self)
+
 
 
     # -------------------------------------------------------------------------
