@@ -157,7 +157,6 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
             except Exception as e:
                 log.warn('could not extract tarball %s [%s]', ftgt.path, e)
-                print 'skip %s [%s]' % (ftgt.path, e)
 
             # If extract succeeded, no need to fetch individual profiles
             continue
@@ -328,7 +327,6 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
 
             except Exception as e:
                 log.warn('could not extract tarball %s [%s]', ftgt.path, e)
-                print 'skip %s [%s]' % (ftgt.path, e)
 
             # If extract succeeded, no need to fetch individual logfiles
             continue

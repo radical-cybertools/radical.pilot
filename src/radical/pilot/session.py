@@ -821,6 +821,8 @@ class Session(rs.Session):
     # -------------------------------------------------------------------------
     #
     def fetch_json(self, tgt=None, fetch_client=False):
+        if not tgt:
+            tgt = '%s/%s' % (os.getcwd(), self.uid)
         return rpu.fetch_json(self._uid, dburl=self.dburl, tgt=tgt)
 
 
