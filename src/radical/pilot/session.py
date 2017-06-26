@@ -403,7 +403,7 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def close(self, cleanup=None, terminate=None, delete=None):
+    def close(self, cleanup=False, terminate=True, download=False):
         """Closes the session.
 
         All subsequent attempts access objects attached to the session will 
@@ -432,17 +432,6 @@ class Session(rs.Session):
         if cleanup   == None: cleanup   = True
         if terminate == None: terminate = True
 
-        # we keep 'delete' for backward compatibility.  If it was set, and the
-        # other flags (cleanup, terminate) are as defaulted (True), then delete
-        # will supercede them.  Delete is considered deprecated though, and
-        # we'll thus issue a warning.
-        if delete != None:
-            if  cleanup == True and terminate == True:
-                cleanup   = delete
-                terminate = delete
-                self._log.warning("'delete' flag on session is deprecated. " \
-                             "Please use 'cleanup' and 'terminate' instead!")
-
         if  cleanup:
             # cleanup implies terminate
             terminate = True
@@ -470,6 +459,16 @@ class Session(rs.Session):
         self._log.debug("session %s closed (delete=%s)", self._uid, cleanup)
         self.prof.prof("closed", uid=self._uid)
         self.prof.close()
+
+        # after all is said and done, we attempt to download the pilot log- and
+        # profiles, if so wanted
+        if download:
+            # let file systems settle
+            time.sleep(5)
+
+            self.fetch_json()
+            self.fetch_profiles()
+            self.fetch_logfiles()
 
         self._valid = False
         self._log.report.info('<<session lifetime: %.1fs' % (self.closed - self.created))
@@ -809,14 +808,27 @@ class Session(rs.Session):
 
     # -------------------------------------------------------------------------
     #
-    def fetch_profiles(self, tgt=None):
-        return rpu.fetch_profiles(self._uid, dburl=self.dburl, tgt=tgt, session=self)
+    def fetch_profiles(self, tgt=None, fetch_client=False):
+        return rpu.fetch_profiles(self._uid, dburl=self.dburl, tgt=tgt, 
+                                  session=self)
 
 
     # -------------------------------------------------------------------------
     #
-    def fetch_json(self, tgt=None):
-        return rpu.fetch_json(self._uid, dburl=self.dburl, tgt=tgt)
+    def fetch_logfiles(self, tgt=None, fetch_client=False):
+        return rpu.fetch_logfiles(self._uid, dburl=self.dburl, tgt=tgt, 
+                                  session=self)
+
+
+    # -------------------------------------------------------------------------
+    #
+    def fetch_json(self, tgt=None, fetch_client=False):
+        if not tgt:
+            tgt = '%s/%s' % (os.getcwd(), self.uid)
+
+        return rpu.fetch_json(self._uid, dburl=self.dburl, tgt=tgt,
+                              session=self)
+
 
 
     # -------------------------------------------------------------------------
