@@ -78,7 +78,7 @@
     },
 
     "epsrc.archer" : {
-        "project"  : "e290",
+        "project"  : "d137",
         "queue"    : "short",
         "schema"   : null,
         "cores"    : 64
