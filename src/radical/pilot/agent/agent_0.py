@@ -156,6 +156,11 @@ class Agent_0(rpu.Worker):
                                timer=self._cfg['db_poll_sleeptime'])
 
 
+        # record hostname in profile to enable mapping of profile entries
+        self._prof.prof(event='hostname', uid=pilot['uid'], 
+                        msg=ru.get_hostname())
+
+
     # --------------------------------------------------------------------------
     #
     def finalize_parent(self):
