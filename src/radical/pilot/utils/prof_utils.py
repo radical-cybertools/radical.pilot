@@ -120,8 +120,7 @@ def clean_profile(profile, sid):
                 entities[uid]['states'][state] = event
 
         else:
-            pass
-          # entities[uid]['events'].append(event)
+            entities[uid]['events'].append(event)
 
 
     # we have evaluated, cleaned and sorted all events -- now we recreate
@@ -170,8 +169,8 @@ def get_session_profile(sid, src=None):
         # FIXME: legacy host notation - deprecated
         hostmap = get_hostmap_deprecated(profiles)
 
-    import pprint
-    pprint.pprint(hostmap)
+  # import pprint
+  # pprint.pprint(hostmap)
 
     return profile, accuracy, hostmap
 
