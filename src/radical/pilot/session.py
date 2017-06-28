@@ -463,9 +463,6 @@ class Session(rs.Session):
         # after all is said and done, we attempt to download the pilot log- and
         # profiles, if so wanted
         if download:
-            # let file systems settle
-            time.sleep(5)
-
             self.fetch_json()
             self.fetch_profiles()
             self.fetch_logfiles()
