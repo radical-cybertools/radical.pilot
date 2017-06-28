@@ -4,7 +4,7 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 2
+        "cores"    : 32
     },
 
     "local.localhost_orte" : {
@@ -85,7 +85,7 @@
     },
 
     "epsrc.archer" : {
-        "project"  : "e290",
+        "project"  : "d137",
         "queue"    : "short",
         "schema"   : null,
         "cores"    : 64
@@ -260,12 +260,20 @@
         "cores"    : 64
     }, 
 
+    "fub.allegro"   : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 36,
+        "gpus"     : 12
+    },
+
     "lumc.shark"   : {
         "project"  : null,
         "queue"    : null,
         "schema"   : "ssh",
         "cores"    : 16
-    },
+    }, 
 
     "lumc.gb-ui"   : {
         "project"  : null,

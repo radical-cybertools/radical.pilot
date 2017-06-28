@@ -43,9 +43,9 @@ class Yarn(AgentSchedulingComponent):
         #            % (self.uid))
 
         self._log.info('Checking rm_ip %s' % self._cfg['lrms_info']['lm_info']['rm_ip'])
-        self._rm_ip = self._cfg['lrms_info']['lm_info']['rm_ip']
+        self._rm_ip       = self._cfg['lrms_info']['lm_info']['rm_ip']
         self._service_url = self._cfg['lrms_info']['lm_info']['service_url']
-        self._rm_url = self._cfg['lrms_info']['lm_info']['rm_url']
+        self._rm_url      = self._cfg['lrms_info']['lm_info']['rm_url']
         self._client_node = self._cfg['lrms_info']['lm_info']['nodename']
 
         sample_time = time.time()
@@ -54,7 +54,7 @@ class Yarn(AgentSchedulingComponent):
         yarn_schedul_json = json.loads(yarn_status.read())
 
         max_num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['maxApplications']
-        num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['numApplications']
+        num_app     = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['numApplications']
 
         #-----------------------------------------------------------------------
         # Find out the cluster's resources
@@ -62,13 +62,16 @@ class Yarn(AgentSchedulingComponent):
 
         metrics = json.loads(cluster_metrics.read())
         self._mnum_of_cores = metrics['clusterMetrics']['totalVirtualCores']
-        self._mmem_size = metrics['clusterMetrics']['totalMB']
-        self._num_of_cores = metrics['clusterMetrics']['allocatedVirtualCores']
-        self._mem_size = metrics['clusterMetrics']['allocatedMB']
+        self._mmem_size     = metrics['clusterMetrics']['totalMB']
+        self._num_of_cores  = metrics['clusterMetrics']['allocatedVirtualCores']
+        self._mem_size      = metrics['clusterMetrics']['allocatedMB']
 
-        self.avail_app = {'apps':max_num_app - num_app,'timestamp':sample_time}
+        self.avail_app   = max_num_app - num_app
         self.avail_cores = self._mnum_of_cores - self._num_of_cores
-        self.avail_mem = self._mmem_size - self._mem_size
+        self.avail_mem   = self._mmem_size     - self._mem_size
+
+        self._last_update = time.time()  # time of last update to self.avail_*
+
 
     # --------------------------------------------------------------------------
     #
@@ -80,20 +83,27 @@ class Yarn(AgentSchedulingComponent):
         #-------------------------------------------------------------------------
         # As it seems this part of the Scheduler is not according to the assumptions
         # made about slot status. Keeping the code commented just in case it is
-        # needed later either as whole or art of it.
-        sample = time.time()
-        yarn_status = ul.urlopen('http://{0}:8088/ws/v1/cluster/scheduler'.format(self._rm_ip))
-        yarn_schedul_json = json.loads(yarn_status.read())
+        # needed later either as whole or part of it.
+        #
+        # FIXME: slot_status is called frequently, but *only* for the purpose of
+        #        logging. It should not be used to perform any semantics, as
+        #        that would, for example, break on certain log levels.  Also, it
+        #        would slow down the overall execution. (AM)
+        #
+        now = time.time()
+        if now - self._last_update > 60:
+            yarn_status = ul.urlopen('http://%s:8088/ws/v1/cluster/scheduler' \
+                                   % self._rm_ip)
+            yarn_schedul_json = json.loads(yarn_status.read())
+            yarn_queue        = yarn_schedul_json['scheduler']['schedulerInfo']\
+                                                 ['queues']['queue'][0]
+            max_num_app       = yarn_queue['maxApplications']
+            num_app           = yarn_queue['numApplications']
+            self.avail_app    = max_num_app - num_app
+            self._last_update = now
 
-        max_num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['maxApplications']
-        num_app = yarn_schedul_json['scheduler']['schedulerInfo']['queues']['queue'][0]['numApplications']
-        if (self.avail_app['timestamp'] - sample)>60 and \
-           (self.avail_app['apps'] != max_num_app - num_app):
-            self.avail_app['apps'] = max_num_app - num_app
-            self.avail_app['timestamp']=sample
-
-        return '{0} applications per user remaining. Free cores {1} Free Mem {2}'\
-        .format(self.avail_app['apps'],self.avail_cores,self.avail_mem)
+        return 'free app / cores / mem: %s / %s / %s' % \
+                (self.avail_app, self.avail_cores, self.avail_mem)
 
 
     # --------------------------------------------------------------------------
@@ -108,12 +118,12 @@ class Yarn(AgentSchedulingComponent):
         # If the application requests resources that exist in the cluster, not
         # necessarily free, then it returns true else it returns false
         #TODO: Add provision for memory request
-        if (cores_requested) <= self.avail_cores and \
-              mem_requested<=self.avail_mem and \
-              self.avail_app['apps'] != 0:
-            self.avail_cores -=cores_requested
-            self.avail_mem -=mem_requested
-            self.avail_app['apps']-=1
+        if  self.avail_app   >= 1               and \
+            self.avail_cores >= cores_requested and \
+            self.avail_mem   >= mem_requested       :
+            self.avail_app   -= 1
+            self.avail_cores -= cores_requested
+            self.avail_mem   -= mem_requested
             return True
         else:
             return False
@@ -122,15 +132,19 @@ class Yarn(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     #
     def _release_slot(self, opaque_slot):
+
         #-----------------------------------------------------------------------
         # One application has finished, increase the number of available slots.
         #with self._slot_lock:
-        self._log.info('Releasing : {0} Cores, {1} RAM'.format(opaque_slot['task_slots'][0],opaque_slot['task_slots'][1]))
-        self.avail_cores +=opaque_slot['task_slots'][0]
-        self.avail_mem +=opaque_slot['task_slots'][1]
-        self.avail_app['apps']+=1
-        return True
+        self._log.info('Releasing : %s Cores, %s RAM' % \
+                       (opaque_slot['task_slots'][0], 
+                        opaque_slot['task_slots'][1]))
 
+        self.avail_app   += 1
+        self.avail_cores += opaque_slot['task_slots'][0]
+        self.avail_mem   += opaque_slot['task_slots'][1]
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -162,11 +176,11 @@ class Yarn(AgentSchedulingComponent):
             # accept. It needs to go either from the configuration file or find a
             # way to take this value for the YARN scheduler config.
 
-            cu['opaque_slots']={'lm_info':{'service_url':self._service_url,
-                                            'rm_url':self._rm_url,
-                                            'nodename':self._client_node},
-                                'task_slots':[cu['description']['cores'],2048]
-                                            }
+            cu['slots']={'lm_info':{'service_url':self._service_url,
+                                     'rm_url'    :self._rm_url,
+                                     'nodename'  :self._client_node},
+                         'task_slots':[cu['description']['cores'],2048]
+                        }
 
             alloc = self._allocate_slot(cu['description']['cores'],2048)
 
@@ -175,9 +189,10 @@ class Yarn(AgentSchedulingComponent):
 
         # got an allocation, go off and launch the process
         self._prof.prof('schedule', msg="allocated", uid=cu['uid'])
-        self._log.info("slot status after allocated  : %s" % self.slot_status ())
+        self._log.info("slot status after allocated: %s" % self.slot_status ())
 
         return True
+
 
     # --------------------------------------------------------------------------
     #
@@ -189,7 +204,6 @@ class Yarn(AgentSchedulingComponent):
         self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
 
         for unit in units:
-
             self._handle_unit(unit)
 
 

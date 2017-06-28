@@ -36,18 +36,18 @@ class MPIRunCCMRun(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_args    = cud.get('arguments') or []
+        task_args    = cud.get('arguments', [])
         task_argstr  = self._create_arg_string(task_args)
 
-        if not 'task_slots' in opaque_slots:
+        if not 'task_slots' in slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
-                    % (self.name, opaque_slots))
+                    % (self.name, slots))
 
-        task_slots = opaque_slots['task_slots']
+        task_slots = slots['task_slots']
 
         if task_argstr:
             task_command = "%s %s" % (task_exec, task_argstr)
@@ -56,9 +56,11 @@ class MPIRunCCMRun(LaunchMethod):
 
         # Construct the hosts_string
         # TODO: is there any use in using $HOME/.crayccm/ccm_nodelist.$JOBID?
-        hosts_string = ','.join([slot.split(':')[0] for slot in task_slots])
-        export_vars  = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES \
-                                             if  var in os.environ])
+        hosts_string = ','.join([slot.split(':')[0] \
+                                 for slot in task_slots])
+        export_vars  = ' '.join(['-x ' + var \
+                                 for var in self.EXPORT_ENV_VARIABLES \
+                                 if  var in os.environ])
 
         mpirun_ccmrun_command = "%s %s %s -np %d -host %s %s" % (
             self.launch_command, self.mpirun_command, export_vars,

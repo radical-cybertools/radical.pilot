@@ -23,7 +23,9 @@
         "mpi_launch_method"           : "MPIEXEC",
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "default"
+        "python_dist"                 : "default",
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1
     },
 
     "localhost_yarn": {

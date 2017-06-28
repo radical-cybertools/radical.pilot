@@ -39,23 +39,32 @@ class SGE(LRMS):
 
         # Parse SGE hostfile for cores
         sge_cores_count_list = [int(line.split()[1]) for line in open(sge_hostfile)]
-        sge_core_counts = list(set(sge_cores_count_list))
+        sge_core_counts      = list(set(sge_cores_count_list))
+        sge_gpus_per_node    = self._cfg.get('gpus_per_node', 0) # FIXME GPU
 
         # Check if nodes have the same core count
         if len(sge_core_counts) == 1:
             sge_cores_per_node = min(sge_core_counts)
             self._log.info("Found unique core counts: %s Using: %d", sge_core_counts, sge_cores_per_node)
 
-            self.node_list = list(set(sge_node_list))
+            # node names are unique, so can serve as node uids
+            self.node_list      = [[node, node] for node in sge_nodelist]
             self.cores_per_node = sge_cores_per_node
+            self.gpus_per_node  = sge_gpus_per_node
 
         else:
             # In case of non-homogeneous counts, consider all slots be single core
             sge_cores_per_node = 1
             self._log.info("Found unique core counts: %s Using: %d", sge_core_counts, sge_cores_per_node)
             self.cores_per_node = sge_cores_per_node
+            self.gpus_per_node  = sge_gpus_per_node
 
-            # Expand node list
+            # Expand node list, create unique IDs for each core
             self.node_list = []
-            for x in zip(sge_node_list, sge_cores_count_list):
-                self.node_list.extend(x[1] * [x[0]])
+            for node, cores in zip(sge_node_list, sge_cores_count_list):
+                for core in cores:
+                    self.node_list.append(node, '%s_%s' % (node, core))
+
+
+# ------------------------------------------------------------------------------
+

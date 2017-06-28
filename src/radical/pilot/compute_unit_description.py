@@ -11,10 +11,12 @@ NAME                   = 'name'
 EXECUTABLE             = 'executable'
 ARGUMENTS              = 'arguments'
 ENVIRONMENT            = 'environment'
-CORES                  = 'cores'
+CORES                  = 'cores'  # should be: cpu process
+GPUS                   = 'gpus'   # should be: gpu process
+THREADS_PER_PROC       = 'threads_per_proc'
+MPI                    = 'mpi'
 INPUT_STAGING          = 'input_staging'
 OUTPUT_STAGING         = 'output_staging'
-MPI                    = 'mpi'
 PRE_EXEC               = 'pre_exec'
 POST_EXEC              = 'post_exec'
 KERNEL                 = 'kernel'
@@ -58,14 +60,33 @@ class ComputeUnitDescription(attributes.Attributes):
        default: `1`
 
 
+    .. data:: threads_per_process 
+
+       The number of threads which the application is expected to create per
+       process.  RP will reserve the respective number of cores for each
+       process, but leaves the thread creation and management completely to the
+       application.  Note that this is also the case for MPI applications (see
+       `mpi` flag below): RP will only spawn the given number of MPI processes,
+       but the application can utilize the additional cores by creating threads.
+
+       The count defaults to `1`, meaning that the spawned process will only
+       consist of a single thread, and no additional cores are reserved.
+
+       NOTE: we interpret the given `core` count as number of processes.  This
+             is semantically not correct, as gpus are also used by processes.
+             RP does not yet allow to specify threads for gpus - that might
+             change in a later version, and will likely require changes in
+             property names for the compute unit descriptions.
+
+       default: `1`
+
+
     .. data:: mpi
 
-       Set to true if the task is an MPI task (bool).  If this is set, RP will
-       ensure that the executable is run via mpirun or equivalent.  What MPI is
-       used to start the executable depends on the pilot configuration, and
-       cannot currently be switched on a per-unit basis.
+       A flag (bool) which can be set to indicate that the processes to be
+       started are MPI processes.
 
-       default: `False`
+       default: `False`.
 
 
     .. data:: name 
@@ -282,6 +303,8 @@ class ComputeUnitDescription(attributes.Attributes):
 
         # resource requirements
         self._attributes_register(CORES,            None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(GPUS,             None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(THREADS_PER_PROC, None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(MPI,              None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
       # self._attributes_register(CPU_ARCHITECTURE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
       # self._attributes_register(OPERATING_SYSTEM, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
@@ -305,7 +328,9 @@ class ComputeUnitDescription(attributes.Attributes):
         self.set_attribute (INPUT_STAGING,  None)
         self.set_attribute (OUTPUT_STAGING, None)
         self.set_attribute (CORES,             1)
-        self.set_attribute (MPI,           False)
+        self.set_attribute (THREADS_PER_PROC,  1)
+        self.set_attribute (GPUS,              0)
+        self.set_attribute (MPI,            None)
         self.set_attribute (RESTARTABLE,   False)
         self.set_attribute (CLEANUP,       False)
         self.set_attribute (PILOT,          None)

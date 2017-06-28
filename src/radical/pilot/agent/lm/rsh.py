@@ -37,18 +37,18 @@ class RSH(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
         task_argstr  = self._create_arg_string(task_args)
 
-        if not 'task_slots' in opaque_slots:
+        if not 'task_slots' in slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
-                    % (self.name, opaque_slots))
+                    % (self.name, slots))
 
-        task_slots = opaque_slots['task_slots']
+        task_slots = slots['task_slots']
 
         if not launch_script_hop:
             raise ValueError("RSH launch method needs launch_script_hop!")

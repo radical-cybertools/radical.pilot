@@ -299,18 +299,18 @@ class Agent_0(rpu.Worker):
                 #        the 'agent_node' string as 'agent_string:0' and
                 #        obtain a well format slot...
                 # FIXME: it is actually tricky to translate the agent_node
-                #        into a viable 'opaque_slots' structure, as that is
+                #        into a viable 'slots' structure, as that is
                 #        usually done by the schedulers.  So we leave that
                 #        out for the moment, which will make this unable to
                 #        work with a number of launch methods.  Can the
                 #        offset computation be moved to the LRMS?
                 ls_name = "%s/%s.sh" % (os.getcwd(), sa)
-                opaque_slots = {
+                slots = {
                         'task_slots'   : ['%s:0' % node],
                         'task_offsets' : [],
                         'lm_info'      : self._cfg['lrms_info']['lm_info']}
                 agent_cmd = {
-                        'opaque_slots' : opaque_slots,
+                        'slots'        : slots,
                         'description'  : {
                             'cores'      : 1,
                             'executable' : "/bin/sh",

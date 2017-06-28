@@ -37,18 +37,18 @@ class MPIRunRSH(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
         task_argstr  = self._create_arg_string(task_args)
 
-        if not 'task_slots' in opaque_slots:
+        if not 'task_slots' in slots:
             raise RuntimeError('insufficient information to launch via %s: %s' \
-                    % (self.name, opaque_slots))
+                    % (self.name, slots))
 
-        task_slots = opaque_slots['task_slots']
+        task_slots = slots['task_slots']
 
         if task_argstr:
             task_command = "%s %s" % (task_exec, task_argstr)
@@ -61,20 +61,21 @@ class MPIRunRSH(LaunchMethod):
         # If we have a CU with many cores, we will create a hostfile and pass
         # that as an argument instead of the individual hosts
         if len(hosts) > 42:
-
             # Create a hostfile from the list of hosts
-            hostfile = self._create_hostfile(hosts, impaired=True)
+            hostfile     = self._create_hostfile(hosts, impaired=True)
             hosts_string = "-hostfile %s" % hostfile
 
         else:
-
             # Construct the hosts_string ('h1 h2 .. hN')
             hosts_string = " ".join(hosts)
 
-        export_vars = ' '.join([var+"=$"+var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
+        export_vars = ' '.join([var + "=$" + var \
+                                for var in self.EXPORT_ENV_VARIABLES \
+                                if  var in os.environ])
 
-        mpirun_rsh_command = "%s -np %d %s %s %s" % (
-            self.launch_command, task_cores, hosts_string, export_vars, task_command)
+        mpirun_rsh_command = "%s -np %d %s %s %s" % \
+                (self.launch_command, task_cores, hosts_string, export_vars, 
+                 task_command)
 
         return mpirun_rsh_command, None
 

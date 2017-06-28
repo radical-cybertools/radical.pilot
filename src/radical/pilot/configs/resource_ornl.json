@@ -1,3 +1,4 @@
+
 {
     "titan_aprun": {
         "description"                 : "The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/titan/)",
@@ -33,10 +34,12 @@
         "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
+        "virtenv_mode"                : "use",
+        "virtenv"                     : "/lustre/atlas2/csc230/world-shared/ve.rp.20017.06.26",
         "stage_cacerts"               : true,
         "python_dist"                 : "default",
-        "virtenv_dist"                : "system"
+        "virtenv_dist"                : "system",
+        "gpus_per_node"               : 1
     },
 
     "titan_orte": {
@@ -75,7 +78,8 @@
         "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
+        "virtenv_mode"                : "use",
+        "virtenv"                     : "/lustre/atlas2/csc230/world-shared/ve.rp.20017.06.26",
         "stage_cacerts"               : true,
         "python_dist"                 : "default",
         "virtenv_dist"                : "system"
@@ -118,7 +122,8 @@
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "debug",
         "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
+        "virtenv_mode"                : "use",
+        "virtenv"                     : "/lustre/atlas2/csc230/world-shared/ve.rp.20017.06.26",
         "stage_cacerts"               : true,
         "python_dist"                 : "default",
         "virtenv_dist"                : "system"
