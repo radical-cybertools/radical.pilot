@@ -1192,7 +1192,7 @@ class Component(ru.Process):
                         self._workers[state](things)
 
                     for thing in things:
-                        self._prof.prof(event='work done ', state=state, uid=uid)
+                        self._prof.prof(event='work done ', state=state, uid=thing['uid'])
 
                 except Exception as e:
                     # this is not fatal -- only the 'things' fail, not
@@ -1205,8 +1205,10 @@ class Component(ru.Process):
                         self._prof.prof(event='failed', msg=str(e), 
                                         uid=thing['uid'], state=state)
 
+
         # keep work_cb registered
         return True
+
 
     # --------------------------------------------------------------------------
     #
