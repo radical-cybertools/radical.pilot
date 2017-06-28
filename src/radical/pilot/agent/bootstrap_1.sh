@@ -1748,7 +1748,7 @@ do
         then
             echo "send SIGTERM to $AGENT_PID"
             kill -15 $AGENT_PID
-            sleep  1
+            sleep 10
             echo "send SIGKILL to $AGENT_PID"
             kill  -9 $AGENT_PID
             break
@@ -1806,7 +1806,7 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Mark final profiling entry ..."
-    profile_event 'QED'
+    profile_event 'END'
     echo "#"
     echo "# -------------------------------------------------------------------"
     echo
@@ -1814,11 +1814,11 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# We wait for some seconds for the FS to flush profiles."
-    echo "# Success is assumed when all profiles end with a 'QED' event."
+    echo "# Success is assumed when all profiles end with a 'END' event."
     echo "#"
     echo "# -------------------------------------------------------------------"
     nprofs=`echo *.prof | wc -w`
-    nqed=`tail -n 1 *.prof | grep QED | wc -l`
+    nqed=`tail -n 1 *.prof | grep END | wc -l`
     nsleep=0
     while ! test "$nprofs" = "$nqed"
     do
@@ -1832,7 +1832,7 @@ then
         sleep 1
         # recheck nprofs too, just in case...
         nprofs=`echo *.prof | wc -w`
-        nqed=`tail -n 1 *.prof | grep QED | wc -l`
+        nqed=`tail -n 1 *.prof | grep END | wc -l`
     done
     echo
     echo "# -------------------------------------------------------------------"
