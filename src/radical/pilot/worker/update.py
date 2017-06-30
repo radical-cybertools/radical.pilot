@@ -103,19 +103,16 @@ class Update(rpu.Worker):
             self._log.exception('mongodb error: %s', e)
             raise
 
-        self._prof.prof('update bulk pushed (%d)' % len(self._uids),
-                        uid=self._owner)
+        self._prof.prof(event='update_pushed', 
+                        msg='bulk (%d)' % len(self._uids))
 
         for entry in self._uids:
             uid   = entry[0]
             ttype = entry[1]
             state = entry[2]
-            if state:
-                self._prof.prof('update', msg='%s update pushed (%s)' \
-                                % (ttype, state), uid=uid)
-            else:
-                self._prof.prof('update', msg='%s update pushed' % ttype, 
-                                uid=uid)
+            self._prof.prof(event='update_pushed', 
+                            msg='%s:%s' % (ttype, state), 
+                            uid=uid)
 
         # empty bulk, refresh state
         self._last = now
@@ -209,12 +206,12 @@ class Update(rpu.Worker):
                 # we don't push clone states to DB
                 return True
 
-            self._prof.prof('get', msg="update %s state to %s" % (ttype, state), 
+            self._prof.prof(event='update_request', 
+                            msg="%s:%s" % (ttype, state), 
                             uid=uid)
 
             if not state:
                 # nothing to push
-                self._prof.prof('get', msg="update %s state ignored" % ttype, uid=uid)
                 return True
 
             # create an update document
@@ -239,9 +236,6 @@ class Update(rpu.Worker):
                 self._bulk.find  ({'uid'  : uid, 
                                    'type' : ttype}) \
                           .update(update_dict)
-
-            self._prof.prof('bulk', msg='bulked (%s)' % state, uid=uid)
-            self._log.debug('bulked %s [%s] %s', uid, state, self.uid)
 
         with self._lock:
             # attempt a timed update

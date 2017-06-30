@@ -20,8 +20,6 @@ from .base import AgentSchedulingComponent
 #
 class Yarn(AgentSchedulingComponent):
 
-    # FIXME: clarify what can be overloaded by Scheduler classes
-
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, session):
@@ -72,6 +70,10 @@ class Yarn(AgentSchedulingComponent):
 
         self._last_update = time.time()  # time of last update to self.avail_*
 
+        self._log.debug('YARN Service and RM URLs: %s - %s' \
+                     % (self._service_url, self._rm_url))
+
+
 
     # --------------------------------------------------------------------------
     #
@@ -108,34 +110,10 @@ class Yarn(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _allocate_slot(self, cores_requested,mem_requested):
-        """
-        In this implementation it checks if the number of cores and memory size
-        that exist in the YARN cluster are enough for an application to fit in it.
-        """
-
-        #-----------------------------------------------------------------------
-        # If the application requests resources that exist in the cluster, not
-        # necessarily free, then it returns true else it returns false
-        #TODO: Add provision for memory request
-        if  self.avail_app   >= 1               and \
-            self.avail_cores >= cores_requested and \
-            self.avail_mem   >= mem_requested       :
-            self.avail_app   -= 1
-            self.avail_cores -= cores_requested
-            self.avail_mem   -= mem_requested
-            return True
-        else:
-            return False
-
-
-    # --------------------------------------------------------------------------
-    #
     def _release_slot(self, opaque_slot):
 
         #-----------------------------------------------------------------------
         # One application has finished, increase the number of available slots.
-        #with self._slot_lock:
         self._log.info('Releasing : %s Cores, %s RAM' % \
                        (opaque_slot['task_slots'][0], 
                         opaque_slot['task_slots'][1]))
@@ -144,17 +122,19 @@ class Yarn(AgentSchedulingComponent):
         self.avail_cores += opaque_slot['task_slots'][0]
         self.avail_mem   += opaque_slot['task_slots'][1]
 
-        return True
-
 
     # --------------------------------------------------------------------------
     #
-    def _try_allocation(self, cu):
+    def _allocate_slot(self, cu):
         """
         Attempt to allocate cores for a specific CU.  If it succeeds, send the
         CU off to the ExecutionWorker.
+
+        In this implementation it checks if the number of cores and memory size
+        that exist in the YARN cluster are enough for an application to fit in
+        it.
         """
-        #-----------------------------------------------------------------------
+
         # Check if the YARN scheduler queue has space to accept new CUs.
         # Check about racing conditions in the case that you allowed an
         # application to start executing and before the statistics in yarn have
@@ -164,65 +144,33 @@ class Yarn(AgentSchedulingComponent):
         # container. Each YARN application needs two containers, one for the
         # Application Master and one for the Container that will run.
 
-        # needs to be locked as we try to acquire slots, but slots are freed
-        # in a different thread.  But we keep the lock duration short...
-        with self._slot_lock :
+        # We also need the minimum memory of the YARN cluster. This is because
+        # Java issues a JVM out of memory error when the YARN scheduler cannot
+        # accept. It needs to go either from the configuration file or find a
+        # way to take this value for the YARN scheduler config.
 
-            self._log.info(self.slot_status())
-            self._log.debug('YARN Service and RM URLs: {0} - {1}'.format(self._service_url,self._rm_url))
+        cores_requested = cu['description']['cores']
+        mem_requested   = 2048
+        slots           = None
 
-            # We also need the minimum memory of the YARN cluster. This is because
-            # Java issues a JVM out of memory error when the YARN scheduler cannot
-            # accept. It needs to go either from the configuration file or find a
-            # way to take this value for the YARN scheduler config.
+        # If the application requests resources that exist in the cluster, not
+        # necessarily free, then it returns true else it returns false
+        # TODO: Add provision for memory request
+        if  self.avail_app   >= 1               and \
+            self.avail_cores >= cores_requested and \
+            self.avail_mem   >= mem_requested       :
 
-            cu['slots']={'lm_info':{'service_url':self._service_url,
-                                     'rm_url'    :self._rm_url,
-                                     'nodename'  :self._client_node},
-                         'task_slots':[cu['description']['cores'],2048]
-                        }
+            self.avail_app   -= 1
+            self.avail_cores -= cores_requested
+            self.avail_mem   -= mem_requested
 
-            alloc = self._allocate_slot(cu['description']['cores'],2048)
+            slots = {'lm_info':{'service_url':self._service_url,
+                                'rm_url'     :self._rm_url,
+                                'nodename'   :self._client_node},
+                     'task_slots':[cores_requested, mem_requested]
+                    }
 
-        if not alloc:
-            return False
-
-        # got an allocation, go off and launch the process
-        self._prof.prof('schedule', msg="allocated", uid=cu['uid'])
-        self._log.info("slot status after allocated: %s" % self.slot_status ())
-
-        return True
-
-
-    # --------------------------------------------------------------------------
-    #
-    def work(self, units):
-
-        if not isinstance(units, list):
-            units = [units]
-
-        self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
-
-        for unit in units:
-            self._handle_unit(unit)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _handle_unit(self, cu):
-
-        # we got a new unit to schedule.  Either we can place it
-        # straight away and move it to execution, or we have to
-        # put it on the wait queue.
-        if self._try_allocation(cu):
-            self._prof.prof('schedule', msg="allocation succeeded", uid=cu['uid'])
-            self.advance(cu, rps.EXECUTING_PENDING, publish=True, push=True)
-
-        else:
-            # No resources available, put in wait queue
-            self._prof.prof('schedule', msg="allocation failed", uid=cu['uid'])
-            with self._wait_lock :
-                self._wait_pool.append(cu)
+        return slots
 
 
 # ------------------------------------------------------------------------------

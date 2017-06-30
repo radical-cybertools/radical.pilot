@@ -157,8 +157,7 @@ class Agent_0(rpu.Worker):
 
 
         # record hostname in profile to enable mapping of profile entries
-        self._prof.prof(event='hostname', uid=pilot['uid'], 
-                        msg=ru.get_hostname())
+        self._prof.prof(event='hostname', msg=ru.get_hostname())
 
 
     # --------------------------------------------------------------------------
@@ -377,9 +376,6 @@ class Agent_0(rpu.Worker):
 
         self.is_valid()
 
-        self._prof.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!',
-                        uid=self._owner)
-
         if not self._check_commands(): return False 
         if not self._check_state   (): return False
 
@@ -409,10 +405,12 @@ class Agent_0(rpu.Worker):
             cmd = spec['cmd']
             arg = spec['arg']
 
-            self._prof.prof('cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" \
-                            % (cmd, arg), uid=self._owner)
+            self._prof.prof('cmd', msg="%s : %s" % (cmd, arg))
 
-            if cmd == 'cancel_pilot':
+            if cmd == 'heartbeat':
+                self._log.info(event='heartbeat_in')
+
+            elif cmd == 'cancel_pilot':
                 self._log.info('cancel pilot cmd')
                 self._final_cause = 'cancel'
                 with open('./killme.signal', 'w+') as f:
@@ -429,7 +427,6 @@ class Agent_0(rpu.Worker):
                                                   'arg' : arg})
             else: 
                 self._log.error('could not interpret cmd "%s" - ignore', cmd)
-                return False  # abort
 
         return True
 
@@ -490,13 +487,13 @@ class Agent_0(rpu.Worker):
                         document = {'$set'  : {'control' : 'agent'}})
 
         self._log.info("units pulled: %4d", len(unit_list))
-        self._prof.prof('get', msg="bulk size: %d" % len(unit_list), uid=self._pid)
+        self._prof.prof('get', msg="bulk size: %d" % len(unit_list))
 
         for unit in unit_list:
 
             # we need to make sure to have the correct state:
             unit['state'] = rps._unit_state_collapse(unit['states'])
-            self._prof.prof('get', msg="bulk size: %d" % len(unit_list), uid=unit['uid'])
+            self._prof.prof('get', uid=unit['uid'])
 
             # FIXME: raise or fail unit!
             if unit['control'] != 'agent_pending':

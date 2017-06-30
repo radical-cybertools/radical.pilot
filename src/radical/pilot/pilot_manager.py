@@ -105,7 +105,6 @@ class PilotManager(rpu.Component):
 
         # only now we have a logger... :/
         self._log.report.info('<<create pilot manager')
-        self._prof.prof('create pmgr', uid=self._uid)
 
         # The output queue is used to forward submitted pilots to the
         # launching component.
@@ -124,7 +123,6 @@ class PilotManager(rpu.Component):
         # let session know we exist
         self._session._register_pmgr(self)
 
-        self._prof.prof('PMGR setup done', logger=self._log.debug)
         self._log.report.ok('>>ok\n')
 
 
@@ -191,10 +189,7 @@ class PilotManager(rpu.Component):
         self._terminate.set()
         self.stop()
 
-
-        self._session.prof.prof('closed pmgr', uid=self._uid)
         self._log.info("Closed PilotManager %s." % self._uid)
-
         self._log.report.ok('>>ok\n')
 
 
