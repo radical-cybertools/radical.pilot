@@ -78,8 +78,6 @@ class Agent_n(rpu.Worker):
     def initialize_parent(self):
 
         # once bootstrap_3 is done, we signal success to the parent agent
-        self._prof.prof('setup done - send alive', uid=self._uid)
-        self._log.debug('msg [%s] : %s [agent]', self._uid, self._owner)
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
                                           'arg' : {'sender' : self._uid, 
                                                    'owner'  : self._owner, 

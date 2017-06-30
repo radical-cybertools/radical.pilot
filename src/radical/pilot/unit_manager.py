@@ -122,7 +122,6 @@ class UnitManager(rpu.Component):
 
         # only now we have a logger... :/
         self._log.report.info('<<create unit manager')
-        self._prof.prof('create umgr', uid=self._uid)
 
         # The output queue is used to forward submitted units to the
         # scheduling component.
@@ -152,7 +151,7 @@ class UnitManager(rpu.Component):
         # let session know we exist
         self._session._register_umgr(self)
 
-        self._prof.prof('UMGR setup done')
+        self._prof.prof('setup_done', uid=self._uid)
         self._log.report.ok('>>ok\n')
 
 
@@ -214,7 +213,6 @@ class UnitManager(rpu.Component):
             for m in rpt.UMGR_METRICS:
                 self._callbacks[m] = dict()
 
-        self._session.prof.prof('closed umgr', uid=self._uid)
         self._log.info("Closed UnitManager %s." % self._uid)
 
         self._closed = True
@@ -420,7 +418,7 @@ class UnitManager(rpu.Component):
 
             unit['state']   = new
             unit['control'] = 'umgr'
-            self._prof.prof('get', msg="bulk size: %d" % len(units), uid=uid)
+            self._prof.prof('get', uid=uid)
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline).

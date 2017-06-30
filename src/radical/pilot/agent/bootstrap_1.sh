@@ -506,7 +506,7 @@ run_cmd()
 #
 virtenv_setup()
 {
-    profile_event 'virtenv_setup start'
+    profile_event 've_setup_start'
 
     pid="$1"
     virtenv="$2"
@@ -714,7 +714,7 @@ virtenv_setup()
        unlock "$pid" "$virtenv"
     fi
 
-    profile_event 'virtenv_setup end'
+    profile_event 've_setup_stop'
 }
 
 
@@ -826,7 +826,7 @@ virtenv_activate()
 virtenv_create()
 {
     # create a fresh ve
-    profile_event 'virtenv_create start'
+    profile_event 've_create_start'
 
     virtenv="$1"
     python_dist="$2"
@@ -985,6 +985,8 @@ virtenv_create()
                 "$PIP install $wheeled $dep" \
              || echo "Couldn't install $dep! Lets see how far we get ..."
     done
+
+    profile_event 've_create_stop'
 }
 
 
@@ -994,7 +996,7 @@ virtenv_create()
 #
 virtenv_update()
 {
-    profile_event 'virtenv_update start'
+    profile_event 've_update_start'
 
     virtenv="$1"
     pytohn_dist="$2"
@@ -1010,7 +1012,7 @@ virtenv_update()
              || echo "Couldn't update $dep! Lets see how far we get ..."
     done
 
-    profile_event 'virtenv_update done'
+    profile_event 've_update_stop'
 }
 
 
@@ -1075,7 +1077,7 @@ rp_install()
         return
     fi
 
-    profile_event 'rp_install start'
+    profile_event 'rp_install_start'
 
     echo "Using RADICAL-Pilot install sources '$rp_install_sources'"
 
@@ -1213,7 +1215,7 @@ rp_install()
         fi
     done
 
-    profile_event 'rp_install done'
+    profile_event 'rp_install_stop'
 }
 
 
@@ -1441,8 +1443,8 @@ if ! test -z "$RADICAL_PILOT_PROFILE"
 then
     echo 'create gtod'
     create_gtod
-    profile_event 'bootstrap start'
 fi
+profile_event 'bootstrap_1_start'
 
 # NOTE: if the virtenv path contains a symbolic link element, then distutil will
 #       report the absolute representation of it, and thus report a different
@@ -1471,7 +1473,7 @@ RUNTIME=$((RUNTIME + 60))
 # with the outside world directly, we will setup a tunnel.
 if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
 
-    profile_event 'tunnel setup start'
+    profile_event 'tunnel_setup_start'
 
     echo "# -------------------------------------------------------------------"
     echo "# Setting up forward tunnel for MongoDB to $FORWARD_TUNNEL_ENDPOINT."
@@ -1509,7 +1511,7 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
     # and export to agent
     export RADICAL_PILOT_DB_HOSTPORT=$BIND_ADDRESS:$DBPORT
 
-    profile_event 'tunnel setup done'
+    profile_event 'tunnel_setup_stop'
 
 fi
 
@@ -1663,14 +1665,14 @@ then
     echo "# Entering barrier for $RADICAL_PILOT_BARRIER ..."
     echo "# -------------------------------------------------------------------"
 
-    profile_event 'bootstrap enter barrier'
+    profile_event 'bootstrap_1_barrier_start'
 
     while ! test -f $RADICAL_PILOT_BARRIER
     do
         sleep 1
     done
 
-    profile_event 'bootstrap leave barrier'
+    profile_event 'bootstrap_1_barrier_stop'
 
     echo
     echo "# -------------------------------------------------------------------"
@@ -1678,10 +1680,8 @@ then
     echo "# -------------------------------------------------------------------"
 fi
 
-profile_event 'agent start'
-
 # start the master agent instance (zero)
-profile_event 'sync rel' 'agent start'
+profile_event 'sync_rel' 'agent_0 start'
 
 
 # # I am ashamed that we have to resort to this -- lets hope it's temporary...
@@ -1781,8 +1781,6 @@ fi
 # # corrupted tarballs...
 # touch exit.signal
 
-profile_event 'cleanup start'
-
 # cleanup flags:
 #   l : pilot log files
 #   u : unit work dirs
@@ -1792,12 +1790,14 @@ echo
 echo "# -------------------------------------------------------------------"
 echo "# CLEANUP: $CLEANUP"
 echo "#"
+
+profile_event 'cleanup_start'
 contains $CLEANUP 'l' && rm -r "$PILOT_SANDBOX/agent.*"
 contains $CLEANUP 'u' && rm -r "$PILOT_SANDBOX/unit.*"
 contains $CLEANUP 'v' && rm -r "$VIRTENV/" # FIXME: in what cases?
 contains $CLEANUP 'e' && rm -r "$PILOT_SANDBOX/"
+profile_event 'cleanup_stop'
 
-profile_event 'cleanup done'
 echo "#"
 echo "# -------------------------------------------------------------------"
 
@@ -1807,6 +1807,7 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Mark final profiling entry ..."
+    profile_event 'bootstrap_1_stop'
     profile_event 'END'
     echo "#"
     echo "# -------------------------------------------------------------------"
@@ -1819,21 +1820,21 @@ then
     echo "#"
     echo "# -------------------------------------------------------------------"
     nprofs=`echo *.prof | wc -w`
-    nqed=`tail -n 1 *.prof | grep END | wc -l`
+    nend=`tail -n 1 *.prof | grep END | wc -l`
     nsleep=0
-    while ! test "$nprofs" = "$nqed"
+    while ! test "$nprofs" = "$nend"
     do
         nsleep=$((nsleep+1))
         if test "$nsleep" = "$FINAL_SLEEP"
         then
-            echo "abort profile sync @ $nsleep: $nprofs != $nqed"
+            echo "abort profile sync @ $nsleep: $nprofs != $nend"
             break
         fi
-        echo "delay profile sync @ $nsleep: $nprofs != $nqed"
+        echo "delay profile sync @ $nsleep: $nprofs != $nend"
         sleep 1
         # recheck nprofs too, just in case...
         nprofs=`echo *.prof | wc -w`
-        nqed=`tail -n 1 *.prof | grep END | wc -l`
+        nend=`tail -n 1 *.prof | grep END | wc -l`
     done
     echo
     echo "# -------------------------------------------------------------------"

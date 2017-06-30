@@ -212,8 +212,6 @@ class Popen(AgentExecutingComponent) :
     #
     def spawn(self, launcher, cu):
 
-        self._prof.prof('spawn', msg='unit spawn', uid=cu['uid'])
-
         # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
         #       class definition.
         sandbox = '%s/%s' % (self._pwd, cu['uid'])
@@ -325,7 +323,6 @@ class Popen(AgentExecutingComponent) :
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
-        self._prof.prof('command', msg='launch script constructed', uid=cu['uid'])
 
         # prepare stdout/stderr
         stdout_file = descr.get('stdout') or 'STDOUT'
@@ -336,10 +333,10 @@ class Popen(AgentExecutingComponent) :
 
         _stdout_file_h = open(cu['stdout_file'], "w")
         _stderr_file_h = open(cu['stderr_file'], "w")
-        self._prof.prof('command', msg='stdout and stderr files created', uid=cu['uid'])
 
         self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, sandbox)
 
+        self._prof.prof('exec_start', uid=cu['uid'])
         cu['proc'] = subprocess.Popen(args               = cmdline,
                                       bufsize            = 0,
                                       executable         = None,
@@ -354,8 +351,8 @@ class Popen(AgentExecutingComponent) :
                                       universal_newlines = False,
                                       startupinfo        = None,
                                       creationflags      = 0)
+        self._prof.prof('exec_ok', uid=cu['uid'])
 
-        self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['uid'])
         self._watch_queue.put(cu)
 
 
@@ -375,7 +372,6 @@ class Popen(AgentExecutingComponent) :
                     # learn about CUs until all slots are filled, because then
                     # we may not be able to catch finishing CUs in time -- so
                     # there is a fine balance here.  Balance means 100 (FIXME).
-                  # self._prof.prof('ExecWorker popen watcher pull cu from queue')
                     MAX_QUEUE_BULKSIZE = 100
                     while len(cus) < MAX_QUEUE_BULKSIZE :
                         cus.append (self._watch_queue.get_nowait())
@@ -386,7 +382,6 @@ class Popen(AgentExecutingComponent) :
 
                 # add all cus we found to the watchlist
                 for cu in cus :
-                    self._prof.prof('passed', msg="ExecWatcher picked up unit", uid=cu['uid'])
                     self._cus_to_watch.append (cu)
 
                 # check on the known cus.
@@ -423,6 +418,8 @@ class Popen(AgentExecutingComponent) :
                     # above and the kill command below.  We probably should pull
                     # state after kill again?
 
+                    self._prof.prof('exec_cancel_start', uid=cu['uid'])
+
                     # We got a request to cancel this cu
                     action += 1
                     cu['proc'].kill()
@@ -431,7 +428,7 @@ class Popen(AgentExecutingComponent) :
                     with self._cancel_lock:
                         self._cus_to_cancel.remove(cu['uid'])
 
-                    self._prof.prof('final', msg="execution canceled", uid=cu['uid'])
+                    self._prof.prof('exec_cancel_stop', uid=cu['uid'])
 
                     del(cu['proc'])  # proc is not json serializable
                     self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
@@ -441,7 +438,8 @@ class Popen(AgentExecutingComponent) :
                     self._cus_to_watch.remove(cu)
 
             else:
-                self._prof.prof('exec', msg='execution complete', uid=cu['uid'])
+
+                self._prof.prof('exec_stop', uid=cu['uid'])
 
                 # make sure proc is collected
                 cu['proc'].wait()
@@ -459,14 +457,12 @@ class Popen(AgentExecutingComponent) :
 
                 if exit_code != 0:
                     # The unit failed - fail after staging output
-                    self._prof.prof('final', msg="execution failed", uid=cu['uid'])
                     cu['target_state'] = rps.FAILED
 
                 else:
                     # The unit finished cleanly, see if we need to deal with
                     # output data.  We always move to stageout, even if there are no
                     # directives -- at the very least, we'll upload stdout/stderr
-                    self._prof.prof('final', msg="execution succeeded", uid=cu['uid'])
                     cu['target_state'] = rps.DONE
 
                 self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)

@@ -218,11 +218,8 @@ class Session(rs.Session):
         # initialize profiling
         self.prof = self._get_profiler(self._cfg['owner'])
 
-        if self._reconnected:
-            self.prof.prof('reconnect session', uid=self._uid)
-
-        else:
-            self.prof.prof('start session', uid=self._uid)
+        if not self._reconnected:
+            self.prof.prof('session_start', uid=self._uid)
             self._log.report.info ('<<new session: ')
             self._log.report.plain('[%s]' % self._uid)
             self._log.report.info ('<<database   : ')
@@ -364,6 +361,8 @@ class Session(rs.Session):
 
         self.is_valid()
 
+        self.prof.prof('config_parser_start', uid=self._uid)
+
         # Loading all "default" resource configurations
         module_path  = os.path.dirname(os.path.abspath(__file__))
         default_cfgs = "%s/configs/resource_*.json" % module_path
@@ -416,7 +415,7 @@ class Session(rs.Session):
                           ru.read_json_str(usr_aliases).get('aliases', {}),
                           policy='overwrite')
 
-        self.prof.prof('configs parsed', uid=self._uid)
+        self.prof.prof('config_parser_stop', uid=self._uid)
 
 
     # --------------------------------------------------------------------------
@@ -443,7 +442,7 @@ class Session(rs.Session):
 
         self._log.report.info('closing session %s' % self._uid)
         self._log.debug("session %s closing" % (str(self._uid)))
-        self.prof.prof("close", uid=self._uid)
+        self.prof.prof("session_close", uid=self._uid)
 
         # set defaults
         if cleanup   == None: cleanup   = True
@@ -475,12 +474,12 @@ class Session(rs.Session):
             bridge.join()
             self._log.debug("session %s closed bridge %s", self._uid, bridge.uid)
 
-        self.prof.prof("closing", msg=cleanup, uid=self._uid)
         if self._dbs:
             self._log.debug("session %s closes db (%s)", self._uid, cleanup)
             self._dbs.close(delete=cleanup)
+
         self._log.debug("session %s closed (delete=%s)", self._uid, cleanup)
-        self.prof.prof("closed", uid=self._uid)
+        self.prof.prof("session_stop", uid=self._uid)
         self.prof.close()
 
         # support GC
@@ -500,9 +499,12 @@ class Session(rs.Session):
         # after all is said and done, we attempt to download the pilot log- and
         # profiles, if so wanted
         if download:
+            time.sleep(5)
+            self.prof.prof("session_fetch_start", uid=self._uid)
             self.fetch_json()
             self.fetch_profiles()
             self.fetch_logfiles()
+            self.prof.prof("session_fetch_stop", uid=self._uid)
 
         self._log.report.info('<<session lifetime: %.1fs' % (self.closed - self.created))
         self._log.report.ok('>>ok\n')
