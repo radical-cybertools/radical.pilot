@@ -343,7 +343,7 @@ class AgentSchedulingComponent(rpu.Component):
         """
 
         cu = msg
-        self._prof.prof('unschedule', uid=cu['uid'])
+        self._prof.prof('unschedule_start', uid=cu['uid'])
 
         if not cu['slots']:
             # Nothing to do -- how come?
@@ -357,7 +357,7 @@ class AgentSchedulingComponent(rpu.Component):
         # in a different thread....
         with self._slot_lock :
             self._release_slot(cu['slots'])
-            self._prof.prof('unschedule_done', uid=cu['uid'])
+            self._prof.prof('unschedule_stop', uid=cu['uid'])
 
         # notify the scheduling thread, ie. trigger a reschedule to utilize
         # the freed slots
