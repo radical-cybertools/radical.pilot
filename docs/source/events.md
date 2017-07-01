@@ -88,11 +88,19 @@
     
     exec_cancel_start   : try to cancel task via exec layer (kill)   (uid: uid, optional)
     exec_cancel_stop    : did cancel    task via exec layer (kill)   (uid: uid, optional)
-  
-### ABDS : needs sync
-### ORTE : as above, no cancel
-### POPEN: as above
-### SHELL: as above
+
+
+### ABDS : 
+ * needs sync
+
+### ORTE : 
+ * as above, no cancel
+
+### POPEN: 
+ * as above
+
+### SHELL: 
+ * as above
   
   
 ### AgentStagingOutputComponent (Component)
