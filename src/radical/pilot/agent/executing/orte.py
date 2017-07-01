@@ -19,7 +19,7 @@ from ...  import states    as rps
 from ...  import constants as rpc
 from .base import AgentExecutingComponent
 
-# ----------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 def rec_makedir(target):
 
@@ -199,7 +199,8 @@ class ORTE(AgentExecutingComponent):
             if not launcher:
                 raise RuntimeError("no launcher (mpi=%s)" % cu['description']['mpi'])
 
-            self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
+            self._log.debug("Launching unit with %s (%s).", 
+                            launcher.name, launcher.launch_command)
 
             assert(cu['opaque_slots']), 'unit unscheduled'
             self._prof.prof('exec', msg='unit launch', uid=cu['_id'])
@@ -278,7 +279,8 @@ class ORTE(AgentExecutingComponent):
             # stdout/stderr
             cu['target_state'] = rps.DONE
 
-        self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
+        self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, 
+                     publish=True, push=True)
 
 
     # --------------------------------------------------------------------------
@@ -303,7 +305,7 @@ class ORTE(AgentExecutingComponent):
 
         dvm_uri    = opaque_slots['lm_info']['dvm_uri']
 
-        # Notify the runtime that we are using threads and that we require mutexes
+        # Notify orte that we are using threads and that we require mutexes
         orte_lib.opal_set_using_threads(True)
 
         argv_keepalive = [
@@ -335,34 +337,37 @@ class ORTE(AgentExecutingComponent):
         rec_makedir(cu_tmpdir)
 
         # TODO: pre_exec
-        #     # Before the Big Bang there was nothing
-        #     if cu['description']['pre_exec']:
-        #         fail = ' (echo "pre_exec failed"; false) || exit'
-        #         pre  = ''
-        #         for elem in cu['description']['pre_exec']:
-        #             pre += "%s || %s\n" % (elem, fail)
-        #         # Note: extra spaces below are for visual alignment
-        #         launch_script.write("# Pre-exec commands\n")
-        #         if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #             launch_script.write("echo pre  start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
-        #         launch_script.write(pre)
-        #         if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #             launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+        # # Before the Big Bang there was nothing
+        # if cu['description']['pre_exec']:
+        #     fail = ' (echo "pre_exec failed"; false) || exit'
+        #     pre  = ''
+        #     for elem in cu['description']['pre_exec']:
+        #         pre += "%s || %s\n" % (elem, fail)
+        #     # Note: extra spaces below are for visual alignment
+        #     launch_script.write("# Pre-exec commands\n")
+        #     if 'RADICAL_PILOT_PROFILE' in os.environ:
+        #         launch_script.write("echo pre  start `%s` >> %s/PROF\n"\
+        #                           % (cu['gtod'], cu_tmpdir))
+        #     launch_script.write(pre)
+        #     if 'RADICAL_PILOT_PROFILE' in os.environ:
+        #         launch_script.write("echo pre  stop `%s` >> %s/PROF\n" \
+        #                           % (cu['gtod'], cu_tmpdir))
 
         # TODO: post_exec
-        #     # After the universe dies the infrared death, there will be nothing
-        #     if cu['description']['post_exec']:
-        #         fail = ' (echo "post_exec failed"; false) || exit'
-        #         post = ''
-        #         for elem in cu['description']['post_exec']:
-        #             post += "%s || %s\n" % (elem, fail)
-        #         launch_script.write("# Post-exec commands\n")
-        #         if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #             launch_script.write("echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
-        #         launch_script.write('%s\n' % post)
-        #         if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #             launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
-
+        # # After the universe dies the infrared death, there will be nothing
+        # if cu['description']['post_exec']:
+        #     fail = ' (echo "post_exec failed"; false) || exit'
+        #     post = ''
+        #     for elem in cu['description']['post_exec']:
+        #         post += "%s || %s\n" % (elem, fail)
+        #     launch_script.write("# Post-exec commands\n")
+        #     if 'RADICAL_PILOT_PROFILE' in os.environ:
+        #         launch_script.write("echo post start `%s` >> %s/PROF\n" \
+        #                           % (cu['gtod'], cu_tmpdir))
+        #     launch_script.write('%s\n' % post)
+        #     if 'RADICAL_PILOT_PROFILE' in os.environ:
+        #         launch_script.write("echo post stop  `%s` >> %s/PROF\n" \
+        #                           % (cu['gtod'], cu_tmpdir))
 
 
         # The actual command line, constructed per launch-method
@@ -419,13 +424,18 @@ class ORTE(AgentExecutingComponent):
         arg_list.append(ffi.new("char[]", "sh"))
         arg_list.append(ffi.new("char[]", "-c"))
         if 'RADICAL_PILOT_PROFILE' in os.environ:
-            task_command = "echo script start_script `%s` >> %s/PROF; " % (self.gtod, cu_tmpdir) + \
-                      "echo script after_cd `%s` >> %s/PROF; " % (self.gtod, cu_tmpdir) + \
-                      task_command + \
-                      "; echo script after_exec `%s` >> %s/PROF" % (self.gtod, cu_tmpdir)
-        arg_list.append(ffi.new("char[]", str("%s; exit $RETVAL" % str(task_command))))
+            task_command = "echo script start_script `%s` >> %s/PROF; " \
+                         % (self.gtod, cu_tmpdir) \
+                         + "echo script after_cd `%s` >> %s/PROF; " \
+                         % (self.gtod, cu_tmpdir) \
+                         + task_command \
+                         + "; echo script after_exec `%s` >> %s/PROF" \
+                         % (self.gtod, cu_tmpdir)
+        arg_list.append(ffi.new("char[]", str("%s; exit $RETVAL" \
+                                            % str(task_command))))
 
-        self._log.debug("Launching unit %s via %s %s", cu['uid'], orte_command, task_command)
+        self._log.debug("Launching unit %s via %s %s", cu['uid'], 
+                        orte_command, task_command)
 
         # NULL termination, required by ORTE
         arg_list.append(ffi.NULL)
@@ -437,7 +447,8 @@ class ORTE(AgentExecutingComponent):
         # assert cu['description'].get('stderr') == None
 
         # prepare stdout/stderr
-        # TODO: when mpi==true && cores>1 there will be multiple files that need to be concatenated.
+        # TODO: when mpi==True && cores>1 there will be multiple files that need
+        #       to be concatenated.
         cu['stdout_file'] = os.path.join(cu_tmpdir, 'rank.0/stdout')
         cu['stderr_file'] = os.path.join(cu_tmpdir, 'rank.0/stderr')
 

@@ -116,18 +116,14 @@ class Update(rpu.Worker):
             self._log.exception('mongodb error: %s', e)
             raise
 
-        self._prof.prof(event='update_pushed', 
-                        msg='bulk (%d)' % len(self._uids))
+        self._prof.prof('update_pushed', msg='bulk size: %d' % len(self._uids))
 
         for entry in self._uids:
 
             uid   = entry[0]
-            ttype = entry[1]
             state = entry[2]
 
-            self._prof.prof(event='update_pushed', 
-                            msg='%s:%s' % (ttype, state), 
-                            uid=uid)
+            self._prof.prof('update_pushed', msg=state, uid=uid)
 
         # empty bulk, refresh state
         self._last = now
@@ -220,9 +216,7 @@ class Update(rpu.Worker):
                 # we don't push clone states to DB
                 return True
 
-            self._prof.prof(event='update_request',
-                            msg="%s:%s" % (ttype, state),
-                            uid=uid)
+            self._prof.prof('update_request', msg=state, uid=uid)
 
             if not state:
                 # nothing to push

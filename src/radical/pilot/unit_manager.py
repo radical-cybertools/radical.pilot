@@ -410,6 +410,8 @@ class UnitManager(rpu.Component):
 
             # we need to make sure to have the correct state:
             uid = unit['uid']
+            self._prof.prof('get', uid=uid)
+
             old = unit['state']
             new = rps._unit_state_collapse(unit['states'])
 
@@ -418,7 +420,6 @@ class UnitManager(rpu.Component):
 
             unit['state']   = new
             unit['control'] = 'umgr'
-            self._prof.prof('get', uid=uid)
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline).

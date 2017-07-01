@@ -576,7 +576,7 @@ class Component(ru.Process):
 
         # call component level initialize
         self.initialize_parent()
-        self._prof.prof(event='component_init')
+        self._prof.prof('component_init')
 
 
     def initialize_parent(self):
@@ -607,7 +607,7 @@ class Component(ru.Process):
 
         # call component level initialize
         self.initialize_child()
-        self._prof.prof(event='component_init')
+        self._prof.prof('component_init')
 
     def initialize_child(self):
         pass # can be overloaded
@@ -629,7 +629,7 @@ class Component(ru.Process):
 
         self._log.debug('%s close prof', self.uid)
         try:
-            self._prof.prof(event='component_final')
+            self._prof.prof('component_final')
             self._prof.close()
         except Exception:
             pass
@@ -1205,7 +1205,7 @@ class Component(ru.Process):
                 
                 state = thing['state']
                 uid   = thing['uid']
-                self._prof.prof(event='get', uid=uid, state=state)
+                self._prof.prof('get', uid=uid, state=state)
 
                 if not state in buckets:
                     buckets[state] = list()
@@ -1303,7 +1303,7 @@ class Component(ru.Process):
                 thing['state'] = state
             _state = thing['state']
 
-            self._prof.prof(event='advance', uid=uid, state=_state, 
+            self._prof.prof('advance', uid=uid, state=_state, 
                             timestamp=timestamp)
 
             if not _state in buckets:
@@ -1338,7 +1338,7 @@ class Component(ru.Process):
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'update', 'arg': to_publish})
             ts = time.time()
             for thing in things:
-                self._prof.prof(event='publish', uid=thing['uid'], 
+                self._prof.prof('publish', uid=thing['uid'], 
                                 state=thing['state'], timestamp=ts)
 
         # never carry $all across component boundaries!
@@ -1382,7 +1382,7 @@ class Component(ru.Process):
 
                 ts = time.time()
                 for thing in _things:
-                    self._prof.prof(event='put', uid=thing['uid'], state=_state,
+                    self._prof.prof('put', uid=thing['uid'], state=_state,
                                     msg=output.name, timestamp=ts)
 
 

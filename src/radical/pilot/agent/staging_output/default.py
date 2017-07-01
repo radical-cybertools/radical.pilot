@@ -127,7 +127,7 @@ class Default(AgentStagingOutputComponent):
         sandbox = unit['unit_sandbox']
         uid     = unit['uid']
 
-        self._prof.prof('staging_out_start', uid=uid, msg='stdout')
+        self._prof.prof('staging_stdout_start', uid=uid)
 
         # TODO: disable this at scale?
         if os.path.isfile(unit['stdout_file']):
@@ -139,8 +139,8 @@ class Default(AgentStagingOutputComponent):
 
                 unit['stdout'] += rpu.tail(txt)
 
-        self._prof.prof('staging_out_stop',  uid=uid, msg='stdout')
-        self._prof.prof('staging_out_start', uid=uid, msg='stderr')
+        self._prof.prof('staging_stdout_stop',  uid=uid)
+        self._prof.prof('staging_stderr_start', uid=uid)
 
         # TODO: disable this at scale?
         if os.path.isfile(unit['stderr_file']):
@@ -152,8 +152,8 @@ class Default(AgentStagingOutputComponent):
 
                 unit['stderr'] += rpu.tail(txt)
 
-        self._prof.prof('staging_out_stop',  uid=uid, msg='stderr')
-        self._prof.prof('staging_out_statr', uid=uid, msg='profile')
+        self._prof.prof('staging_stderr_stop',  uid=uid)
+        self._prof.prof('staging_uprof_start', uid=uid)
 
         if 'RADICAL_PILOT_PROFILE' in os.environ:
             if os.path.isfile("%s/PROF" % sandbox):
@@ -163,13 +163,13 @@ class Default(AgentStagingOutputComponent):
                         for line in txt.split("\n"):
                             if line:
                                 ts, name, uid, state, event, msg = line.split(',')
-                                self._prof.prof(even, name=name, uid=uid, 
+                                self._prof.prof(event=event, name=name, uid=uid, 
                                                 state=state, msg=msg, 
                                                 timestamp=float(ts))
                 except Exception as e:
                     self._log.error("Pre/Post profile read failed: `%s`" % e)
 
-        self._prof.prof('staging_out_stop',  uid=uid, msg='profile')
+        self._prof.prof('staging_uprof_stop',  uid=uid)
 
 
     # --------------------------------------------------------------------------

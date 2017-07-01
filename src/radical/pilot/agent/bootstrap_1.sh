@@ -722,6 +722,8 @@ virtenv_setup()
 #
 virtenv_activate()
 {
+    profile_event 've_activate_start'
+
     virtenv="$1"
     python_dist="$2"
 
@@ -811,6 +813,8 @@ virtenv_activate()
     echo "VE_MOD_PREFIX: $VE_MOD_PREFIX"
     echo "RP_MOD_PREFIX: $RP_MOD_PREFIX"
     echo "PYTHONPATH   : $PYTHONPATH"
+
+    profile_event 've_activate_stop'
 }
 
 
@@ -1665,14 +1669,14 @@ then
     echo "# Entering barrier for $RADICAL_PILOT_BARRIER ..."
     echo "# -------------------------------------------------------------------"
 
-    profile_event 'bootstrap_1_barrier_start'
+    profile_event 'client_barrier_start'
 
     while ! test -f $RADICAL_PILOT_BARRIER
     do
         sleep 1
     done
 
-    profile_event 'bootstrap_1_barrier_stop'
+    profile_event 'client_barrier_stop'
 
     echo
     echo "# -------------------------------------------------------------------"

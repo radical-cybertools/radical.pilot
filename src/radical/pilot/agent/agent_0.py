@@ -110,6 +110,9 @@ class Agent_0(rpu.Worker):
         # ready to rumble!
         rpu.Worker.__init__(self, cfg, session)
 
+        # this is the earlier point to sync bootstrapper and agent # profiles
+        self._prof.prof('sync_rel', msg='agent_0 start', uid=self._pid)
+
         # Create LRMS which will give us the set of agent_nodes to use for
         # sub-agent startup.  Add the remaining LRMS information to the
         # config, for the benefit of the scheduler).
@@ -157,7 +160,7 @@ class Agent_0(rpu.Worker):
 
 
         # record hostname in profile to enable mapping of profile entries
-        self._prof.prof(event='hostname', msg=ru.get_hostname())
+        self._prof.prof('hostname', msg=ru.get_hostname(), uid=self._pid)
 
 
     # --------------------------------------------------------------------------
@@ -409,10 +412,10 @@ class Agent_0(rpu.Worker):
             cmd = spec['cmd']
             arg = spec['arg']
 
-            self._prof.prof('cmd', msg="%s : %s" % (cmd, arg))
+            self._prof.prof('cmd', msg="%s : %s" % (cmd, arg), uid=self._pid)
 
             if cmd == 'heartbeat':
-                self._log.info(event='heartbeat_in')
+                self._log.info('heartbeat_in')
 
             elif cmd == 'cancel_pilot':
                 self._log.info('cancel pilot cmd')
@@ -491,7 +494,8 @@ class Agent_0(rpu.Worker):
                         document = {'$set'  : {'control' : 'agent'}})
 
         self._log.info("units pulled: %4d", len(unit_list))
-        self._prof.prof('get', msg="bulk size: %d" % len(unit_list))
+        self._prof.prof('get', msg="bulk size: %d" % len(unit_list),
+                        uid=self._pid)
 
         for unit in unit_list:
 
