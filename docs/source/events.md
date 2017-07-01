@@ -1,4 +1,21 @@
 
+### Format of this file:
+
+    event_name          : semantic event description (details on 'uid', 'msg', 'state' fields)
+
+Events marked as `optional` depend on the content of unit descriptions etc, all
+other events will usually be present in 'normal' runs.  All events have an event
+name, a timestamp, and a component (which recorded the event) defined - all
+other fields (uid, state, msg) are optional.  The names of the actual component
+IDs depend on the exact RP configuration and startup sequence.
+
+The exact order and multiplicity of events is ill defined, as they depend on
+many boundary conditions: system properties, system noise, system
+synchronization, RP API call order, application timings, RP confiuration,
+resource configuration, and noise.  However, while a global event model is thus
+hard to define, the order presented in the lists below gives some basic
+indication on event ordering *within each individual component*.
+
 ### Session (Component)
   
     session_start       : session is being created (not reconnected) (uid: sid)
