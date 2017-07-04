@@ -193,7 +193,7 @@ def makeDataFiles(prefix, dir):
     os.path.walk(dir, visit, (prefix, strip, found))
     return found
 
-def visit((prefix, strip, found), dirname, names):
+def visit(prefix, strip, found), dirname, names):
     """ Visit directory, create distutil tuple
 
     Add distutil tuple for each directory using this format:
