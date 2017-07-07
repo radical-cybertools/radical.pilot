@@ -101,21 +101,24 @@ SCHEDULER_NAME_SPARK        = "SPARK"
 # from the lrms to the launch method
 #
 # FIXME: `lm_info` should be communicated to the LM instances in creation, not
-#         as part of the slots.  Its constant anyway, as lm_info is set only
-#         once during lrms startup.
+#        as part of the slots.  Its constant anyway, as lm_info is set only
+#        once during lrms startup.
 #
-# NOTE: While the nodelist resources are listed as strings above, we in fact use
-#       a list of integers, to simplify some operations, and to specifically
-#       avoid string   copies on manipulations.  We only convert to
-#       a stringlist for visual representation (`self._slot_status()`). 
+# NOTE:  While the nodelist resources are listed as strings above, we in fact
+#        use a list of integers, to simplify some operations, and to
+#        specifically avoid string   copies on manipulations.  We only convert
+#        to a stringlist for visual representation (`self._slot_status()`). 
 #
-# NOTE: the scheduler will allocate one core per node and GPU, as some startup
-#       methods only allow process placements to *cores*, even if GPUs are
-#       present and requested (hi aprun).  We should make this decision
-#       dependent on the chosen executor - but at this point we don't have this
-#       information (at least not readily available).
+# NOTE:  the scheduler will allocate one core per node and GPU, as some startup
+#        methods only allow process placements to *cores*, even if GPUs are
+#        present and requested (hi aprun).  We should make this decision
+#        dependent on the chosen executor - but at this point we don't have this
+#        information (at least not readily available).
 #
 # FIXME: clarify what can be overloaded by Scheduler classes
+#
+# TODO:  use named tuples for the slot structure to make the code more readable,
+#        specifically for the LMs.
 #
 
 # ==============================================================================

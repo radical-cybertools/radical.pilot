@@ -337,19 +337,16 @@ class Popen(AgentExecutingComponent) :
 
         self._prof.prof('exec_start', uid=cu['uid'])
         cu['proc'] = subprocess.Popen(args               = cmdline,
-                                      bufsize            = 0,
                                       executable         = None,
                                       stdin              = None,
                                       stdout             = _stdout_file_h,
                                       stderr             = _stderr_file_h,
-                                      preexec_fn         = None,
                                       close_fds          = True,
                                       shell              = True,
                                       cwd                = sandbox,
-                                    # env                = self._cu_environment,
-                                      universal_newlines = False,
-                                      startupinfo        = None,
-                                      creationflags      = 0)
+                                    # This env is the aprun env, not the CU env
+                                    # env                = self._cu_environment
+                                     )
         self._prof.prof('exec_ok', uid=cu['uid'])
 
         self._watch_queue.put(cu)
