@@ -341,19 +341,16 @@ class Popen(AgentExecutingComponent) :
         self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, sandbox)
 
         cu['proc'] = subprocess.Popen(args               = cmdline,
-                                      bufsize            = 0,
                                       executable         = None,
                                       stdin              = None,
                                       stdout             = _stdout_file_h,
                                       stderr             = _stderr_file_h,
-                                      preexec_fn         = None,
                                       close_fds          = True,
                                       shell              = True,
                                       cwd                = sandbox,
+                                    # This env is the aprun env, not the CU env
                                     # env                = self._cu_environment,
-                                      universal_newlines = False,
-                                      startupinfo        = None,
-                                      creationflags      = 0)
+                                     )
 
         self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['uid'])
         self._watch_queue.put(cu)

@@ -115,6 +115,9 @@ SCHEDULER_NAME_SPARK        = "SPARK"
 #       dependent on the chosen executor - but at this point we don't have this
 #       information (at least not readily available).
 #
+# TODO: use named tuples for the slot structure to make the code more readable,
+#       specifically for the LMs.
+#
 
 # ==============================================================================
 #

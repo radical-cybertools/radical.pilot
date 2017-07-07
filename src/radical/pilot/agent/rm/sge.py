@@ -48,7 +48,7 @@ class SGE(LRMS):
             self._log.info("Found unique core counts: %s Using: %d", sge_core_counts, sge_cores_per_node)
 
             # node names are unique, so can serve as node uids
-            self.node_list      = [[node, node] for node in sge_nodelist]
+            self.node_list      = [[node, node] for node in sge_node_list]
             self.cores_per_node = sge_cores_per_node
             self.gpus_per_node  = sge_gpus_per_node
 

@@ -5,6 +5,7 @@ __license__   = "MIT"
 
 import os
 import time
+import pprint
 
 import radical.utils as ru
 
@@ -56,6 +57,13 @@ class Continuous(AgentSchedulingComponent):
         self.nodes = None
 
         AgentSchedulingComponent.__init__(self, cfg, session)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def initalize_child(self):
+
+        self._scattered = self._cfg.get('scattered', False)
 
 
     # --------------------------------------------------------------------------
@@ -206,6 +214,32 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
+    def _get_node_maps(self, cores, gpus, threads_per_proc):
+
+        core_map = list()
+        gpu_map  = list()
+
+        assert(not len(cores) % threads_per_proc)
+        n_procs =  len(cores) % threads_per_proc
+
+        idx = 0
+        for p in range(n_procs):
+            p_map = list()
+            for t in range(threads_per_proc):
+                p_map.append(cores[idx])
+                idx += 1
+            core_map.append(p_map)
+        assert(idx == len(cores))
+
+        # gpu procs are considered single threaded right now (FIXME)
+        for g in gpus:
+            gpu_map.append([g])
+
+        return core_map, gpu_map
+
+
+    # --------------------------------------------------------------------------
+    #
     def _alloc_nompi(self, cud):
         '''
         Find a suitable set of cores and gpus *within a single node*.
@@ -248,21 +282,7 @@ class Continuous(AgentSchedulingComponent):
 
         # we have to communicate to the launcher where exactly are processes to
         # be places, and what cores are reserved for application threads.
-        core_map = list()
-        gpu_map  = list()
-
-        idx = 0
-        for p in range(requested_procs):
-            p_map = list()
-            for t in range(threads_per_proc):
-                p_map.append(cores[idx])
-                idx += 1
-            core_map.append(p_map)
-        assert(idx == len(cores))
-
-        # gpu procs are considered single threaded right now (FIXME)
-        for g in gpus:
-            gpu_map.append([g])
+        core_map, gpu_map = self._get_node_maps(cores, gpus, threads_per_proc)
 
         slots = {'nodes'         : [[node_name, node_uid, core_map, gpu_map]],
                  'cores_per_node': self._lrms_cores_per_node, 
@@ -296,7 +316,6 @@ class Continuous(AgentSchedulingComponent):
         requested_gpus   = cud['gpus']
         threads_per_proc = cud['threads_per_proc']
         requested_cores  = requested_procs * threads_per_proc
-        scattered        = self._cfg.get('scattered', False)
 
         # First and last nodes can be a partial allocation - all other nodes can
         # only be partial when `scattered` is set.
@@ -308,16 +327,41 @@ class Continuous(AgentSchedulingComponent):
         # FIXME: we should use a persistent node index to start searching where
         #        we last left off, instead of always starting from the beginning
         #        of the node list (optimization).
-        slots = {'nodes'         : list(),
-                 'cores_per_node': self._lrms_cores_per_node, 
-                 'gpus_per_node' : self._lrms_gpus_per_node,
-                 'lm_info'       : self._lrms_lm_info
-                 }
+
+        # Things are complicated by chunking: we only accept chunks of
+        # 'threads_per_proc', as otherwise threads would need to be distributed
+        # over nodes, which is not possible for multi-system-image clusters this
+        # scheduler assumes.  Thus scheduling will *always* fail if:
+        #
+        #   - requested_cores >= 3 * cores_per_node
+        #   - cores_per_node % threads_per_proc != 0
+        #   - scattered == False
+        #
+        # but it can fail for less cores, too, if the partial first and last
+        # allocation are not favorable.  We thus raise an exception for
+        # requested_cores > cores_per_node on impossible full-node-chunking
+        #
+        if  requested_cores  > cores_per_node   and \
+            cores_per_node   % threads_per_proc and \
+            self._scattered == False:
+            raise ValueError('cannot allocate under given constrains')
+
+        # we always fail when too many threads are requested
+        if threads_per_proc > cores_per_node:
+            raise ValueError('too many threads requested')
+
         is_first      = True
         is_last       = False
         alloced_cores = 0
         alloced_gpus  = 0
+        slots         = {'nodes'         : list(),
+                         'cores_per_node': self._lrms_cores_per_node, 
+                         'gpus_per_node' : self._lrms_gpus_per_node,
+                         'lm_info'       : self._lrms_lm_info
+                         }
+
         for node in nodes:
+
             node_uid  = node['uid ']
             node_name = node['name']
 
@@ -325,107 +369,53 @@ class Continuous(AgentSchedulingComponent):
                 requested_gpus  - alloced_gpus  <= gpus_per_node      :
                 last = True
 
-            if first or scattered: partial = True
-            else                 : partial = False
+            if first or self._scattered or last: partial = True
+            else                               : partial = False
 
-            find_cores = requested_cores - alloced_cores
-            find_gpus  = requested_gpus  - alloced_gpus 
-
-            # ==================================================================
-            # FIXME: should we do partial and chunkning check here or in
-            #        _alloc_node?
-
-            if not partial:
-                # we want a full node, or at least the full remaining request
-                find_cores = min(requested_cores, cores_per_node)
-                find_gpus  = min(requested_gpus,  gpus_per_node )
-
-            cores, gpus = self._alloc_node(node, requested_cores, requested_gpus,
+            find_cores  = min(requested_cores - alloced_cores, cores_per_node)
+            find_gpus   = min(requested_gpus  - alloced_gpus,  gpus_per_node )
+            cores, gpus = self._alloc_node(node, find_cores, find_gpus,
                                            chunk=threads_per_proc,
                                            partial=partial)
-            if cores or gpus:
-                # we found something - this is good enough for now.  Keep what
-                # we have, keep the idx to continue searching, and try to
-                # allocate more (continuous or scattered) nodes
-                if cores: alloced_cores.append([node['name'], cores])
-                if gpus : alloced_gpus.append ([node['name'], gpus ])
+
+            if not cores and not gpus:
+                # this was not a match. If we are not scattered, we have to
+                # restart the search - otherwise we just ignore this node
+                if not self._scattered:
+                    is_first       = True
+                    is_last        = False
+                    alloced_cores  = 0
+                    alloced_gpus   = 0
+                    slots['nodes'] = list()
+
+                # try next node
                 break
+
+            # we found something - add to the existing allocation, switch gears
+            # (not first anymore), and try to find more if needed
+            core_map, gpu_map = self._get_node_maps(cores, gpus, threads_per_proc)
+            slots['nodes'].append([node_name, node_uid, core_map, gpu_map])
+            
+            alloced_cores += len(cores)
+            alloced_gpus  += len(gpus)
+            is_first       = False
+
+            if  alloced_cores == requested_cores and \
+                alloced_gpus  == requested_gpus      :
+                # we are done
+                break
+
+
 
         # if we did not find anything, there is not much we can do at this point
         if not cores and not gpus:
             # signal failure
             return None
 
-        
-        # we will either keep adding cores and gpus from the
-        # follow-up nodes continuously until we have the requested set of
-        # resources complete, or the continuous block breaks, and we'll have to
-        # start over from the first block.  Either way, we do
+        assert (alloced_cores == requested_cores)
+        assert (alloced_gpus  == requested_gpus )
 
-
-
-        # Glue all slot lists together
-        # FIXME: optimization: maintain only one representation
-        thing_str = ''
-        for node in self.nodes:
-            thing_str += node[thing_name]
-
-      # self._log.debug("thing_str: %s", thing_str)
-
-        # Find the start of the first available region
-        first_index = thing_str.find(thing_needle)
-        if first_index < 0:
-            self._log.debug('no free %s found', thing_name)
-            return [], []
-
-        # Determine first node, and the first thing within that node
-        first_node  = first_index / things_per_node
-        first_thing = first_index % things_per_node
-
-        # Note: We subtract one here, because counting starts at zero;
-        #       Imagine a zero offset and a count of 1, the only core used
-        #       would be core 0.
-        #       TODO: Verify this claim :-)
-        last_index = first_index + thing_num - 1
-        last_node  = last_index / things_per_node
-        last_thing = last_index % things_per_node
-
-        self._log.debug("first index / node / %s: %s / %s / %s", 
-                         first_index, first_node, thing_name, first_thing)
-        self._log.debug("last  index / node / %s: %s / %s / %s", 
-                         last_index, last_node, thing_name, last_thing)
-
-        # Collect all slots here
-        task_slots = list()
-
-        if last_node == first_node:
-            node_uid = self.nodes[first_node]['uid']
-            for thing in range(first_thing, last_thing + 1):
-                task_slots.append('%s:%d' % (node_uid, thing))
-                self.nodes[thing_name][thing] = rpc.BUSY
-
-        elif last_node != first_node:
-
-            # add things from first node
-            node_uid = self.nodes[first_node]['uid']
-            for thing in range(first_thing, things_per_node):
-                task_slots.append('%s:%d' % (node_uid, thing))
-                self.nodes[thing_name][thing] = rpc.BUSY
-
-            # add things from "middle" nodes
-            for node_index in range(first_node+1, last_node-1):
-                node_uid = self.nodes[node_index]['uid']
-                for thing in range(0, things_per_node):
-                    task_slots.append('%s:%d' % (node_uid, thing))
-                    self.nodes[thing_name][thing] = rpc.BUSY
-
-            # add things from last node
-            node_uid = self.nodes[last_node]['uid']
-            for thing in range(0, last_thing+1):
-                task_slots.append('%s:%d' % (node_uid, thing))
-                self.nodes[thing_name][thing] = rpc.BUSY
-
-        return task_slots, [first_index]
+        return slots
 
 
     # --------------------------------------------------------------------------
@@ -436,9 +426,7 @@ class Continuous(AgentSchedulingComponent):
 
         # FIXME: we don't know if we should change state for cores or gpus...
 
-        import pprint
         self._log.debug('slots: %s', pprint.pformat(slots))
-
 
         for node_name, node_uid, cores, gpus in slots['nodes']:
 

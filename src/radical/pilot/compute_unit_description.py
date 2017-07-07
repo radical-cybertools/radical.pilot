@@ -15,6 +15,8 @@ CORES                  = 'cores'  # should be: cpu process
 GPUS                   = 'gpus'   # should be: gpu process
 THREADS_PER_PROC       = 'threads_per_proc'
 MPI                    = 'mpi'
+OPENMP                 = 'open_mp'
+CUDA                   = 'cuda'
 INPUT_STAGING          = 'input_staging'
 OUTPUT_STAGING         = 'output_staging'
 PRE_EXEC               = 'pre_exec'
@@ -83,8 +85,24 @@ class ComputeUnitDescription(attributes.Attributes):
 
     .. data:: mpi
 
-       A flag (bool) which can be set to indicate that the processes to be
+       A flag (bool) which can be set to indicate that each processes to be
        started are MPI processes.
+
+       default: `False`.
+
+
+    .. data:: open_mp
+
+       A flag (bool) which can be set to indicate that the CPU processes will
+       spawn OpenMP threads
+
+       default: `False`.
+
+
+    .. data:: cuda
+
+       A flag (bool) which can be set to indicate that the GPU processes will
+       spawn CUDA threads
 
        default: `False`.
 
@@ -306,6 +324,8 @@ class ComputeUnitDescription(attributes.Attributes):
         self._attributes_register(GPUS,             None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(THREADS_PER_PROC, None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(MPI,              None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(OPENMP,           None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(CUDA,             None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
       # self._attributes_register(CPU_ARCHITECTURE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
       # self._attributes_register(OPERATING_SYSTEM, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
       # self._attributes_register(MEMORY,           None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
@@ -331,6 +351,8 @@ class ComputeUnitDescription(attributes.Attributes):
         self.set_attribute (THREADS_PER_PROC,  1)
         self.set_attribute (GPUS,              0)
         self.set_attribute (MPI,            None)
+        self.set_attribute (OPENMP,         None)
+        self.set_attribute (CUDA,           None)
         self.set_attribute (RESTARTABLE,   False)
         self.set_attribute (CLEANUP,       False)
         self.set_attribute (PILOT,          None)
