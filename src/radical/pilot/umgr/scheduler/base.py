@@ -137,12 +137,8 @@ class UMGRSchedulingComponent(rpu.Component):
         self._log.debug('update pilots %s', [p['uid'] for p in pilots])
         self._log.debug('update units  %s', [u['uid'] for u in units])
 
-      # self._log.debug(' === base state cb: update  pilots: %s' % [p['uid'] for p in pilots])
         self._update_pilot_states(pilots)
-      # self._log.debug(' === base state cb: updated pilots: %s' % [p['uid'] for p in pilots])
-      # self._log.debug(' === base state cb: update  units:  %s' % [u['uid'] for u in units])
         self._update_unit_states(units)
-      # self._log.debug(' === base state cb: updated units:  %s' % [u['uid'] for u in units])
 
         return True
 

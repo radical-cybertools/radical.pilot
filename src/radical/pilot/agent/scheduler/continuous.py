@@ -61,12 +61,7 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initalize_child(self):
-
-        self._scattered = self._cfg.get('scattered', False)
-
-
-    # --------------------------------------------------------------------------
+    # FIXME: this should not be overloaded here, but in the base class
     #
     def finalize_child(self):
 
@@ -92,6 +87,8 @@ class Continuous(AgentSchedulingComponent):
                 'cores': [rpc.FREE] * self._lrms_cores_per_node,
                 'gpus' : [rpc.FREE] * self._lrms_gpus_per_node
             })
+
+        self._scattered = self._cfg.get('scattered', False)
 
 
     # --------------------------------------------------------------------------
@@ -195,19 +192,18 @@ class Continuous(AgentSchedulingComponent):
         alloc_cores = min(requested_cores, free_cores) / chunk * chunk
         alloc_gpus  = min(requested_gpus , free_gpus )
 
-
         # now dig out the core and gpu IDs.
-        while alloc_cores:
-            for idx,state in enumerate(node['cores']):
-                if state == rpc.FREE:
-                    cores.append(idx)
-                    alloc_cores -= 1
+        for idx,state in enumerate(node['cores']):
+            if alloc_cores == len(cores):
+                break
+            if state == rpc.FREE:
+                cores.append(idx)
 
-        while alloc_gpus:
-            for idx,state in enumerate(node['gpus']):
-                if state == rpc.FREE:
-                    gpus.append(idx)
-                    alloc_gpus -= 1
+        for idx,state in enumerate(node['gpus']):
+            if alloc_gpus == len(gpus):
+                break
+            if state == rpc.FREE:
+                gpus.append(idx)
 
         return cores, gpus
 
@@ -220,7 +216,7 @@ class Continuous(AgentSchedulingComponent):
         gpu_map  = list()
 
         assert(not len(cores) % threads_per_proc)
-        n_procs =  len(cores) % threads_per_proc
+        n_procs =  len(cores) / threads_per_proc
 
         idx = 0
         for p in range(n_procs):
@@ -229,6 +225,9 @@ class Continuous(AgentSchedulingComponent):
                 p_map.append(cores[idx])
                 idx += 1
             core_map.append(p_map)
+
+        if idx != len(cores):
+            self._log.debug('%s -- %s -- %s -- %s', idx, len(cores), cores, n_procs)
         assert(idx == len(cores))
 
         # gpu procs are considered single threaded right now (FIXME)
@@ -340,7 +339,10 @@ class Continuous(AgentSchedulingComponent):
         # but it can fail for less cores, too, if the partial first and last
         # allocation are not favorable.  We thus raise an exception for
         # requested_cores > cores_per_node on impossible full-node-chunking
-        #
+
+        cores_per_node = self._lrms_cores_per_node
+        gpus_per_node  = self._lrms_gpus_per_node
+        
         if  requested_cores  > cores_per_node   and \
             cores_per_node   % threads_per_proc and \
             self._scattered == False:
@@ -355,22 +357,22 @@ class Continuous(AgentSchedulingComponent):
         alloced_cores = 0
         alloced_gpus  = 0
         slots         = {'nodes'         : list(),
-                         'cores_per_node': self._lrms_cores_per_node, 
-                         'gpus_per_node' : self._lrms_gpus_per_node,
+                         'cores_per_node': cores_per_node, 
+                         'gpus_per_node' : gpus_per_node,
                          'lm_info'       : self._lrms_lm_info
                          }
 
-        for node in nodes:
+        for node in self.nodes:
 
-            node_uid  = node['uid ']
+            node_uid  = node['uid']
             node_name = node['name']
 
             if  requested_cores - alloced_cores <= cores_per_node and \
                 requested_gpus  - alloced_gpus  <= gpus_per_node      :
-                last = True
+                is_last = True
 
-            if first or self._scattered or last: partial = True
-            else                               : partial = False
+            if is_first or is_last or self._scattered or last: partial = True
+            else                                             : partial = False
 
             find_cores  = min(requested_cores - alloced_cores, cores_per_node)
             find_gpus   = min(requested_gpus  - alloced_gpus,  gpus_per_node )
@@ -393,6 +395,7 @@ class Continuous(AgentSchedulingComponent):
 
             # we found something - add to the existing allocation, switch gears
             # (not first anymore), and try to find more if needed
+            self._log.debug('found %s cores, %s gpus', cores, gpus)
             core_map, gpu_map = self._get_node_maps(cores, gpus, threads_per_proc)
             slots['nodes'].append([node_name, node_uid, core_map, gpu_map])
             
@@ -425,8 +428,7 @@ class Continuous(AgentSchedulingComponent):
     def _change_slot_states(self, slots, new_state):
 
         # FIXME: we don't know if we should change state for cores or gpus...
-
-        self._log.debug('slots: %s', pprint.pformat(slots))
+      # self._log.debug('slots: %s', pprint.pformat(slots))
 
         for node_name, node_uid, cores, gpus in slots['nodes']:
 
