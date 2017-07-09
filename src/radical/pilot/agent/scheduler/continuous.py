@@ -4,15 +4,10 @@ __license__   = "MIT"
 
 
 import os
-import time
-import pprint
 
 import radical.utils as ru
 
-from ... import utils     as rpu
-from ... import states    as rps
-from ... import constants as rpc
-
+from ...   import constants as rpc
 from .base import AgentSchedulingComponent
 
 import inspect
@@ -27,11 +22,13 @@ import threading as mt
 import cProfile
 cprof = cProfile.Profile()
 
+
 def cprof_it(func):
     def wrapper(*args, **kwargs):
         retval = cprof.runcall(func, *args, **kwargs)
         return retval
     return wrapper
+
 
 def dec_all_methods(dec):
     def dectheclass(cls):
@@ -65,7 +62,8 @@ class Continuous(AgentSchedulingComponent):
     #
     def finalize_child(self):
 
-        if "CONTINUOUS" in os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "").split():
+        cprof_env = os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "")
+        if "CONTINUOUS" in cprof_env.split():
             self_thread = mt.current_thread()
             cprof.dump_stats("python-%s.profile" % self_thread.name)
 
@@ -100,12 +98,12 @@ class Continuous(AgentSchedulingComponent):
         ret = "|"
         for node in self.nodes:
             for core in node['cores']:
-                if core == rpc.FREE  : ret += '-'
-                else                 : ret += '#'
+                if core == rpc.FREE: ret += '-'
+                else               : ret += '#'
             ret += ':'
-            for gpu in node['gpus']  :
-                if gpu == rpc.FREE   : ret += '-'
-                else                 : ret += '#'
+            for gpu in node['gpus']:
+                if gpu == rpc.FREE : ret += '-'
+                else               : ret += '#'
             ret += '|'
 
         return ret
@@ -123,7 +121,7 @@ class Continuous(AgentSchedulingComponent):
 
 
         if not slots:
-            return {} # allocation failed
+            return {}  # allocation failed
 
         self._change_slot_states(slots, rpc.BUSY)
 
@@ -139,7 +137,7 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _alloc_node(self, node, requested_cores, requested_gpus, 
+    def _alloc_node(self, node, requested_cores, requested_gpus,
                     chunk=1, partial=False):
         '''
         Find up to the requested number of free cores and gpus in the node.
@@ -172,7 +170,7 @@ class Continuous(AgentSchedulingComponent):
         # first count the free cores/gpus, as that is way quicker than
         # actually finding the core IDs.
         if partial:
-            # For partial requests the check simpliefies: we just check if we 
+            # For partial requests the check simpliefies: we just check if we
             # have either, some cores *or* gpus, to serve the request
             if  (requested_cores and not free_cores) and \
                 (requested_gpus  and not free_gpus )     :
@@ -227,7 +225,8 @@ class Continuous(AgentSchedulingComponent):
             core_map.append(p_map)
 
         if idx != len(cores):
-            self._log.debug('%s -- %s -- %s -- %s', idx, len(cores), cores, n_procs)
+            self._log.debug('%s -- %s -- %s -- %s',
+                            idx, len(cores), cores, n_procs)
         assert(idx == len(cores))
 
         # gpu procs are considered single threaded right now (FIXME)
@@ -284,7 +283,7 @@ class Continuous(AgentSchedulingComponent):
         core_map, gpu_map = self._get_node_maps(cores, gpus, threads_per_proc)
 
         slots = {'nodes'         : [[node_name, node_uid, core_map, gpu_map]],
-                 'cores_per_node': self._lrms_cores_per_node, 
+                 'cores_per_node': self._lrms_cores_per_node,
                  'gpus_per_node' : self._lrms_gpus_per_node,
                  'lm_info'       : self._lrms_lm_info
                  }
@@ -342,10 +341,10 @@ class Continuous(AgentSchedulingComponent):
 
         cores_per_node = self._lrms_cores_per_node
         gpus_per_node  = self._lrms_gpus_per_node
-        
+
         if  requested_cores  > cores_per_node   and \
             cores_per_node   % threads_per_proc and \
-            self._scattered == False:
+            self._scattered is False:
             raise ValueError('cannot allocate under given constrains')
 
         # we always fail when too many threads are requested
@@ -357,7 +356,7 @@ class Continuous(AgentSchedulingComponent):
         alloced_cores = 0
         alloced_gpus  = 0
         slots         = {'nodes'         : list(),
-                         'cores_per_node': cores_per_node, 
+                         'cores_per_node': cores_per_node,
                          'gpus_per_node' : gpus_per_node,
                          'lm_info'       : self._lrms_lm_info
                          }
@@ -371,8 +370,8 @@ class Continuous(AgentSchedulingComponent):
                 requested_gpus  - alloced_gpus  <= gpus_per_node      :
                 is_last = True
 
-            if is_first or is_last or self._scattered or last: partial = True
-            else                                             : partial = False
+            if is_first or is_last or self._scattered or is_last: partial = True
+            else                                                : partial = False
 
             find_cores  = min(requested_cores - alloced_cores, cores_per_node)
             find_gpus   = min(requested_gpus  - alloced_gpus,  gpus_per_node )
@@ -398,7 +397,7 @@ class Continuous(AgentSchedulingComponent):
             self._log.debug('found %s cores, %s gpus', cores, gpus)
             core_map, gpu_map = self._get_node_maps(cores, gpus, threads_per_proc)
             slots['nodes'].append([node_name, node_uid, core_map, gpu_map])
-            
+
             alloced_cores += len(cores)
             alloced_gpus  += len(gpus)
             is_first       = False
