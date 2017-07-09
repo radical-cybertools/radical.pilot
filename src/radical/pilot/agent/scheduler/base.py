@@ -4,7 +4,6 @@ __license__   = "MIT"
 
 
 import logging
-import time
 import pprint
 import threading
 
@@ -58,7 +57,7 @@ SCHEDULER_NAME_SPARK        = "SPARK"
 # This solves the second part from our list above.  The third part, unit
 # requirements, are obtained from the unit dict passed for scheduling: the unit
 # description contains requests for `cores` and `gpus`, and also flags the use
-# of `mpi`.  
+# of `mpi`
 #
 # Note that the unit dict will also contain `threads_per_proc`: the scheduler
 # will have to make sure that for each process to be placed, the  given number
@@ -74,14 +73,14 @@ SCHEDULER_NAME_SPARK        = "SPARK"
 #
 #     cu = { ...
 #            'cores             : 4,
-#            'gpus'             : 2, 
+#            'gpus'             : 2,
 #            `threads_per_proc' : 2
-#            'slots' : 
+#            'slots' :
 #            {                 # [[node name,  [core indexes],   [gpu indexes]]]
-#              'nodes'         : [[nodename_1, [[0, 2], [4, 6]], [[0]        ]], 
+#              'nodes'         : [[nodename_1, [[0, 2], [4, 6]], [[0]        ]],
 #                                 [nodename_2, [[1, 3], [5, 7]], [[0]        ]]],
-#              'cores_per_node': 8, 
-#              'gpus_per_node' : 1, 
+#              'cores_per_node': 8,
+#              'gpus_per_node' : 1,
 #              'lm_info'       : { ... }
 #            }
 #          }
@@ -107,7 +106,7 @@ SCHEDULER_NAME_SPARK        = "SPARK"
 # NOTE:  While the nodelist resources are listed as strings above, we in fact
 #        use a list of integers, to simplify some operations, and to
 #        specifically avoid string   copies on manipulations.  We only convert
-#        to a stringlist for visual representation (`self._slot_status()`). 
+#        to a stringlist for visual representation (`self._slot_status()`).
 #
 # NOTE:  the scheduler will allocate one core per node and GPU, as some startup
 #        methods only allow process placements to *cores*, even if GPUs are
@@ -121,6 +120,7 @@ SCHEDULER_NAME_SPARK        = "SPARK"
 #        specifically for the LMs.
 #
 
+
 # ==============================================================================
 #
 class AgentSchedulingComponent(rpu.Component):
@@ -133,7 +133,7 @@ class AgentSchedulingComponent(rpu.Component):
     # self.nodes:
     #
     #   self.nodes = [
-    #     { 'name'  : 'name-of-node', 
+    #     { 'name'  : 'name-of-node',
     #       'cores' : '###---##-##-----',  # 16 cores, free/busy markers
     #       'gpus'  : '--',                #  2 GPUs,  free/busy markers
     #     }, ...
@@ -158,10 +158,10 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def initialize_child(self):
 
-        self.register_input(rps.AGENT_SCHEDULING_PENDING, 
+        self.register_input(rps.AGENT_SCHEDULING_PENDING,
                             rpc.AGENT_SCHEDULING_QUEUE, self.work)
 
-        self.register_output(rps.AGENT_EXECUTING_PENDING,  
+        self.register_output(rps.AGENT_EXECUTING_PENDING,
                              rpc.AGENT_EXECUTING_QUEUE)
 
         # we need unschedule updates to learn about units which free their
@@ -184,9 +184,9 @@ class AgentSchedulingComponent(rpu.Component):
         # FIXME: this information is insufficient for the torus scheduler!
         # FIXME: GPU
 
-        self._wait_pool = list()            # set of units which wait for the resource
-        self._wait_lock = threading.RLock() # look on the above set
-        self._slot_lock = threading.RLock() # look for slot allocation/deallocation
+        self._wait_pool = list()             # units which wait for the resource
+        self._wait_lock = threading.RLock()  # lock on the above set
+        self._slot_lock = threading.RLock()  # lock slot allocation/deallocation
 
         # configure the scheduler instance
         self._configure()
@@ -200,7 +200,7 @@ class AgentSchedulingComponent(rpu.Component):
         #         probably be solved cleaner.
         pass
 
- 
+
     # --------------------------------------------------------------------------
     #
     # This class-method creates the appropriate sub-class for the Scheduler.
@@ -286,11 +286,11 @@ class AgentSchedulingComponent(rpu.Component):
         self._prof.prof('schedule_ok', uid=cu['uid'])
 
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("after  allocate   %s: %s", cu['uid'], 
+            self._log.debug("after  allocate   %s: %s", cu['uid'],
                             self.slot_status())
 
         self._log.debug("%s [%s/%s] : %s [%s]", cu['uid'],
-                        cu['description']['cores'], 
+                        cu['description']['cores'],
                         cu['description']['gpus'],
                         pprint.pformat(cu['slots']))
         return True
@@ -309,7 +309,7 @@ class AgentSchedulingComponent(rpu.Component):
         cu = msg
 
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("before reschedule %s: %s", cu['uid'], 
+            self._log.debug("before reschedule %s: %s", cu['uid'],
                             self.slot_status())
 
         # cycle through wait queue, and see if we get anything running now.  We
