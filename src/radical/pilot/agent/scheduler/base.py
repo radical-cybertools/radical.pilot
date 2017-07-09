@@ -190,7 +190,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # configure the scheduler instance
         self._configure()
-        self._log.debug("slot status after  initialization        : %s", self.slot_status())
+        self._log.debug("after  initialization        : %s", self.slot_status())
 
 
     # --------------------------------------------------------------------------
@@ -320,7 +320,8 @@ class AgentSchedulingComponent(rpu.Component):
             if self._try_allocation(cu):
 
                 # allocated cu -- advance it
-                self.advance(cu, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
+                self.advance(cu, rps.AGENT_EXECUTING_PENDING, publish=True, 
+                             push=True)
 
                 # remove it from the wait queue
                 with self._wait_lock :
@@ -333,7 +334,8 @@ class AgentSchedulingComponent(rpu.Component):
 
         # Note: The extra space below is for visual alignment
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("after  reschedule %s: %s", cu['uid'], self.slot_status())
+            self._log.debug("after  reschedule %s: %s", cu['uid'],
+                            self.slot_status())
 
         return True
 
@@ -354,7 +356,8 @@ class AgentSchedulingComponent(rpu.Component):
             return True
 
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("before unschedule %s: %s", cu['uid'], self.slot_status())
+            self._log.debug("before unschedule %s: %s", cu['uid'],
+                            self.slot_status())
 
         # needs to be locked as we try to release slots, but slots are acquired
         # in a different thread....
@@ -368,7 +371,8 @@ class AgentSchedulingComponent(rpu.Component):
 
         # Note: The extra space below is for visual alignment
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("after  unschedule %s: %s", cu['uid'], self.slot_status())
+            self._log.debug("after  unschedule %s: %s", cu['uid'],
+                            self.slot_status())
 
         return True
 
