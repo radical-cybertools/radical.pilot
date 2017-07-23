@@ -1043,7 +1043,7 @@ class Component(ru.Process):
             # ------------------------------------------------------------------
             def work_cb(self):
                 self.is_valid()
-                topic, msg = self._q.get_nowait(500) # timout in ms
+                topic, msg = self._q.get_nowait(500)  # timout in ms
                 if topic and msg:
                     if not isinstance(msg,list):
                         msg = [msg]
