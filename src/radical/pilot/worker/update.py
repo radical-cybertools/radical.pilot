@@ -74,6 +74,26 @@ class Update(rpu.Worker):
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
         self.register_timed_cb(self._idle_cb, timer=self._bct)
 
+        self._log.info(' ==== init update')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def stop(self):
+
+        self._log.info(' ==== stop update')
+        super(Update, self).stop()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize_child(self):
+
+        self._log.info(' ==== final update')
+
+        self.unregister_timed_cb(self._idle_cb)
+        self.unregister_subscriber(rpc.STATE_PUBSUB, self._state_cb)
+
 
     # --------------------------------------------------------------------------
     #

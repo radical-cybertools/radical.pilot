@@ -200,22 +200,24 @@ class UnitManager(rpu.Component):
 
         if self._closed:
             return
-        self._closed = True
 
-        self._log.debug("closing %s\n%s", self.uid, '\n'.join(ru.get_stacktrace()))
+        self._terminate.set()
+        self.stop()
+
+        self._log.debug(" ==== closing umgr %s!\n%s", self.uid, '\n'.join(ru.get_stacktrace()))
         self._log.report.info('<<close unit manager')
 
         # we don't want any callback invokations during shutdown
         # FIXME: really?
         with self._cb_lock:
             self._callbacks = dict()
-
-        self._terminate.set()
-        self.stop()
+            for m in rpt.UMGR_METRICS:
+                self._callbacks[m] = dict()
 
         self._session.prof.prof('closed umgr', uid=self._uid)
         self._log.info("Closed UnitManager %s." % self._uid)
 
+        self._closed = True
         self._log.report.ok('>>ok\n')
 
 
@@ -259,6 +261,9 @@ class UnitManager(rpu.Component):
     #---------------------------------------------------------------------------
     #
     def _pilot_state_cb(self, pilot, state):
+
+        if self._terminate.is_set():
+            return False
 
         # we register this callback for pilots added to this umgr.  It will
         # specifically look out for pilots which complete, and will make sure
@@ -349,6 +354,9 @@ class UnitManager(rpu.Component):
     #
     def _state_pull_cb(self):
 
+        if self._terminate.is_set():
+            return False
+
         # pull all unit states from the DB, and compare to the states we know
         # about.  If any state changed, update the unit instance and issue
         # notification callbacks as needed.
@@ -367,6 +375,9 @@ class UnitManager(rpu.Component):
     #---------------------------------------------------------------------------
     #
     def _unit_pull_cb(self):
+
+        if self._terminate.is_set():
+            return False
 
         # pull units those units from the agent which are about to get back
         # under umgr control, and push them into the respective queues
@@ -421,6 +432,9 @@ class UnitManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _state_sub_cb(self, topic, msg):
+
+        if self._terminate.is_set():
+            return False
 
         cmd = msg.get('cmd')
         arg = msg.get('arg')
@@ -497,6 +511,9 @@ class UnitManager(rpu.Component):
     # FIXME: this needs to go to the scheduler
     def _default_wait_queue_size_cb(self, umgr, wait_queue_size):
         # FIXME: this needs to come from the scheduler?
+
+        if self._terminate.is_set():
+            return False
 
         self._log.info("[Callback]: wait_queue_size: %s.", wait_queue_size)
 

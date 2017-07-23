@@ -162,6 +162,10 @@ class Agent_0(rpu.Worker):
 
         # tear things down in reverse order
 
+        self.unregister_timed_cb(self._check_units_cb)
+        self.unregister_output(rps.AGENT_STAGING_INPUT_PENDING)
+        self.unregister_timed_cb(self._agent_command_cb)
+
         if self._lrms:
             self._log.debug('stop    lrms %s', self._lrms)
             self._lrms.stop()
