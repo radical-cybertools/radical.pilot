@@ -151,7 +151,7 @@ class UnitManager(rpu.Component):
         # let session know we exist
         self._session._register_umgr(self)
 
-        self._prof.prof('UMGR setup done', logger=self._log.debug)
+        self._prof.prof('UMGR setup done')
         self._log.report.ok('>>ok\n')
 
 

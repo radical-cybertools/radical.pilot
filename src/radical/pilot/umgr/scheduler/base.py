@@ -195,9 +195,6 @@ class UMGRSchedulingComponent(rpu.Component):
     #
     def _update_unit_states(self, units):
 
-      # if not units:
-      #     print ' === no units to update'
-
         self.update_units(units)
 
 
