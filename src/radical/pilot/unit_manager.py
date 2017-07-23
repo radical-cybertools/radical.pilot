@@ -118,6 +118,7 @@ class UnitManager(rpu.Component):
         cfg['owner'] = self.uid
         rpu.Component.__init__(self, cfg, session)
         self.start(spawn=False)
+        self._log.info('started umgr %s', self._uid)
 
         # only now we have a logger... :/
         self._log.report.info('<<create unit manager')
@@ -204,7 +205,6 @@ class UnitManager(rpu.Component):
         self._terminate.set()
         self.stop()
 
-        self._log.debug(" ==== closing umgr %s!\n%s", self.uid, '\n'.join(ru.get_stacktrace()))
         self._log.report.info('<<close unit manager')
 
         # we don't want any callback invokations during shutdown
