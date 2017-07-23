@@ -178,11 +178,6 @@ class Queue(ru.Process):
             self._q.connect(self._addr)
             self.start(spawn=False)
 
-          # self._fname = '/tmp/r/%s' % ru.generate_id(self._uid, ru.ID_PRIVATE)
-          # with open(self._fname, 'a+') as f:
-          #     f.write('start pubsub %s @ %s\n' % (self._role, ru.gettid()))
-          #     f.write('\n'.join(ru.get_stacktrace()))
-          #     f.write('\n\n\n')
 
         # ----------------------------------------------------------------------
         elif self._role == QUEUE_BRIDGE:
@@ -223,12 +218,6 @@ class Queue(ru.Process):
             self._q.hwm    = _HIGH_WATER_MARK
             self._q.connect(self._addr)
             self.start(spawn=False)
-
-          # self._fname = '/tmp/r/%s' % ru.generate_id(self._uid, ru.ID_PRIVATE)
-          # with open(self._fname, 'a+') as f:
-          #     f.write('start pubsub %s @ %s\n' % (self._role, ru.gettid()))
-          #     f.write('\n'.join(ru.get_stacktrace()))
-          #     f.write('\n\n\n')
 
 
     # --------------------------------------------------------------------------
@@ -293,13 +282,6 @@ class Queue(ru.Process):
         self._out.hwm    = _HIGH_WATER_MARK
         self._out.bind(self._addr)
 
-      # self._fname = '/tmp/r/%s' % ru.generate_id(self._uid, ru.ID_PRIVATE)
-      # with open(self._fname, 'a+') as f:
-      #     f.write('start pubsub %s @ %s\n' % (self._role, ru.gettid()))
-      #     f.write('\n'.join(ru.get_stacktrace()))
-      #     f.write('\n\n\n')
-
-
         # communicate the bridge ports to the parent process
         _addr_in  = self._in.getsockopt( zmq.LAST_ENDPOINT)
         _addr_out = self._out.getsockopt(zmq.LAST_ENDPOINT)
@@ -316,12 +298,6 @@ class Queue(ru.Process):
     # --------------------------------------------------------------------------
     # 
     def ru_finalize_common(self):
-
-      # if self._ctx:
-      #     with open(self._fname, 'a+') as f:
-      #         f.write('stop  pubsub %s @ %s\n' % (self._role, ru.gettid()))
-      #         f.write('\n'.join(ru.get_stacktrace()))
-      #         f.write('\n\n\n')
 
         if self._q   : self._q   .close()
         if self._in  : self._in  .close()

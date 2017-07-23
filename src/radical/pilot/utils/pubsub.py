@@ -110,17 +110,10 @@ class Pubsub(ru.Process):
 
         super(Pubsub, self).__init__(name=self._uid, log=self._log)
 
-        self._fname = None
 
         # ----------------------------------------------------------------------
         # behavior depends on the role...
         if self._role == PUBSUB_PUB:
-
-            self._fname = '/tmp/r/%s' % ru.generate_id(self._uid, ru.ID_PRIVATE)
-            with open(self._fname, 'a+') as f:
-                f.write('start pubsub %s @ %s\n' % (self._role, ru.gettid()))
-                f.write('\n'.join(ru.get_stacktrace()))
-                f.write('\n\n\n')
 
             self._ctx = zmq.Context()
             self._session._to_destroy.append(self._ctx)
@@ -162,12 +155,6 @@ class Pubsub(ru.Process):
 
         # ----------------------------------------------------------------------
         elif self._role == PUBSUB_SUB:
-
-            self._fname = '/tmp/r/%s' % ru.generate_id(self._uid, ru.ID_PRIVATE)
-            with open(self._fname, 'a+') as f:
-                f.write('start pubsub %s @ %s\n' % (self._role, ru.gettid()))
-                f.write('\n'.join(ru.get_stacktrace()))
-                f.write('\n\n\n')
 
             self._ctx = zmq.Context()
             self._session._to_destroy.append(self._ctx)
@@ -225,12 +212,6 @@ class Pubsub(ru.Process):
         spt.setproctitle('rp.%s' % self._uid)
         self._log.info('start bridge %s on %s', self._uid, self._addr)
 
-        self._fname = '/tmp/r/%s' % ru.generate_id(self._uid, ru.ID_PRIVATE)
-        with open(self._fname, 'a+') as f:
-            f.write('start pubsub %s @ %s\n' % (self._role, ru.gettid()))
-            f.write('\n'.join(ru.get_stacktrace()))
-            f.write('\n\n\n')
-
         self._ctx = zmq.Context()
         self._session._to_destroy.append(self._ctx)
 
@@ -261,12 +242,6 @@ class Pubsub(ru.Process):
     # --------------------------------------------------------------------------
     # 
     def ru_finalize_common(self):
-
-        if self._fname:
-            with open(self._fname, 'a+') as f:
-                f.write('stop  pubsub %s @ %s\n' % (self._role, ru.gettid()))
-                f.write('\n'.join(ru.get_stacktrace()))
-                f.write('\n\n\n')
 
         if self._q   : self._q  .close()
         if self._in  : self._in .close()
