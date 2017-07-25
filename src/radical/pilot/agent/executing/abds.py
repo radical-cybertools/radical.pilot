@@ -386,9 +386,7 @@ class ABDS(AgentExecutingComponent):
 
         try:
             cuid = self.uid.replace('Component', 'Watcher')
-            self._prof = self._session.get_profiler(cuid)
             self._prof.prof('run', uid=self._pilot_id)
-            self._log = self._session._get_logger(cuid, level='DEBUG') # FIXME?
 
             while not self._terminate.is_set():
 
