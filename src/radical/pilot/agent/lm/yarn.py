@@ -190,14 +190,14 @@ class Yarn(LaunchMethod):
             if lrms.node_list[0] == 'localhost':
                 #Download the tar file
                 node_name = lrms.node_list[0]
-                stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.0/hadoop-2.6.0.tar.gz")
-                stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
+                stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.5/hadoop-2.6.5.tar.gz")
+                stat = os.system('tar xzf hadoop-2.6.5.tar.gz;mv hadoop-2.6.5 hadoop;rm -rf hadoop-2.6.5.tar.gz')
             else:
                 node = subprocess.check_output('/bin/hostname')
                 logger.info('Entered Else creation')
                 node_name = node.split('\n')[0]
-                stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.0/hadoop-2.6.0.tar.gz")
-                stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
+                stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.5/hadoop-2.6.5.tar.gz")
+                stat = os.system('tar xzf hadoop-2.6.5.tar.gz;mv hadoop-2.6.5 hadoop;rm -rf hadoop-2.6.5.tar.gz')
                 # TODO: Decide how the agent will get Hadoop tar ball.
 
 
