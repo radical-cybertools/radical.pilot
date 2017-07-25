@@ -110,7 +110,7 @@ if __name__ == '__main__':
 
         # get some more details for one unit:
         unit_dict = units[0].as_dict()
-        report.plain("unit workdir : %s\n" % unit_dict['sandbox'])
+        report.plain("unit workdir : %s\n" % unit_dict['unit_sandbox'])
         report.plain("pilot id     : %s\n" % unit_dict['pilot'])
         report.plain("exit code    : %s\n" % unit_dict['exit_code'])
     
