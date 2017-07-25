@@ -313,7 +313,7 @@ class Yarn(LaunchMethod):
         # Single Node configuration
         # TODO : Multinode config
         self._log.info('Getting YARN app')
-        os.system('wget https://dl.dropboxusercontent.com/u/28410803/Pilot-YARN-0.1-jar-with-dependencies.jar')
+        os.system('wget https://www.dropbox.com/s/9yxbj9btibgtg40/Pilot-YARN-0.1-jar-with-dependencies.jar')
         self._log.info(self._cfg['lrms_info']['lm_info'])
         self.launch_command = self._cfg['lrms_info']['lm_info']['launch_command']
         self._log.info('YARN was called')
