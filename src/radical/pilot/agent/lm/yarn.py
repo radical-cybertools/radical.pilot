@@ -311,7 +311,7 @@ class Yarn(LaunchMethod):
     def _configure(self):
 
         # Single Node configuration
-        # TODO : Multinode config
+        # FIXME : Upload App to another server, which will be always alive
         self._log.info('Getting YARN app')
         os.system('wget https://www.dropbox.com/s/9yxbj9btibgtg40/Pilot-YARN-0.1-jar-with-dependencies.jar')
         self._log.info(self._cfg['lrms_info']['lm_info'])
