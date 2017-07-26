@@ -78,6 +78,19 @@ class Session(rs.Session):
 
         """
 
+        if os.uname()[0] == 'Darwin':
+            # on MacOS, we are running out of file descriptors soon.  The code
+            # below attempts to increase the limit of open files - but any error
+            # is silently ignored, so this is an best-effort, no guarantee.  We
+            # leave responsibility for system limits with the user.
+            try:
+                import resource
+                limits    = list(resource.getrlimit(resource.RLIMIT_NOFILE))
+                limits[0] = 512
+                resource.setrlimit(resource.RLIMIT_NOFILE, limits)
+            except:
+                pass
+
         self._dh          = ru.DebugHelper()
         self._valid       = True
         self._closed      = False
@@ -92,9 +105,9 @@ class Session(rs.Session):
         self._cache       = dict()  # cache sandboxes etc.
         self._cache_lock  = threading.RLock()
 
-        self._cache['global_sandbox']  = dict()
-        self._cache['session_sandbox'] = dict()
-        self._cache['pilot_sandbox']   = dict()
+        self._cache['resource_sandbox'] = dict()
+        self._cache['session_sandbox']  = dict()
+        self._cache['pilot_sandbox']    = dict()
 
         # before doing anything else, set up the debug helper for the lifetime
         # of the session.
@@ -106,6 +119,27 @@ class Session(rs.Session):
         self._umgrs      = dict()
         self._bridges    = list()
         self._components = list()
+
+        # FIXME: we work around some garbage collection issues we don't yet
+        #        understand: instead of relying on the GC to eventually collect
+        #        some stuff, we actively free those on `session.close()`, at
+        #        least for the current process.  Usually, all resources get
+        #        nicely collected on process termination - but not when we
+        #        create many sessions (one after the other) in the same
+        #        application instance (ie. the same process).  This workarounf
+        #        takes care of that use case.
+        #        The clean solution would be to ensure clean termination
+        #        sequence, something which I seem to be unable to implement...
+        #        :/
+        self._to_close   = list()
+        self._to_stop    = list()
+        self._to_destroy = list()
+
+        # cache the client sandbox
+        # FIXME: this needs to be overwritten if configured differently in the
+        #        session config, as should be the case for any agent side
+        #        session instance.
+        self._client_sandbox = os.getcwd()
 
         # The resource configuration dictionary associated with the session.
         self._resource_configs = {}
@@ -253,6 +287,9 @@ class Session(rs.Session):
     def _atfork_child(self)  : 
         self._components = list()
         self._bridges    = list()
+        self._to_close   = list()
+        self._to_stop    = list()
+        self._to_destroy = list()
 
     
     # --------------------------------------------------------------------------
@@ -311,7 +348,7 @@ class Session(rs.Session):
                         break
 
         finally:
-            self._valid_iter -= 1
+            pass
 
         if not self._valid and term:
             self._log.warn("session %s is invalid" % self.uid)
@@ -384,7 +421,7 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def close(self, cleanup=None, terminate=None, delete=None):
+    def close(self, cleanup=False, terminate=True, download=False):
         """Closes the session.
 
         All subsequent attempts access objects attached to the session will 
@@ -403,7 +440,6 @@ class Session(rs.Session):
         # close only once
         if self._closed:
             return
-        self._closed = True
 
         self._log.report.info('closing session %s' % self._uid)
         self._log.debug("session %s closing" % (str(self._uid)))
@@ -412,17 +448,6 @@ class Session(rs.Session):
         # set defaults
         if cleanup   == None: cleanup   = True
         if terminate == None: terminate = True
-
-        # we keep 'delete' for backward compatibility.  If it was set, and the
-        # other flags (cleanup, terminate) are as defaulted (True), then delete
-        # will supercede them.  Delete is considered deprecated though, and
-        # we'll thus issue a warning.
-        if delete != None:
-            if  cleanup == True and terminate == True:
-                cleanup   = delete
-                terminate = delete
-                self._log.warning("'delete' flag on session is deprecated. " \
-                             "Please use 'cleanup' and 'terminate' instead!")
 
         if  cleanup:
             # cleanup implies terminate
@@ -438,6 +463,12 @@ class Session(rs.Session):
             pmgr.close(terminate=terminate)
             self._log.debug("session %s closed pmgr   %s", self._uid, pmgr_uid)
 
+        for comp in self._components:
+            self._log.debug("session %s closes comp   %s", self._uid, comp.uid)
+            comp.stop()
+            comp.join()
+            self._log.debug("session %s closed comp   %s", self._uid, comp.uid)
+
         for bridge in self._bridges:
             self._log.debug("session %s closes bridge %s", self._uid, bridge.uid)
             bridge.stop()
@@ -452,7 +483,30 @@ class Session(rs.Session):
         self.prof.prof("closed", uid=self._uid)
         self.prof.close()
 
+        # support GC
+        for x in self._to_close: 
+            try:    x.close()
+            except: pass
+        for x in self._to_stop:
+            try:    x.stop()
+            except: pass
+        for x in self._to_destroy:
+            try:    x.destroy()
+            except: pass
+
+        self._closed = True
         self._valid = False
+
+        # after all is said and done, we attempt to download the pilot log- and
+        # profiles, if so wanted
+        if download:
+            # let file systems settle
+            time.sleep(5)
+
+            self.fetch_json()
+            self.fetch_profiles()
+            self.fetch_logfiles()
+
         self._log.report.info('<<session lifetime: %.1fs' % (self.closed - self.created))
         self._log.report.ok('>>ok\n')
 
@@ -790,19 +844,32 @@ class Session(rs.Session):
 
     # -------------------------------------------------------------------------
     #
-    def fetch_profiles(self, tgt=None):
-        return rpu.fetch_profiles(self._uid, dburl=self.dburl, tgt=tgt, session=self)
+    def fetch_profiles(self, tgt=None, fetch_client=False):
+        return rpu.fetch_profiles(self._uid, dburl=self.dburl, tgt=tgt, 
+                                  session=self)
 
 
     # -------------------------------------------------------------------------
     #
-    def fetch_json(self, tgt=None):
-        return rpu.fetch_json(self._uid, dburl=self.dburl, tgt=tgt)
+    def fetch_logfiles(self, tgt=None, fetch_client=False):
+        return rpu.fetch_logfiles(self._uid, dburl=self.dburl, tgt=tgt, 
+                                  session=self)
 
 
     # -------------------------------------------------------------------------
     #
-    def _get_global_sandbox(self, pilot):
+    def fetch_json(self, tgt=None, fetch_client=False):
+        if not tgt:
+            tgt = '%s/%s' % (os.getcwd(), self.uid)
+
+        return rpu.fetch_json(self._uid, dburl=self.dburl, tgt=tgt,
+                              session=self)
+
+
+
+    # -------------------------------------------------------------------------
+    #
+    def _get_resource_sandbox(self, pilot):
         """
         for a given pilot dict, determine the global RP sandbox, based on the
         pilot's 'resource' attribute.
@@ -822,7 +889,7 @@ class Session(rs.Session):
         # we cache it
         with self._cache_lock:
 
-            if resource not in self._cache['global_sandbox']:
+            if resource not in self._cache['resource_sandbox']:
 
                 # cache miss -- determine sandbox and fill cache
                 rcfg   = self.get_resource_config(resource, schema)
@@ -869,9 +936,9 @@ class Session(rs.Session):
                 fs_url.path = "%s/radical.pilot.sandbox" % sandbox_base
         
                 # before returning, keep the URL string in cache
-                self._cache['global_sandbox'][resource] = fs_url
+                self._cache['resource_sandbox'][resource] = fs_url
 
-            return self._cache['global_sandbox'][resource]
+            return self._cache['resource_sandbox'][resource]
 
 
     # --------------------------------------------------------------------------
@@ -892,8 +959,8 @@ class Session(rs.Session):
             if resource not in self._cache['session_sandbox']:
 
                 # cache miss
-                global_sandbox  = self._get_global_sandbox(pilot)
-                session_sandbox = rs.Url(global_sandbox)
+                resource_sandbox      = self._get_resource_sandbox(pilot)
+                session_sandbox       = rs.Url(resource_sandbox)
                 session_sandbox.path += '/%s' % self.uid
 
                 with self._cache_lock:
@@ -910,14 +977,20 @@ class Session(rs.Session):
 
         # FIXME: this should get 'pid, resource, schema=None' as parameters
 
+        self.is_valid()
+
+        pilot_sandbox = pilot.get('sandbox')
+        if pilot_sandbox:
+            return rs.Url(pilot_sandbox)
+
         pid = pilot['uid']
         with self._cache_lock:
             if  pid in self._cache['pilot_sandbox']:
                 return self._cache['pilot_sandbox'][pid]
 
         # cache miss
-        session_sandbox = self._get_session_sandbox(pilot)
-        pilot_sandbox  = rs.Url (session_sandbox)
+        session_sandbox     = self._get_session_sandbox(pilot)
+        pilot_sandbox       = rs.Url(session_sandbox)
         pilot_sandbox.path += '/%s/' % pilot['uid']
 
         with self._cache_lock:
@@ -935,6 +1008,22 @@ class Session(rs.Session):
         # we don't cache unit sandboxes, they are just a string concat.
         pilot_sandbox = self._get_pilot_sandbox(pilot)
         return "%s/%s/" % (pilot_sandbox, unit['uid'])
+
+
+    # -------------------------------------------------------------------------
+    #
+    def _get_client_sandbox(self):
+        """
+        For the session in the client application, this is os.getcwd().  For the
+        session in any other component, specifically in pilot components, the
+        client sandbox needs to be read from the session config (or pilot
+        config).  The latter is not yet implemented, so the pilot can not yet
+        interpret client sandboxes.  Since pilot-side stagting to and from the
+        client sandbox is not yet supported anyway, this seems acceptable
+        (FIXME).
+        """
+
+        return self._client_sandbox
 
 
 # -----------------------------------------------------------------------------

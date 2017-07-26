@@ -7,6 +7,12 @@ then
     exec 2>&1
 fi
 
+if test "`uname`" = 'Darwin'
+then
+    echo 'Darwin: increasing open file limit'
+    ulimit -n 512
+fi
+
 echo "bootstrap_1 stderr redirected to stdout"
 
 # ------------------------------------------------------------------------------
@@ -48,6 +54,8 @@ CCM=
 PILOT_ID=
 RP_VERSION=
 PYTHON=
+PYTHON_DIST=
+VIRTENV_DIST=
 SESSION_ID=
 SESSION_SANDBOX=
 PILOT_SANDBOX=`pwd`
@@ -474,50 +482,6 @@ run_cmd()
 }
 
 
-# ------------------------------------------------------------------------------
-# print out script usage help
-#
-usage()
-{
-    msg="$@"
-
-    if ! test -z "$msg"
-    then
-        printf "\n\tERROR: $msg\n\n" >> /dev/stderr
-    fi
-
-    cat << EOF >> /dev/stderr
-usage: $0 options
-
-This script launches a RADICAL-Pilot agent.
-
-OPTIONS:
-   -b   python distribution (default, anaconda)
-   -c   ccm mode of agent startup
-   -d   distribution source tarballs for radical stack install
-   -e   execute commands before bootstrapping phase 1: the main agent
-   -f   tunnel forward endpoint (MongoDB host:port)
-   -h   hostport to create tunnel to
-   -i   python Interpreter to use, e.g., python2.7
-   -m   mode of stack installion
-   -p   pilot ID
-   -r   radical-pilot version version to install in virtenv
-   -s   session ID
-   -t   tunnel device for connection forwarding
-   -v   virtualenv location (create if missing)
-   -w   execute commands before bootstrapping phase 2: the worker
-   -x   exit cleanup - delete pilot sandbox, virtualenv etc. after completion
-   -y   runtime limit
-
-EOF
-
-    # On error message, exit with error code
-    if ! test -z "$msg"
-    then
-        exit 1
-    fi
-}
-
 
 # ------------------------------------------------------------------------------
 #
@@ -548,6 +512,7 @@ virtenv_setup()
     virtenv="$2"
     virtenv_mode="$3"
     python_dist="$4"
+    virtenv_dist="$5"
 
     ve_create=UNDEFINED
     ve_update=UNDEFINED
@@ -701,7 +666,7 @@ virtenv_setup()
         then
             echo 'rp lock for ve create'
             lock "$pid" "$virtenv" # use default timeout
-            virtenv_create "$virtenv" "$python_dist"
+            virtenv_create "$virtenv" "$python_dist" "$virtenv_dist"
             if ! test "$?" = 0
             then
                echo "Error on virtenv creation -- abort"
@@ -860,57 +825,93 @@ virtenv_activate()
 #
 virtenv_create()
 {
+    # create a fresh ve
     profile_event 'virtenv_create start'
 
     virtenv="$1"
     python_dist="$2"
+    virtenv_dist="$3"
 
     if test "$python_dist" = "default"
     then
-        # NOTE: create a fresh virtualenv. We use an older 1.9.x version of
-        #       virtualenv as this seems to work more reliable than newer versions.
-        run_cmd "Download virtualenv tgz" \
-                "curl -k -O '$VIRTENV_TGZ_URL'"
 
-        if ! test "$?" = 0
+        # by default, we download an older 1.9.x version of virtualenv as this 
+        # seems to work more reliable than newer versions, on some machines.
+        # Only on machines where the system virtenv seems to be more stable or
+        # where 1.9 is known to fail, we use the system ve.
+        if test "$virtenv_dist" = "default"
         then
-            echo "WARNING: Couldn't download virtualenv via curl! Using system version."
-            BOOTSTRAP_CMD="virtualenv $virtenv"
-
-        else :
-            run_cmd "unpacking virtualenv tgz" \
-                    "tar zxmf '$VIRTENV_TGZ'"
-
-            if test $? -ne 0
-            then
-                echo "Couldn't unpack virtualenv!"
-                return 1
-            fi
-
-            BOOTSTRAP_CMD="$PYTHON virtualenv-1.9/virtualenv.py $virtenv"
+            virtenv_dist="1.9"
         fi
-    fi
 
-    if test "$python_dist" = "anaconda"
+        if test "$virtenv_dist" = "1.9"
+        then
+            run_cmd "Download virtualenv tgz" \
+                    "curl -k -O '$VIRTENV_TGZ_URL'"
+
+            if ! test "$?" = 0
+            then
+                echo "WARNING: Couldn't download virtualenv via curl! Using system version."
+                virtenv_dist="system"
+
+            else :
+                run_cmd "unpacking virtualenv tgz" \
+                        "tar zxmf '$VIRTENV_TGZ'"
+
+                if test $? -ne 0
+                then
+                    echo "Couldn't unpack virtualenv! Using systemv version"
+                    virtenv_dist="default"
+                else
+                    VIRTENV_CMD="$PYTHON virtualenv-1.9/virtualenv.py"
+                fi
+
+            fi
+        fi
+
+        # don't use `elif` here - above falls back to 'system' virtenv on errors
+        if test "$virtenv_dist" = "system"
+        then
+            VIRTENV_CMD="virtualenv"
+        fi
+
+        if test "$VIRTENV_CMD" = ""
+        then
+            echo "ERROR: invalid or unusable virtenv_dist option"
+            return 1
+        fi
+
+        run_cmd "Create virtualenv" \
+                "$VIRTENV_CMD $virtenv"
+
+        if test $? -ne 0
+        then
+            echo "ERROR: Couldn't create virtualenv"
+            return 1
+        fi
+
+        # clean out virtenv sources
+        if test -d "virtualenv-1.9/"
+        then
+            rm -rf "virtualenv-1.9/" "$VIRTENV_TGZ"
+        fi
+
+
+    elif test "$python_dist" = "anaconda"
     then
         run_cmd "Create virtualenv" \
-            "conda create -y -p $virtenv python=2.7"
+                "conda create -y -p $virtenv python=2.7"
+        if test $? -ne 0
+        then
+            echo "ERROR: Couldn't create virtualenv"
+            return 1
+        fi
+
     else
-        run_cmd "Create virtualenv" \
-            "$BOOTSTRAP_CMD"
-    fi
-
-    # clean out virtenv sources
-    if test -d "virtualenv-1.9/"
-    then
-        rm -rf "virtualenv-1.9/"
-    fi
-
-    if test $? -ne 0
-    then
-        echo "Couldn't create virtualenv"
+        echo "ERROR: invalid python_dist option ($python_dist)"
         return 1
     fi
+
 
     # activate the virtualenv
     virtenv_activate "$virtenv" "$python_dist"
@@ -969,8 +970,18 @@ virtenv_create()
     # of the RADICAL stack
     for dep in $VIRTENV_RADICAL_DEPS
     do
+        # NOTE: we have to make sure not to use wheels on titan
+        hostname | grep titan 2&>1 >/dev/null
+        if test "$?" = 1
+        then
+            # this is titan
+            wheeled="--no-binary :all:"
+        else
+            wheeled=""
+        fi
+
         run_cmd "install $dep" \
-                "$PIP install $dep" \
+                "$PIP install $wheeled $dep" \
              || echo "Couldn't install $dep! Lets see how far we get ..."
     done
 }
@@ -1332,7 +1343,28 @@ env | sort | grep '=' | tee env.orig
 echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
-while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
+#
+# OPTIONS:
+#    -a   session sandbox
+#    -b   python distribution (default, anaconda)
+#    -c   ccm mode of agent startup
+#    -d   distribution source tarballs for radical stack install
+#    -e   execute commands before bootstrapping phase 1: the main agent
+#    -f   tunnel forward endpoint (MongoDB host:port)
+#    -g   virtualenv distribution (default, 1.9, system)
+#    -h   hostport to create tunnel to
+#    -i   python Interpreter to use, e.g., python2.7
+#    -m   mode of stack installion
+#    -p   pilot ID
+#    -r   radical-pilot version version to install in virtenv
+#    -s   session ID
+#    -t   tunnel device for connection forwarding
+#    -v   virtualenv location (create if missing)
+#    -w   execute commands before bootstrapping phase 2: the worker
+#    -x   exit cleanup - delete pilot sandbox, virtualenv etc. after completion
+#    -y   runtime limit
+# 
+while getopts "a:b:cd:e:f:g:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
     case $OPTION in
         a)  SESSION_SANDBOX="$OPTARG"  ;;
         b)  PYTHON_DIST="$OPTARG"  ;;
@@ -1340,6 +1372,7 @@ while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
         d)  SDISTS="$OPTARG"  ;;
         e)  pre_bootstrap_1 "$OPTARG"  ;;
         f)  FORWARD_TUNNEL_ENDPOINT="$OPTARG"  ;;
+        g)  VIRTENV_DIST="$OPTARG"  ;;
         h)  HOSTPORT="$OPTARG"  ;;
         i)  PYTHON="$OPTARG"  ;;
         m)  VIRTENV_MODE="$OPTARG"  ;;
@@ -1351,7 +1384,8 @@ while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
         w)  pre_bootstrap_2 "$OPTARG"  ;;
         x)  CLEANUP="$OPTARG"  ;;
         y)  RUNTIME="$OPTARG"  ;;
-        *)  usage "Unknown option: '$OPTION'='$OPTARG'"  ;;
+        *)  echo "Unknown option: '$OPTION'='$OPTARG'"
+            return 1;;
     esac
 done
 
@@ -1421,9 +1455,9 @@ rmdir "$VIRTENV" 2>/dev/null
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
-if test -z "$RUNTIME"     ; then  usage "missing RUNTIME"   ;  fi
-if test -z "$PILOT_ID"    ; then  usage "missing PILOT_ID"  ;  fi
-if test -z "$RP_VERSION"  ; then  usage "missing RP_VERSION";  fi
+if test -z "$RUNTIME"     ; then  echo "missing RUNTIME"   ; return 1;  fi
+if test -z "$PILOT_ID"    ; then  echo "missing PILOT_ID"  ; return 1;  fi
+if test -z "$RP_VERSION"  ; then  echo "missing RP_VERSION"; return 1;  fi
 
 # pilot runtime is specified in minutes -- on shell level, we want seconds
 RUNTIME=$((RUNTIME * 60))
@@ -1481,7 +1515,8 @@ fi
 rehash "$PYTHON"
 
 # ready to setup the virtenv
-virtenv_setup    "$PILOT_ID" "$VIRTENV" "$VIRTENV_MODE" "$PYTHON_DIST"
+virtenv_setup    "$PILOT_ID"    "$VIRTENV" "$VIRTENV_MODE" \
+                 "$PYTHON_DIST" "$VIRTENV_DIST"
 virtenv_activate "$VIRTENV" "$PYTHON_DIST"
 
 # ------------------------------------------------------------------------------
@@ -1736,7 +1771,7 @@ then
     # this agent has been canceled.  We don't care (much) how it died)
     if ! test "$AGENT_EXITCODE" = "0"
     then
-        echo "chaning exit code from $AGENT_EXITCODE to 0 for canceled pilot"
+        echo "changing exit code from $AGENT_EXITCODE to 0 for canceled pilot"
         AGENT_EXITCODE=0
     fi
 fi

@@ -99,7 +99,7 @@
     },
 
     "xsede.supermic" : {
-        "project"  : "TG-CCR140028",
+        "project"  : "TG-MCB090174",
         "queue"    : "workq",
         "schema"   : "gsissh",
         "cores"    : 64
@@ -122,6 +122,13 @@
     "xsede.stampede_ortelib" : {
         "project"  : "TG-MCB090174",
         "queue"    : "development",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "xsede.bridges" : {
+        "project"  : null,
+        "queue"    : "RM",
         "schema"   : "gsissh",
         "cores"    : 64
     },
@@ -265,6 +272,20 @@
         "queue"    : null,
         "schema"   : "ssh",
         "cores"    : 1
+    },
+
+    "radical.one" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 8
+    }, 
+
+    "radical.two" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 8
     }
 }
 

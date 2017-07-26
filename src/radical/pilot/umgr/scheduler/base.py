@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import os
 import copy
 import threading
 
@@ -50,8 +51,9 @@ class UMGRSchedulingComponent(rpu.Component):
     #
     def initialize_child(self):
 
-        self._pilots      = dict()             # set of pilots to schedule over
-        self._pilots_lock = threading.RLock()  # lock on the above set
+        self._early       = dict()            # early-bound units, sorted by pid
+        self._pilots      = dict()            # dict of pilots to schedule over
+        self._pilots_lock = threading.RLock() # lock on the above set
 
         # configure the scheduler instance
         self._configure()
@@ -69,6 +71,25 @@ class UMGRSchedulingComponent(rpu.Component):
         # Schedulers use that command channel to get information about
         # pilots being added or removed.
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._base_command_cb)
+
+        # cache the local client sandbox to avoid repeated os calls
+        self._client_sandbox = os.getcwd()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize_child(self):
+
+        self._log.info(' ====finalize_child')
+
+        self.unregister_subscriber(rpc.CONTROL_PUBSUB, self._base_command_cb)
+        self.unregister_subscriber(rpc.STATE_PUBSUB,   self._base_state_cb)
+        self.unregister_output(rps.UMGR_STAGING_INPUT_PENDING)
+        self.unregister_input (rps.UMGR_SCHEDULING_PENDING,
+                               rpc.UMGR_SCHEDULING_QUEUE, self.work)
+
+
+        self._log.info(' ====finalize_child done')
 
 
     # --------------------------------------------------------------------------
@@ -190,9 +211,6 @@ class UMGRSchedulingComponent(rpu.Component):
     #
     def _update_unit_states(self, units):
 
-      # if not units:
-      #     print ' === no units to update'
-
         self.update_units(units)
 
 
@@ -246,6 +264,21 @@ class UMGRSchedulingComponent(rpu.Component):
 
                 self._update_pilot_states(pilots)
 
+                for pilot in pilots:
+
+                    pid = pilot['uid']
+
+                    # if we have any early_bound units waiting for this pilots,
+                    # advance them now
+                    early_units = self._early.get(pid)
+                    if early_units:
+                        for unit in early_units:
+                            if not unit.get('sandbox'):
+                                unit['sandbox'] = self._session._get_unit_sandbox(unit, pilot)
+
+                        self.advance(early_units, rps.UMGR_STAGING_INPUT_PENDING, 
+                                     publish=True, push=True)
+
             # let the scheduler know
             self.add_pilots([pilot['uid'] for pilot in pilots])
 
@@ -281,6 +314,21 @@ class UMGRSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def _assign_pilot(self, unit, pilot):
+        '''
+        assign a unit to a pilot.
+        This is also a good opportunity to determine the unit sandbox(es).
+        '''
+
+        unit['pilot'           ] = pilot['uid']
+        unit['client_sandbox'  ] = str(self._session._get_client_sandbox())
+        unit['resource_sandbox'] = str(self._session._get_resource_sandbox(pilot))
+        unit['pilot_sandbox'   ] = str(self._session._get_pilot_sandbox(pilot))
+        unit['unit_sandbox'    ] = str(self._session._get_unit_sandbox(unit, pilot))
+
+
+    # --------------------------------------------------------------------------
+    #
     def add_pilots(self, pids):
         raise NotImplementedError("add_pilots() missing for '%s'" % self.uid)
 
@@ -305,7 +353,67 @@ class UMGRSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def work(self):
+    def work(self, units):
+        '''
+        We get a number of units, and filter out those which are already bound
+        to a pilot.  Those will get adavnced to UMGR_STAGING_INPUT_PENDING
+        straight away.  All other units are passed on to `self._work()`, which
+        is the scheduling routine as implemented by the deriving scheduler
+        classes.
+
+        Note that the filter needs to know any pilot the units are early-bound
+        to, as it needs to obtain the unit's sandbox information to prepare for
+        the follow-up staging ops.  If the respective pilot is not yet known,
+        the units are put into a early-bound-wait list, which is checked and
+        emptied as pilots get registered.
+        '''
+
+        if not isinstance(units, list):
+            units = [units]
+
+        self.advance(units, rps.UMGR_SCHEDULING, publish=True, push=False)
+
+        to_schedule = list()
+
+        with self._pilots_lock:
+
+            for unit in units:
+
+                uid = unit['uid']
+                pid = unit.get('pilot')
+
+                if pid:
+                    # this unit is bound already (it is early-bound), so we don't
+                    # need to pass it to the actual schedulng algorithymus
+
+                    # check if we know about the pilot, so that we can advance
+                    # the unit to data staging
+                    pilot = self._pilots.get(pid, {}).get('pilot')
+                    if pilot:
+                        # make sure we have a sandbox defined, too
+                        if not unit.get('sandbox'):
+                            pilot = self._pilots[pid]['pilot']
+                            unit['sandbox'] = self._session._get_unit_sandbox(unit, pilot)
+
+                        self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING, 
+                                     publish=True, push=True)
+                    else:
+                        # otherwise keep in `self._early` until we learn about
+                        # the pilot
+                        self._log.warn('got unit %s for unknown pilot %s', uid, pid)
+                        if pid not in self._early: 
+                            self._early[pid] = list()
+                        self._early[pid].append(unit)
+
+                else:
+                    to_schedule.append(unit)
+
+        self._work(to_schedule)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _work(self, units=None):
         raise NotImplementedError("work() missing for '%s'" % self.uid)
 
 

@@ -57,7 +57,7 @@ properly, run:
 .. code-block:: bash
 
     $ radicalpilot-version
-    0.37
+    0.36
 
 The exact output will obviously depend on the exact version of RP which got
 installed.
@@ -198,6 +198,11 @@ to ``0.6c11`` via
 .. code-block:: bash
 
     $ pip install --upgrade setuptools==0.6c11
+
+.. note::
+
+    RADICAL-Pilot can be installed under Anaconda, although that mode is not
+    tested as thoroughly compared to installation under non-Anaconda Python.
 
 
 **Mailing Lists**
