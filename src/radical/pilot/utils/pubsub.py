@@ -48,6 +48,8 @@ def _uninterruptible(f, *args, **kwargs):
         cnt += 1
         try:
             return f(*args, **kwargs)
+        except zmq.ContextTerminated as e:
+            return None
         except zmq.ZMQError as e:
             if e.errno == errno.EINTR:
                 if cnt > 10:
@@ -83,6 +85,7 @@ class Pubsub(ru.Process):
         assert(self._role in PUBSUB_ROLES), 'invalid role %s' % self._role
 
         self._uid = "%s.%s" % (self._channel.replace('_', '.'), self._role)
+        self._uid = ru.generate_id(self._uid)
         self._log = self._session._get_logger(self._uid, 
                          level=self._cfg.get('log_level', 'debug'))
 
@@ -92,9 +95,13 @@ class Pubsub(ru.Process):
         else:
             self._debug = False
 
-        self._q         = None           # the zmq queue
-        self._addr_in   = None           # bridge input  addr
-        self._addr_out  = None           # bridge output addr
+        self._addr_in   = None  # bridge input  addr
+        self._addr_out  = None  # bridge output addr
+
+        self._q    = None
+        self._in   = None
+        self._out  = None
+        self._ctx  = None
 
         if not self._addr:
             self._addr = 'tcp://*:*'
@@ -108,11 +115,14 @@ class Pubsub(ru.Process):
         # behavior depends on the role...
         if self._role == PUBSUB_PUB:
 
-            ctx = zmq.Context()
-            self._q = ctx.socket(zmq.PUB)
+            self._ctx = zmq.Context()
+            self._session._to_destroy.append(self._ctx)
+
+            self._q   = self._ctx.socket(zmq.PUB)
             self._q.linger = _LINGER_TIMEOUT
             self._q.hwm    = _HIGH_WATER_MARK
             self._q.connect(self._addr)
+            self.start(spawn=False)
 
 
         # ----------------------------------------------------------------------
@@ -146,11 +156,14 @@ class Pubsub(ru.Process):
         # ----------------------------------------------------------------------
         elif self._role == PUBSUB_SUB:
 
-            ctx = zmq.Context()
-            self._q = ctx.socket(zmq.SUB)
+            self._ctx = zmq.Context()
+            self._session._to_destroy.append(self._ctx)
+
+            self._q   = self._ctx.socket(zmq.SUB)
             self._q.linger = _LINGER_TIMEOUT
             self._q.hwm    = _HIGH_WATER_MARK
             self._q.connect(self._addr)
+            self.start(spawn=False)
 
 
     # --------------------------------------------------------------------------
@@ -199,13 +212,15 @@ class Pubsub(ru.Process):
         spt.setproctitle('rp.%s' % self._uid)
         self._log.info('start bridge %s on %s', self._uid, self._addr)
 
-        ctx = zmq.Context()
-        self._in = ctx.socket(zmq.XSUB)
+        self._ctx = zmq.Context()
+        self._session._to_destroy.append(self._ctx)
+
+        self._in  = self._ctx.socket(zmq.XSUB)
         self._in.linger = _LINGER_TIMEOUT
         self._in.hwm    = _HIGH_WATER_MARK
         self._in.bind(self._addr)
 
-        self._out = ctx.socket(zmq.XPUB)
+        self._out = self._ctx.socket(zmq.XPUB)
         self._out.linger = _LINGER_TIMEOUT
         self._out.hwm    = _HIGH_WATER_MARK
         self._out.bind(self._addr)
@@ -222,6 +237,16 @@ class Pubsub(ru.Process):
         self._poll = zmq.Poller()
         self._poll.register(self._in,  zmq.POLLIN)
         self._poll.register(self._out, zmq.POLLIN)
+
+
+    # --------------------------------------------------------------------------
+    # 
+    def ru_finalize_common(self):
+
+        if self._q   : self._q  .close()
+        if self._in  : self._in .close()
+        if self._out : self._out.close()
+        if self._ctx : self._ctx.destroy()
 
 
     # --------------------------------------------------------------------------

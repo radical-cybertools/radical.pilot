@@ -124,7 +124,7 @@ class PilotManager(rpu.Component):
         # let session know we exist
         self._session._register_pmgr(self)
 
-        self._prof.prof('PMGR setup done', logger=self._log.debug)
+        self._prof.prof('PMGR setup done')
         self._log.report.ok('>>ok\n')
 
 
@@ -172,7 +172,7 @@ class PilotManager(rpu.Component):
 
         if self._closed:
             return
-        self._closed = True
+        self._terminate.set()
 
         self._log.report.info('<<close pilot manager')
 
@@ -188,13 +188,12 @@ class PilotManager(rpu.Component):
             # if this cancel op fails and the pilots are s till alive after
             # timeout, the pmgr.launcher termination will kill them
 
-        self._terminate.set()
         self.stop()
-
 
         self._session.prof.prof('closed pmgr', uid=self._uid)
         self._log.info("Closed PilotManager %s." % self._uid)
 
+        self._closed = True
         self._log.report.ok('>>ok\n')
 
 
@@ -239,6 +238,9 @@ class PilotManager(rpu.Component):
     #
     def _state_pull_cb(self):
 
+        if self._terminate.is_set():
+            return False
+
         # pull all pilot states from the DB, and compare to the states we know
         # about.  If any state changed, update the known pilot instances and 
         # push an update message to the state pubsub.
@@ -259,6 +261,9 @@ class PilotManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _state_sub_cb(self, topic, msg):
+
+        if self._terminate.is_set():
+            return False
 
         cmd = msg.get('cmd')
         arg = msg.get('arg')

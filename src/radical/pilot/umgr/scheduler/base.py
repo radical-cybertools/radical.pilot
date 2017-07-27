@@ -78,6 +78,22 @@ class UMGRSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def finalize_child(self):
+
+        self._log.info(' ====finalize_child')
+
+        self.unregister_subscriber(rpc.CONTROL_PUBSUB, self._base_command_cb)
+        self.unregister_subscriber(rpc.STATE_PUBSUB,   self._base_state_cb)
+        self.unregister_output(rps.UMGR_STAGING_INPUT_PENDING)
+        self.unregister_input (rps.UMGR_SCHEDULING_PENDING,
+                               rpc.UMGR_SCHEDULING_QUEUE, self.work)
+
+
+        self._log.info(' ====finalize_child done')
+
+
+    # --------------------------------------------------------------------------
+    #
     # This class-method creates the appropriate sub-class for the Scheduler.
     #
     @classmethod
@@ -194,9 +210,6 @@ class UMGRSchedulingComponent(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _update_unit_states(self, units):
-
-      # if not units:
-      #     print ' === no units to update'
 
         self.update_units(units)
 
