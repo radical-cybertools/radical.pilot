@@ -37,11 +37,12 @@ class Spark(LaunchMethod):
 
         if not os.environ.get('SPARK_HOME'):
             logger.info("Downloading Apache Spark..")
-            try:    
+            try:
+
                 VERSION = "2.0.2"
                 subprocess.check_call("wget http://d3kbcqa49mib13.cloudfront.net/spark-2.0.2-bin-hadoop2.7.tgz".split())
                 subprocess.check_call('tar -xzf spark-2.0.2-bin-hadoop2.7.tgz'.split())
-                subprocess.check_call("rm spark-2.0.2-bin-hadoop2.7.tgz".split())
+                subprocess.check_call("rm spark-2.0.2-bin-hadoop2.7.tgz ".split())
                 subprocess.check_call(("mv spark-2.0.2-bin-hadoop2.7 spark-" + VERSION).split())
             except  Exception as e:
                 raise RuntimeError("Spark wasn't installed properly. Please try again. %s " % e )
