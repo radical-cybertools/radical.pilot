@@ -260,6 +260,9 @@ class Yarn(LaunchMethod):
             os.system('%s/bin/hdfs dfs -mkdir /user/%s'%(hadoop_home,uname))
             check = subprocess.check_output(['%s/bin/hdfs'%hadoop_home,'dfs', '-ls', '/user'])
             logger.info(check)
+            logger.info('Getting YARN app')
+            os.system('wget https://www.dropbox.com/s/9yxbj9btibgtg40/Pilot-YARN-0.1-jar-with-dependencies.jar')
+
             # FIXME YARN: why was the scheduler configure called here?  Configure
             #             is already called during scheduler instantiation
             # self._scheduler._configure()
@@ -312,8 +315,6 @@ class Yarn(LaunchMethod):
 
         # Single Node configuration
         # FIXME : Upload App to another server, which will be always alive
-        self._log.info('Getting YARN app')
-        os.system('wget https://www.dropbox.com/s/9yxbj9btibgtg40/Pilot-YARN-0.1-jar-with-dependencies.jar')
         self._log.info(self._cfg['lrms_info']['lm_info'])
         self.launch_command = self._cfg['lrms_info']['lm_info']['launch_command']
         self._log.info('YARN was called')
