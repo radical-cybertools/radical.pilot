@@ -350,7 +350,7 @@
         "task_launch_method"          : "SPARK",
         "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap_1"             : [ 
-                                        "module load python",
+                                        "module load python" ,
                                         "export TACC_DELETE_FILES=TRUE",
                                         "module load jdk64/1.8.0"
                                         ],
