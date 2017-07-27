@@ -172,12 +172,12 @@ class ABDS(AgentExecutingComponent):
         if not isinstance(units, list):
             units = [units]
 
-        self.advance(units, rps.ALLOCATING, publish=True, push=False)
+        self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
 
         for unit in units:
             self._handle_unit(unit)
 
-        self.advance(units, rps.EXECUTING_PENDING, publish=True, push=False)
+        self.advance(units, rps.AGENT_EXECUTING_PENDING, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
