@@ -233,6 +233,7 @@ class ABDS(AgentExecutingComponent):
         # prep stdout/err so that we can append w/o checking for None
         cu['stdout'] = ''
         cu['stderr'] = ''
+        cu['workdir']=sandbox
 
         launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % sandbox
         self._log.debug("Created launch_script: %s", launch_script_name)
@@ -446,7 +447,7 @@ class ABDS(AgentExecutingComponent):
             # the application is RUNNING it update the state of the CU with the
             # right time stamp. In any other case it works as it was.
             logfile = '%s/%s' % (sandbox, '/YarnApplicationReport.log')
-            if cu['state']==rps.EXECUTING_PENDING \
+            if cu['state']==rps.AGENT_EXECUTING_PENDING \
                     and os.path.isfile(logfile):
 
                 yarnreport = open(logfile,'r')
