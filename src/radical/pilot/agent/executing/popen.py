@@ -174,17 +174,26 @@ class Popen(AgentExecutingComponent) :
     def _handle_unit(self, cu):
 
         ru.raise_on('work unit')
+      # import pprint
+      # self._log.info('handle cu: %s', pprint.pformat(cu))
 
         try:
-            if cu['description']['mpi']:
-                launcher = self._mpi_launcher
-            else :
-                launcher = self._task_launcher
+            # prep stdout/err so that we can append w/o checking for None
+            cu['stdout'] = ''
+            cu['stderr'] = ''
+
+            cpt = cu['description']['cpu_process_type']
+            gpt = cu['description']['gpu_process_type']  # FIXME: use
+
+            # FIXME: this switch is insufficient for mixed units (MPI/OpenMP)
+            if cpt == 'MPI': launcher = self._mpi_launcher
+            else           : launcher = self._task_launcher
 
             if not launcher:
-                raise RuntimeError("no launcher (mpi=%s)" % cu['description']['mpi'])
+                raise RuntimeError("no launcher (process type = %s)" % cpt)
 
-            self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
+            self._log.debug("Launching unit with %s (%s).",
+                            launcher.name, launcher.launch_command)
 
             assert(cu['slots'])
 
@@ -218,10 +227,6 @@ class Popen(AgentExecutingComponent) :
         # make sure the sandbox exists
         rpu.rec_makedir(sandbox)
         launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % sandbox
-
-        # prep stdout/err so that we can append w/o checking for None
-        cu['stdout'] = ''
-        cu['stderr'] = ''
 
         self._log.debug("Created launch_script: %s", launch_script_name)
 

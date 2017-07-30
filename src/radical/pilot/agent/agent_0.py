@@ -318,10 +318,10 @@ class Agent_0(rpu.Worker):
                 agent_cmd = {
                         'slots'        : slots,
                         'description'  : {
-                            'cores'      : 1,
-                            'executable' : "/bin/sh",
-                            'mpi'        : False,
-                            'arguments'  : ["%s/bootstrap_2.sh" % os.getcwd(), sa]
+                            'cpu_processes' : 1,
+                            'executable'    : "/bin/sh",
+                            'mpi'           : False,
+                            'arguments'     : ["%s/bootstrap_2.sh" % os.getcwd(), sa]
                             }
                         }
                 cmd, hop = agent_lm.construct_command(agent_cmd,

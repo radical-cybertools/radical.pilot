@@ -11,12 +11,19 @@ NAME                   = 'name'
 EXECUTABLE             = 'executable'
 ARGUMENTS              = 'arguments'
 ENVIRONMENT            = 'environment'
-CORES                  = 'cores'  # should be: cpu process
-GPUS                   = 'gpus'   # should be: gpu process
-THREADS_PER_PROC       = 'threads_per_proc'
-MPI                    = 'mpi'
-OPENMP                 = 'open_mp'
-CUDA                   = 'cuda'
+
+CORES                  = 'cores'  # deprecated
+
+CPU_PROCESSES          = 'cpu_processes'
+CPU_PROCESS_TYPE       = 'cpu_process_type'
+CPU_THREADS            = 'cpu_threads'
+CPU_THREAD_TYPE        = 'cpu_thread_type'
+
+GPU_PROCESSES          = 'gpu_processes'
+GPU_PROCESS_TYPE       = 'gpu_process_type'
+GPU_THREADS            = 'gpu_threads'
+GPU_THREAD_TYPE        = 'gpu_thread_type'
+
 INPUT_STAGING          = 'input_staging'
 OUTPUT_STAGING         = 'output_staging'
 PRE_EXEC               = 'pre_exec'
@@ -27,6 +34,11 @@ PILOT                  = 'pilot'
 STDOUT                 = 'stdout'
 STDERR                 = 'stderr'
 RESTARTABLE            = 'restartable'
+
+# process / thread types
+POSIX                  = 'POSIX'
+MPI                    = 'MPI'
+OPENMP                 = 'OpenMP'
 
 # ------------------------------------------------------------------------------
 #
@@ -310,8 +322,6 @@ class ComputeUnitDescription(attributes.Attributes):
         self._attributes_register(CLEANUP,          None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PILOT,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
-      # self._attributes_register(START_TIME,       None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(RUN_TIME,         None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
 
         # I/O
         self._attributes_register(STDOUT,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
@@ -320,42 +330,49 @@ class ComputeUnitDescription(attributes.Attributes):
         self._attributes_register(OUTPUT_STAGING,   None, attributes.ANY,    attributes.VECTOR, attributes.WRITEABLE)
 
         # resource requirements
-        self._attributes_register(CORES,            None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(GPUS,             None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(THREADS_PER_PROC, None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(MPI,              None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(OPENMP,           None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(CUDA,             None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(CPU_ARCHITECTURE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(OPERATING_SYSTEM, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(MEMORY,           None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(CPU_PROCESSES,    None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(CPU_PROCESS_TYPE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(CPU_THREADS,      None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(CPU_THREAD_TYPE,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(GPU_PROCESSES,    None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(GPU_PROCESS_TYPE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(GPU_THREADS,      None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(GPU_THREAD_TYPE,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
         # dependencies
       # self._attributes_register(RUN_AFTER,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
       # self._attributes_register(START_AFTER,      None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
       # self._attributes_register(CONCURRENT_WITH,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+      # self._attributes_register(START_TIME,       None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
+      # self._attributes_register(RUN_TIME,         None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
 
         # explicitly set attrib defaults so they get listed and included via as_dict()
-        self.set_attribute (KERNEL,         None)
-        self.set_attribute (NAME,           None)
-        self.set_attribute (EXECUTABLE,     None)
-        self.set_attribute (ARGUMENTS,      None)
-        self.set_attribute (ENVIRONMENT,    None)
-        self.set_attribute (PRE_EXEC,       None)
-        self.set_attribute (POST_EXEC,      None)
-        self.set_attribute (STDOUT,         None)
-        self.set_attribute (STDERR,         None)
-        self.set_attribute (INPUT_STAGING,  None)
-        self.set_attribute (OUTPUT_STAGING, None)
-        self.set_attribute (CORES,             1)
-        self.set_attribute (THREADS_PER_PROC,  1)
-        self.set_attribute (GPUS,              0)
-        self.set_attribute (MPI,            None)
-        self.set_attribute (OPENMP,         None)
-        self.set_attribute (CUDA,           None)
-        self.set_attribute (RESTARTABLE,   False)
-        self.set_attribute (CLEANUP,       False)
-        self.set_attribute (PILOT,          None)
+        self.set_attribute (KERNEL,           None)
+        self.set_attribute (NAME,             None)
+        self.set_attribute (EXECUTABLE,       None)
+        self.set_attribute (ARGUMENTS,        None)
+        self.set_attribute (ENVIRONMENT,      None)
+        self.set_attribute (PRE_EXEC,         None)
+        self.set_attribute (POST_EXEC,        None)
+        self.set_attribute (STDOUT,           None)
+        self.set_attribute (STDERR,           None)
+        self.set_attribute (INPUT_STAGING,    None)
+        self.set_attribute (OUTPUT_STAGING,   None)
+
+        self.set_attribute (CPU_PROCESSES,       1)
+        self.set_attribute (CPU_PROCESS_TYPE, None)
+        self.set_attribute (CPU_THREADS,         1)
+        self.set_attribute (CPU_THREAD_TYPE,  None)
+        self.set_attribute (GPU_PROCESSES,       0)
+        self.set_attribute (GPU_PROCESS_TYPE, None)
+        self.set_attribute (GPU_THREADS,         1)
+        self.set_attribute (GPU_THREAD_TYPE,  None)
+
+        self.set_attribute (RESTARTABLE,     False)
+        self.set_attribute (CLEANUP,         False)
+        self.set_attribute (PILOT,            None)
+
+        self._attributes_register_deprecated(CORES, CPU_PROCESSES)
 
         # apply initialization dict
         if from_dict:

@@ -116,7 +116,7 @@ class Continuous(AgentSchedulingComponent):
     def _allocate_slot(self, cud):
 
         # single_node is enforced for non-message passing tasks
-        if cud['mpi']:
+        if cud['cpu_process_type'] == 'MPI':
             slots = self._alloc_mpi(cud)
         else:
             slots = self._alloc_nompi(cud)
@@ -311,10 +311,10 @@ class Continuous(AgentSchedulingComponent):
         spawn the requested number of threads on its slots.
         '''
 
-        requested_procs  = cud['cores']
-        requested_gpus   = cud['gpus']
-        threads_per_proc = cud['threads_per_proc']
+        requested_procs  = cud['cpu_processes']
+        threads_per_proc = cud['cpu_threads']
         requested_cores  = requested_procs * threads_per_proc
+        requested_gpus   = cud['gpu_processes']
 
         # First and last nodes can be a partial allocation - all other nodes can
         # only be partial when `scattered` is set.

@@ -4,7 +4,8 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 32
+        "cores"    : 32,
+        "gpus"     : 2
     },
 
     "local.localhost_orte" : {

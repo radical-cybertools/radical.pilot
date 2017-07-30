@@ -149,7 +149,8 @@ class Yarn(AgentSchedulingComponent):
         # accept. It needs to go either from the configuration file or find a
         # way to take this value for the YARN scheduler config.
 
-        cores_requested = cu['description']['cores']
+        cores_requested = cu['description']['cpu_processes'] \
+                        * cu['description']['cpu_threads']
         mem_requested   = 2048
         slots           = None
 

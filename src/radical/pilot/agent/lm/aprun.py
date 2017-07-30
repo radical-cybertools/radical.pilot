@@ -35,7 +35,7 @@ class APRun(LaunchMethod):
         cud        = cu['description']
         slots      = cu['slots']
         executable = cud['executable']
-        cores      = cud['cores']
+        cores      = cud['cpu_processes']  # FIXME: cpu_threads
         mpi        = cud['mpi']
         args       = cud.get('arguments') or []
         argstr     = self._create_arg_string(args)

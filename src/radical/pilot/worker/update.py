@@ -121,16 +121,7 @@ class Update(rpu.Worker):
         for entry in self._uids:
             uid   = entry[0]
             state = entry[2]
-<<<<<<< HEAD
             self._prof.prof('update_pushed', msg=state, uid=uid)
-=======
-            if state:
-                self._prof.prof('update', msg='%s update pushed (%s)'
-                                % (ttype, state), uid=uid)
-            else:
-                self._prof.prof('update', msg='%s update pushed' % ttype,
-                                uid=uid)
->>>>>>> devel
 
         # empty bulk, refresh state
         self._last = now
@@ -223,12 +214,7 @@ class Update(rpu.Worker):
                 # we don't push clone states to DB
                 return True
 
-<<<<<<< HEAD
             self._prof.prof('update_request', msg=state, uid=uid)
-=======
-            self._prof.prof('get', msg="update %s state to %s" % (ttype, state),
-                            uid=uid)
->>>>>>> devel
 
             if not state:
                 # nothing to push

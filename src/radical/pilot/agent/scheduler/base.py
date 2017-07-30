@@ -290,8 +290,8 @@ class AgentSchedulingComponent(rpu.Component):
                             self.slot_status())
 
         self._log.debug("%s [%s/%s] : %s [%s]", cu['uid'],
-                        cu['description']['cores'], 
-                        cu['description']['gpus'],
+                        cu['description']['cpu_processes'], 
+                        cu['description']['gpu_processes'],
                         pprint.pformat(cu['slots']))
         return True
 

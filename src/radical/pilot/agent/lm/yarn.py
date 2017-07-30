@@ -327,7 +327,7 @@ class Yarn(LaunchMethod):
         work_dir     = cu['workdir']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cores']
+        task_cores   = cud['cpu_processes'] * cud['cpu_threads']
         task_env     = cud.get('environment') or {}
         task_args    = cud.get('arguments')   or []
         task_argstr  = self._create_arg_string(task_args)

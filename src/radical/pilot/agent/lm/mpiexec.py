@@ -34,7 +34,6 @@ class MPIExec(LaunchMethod):
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
         task_argstr  = self._create_arg_string(task_args)
 
@@ -50,7 +49,7 @@ class MPIExec(LaunchMethod):
         # slot sets, but do not account for threads,
         host_slots = dict()
         for node in slots['nodes']:
-            #               NAME           #CORES         #GPUS
+            #          NAME           #CORES         #GPUS
             host_slots[node[0]] = len(node[2]) + len(node[3])
         self._log.debug('\nhslot: %s', pprint.pformat(host_slots))
 
