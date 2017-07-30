@@ -38,7 +38,7 @@ RESTARTABLE            = 'restartable'
 # process / thread types
 POSIX                  = 'POSIX'
 MPI                    = 'MPI'
-OPENMP                 = 'OpenMP'
+OpenMP                 = 'OpenMP'
 
 # ------------------------------------------------------------------------------
 #
