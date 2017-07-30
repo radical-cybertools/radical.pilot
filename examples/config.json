@@ -8,6 +8,14 @@
         "gpus"     : 2
     },
 
+    "local.localhost_aprun" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 32,
+        "gpus"     : 2
+    },
+
     "local.localhost_orte" : {
         "project"  : null,
         "queue"    : null,

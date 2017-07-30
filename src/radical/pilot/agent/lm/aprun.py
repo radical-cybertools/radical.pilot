@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import pprint
 import radical.utils as ru
 
 from .base import LaunchMethod
@@ -35,82 +36,90 @@ class APRun(LaunchMethod):
         cud        = cu['description']
         slots      = cu['slots']
         executable = cud['executable']
-        cores      = cud['cpu_processes']  # FIXME: cpu_threads
-        mpi        = cud['mpi']
-        args       = cud.get('arguments') or []
+        args       = cud['arguments']
         argstr     = self._create_arg_string(args)
 
-        if argstr: command = "%s %s" % (executable, argstr)
-        else     : command = executable
+        if argstr: cmd = "%s %s" % (executable, argstr)
+        else     : cmd = executable
 
-        if mpi   : pes = cores
-        else     : pes = 1
-
-        # the `slots` struct will tell us on how many (and which) nodes and
-        # cores we can start the CU.  We kind of want that information turned
-        # around: how many executables need to be spawned on each of the nodes
-        # in that list?  We do expect a uniform layout for the resulting set, in
-        # the sense that we expect the same number of cores to be allocated for
-        # each process instance.  We do not expect the same number of processes
-        # per core, and we do not expect homogeneous nodes.  GPU process and
-        # core requests are mapped to core_0, and expected to not really use
-        # that core 
+        # relevant aprun documentation (search for `-cc` and `-L`):
+        # http://docs.cray.com/books/S-2496-4101/html-S-2496-4101/cnl_apps.html
         #
-        # TODO (GPU): is that the right thing to do?  Could not find any advise
-        #             on GPU placement via aprun.  Possibly needs a BW ticket.
+        #     aprun -L node_1 -N 1 -d 3 cmd : \
+        #           -L node_2 -N 2 -d 3 cmd :
         #
-        # We build the following data structure:
+        # Each node can only be used *once* in that spec for any individual
+        # aprun command.  This means that tpp must be uniform for that node 
         #
-        #   nodes = {'node_1' : { 'cpu_procs' : 2,
-        #                         'cpu_tpp'   : 4,
-        #                         'gpu_procs' : 1, 
-        #                         'gpu_tpp'   : 1},
-        #           {'node_2' : { 'cpu_procs' : 4,
-        #                         'cpu_tpp'   : 8,
-        #                         'gpu_procs' : 1, 
-        #                         'gpu_tpp'   : 1},
-        #             ...
-        #           }
+        # Pin the procs and its threads to specific cores:
         #
-        # We will raise an error if `threads_per_process` has different values
-        # for the same node.  We expect the node name to be an identifier
-        # useable for aprun's node specification.  No consistency check is done
-        # on the process and thread placement - we trust the scheduler in its
-        # infinite wisdom.
+        #     aprun -L node_1 -N 1 -d 3 -cc 0,1,2       cmd : \
+        #           -L node_2 -N 2 -d 3 -cc 0,1,2:3,4,5 cmd
         #
+        # create a nodes list out of slots.  This host list will result in one
+        # `-L` argument each.  It contains sets of cores - for each set, one
+        # process will be placed (`-N`).  All sets need to be of the same
+        # length (`-d`).
         nodes = dict()
-        for slot_node in slots['nodes']:
-
-            node_name = slot_node[0]
+        for node in slots['nodes']:
+            node_name = node[0]
             if node_name not in nodes:
-                nodes[node_name] = {'cpu_procs' : 0,
-                                    'cpu_tpp'   : set(), 
-                                    'gpu_procs' : 0, 
-                                    'gpu_tpp'   : set()}  # unused
+                nodes[node_name] = list()  # list of process slots to fill
+            cpu_slots = node[2]
+            gpu_slots = node[3]
 
-            for cpu_slot in slot_node[1]:
-                nodes[node_name]['cpu_procs'] += 1
-                nodes[node_name]['cpu_tpp'].add(len(cpu_slot))
+            # Since we don't really distingush gpu and cpu processes in aprun,
+            # we treat *all* gpu entries as `[0]`, meaning that a single process
+            # will be pinned to core 0.
+            if gpu_slots:
+                gpu_slots = [0]
 
-            for gpu_slot in slot_node[1]:
-                nodes[node_name]['gpu_procs'] += 1
-                nodes[node_name]['gpu_tpp'].add(len(gpu_slot))
+            if cpu_slots:
+                nodes[node_name].extend(cpu_slots)
+            if gpu_slots:
+                nodes[node_name].extend(gpu_slots)
+
+      # self._log.debug('slots: %s', pprint.pformat(slots))
+      # self._log.debug('nodes: %s', pprint.pformat(nodes))
+
+        node_specs = list()
+        for node_name, slots in nodes.iteritems():
+
+            # make sure all process slots have the same depth
+            nprocs = len(slots)
+            depths = set()
+            for slot in slots:
+                depth = len(slot)
+                depths.add(depth)
+          #     self._log.debug('slot %s - %s', slot, depth)
+          # self._log.debug('depths %s', depths)
+            assert(len(depths) == 1), 'inconsistent process depths: %s' % depths
+
+            # make usre that cores are not oversubscribed
+            used_cores  = set()
+            used_ncores = 0
+            for slot in slots:
+                for core in slot:
+                    used_cores.add(core)
+                    used_ncores += 1
+            assert(used_ncores == len(used_cores)), \
+                   'oversubscribed cores : %s' % used_cores
+
+            # convert int slots into strings for the join ops below
+            slots = [[str(core) for core in slot] for slot in slots]
+
+            # get core pinning for each slot (keep track of used cores)
+            cores = [','.join(slot) for slot in slots]
+            pins  =  ':'.join(cores)
+
+            # add the node spec for this node
+            node_specs.append(' -L %s -N %d -d %d -cc %s %s'
+                              % (node_name, nprocs, depth, pins, cmd))
 
 
-        # sanity check
-        for node in nodes:
-
-            if len(node['cpu_tpp'] != 1):
-                self._log.debug(pprint.pformat(slots))
-                self._log.debug(pprint.pformat(nodes))
-                raise ValueError('inconsistent threads_per_process count')
-
-
-        # build apirun command.  For each node, we create a new '-nx exex_n'
-        # section, then concat them all with ':' for a complete layout
-        # description.  GPU procs area added 
-
-        aprun_command = "%s -n %d %s" % (self.launch_command, pes, command)
+        node_layout   = ' : '.join(node_specs)
+        aprun_command = "%s %s" % (self.launch_command, node_layout)
+        self._log.debug('aprun cmd: %s', aprun_command)
 
         return aprun_command, None
 
