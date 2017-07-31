@@ -26,8 +26,11 @@
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
         "pre_bootstrap_1"             : [
-            "module swap PrgEnv-pgi PrgEnv-gnu",
+            "module purge",
+            "module load PrgEnv-gnu",
             "module load python",
+            "module load python_pip",
+            "module load python_virtualenv",
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
         ],
