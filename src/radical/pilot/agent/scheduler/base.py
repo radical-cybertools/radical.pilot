@@ -5,6 +5,7 @@ __license__   = "MIT"
 
 import logging
 import time
+import pprint
 import threading
 
 import radical.utils as ru
@@ -22,6 +23,103 @@ SCHEDULER_NAME_TORUS        = "TORUS"
 SCHEDULER_NAME_YARN         = "YARN"
 SCHEDULER_NAME_SPARK        = "SPARK"
 
+# ------------------------------------------------------------------------------
+#
+# An RP agent scheduler will place incoming units onto a set of cores and gpus.
+# To do so, the scheduler needs three pieces of information:
+#
+#   - the layout of the resource (nodes, cores, gpus)
+#   - the current state of those (what cores/gpus are used by other units)
+#   - the requirements of the unit (single/multi node, cores, gpus)
+#
+# The first part (layout) is provided by the LRMS, in the form of a nodelist:
+#
+#    nodelist = [{name : 'node_1', cores: 16, gpus : 2},
+#                {name : 'node_2', cores: 16, gpus : 2},
+#                ...
+#               ]
+#
+# That is then mapped into an internal representation, which is really the same
+# but allows to keep track of resource usage:
+#
+#    nodelist = [{name : 'node_1', cores: [................], gpus : [..]},
+#                {name : 'node_2', cores: {................], gpus : [..]},
+#                ...
+#               ]
+#
+# When allocating a set of resource for a unit (2 cores, 1 gpu), we can now
+# record those as used:
+#
+#    nodelist = [{name : 'node_1', cores: [##..............], gpus : [#.]},
+#                {name : 'node_2', cores: {................], gpus : [..]},
+#                ...
+#               ]
+#
+# This solves the second part from our list above.  The third part, unit
+# requirements, are obtained from the unit dict passed for scheduling: the unit
+# description contains requests for `cores` and `gpus`, and also flags the use
+# of `mpi`.  
+#
+# Note that the unit dict will also contain `threads_per_proc`: the scheduler
+# will have to make sure that for each process to be placed, the  given number
+# of additional cores are available * and reserved* to create threads on.  The
+# threads are created by the application.  Note though that this implies that
+# the launcher must avoid core pinnin, as otherwise the OS could not be place
+# the threads on the respective cores.
+#
+# The scheduler algorithm will then attempt to find a suitable set of cores and
+# gpus in the nodelist into which the CU can be placed.  It will mark those as
+# `rpc.BUSY`, and attach the set of cores/gpus to the CU dictionary, as (here
+# for system with 8 cores & 1 gpu per node):
+#
+#     cu = { ...
+#            'cores             : 4,
+#            'gpus'             : 2, 
+#            `threads_per_proc' : 2
+#            'slots' : 
+#            {                 # [[node name,  [core indexes],   [gpu indexes]]]
+#              'nodes'         : [[nodename_1, [[0, 2], [4, 6]], [[0]        ]], 
+#                                 [nodename_2, [[1, 3], [5, 7]], [[0]        ]]],
+#              'cores_per_node': 8, 
+#              'gpus_per_node' : 1, 
+#              'lm_info'       : { ... }
+#            }
+#          }
+#
+# The repsective launch method is expected to create processes on the respective
+# given set of cores (nodename_1, cores 0 and 4; nodename_2, cores 1 and 5), and
+# on the respective GPUs.  The other reserved cores are for the application to
+# spawn threads on (`threads_per_proc=2`).
+#
+# A scheduler MAY attach other information to the `slots` structure, with the
+# intent to support the launch methods to enact the placement decition made by
+# the scheduler.  In fact, a scheduler may use a completely different slot
+# structure than above - but then is likely bound to a specific launch method
+# which can interpret that structure.  A notable example is the BG/Q torus
+# scheduler which will only work in combination with the dplace launch methods.
+# `lm_info` is an opaque field which allows to communicate specific settings
+# from the lrms to the launch method
+#
+# FIXME: `lm_info` should be communicated to the LM instances in creation, not
+#        as part of the slots.  Its constant anyway, as lm_info is set only
+#        once during lrms startup.
+#
+# NOTE:  While the nodelist resources are listed as strings above, we in fact
+#        use a list of integers, to simplify some operations, and to
+#        specifically avoid string   copies on manipulations.  We only convert
+#        to a stringlist for visual representation (`self._slot_status()`). 
+#
+# NOTE:  the scheduler will allocate one core per node and GPU, as some startup
+#        methods only allow process placements to *cores*, even if GPUs are
+#        present and requested (hi aprun).  We should make this decision
+#        dependent on the chosen executor - but at this point we don't have this
+#        information (at least not readily available).
+#
+# FIXME: clarify what can be overloaded by Scheduler classes
+#
+# TODO:  use named tuples for the slot structure to make the code more readable,
+#        specifically for the LMs.
+#
 
 # ==============================================================================
 #
@@ -31,10 +129,25 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    # the deriving schedulers should in general have the following structure in
+    # self.nodes:
+    #
+    #   self.nodes = [
+    #     { 'name'  : 'name-of-node', 
+    #       'cores' : '###---##-##-----',  # 16 cores, free/busy markers
+    #       'gpus'  : '--',                #  2 GPUs,  free/busy markers
+    #     }, ...
+    #   ]
+    #
+    # The free/busy markers are defined in rp.constants.py, and are `-` and `#`,
+    # respectively.  Some schedulers may need a more elaborate structures - but
+    # where the above is suitable, it should be used for code consistency.
+    #
+    #
     def __init__(self, cfg, session):
 
-        self.slots = None
-        self._lrms  = None
+        self.nodes = None
+        self._lrms = None
 
         self._uid = ru.generate_id('agent.scheduling.%(counter)s', ru.ID_CUSTOM)
 
@@ -67,7 +180,9 @@ class AgentSchedulingComponent(rpu.Component):
         self._lrms_lm_info        = self._cfg['lrms_info']['lm_info']
         self._lrms_node_list      = self._cfg['lrms_info']['node_list']
         self._lrms_cores_per_node = self._cfg['lrms_info']['cores_per_node']
+        self._lrms_gpus_per_node  = self._cfg['lrms_info']['gpus_per_node']
         # FIXME: this information is insufficient for the torus scheduler!
+        # FIXME: GPU
 
         self._wait_pool = list()            # set of units which wait for the resource
         self._wait_lock = threading.RLock() # look on the above set
@@ -75,6 +190,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # configure the scheduler instance
         self._configure()
+        self._log.debug("slot status after  initialization        : %s", self.slot_status())
 
 
     # --------------------------------------------------------------------------
@@ -134,13 +250,13 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _allocate_slot(self, cores_requested):
+    def _allocate_slot(self, cud):
         raise NotImplementedError("_allocate_slot() missing for '%s'" % self.uid)
 
 
     # --------------------------------------------------------------------------
     #
-    def _release_slot(self, opaque_slots):
+    def _release_slot(self, slots):
         raise NotImplementedError("_release_slot() missing for '%s'" % self.uid)
 
 
@@ -152,49 +268,49 @@ class AgentSchedulingComponent(rpu.Component):
         CU off to the ExecutionWorker.
         """
 
-        # Get timestamp to use for recording a successful scheduling attempt
-        before_ts = time.time()
-
         # needs to be locked as we try to acquire slots, but slots are freed
         # in a different thread.  But we keep the lock duration short...
         with self._slot_lock :
 
+            self._prof.prof('schedule_try', uid=cu['uid'])
             # schedule this unit, and receive an opaque handle that has meaning to
             # the LRMS, Scheduler and LaunchMethod.
-            cu['opaque_slots'] = self._allocate_slot(cu['description']['cores'])
+            cu['slots'] = self._allocate_slot(cu['description'])
 
-        if not cu['opaque_slots']:
+        if not cu['slots']:
             # signal the CU remains unhandled
+            self._prof.prof('schedule_fail', uid=cu['uid'])
             return False
 
         # got an allocation, go off and launch the process
-        self._prof.prof('schedule', msg="try", uid=cu['uid'], timestamp=before_ts)
-        self._prof.prof('schedule', msg="allocated", uid=cu['uid'])
+        self._prof.prof('schedule_ok', uid=cu['uid'])
 
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("slot status after allocated  : %s", self.slot_status())
+            self._log.debug("after  allocate   %s: %s", cu['uid'], 
+                            self.slot_status())
 
-        self._log.debug("%s [%s] : %s [%s]", 
-                        cu['uid'], cu['description']['cores'], 
-                        cu['opaque_slots'], 
-                        len(cu['opaque_slots']['task_slots']))
-
+        self._log.debug("%s [%s/%s] : %s [%s]", cu['uid'],
+                        cu['description']['cpu_processes'], 
+                        cu['description']['gpu_processes'],
+                        pprint.pformat(cu['slots']))
         return True
 
 
     # --------------------------------------------------------------------------
     #
     def reschedule_cb(self, topic, msg):
+
         # we ignore any passed CU.  In principle the cu info could be used to
         # determine which slots have been freed.  No need for that optimization
         # right now.  This will become interesting once reschedule becomes too
         # expensive.
+        # FIXME: optimization
 
         cu = msg
 
-        self._prof.prof('reschedule', uid=self._pilot_id)
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("slot status before reschedule: %s", self.slot_status())
+            self._log.debug("before reschedule %s: %s", cu['uid'], 
+                            self.slot_status())
 
         # cycle through wait queue, and see if we get anything running now.  We
         # cycle over a copy of the list, so that we can modify the list on the
@@ -209,15 +325,15 @@ class AgentSchedulingComponent(rpu.Component):
                 # remove it from the wait queue
                 with self._wait_lock :
                     self._wait_pool.remove(cu)
-                    self._prof.prof('unqueue', msg="re-allocation done", uid=cu['uid'])
             else:
                 # Break out of this loop if we didn't manage to schedule a task
+                # FIXME: this assumes that no smaller or otherwise more suitable
+                #        CUs come after this one - which is naive, ie. wrong.
                 break
 
         # Note: The extra space below is for visual alignment
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("slot status after  reschedule: %s", self.slot_status())
-        self._prof.prof('reschedule done')
+            self._log.debug("after  reschedule %s: %s", cu['uid'], self.slot_status())
 
         return True
 
@@ -230,21 +346,21 @@ class AgentSchedulingComponent(rpu.Component):
         """
 
         cu = msg
-        self._prof.prof('unschedule', uid=cu['uid'])
+        self._prof.prof('unschedule_start', uid=cu['uid'])
 
-        if not cu['opaque_slots']:
+        if not cu['slots']:
             # Nothing to do -- how come?
-            self._log.warn("cannot unschedule: %s (no slots)" % cu)
+            self._log.error("cannot unschedule: %s (no slots)" % cu)
             return True
 
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("slot status before unschedule: %s", self.slot_status())
+            self._log.debug("before unschedule %s: %s", cu['uid'], self.slot_status())
 
         # needs to be locked as we try to release slots, but slots are acquired
         # in a different thread....
         with self._slot_lock :
-            self._release_slot(cu['opaque_slots'])
-            self._prof.prof('unschedule', msg='released', uid=cu['uid'])
+            self._release_slot(cu['slots'])
+            self._prof.prof('unschedule_stop', uid=cu['uid'])
 
         # notify the scheduling thread, ie. trigger a reschedule to utilize
         # the freed slots
@@ -252,7 +368,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # Note: The extra space below is for visual alignment
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("slot status after  unschedule: %s", self.slot_status())
+            self._log.debug("after  unschedule %s: %s", cu['uid'], self.slot_status())
 
         return True
 
@@ -279,12 +395,10 @@ class AgentSchedulingComponent(rpu.Component):
         # straight away and move it to execution, or we have to
         # put it on the wait queue.
         if self._try_allocation(cu):
-            self._prof.prof('schedule', msg="allocation succeeded", uid=cu['uid'])
             self.advance(cu, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
 
         else:
             # No resources available, put in wait queue
-            self._prof.prof('schedule', msg="allocation failed", uid=cu['uid'])
             with self._wait_lock :
                 self._wait_pool.append(cu)
 

@@ -34,6 +34,7 @@ class LRMS(object):
       LRMS.node_list      : a list of node names
       LRMS.agent_node_list: the list of nodes reserved for agent execution
       LRMS.cores_per_node : the number of cores each node has available
+      LRMS.gpus_per_node  : the number of gpus  each node has available
 
     Schedulers can rely on these information to be available.  Specific LRMS
     incarnation may have additional information available -- but schedulers
@@ -78,6 +79,7 @@ class LRMS(object):
         self.node_list       = list()
         self.agent_nodes     = {}
         self.cores_per_node  = None
+        self.gpus_per_node   = None
 
         # The LRMS will possibly need to reserve nodes for the agent, according
         # to the agent layout.  We dig out the respective requirements from the
@@ -154,8 +156,9 @@ class LRMS(object):
 
                 self._log.info("lrms config hook succeeded (%s)" % lm)
 
-        # For now assume that all nodes have equal amount of cores
+        # For now assume that all nodes have equal amount of cores and gpus
         cores_avail = (len(self.node_list) + len(self.agent_nodes)) * self.cores_per_node
+        gpus_avail  = (len(self.node_list) + len(self.agent_nodes)) * self.gpus_per_node
         if 'RADICAL_PILOT_PROFILE' not in os.environ:
             if cores_avail < int(self.requested_cores):
                 raise ValueError("Not enough cores available (%s) to satisfy allocation request (%s)." \
@@ -165,10 +168,11 @@ class LRMS(object):
         # ultimately use, as it is included into the cfg passed to all
         # components.
         #
-        # four elements are well defined:
+        # five elements are well defined:
         #   lm_info:        the dict received via the LM's lrms_config_hook
         #   node_list:      a list of node names to be used for unit execution
         #   cores_per_node: as the name says
+        #   gpus_per_node:  as the name says
         #   agent_nodes:    list of node names reserved for agent execution
         #
         # That list may turn out to be insufficient for some schedulers.  Yarn
@@ -179,6 +183,7 @@ class LRMS(object):
         self.lrms_info['lm_info']        = self.lm_info
         self.lrms_info['node_list']      = self.node_list
         self.lrms_info['cores_per_node'] = self.cores_per_node
+        self.lrms_info['gpus_per_node']  = self.gpus_per_node
         self.lrms_info['agent_nodes']    = self.agent_nodes
 
 

@@ -1,3 +1,4 @@
+
 {
     "titan_aprun": {
         "description"                 : "The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/titan/)",
@@ -37,7 +38,8 @@
         "virtenv"                     : "/lustre/atlas2/csc230/world-shared/ve.rp.20017.06.26",
         "stage_cacerts"               : true,
         "python_dist"                 : "default",
-        "virtenv_dist"                : "system"
+        "virtenv_dist"                : "system",
+        "gpus_per_node"               : 1
     },
 
     "titan_orte": {

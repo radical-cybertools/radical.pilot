@@ -184,7 +184,8 @@ class Backfilling(UMGRSchedulingComponent):
 
                 # this unit is now considered done
                 info['done'].append(uid)
-                info['used'] -= unit['description']['cores']
+                info['used'] -= unit['description']['cpu_processes'] \
+                              * unit['description']['cpu_threads']
                 reschedule = True
                 self._log.debug(' === upd unit  %s -  schedule (used: %s)', uid, info['used'])
 
@@ -210,7 +211,6 @@ class Backfilling(UMGRSchedulingComponent):
                 uid = unit['uid']
                     
                 # not yet scheduled - put in wait pool
-                self._prof.prof('wait', uid=uid)
                 self._wait_pool[uid] = unit
                         
         self._schedule_units()
@@ -301,7 +301,8 @@ class Backfilling(UMGRSchedulingComponent):
                     unscheduled[uid] = unit
                     continue
 
-                cores   = unit['description']['cores']
+                cores   = unit['description']['cpu_processes'] \
+                        * unit['description']['cpu_threads']
                 success = False
                 for pid in pids:
 

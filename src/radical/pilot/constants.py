@@ -44,8 +44,8 @@ LOG_PUBSUB                     = 'log_pubsub'
 #
 # two-state for resource occupation.
 #
-FREE = 'Free'
-BUSY = 'Busy'
+FREE = 0
+BUSY = 1
 
 
 # ------------------------------------------------------------------------------
@@ -63,6 +63,16 @@ TRANSFER = 'Transfer' # saga remote transfer TODO: This might just be a special 
 CREATE_PARENTS = 'CreateParents'  # Create parent directories while writing file
 SKIP_FAILED    = 'SkipFailed'     # Don't stage out files if tasks failed
 NON_FATAL      = 'NonFatal'       # Don't fail the CU if input is missing
+
+#
+# CU MPI flags
+#
+SERIAL         = 'Serial'
+MPI            = 'MPI'
+OpenMP         = 'OpenMP'
+GPU            = 'GPU'
+GPU_MPI        = 'GPU_MPI'
+GPU_OpenMP     = 'GPU_OpenMP'
 
 #
 # Defaults

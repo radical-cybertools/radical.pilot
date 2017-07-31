@@ -36,10 +36,10 @@ class PilotManager(rpu.Component):
 
         pd = radical.pilot.ComputePilotDescription()
         pd.resource = "futuregrid.alamo"
-        pd.cores = 16
+        pd.cpus = 16
 
-        p1 = pm.submit_pilots(pd) # create first pilot with 16 cores
-        p2 = pm.submit_pilots(pd) # create second pilot with 16 cores
+        p1 = pm.submit_pilots(pd)  # create first  pilot with 16 cores
+        p2 = pm.submit_pilots(pd)  # create second pilot with 16 cores
 
         # Create a workload of 128 '/bin/sleep' compute units
         compute_units = []
@@ -105,7 +105,6 @@ class PilotManager(rpu.Component):
 
         # only now we have a logger... :/
         self._log.report.info('<<create pilot manager')
-        self._prof.prof('create pmgr', uid=self._uid)
 
         # The output queue is used to forward submitted pilots to the
         # launching component.
@@ -123,8 +122,6 @@ class PilotManager(rpu.Component):
 
         # let session know we exist
         self._session._register_pmgr(self)
-
-        self._prof.prof('PMGR setup done')
         self._log.report.ok('>>ok\n')
 
 
@@ -189,8 +186,6 @@ class PilotManager(rpu.Component):
             # timeout, the pmgr.launcher termination will kill them
 
         self.stop()
-
-        self._session.prof.prof('closed pmgr', uid=self._uid)
         self._log.info("Closed PilotManager %s." % self._uid)
 
         self._closed = True
@@ -424,7 +419,7 @@ class PilotManager(rpu.Component):
                 raise ValueError('pilot runtime must be positive')
 
             if not pd.cores:
-                raise ValueError('pilot core size must be defined')
+                raise ValueError('pilot size must be defined')
 
             if not pd.resource:
                 raise ValueError('pilot target resource must be defined')
