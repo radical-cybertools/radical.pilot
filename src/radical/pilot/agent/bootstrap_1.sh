@@ -80,7 +80,7 @@ LOCK_TIMEOUT=600 # 10 min
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
 VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
-VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces==0.10.4 setproctitle orte_cffi msgpack-python future"
+VIRTENV_RADICAL_DEPS="colorama pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces==0.10.4 setproctitle orte_cffi msgpack-python future"
 
 
 # ------------------------------------------------------------------------------
