@@ -45,7 +45,7 @@ class Kafka(LaunchMethod):
                     VERSION = "2.2.2"
                     spark_startup = time() 
                     #subprocess.check_call("wget http://d3kbcqa49mib13.cloudfront.net/spark-2.0.2-bin-hadoop2.7.tgz".split())
-                    subprocess.check_call("https://d3kbcqa49mib13.cloudfront.net/spark-2.2.0-bin-hadoop2.7.tgz".split())
+                    subprocess.check_call("wget https://d3kbcqa49mib13.cloudfront.net/spark-2.2.0-bin-hadoop2.7.tgz".split())
                     subprocess.check_call('tar -xzf spark-2.2.0-bin-hadoop2.7.tgz'.split())
                     subprocess.check_call('rm spark-2.2.0-bin-hadoop2.7.tgz'.split()) 
                     spark_startup = time() - spark_startup
