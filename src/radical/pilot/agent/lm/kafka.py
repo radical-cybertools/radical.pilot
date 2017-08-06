@@ -42,12 +42,14 @@ class Kafka(LaunchMethod):
             if not os.environ.get('SPARK_HOME'):
                 logger.info("Downloading Apache Spark..")
                 try:    
-                    VERSION = "2.0.2"
+                    VERSION = "2.2.2"
                     spark_startup = time() 
-                    subprocess.check_call("wget http://d3kbcqa49mib13.cloudfront.net/spark-2.0.2-bin-hadoop2.7.tgz".split())
-                    subprocess.check_call('tar -xzf spark-2.0.2-bin-hadoop2.7.tgz'.split())
+                    #subprocess.check_call("wget http://d3kbcqa49mib13.cloudfront.net/spark-2.0.2-bin-hadoop2.7.tgz".split())
+                    subprocess.check_call("https://d3kbcqa49mib13.cloudfront.net/spark-2.2.0-bin-hadoop2.7.tgz".split())
+                    subprocess.check_call('tar -xzf spark-2.2.0-bin-hadoop2.7.tgz'.split())
+                    subprocess.check_call('rm spark-2.2.0-bin-hadoop2.7.tgz'.split()) 
                     spark_startup = time() - spark_startup
-                    subprocess.check_call(("mv spark-2.0.2-bin-hadoop2.7 spark-" + VERSION).split())
+                    subprocess.check_call(("mv spark-2.2.0-bin-hadoop2.7 spark-" + VERSION).split())
                 except  Exception as e:
                     raise RuntimeError("Spark wasn't installed properly. Please try again. %s " % e )
                 spark_home = os.getcwd() + '/spark-' + VERSION
@@ -217,7 +219,7 @@ class Kafka(LaunchMethod):
             try:
                 os.system('cp ' + kafka_home +'/config/server.properties ' + kafka_home + '/config/server.properties_%d' % i)
                 vars = ['port','broker.id', 'log.dirs','zookeeper.connect' ]
-                new_values = [str(ports),str(i), kafka_home + '/tmp/kafka-logs-'+str(i), nodenames_string]
+                new_values = [str(ports),str(i),  '/tmp/kafka-logs-'+str(i), nodenames_string]
                 what_to_change = dict(zip(vars,new_values))
                 filename = kafka_home + '/config/server.properties_' + str(i)
                 updating(filename,what_to_change)
