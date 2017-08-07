@@ -266,7 +266,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "pre_bootstrap_1"             : ["module load python/2.7.12",
+        "pre_bootstrap_1"             : ["module load python",
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
         "pre_bootstrap_2"             : ["export PATH=$PATH",
@@ -307,7 +307,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "YARN",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "pre_bootstrap_1"             : ["module load python/2.7.12",
+        "pre_bootstrap_1"             : ["module load python",
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
         "pre_bootstrap_2"             : ["export PATH=$PATH",
@@ -350,7 +350,7 @@
         "task_launch_method"          : "SPARK",
         "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap_1"             : [ 
-                                        "module load python/2.7.12",
+                                        "module load python" ,
                                         "export TACC_DELETE_FILES=TRUE",
                                         "module load jdk64/1.8.0"
                                         ],
