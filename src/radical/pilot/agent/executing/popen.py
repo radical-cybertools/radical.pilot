@@ -222,6 +222,7 @@ class Popen(AgentExecutingComponent) :
 
         # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
         #       class definition.
+        descr   = cu['description']
         sandbox = '%s/%s' % (self._pwd, cu['uid'])
 
         # make sure the sandbox exists
@@ -244,11 +245,12 @@ class Popen(AgentExecutingComponent) :
             env_string += 'export RP_PROF="%s/PROF"\n'  % sandbox
             env_string += 'export RP_TMP="%s"\n'        % self._cu_tmp
 
+            # FIXME: this should be set by an LM filter or something (GPU)
+            env_string += 'export OMP_NUM_THREADS="%s"\n' % descr['cpu_threads']
+
             # also add any env vars requested for export by the resource config
             for k,v in self._env_cu_export.iteritems():
                 env_string += "export %s=%s\n" % (k,v)
-
-            descr = cu['description']
 
             # also add any env vars requested in the unit description
             if descr['environment']:
