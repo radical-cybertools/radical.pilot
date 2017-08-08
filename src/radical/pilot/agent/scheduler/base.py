@@ -40,25 +40,26 @@ SCHEDULER_NAME_SPARK        = "SPARK"
 #               ]
 #
 # That is then mapped into an internal representation, which is really the same
-# but allows to keep track of resource usage:
+# but allows to keep track of resource usage, by setting the fields to
+# `rpc.FREE == '-'` or `rpc.BUSY == '#'`:
 #
-#    nodelist = [{name : 'node_1', cores: [................], gpus : [..]},
-#                {name : 'node_2', cores: {................], gpus : [..]},
+#    nodelist = [{name : 'node_1', cores: [----------------], gpus : [--]},
+#                {name : 'node_2', cores: {----------------], gpus : [--]},
 #                ...
 #               ]
 #
 # When allocating a set of resource for a unit (2 cores, 1 gpu), we can now
 # record those as used:
 #
-#    nodelist = [{name : 'node_1', cores: [##..............], gpus : [#.]},
-#                {name : 'node_2', cores: {................], gpus : [..]},
+#    nodelist = [{name : 'node_1', cores: [##--------------], gpus : [#-]},
+#                {name : 'node_2', cores: {----------------], gpus : [--]},
 #                ...
 #               ]
 #
 # This solves the second part from our list above.  The third part, unit
 # requirements, are obtained from the unit dict passed for scheduling: the unit
 # description contains requests for `cores` and `gpus`, and also flags the use
-# of `mpi`.  
+# of `mpi`.
 #
 # Note that the unit dict will also contain `threads_per_proc`: the scheduler
 # will have to make sure that for each process to be placed, the  given number
@@ -73,23 +74,23 @@ SCHEDULER_NAME_SPARK        = "SPARK"
 # for system with 8 cores & 1 gpu per node):
 #
 #     cu = { ...
-#            'cores             : 4,
-#            'gpus'             : 2, 
-#            `threads_per_proc' : 2
-#            'slots' : 
-#            {                 # [[node name,  [core indexes],   [gpu indexes]]]
-#              'nodes'         : [[nodename_1, [[0, 2], [4, 6]], [[0]        ]], 
-#                                 [nodename_2, [[1, 3], [5, 7]], [[0]        ]]],
-#              'cores_per_node': 8, 
-#              'gpus_per_node' : 1, 
-#              'lm_info'       : { ... }
-#            }
-#          }
+#       'cpu_processes'    : 4,
+#       'cpu_threads'      : 2,
+#       'gpu_processes     : 2,
+#       'slots' :
+#       {                 # [[nodename, [node_uid], [core indexes],   [gpu idx]]]
+#         'nodes'         : [[node_1,   node_uid_1, [[0, 2], [4, 6]], [[0]    ]],
+#                            [node_2,   node_uid_2, [[1, 3], [5, 7]], [[0]    ]]],
+#         'cores_per_node': 8,
+#         'gpus_per_node' : 1,
+#         'lm_info'       : { ... }
+#       }
+#     }
 #
 # The repsective launch method is expected to create processes on the respective
 # given set of cores (nodename_1, cores 0 and 4; nodename_2, cores 1 and 5), and
 # on the respective GPUs.  The other reserved cores are for the application to
-# spawn threads on (`threads_per_proc=2`).
+# spawn threads on (`cpu_threads=2`).
 #
 # A scheduler MAY attach other information to the `slots` structure, with the
 # intent to support the launch methods to enact the placement decition made by
@@ -107,7 +108,7 @@ SCHEDULER_NAME_SPARK        = "SPARK"
 # NOTE:  While the nodelist resources are listed as strings above, we in fact
 #        use a list of integers, to simplify some operations, and to
 #        specifically avoid string   copies on manipulations.  We only convert
-#        to a stringlist for visual representation (`self._slot_status()`). 
+#        to a stringlist for visual representation (`self._slot_status()`).
 #
 # NOTE:  the scheduler will allocate one core per node and GPU, as some startup
 #        methods only allow process placements to *cores*, even if GPUs are
@@ -133,7 +134,7 @@ class AgentSchedulingComponent(rpu.Component):
     # self.nodes:
     #
     #   self.nodes = [
-    #     { 'name'  : 'name-of-node', 
+    #     { 'name'  : 'name-of-node',
     #       'cores' : '###---##-##-----',  # 16 cores, free/busy markers
     #       'gpus'  : '--',                #  2 GPUs,  free/busy markers
     #     }, ...
@@ -158,10 +159,10 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def initialize_child(self):
 
-        self.register_input(rps.AGENT_SCHEDULING_PENDING, 
+        self.register_input(rps.AGENT_SCHEDULING_PENDING,
                             rpc.AGENT_SCHEDULING_QUEUE, self.work)
 
-        self.register_output(rps.AGENT_EXECUTING_PENDING,  
+        self.register_output(rps.AGENT_EXECUTING_PENDING,
                              rpc.AGENT_EXECUTING_QUEUE)
 
         # we need unschedule updates to learn about units which free their
@@ -200,7 +201,7 @@ class AgentSchedulingComponent(rpu.Component):
         #         probably be solved cleaner.
         pass
 
- 
+
     # --------------------------------------------------------------------------
     #
     # This class-method creates the appropriate sub-class for the Scheduler.
@@ -286,11 +287,11 @@ class AgentSchedulingComponent(rpu.Component):
         self._prof.prof('schedule_ok', uid=cu['uid'])
 
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("after  allocate   %s: %s", cu['uid'], 
+            self._log.debug("after  allocate   %s: %s", cu['uid'],
                             self.slot_status())
 
         self._log.debug("%s [%s/%s] : %s [%s]", cu['uid'],
-                        cu['description']['cpu_processes'], 
+                        cu['description']['cpu_processes'],
                         cu['description']['gpu_processes'],
                         pprint.pformat(cu['slots']))
         return True
@@ -309,7 +310,7 @@ class AgentSchedulingComponent(rpu.Component):
         cu = msg
 
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("before reschedule %s: %s", cu['uid'], 
+            self._log.debug("before reschedule %s: %s", cu['uid'],
                             self.slot_status())
 
         # cycle through wait queue, and see if we get anything running now.  We
