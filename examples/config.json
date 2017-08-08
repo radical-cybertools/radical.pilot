@@ -114,6 +114,13 @@
         "cores"    : 64
     },
 
+    "xsede.supermic_ssh" : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "workq",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
     "xsede.supermic" : {
         "project"  : "TG-MCB090174",
         "queue"    : "workq",

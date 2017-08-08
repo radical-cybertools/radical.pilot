@@ -190,14 +190,14 @@ class Yarn(LaunchMethod):
             if lrms.node_list[0] == 'localhost':
                 #Download the tar file
                 node_name = lrms.node_list[0]
-                stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.0/hadoop-2.6.0.tar.gz")
-                stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
+                stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.5/hadoop-2.6.5.tar.gz")
+                stat = os.system('tar xzf hadoop-2.6.5.tar.gz;mv hadoop-2.6.5 hadoop;rm -rf hadoop-2.6.5.tar.gz')
             else:
                 node = subprocess.check_output('/bin/hostname')
                 logger.info('Entered Else creation')
                 node_name = node.split('\n')[0]
-                stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.0/hadoop-2.6.0.tar.gz")
-                stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
+                stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.5/hadoop-2.6.5.tar.gz")
+                stat = os.system('tar xzf hadoop-2.6.5.tar.gz;mv hadoop-2.6.5 hadoop;rm -rf hadoop-2.6.5.tar.gz')
                 # TODO: Decide how the agent will get Hadoop tar ball.
 
 
@@ -260,6 +260,9 @@ class Yarn(LaunchMethod):
             os.system('%s/bin/hdfs dfs -mkdir /user/%s'%(hadoop_home,uname))
             check = subprocess.check_output(['%s/bin/hdfs'%hadoop_home,'dfs', '-ls', '/user'])
             logger.info(check)
+            logger.info('Getting YARN app')
+            os.system('wget https://www.dropbox.com/s/9yxbj9btibgtg40/Pilot-YARN-0.1-jar-with-dependencies.jar')
+
             # FIXME YARN: why was the scheduler configure called here?  Configure
             #             is already called during scheduler instantiation
             # self._scheduler._configure()
@@ -311,9 +314,7 @@ class Yarn(LaunchMethod):
     def _configure(self):
 
         # Single Node configuration
-        # TODO : Multinode config
-        self._log.info('Getting YARN app')
-        os.system('wget https://dl.dropboxusercontent.com/u/28410803/Pilot-YARN-0.1-jar-with-dependencies.jar')
+        # FIXME : Upload App to another server, which will be always alive
         self._log.info(self._cfg['lrms_info']['lm_info'])
         self.launch_command = self._cfg['lrms_info']['lm_info']['launch_command']
         self._log.info('YARN was called')
