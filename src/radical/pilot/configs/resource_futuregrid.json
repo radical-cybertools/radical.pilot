@@ -1,6 +1,6 @@
 
 {
-    "india": {
+    "india_ssh": {
         "description"                 : "The FutureGrid 'india' cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "None",
         "schemas"                     : ["ssh"],
@@ -10,7 +10,6 @@
             "filesystem_endpoint"     : "sftp://india.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -20,11 +19,10 @@
         "pre_bootstrap_1"             : ["module purge", "module load python", "module load openmpi/1.4.3-gnu"],
         "valid_roots"                 : ["/N"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_india",
         "virtenv_mode"                : "update",
         "python_dist"                 : "default"
     },
-    "bravo": {
+    "bravo_ssh": {
         "description"                 : "FutureGrid Hewlett-Packard ProLiant compute cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "Works only up to 64 cores, beyond that Torque configuration is broken.",
         "schemas"                     : ["ssh"],
@@ -34,7 +32,6 @@
             "filesystem_endpoint"     : "sftp://bravo.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -51,7 +48,7 @@
         "virtenv_mode"                : "update",
         "python_dist"                 : "default"
     },
-    "delta": {
+    "delta_ssh": {
         "description"                 : "FutureGrid Supermicro GPU cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "Untested.",
         "schemas"                     : ["ssh"],
@@ -61,7 +58,6 @@
             "filesystem_endpoint"     : "sftp://delta.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -70,11 +66,10 @@
         "default_queue"               : "delta",
         "valid_roots"                 : ["/N"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_delta",
         "virtenv_mode"                : "update",
         "python_dist"                 : "default"
     },
-    "echo": {
+    "echo_ssh": {
         "description"                 : "FutureGrid Supermicro ScaleMP cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "Untested",
         "schemas"                     : ["ssh"],
@@ -84,7 +79,6 @@
             "filesystem_endpoint"     : "sftp://echo.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -93,12 +87,11 @@
         "default_queue"               : "echo",
         "valid_roots"                 : ["/N"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_echo",
         "virtenv_mode"                : "update",
         "python_dist"                 : "default"
 
     },
-    "xray": {
+    "xray_aprun": {
         "description"                 : "FutureGrid Cray XT5m cluster (https://futuregrid.github.io/manual/hardware.html).",
         "notes"                       : "One needs to add 'module load torque' to ~/.profile on xray.",
         "schemas"                     : ["ssh"],
@@ -107,7 +100,6 @@
             "filesystem_endpoint"     : "sftp://xray.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "APRUN",
@@ -130,7 +122,6 @@
             "filesystem_endpoint"     : "sftp://xray.futuregrid.org/"
         },
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "CCMRUN",

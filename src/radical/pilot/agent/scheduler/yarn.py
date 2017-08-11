@@ -24,9 +24,10 @@ class Yarn(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        AgentSchedulingComponent.__init__(self, cfg)
+        AgentSchedulingComponent.__init__(self, cfg, session)
+
 
     # --------------------------------------------------------------------------
     #
@@ -39,7 +40,7 @@ class Yarn(AgentSchedulingComponent):
 
         #if 'rm_ip' not in self._cfg['lrms_info']:
         #    raise RuntimeError('rm_ip not in lm_info for %s' \
-        #            % (self.name))
+        #            % (self.uid))
 
         self._log.info('Checking rm_ip %s' % self._cfg['lrms_info']['lm_info']['rm_ip'])
         self._rm_ip = self._cfg['lrms_info']['lm_info']['rm_ip']
@@ -173,29 +174,39 @@ class Yarn(AgentSchedulingComponent):
             return False
 
         # got an allocation, go off and launch the process
-        self._prof.prof('schedule', msg="allocated", uid=cu['_id'])
+        self._prof.prof('schedule', msg="allocated", uid=cu['uid'])
         self._log.info("slot status after allocated  : %s" % self.slot_status ())
 
         return True
 
     # --------------------------------------------------------------------------
     #
-    def work(self, cu):
+    def work(self, units):
 
-      # self.advance(cu, rps.AGENT_SCHEDULING, publish=True, push=False)
-        self._log.info("Overiding Parent's class method")
-        self.advance(cu, rps.ALLOCATING , publish=True, push=False)
+        if not isinstance(units, list):
+            units = [units]
+
+        self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
+
+        for unit in units:
+
+            self._handle_unit(unit)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _handle_unit(self, cu):
 
         # we got a new unit to schedule.  Either we can place it
         # straight away and move it to execution, or we have to
         # put it on the wait queue.
         if self._try_allocation(cu):
-            self._prof.prof('schedule', msg="allocation succeeded", uid=cu['_id'])
-            self.advance(cu, rps.EXECUTING_PENDING, publish=True, push=True)
+            self._prof.prof('schedule', msg="allocation succeeded", uid=cu['uid'])
+            self.advance(cu, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
 
         else:
             # No resources available, put in wait queue
-            self._prof.prof('schedule', msg="allocation failed", uid=cu['_id'])
+            self._prof.prof('schedule', msg="allocation failed", uid=cu['uid'])
             with self._wait_lock :
                 self._wait_pool.append(cu)
 

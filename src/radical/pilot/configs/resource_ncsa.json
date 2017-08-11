@@ -1,3 +1,4 @@
+
 {
     "bw_aprun": {
         "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system (https://bluewaters.ncsa.illinois.edu/)",
@@ -9,7 +10,6 @@
         },
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "APRUN",
@@ -22,13 +22,12 @@
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_bw",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : "True",
         "python_dist"                 : "default"
     },
 
-    "bw_lib": {
+    "bw_ortelib": {
         "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system (https://bluewaters.ncsa.illinois.edu/)",
         "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
         "schemas"                     : ["gsissh"],
@@ -57,13 +56,12 @@
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_bw",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
 
-    "bw": {
+    "bw_orte": {
         "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system (https://bluewaters.ncsa.illinois.edu/)",
         "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
         "schemas"                     : ["gsissh"],
@@ -73,7 +71,6 @@
         },
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_config"                : "cray",
@@ -92,13 +89,12 @@
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_bw",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
 
-    "bw_local": {
+    "bw_local_orte": {
         "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system (https://bluewaters.ncsa.illinois.edu/)",
         "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
         "schemas"                     : ["local"],
@@ -133,7 +129,7 @@
         "python_dist"                 : "default"
     },
 
-    "bw_ccm": {
+    "bw_ccm_ssh": {
         "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system in CCM (https://bluewaters.ncsa.illinois.edu/)",
         "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
         "schemas"                     : ["gsissh"],
@@ -143,7 +139,6 @@
         },
         "default_queue"               : "normal",
         "lrms"                        : "CCM",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -161,9 +156,9 @@
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_bw",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : "True",
         "python_dist"                 : "default"
     }
 }
+

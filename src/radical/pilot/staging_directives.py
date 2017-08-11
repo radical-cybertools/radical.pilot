@@ -1,186 +1,194 @@
 
-
 import os
-import saga
+import sys
 
-from .utils     import logger
+import radical.utils as ru
+
 from .constants import *
 
-# The Staging Directives are specified using a dict in the following form:
-#   staging_directive = {
-#       'source':   None, # saga.Url() or string
-#       'target':   None, # saga.Url() or string
-#       'action':   None, # See 'Action operators' below
-#       'flags':    None, # See 'Flags' below
-#       'priority': 0     # Control ordering of actions
-#   }
+# ------------------------------------------------------------------------------
+#
+def expand_description(descr):
+    """
+    convert any simple, string based staging directive in the description into 
+    its dictionary equivalent
 
-#
-# Action operators
-#
-#-----------------------------------------------------------------------------
-#
-def expand_staging_directive(staging_directive):
-    """Take an abbreviated or compressed staging directive and expand it.
+    In this context, the following kinds of expansions are performed:
 
+      in:  ['input.dat'] 
+      out: {'source' : 'client:///input.dat', 
+            'target' : 'unit:///input.dat',
+            'action' : rp.TRANSFER}
+
+      in:  ['input.dat > staged.dat']
+      out: {'source' : 'client:///input.dat', 
+            'target' : 'unit:///staged.dat',
+            'action' : rp.TRANSFER}
+
+    This method changes the given description in place - repeated calls on the
+    same description instance will have no effect.  However, we expect this
+    method to be called only once during unit construction.
     """
 
-    # Convert single entries into a list
-    if not isinstance(staging_directive, list):
-        staging_directive = [staging_directive]
+    if None == descr.get('input_staging') : descr['input_staging']  = list()
+    if None == descr.get('output_staging'): descr['output_staging'] = list()
 
-    # Use this to collect the return value
-    new_staging_directive = []
+    descr['input_staging' ] = expand_staging_directives(descr['input_staging' ])
+    descr['output_staging'] = expand_staging_directives(descr['output_staging'])
 
-    # We loop over the list of staging directives
-    for sd in staging_directive:
+
+# ------------------------------------------------------------------------------
+#
+def expand_staging_directives(sds):
+    """
+    Take an abbreviated or compressed staging directive and expand it.
+    """
+
+    log = ru.get_logger('radical.pilot.utils')
+
+    if not sds:
+        return []
+
+    if not isinstance(sds, list):
+        sds = [sds]
+
+    ret = list()
+    for sd in sds:
 
         if isinstance(sd, basestring):
-
             # We detected a string, convert into dict.  The interpretation
             # differs depending of redirection characters being present in the
             # string.
 
             append = False
-            if '>>'  in sd:
-                src, tgt = sd.split('>>', 2)
-                append = True
-            elif '>' in sd :
-                src, tgt = sd.split('>',  2)
-                append  = False
-            elif '<<' in sd:
-                tgt, src = sd.split('<<', 2)
-                append = True
-            elif '<'  in sd:
-                tgt, src = sd.split('<',  2)
-                append = False
-            else:
-                src, tgt = sd, os.path.basename(sd)
-                append = False
+            if   '>>' in sd: src, tgt = sd.split('>>', 2)
+            elif '>'  in sd: src, tgt = sd.split('>' , 2)
+            elif '<<' in sd: tgt, src = sd.split('<<', 2)
+            elif '<'  in sd: tgt, src = sd.split('<' , 2)
+            else           : src, tgt = sd, os.path.basename(ru.Url(sd).path)
 
-            if append:
-                logger.warn("append mode on staging not supported (ignored)")
-
-            new_sd = {'source':   src.strip(),
-                      'target':   tgt.strip(),
-                      'action':   DEFAULT_ACTION,
-                      'flags':    DEFAULT_FLAGS,
-                      'priority': DEFAULT_PRIORITY
-            }
-            logger.debug("Converting string '%s' into dict '%s'" % (sd, new_sd))
-            new_staging_directive.append(new_sd)
+            expanded = {'uid':      ru.generate_id('sd'),
+                        'source':   src.strip(),
+                        'target':   tgt.strip(),
+                        'action':   DEFAULT_ACTION,
+                        'flags':    DEFAULT_FLAGS,
+                        'priority': DEFAULT_PRIORITY}
 
         elif isinstance(sd, dict):
-            # We detected a dict, will have to distinguish between single and multiple entries
 
-            if 'action' in sd:
-                action = sd['action']
-            else:
-                action = DEFAULT_ACTION
+            # sanity check on dict syntax
+            valid_keys = ['source', 'target', 'action', 'flags', 'priority']
+            for k in sd:
+                if k not in valid_keys:
+                    raise ValueError('"%s" is invalid on staging directive' % k)
 
-            if 'flags' in sd:
-                flags = sd['flags']
-            else:
-                flags = DEFAULT_FLAGS
+            source   = sd.get('source')
+            target   = sd.get('target',   os.path.basename(ru.Url(source).path))
+            action   = sd.get('action',   DEFAULT_ACTION)
+            flags    = sd.get('flags',    DEFAULT_FLAGS)
+            priority = sd.get('priority', DEFAULT_PRIORITY)
 
-            if 'priority' in sd:
-                priority = sd['priority']
-            else:
-                priority = DEFAULT_PRIORITY
-
-            if not 'source' in sd:
+            if not source:
                 raise Exception("Staging directive dict has no source member!")
-            source = sd['source']
 
-            if 'target' in sd:
-                target = sd['target']
-            else:
-                # Set target to None, as inferring it depends on the type of source
-                target = None
-
-            if isinstance(source, basestring) or isinstance(source, saga.Url):
-
-                if target:
-                    # Detect asymmetry in source and target length
-                    if isinstance(target, list):
-                        raise Exception("Source is singular but target is a list")
-                else:
-                    # We had no target specified, assume the basename of source
-                    if isinstance(source, basestring):
-                        target = os.path.basename(source)
-                    elif isinstance(source, saga.Url):
-                        target = os.path.basename(source.path)
-                    else:
-                        raise Exception("Source %s is neither a string nor a Url (%s)!" %
-                                        (source, type(source)))
-
-                # This is a regular entry, complete and append it
-                new_sd = {'source':   source,
-                          'target':   target,
-                          'action':   action,
-                          'flags':    flags,
-                          'priority': priority,
-                }
-                new_staging_directive.append(new_sd)
-                logger.debug("Completing entry '%s'" % new_sd)
-
-            elif isinstance(source, list):
-                # We detected a list of sources, we need to expand it
-
-                # We will break up the list entries in source into an equal length list of dicts
-                new_sds = []
-
-                if target:
-                    # Target is also specified, make sure it is a list of equal length
-
-                    if not isinstance(target, list):
-                        raise Exception("Both source and target are specified, but target is not a list")
-
-                    if len(source) != len(target):
-                        raise Exception("Source (%d) and target (%d) are lists of different length" % (len(source), len(target)))
-
-                    # Now that we have established that the list are of equal size we can combine them
-                    for src_entry, tgt_entry in zip(source, target):
-
-                        new_sd = {'source':   src_entry,
-                                  'target':   tgt_entry,
-                                  'action':   action,
-                                  'flags':    flags,
-                                  'priority': priority
-                        }
-                        new_sds.append(new_sd)
-                else:
-                    # Target is not specified, use the source for the target too.
-
-                    # Go over all entries in the list and create an equal length list of dicts.
-                    for src_entry in source:
-
-                        if isinstance(source, basestring):
-                            target = os.path.basename(src_entry),
-                        elif isinstance(source, saga.Url):
-                            target = os.path.basename(src_entry.path),
-                        else:
-                            raise Exception("Source %s is neither a string nor a Url (%s)!" %
-                                             (source, type(source)))
-
-                        new_sd = {'source':   src_entry,
-                                  'target':   target,
-                                  'action':   action,
-                                  'flags':    flags,
-                                  'priority': priority
-                        }
-                        new_sds.append(new_sd)
-
-                logger.debug("Converting list '%s' into dicts '%s'" % (source, new_sds))
-
-                # Add the content of the local list to global list
-                new_staging_directive.extend(new_sds)
-
-            else:
-                raise Exception("Source %s is neither an entry nor a list (%s)!" %
-                                (source, type(source)))
+            expanded = {'uid':      ru.generate_id('sd'),
+                        'source':   source,
+                        'target':   target,
+                        'action':   action,
+                        'flags':    flags,
+                        'priority': priority}
 
         else:
             raise Exception("Unknown type of staging directive: %s (%s)" % (sd, type(sd)))
 
-    return new_staging_directive
+        # we warn the user when  src or tgt are using the deprecated
+        # `staging://` schema
+        if str(expanded['source']).startswith('staging://'):
+            sys.stderr.write('staging:// schema is deprecated - use pilot://\n')
+            expanded['source'] = str(expanded['source']).replace('staging://', 
+                                                                 'pilot://')
+
+        if str(expanded['target']).startswith('staging://'):
+            sys.stderr.write('staging:// schema is deprecated - use pilot://\n')
+            expanded['target'] = str(expanded['target']).replace('staging://', 
+                                                                 'pilot://')
+
+        ret.append(expanded)
+
+    return ret
+
+
+# ------------------------------------------------------------------------------
+#
+def complete_url(path, context, log=None):
+    '''
+    Some paths in data staging directives are to be interpreted relative to
+    certain locations, namely relative to
+
+        * `client://`  : the client's working directory
+        * `resource://`: the RP    sandbox on the target resource
+        * `pilot://`   : the pilot sandbox on the target resource
+        * `unit://`    : the unit  sandbox on the target resource
+
+    The `context` parameter is expected to be a dict which provides a set of
+    URLs to be used to expand the path.
+
+    Other URL schemas are left alone, any other strings are interpreted as
+    path in the context of `pwd`.
+
+    The method returns an instance of ru.Url.  Note that URL parsing is not
+    really cheap, so this method should be used conservatively.
+    '''
+
+    # FIXME: consider evaluation of env vars
+    
+    purl = ru.Url(path)
+
+    log.debug('<- %s (%s)', path, type(path))
+    log.debug('   %s', purl)
+
+    str_path = str(path)
+
+    # we always want a schema, and fall back to file:// or pwd://, depending if
+    # the path is absolute or relative.  Note that pwd:// is interpreted in the
+    # context of the staging component, which may live on the client or target
+    # resource -- we make no attempt at expanding the path at this point.
+    # We further assume that the user knows what she is doing when using
+    # absolute paths, and make no attempts to verify those either.
+    if not purl.schema:
+        if str_path.startswith('/'):
+            purl.schema = 'file'
+        else:
+            purl.schema = 'pwd'
+
+    schema = purl.schema
+
+    if schema == 'client': 
+        # 'client' is 'pwd' in client context.  
+        # We don't check context though.
+       schema = 'pwd'  
+
+    log.debug('   %s', schema)
+    if schema in ['resource', 'pilot', 'unit', 'pwd']:
+        if schema not in context:
+            raise ValueError('cannot expand schema (%s) for staging' % schema)
+
+        log.debug('   expand with %s', context[schema])
+        ret       = ru.Url(context[schema])
+
+        if schema in ['resource', 'pilot']:
+            # use a dedicated staging area dir
+            ret.path += '/staging_area'
+
+        ret.path += '/%s' % purl.path
+        purl      = ret
+
+    # if not schema is set, assume file:// on localhost
+    if not purl.schema:
+        purl.schema = 'file'
+
+    log.debug('-> %s', purl)
+    return purl
+
+# ------------------------------------------------------------------------------
+

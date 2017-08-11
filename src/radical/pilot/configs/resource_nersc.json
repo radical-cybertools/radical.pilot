@@ -1,3 +1,4 @@
+
 {
     "hopper_aprun": {
         "description"                 : "The NERSC Hopper Cray XE6 (https://www.nersc.gov/users/computational-systems/hopper/)",
@@ -9,7 +10,6 @@
         },
         "default_queue"               : "regular",
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "APRUN",
@@ -19,13 +19,13 @@
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/global", "/scratch",  "/scratch2"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_hopper",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "cores_per_node"              : "24",
         "python_dist"                 : "default"
     },
-    "hopper": {
+
+    "hopper_orte": {
         "description"                 : "The NERSC Hopper Cray XE6 (https://www.nersc.gov/users/computational-systems/hopper/)",
         "notes"                       : "",
         "schemas"                     : ["ssh", "go"],
@@ -35,12 +35,11 @@
             "filesystem_endpoint"     : "sftp://hopper.nersc.gov/"
         },
         "go"                         : {
-            "job_manager_endpoint"    : "pbs+ssh://hopper.nersc.gov/",
+            "job_manager_endpoint"    : "torque+ssh://hopper.nersc.gov/",
             "filesystem_endpoint"     : "go://nersc#hopper/"
         },
         "default_queue"               : "regular",
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_config"                : "cray",
@@ -64,12 +63,12 @@
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/global", "/scratch1", "/scratch2"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_hopper",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
-    "hopper_ccm": {
+
+    "hopper_ccm_ssh": {
         "description"                 : "The NERSC Hopper Cray XE6 in Cluster Compatibility Mode (https://www.nersc.gov/users/computational-systems/hopper/)",
         "notes"                       : "For CCM you need to use special ccm_ queues.",
         "schemas"                     : ["ssh"],
@@ -80,7 +79,6 @@
         },
         "default_queue"               : "ccm_queue",
         "lrms"                        : "CCM",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -96,12 +94,12 @@
         "forward_tunnel_endpoint"     : "BIND_ADDRESS",
         "tunnel_bind_device"          : "ipogif0",
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_hopper",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "cores_per_node"              : "24",
         "python_dist"                 : "default"
     },
+
     "edison_aprun": {
         "description"                 : "The NERSC Edison Cray XC30 (https://www.nersc.gov/users/computational-systems/edison/)",
         "notes"                       : "Only one CU per node in APRUN mode",
@@ -112,12 +110,11 @@
             "filesystem_endpoint"     : "sftp://edison.nersc.gov/"
         },
         "go"                         : {
-            "job_manager_endpoint"    : "pbs+ssh://edison.nersc.gov/",
+            "job_manager_endpoint"    : "torque+ssh://edison.nersc.gov/",
             "filesystem_endpoint"     : "go://nersc#edison/"
         },
         "default_queue"               : "regular",
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "APRUN",
@@ -127,12 +124,12 @@
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/global", "/scratch1", "/scratch2"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_edison",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
-    "edison": {
+
+    "edison_orte": {
         "description"                 : "The NERSC Edison Cray XC30 (https://www.nersc.gov/users/computational-systems/edison/)",
         "notes"                       : "",
         "schemas"                     : ["ssh", "go"],
@@ -142,12 +139,11 @@
             "filesystem_endpoint"     : "sftp://edison.nersc.gov/"
         },
         "go"                         : {
-            "job_manager_endpoint"    : "pbs+ssh://edison.nersc.gov/",
+            "job_manager_endpoint"    : "torque+ssh://edison.nersc.gov/",
             "filesystem_endpoint"     : "go://nersc#edison/"
         },
         "default_queue"               : "regular",
         "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_config"                : "cray",
@@ -169,12 +165,12 @@
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/global", "/scratch1", "/scratch2"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_edison",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "python_dist"                 : "default"
     },
-    "edison_ccm": {
+
+    "edison_ccm_ssh": {
         "description"                 : "The NERSC Edison Cray XC30 in Cluster Compatibility Mode (https://www.nersc.gov/users/computational-systems/edison/)",
         "notes"                       : "For CCM you need to use special ccm_ queues.",
         "schemas"                     : ["ssh"],
@@ -184,7 +180,6 @@
         },
         "default_queue"               : "ccm_queue",
         "lrms"                        : "CCM",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -200,9 +195,9 @@
         "forward_tunnel_endpoint"     : "localhost",
         "tunnel_bind_device"          : "ipogif0",
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_edison",
         "virtenv_mode"                : "create",
-        "stage_cacerts"               : "True",
+        "stage_cacerts"               : true,
         "python_dist"                 : "default"
     }
 }
+

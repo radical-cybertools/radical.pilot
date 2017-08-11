@@ -1,612 +1,718 @@
-#pylint: disable=C0301, C0103, W0212
 
-"""
-.. module:: radical.pilot.pilot_manager
-   :platform: Unix
-   :synopsis: Provides the interface for the PilotManager class.
+__copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
+__license__   = "MIT"
 
-.. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
-"""
-
-__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
-__license__ = "MIT"
 
 import os
-import sys
-import time
-import glob
 import copy
+import time
+import pprint
+import threading
 
 import radical.utils as ru
 
-from .states          import *
-from .exceptions      import *
-from .utils           import logger
-from .controller      import PilotManagerController
-from .compute_pilot   import ComputePilot
-from .exceptions      import PilotException, BadParameter
-from .resource_config import ResourceConfig
+from .  import utils     as rpu
+from .  import states    as rps
+from .  import constants as rpc
+from .  import types     as rpt
 
-# -----------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
-class PilotManager(object):
-    """A PilotManager holds :class:`radical.pilot.ComputePilot` instances that are
+class PilotManager(rpu.Component):
+    """
+    A PilotManager manages :class:`radical.pilot.ComputePilot` instances that are
     submitted via the :func:`radical.pilot.PilotManager.submit_pilots` method.
 
     It is possible to attach one or more :ref:`chapter_machconf`
     to a PilotManager to outsource machine specific configuration
     parameters to an external configuration file.
 
-    Each PilotManager has a unique identifier :data:`radical.pilot.PilotManager.uid`
-    that can be used to re-connect to previoulsy created PilotManager in a
-    given :class:`radical.pilot.Session`.
-
     **Example**::
 
-        s = radical.pilot.Session(database_url=dbURL)
+        s = radical.pilot.Session(database_url=DBURL)
 
-        pm1 = radical.pilot.PilotManager(session=s, resource_configurations=RESCONF)
-        # Re-connect via the 'get()' method.
-        pm2 = radical.pilot.PilotManager.get(session=s, pilot_manager_id=pm1.uid)
+        pm = radical.pilot.PilotManager(session=s)
 
-        # pm1 and pm2 are pointing to the same PilotManager
-        assert pm1.uid == pm2.uid
+        pd = radical.pilot.ComputePilotDescription()
+        pd.resource = "futuregrid.alamo"
+        pd.cores = 16
+
+        p1 = pm.submit_pilots(pd) # create first pilot with 16 cores
+        p2 = pm.submit_pilots(pd) # create second pilot with 16 cores
+
+        # Create a workload of 128 '/bin/sleep' compute units
+        compute_units = []
+        for unit_count in range(0, 128):
+            cu = radical.pilot.ComputeUnitDescription()
+            cu.executable = "/bin/sleep"
+            cu.arguments = ['60']
+            compute_units.append(cu)
+
+        # Combine the two pilots, the workload and a scheduler via
+        # a UnitManager.
+        um = radical.pilot.UnitManager(session=session,
+                                       scheduler=radical.pilot.SCHED_ROUND_ROBIN)
+        um.add_pilot(p1)
+        um.submit_units(compute_units)
+
+
+    The pilot manager can issue notification on pilot state changes.  Whenever
+    state notification arrives, any callback registered for that notification is
+    fired.  
+    
+    NOTE: State notifications can arrive out of order wrt the pilot state model!
     """
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    def __init__(self, session, pilot_launcher_workers=1, report_state=True):
-        """Creates a new PilotManager and attaches is to the session.
-
-        .. note:: The `resource_configurations` (see :ref:`chapter_machconf`)
-                  parameter is currently mandatory for creating a new
-                  PilotManager instance.
+    def __init__(self, session):
+        """
+        Creates a new PilotManager and attaches is to the session.
 
         **Arguments:**
-
-            * **session** [:class:`radical.pilot.Session`]:
+            * session [:class:`radical.pilot.Session`]:
               The session instance to use.
 
-            * **resource_configurations** [`string` or `list of strings`]:
-              A list of URLs pointing to :ref:`chapter_machconf`. Currently
-              `file://`, `http://` and `https://` URLs are supported.
-
-              If one or more resource_configurations are provided, Pilots
-              submitted  via this PilotManager can access the configuration
-              entries in the  files via the :class:`ComputePilotDescription`.
-              For example::
-
-                  pm = radical.pilot.PilotManager(session=s)
-
-                  pd = radical.pilot.ComputePilotDescription()
-                  pd.resource = "futuregrid.india"  # defined in futuregrid.json
-                  pd.cores    = 16
-                  pd.runtime  = 5 # minutes
-
-                  pilot = pm.submit_pilots(pd)
-
-            * pilot_launcher_workers (`int`): The number of pilot launcher 
-              worker processes to start in the background. 
-
-        .. note:: `pilot_launcher_workers` can be used to tune RADICAL-Pilot's 
-                  performance. However, you should only change the default values 
-                  if you know what you are doing.
-
         **Returns:**
-
             * A new `PilotManager` object [:class:`radical.pilot.PilotManager`].
-
-        **Raises:**
-            * :class:`radical.pilot.PilotException`
         """
-        logger.report.info('<<create pilot manager')
 
-        self._session = session
-        self._worker = None
-        self._report_state = report_state
+        self._bridges     = dict()
+        self._components  = dict()
+        self._pilots      = dict()
+        self._pilots_lock = threading.RLock()
+        self._callbacks   = dict()
+        self._pcb_lock    = threading.RLock()
+        self._terminate   = threading.Event()
+        self._closed      = False
+        self._rec_id      = 0       # used for session recording
 
-        self.uid = ru.generate_id ('pmgr')
+        for m in rpt.PMGR_METRICS:
+            self._callbacks[m] = dict()
 
-        # ----------------------------------------------------------------------
-        # Create a new pilot manager
+        cfg = ru.read_json("%s/configs/pmgr_%s.json" \
+                % (os.path.dirname(__file__),
+                   os.environ.get('RADICAL_PILOT_PMGR_CFG', 'default')))
 
-        # Start a worker process fo this PilotManager instance. The worker
-        # process encapsulates database access, persitency et al.
-        self._worker = PilotManagerController(
-            pmgr_uid=self.uid,
-            pilot_manager_data={},
-            pilot_launcher_workers=pilot_launcher_workers, 
-            session=self._session)
-        self._worker.start()
+        assert(cfg['db_poll_sleeptime']), 'db_poll_sleeptime not configured'
+
+        # initialize the base class (with no intent to fork)
+        self._uid    = ru.generate_id('pmgr')
+        cfg['owner'] = self.uid
+        rpu.Component.__init__(self, cfg, session)
+        self.start(spawn=False)
+
+        # only now we have a logger... :/
+        self._log.report.info('<<create pilot manager')
+        self._prof.prof('create pmgr', uid=self._uid)
+
+        # The output queue is used to forward submitted pilots to the
+        # launching component.
+        self.register_output(rps.PMGR_LAUNCHING_PENDING,
+                             rpc.PMGR_LAUNCHING_QUEUE)
+
+        # register the state notification pull cb
+        # FIXME: we may want to have the frequency configurable
+        # FIXME: this should be a tailing cursor in the update worker
+        self.register_timed_cb(self._state_pull_cb, 
+                               timer=self._cfg['db_poll_sleeptime'])
+
+        # also listen to the state pubsub for pilot state changes
+        self.register_subscriber(rpc.STATE_PUBSUB, self._state_sub_cb)
+
+        # let session know we exist
+        self._session._register_pmgr(self)
+
+        self._prof.prof('PMGR setup done')
+        self._log.report.ok('>>ok\n')
 
 
-        # Each pilot manager has a worker thread associated with it. The task
-        # of the worker thread is to check and update the state of pilots, fire
-        # callbacks and so on.
-        self._session._pilot_manager_objects[self.uid] = self
+    # --------------------------------------------------------------------------
+    # 
+    def initialize_common(self):
 
-        self._valid = True
+        # the manager must not carry bridge and component handles across forks
+        ru.atfork(self._atfork_prepare, self._atfork_parent, self._atfork_child)
 
-        logger.report.ok('>>ok\n')
+
+    # --------------------------------------------------------------------------
+    #
+    def _atfork_prepare(self): pass
+    def _atfork_parent(self) : pass
+    def _atfork_child(self)  : 
+        self._bridges    = dict()
+        self._components = dict()
+
+
+    # --------------------------------------------------------------------------
+    # 
+    def finalize_parent(self):
+
+        # terminate pmgr components
+        for c in self._components:
+            c.stop()
+            c.join()
+
+        # terminate pmgr bridges
+        for b in self._bridges:
+            b.stop()
+            b.join()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def close(self, terminate=True):
+        """
+        Shuts down the PilotManager.
+
+        **Arguments:**
+            * **terminate** [`bool`]: cancel non-final pilots if True (default)
+        """
+
+        if self._closed:
+            return
+        self._terminate.set()
+
+        self._log.report.info('<<close pilot manager')
+
+        # we don't want any callback invokations during shutdown
+        # FIXME: really?
+        with self._pcb_lock:
+            for m in rpt.PMGR_METRICS:
+                self._callbacks[m] = dict()
+
+        # If terminate is set, we cancel all pilots. 
+        if terminate:
+            self.cancel_pilots(_timeout=10)
+            # if this cancel op fails and the pilots are s till alive after
+            # timeout, the pmgr.launcher termination will kill them
+
+        self.stop()
+
+        self._session.prof.prof('closed pmgr', uid=self._uid)
+        self._log.info("Closed PilotManager %s." % self._uid)
+
+        self._closed = True
+        self._log.report.ok('>>ok\n')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def is_valid(self, term=True):
+
+        # don't check during termination
+        if self._closed:
+            return True
+
+        return super(PilotManager, self).is_valid(term)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def as_dict(self):
+        """
+        Returns a dictionary representation of the PilotManager object.
+        """
+
+        ret = {
+            'uid': self.uid,
+            'cfg': self.cfg
+        }
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __str__(self):
+
+        """
+        Returns a string representation of the PilotManager object.
+        """
+
+        return str(self.as_dict())
 
 
     #---------------------------------------------------------------------------
     #
-    def _is_valid(self):
-        if not self._valid:
-            raise RuntimeError("instance was closed")
+    def _state_pull_cb(self):
+
+        if self._terminate.is_set():
+            return False
+
+        # pull all pilot states from the DB, and compare to the states we know
+        # about.  If any state changed, update the known pilot instances and 
+        # push an update message to the state pubsub.
+        # pubsub.
+        # FIXME: we also pull for dead pilots.  That is not efficient...
+        # FIXME: this needs to be converted into a tailed cursor in the update
+        #        worker
+        # FIXME: this is a big and frequently invoked lock
+        pilot_dicts = self._session._dbs.get_pilots(pmgr_uid=self.uid)
+
+        for pilot_dict in pilot_dicts:
+            if not self._update_pilot(pilot_dict, publish=True):
+                return False
+
+        return True
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    def close(self, terminate=True):
-        """Shuts down the PilotManager and its background workers in a 
-        coordinated fashion.
+    def _state_sub_cb(self, topic, msg):
 
-        **Arguments:**
+        if self._terminate.is_set():
+            return False
 
-            * **terminate** [`bool`]: If set to True, all active pilots will 
-              get canceled (default: False).
+        cmd = msg.get('cmd')
+        arg = msg.get('arg')
 
-        """
+        if cmd != 'update':
+            self._log.debug('ignore state cb msg with cmd %s', cmd)
+            return True
 
-        logger.debug("pmgr    %s closing" % (str(self.uid)))
-        logger.report.info('<<close pilot manager')
+        if isinstance(arg, list): things =  arg
+        else                    : things = [arg]
 
-        # Spit out a warning in case the object was already closed.
-        if not self.uid:
-            logger.error("PilotManager object already closed.")
-            return
+        for thing in things:
 
-        # before we terminate pilots, we have to disable the pilot launcher, so
-        # that no new pilots are getting started.  threads.  This will not stop
-        # the state monitor, as we'll need that to have a functional pilot.wait.
-        if self._worker is not None:
-            logger.debug("pmgr    %s cancel   launcher %s" % (str(self.uid), self._worker.name))
-            self._worker.disable_launcher()
-            logger.debug("pmgr    %s canceled launcher %s" % (str(self.uid), self._worker.name))
+            if 'type' in thing and thing['type'] == 'pilot':
 
-        # If terminate is set, we cancel all pilots. 
-        if  terminate :
-            # cancel all pilots, make sure they are gone, and close the pilot
-            # managers.
-            for pilot in self.get_pilots () :
-                logger.debug("pmgr    %s cancels  pilot  %s" % (str(self.uid), pilot.uid))
-            self.cancel_pilots()
-            self.wait_pilots()
-            # we leave it to the worker shutdown below to ensure that pilots are
-            # final before joining
+                # we got the state update from the state callback - don't
+                # publish it again
+                if not self._update_pilot(thing, publish=False):
+                    return False
 
-        # now that all pilots are dead, we can terminate the launcher altogether
-        # (incl. state checker)
-        if self._worker is not None:
-            logger.debug("pmgr    %s cancel   worker %s" % (str(self.uid), self._worker.name))
-            self._worker.cancel_launcher()
-            logger.debug("pmgr    %s canceled worker %s" % (str(self.uid), self._worker.name))
-
-        logger.debug("pmgr    %s stops    worker %s" % (str(self.uid), self._worker.name))
-        self._worker.stop()
-        self._worker.join()
-        logger.debug("pmgr    %s stopped  worker %s" % (str(self.uid), self._worker.name))
-        logger.debug("pmgr    %s closed" % (str(self.uid)))
-
-        self._valid = False
-
-        logger.report.ok('>>ok\n')
+        return True
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    def as_dict(self):
-        """Returns a Python dictionary representation of the object.
-        """
-        self._is_valid()
+    def _update_pilot(self, pilot_dict, publish=False, advance=True):
 
-        object_dict = {
-            'uid': self.uid
-        }
-        return object_dict
+        # FIXME: this is breaking the bulk!
 
-    # -------------------------------------------------------------------------
+        pid   = pilot_dict['uid']
+        state = pilot_dict['state']
+
+        with self._pilots_lock:
+
+            # we don't care about pilots we don't know
+            if pid not in self._pilots:
+                return True  # this is not an error
+
+            # only update on state changes
+            current = self._pilots[pid].state
+            target  = pilot_dict['state']
+            if current == target:
+                return True
+
+            target, passed = rps._pilot_state_progress(pid, current, target)
+          # print '%s current: %s' % (pid, current)
+          # print '%s target : %s' % (pid, target )
+          # print '%s passed : %s' % (pid, passed )
+
+            if target in [rps.CANCELED, rps.FAILED]:
+                # don't replay intermediate states
+                passed = passed[-1:]
+
+            for s in passed:
+              # print '%s advance: %s' % (pid, s )
+                # we got state from either pubsub or DB, so don't publish again.
+                # we also don't need to maintain bulks for that reason.
+                pilot_dict['state'] = s
+                self._pilots[pid]._update(pilot_dict)
+
+                if advance:
+                    self.advance(pilot_dict, s, publish=publish, push=False)
+
+                if s in [rps.PMGR_ACTIVE]:
+                    self._log.info('pilot %s is %s: %s [%s]', \
+                            pid, s, pilot_dict.get('lm_info'), 
+                                    pilot_dict.get('lm_detail')) 
+
+            return True
+
+
+    # --------------------------------------------------------------------------
     #
-    def __str__(self):
-        """Returns a string representation of the object.
-        """
-        return str(self.as_dict())
+    def _call_pilot_callbacks(self, pilot_obj, state):
+
+        with self._pcb_lock:
+            for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
+
+                cb      = cb_val['cb']
+                cb_data = cb_val['cb_data']
+                
+              # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, self.state, cb_name)
+
+                if cb_data: cb(pilot_obj, state, cb_data)
+                else      : cb(pilot_obj, state)
+          # print ' ~~~~ done PCBS'
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
-    def session(self):
-        """Returns the Pilot Manager's session.
-
-        **Returns:**
-            * a `radical.pilot.Session` object
+    def uid(self):
         """
-        return self._session
-
-
-    #------------------------------------------------------------------------------
-    #
-    @staticmethod
-    def _default_pilot_state_cb(pilot, state):
-
-        if not pilot:
-            return
-
-        logger.info("[Callback]: ComputePilot '%s' state: %s.", pilot.uid, state)
-
-
-    #------------------------------------------------------------------------------
-    #
-    @staticmethod
-    def _default_pilot_error_cb(pilot, state):
-
-        if not pilot:
-            return
-
-        if state == FAILED:
-            logger.error("[Callback]: ComputePilot '%s' failed -- calling exit", pilot.uid)
-            sys.exit(1)
-
-
-    # -------------------------------------------------------------------------
-    #
-    def submit_pilots(self, pilot_descriptions):
-        """Submits a new :class:`radical.pilot.ComputePilot` to a resource.
-
-        **Returns:**
-
-            * One or more :class:`radical.pilot.ComputePilot` instances
-              [`list of :class:`radical.pilot.ComputePilot`].
-
-        **Raises:**
-
-            * :class:`radical.pilot.PilotException`
+        Returns the unique id.
         """
+        return self._uid
 
 
-        # Check if the object instance is still valid.
-        self._is_valid()
-
-        # Implicit list conversion.
-        return_list_type = True
-        if  not isinstance(pilot_descriptions, list):
-            return_list_type   = False
-            pilot_descriptions = [pilot_descriptions]
-
-        if len(pilot_descriptions) == 0:
-            raise ValueError('cannot submit no pilot descriptions')
-
-        logger.report.info('<<submit %d pilot(s) ' % len(pilot_descriptions))
-
-        # Itereate over the pilot descriptions, try to create a pilot for
-        # each one and append it to 'pilot_obj_list'.
-        pilot_obj_list = list()
-
-        for pd in pilot_descriptions:
-
-            if pd.resource is None:
-                error_msg = "ComputePilotDescription does not define mandatory attribute 'resource'."
-                raise BadParameter(error_msg)
-
-            if pd.runtime is None:
-                error_msg = "ComputePilotDescription does not define mandatory attribute 'runtime'."
-                raise BadParameter(error_msg)
-
-            if pd.runtime <= 0:
-                error_msg = "ComputePilotDescription 'runtime must be positive."
-                raise BadParameter(error_msg)
-
-            if pd.cores is None:
-                error_msg = "ComputePilotDescription does not define mandatory attribute 'cores'."
-                raise BadParameter(error_msg)
-
-            if float(pd.cores) != int(pd.cores):
-                error_msg = "ComputePilotDescription 'cores' must be integer."
-                raise BadParameter(error_msg)
-
-            if int(pd.cores) <= 0:
-                error_msg = "ComputePilotDescription 'cores' must be positive."
-                raise BadParameter(error_msg)
-
-            resource_key = pd.resource
-            resource_cfg = self._session.get_resource_config(resource_key)
-
-            # Check resource-specific mandatory attributes
-            if "mandatory_args" in resource_cfg:
-                for ma in resource_cfg["mandatory_args"]:
-                    if getattr(pd, ma) is None:
-                        error_msg = "ComputePilotDescription for '%s' needs mandatory %s." \
-                                    % (resource_key, ma)
-                        raise BadParameter(error_msg)
-
-
-            # we expand and exchange keys in the resource config, depending on
-            # the selected schema so better use a deep copy...
-            import copy
-            resource_cfg  = copy.deepcopy (resource_cfg)
-            schema        = pd['access_schema']
-
-            if  not schema :
-                if 'schemas' in resource_cfg :
-                    schema = resource_cfg['schemas'][0]
-              # import pprint
-              # print "no schema, using %s" % schema
-              # pprint.pprint (pd)
-
-            if  not schema in resource_cfg :
-              # import pprint
-              # pprint.pprint (resource_cfg)
-                logger.warning ("schema %s unknown for resource %s -- continue with defaults" \
-                             % (schema, resource_key))
-
-            else :
-                for key in resource_cfg[schema] :
-                    # merge schema specific resource keys into the
-                    # resource config
-                    resource_cfg[key] = resource_cfg[schema][key]
-
-            # If 'default_sandbox' is defined, set it.
-            if pd.sandbox is not None:
-                if "valid_roots" in resource_cfg and resource_cfg["valid_roots"] is not None:
-                    is_valid = False
-                    for vr in resource_cfg["valid_roots"]:
-                        if pd.sandbox.startswith(vr):
-                            is_valid = True
-                    if is_valid is False:
-                        raise BadParameter("Working directory for resource '%s'" \
-                               " defined as '%s' but needs to be rooted in %s " \
-                                % (resource_key, pd.sandbox, resource_cfg["valid_roots"]))
-
-            # After the sanity checks have passed, we can register a pilot
-            # startup request with the worker process and create a facade
-            # object.
-
-            pilot = ComputePilot.create(
-                pilot_description=pd,
-                pilot_manager_obj=self)
-
-            pilot_uid = self._worker.register_start_pilot_request(
-                pilot=pilot,
-                resource_config=resource_cfg)
-
-            pilot._uid = pilot_uid
-
-            pilot_obj_list.append(pilot)
-
-            # we always add the default state logging callback
-            if self._report_state:
-                pilot.register_callback(self._default_pilot_state_cb)
-
-            # if the pilot description asks for it, we add the default error
-            # handling callback
-            if pd.exit_on_error:
-                pilot.register_callback(self._default_pilot_error_cb)
-
-
-            if self._session._rec:
-                import radical.utils as ru
-                ru.write_json(pd.as_dict(), "%s/%s.json" 
-                        % (self._session._rec, pilot_uid))
-            logger.report.progress()
-        logger.report.ok('>>ok\n')
-
-        # Implicit return value conversion
-        if  return_list_type :
-            return pilot_obj_list
-        else:
-            return pilot_obj_list[0]
-
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def list_pilots(self):
-        """Lists the unique identifiers of all :class:`radical.pilot.ComputePilot`
-        instances associated with this PilotManager
+        """
+        Returns the UIDs of the :class:`radical.pilot.ComputePilots` managed by
+        this pilot manager.
 
         **Returns:**
-
-            * A list of :class:`radical.pilot.ComputePilot` uids [`string`].
-
-        **Raises:**
-
-            * :class:`radical.pilot.PilotException`
+              * A list of :class:`radical.pilot.ComputePilot` UIDs [`string`].
         """
-        # Check if the object instance is still valid.
-        self._is_valid()
 
-        # Get the pilot list from the worker
-        return self._worker.list_pilots()
+        self.is_valid()
 
-    # -------------------------------------------------------------------------
+        with self._pilots_lock:
+            ret = self._pilots.keys()
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
     #
-    def get_pilots(self, pilot_ids=None):
-        """Returns one or more :class:`radical.pilot.ComputePilot` instances.
+    def submit_pilots(self, descriptions):
+        """
+        Submits on or more :class:`radical.pilot.ComputePilot` instances to the
+        pilot manager.
 
         **Arguments:**
-
-            * **pilot_uids** [`list of strings`]: If pilot_uids is set,
-              only the Pilots with  the specified uids are returned. If
-              pilot_uids is `None`, all Pilots are returned.
+            * **descriptions** [:class:`radical.pilot.ComputePilotDescription`
+              or list of :class:`radical.pilot.ComputePilotDescription`]: The
+              description of the compute pilot instance(s) to create.
 
         **Returns:**
-
-            * A list of :class:`radical.pilot.ComputePilot` objects
-              [`list of :class:`radical.pilot.ComputePilot`].
-
-        **Raises:**
-
-            * :class:`radical.pilot.PilotException`
+              * A list of :class:`radical.pilot.ComputePilot` objects.
         """
-        self._is_valid()
+
+        from .compute_pilot import ComputePilot
+
+        self.is_valid()
+
+        ret_list = True
+        if not isinstance(descriptions, list):
+            ret_list     = False
+            descriptions = [descriptions]
+
+        if len(descriptions) == 0:
+            raise ValueError('cannot submit no pilot descriptions')
 
 
-        return_list_type = True
-        if (not isinstance(pilot_ids, list)) and (pilot_ids is not None):
-            return_list_type = False
-            pilot_ids = [pilot_ids]
+        self._log.report.info('<<submit %d pilot(s)\n\t' % len(descriptions))
 
-        pilots = ComputePilot._get(pilot_ids=pilot_ids, pilot_manager_obj=self)
+        # create the pilot instance
+        pilots     = list()
+        pilot_docs = list()
+        for pd in descriptions :
 
-        if  return_list_type :
-            return pilots
-        else :
-            return pilots[0]
+            if not pd.runtime:
+                raise ValueError('pilot runtime must be defined')
 
-    # -------------------------------------------------------------------------
+            if pd.runtime <= 0:
+                raise ValueError('pilot runtime must be positive')
+
+            if not pd.cores:
+                raise ValueError('pilot core size must be defined')
+
+            if not pd.resource:
+                raise ValueError('pilot target resource must be defined')
+
+            pilot = ComputePilot(pmgr=self, descr=pd)
+            pilots.append(pilot)
+            pilot_doc = pilot.as_dict()
+            pilot_docs.append(pilot_doc)
+
+            # keep pilots around
+            with self._pilots_lock:
+                self._pilots[pilot.uid] = pilot
+
+            if self._session._rec:
+                ru.write_json(pd.as_dict(), "%s/%s.batch.%03d.json" \
+                        % (self._session._rec, pilot.uid, self._rec_id))
+            self._log.report.progress()
+
+        # initial state advance to 'NEW'
+        # FIXME: we should use update_pilot(), but that will not trigger an
+        #        advance, since the state did not change.  We would then miss
+        #        the profile entry for the advance to NEW.  So we here basically
+        #        only trigger the profile entry for NEW.
+        self.advance(pilot_docs, state=rps.NEW, publish=False, push=False)
+
+        if self._session._rec:
+            self._rec_id += 1
+
+        # insert pilots into the database, as a bulk.
+        self._session._dbs.insert_pilots(pilot_docs)
+
+        # Only after the insert can we hand the pilots over to the next
+        # components (ie. advance state).
+        for pd in pilot_docs:
+            pd['state'] = rps.PMGR_LAUNCHING_PENDING
+            self._update_pilot(pd, advance=False)
+        self.advance(pilot_docs, publish=True, push=True)
+
+        self._log.report.ok('>>ok\n')
+
+        if ret_list: return pilots
+        else       : return pilots[0]
+
+
+    # --------------------------------------------------------------------------
     #
-    def wait_pilots(self, pilot_ids=None,
-                    state=[DONE, FAILED, CANCELED],
-                    timeout=None):
-        """Returns when one or more :class:`radical.pilot.ComputePilots` reach a
-        specific state or when an optional timeout is reached.
+    def get_pilots(self, uids=None):
+        """Returns one or more compute pilots identified by their IDs.
 
-        If `pilot_uids` is `None`, `wait_pilots` returns when **all** Pilots
-        reach the state defined in `state`.
+        **Arguments:**
+            * **uids** [`string` or `list of strings`]: The IDs of the
+              compute pilot objects to return.
+
+        **Returns:**
+              * A list of :class:`radical.pilot.ComputePilot` objects.
+        """
+        
+        self.is_valid()
+
+        if not uids:
+            with self._pilots_lock:
+                ret = self._pilots.values()
+            return ret
+
+
+        ret_list = True
+        if (not isinstance(uids, list)) and (uids is not None):
+            ret_list = False
+            uids = [uids]
+
+        ret = list()
+        with self._pilots_lock:
+            for uid in uids:
+                if uid not in self._pilots:
+                    raise ValueError('pilot %s not known' % uid)
+                ret.append(self._pilots[uid])
+
+        if ret_list: return ret
+        else       : return ret[0]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def wait_pilots(self, uids=None, state=None, timeout=None):
+        """
+        Returns when one or more :class:`radical.pilot.ComputePilots` reach a
+        specific state.
+
+        If `pilot_uids` is `None`, `wait_pilots` returns when **all**
+        ComputePilots reach the state defined in `state`.  This may include
+        pilots which have previously terminated or waited upon.
+
+        **Example**::
+
+            # TODO -- add example
 
         **Arguments:**
 
             * **pilot_uids** [`string` or `list of strings`]
-              If pilot_uids is set, only the Pilots with the specified uids are
-              considered. If pilot_uids is `None` (default), all Pilots are
-              considered.
+              If pilot_uids is set, only the ComputePilots with the specified
+              uids are considered. If pilot_uids is `None` (default), all
+              ComputePilots are considered.
 
-            * **state** [`list of strings`]
-              The state(s) that Pilots have to reach in order for the call
+            * **state** [`string`]
+              The state that ComputePilots have to reach in order for the call
               to return.
 
-              By default `wait_pilots` waits for the Pilots to reach
-              a **terminal** state, which can be one of the following:
+              By default `wait_pilots` waits for the ComputePilots to
+              reach a terminal state, which can be one of the following:
 
-              * :data:`radical.pilot.DONE`
-              * :data:`radical.pilot.FAILED`
-              * :data:`radical.pilot.CANCELED`
+              * :data:`radical.pilot.rps.DONE`
+              * :data:`radical.pilot.rps.FAILED`
+              * :data:`radical.pilot.rps.CANCELED`
 
             * **timeout** [`float`]
-              Optional timeout in seconds before the call returns regardless
-              whether the Pilots have reached the desired state or not.
-              The default value **-1.0** never times out.
-
-        **Raises:**
-
-            * :class:`radical.pilot.PilotException`
+              Timeout in seconds before the call returns regardless of Pilot
+              state changes. The default value **None** waits forever.
         """
-        self._is_valid()
 
-        if not isinstance(state, list):
-            state = [state]
+        self.is_valid()
 
-        return_list_type = True
-        if (not isinstance(pilot_ids, list)) and (pilot_ids is not None):
-            return_list_type = False
-            pilot_ids = [pilot_ids]
+        if not uids:
+            with self._pilots_lock:
+                uids = list()
+                for uid,pilot in self._pilots.iteritems():
+                    if pilot.state not in rps.FINAL:
+                        uids.append(uid)
 
-        pilots = self._worker.get_compute_pilot_data(pilot_ids=pilot_ids)
-        start  = time.time()
+        if not state:
+            states = rps.FINAL
+        elif isinstance(state, list):
+            states = state
+        else:
+            states = [state]
 
-        logger.report.info('<<wait for %d pilot(s) ' % len(pilots))
+        ret_list = True
+        if not isinstance(uids, list):
+            ret_list = False
+            uids     = [uids]
 
-        # filter for all pilots we still need to check
-        logger.report.idle(mode='start')
-        checked = list()
-        while True:
+        self._log.report.info('<<wait for %d pilot(s)\n\t' % len(uids))
 
-            logger.report.idle()
+        start    = time.time()
+        to_check = None
 
-            for pilot in pilots:
+        with self._pilots_lock:
 
-                pid = pilot['_id']
+            for uid in uids:
+                if uid not in self._pilots:
+                    raise ValueError('pilot %s not known' % uid)
 
-                if pid in checked:
-                    # already handled
-                    continue
+            to_check = [self._pilots[uid] for uid in uids]
 
-                if pilot['state'] in state:
-                    # stop watching this pilot
-                    checked.append(pid)
+        # We don't want to iterate over all pilots again and again, as that would
+        # duplicate checks on pilots which were found in matching states.  So we
+        # create a list from which we drop the pilots as we find them in
+        # a matching state
+        self._log.report.idle(mode='start')
+        while to_check and not self._terminate.is_set():
 
-                    if pilot['state'] in [FAILED]:
-                        logger.report.idle(color='error', c='-')
-                    elif pilot['state'] in [CANCELED]:
-                        logger.report.idle(color='warn', c='*')
-                    else:
-                        logger.report.idle(color='ok', c='+')
+            self._log.report.idle()
 
-            # check timeout
-            if (None != timeout) and (timeout <= (time.time() - start)):
-                if len(checked) < len(pilots):
-                    logger.debug("wait timed out")
+            to_check = [pilot for pilot in to_check \
+                               if pilot.state not in states and \
+                                  pilot.state not in rps.FINAL]
+
+            if to_check:
+
+                if timeout and (timeout <= (time.time() - start)):
+                    self._log.debug ("wait timed out")
                     break
 
-            # if we need to wait longer, sleep a little and get new state info
-            if len(checked) < len(pilots):
-                time.sleep(0.5)
-                pilots = self._worker.get_compute_pilot_data(pilot_ids=pilot_ids)
-                continue
+                time.sleep (0.1)
 
-            # otherwise we are done
-            break
 
-        logger.report.idle(mode='stop')
+        self._log.report.idle(mode='stop')
 
-        if len(checked) == len(pilots):
-            logger.report.ok(  '>>ok\n')
-        else:
-            logger.report.warn('>>timeout\n')
+        if to_check: self._log.report.warn('>>timeout\n')
+        else       : self._log.report.ok(  '>>ok\n')
 
         # grab the current states to return
-        states = [p['state'] for p in pilots]
+        state = None
+        with self._pilots_lock:
+            states = [self._pilots[uid].state for uid in uids]
 
         # done waiting
-        if  return_list_type :
-            return states
-        else :
-            return states[0]
+        if ret_list: return states
+        else       : return states[0]
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    def cancel_pilots(self, pilot_ids=None):
-        """Cancels one or more ComputePilots.
+    def cancel_pilots(self, uids=None, _timeout=None):
+        """
+        Cancel one or more :class:`radical.pilot.ComputePilots`.
 
         **Arguments:**
-
-            * **pilot_uids** [`string` or `list of strings`]
-              If pilot_uids is set, only the Pilots with the specified uids are
-              canceled. If pilot_uids is `None`, all Pilots are canceled.
-
-        **Raises:**
-
-            * :class:`radical.pilot.PilotException`
+            * **uids** [`string` or `list of strings`]: The IDs of the
+              compute pilot objects to cancel.
         """
-        # Check if the object instance is still valid.
-        self._is_valid()
+        self.is_valid()
 
-        # Implicit list conversion.
-        if (not isinstance(pilot_ids, list)) and (pilot_ids is not None):
-            pilot_ids = [pilot_ids]
+        if not uids:
+            with self._pilots_lock:
+                uids = self._pilots.keys()
 
-        # Register the cancelation request with the worker.
-        self._worker.register_cancel_pilots_request(pilot_ids=pilot_ids)
+        if not isinstance(uids, list):
+            uids = [uids]
+
+        with self._pilots_lock:
+            for uid in uids:
+                if uid not in self._pilots:
+                    raise ValueError('pilot %s not known' % uid)
+
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots', 
+                                          'arg' : {'pmgr' : self.uid,
+                                                   'uids' : uids}})
+
+        self.wait_pilots(uids=uids, timeout=_timeout)
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    def register_callback(self, cb_func, cb_data=None):
-        """Registers a new callback function with the PilotManager.
-        Manager-level callbacks get called if any of the ComputePilots managed
-        by the PilotManager change their state.
+    def register_callback(self, cb, metric=rpt.PILOT_STATE, cb_data=None):
+        """
+        Registers a new callback function with the PilotManager.  Manager-level
+        callbacks get called if the specified metric changes.  The default
+        metric `PILOT_STATE` fires the callback if any of the ComputePilots
+        managed by the PilotManager change their state.
 
         All callback functions need to have the same signature::
 
-            def cb_func(obj, state, data)
+            def cb(obj, value, cb_data)
 
         where ``object`` is a handle to the object that triggered the callback,
-        ``state`` is the new state of that object, and ``data`` are the data
-        passed on callback registration.
-        """
-        self._is_valid()
+        ``value`` is the metric, and ``data`` is the data provided on
+        callback registration..  In the example of `PILOT_STATE` above, the
+        object would be the pilot in question, and the value would be the new
+        state of the pilot.
 
-        self._worker.register_manager_callback(cb_func, cb_data)
+        Available metrics are:
+
+          * `PILOT_STATE`: fires when the state of any of the pilots which are
+            managed by this pilot manager instance is changing.  It communicates
+            the pilot object instance and the pilots new state.
+        """
+
+        # FIXME: the signature should be (self, metrics, cb, cb_data)
+
+        if metric not in rpt.PMGR_METRICS :
+            raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
+
+        with self._pcb_lock:
+            cb_name = cb.__name__
+            self._callbacks[metric][cb_name] = {'cb'      : cb, 
+                                                'cb_data' : cb_data}
+
+
+    # --------------------------------------------------------------------------
+    #
+    def unregister_callback(self, cb, metric=rpt.PILOT_STATE):
+
+        if metric and metric not in rpt.PMGR_METRICS :
+            raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
+
+        if not metric:
+            metrics = rpt.PMGR_METRICS
+        elif isinstance(metric, list):
+            metrics =  metric
+        else:
+            metrics = [metric]
+
+        with self._pcb_lock:
+
+            for metric in metrics:
+
+                if cb:
+                    to_delete = [cb.__name__]
+                else:
+                    to_delete = self._callbacks[metric].keys()
+
+                for cb_name in to_delete:
+
+                    if cb_name not in self._callbacks[metric]:
+                        raise ValueError("Callback '%s' is not registered" % cb_name)
+
+                    del(self._callbacks[metric][cb_name])
+
+
+# ------------------------------------------------------------------------------
 

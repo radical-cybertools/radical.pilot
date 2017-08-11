@@ -37,10 +37,12 @@ class Spark(LaunchMethod):
 
         if not os.environ.get('SPARK_HOME'):
             logger.info("Downloading Apache Spark..")
-            try:    
+            try:
+
                 VERSION = "2.0.2"
                 subprocess.check_call("wget http://d3kbcqa49mib13.cloudfront.net/spark-2.0.2-bin-hadoop2.7.tgz".split())
                 subprocess.check_call('tar -xzf spark-2.0.2-bin-hadoop2.7.tgz'.split())
+                subprocess.check_call("rm spark-2.0.2-bin-hadoop2.7.tgz ".split())
                 subprocess.check_call(("mv spark-2.0.2-bin-hadoop2.7 spark-" + VERSION).split())
             except  Exception as e:
                 raise RuntimeError("Spark wasn't installed properly. Please try again. %s " % e )
@@ -109,7 +111,7 @@ class Spark(LaunchMethod):
             for config in cfg['resource_cfg']['pre_bootstrap_1']:
                 spark_env_file.write(config + '\n')
 
-        spark_env_file.write('export SPARK_MASTER_IP=' + master_ip + "\n")
+        spark_env_file.write('export SPARK_MASTER_HOST=' + master_ip + "\n")
         spark_env_file.write('export JAVA_HOME=' + java_home + "\n")
         spark_env_file.write('export SPARK_LOG_DIR='+os.getcwd()+'/spark-logs'+'\n')
         #spark_env_file.write('export PYSPARK_PYTHON=`which python` \n')
@@ -121,7 +123,7 @@ class Spark(LaunchMethod):
             subprocess.check_output(spark_home + '/sbin/start-all.sh')
         except Exception as e:
             raise RuntimeError("Spark Cluster failed to start: %s" % e)
-        
+
         logger.info('Start Spark Cluster')
         launch_command = spark_home +'/bin'
 
@@ -145,8 +147,7 @@ class Spark(LaunchMethod):
     @classmethod
     def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
         if 'name' not in lm_info:
-            raise RuntimeError('name not in lm_info for %s' \
-                    % (self.name))
+            raise RuntimeError('name not in lm_info for %s' % name)
 
         if lm_info['name'] != 'SPARKLRMS':
             logger.info('Stoping SPARK')
@@ -171,12 +172,9 @@ class Spark(LaunchMethod):
         opaque_slots = cu['opaque_slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cores']
         task_args    = cud.get('arguments')
         task_env     = cud.get('environment')
-        work_dir     = cu['workdir']
-        unit_id      = cu['_id']
-
+        
         # Construct the args_string which is the arguments given as input to the
         # shell script. Needs to be a string
         self._log.debug("Constructing SPARK command")

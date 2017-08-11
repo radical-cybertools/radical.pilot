@@ -18,7 +18,7 @@ dictionary.  For a list of all settings, see ``theme.conf``.
 Defaults
 --------
 This repository has been customized for Armstrong documentation, but you can
-use the original default color scheme on your project by copying the
+use the original default color schema on your project by copying the
 ``rtd-theme.conf`` over the existing ``theme.conf``.
 
 

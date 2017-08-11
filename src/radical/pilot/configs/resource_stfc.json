@@ -1,6 +1,6 @@
 
 {
-    "joule": {
+    "joule_runjob": {
         "description"                 : "The STFC Joule IBM BG/Q system (http://community.hartree.stfc.ac.uk/wiki/site/admin/home.html)",
         "notes"                       : "This currently needs a centrally administered outbound ssh tunnel.",
         "schemas"                     : ["ssh"],
@@ -31,7 +31,6 @@
         "valid_roots"                 : ["/gpfs/home"],
         "pilot_agent"                 : "radical-pilot-agent-multicore.py",
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_joule",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     }
