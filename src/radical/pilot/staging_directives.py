@@ -175,20 +175,22 @@ def complete_url(path, context, log=None):
     if schema in ['resource', 'pilot', 'unit', 'pwd']:
 
         # we interpret any hostname as part of the path element
-        if purl.host: purl_path = '%s/%s' % (purl.host, purl.path)
-        else        : purl_path =    '%s' % (           purl.path)
+        if   purl.host and purl.path: ppath = '%s/%s' % (purl.host, purl.path)
+        elif purl.host              : ppath =    '%s' % (           purl.host)
+        elif purl.path              : ppath =    '%s' % (           purl.path)
+        else                        : ppath =     '.'
 
         if schema not in context:
             raise ValueError('cannot expand schema (%s) for staging' % schema)
 
         log.debug('   expand with %s', context[schema])
-        ret       = ru.Url(context[schema])
+        ret = ru.Url(context[schema])
 
         if schema in ['resource', 'pilot']:
             # use a dedicated staging area dir
             ret.path += '/staging_area'
 
-        ret.path += '/%s' % purl_path
+        ret.path += '/%s' % ppath
         purl      = ret
 
     # if not schema is set, assume file:// on localhost
