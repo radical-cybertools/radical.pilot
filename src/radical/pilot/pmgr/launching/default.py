@@ -83,9 +83,9 @@ class Default(PMGRLaunchingComponent):
         # we listen for pilot cancel commands
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
 
-        self._log.info(ru.get_version([self._root_dir, self._mod_dir]))
+        self._log.info(ru.get_version([self._mod_dir, self._root_dir]))
         self._rp_version, _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
-                ru.get_version([self._root_dir, self._mod_dir])
+                ru.get_version([self._mod_dir, self._root_dir])
 
 
     # --------------------------------------------------------------------------
