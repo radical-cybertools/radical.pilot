@@ -324,11 +324,18 @@ class Component(ru.Process):
         self._log  = self._session._get_logger(self.uid, level=self._debug)
         self._prof = self._session._get_profiler(self.uid)
 
+        self._q    = None
+        self._in   = None
+        self._out  = None
+        self._poll = None
+        self._ctx  = None
+
         # initialize the Process base class for later fork.
         super(Component, self).__init__(name=self._uid, log=self._log)
 
         # make sure we bootstrapped ok
         self.is_valid()
+        self._session._to_stop.append(self)
 
 
     # --------------------------------------------------------------------------
@@ -351,7 +358,9 @@ class Component(ru.Process):
         #       make frequency configurable.
 
         if self._ru_terminating:
-            return True
+            # don't go any further.  Specifically, don't call stop.  Calling
+            # that is up to the thing who inioated termination.
+            return False
 
         valid = True
 
@@ -614,7 +623,7 @@ class Component(ru.Process):
         self.finalize_common()
 
         # reverse order from initialize_common
-      # self.unregister_publisher(rpc.LOG_PUBSUB)
+        self.unregister_publisher(rpc.LOG_PUBSUB)
         self.unregister_publisher(rpc.STATE_PUBSUB)
         self.unregister_publisher(rpc.CONTROL_PUBSUB)
 
@@ -624,6 +633,40 @@ class Component(ru.Process):
             self._prof.close()
         except Exception:
             pass
+
+        with self._cb_lock:
+
+            for bridge in self._bridges:
+                bridge.stop()
+            self._bridges = list()
+
+            for comp in self._components:
+                comp.stop()
+            self._components = list()
+
+          # #  FIXME: the stuff below caters to unsuccessful or buggy termination
+          # #         routines - but for now all those should be served by the
+          # #         respective unregister routines.
+          #
+          # for name in self._inputs:
+          #     self._inputs[name]['queue'].stop()
+          # self._inputs = dict()
+          #
+          # for name in self._workers.keys()[:]:
+          #     del(self._workers[name])
+          #
+          # for name in self._outputs:
+          #     if self._outputs[name]:
+          #         self._outputs[name].stop()
+          # self._outputs = dict()
+          #
+          # for name in self._publishers:
+          #     self._publishers[name].stop()
+          # self._publishers = dict()
+          #
+          # for name in self._threads:
+          #     self._threads[name].stop()
+          # self._threads = dict()
 
     def finalize_common(self):
         pass # can be overloaded
@@ -661,9 +704,6 @@ class Component(ru.Process):
 
         self._log.info('stop %s (%s : %s : %s) [%s]', self.uid, os.getpid(),
                        self.pid, ru.get_thread_name(), ru.get_caller_name())
-
-        for _,t in self._threads.iteritems(): t['term'  ].set()
-        for _,t in self._threads.iteritems(): t['thread'].join()
 
         super(Component, self).stop(timeout)
 
@@ -743,6 +783,7 @@ class Component(ru.Process):
           # raise ValueError('input %s not registered' % name)
             return
 
+        self._inputs[name]['queue'].stop()
         del(self._inputs[name])
         self._log.debug('unregistered input %s', name)
 
@@ -850,57 +891,59 @@ class Component(ru.Process):
             if name in self._threads:
                 raise ValueError('cb %s already registered' % cb.__name__)
 
-        if timer == None: timer = 0.0  # NOTE: busy idle loop
-        else            : timer = float(timer)
+            if timer == None: timer = 0.0  # NOTE: busy idle loop
+            else            : timer = float(timer)
 
-        # create a separate thread per idle cb, and let it be watched by the
-        # ru.Process base class
-        #
-        # ----------------------------------------------------------------------
-        # NOTE: idle timing is a tricky beast: if we sleep for too long, then we
-        #       have to wait that long on stop() for the thread to get active
-        #       again and terminate/join.  So we always sleep just a little, and
-        #       explicitly check if sufficient time has passed to activate the
-        #       callback.
-        class Idler(ru.Thread):
+            # create a separate thread per idle cb, and let it be watched by the
+            # ru.Process base class
+            #
+            # ----------------------------------------------------------------------
+            # NOTE: idle timing is a tricky beast: if we sleep for too long, then we
+            #       have to wait that long on stop() for the thread to get active
+            #       again and terminate/join.  So we always sleep just a little, and
+            #       explicitly check if sufficient time has passed to activate the
+            #       callback.
+            class Idler(ru.Thread):
 
-            # ------------------------------------------------------------------
-            def __init__(self, name, log, timer, cb, cb_data, cb_lock):
-                self._name    = name
-                self._log     = log
-                self._timeout = timer
-                self._cb      = cb
-                self._cb_data = cb_data
-                self._cb_lock = cb_lock
-                self._last    = 0.0
+                # ------------------------------------------------------------------
+                def __init__(self, name, log, timer, cb, cb_data, cb_lock):
+                    self._name    = name
+                    self._log     = log
+                    self._timeout = timer
+                    self._cb      = cb
+                    self._cb_data = cb_data
+                    self._cb_lock = cb_lock
+                    self._last    = 0.0
 
-                super(Idler, self).__init__(name=self._name, log=self._log)
+                    super(Idler, self).__init__(name=self._name, log=self._log)
 
-                # immediately start the thread upon construction
-                self.start()
+                    # immediately start the thread upon construction
+                    self.start()
 
-            # ------------------------------------------------------------------
-            def work_cb(self):
-                self.is_valid()
-                if self._timeout and (time.time()-self._last) < self._timeout:
-                    # not yet
-                    time.sleep(0.1) # FIXME: make configurable
-                    return True
+                # ------------------------------------------------------------------
+                def work_cb(self):
+                    self.is_valid()
+                    if self._timeout and (time.time()-self._last) < self._timeout:
+                        # not yet
+                        time.sleep(0.1) # FIXME: make configurable
+                        return True
 
-                with self._cb_lock:
-                    if self._cb_data != None:
-                        ret = self._cb(cb_data=self._cb_data)
-                    else:
-                        ret = self._cb()
-                if self._timeout:
-                    self._last = time.time()
-                return ret
-        # ----------------------------------------------------------------------
+                    with self._cb_lock:
+                        if self._cb_data != None:
+                            ret = self._cb(cb_data=self._cb_data)
+                        else:
+                            ret = self._cb()
+                    if self._timeout:
+                        self._last = time.time()
+                    return ret
+            # ----------------------------------------------------------------------
 
-        idler = Idler(name=name, timer=timer, log=self._log,
-                      cb=cb, cb_data=cb_data, cb_lock=self._cb_lock)
+            idler = Idler(name=name, timer=timer, log=self._log,
+                          cb=cb, cb_data=cb_data, cb_lock=self._cb_lock)
+            self._threads[name] = idler
 
         self.register_watchable(idler)
+        self._session._to_stop.append(idler)
         self._log.debug('%s registered idler %s' % (self.uid, name))
 
 
@@ -925,9 +968,7 @@ class Component(ru.Process):
               # raise ValueError('%s is not registered' % name)
                 return
 
-            entry = self._threads[name]
-            entry['term'].set()
-            entry['thread'].join()
+            self._threads[name].stop()  # implies join
             del(self._threads[name])
 
         self._log.debug("TERM : %s unregistered idler %s", self.uid, name)
@@ -978,6 +1019,7 @@ class Component(ru.Process):
 
         self._log.debug('TERM : %s unregister publisher %s', self.uid, pubsub)
 
+        self._publishers[pubsub].stop()
         del(self._publishers[pubsub])
         self._log.debug('unregistered publisher %s', pubsub)
 
@@ -1044,7 +1086,7 @@ class Component(ru.Process):
             # ------------------------------------------------------------------
             def work_cb(self):
                 self.is_valid()
-                topic, msg = self._q.get_nowait(500) # timout in ms
+                topic, msg = self._q.get_nowait(500)  # timout in ms
                 if topic and msg:
                     if not isinstance(msg,list):
                         msg = [msg]
@@ -1058,6 +1100,8 @@ class Component(ru.Process):
                         if not ret:
                             return False
                 return True
+            def ru_finalize_common(self):
+                self._q.stop()
         # ----------------------------------------------------------------------
         # create a pubsub subscriber (the pubsub name doubles as topic)
         # FIXME: this should be moved into the thread child_init
@@ -1067,7 +1111,11 @@ class Component(ru.Process):
         subscriber = Subscriber(name=name, l=self._log, q=q, 
                                 cb=cb, cb_data=cb_data, cb_lock=self._cb_lock)
 
+        with self._cb_lock:
+            self._threads[name] = subscriber
+
         self.register_watchable(subscriber)
+        self._session._to_stop.append(subscriber)
         self._log.debug('%s registered %s subscriber %s' % (self.uid, pubsub, name))
 
 
@@ -1091,9 +1139,7 @@ class Component(ru.Process):
               # raise ValueError('%s is not subscribed to %s' % (cb.__name__, pubsub))
                 return
 
-            entry = self._threads[name]
-            entry['term'].set()
-            entry['thread'].join()
+            self._threads[name]  # implies join
             del(self._threads[name])
 
         self._log.debug("unregistered subscriber %s", name)
@@ -1111,10 +1157,10 @@ class Component(ru.Process):
 
         self.is_valid()
 
-        for n,t in self._threads.iteritems():
-            if not t['thread'].is_alive():
-                raise RuntimeError('%s thread %s died', 
-                                    self.uid, t['thread'].name)
+        with self._cb_lock:
+            for tname in self._threads:
+                if not self._threads[tname].is_alive():
+                    raise RuntimeError('%s thread %s died', self.uid, tname)
 
 
     # --------------------------------------------------------------------------

@@ -6,18 +6,11 @@ import zmq
 import time
 import multiprocessing as mp
 
-cfg = {
-    'src'     : {
-        'n'   : 1000,
-        't'   : 0.1
-        },
-    'queue'   : {
-        't'   : 0.1
-        },
-    'tgt'     : {
-        't'   : 0.1
-        }
-    }
+cfg = {'src'   : {'n' : 1000,
+                  't' : 0.0 } ,
+       'queue' : {'t' : 0.0 } ,
+       'tgt'   : {'t' : 0.0 } }
+
 
 def src(host):
     context        = zmq.Context()
@@ -31,10 +24,13 @@ def src(host):
     pid = os.getpid()
 
     for num in range(n):
-        msg = {pid:num}
+        msg = {unicode(pid):num}
         socket_src.send_json(msg)
-        print 'sent %s' % msg
+        print 'put %s' % msg
         time.sleep (t)
+    print 'put %s' % msg
+    socket_src.send_json({pid:'stop'})
+    context.destroy()
 
 
 def queue(host):
@@ -50,14 +46,20 @@ def queue(host):
 
     t = cfg['queue']['t']
 
-    while True:
-        req = socket_sink.recv()
-        msg = socket_src.recv_json()
-        print msg
-        socket_sink.send_json(msg)
+    try:
+        while True:
+            req = socket_sink.recv()
+            msg = socket_src.recv_json()
+            print '<-> %s' % msg
+            socket_sink.send_json(msg)
 
-        if t:
-            time.sleep (t)
+            if 'stop' in msg.values():
+                return
+
+            if t:
+                time.sleep (t)
+    finally:
+        context.destroy()
 
 
 def tgt(host):
@@ -67,12 +69,20 @@ def tgt(host):
     socket_sink.connect("tcp://127.0.0.1:5001")
 
     t = cfg['tgt']['t']
-    
-    while True:
-        socket_sink.send('request')
-        msg = socket_sink.recv_json()
-        print 'got %s' % msg
-        time.sleep (t)
+
+    try:
+        while True:
+            socket_sink.send('request')
+            msg = socket_sink.recv_json()
+            print 'get %s' % msg
+            time.sleep (t)
+
+            if 'stop' in msg.values():
+                return
+
+    finally:
+        context.destroy()
+
 
 if len(sys.argv) < 3:
     print """
@@ -102,4 +112,4 @@ for p in procs:
 for p in procs:
     p.join()
 
-        
+

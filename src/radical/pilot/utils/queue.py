@@ -48,6 +48,8 @@ def _uninterruptible(f, *args, **kwargs):
         cnt += 1
         try:
             return f(*args, **kwargs)
+        except zmq.ContextTerminated as e:
+            return None
         except zmq.ZMQError as e:
             if e.errno == errno.EINTR:
                 if cnt > 10:
@@ -133,6 +135,7 @@ class Queue(ru.Process):
         self._cfg['log_level'] = 'debug'
 
         self._uid = "%s.%s" % (self._qname.replace('_', '.'), self._role)
+        self._uid = ru.generate_id(self._uid)
         self._log = self._session._get_logger(self._uid, 
                          level=self._cfg.get('log_level', 'debug'))
 
@@ -144,7 +147,6 @@ class Queue(ru.Process):
         else:
             self._debug = False
 
-        self._q          = None           # the zmq queue
         self._lock       = mt.RLock()     # for _requested
         self._requested  = False          # send/recv sync
         self._addr_in    = None           # bridge input  addr
@@ -157,16 +159,24 @@ class Queue(ru.Process):
 
         self._log.info("create %s - %s - %s", self._qname, self._role, self._addr)
 
+        self._q    = None           # the zmq queue
+        self._in   = None
+        self._out  = None
+        self._ctx  = None
+
 
         # ----------------------------------------------------------------------
         # behavior depends on the role...
         if self._role == QUEUE_INPUT:
 
-            ctx = zmq.Context()
-            self._q = ctx.socket(zmq.PUSH)
+            self._ctx = zmq.Context()
+            self._session._to_destroy.append(self._ctx)
+
+            self._q   = self._ctx.socket(zmq.PUSH)
             self._q.linger = _LINGER_TIMEOUT
             self._q.hwm    = _HIGH_WATER_MARK
             self._q.connect(self._addr)
+            self.start(spawn=False)
 
 
         # ----------------------------------------------------------------------
@@ -200,11 +210,14 @@ class Queue(ru.Process):
         # ----------------------------------------------------------------------
         elif self._role == QUEUE_OUTPUT:
 
-            ctx = zmq.Context()
-            self._q = ctx.socket(zmq.REQ)
+            self._ctx = zmq.Context()
+            self._session._to_destroy.append(self._ctx)
+
+            self._q   = self._ctx.socket(zmq.REQ)
             self._q.linger = _LINGER_TIMEOUT
             self._q.hwm    = _HIGH_WATER_MARK
             self._q.connect(self._addr)
+            self.start(spawn=False)
 
 
     # --------------------------------------------------------------------------
@@ -256,13 +269,15 @@ class Queue(ru.Process):
         # FIXME: should we cache messages coming in at the pull/push 
         #        side, so as not to block the push end?
 
-        ctx = zmq.Context()
-        self._in = ctx.socket(zmq.PULL)
+        self._ctx = zmq.Context()
+        self._session._to_destroy.append(self._ctx)
+
+        self._in = self._ctx.socket(zmq.PULL)
         self._in.linger = _LINGER_TIMEOUT
         self._in.hwm    = _HIGH_WATER_MARK
         self._in.bind(self._addr)
 
-        self._out = ctx.socket(zmq.REP)
+        self._out = self._ctx.socket(zmq.REP)
         self._out.linger = _LINGER_TIMEOUT
         self._out.hwm    = _HIGH_WATER_MARK
         self._out.bind(self._addr)
@@ -278,6 +293,16 @@ class Queue(ru.Process):
         # start polling for messages
         self._poll = zmq.Poller()
         self._poll.register(self._out, zmq.POLLIN)
+
+
+    # --------------------------------------------------------------------------
+    # 
+    def ru_finalize_common(self):
+
+        if self._q   : self._q   .close()
+        if self._in  : self._in  .close()
+        if self._out : self._out .close()
+        if self._ctx : self._ctx.destroy()
 
 
     # --------------------------------------------------------------------------
@@ -321,7 +346,8 @@ class Queue(ru.Process):
                     break
             if not data:
                 if not self.is_alive(strict=False):
-                    raise RuntimeError('not alive anymore?')
+                    self._log.warn('not alive anymore?')
+                    return False
             msg = msgpack.unpackb(data) 
             if isinstance(msg, list): 
                 msgs += msg

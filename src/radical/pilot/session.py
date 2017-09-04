@@ -120,6 +120,21 @@ class Session(rs.Session):
         self._bridges    = list()
         self._components = list()
 
+        # FIXME: we work around some garbage collection issues we don't yet
+        #        understand: instead of relying on the GC to eventually collect
+        #        some stuff, we actively free those on `session.close()`, at
+        #        least for the current process.  Usually, all resources get
+        #        nicely collected on process termination - but not when we
+        #        create many sessions (one after the other) in the same
+        #        application instance (ie. the same process).  This workarounf
+        #        takes care of that use case.
+        #        The clean solution would be to ensure clean termination
+        #        sequence, something which I seem to be unable to implement...
+        #        :/
+        self._to_close   = list()
+        self._to_stop    = list()
+        self._to_destroy = list()
+
         # cache the client sandbox
         # FIXME: this needs to be overwritten if configured differently in the
         #        session config, as should be the case for any agent side
@@ -269,6 +284,9 @@ class Session(rs.Session):
     def _atfork_child(self)  : 
         self._components = list()
         self._bridges    = list()
+        self._to_close   = list()
+        self._to_stop    = list()
+        self._to_destroy = list()
 
     
     # --------------------------------------------------------------------------
@@ -327,7 +345,7 @@ class Session(rs.Session):
                         break
 
         finally:
-            self._valid_iter -= 1
+            pass
 
         if not self._valid and term:
             self._log.warn("session %s is invalid" % self.uid)
@@ -426,7 +444,6 @@ class Session(rs.Session):
         # close only once
         if self._closed:
             return
-        self._closed = True
 
         self._log.report.info('closing session %s' % self._uid)
         self._log.debug("session %s closing" % (str(self._uid)))
@@ -450,6 +467,12 @@ class Session(rs.Session):
             pmgr.close(terminate=terminate)
             self._log.debug("session %s closed pmgr   %s", self._uid, pmgr_uid)
 
+        for comp in self._components:
+            self._log.debug("session %s closes comp   %s", self._uid, comp.uid)
+            comp.stop()
+            comp.join()
+            self._log.debug("session %s closed comp   %s", self._uid, comp.uid)
+
         for bridge in self._bridges:
             self._log.debug("session %s closes bridge %s", self._uid, bridge.uid)
             bridge.stop()
@@ -464,6 +487,20 @@ class Session(rs.Session):
         self._prof.prof("session_stop", uid=self._uid)
         self._prof.close()
 
+        # support GC
+        for x in self._to_close: 
+            try:    x.close()
+            except: pass
+        for x in self._to_stop:
+            try:    x.stop()
+            except: pass
+        for x in self._to_destroy:
+            try:    x.destroy()
+            except: pass
+
+        self._closed = True
+        self._valid = False
+
         # after all is said and done, we attempt to download the pilot log- and
         # profiles, if so wanted
         if download:
@@ -474,7 +511,6 @@ class Session(rs.Session):
             self.fetch_logfiles()
             self._prof.prof("session_fetch_stop", uid=self._uid)
 
-        self._valid = False
         self._log.report.info('<<session lifetime: %.1fs' % (self.closed - self.created))
         self._log.report.ok('>>ok\n')
 

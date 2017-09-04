@@ -203,6 +203,27 @@ def get_session_description(sid, src=None, dburl=None):
     ftmp = fetch_json(sid=sid, dburl=dburl, tgt=src, skip_existing=True)
     json = ru.read_json(ftmp)
 
+    # make sure we have uids
+    # FIXME v0.47: deprecate
+    def fix_json(json):
+        def fix_uids(json):
+            if isinstance(json, list):
+                for elem in json:
+                    fix_uids(elem)
+            elif isinstance(json, dict):
+                if 'unitmanager' in json and 'umgr' not in json:
+                    json['umgr'] = json['unitmanager']
+                if 'pilotmanager' in json and 'pmgr' not in json:
+                    json['pmgr'] = json['pilotmanager']
+                if '_id' in json and 'uid' not in json:
+                    json['uid'] = json['_id']
+                    if 'cfg' not in json:
+                        json['cfg'] = dict()
+                for k,v in json.iteritems():
+                    fix_uids(v)
+        fix_uids(json)
+    fix_json(json)
+
     assert(sid == json['session']['uid']), 'sid inconsistent'
 
     ret             = dict()

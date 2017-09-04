@@ -246,17 +246,17 @@
     "wrangler_ssh": {
         "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["ssh", "gsissh", "go"],
+        "schemas"                     : ["gsissh", "ssh", "go"],
         "mandatory_args"              : ["project"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://wrangler.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://wrangler.tacc.utexas.edu/"
-        },
         "gsissh"                      :
         {
             "job_manager_endpoint"    : "slurm+gsissh://wrangler.tacc.utexas.edu:2222/",
             "filesystem_endpoint"     : "gsisftp://wrangler.tacc.utexas.edu:2222/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://wrangler.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://wrangler.tacc.utexas.edu/"
         },
         "go":
         {
@@ -271,7 +271,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "pre_bootstrap_1"             : ["module load python/2.7.12",
+        "pre_bootstrap_1"             : ["module load python",
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
         "pre_bootstrap_2"             : ["export PATH=$PATH",
@@ -287,17 +287,17 @@
     "wrangler_yarn": {
         "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["ssh", "gsissh", "go"],
+        "schemas"                     : ["gsissh", "ssh", "go"],
         "mandatory_args"              : ["project"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://wrangler.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://wrangler.tacc.utexas.edu/"
-        },
         "gsissh"                      :
         {
             "job_manager_endpoint"    : "slurm+gsissh://wrangler.tacc.utexas.edu:2222/",
             "filesystem_endpoint"     : "gsisftp://wrangler.tacc.utexas.edu:2222/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://wrangler.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://wrangler.tacc.utexas.edu/"
         },
         "go":
         {
@@ -312,7 +312,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "YARN",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "pre_bootstrap_1"             : ["module load python/2.7.12",
+        "pre_bootstrap_1"             : ["module load python",
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
         "pre_bootstrap_2"             : ["export PATH=$PATH",
@@ -355,7 +355,7 @@
         "task_launch_method"          : "SPARK",
         "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap_1"             : [ 
-                                        "module load python/2.7.12",
+                                        "module load python" ,
                                         "export TACC_DELETE_FILES=TRUE",
                                         "module load jdk64/1.8.0"
                                         ],
@@ -403,6 +403,42 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
+    },
+    "stampede2_ssh": {
+        "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["gsissh", "ssh"],
+        "mandatory_args"              : ["project"],
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://stampede2.tacc.utexas.edu:2222/",
+            "filesystem_endpoint"     : "gsisftp://stampede2.tacc.utexas.edu:2222/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://stampede2.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://stampede2.tacc.utexas.edu/"
+        },
+        "default_queue"               : "normal",
+        "lrms"                        : "SLURM",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN_RSH",
+        "pre_bootstrap_1"             :["module load TACC",
+                                         "module load intel/17.0.4",
+                                         "module load python/2.7.13"
+                                        ],
+        "default_remote_workdir"      : "$WORK",
+        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default",
+        "export_to_cu"                : ["LMOD_CMD",
+                                         "LMOD_SYSTEM_DEFAULT_MODULES",
+                                         "LD_LIBRARY_PATH"],
+        "cu_pre_exec"                 : ["module restore"]
     },
 
     "trestles_ssh": {
