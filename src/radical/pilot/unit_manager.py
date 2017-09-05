@@ -306,7 +306,7 @@ class UnitManager(rpu.Component):
             else:
                 units = list(unit_cursor)
 
-            self._log.debug(" === units pulled: %3d (pilot dead)" % len(units))
+            self._log.debug("units pulled: %3d (pilot dead)" % len(units))
 
             if not units:
                 return True
@@ -394,7 +394,7 @@ class UnitManager(rpu.Component):
 
         if not unit_cursor.count():
             # no units whatsoever...
-            self._log.info(" === units pulled:    0")
+            self._log.info("units pulled:    0")
             return True  # this is not an error
 
         # update the units to avoid pulling them again next time.
@@ -416,7 +416,7 @@ class UnitManager(rpu.Component):
             new = rps._unit_state_collapse(unit['states'])
 
             if old != new:
-                self._log.debug(" === unit  pulled %s: %s / %s", uid, old, new)
+                self._log.debug("unit  pulled %s: %s / %s", uid, old, new)
 
             unit['state']   = new
             unit['control'] = 'umgr'
