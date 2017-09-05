@@ -77,6 +77,7 @@ class Update(rpu.Worker):
     #
     def stop(self):
 
+        self._session._log.debug(' === %s stop called', self._uid)
         super(Update, self).stop()
 
 
