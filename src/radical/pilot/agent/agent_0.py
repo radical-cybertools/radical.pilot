@@ -499,10 +499,10 @@ class Agent_0(rpu.Worker):
 
             # FIXME: raise or fail unit!
             if unit['control'] != 'agent_pending':
-                self._log.error(' === invalid control: %s', (pprint.pformat(unit)))
+                self._log.error('invalid control: %s', (pprint.pformat(unit)))
 
             if unit['state'] != rps.AGENT_STAGING_INPUT_PENDING:
-                self._log.error(' === invalid state: %s', (pprint.pformat(unit)))
+                self._log.error('invalid state: %s', (pprint.pformat(unit)))
 
             unit['control'] = 'agent'
 
