@@ -67,7 +67,7 @@ def get_session_docs(db, sid, cache=None, cachedir=None) :
 
     try :
         if  os.path.isfile (cache) :
-            print 'using cache: %s' % cache
+          # print 'using cache: %s' % cache
             return ru.read_json (cache)
     except Exception as e :
         # continue w/o cache

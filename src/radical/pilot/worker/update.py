@@ -4,21 +4,19 @@ __license__   = "MIT"
 
 
 import time
-import pprint
 import threading
 import pymongo
 
 import radical.utils as ru
 
 from .. import utils     as rpu
-from .. import states    as rps
 from .. import constants as rpc
 
 
 # ==============================================================================
 #
-DEFAULT_BULK_COLLECTION_TIME =  5.0 # seconds
-DEFAULT_BULK_COLLECTION_SIZE =  100 # seconds
+DEFAULT_BULK_COLLECTION_TIME =  1.0  # seconds
+DEFAULT_BULK_COLLECTION_SIZE =  100  # seconds
 
 
 # ==============================================================================
@@ -62,9 +60,9 @@ class Update(rpu.Worker):
         self._mongo_db   = db
         self._coll       = self._mongo_db[self._session_id]
         self._bulk       = self._coll.initialize_ordered_bulk_op()
-        self._last       = time.time()       # time of last bulk push
-        self._uids       = list()            # list of collected uids
-        self._lock       = threading.RLock() # protect _bulk
+        self._last       = time.time()        # time of last bulk push
+        self._uids       = list()             # list of collected uids
+        self._lock       = threading.RLock()  # protect _bulk
 
         self._bct        = self._cfg.get('bulk_collection_time',
                                           DEFAULT_BULK_COLLECTION_TIME)
@@ -73,6 +71,21 @@ class Update(rpu.Worker):
 
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
         self.register_timed_cb(self._idle_cb, timer=self._bct)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def stop(self):
+
+        super(Update, self).stop()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize_child(self):
+
+        self.unregister_timed_cb(self._idle_cb)
+        self.unregister_subscriber(rpc.STATE_PUBSUB, self._state_cb)
 
 
     # --------------------------------------------------------------------------
@@ -111,10 +124,10 @@ class Update(rpu.Worker):
             ttype = entry[1]
             state = entry[2]
             if state:
-                self._prof.prof('update', msg='%s update pushed (%s)' \
+                self._prof.prof('update', msg='%s update pushed (%s)'
                                 % (ttype, state), uid=uid)
             else:
-                self._prof.prof('update', msg='%s update pushed' % ttype, 
+                self._prof.prof('update', msg='%s update pushed' % ttype,
                                 uid=uid)
 
         # empty bulk, refresh state
@@ -130,7 +143,9 @@ class Update(rpu.Worker):
     def _idle_cb(self):
 
         with self._lock:
-             return self._timed_bulk_execute()
+             self._timed_bulk_execute()
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -185,35 +200,34 @@ class Update(rpu.Worker):
       #         'delete_flush', 'update_flush', 'state_flush', 'flush']
         if cmd not in ['update']:
             self._log.info('ignore cmd %s', cmd)
-            return
+            return True
 
         if not isinstance(things, list):
             things = [things]
 
 
-        # FIXME: we don't have any error recovery -- any failure to update 
+        # FIXME: we don't have any error recovery -- any failure to update
         #        state in the DB will thus result in an exception here and tear
         #        down the module.
         for thing in things:
 
             # got a new request.  Add to bulk (create as needed),
             # and push bulk if time is up.
-            uid       = thing['uid']
-            ttype     = thing['type']
-            state     = thing['state']
-            timestamp = thing.get('state_timestamp', time.time())
+            uid   = thing['uid']
+            ttype = thing['type']
+            state = thing['state']
 
             if 'clone' in uid:
                 # we don't push clone states to DB
-                return
+                return True
 
-            self._prof.prof('get', msg="update %s state to %s" % (ttype, state), 
+            self._prof.prof('get', msg="update %s state to %s" % (ttype, state),
                             uid=uid)
 
             if not state:
                 # nothing to push
                 self._prof.prof('get', msg="update %s state ignored" % ttype, uid=uid)
-                return
+                return True
 
             # create an update document
             update_dict          = dict()
@@ -230,10 +244,6 @@ class Update(rpu.Worker):
             # the state model, even if they have been pushed here out-of-order
             update_dict['$push']['states'] = state
 
-            # check if we handled the collection before.  If not, initialize
-            # FIXME: we only have one collection now -- simplify!
-            cname = self._session_id
-
             with self._lock:
 
                 # push the update request onto the bulk
@@ -248,6 +258,8 @@ class Update(rpu.Worker):
         with self._lock:
             # attempt a timed update
             self._timed_bulk_execute()
+
+        return True
 
 
 # ------------------------------------------------------------------------------

@@ -98,7 +98,7 @@ class BackfillingScheduler(Scheduler):
 
                 if state == UNSCHEDULED and SCHEDULING in self.cb_hist[uid]:
                     logger.warn("[SchedulerCallback]: ComputeUnit %s with state %s already dealt with." % (uid, state))
-                    return
+                    return True
 
                 found_unit = False
                 if  state in [NEW, UNSCHEDULED] :
@@ -122,7 +122,7 @@ class BackfillingScheduler(Scheduler):
                             self._reschedule (uid=uid)
                           # self._dump ('after  reschedule %s' % uid)
 
-                            return
+                            return True
 
               # if  not found_unit and uid not in self.waitq :
               #     # as we cannot unregister callbacks, we simply ignore this
@@ -168,6 +168,8 @@ class BackfillingScheduler(Scheduler):
 
         except Exception as e :
             logger.exception ("error in unit callback for backfiller (%s) - ignored" % e)
+
+        return True
 
 
     # -------------------------------------------------------------------------
@@ -307,7 +309,6 @@ class BackfillingScheduler(Scheduler):
             self.pilots[pid]['caps']     = pilot.description.cores
             self.pilots[pid]['state']    = pilot.state
             self.pilots[pid]['resource'] = pilot.resource
-            self.pilots[pid]['sandbox']  = pilot.sandbox
 
             self.pilots[pid]['caps'] += int((100+OVERSUBSCRIPTION_RATE) \
                                             * pilot.description.cores   \

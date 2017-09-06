@@ -35,7 +35,7 @@ class Agent_n(rpu.Worker):
     #
     def __init__(self, agent_name):
 
-        assert(agent_name != 'agent_0')
+        assert(agent_name != 'agent_0'), 'expect subagent, not agent_0'
         print "startup agent %s" % agent_name
 
         # load config, create session and controller, init rpu.Worker
@@ -51,10 +51,17 @@ class Agent_n(rpu.Worker):
         # This session will not connect to MongoDB, but will create any
         # communication channels and components/workers specified in the 
         # config -- we merge that information into our own config.
+        # We don't want the session to start components though, so remove them
+        # from the config copy.
         session_cfg = copy.deepcopy(cfg)
-        session_cfg['owner'] = self._uid
+        session_cfg['owner']      = self._uid
+        session_cfg['components'] = dict()
         session = rp_Session(cfg=session_cfg, _connect=False)
-        ru.dict_merge(cfg, session.ctrl_cfg, ru.PRESERVE)
+
+        # we still want the bridge addresses known though, so make sure they are
+        # merged into our own copy, along with any other additions done by the
+        # session.
+        ru.dict_merge(cfg, session._cfg, ru.PRESERVE)
         pprint.pprint(cfg)
 
         if session.is_connected:
@@ -71,7 +78,7 @@ class Agent_n(rpu.Worker):
     def initialize_parent(self):
 
         # FIXME: avoid a race with communication channel setup
-        time.sleep(10)
+        time.sleep(0)
 
         # once bootstrap_3 is done, we signal success to the parent agent
         self._prof.prof('setup done - send alive', uid=self._uid)
