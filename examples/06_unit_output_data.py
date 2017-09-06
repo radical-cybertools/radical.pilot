@@ -93,8 +93,8 @@ if __name__ == '__main__':
             cud.executable     = '/bin/cp'
             cud.arguments      = ['-v', 'input.dat', 'output.dat']
             cud.input_staging  = ['input.dat']
-            cud.output_staging = {'source': 'output.dat', 
-                                  'target': 'output_%03d.dat' % i,
+            cud.output_staging = {'source': 'unit:///output.dat', 
+                                  'target': 'client:///output_%03d.dat' % i,
                                   'action': rp.TRANSFER}
 
             cuds.append(cud)

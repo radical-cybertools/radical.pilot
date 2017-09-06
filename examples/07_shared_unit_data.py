@@ -76,8 +76,8 @@ if __name__ == '__main__':
 
         # Synchronously stage the data to the pilot
         report.info('stage shared data')
-        pilot.stage_in({'source': 'file://%s/input.dat' % os.getcwd(),
-                        'target': 'staging:///input.dat',
+        pilot.stage_in({'source': 'client:///input.dat',
+                        'target': 'pilot:///input.dat',
                         'action': rp.TRANSFER})
         report.ok('>>ok\n')
 
@@ -97,12 +97,14 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable     = '/usr/bin/wc'
-            cud.arguments      = ['-c', 'input.dat']
-            cud.input_staging  = {'source': 'staging:///input.dat', 
-                                  'target': 'input.dat',
-                                  'action': rp.LINK
-                                 }
+            cud.executable     = '/bin/echo'
+            cud.arguments      = ['-c', 'input.dat', '%d' % i]
+            cud.input_staging  = {'source': 'pilot:///input.dat', 
+                                  'target': 'unit:///input.dat',
+                                  'action': rp.LINK}
+            cud.output_staging = {'source': 'unit:///STDOUT',
+                                  'target': 'pilot:///STDOUT.%06d'%i,
+                                  'action': rp.COPY }
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -126,17 +128,17 @@ if __name__ == '__main__':
         os.system('rm input.dat')
 
 
-    except Exception as e:
-        # Something unexpected happened in the pilot code above
-        report.error('caught Exception: %s\n' % e)
-        raise
-
-    except (KeyboardInterrupt, SystemExit) as e:
-        # the callback called sys.exit(), and we can here catch the
-        # corresponding KeyboardInterrupt exception for shutdown.  We also catch
-        # SystemExit (which gets raised if the main threads exits for some other
-        # reason).
-        report.warn('exit requested\n')
+  # except Exception as e:
+  #     # Something unexpected happened in the pilot code above
+  #     report.error('caught Exception: %s\n' % e)
+  #     raise 
+  #
+  # except (KeyboardInterrupt, SystemExit) as e:
+  #     # the callback called sys.exit(), and we can here catch the
+  #     # corresponding KeyboardInterrupt exception for shutdown.  We also catch
+  #     # SystemExit (which gets raised if the main threads exits for some other
+  #     # reason).
+  #     report.warn('exit requested\n')
 
     finally:
         # always clean up the session, no matter if we caught an exception or

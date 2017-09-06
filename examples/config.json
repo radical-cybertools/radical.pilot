@@ -98,8 +98,15 @@
         "cores"    : 64
     },
 
+    "xsede.supermic_ssh" : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "workq",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
     "xsede.supermic" : {
-        "project"  : "TG-CCR140028",
+        "project"  : "TG-MCB090174",
         "queue"    : "workq",
         "schema"   : "gsissh",
         "cores"    : 64
@@ -122,6 +129,13 @@
     "xsede.stampede_ortelib" : {
         "project"  : "TG-MCB090174",
         "queue"    : "development",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "xsede.bridges" : {
+        "project"  : null,
+        "queue"    : "RM",
         "schema"   : "gsissh",
         "cores"    : 64
     },
@@ -196,14 +210,21 @@
         "cores"    : 64
     },
 
-    "ornl.titan_lib" : {
+    "ornl.titan_ortelib" : {
         "project"  : "CSC230",
         "queue"    : "debug",
         "schema"   : "local",
         "cores"    : 64
     },
 
-    "ornl.titan"   : {
+    "ornl.titan_orte"   : {
+        "project"  : "CSC230",
+        "queue"    : "debug",
+        "schema"   : "local",
+        "cores"    : 64
+    },
+
+    "ornl.titan_aprun"   : {
         "project"  : "CSC230",
         "queue"    : "debug",
         "schema"   : "local",
@@ -225,7 +246,8 @@
     },
 
     "osg.xsede-virt-clust"   : {
-        "project"  : "TG-CCR140028",
+      # "project"  : "TG-CCR140028",
+        "project"  : "TG-MCB090174",
         "queue"    : null,
         "schema"   : "gsissh",
         "cores"    : 1
@@ -257,6 +279,20 @@
         "queue"    : null,
         "schema"   : "ssh",
         "cores"    : 1
+    },
+
+    "radical.one" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 8
+    }, 
+
+    "radical.two" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 8
     }
 }
 

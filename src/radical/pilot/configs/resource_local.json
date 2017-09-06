@@ -22,7 +22,6 @@
         "task_launch_method"          : "FORK",
         "mpi_launch_method"           : "MPIEXEC",
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_localhost",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -49,7 +48,6 @@
         "task_launch_method"          : "YARN",
         "mpi_launch_method"           : "MPIEXEC",
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_localhost",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -76,7 +74,6 @@
         "task_launch_method"          : "FORK",
         "mpi_launch_method"           : "MPIEXEC",
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_localhost",
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda"
     },
@@ -104,7 +101,6 @@
         "task_launch_method"          : "SPARK",
         "mpi_launch_method"           : "MPIEXEC",
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_localhost",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -132,7 +128,6 @@
         "task_launch_method"          : "SPARK",
         "mpi_launch_method"           : "MPIEXEC",
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_localhost",
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda"
     },
@@ -160,7 +155,6 @@
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",
         "rp_version"                  : "debug",
-        "virtenv"                     : "%(global_sandbox)s/ve_localhost",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
@@ -188,7 +182,6 @@
         "task_launch_method"          : "ORTE_LIB",
         "mpi_launch_method"           : "ORTE_LIB",
         "rp_version"                  : "debug",
-        "virtenv"                     : "%(global_sandbox)s/ve_localhost",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
   }

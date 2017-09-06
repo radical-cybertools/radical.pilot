@@ -26,7 +26,6 @@
         "agent_launch_method": "FORK",
         "task_launch_method" : "FORK",
         "pre_bootstrap_1"    : [
-
             # Allow to load modules
             "source /cvmfs/oasis.opensciencegrid.org/osg/modules/lmod/current/init/bash",
 

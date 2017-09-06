@@ -57,7 +57,7 @@ properly, run:
 .. code-block:: bash
 
     $ radicalpilot-version
-    0.37
+    0.36
 
 The exact output will obviously depend on the exact version of RP which got
 installed.
@@ -102,7 +102,10 @@ secured resources, we strongly recommend the usage of a secured MongoDB
 instance!
 
 The ``dbname`` component in the database url can be any valid MongoDB database
-name (ie. it musy not contain dots).  RP will create that DB on the fly.
+name (ie. it musy not contain dots).RP will not create that DB on the fly and 
+requires the DB to be setup prior to creating the session object. But RP will 
+create collections in that DB on its own, named after RP session IDs.
+
 
 A MongoDB server can support more than one user. In an environment where
 multiple users use RP applications, a single MongoDB server for all users
@@ -195,6 +198,11 @@ to ``0.6c11`` via
 .. code-block:: bash
 
     $ pip install --upgrade setuptools==0.6c11
+
+.. note::
+
+    RADICAL-Pilot can be installed under Anaconda, although that mode is not
+    tested as thoroughly compared to installation under non-Anaconda Python.
 
 
 **Mailing Lists**

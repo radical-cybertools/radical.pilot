@@ -128,6 +128,8 @@ class ORTE(AgentExecutingComponent):
             with self._cancel_lock:
                 self._cus_to_cancel.append(arg)
 
+        return True
+
 
     # --------------------------------------------------------------------------
     #
@@ -209,7 +211,7 @@ class ORTE(AgentExecutingComponent):
 
             self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
-            assert(cu['opaque_slots']) # FIXME: no assert, but check
+            assert(cu['opaque_slots']), 'unit unscheduled'
             self._prof.prof('exec', msg='unit launch', uid=cu['_id'])
 
             # Start a new subprocess to launch the unit
@@ -356,35 +358,31 @@ class ORTE(AgentExecutingComponent):
         # TODO: pre_exec
         #     # Before the Big Bang there was nothing
         #     if cu['description']['pre_exec']:
-        #         pre_exec_string = ''
-        #         if isinstance(cu['description']['pre_exec'], list):
-        #             for elem in cu['description']['pre_exec']:
-        #                 pre_exec_string += "%s\n" % elem
-        #         else:
-        #             pre_exec_string += "%s\n" % cu['description']['pre_exec']
+        #         fail = ' (echo "pre_exec failed"; false) || exit'
+        #         pre  = ''
+        #         for elem in cu['description']['pre_exec']:
+        #             pre += "%s || %s\n" % (elem, fail)
         #         # Note: extra spaces below are for visual alignment
         #         launch_script.write("# Pre-exec commands\n")
         #         if 'RADICAL_PILOT_PROFILE' in os.environ:
         #             launch_script.write("echo pre  start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
-        #         launch_script.write(pre_exec_string)
+        #         launch_script.write(pre)
         #         if 'RADICAL_PILOT_PROFILE' in os.environ:
         #             launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
         # TODO: post_exec
-        # # After the universe dies the infrared death, there will be nothing
-        # if cu['description']['post_exec']:
-        #     post_exec_string = ''
-        #     if isinstance(cu['description']['post_exec'], list):
+        #     # After the universe dies the infrared death, there will be nothing
+        #     if cu['description']['post_exec']:
+        #         fail = ' (echo "post_exec failed"; false) || exit'
+        #         post = ''
         #         for elem in cu['description']['post_exec']:
-        #             post_exec_string += "%s\n" % elem
-        #     else:
-        #         post_exec_string += "%s\n" % cu['description']['post_exec']
-        #     launch_script.write("# Post-exec commands\n")
-        #     if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #         launch_script.write("echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
-        #     launch_script.write('%s\n' % post_exec_string)
-        #     if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #         launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+        #             post += "%s || %s\n" % (elem, fail)
+        #         launch_script.write("# Post-exec commands\n")
+        #         if 'RADICAL_PILOT_PROFILE' in os.environ:
+        #             launch_script.write("echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+        #         launch_script.write('%s\n' % post)
+        #         if 'RADICAL_PILOT_PROFILE' in os.environ:
+        #             launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
 
 
 
