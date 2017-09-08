@@ -42,6 +42,8 @@ class APRun(LaunchMethod):
         if argstr: cmd = "%s %s" % (executable, argstr)
         else     : cmd = executable
 
+        self._log.debug('aprun slots: %s', pprint.pformat(slots))
+
         # relevant aprun documentation (search for `-cc` and `-L`):
         # http://docs.cray.com/books/S-2496-4101/html-S-2496-4101/cnl_apps.html
         #
@@ -79,6 +81,7 @@ class APRun(LaunchMethod):
             if gpu_slots:
                 nodes[node_name].extend(gpu_slots)
 
+        self._log.debug('aprun nodes: %s', pprint.pformat(nodes))
       # self._log.debug('slots: %s', pprint.pformat(slots))
       # self._log.debug('nodes: %s', pprint.pformat(nodes))
 
