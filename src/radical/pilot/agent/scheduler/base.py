@@ -75,6 +75,7 @@ SCHEDULER_NAME_SPARK        = "SPARK"
 #
 #     cu = { ...
 #       'cpu_processes'    : 4,
+#       'cpu_process_type' : 'mpi',
 #       'cpu_threads'      : 2,
 #       'gpu_processes     : 2,
 #       'slots' :
