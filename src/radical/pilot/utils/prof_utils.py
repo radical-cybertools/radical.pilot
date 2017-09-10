@@ -63,84 +63,6 @@ def get_hostmap_deprecated(profiles):
 
 # ------------------------------------------------------------------------------
 # 
-def clean_profile(profile, sid):
-    """
-    This method will prepare a profile for consumption in radical.analytics.  It
-    performs the following actions:
-
-      - makes sure all events have a `ename` entry
-      - remove all state transitions to `CANCELLED` if a different final state 
-        is encountered for the same uid
-      - assignes the session uid to all events without uid
-      - makes sure that state transitions have an `ename` set to `state`
-    """
-
-    entities = dict()  # things which have a uid
-
-    for event in profile:
-
-        uid   = event[ru.UID]
-        state = event[ru.STATE]
-        time  = event[ru.TIME]
-        name  = event[ru.EVENT]
-
-        if uid not in entities:
-            entities[uid] = dict()
-            entities[uid]['states'] = dict()
-            entities[uid]['events'] = list()
-
-        if name == 'advance':
-
-            # this is a state progression
-            assert(state), 'cannot advance w/o state'
-            assert(uid),   'cannot advance w/o uid'
-
-            skip = False
-            if state in rps.FINAL:
-
-                # a final state will cancel any previoud CANCELED state
-                if rps.CANCELED in entities[uid]['states']:
-                    del (entities[uid]['states'][rps.CANCELED])
-
-                # vice-versa, we will not add CANCELED if a final
-                # state already exists:
-                if state == rps.CANCELED:
-                    if any([s in entities[uid]['states'] 
-                              for s in rps.FINAL]):
-                        skip = True
-                        continue
-
-            if state in entities[uid]['states']:
-                # ignore duplicated recordings of state transitions
-                skip = True
-                continue
-              # raise ValueError('double state (%s) for %s' % (state, uid))
-
-            if not skip:
-                entities[uid]['states'][state] = event
-
-        else:
-            pass
-          # entities[uid]['events'].append(event)
-
-
-    # we have evaluated, cleaned and sorted all events -- now we recreate
-    # a clean profile out of them
-    ret = list()
-    for uid,entity in entities.iteritems():
-
-        ret += entity['events']
-        for state,event in entity['states'].iteritems():
-            ret.append(event)
-
-    # sort by time and return
-    ret = sorted(ret[:], key=lambda k: k[ru.TIME]) 
-
-    return ret
-
-
-# ------------------------------------------------------------------------------
-#
 def get_session_profile(sid, src=None):
     
     if not src:
@@ -163,9 +85,9 @@ def get_session_profile(sid, src=None):
 
     profiles          = ru.read_profiles(profiles, sid, efilter=efilter)
     profile, accuracy = ru.combine_profiles(profiles)
-    profile           = clean_profile(profile, sid)
+    profile           = ru.clean_profile(profile, sid, rps.FINAL, rps.CANCELED)
+    hostmap           = get_hostmap(profile)
 
-    hostmap = get_hostmap(profiles)
     if not hostmap:
         # FIXME: legacy host notation - deprecated
         hostmap = get_hostmap_deprecated(profiles)

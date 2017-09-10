@@ -503,9 +503,13 @@ class Session(rs.Session):
             # let file systems settle
             time.sleep(5)
 
-            self.fetch_json()
-            self.fetch_profiles()
-            self.fetch_logfiles()
+            self._prof.prof("session_fetch_start", uid=self._uid)
+            tgt = os.getcwd()
+            self.fetch_json    (tgt='%s/%s' % (tgt, self.uid))
+            self.fetch_profiles(tgt=tgt)
+            self.fetch_logfiles(tgt=tgt)
+
+            self._prof.prof("session_fetch_stop", uid=self._uid)
 
         self._log.report.info('<<session lifetime: %.1fs' % (self.closed - self.created))
         self._log.report.ok('>>ok\n')
@@ -845,6 +849,7 @@ class Session(rs.Session):
     # -------------------------------------------------------------------------
     #
     def fetch_profiles(self, tgt=None, fetch_client=False):
+
         return rpu.fetch_profiles(self._uid, dburl=self.dburl, tgt=tgt, 
                                   session=self)
 
@@ -852,6 +857,7 @@ class Session(rs.Session):
     # -------------------------------------------------------------------------
     #
     def fetch_logfiles(self, tgt=None, fetch_client=False):
+
         return rpu.fetch_logfiles(self._uid, dburl=self.dburl, tgt=tgt, 
                                   session=self)
 
@@ -859,8 +865,6 @@ class Session(rs.Session):
     # -------------------------------------------------------------------------
     #
     def fetch_json(self, tgt=None, fetch_client=False):
-        if not tgt:
-            tgt = '%s/%s' % (os.getcwd(), self.uid)
 
         return rpu.fetch_json(self._uid, dburl=self.dburl, tgt=tgt,
                               session=self)

@@ -181,8 +181,16 @@ profile_event()
         echo "#time,name,uid,state,event,msg" > "$PROFILE"
     fi
 
-    printf "%.4f,%s,%s,%s,%s,%s\n" \
-        "$NOW" "bootstrap_1" "$PILOT_ID" "PMGR_ACTIVE_PENDING" "$event" "$msg" \
+    # TIME   = 0  # time of event (float, seconds since epoch)  mandatory
+    # EVENT  = 1  # event ID (string)                           mandatory
+    # COMP   = 2  # component which recorded the event          mandatory
+    # TID    = 3  # uid of thread involved                      optional
+    # UID    = 4  # uid of entity involved                      optional
+    # STATE  = 5  # state of entity involved                    optional
+    # MSG    = 6  # message describing the event                optional
+    # ENTITY = 7  # type of entity involved                     optional
+    printf "%.4f,%s,%s,%s,%s,%s,%s\n" \
+        "$NOW" "$event" "bootstrap_1" "MainThread" "$PILOT_ID" "PMGR_ACTIVE_PENDING" "$msg" \
         | tee -a "$PROFILE"
 }
 
@@ -1747,15 +1755,15 @@ AGENT_PID=$!
 
 while true
 do
-    sleep 1
+    sleep 3
     if kill -0 $AGENT_PID
     then 
         if test -e "./killme.signal"
         then
-            echo "send SIGTERM to $AGENT_PID"
+            echo "send SIGTERM to $AGENT_PID ($$)"
             kill -15 $AGENT_PID
-            sleep  1
-            echo "send SIGKILL to $AGENT_PID"
+            sleep 1
+            echo "send SIGKILL to $AGENT_PID ($$)"
             kill  -9 $AGENT_PID
             break
         fi
