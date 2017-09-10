@@ -42,7 +42,27 @@ class APRun(LaunchMethod):
         if argstr: cmd = "%s %s" % (executable, argstr)
         else     : cmd = executable
 
-        # relevant aprun documentation (search for `-cc` and `-L`):
+        # we get something like the following from the scheduler:
+        #
+        #     cu = { ...
+        #       'cpu_processes'    : 4,
+        #       'cpu_process_type' : 'mpi',
+        #       'cpu_threads'      : 2,
+        #       'gpu_processes     : 2,
+        #       'slots':
+        #       {                 # [[nodename, [node_uid], [core indexes],   [gpu idx]]]
+        #         'nodes'         : [[node_1,   node_uid_1, [[0, 2], [4, 6]], [[0]    ]],
+        #                            [node_2,   node_uid_2, [[1, 3], [5, 7]], [[0]    ]]],
+        #         'cores_per_node': 8,
+        #         'gpus_per_node' : 1,
+        #         'lm_info'       : { ... }
+        #       }
+        #     }
+        #
+        # The 'nodes' entry here defines what nodes and cores we should ask
+        # aprun to populate with processes.
+        #
+        # The relevant aprun documentation is at (search for `-cc` and `-L`):
         # http://docs.cray.com/books/S-2496-4101/html-S-2496-4101/cnl_apps.html
         #
         #   -L node_list    : candidate nodes to constrain application placement
@@ -57,7 +77,7 @@ class APRun(LaunchMethod):
         #           -L node_2 -N 2 -d 3 -cc 0,1,2:3,4,5 cmd :
         #
         # Each node can only be used *once* in that way for any individual
-        # aprun command.  This means that the depth must be uniform for that 
+        # aprun command.  This means that the depth must be uniform for that
         # node, over *both* cpu and gpu processes.  This limits the mixability
         # of cpu and gpu processes for units started via aprun.
         #
@@ -67,51 +87,54 @@ class APRun(LaunchMethod):
         # sets defines the number of procs to start (-N).
         nodes = dict()
         for node in slots['nodes']:
-            node_name = node[0]
-            if node_name not in nodes:
-                nodes[node_name] = list()
 
-            cpu_slots = node[2]
-            gpu_slots = node[3]
+            node_id = node[1]
+            if node_id not in nodes:
+                # keep all cpu and gpu slots, record depths
+                nodes[node_id] = {'cpu' : list(),
+                                  'gpu' : list())
 
-            if cpu_slots: nodes[node_name].append(cpu_slots)
-            if gpu_slots: nodes[node_name].append(gpu_slots)
+            # add all cpu and gpu process slots to the node list.
+            for cpu_slot in node[2]: nodes[node_id]['cpu'].append(cpu_clot)
+            for gpu_slot in node[3]: nodes[node_id]['gpu'].append(gpu_clot)
+
 
         self._log.debug('aprun slots: %s', pprint.pformat(slots))
         self._log.debug('      nodes: %s', pprint.pformat(nodes))
 
         # create a node_spec for each node, which contains the aprun options for
         # that node to start the number of application processes on the given
-        # core, and if needed also the GPU processes,  For the latter, we don't
-        # really care about thread numbers, but create one process on core 0 for
-        # each requested GPU process.
+        # core.
         node_specs = list()
-        for node_name,core_sets in nodes.iteritems():
+        for node_id in nodes:
 
-            # some sanity checks:
-            #  - make sure all process slots have the same depth
-            #  - make sure that cores are not oversubscribed
-            nprocs = len(slots)
+            cpu_slots = nodes[node_id]['cpu']
+            gpu_slots = nodes[node_id]['gpu']
+
+            # make sure all process slots have the same depth
             depths = set()
-            cores  = set()
-            ncores = 0
+            for cpu_slot in cpu_slots:
+                depths.add(len(cpu_slot))
+            assert(len(depths) == 1), 'aprun implies uniform process depths'
 
-            for core_set in core_sets:
-                ncores +=  len(core_set)
-                depths.add(len(core_set))
-                [cores.add(core) for core in core_set]
+            # ensure that depth is `1` if gpu processes are requested
+            if gpu_slots:
+                assert(1 == depths[0]), 'aprun implies depth==1 for gpu procs'
 
-            assert(len(depths) == 1)    , 'inconsistent depths : %s' % depths
-            assert(ncores == len(cores)), 'oversubscribed cores: %s' % cores
-
-            # derive core pinning for each node
-            core_specs = [','.join([str(core) for core     in core_set])
-                                              for core_set in core_sets]
+            # derive core pinning for each node (gpu's go to core `0`
+            core_specs = list()
+            for cpu_slot in cpu_slots:
+                core_specs.append(','.join([str(core) for core in cpu_slot]))
+            for gpu_slot in gpu_slots:
+                core_specs.append('0')
             pin_specs  =  ':'.join(core_specs)
+
+            # count toal cpu / gpu processes
+            nprocs = len(cpu_slots) + len(gpu_slots)
 
             # add the node spec for this node
             node_specs.append(' -L %s -N %d -d %d -cc %s %s'
-                              % (node_name, nprocs, depths[0], pin_specs, cmd))
+                              % (node_id, nprocs, depths[0], pin_specs, cmd))
 
 
         node_layout   = ' : '.join(node_specs)
