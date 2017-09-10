@@ -92,11 +92,11 @@ class APRun(LaunchMethod):
             if node_id not in nodes:
                 # keep all cpu and gpu slots, record depths
                 nodes[node_id] = {'cpu' : list(),
-                                  'gpu' : list())
+                                  'gpu' : list()}
 
             # add all cpu and gpu process slots to the node list.
-            for cpu_slot in node[2]: nodes[node_id]['cpu'].append(cpu_clot)
-            for gpu_slot in node[3]: nodes[node_id]['gpu'].append(gpu_clot)
+            for cpu_slot in node[2]: nodes[node_id]['cpu'].append(cpu_slot)
+            for gpu_slot in node[3]: nodes[node_id]['gpu'].append(gpu_slot)
 
 
         self._log.debug('aprun slots: %s', pprint.pformat(slots))
