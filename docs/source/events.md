@@ -106,10 +106,6 @@ indication on event ordering *within each individual component*.
     exec_cancel_start   : try to cancel task via exec layer (kill)   (uid: uid, optional)
     exec_cancel_stop    : did cancel    task via exec layer (kill)   (uid: uid, optional)
 
-
-### ABDS : 
- * needs sync
-
 ### ORTE : 
  * as above, no cancel
 
@@ -118,6 +114,9 @@ indication on event ordering *within each individual component*.
 
 ### SHELL: 
  * as above
+
+### ABDS : 
+ * needs sync
   
   
 ### AgentStagingOutputComponent (Component)
@@ -159,11 +158,7 @@ indication on event ordering *within each individual component*.
   
 ### All profiles
   
-    sync_abs            : timstamp sync information (*)
+    sync_abs            : sets an absolute, NTP synced time stamp               (optional)
+    sync_rel            : sets a *pair* of time stamps considered simultaneous  (optional)
     END                 : last entry, profiler is being closed
-  
-  
-### time syncing
-    sync_abs            : sets an absolute, NTP synced time stamp
-    sync_rel            : sets a *pair* of time stamps considered simultaneous
   
