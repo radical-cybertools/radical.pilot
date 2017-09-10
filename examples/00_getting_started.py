@@ -54,7 +54,6 @@ if __name__ == '__main__':
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
-<<<<<<< HEAD
         pd_init = {
                 'resource'      : resource,
                 'runtime'       : 15,  # pilot runtime (min)
@@ -64,16 +63,7 @@ if __name__ == '__main__':
                 'access_schema' : config[resource]['schema'],
                 'cores'         : config[resource]['cores'],
                 }
-=======
-        pd_init = {'resource'      : resource,
-                   'runtime'       : 15,  # pilot runtime (min)
-                   'exit_on_error' : True,
-                   'project'       : config[resource]['project'],
-                   'queue'         : config[resource]['queue'],
-                   'access_schema' : config[resource]['schema'],
-                   'cores'         : 2
-                  }
->>>>>>> 53be2a6e... make sure profiles have time to be closed
+
         pdesc = rp.ComputePilotDescription(pd_init)
 
         # Launch the pilot.
@@ -88,11 +78,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-<<<<<<< HEAD
-        n = 5   # number of units to run
-=======
         n = 16  # number of units to run
->>>>>>> 53be2a6e... make sure profiles have time to be closed
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -101,16 +87,12 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-<<<<<<< HEAD
-            cud.executable = '/bin/date'
-=======
             cud.executable       = '/bin/sleep'
             cud.arguments        = ['1']
             cud.gpus             = 0
             cud.cores            = 1
             cud.threads_per_proc = 1
-            cud.mpi              = True
->>>>>>> 53be2a6e... make sure profiles have time to be closed
+            cud.mpi              = False
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
