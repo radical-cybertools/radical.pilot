@@ -1086,7 +1086,14 @@ class Component(ru.Process):
             # ------------------------------------------------------------------
             def work_cb(self):
                 self.is_valid()
-                topic, msg = self._q.get_nowait(500)  # timout in ms
+                topic, msg = None, None
+                try:
+                    topic, msg = self._q.get_nowait(500)  # timout in ms
+                except Exception as e:
+                    if not self._ru_term.is_set():
+                        # abort during termination
+                        return False
+
                 if topic and msg:
                     if not isinstance(msg,list):
                         msg = [msg]
