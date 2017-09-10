@@ -167,19 +167,6 @@ class AgentSchedulingComponent(rpu.Component):
             return False
 
         # got an allocation, go off and launch the process
-<<<<<<< HEAD
-        self._prof.prof('schedule', msg="try", uid=cu['uid'], timestamp=before_ts)
-        self._prof.prof('schedule', msg="allocated", uid=cu['uid'])
-
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("slot status after allocated  : %s", self.slot_status())
-
-        self._log.debug("%s [%s] : %s [%s]", 
-                        cu['uid'], cu['description']['cores'], 
-                        cu['opaque_slots'], 
-                        len(cu['opaque_slots']['task_slots']))
-
-=======
         self._prof.prof('schedule_ok', uid=cu['uid'])
 
         if self._log.isEnabledFor(logging.DEBUG):
@@ -190,7 +177,6 @@ class AgentSchedulingComponent(rpu.Component):
                         cu['description']['cores'], 
                         cu['description']['gpus'],
                         pprint.pformat(cu['slots']))
->>>>>>> 29ff96d1... event profiling cleanup
         return True
 
 
@@ -207,12 +193,8 @@ class AgentSchedulingComponent(rpu.Component):
         cu = msg
 
         if self._log.isEnabledFor(logging.DEBUG):
-<<<<<<< HEAD
-            self._log.debug("slot status before reschedule: %s", self.slot_status())
-=======
             self._log.debug("before reschedule %s: %s", cu['uid'], 
                             self.slot_status())
->>>>>>> 29ff96d1... event profiling cleanup
 
         # cycle through wait queue, and see if we get anything running now.  We
         # cycle over a copy of the list, so that we can modify the list on the
@@ -235,12 +217,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # Note: The extra space below is for visual alignment
         if self._log.isEnabledFor(logging.DEBUG):
-<<<<<<< HEAD
-            self._log.debug("slot status after  reschedule: %s", self.slot_status())
-        self._prof.prof('reschedule done')
-=======
             self._log.debug("after  reschedule %s: %s", cu['uid'], self.slot_status())
->>>>>>> 29ff96d1... event profiling cleanup
 
         return True
 
@@ -261,22 +238,13 @@ class AgentSchedulingComponent(rpu.Component):
             return True
 
         if self._log.isEnabledFor(logging.DEBUG):
-<<<<<<< HEAD
-            self._log.debug("slot status before unschedule: %s", self.slot_status())
-=======
             self._log.debug("before unschedule %s: %s", cu['uid'], self.slot_status())
->>>>>>> 29ff96d1... event profiling cleanup
 
         # needs to be locked as we try to release slots, but slots are acquired
         # in a different thread....
         with self._slot_lock :
-<<<<<<< HEAD
-            self._release_slot(cu['opaque_slots'])
-            self._prof.prof('unschedule', msg='released', uid=cu['uid'])
-=======
             self._release_slot(cu['slots'])
             self._prof.prof('unschedule_done', uid=cu['uid'])
->>>>>>> 29ff96d1... event profiling cleanup
 
         # notify the scheduling thread, ie. trigger a reschedule to utilize
         # the freed slots
@@ -284,11 +252,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # Note: The extra space below is for visual alignment
         if self._log.isEnabledFor(logging.DEBUG):
-<<<<<<< HEAD
-            self._log.debug("slot status after  unschedule: %s", self.slot_status())
-=======
             self._log.debug("after  unschedule %s: %s", cu['uid'], self.slot_status())
->>>>>>> 29ff96d1... event profiling cleanup
 
         return True
 
