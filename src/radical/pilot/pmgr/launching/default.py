@@ -35,7 +35,7 @@ DEFAULT_VIRTENV_MODE  = 'update'
 DEFAULT_VIRTENV_DIST  = 'default'
 DEFAULT_AGENT_CONFIG  = 'default'
 
-JOB_CANCEL_DELAY      = 120  # seconds between cancel signal and job kill
+JOB_CANCEL_DELAY      = 300  # seconds between cancel signal and job kill
 JOB_CHECK_INTERVAL    =  60  # seconds between runs of the job state check loop
 JOB_CHECK_MAX_MISSES  =   3  # number of times to find a job missing before
                              # declaring it dead
@@ -245,6 +245,10 @@ class Default(PMGRLaunchingComponent):
         the request to get enacted, nor for it to arrive, but just send it.
         '''
 
+        if not pids or not self._pilots: 
+            # nothing to do
+            return
+
         # send the cancelation request to the pilots
         # FIXME: the cancellation request should not go directly to the DB, but
         #        through the DB abstraction layer...
@@ -272,6 +276,11 @@ class Default(PMGRLaunchingComponent):
         '''
 
         self._log.debug(' === killing pilots: %s', pids)
+
+        if not pids or not self._pilots: 
+            # nothing to do
+            return
+
         # find the most recent cancellation request
         with self._pilots_lock:
             self._log.debug(' === killing pilots: %s', 

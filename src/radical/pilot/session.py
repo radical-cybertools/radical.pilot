@@ -500,7 +500,10 @@ class Session(rs.Session):
         # profiles, if so wanted
         if download:
 
+            self._prof.prof("session_fetch_sync", uid=self._uid)
+            time.sleep(5)
             self._prof.prof("session_fetch_start", uid=self._uid)
+            self._log.debug(' === start download')
             tgt = os.getcwd()
             self.fetch_json    (tgt='%s/%s' % (tgt, self.uid))
             self.fetch_profiles(tgt=tgt)

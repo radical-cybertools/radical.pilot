@@ -173,10 +173,10 @@ class AgentSchedulingComponent(rpu.Component):
             self._log.debug("after  allocate   %s: %s", cu['uid'], 
                             self.slot_status())
 
-        self._log.debug("%s [%s/%s] : %s [%s]", cu['uid'],
+        import pprint
+        self._log.debug("%s [%s] : %s", cu['uid'],
                         cu['description']['cores'],
-                        cu['description']['gpus'],
-                        pprint.pformat(cu['slots']))
+                        pprint.pformat(cu['opaque_slots']))
         return True
 
 
@@ -243,7 +243,7 @@ class AgentSchedulingComponent(rpu.Component):
         # needs to be locked as we try to release slots, but slots are acquired
         # in a different thread....
         with self._slot_lock :
-            self._release_slot(cu['slots'])
+            self._release_slot(cu['opaque_slots'])
             self._prof.prof('unschedule_stop', uid=cu['uid'])
 
         # notify the scheduling thread, ie. trigger a reschedule to utilize

@@ -71,7 +71,7 @@ class ComputePilot(object):
         # initialize state
         self._pmgr          = pmgr
         self._session       = self._pmgr.session
-        self._prof          = self._session.prof
+        self._prof          = self._session._prof
         self._uid           = ru.generate_id('pilot.%(counter)04d', ru.ID_CUSTOM)
         self._state         = rps.NEW
         self._log           = pmgr._log

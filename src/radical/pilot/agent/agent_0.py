@@ -168,6 +168,7 @@ class Agent_0(rpu.Worker):
     def finalize_parent(self):
 
         # tear things down in reverse order
+        self._prof.flush()
 
         self.unregister_timed_cb(self._check_units_cb)
         self.unregister_output(rps.AGENT_STAGING_INPUT_PENDING)
@@ -192,6 +193,7 @@ class Agent_0(rpu.Worker):
             self._log.debug('close  session %s', self._session.uid)
             self._session.close()
             self._log.debug('closed session %s', self._session.uid)
+        self._prof.flush()
 
 
     # --------------------------------------------------------------------------
@@ -420,12 +422,13 @@ class Agent_0(rpu.Worker):
             elif cmd == 'cancel_pilot':
                 self._log.info('cancel pilot cmd')
                 self._final_cause = 'cancel'
-                with open('./killme.signal', 'w+') as f:
-                    f.write('cancel pilot cmd received\n')
-
               # ru.attach_pudb(logger=self._log)
 
                 self.stop()
+
+                with open('./killme.signal', 'w+') as f:
+                    f.write('cancel pilot cmd received\n')
+
                 return False  # we are done
 
             elif cmd == 'cancel_unit':
