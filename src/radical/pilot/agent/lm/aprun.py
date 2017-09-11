@@ -134,7 +134,8 @@ class APRun(LaunchMethod):
 
             # add the node spec for this node
             node_specs.append(' -L %s -N %d -d %d -cc %s %s'
-                              % (node_id, nprocs, depths[0], pin_specs, cmd))
+                              % (node_id, nprocs, list(depths)[0], 
+                                 pin_specs, cmd))
 
 
         node_layout   = ' : '.join(node_specs)
