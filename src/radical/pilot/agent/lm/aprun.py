@@ -116,10 +116,11 @@ class APRun(LaunchMethod):
             for cpu_slot in cpu_slots:
                 depths.add(len(cpu_slot))
             assert(len(depths) == 1), 'aprun implies uniform process depths'
+            depth = list(depths)[0]
 
             # ensure that depth is `1` if gpu processes are requested
             if gpu_slots:
-                assert(1 == depths[0]), 'aprun implies depth==1 for gpu procs'
+                assert(1 == depth), 'aprun implies depth==1 for gpu procs'
 
             # derive core pinning for each node (gpu's go to core `0`
             core_specs = list()
