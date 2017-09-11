@@ -203,11 +203,13 @@ def get_session_description(sid, src=None, dburl=None):
         tree[umgr]['children'].append(uid)
         tree[uid] = {'uid'         : uid,
                      'etype'       : 'unit',
-                     'cfg'         : unit['description'],
+                     'cfg'         : unit,
                      'description' : unit['description'],
                      'has'         : list(),
                      'children'    : list()
                     }
+        # remove duplicate
+        del(tree[uid]['cfg']['description'])
 
     ret['tree'] = tree
 
