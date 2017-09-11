@@ -148,6 +148,8 @@ class PilotManager(rpu.Component):
     # 
     def finalize_parent(self):
 
+        self._fail_missing_pilots()
+
         # terminate pmgr components
         for c in self._components:
             c.stop()
@@ -612,6 +614,23 @@ class PilotManager(rpu.Component):
         # done waiting
         if ret_list: return states
         else       : return states[0]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _fail_missing_pilots(self):
+        '''
+        During termination, fail all pilots for which we did not manage to
+        obtain a final state - we trust that they'll follow up on their
+        cancellation command in due time, if they can
+        '''
+
+        with self._pilots_lock:
+            for pid in self._pilots:
+                pilot = self._pilots[pid]
+                if pilot.state not in rps.FINAL:
+                    self.advance(pilot.as_dict(), rps.FAILED,
+                                 publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
