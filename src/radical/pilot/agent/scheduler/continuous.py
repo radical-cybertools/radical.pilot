@@ -244,10 +244,10 @@ class Continuous(AgentSchedulingComponent):
         Find a suitable set of cores and gpus *within a single node*.
         '''
 
-        requested_procs  = cud['cores']
-        requested_gpus   = cud['gpus']
-        threads_per_proc = cud['threads_per_proc']
+        requested_procs  = cud['cpu_processes']
+        threads_per_proc = cud['cpu_threads']
         requested_cores  = requested_procs * threads_per_proc
+        requested_gpus   = cud['gpu_processes']
 
         if  requested_cores > self._lrms_cores_per_node or \
             requested_gpus  > self._lrms_gpus_per_node:
