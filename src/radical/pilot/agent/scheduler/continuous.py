@@ -116,7 +116,8 @@ class Continuous(AgentSchedulingComponent):
     def _allocate_slot(self, cud):
 
         # single_node is enforced for non-message passing tasks
-        if cud['cpu_process_type'] == 'MPI':
+        if  cud['cpu_process_type'] == 'MPI' or \
+            cud['gpu_process_type'] == 'MPI' :
             slots = self._alloc_mpi(cud)
         else:
             slots = self._alloc_nompi(cud)
