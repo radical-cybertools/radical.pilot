@@ -45,10 +45,8 @@ indication on event ordering *within each individual component*.
     session_fetch_stop  : stops fetching logs/profs/json after close (uid: sid, [API])
 
     partial orders:
-    * per session instance: session_start, config_parser_start, 
-                            config_parser_stop, session_close, 
-                            session_stop,  session_fetch_start, 
-                            session_fetch_stop 
+    * per session instance: session_start, config_parser_start, config_parser_stop, session_close, \
+                            session_stop,  session_fetch_start, session_fetch_stop 
 
   
 ### PilotManager (Component)
@@ -62,7 +60,8 @@ indication on event ordering *within each individual component*.
     staging_in_stop     : pilot level staging request stops          (uid: pid, msg: did, [PILOT-DS])
 
     partial orders:
-    * per staging request: staging_in_start, (staging_in_fail | staging_in_stop)
+    * per staging request: staging_in_start, 
+                           (staging_in_fail | staging_in_stop)
 
   
 ### UnitManager (Component)
