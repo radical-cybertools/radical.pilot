@@ -66,6 +66,7 @@ class APRun(LaunchMethod):
         # http://docs.cray.com/books/S-2496-4101/html-S-2496-4101/cnl_apps.html
         #
         #   -L node_list    : candidate nodes to constrain application placement
+        #   -n pes          : number of PEs to place
         #   -N pes_per_node : number of PEs to place per node
         #   -d depth        : number of CPUs for each PE and its threads
         #   -cc cpu_list    : bind processing elements (PEs) to CPUs.
@@ -73,8 +74,8 @@ class APRun(LaunchMethod):
         # (CPUs here mostly means cores)
         #
         # Example:
-        #     aprun -L node_1 -N 1 -d 3 -cc 0,1,2       cmd : \
-        #           -L node_2 -N 2 -d 3 -cc 0,1,2:3,4,5 cmd :
+        #     aprun -L node_1 -n 1 -N 1 -d 3 -cc 0,1,2       cmd : \
+        #           -L node_2 -n 2 -N 2 -d 3 -cc 0,1,2:3,4,5 cmd :
         #
         # Each node can only be used *once* in that way for any individual
         # aprun command.  This means that the depth must be uniform for that
@@ -84,7 +85,7 @@ class APRun(LaunchMethod):
         # Below we sift through the unit slots and create a slot list which
         # basically defines sets of cores (-cc) for each node (-L).  Those sets
         # need to have the same size per node (the depth -d).  The number of
-        # sets defines the number of procs to start (-N).
+        # sets defines the number of procs to start (-n/-N).
         nodes = dict()
         for node in slots['nodes']:
 
@@ -111,16 +112,24 @@ class APRun(LaunchMethod):
             cpu_slots = nodes[node_id]['cpu']
             gpu_slots = nodes[node_id]['gpu']
 
+            self._log.debug('cpu_slots: %s', pprint.pformat(cpu_slots))
+            self._log.debug('gpu_slots: %s', pprint.pformat(gpu_slots))
+
+            assert(cpu_slots or gpu_slots)
+
             # make sure all process slots have the same depth
-            depths = set()
-            for cpu_slot in cpu_slots:
-                depths.add(len(cpu_slot))
-            assert(len(depths) == 1), 'aprun implies uniform process depths'
-            depth = list(depths)[0]
+            if cpu_slots:
+                depths = set()
+                for cpu_slot in cpu_slots:
+                    depths.add(len(cpu_slot))
+                assert(len(depths) == 1), 'aprun implies uniform depths: %s' % depths
+                depth = list(depths)[0]
+            else:
+                depth = 1
 
             # ensure that depth is `1` if gpu processes are requested
             if gpu_slots:
-                assert(1 == depth), 'aprun implies depth==1 for gpu procs'
+                assert(1 == depth), 'aprun implies depth==1 for gpu procs: %s' % depth
 
             # derive core pinning for each node (gpu's go to core `0`
             core_specs = list()
@@ -134,8 +143,8 @@ class APRun(LaunchMethod):
             nprocs = len(cpu_slots) + len(gpu_slots)
 
             # add the node spec for this node
-            node_specs.append(' -L %s -N %d -d %d -cc %s %s'
-                              % (node_id, nprocs, list(depths)[0], 
+            node_specs.append(' -L %s -n %d  -N %d -d %d -cc %s %s'
+                              % (node_id, nprocs, nprocs, depth, 
                                  pin_specs, cmd))
 
 

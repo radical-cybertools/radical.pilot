@@ -244,7 +244,8 @@
         "project"  : "CSC230",
         "queue"    : "debug",
         "schema"   : "local",
-        "cores"    : 64
+        "cores"    : 64,
+        "gpus"     : 4
     },
 
     "nersc.hopper" : {
