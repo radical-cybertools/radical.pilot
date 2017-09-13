@@ -16,26 +16,25 @@ resource configuration, and noise.  However, while a global event model is thus
 hard to define, the order presented in the lists below gives some basic
 indication on event ordering *within each individual component*.
 
-### FIXME: better definition of partial order
 
 ### All Components
-  
+
     get                 : component receives an entity               (uid: eid, state: estate)
-    advance             : component advances  entity state           (uid: eid, state: estate) 
-    publish             : component publishes entity state           (uid: eid, state: estate) 
+    advance             : component advances  entity state           (uid: eid, state: estate)
+    publish             : component publishes entity state           (uid: eid, state: estate)
     put                 : component pushes an entity out             (uid: eid, state: estate, msg: channel)
     component_init      : component child  initializes after start()
     component_init      : component parent initializes after start()
     component_final     : component finalizes
 
-    partial orders: 
-    * per component: component_init, *, component_final
-    * per entity:    get, advance, publish, put
+    partial orders
+    * per component     : component_init, *, component_final
+    * per entity        : get, advance, publish, put
 
-  
-  
+
+
 ### Session (Component)
-  
+
     session_start       : session is being created (not reconnected) (uid: sid)
     config_parser_start : begin parsing config files                 (uid: sid)
     config_parser_stop  : stops parsing config files                 (uid: sid)
@@ -44,48 +43,58 @@ indication on event ordering *within each individual component*.
     session_fetch_start : start fetching logs/profs/json after close (uid: sid, [API])
     session_fetch_stop  : stops fetching logs/profs/json after close (uid: sid, [API])
 
-    partial orders:
-    * per session instance: session_start, config_parser_start, config_parser_stop, session_close, \
-                            session_stop,  session_fetch_start, session_fetch_stop 
+    partial orders
+    * per session       : session_start, config_parser_start, \
+                          config_parser_stop, session_close,  \
+                          session_stop,  session_fetch_start, \
+                          session_fetch_stop
 
-  
+
 ### PilotManager (Component)
-  
+
 ### PMGRLaunchingComponent (Component)
-  
+
+    staging_in_start    : pilot sandbox staging starts               (uid: pid)
+    staging_in_stop     : pilot sandbox staging stops                (uid: pid)
+    submission_start    : pilot job submission starts                (uid: pid)
+    submission_stop     : pilot job submission stops                 (uid: pid)
+
+    partial orders
+    * per pilot         : staging_in_start, staging_in_stop, \
+                          submission_start, submission_stop
+
 ### ComputePilot (in session profile, all optional)
 
     staging_in_start    : pilot level staging request starts         (uid: pid, msg: did, [PILOT-DS])
     staging_in_fail     : pilot level staging request failed         (uid: pid, msg: did, [PILOT-DS])
     staging_in_stop     : pilot level staging request stops          (uid: pid, msg: did, [PILOT-DS])
 
-    partial orders:
-    * per staging request: staging_in_start, 
-                           (staging_in_fail | staging_in_stop)
+    partial orders
+    * per file          : staging_in_start, (staging_in_fail | staging_in_stop)
 
-  
+
 ### UnitManager (Component)
-  
+
     get                 : units   received from application          (uid: umgrid, msg: 'bulk size: %d')
     get                 : unit    received from application          (uid: uid)
 
-  
+
 ### UMGRSchedulingComponent (Component)
 
-  
+
 ### UMGRStagingInputComponent (Component)
-  
+
     create_sandbox_start: create_unit_sandbox starts                 (uid: uid, [CU-DS])
     create_sandbox_stop : create_unit_sandbox stops                  (uid: uid, [CU-DS])
     staging_in_start    : staging request starts                     (uid: uid, msg: did, [CU-DS])
     staging_in_stop     : staging request stops                      (uid: uid, msg: did, [CU-DS])
 
-    partial orders:
-    * per unit:    create_sandbox_start, create_sandbox_stop, 
-                   (staging_in_start | staging_in_stop)*
-    * per staging: staging_in_start, staging_in_stop
+    partial orders
+    * per unit          : create_sandbox_start, create_sandbox_stop,
+                          (staging_in_start | staging_in_stop)*
+    * per file          : staging_in_start, staging_in_stop
 
-  
+
 ### bootstrap_1.sh
 
     bootstrap_1_start   : pilot bootstrapper 1 starts                (uid: pid)
@@ -110,10 +119,10 @@ indication on event ordering *within each individual component*.
     cleanup_stop        : sandbox deletion     stops                 (uid: pid)
     bootstrap_1_stop    : pilot bootstrapper 1 stops                 (uid: pid)
 
-    partial orders:
+    partial orders
     * as above
-    
-  
+
+
 ### agent_0 (Component)
 
     sync_rel            : sync with bootstrapper profile             (uid: pid, msg: 'agent_0 start')
@@ -122,52 +131,52 @@ indication on event ordering *within each individual component*.
     get                 : units   received from unit manager         (uid: pid, msg: 'bulk size: %d')
     get                 : unit    received from unit manager         (uid: uid)
 
-    partial orders:
-    * per instance: sync_rel, hostname, (cmd | get)*
+    partial orders
+    * per instance      : sync_rel, hostname, (cmd | get)*
 
-  
+
 ### AgentSchedulingComponent (Component)
-  
+
     schedule_try        : search for unit resources starts           (uid: uid)
     schedule_fail       : search for unit resources failed           (uid: uid, [RUNTIME])
     schedule_ok         : search for unit resources succeeded        (uid: uid)
     unschedule_start    : unit resource freeing starts               (uid: uid)
     unschedule_stop     : unit resource freeing stops                (uid: uid)
 
-    partial orders:
-    * per unit: schedule_try, schedule_fail*, schedule_ok, 
-                unschedule_start, unschedule_stop
+    partial orders
+    * per unit          : schedule_try, schedule_fail*, schedule_ok, \
+                          unschedule_start, unschedule_stop
 
 
 ### AgentStagingInputComponent (Component)
-  
+
     staging_in_start    : staging request starts                     (uid: uid, msg: did, [CU-DS])
     staging_in_skip     : staging request is not handled here        (uid: uid, msg: did, [CU-DS])
     staging_in_fail     : staging request failed                     (uid: uid, msg: did, [CU-DS])
     staging_in_stop     : staging request stops                      (uid: uid, msg: did, [CU-DS])
 
-    partial orders:
-    * per file: staging_in_skip 
-                | (staging_in_start, (staging_in_fail | staging_in_stop))
+    partial orders
+    * per file          : staging_in_skip 
+                        | (staging_in_start, (staging_in_fail | staging_in_stop))
 
 
 ### AgentExecutingComponent: (Component)
-  
+
     exec_start          : pass to exec layer (orte, ssh, mpi...)     (uid: uid)
     exec_ok             : exec layer accepted task                   (uid: uid)
     exec_fail           : exec layer refused task                    (uid: uid, [RUNTIME])
     exec_stop           : exec layer passed back control             (uid: uid)
-    
+
     exec_cancel_start   : try to cancel task via exec layer (kill)   (uid: uid, [API])
     exec_cancel_stop    : did cancel    task via exec layer (kill)   (uid: uid, [API])
 
-    partial orders:
-    * per unit: exec_start, (exec_ok | exec_fail), exec_stop
-    * per unit: exec_cancel_start, exec_cancel_stop
+    partial orders
+    * per unit          : exec_start, (exec_ok | exec_fail), exec_stop
+    * per unit          : exec_cancel_start, exec_cancel_stop
 
 
 ### AgentStagingOutputComponent (Component)
-  
+
     staging_stdout_start: reading unit stdout starts                 (uid: uid)
     staging_stdout_stop : reading unit stdout stops                  (uid: uid)
     staging_stderr_start: reading unit stderr starts                 (uid: uid)
@@ -179,41 +188,41 @@ indication on event ordering *within each individual component*.
     staging_out_fail    : staging request failed                     (uid: uid, msg: did, [CU-DS])
     staging_out_stop    : staging request stops                      (uid: uid, msg: did, [CU-DS])
 
-    partial orders:
-    * per unit: staging_stdout_start, staging_stdout_stop, 
-                staging_stderr_start, staging_stderr_stop, 
-                staging_uprof_start,  staging_uprof_stop, 
-    * per file: staging_out_skip 
-                | (staging_out_start, (staging_out_fail | staging_out_stop))
+    partial orders 
+    * per unit          : staging_stdout_start, staging_stdout_stop,
+                          staging_stderr_start, staging_stderr_stop,
+                          staging_uprof_start,  staging_uprof_stop,
+    * per file          : staging_out_skip \
+                        | (staging_out_start, (staging_out_fail | staging_out_stop))
 
-  
+
 ### UMGRStagingOutputComponent (Component)
-  
+
     staging_out_start   : staging request starts                     (uid: uid, msg: did, [CU-DS])
     staging_out_stop    : staging request stops                      (uid: uid, msg: did, [CU-DS])
 
-    partial orders:
-    * per file: staging_out_start, staging_out_stop
+    partial orders
+    * per file          : staging_out_start, staging_out_stop
 
 
 ### UpdateWorker (Component)
-  
+
     update_request      : a state update is requested                (uid: uid, msg: state)
     update_pushed       : bulk state update has been sent            (          msg: 'bulk size: %d')
     update_pushed       : a state update has been send               (uid: uid, msg: state)
-  
-    partial orders:
-    * per state update: update_request, update_pushed
 
-    
+    partial orders
+    * per state update  : update_request, update_pushed
+
+
 ### All profiles
-  
+
     sync_abs            : sets an absolute, NTP synced time stamp               ([INTERNAL])
     sync_rel            : sets a *pair* of time stamps considered simultaneous  ([INTERNAL])
     END                 : last entry, profiler is being closed
 
-    partial order:
-    * per profile: (sync_abs | sync_rel), *, END
+    partial orders
+    * per profile       : (sync_abs | sync_rel), *, END
 
 
 
@@ -226,8 +235,9 @@ indication on event ordering *within each individual component*.
       - [CFG-ORTELIB] - only for ORTELIB launch method
     - [CU]            - only for some CU descriptions
       - [CU-DS]       - only for units specifying data staging directives
-    - [PILOT]         - only for certain pilot 
+    - [PILOT]         - only for certain pilot
     - [APP]           - only for applications writing compatible profiles
     - [RUNTIME]       - only on  certain runtime decisions and system configuration
     - [INTERNAL]      - only for certain internal states
-  
+
+

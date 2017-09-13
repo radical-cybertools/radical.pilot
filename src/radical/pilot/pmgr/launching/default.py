@@ -483,6 +483,7 @@ class Default(PMGRLaunchingComponent):
             info = self._prepare_pilot(resource, rcfg, pilot)
             ft_list += info['ft']
             jd_list.append(info['jd'])
+            self._prof.prof('staging_in_start', uid=pilot['uid'])
 
         for ft in ft_list:
             src     = os.path.abspath(ft['src'])
@@ -558,6 +559,7 @@ class Default(PMGRLaunchingComponent):
             else:
                 js_tmp  = rs.job.Service(js_url, session=self._session)
                 self._saga_js_cache[js_url] = js_tmp
+
      ## cmd = "tar zmxvf %s/%s -C / ; rm -f %s" % \
         cmd = "tar zmxvf %s/%s -C %s" % \
                 (session_sandbox, tar_name, session_sandbox)
@@ -566,6 +568,10 @@ class Default(PMGRLaunchingComponent):
 
         self._log.debug('tar cmd : %s', cmd)
         self._log.debug('tar done: %s, %s, %s', j.state, j.stdout, j.stderr)
+
+        for pilot in pilots:
+            self._prof.prof('staging_in_stop', uid=pilot['uid'])
+            self._prof.prof('submission_start', uid=pilot['uid'])
 
         # look up or create JS for actual pilot submission.  This might result
         # in the same JS, or not.
@@ -625,6 +631,9 @@ class Default(PMGRLaunchingComponent):
             # make sure we watch that pilot
             with self._check_lock:
                 self._checking.append(pid)
+
+        for pilot in pilots:
+            self._prof.prof('submission_stop', uid=pilot['uid'])
 
 
     # --------------------------------------------------------------------------
