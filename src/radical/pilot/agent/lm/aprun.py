@@ -67,15 +67,15 @@ class APRun(LaunchMethod):
         #
         #   -L node_list    : candidate nodes to constrain application placement
         #   -n pes          : number of PEs to place
-        #   -N pes_per_node : number of PEs to place per node
+        # # -N pes_per_node : number of PEs to place per node
         #   -d depth        : number of CPUs for each PE and its threads
         #   -cc cpu_list    : bind processing elements (PEs) to CPUs.
         #
         # (CPUs here mostly means cores)
         #
         # Example:
-        #     aprun -L node_1 -n 1 -N 1 -d 3 -cc 0,1,2       cmd : \
-        #           -L node_2 -n 2 -N 2 -d 3 -cc 0,1,2:3,4,5 cmd :
+        #     aprun -L node_1 -n 1 -d 3 -cc 0,1,2       cmd : \
+        #           -L node_2 -n 2 -d 3 -cc 0,1,2:3,4,5 cmd :
         #
         # Each node can only be used *once* in that way for any individual
         # aprun command.  This means that the depth must be uniform for that
@@ -143,8 +143,8 @@ class APRun(LaunchMethod):
             nprocs = len(cpu_slots) + len(gpu_slots)
 
             # add the node spec for this node
-            node_specs.append(' -L %s -n %d  -N %d -d %d -cc %s %s'
-                              % (node_id, nprocs, nprocs, depth, 
+            node_specs.append(' -L %s -n %d -d %d -cc %s -j 2 %s'
+                              % (node_id, nprocs, depth, 
                                  pin_specs, cmd))
 
 

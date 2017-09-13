@@ -91,6 +91,24 @@ if __name__ == '__main__':
             cud.gpu_thread_type  = rp.OpenMP
             cuds.append(cud)
             report.progress()
+
+        for i in range(0, n):
+
+            # create a new CU description, and fill it.
+            # Here we don't use dict initialization.
+            cud = rp.ComputeUnitDescription()
+            cud.executable       = '/bin/sh'
+            cud.arguments        = ['/lustre/atlas/scratch/merzky1/csc230/radical.pilot.sandbox/09_mpi_units.sh']
+            cud.cpu_processes    = 24
+            cud.cpu_threads      = 1
+            cud.cpu_process_type = rp.MPI
+            cud.cpu_thread_type  = rp.OpenMP
+            cud.gpu_processes    = 2
+            cud.gpu_threads      = 1
+            cud.gpu_process_type = rp.MPI
+            cud.gpu_thread_type  = rp.OpenMP
+            cuds.append(cud)
+            report.progress()
         report.ok('>>ok\n')
 
         # Submit the previously created ComputeUnit descriptions to the

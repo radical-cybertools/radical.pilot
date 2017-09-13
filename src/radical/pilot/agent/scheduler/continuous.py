@@ -79,6 +79,21 @@ class Continuous(AgentSchedulingComponent):
 
         # TODO: use real core/gpu numbers for non-exclusive reservations
 
+        # cray's aprun for example does not allow us to oversubscribe CPU cores
+        # on a node, so we can't, say, run n CPU processes on an n-core node,
+        # and than add one additional process for a GPU application.  If
+        # `oversubscribe` is set to False (which is the default for now), we'll
+        # prevent that behavior by allocating one additional CPU core for each 
+        # requested GPU process.
+        self._oversubscribe = self._cfg.get('oversubscribe', False)
+        self._scattered     = self._cfg.get('scattered',     False)
+
+        # FIXME: for non-oversubscribing mode, we reserve a number of cores 
+        #        for the GPU processes - even if those GPUs are not used by 
+        #        a specific workload
+        if not self._oversubscribe:
+            self._lrms_cores_per_node -= self._lrms_gpus_per_node
+
         self.nodes = []
         for node, node_uid in self._lrms_node_list:
             self.nodes.append({
@@ -88,14 +103,12 @@ class Continuous(AgentSchedulingComponent):
                 'gpus' : [rpc.FREE] * self._lrms_gpus_per_node
             })
 
-        self._scattered = self._cfg.get('scattered', False)
-
-
     # --------------------------------------------------------------------------
     #
     def slot_status(self):
-        """Returns a multi-line string corresponding to slot status.
-        """
+        '''
+        Returns a multi-line string corresponding to slot status.
+        '''
 
         ret = "|"
         for node in self.nodes:
@@ -372,8 +385,8 @@ class Continuous(AgentSchedulingComponent):
                 requested_gpus  - alloced_gpus  <= gpus_per_node      :
                 is_last = True
 
-            if is_first or is_last or self._scattered or last: partial = True
-            else                                             : partial = False
+            if is_first or self._scattered or is_last: partial = True
+            else                                     : partial = False
 
             find_cores  = min(requested_cores - alloced_cores, cores_per_node)
             find_gpus   = min(requested_gpus  - alloced_gpus,  gpus_per_node )
