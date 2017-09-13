@@ -215,8 +215,8 @@ class Session(rs.Session):
                     # really really need a db connection...
                     raise ValueError("incomplete DBURL '%s' no db name!" % self._dburl)
 
-        # initialize profiling
-        self._prof = self._get_profiler(self._cfg['owner'])
+        # initialize profiling, but make sure profile ends up in our logdir
+        self._prof = ru.Profiler(self._cfg['owner'], path=self._logdir)
 
         if not self._reconnected:
             self._prof.prof('session_start', uid=self._uid)
@@ -272,6 +272,7 @@ class Session(rs.Session):
         # FIXME: make sure the above code results in a usable session on
         #        reconnect
         self._log.report.ok('>>ok\n')
+
 
     # --------------------------------------------------------------------------
     #
@@ -552,6 +553,13 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     @property
+    def logdir(self):
+        return self._logdir
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
     def dburl(self):
         return self._dburl
 
@@ -626,17 +634,6 @@ class Session(rs.Session):
         log.info('radical.pilot        version: %s' % rp_version_detail)
 
         return log
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_profiler(self, name, level=None):
-        """
-        This is a thin wrapper around `ru.Profiler()` which makes sure that
-        profiles end up in a separate directory with the name of `session.uid`.
-        """
-
-        return ru.Profiler(name, path=self._logdir)
 
 
     # --------------------------------------------------------------------------

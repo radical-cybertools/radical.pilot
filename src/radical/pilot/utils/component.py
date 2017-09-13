@@ -322,7 +322,7 @@ class Component(ru.Process):
             self._owner = 'root'
 
         self._log  = self._session._get_logger(self.uid, level=self._debug)
-        self._prof = self._session._get_profiler(self.uid)
+        self._prof = ru.Profiler(self.uid, path=self._session.logdir)
 
         self._q    = None
         self._in   = None
