@@ -322,6 +322,7 @@ class Agent_0(rpu.Worker):
                   'lm_info'       : self._cfg['lrms_info']['lm_info']
                 }
                 agent_cmd = {
+                        'uid'          : sa,
                         'slots'        : slots,
                         'description'  : {
                             'cpu_processes' : 1,

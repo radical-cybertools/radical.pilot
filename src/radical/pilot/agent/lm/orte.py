@@ -194,28 +194,20 @@ class ORTE(LaunchMethod):
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cpu_processes']  # FIXME: handle cpu_threads
-        task_mpi     = cud.get('mpi', False)
         task_args    = cud.get('arguments', [])
+        task_cores   = cud.get('cpu_processes', 0) + cud.get('gpu_processes', 0)
+        task_mpi     = bool('mpi' in cud.get('cpu_process_type', '').lower())
+
+     #  import pprint
+     #  self._log.debug('prep %s', pprint.pformat(cu))
+        self._log.debug('prep %s', cu['uid'])
+
         task_argstr  = self._create_arg_string(task_args)
-
-        if 'task_slots' not in slots:
-            raise RuntimeError('No task_slots to launch via %s: %s' \
-                               % (self.name, slots))
-
-        if 'lm_info' not in slots:
-            raise RuntimeError('No lm_info to launch via %s: %s' \
-                    % (self.name, slots))
-
-        if not slots['lm_info']:
-            raise RuntimeError('lm_info missing for %s: %s' \
-                               % (self.name, slots))
 
         if 'dvm_uri' not in slots['lm_info']:
             raise RuntimeError('dvm_uri not in lm_info for %s: %s' \
                     % (self.name, slots))
 
-        task_slots = slots['task_slots']
         dvm_uri    = slots['lm_info']['dvm_uri']
 
         if task_argstr:
@@ -224,16 +216,24 @@ class ORTE(LaunchMethod):
             task_command = task_exec
 
         # Construct the hosts_string, env vars
-        #
-        # On some Crays, like on ARCHER, the hostname is "archer_N".
-        # In that case we strip off the part upto and including the underscore.
-        #
-        # TODO: If this ever becomes a problem, i.e. we encounter "real" hostnames
-        #       with underscores in it, or other hostname mangling, we need to turn
-        #       this into a system specific regexp or so.
-        #
-        hosts_string = ",".join([slot.split(':')[0].rsplit('_', 1)[-1] \
-                                 for slot in task_slots])
+        hosts_string = ''
+        for node in slots['nodes']:
+
+            # On some Crays, like on ARCHER, the hostname is "archer_N".  In
+            # that case we strip off the part upto and including the underscore.
+            #
+            # TODO: If this ever becomes a problem, i.e. we encounter "real"
+            #       hostnames with underscores in it, or other hostname 
+            #       mangling, we need to turn this into a system specific 
+            #       regexp or so.
+            node_id = node[1].rsplit('_', 1)[-1] 
+
+            # add all cpu and gpu process slots to the node list.
+            for cpu_slot in node[2]: hosts_string += '%s,' % node_id
+            for gpu_slot in node[3]: hosts_string += '%s,' % node_id
+
+        # remove last ','
+        hosts_string = hosts_string.rstrip(',')
         export_vars  = ' '.join(['-x ' + var \
                                  for var in self.EXPORT_ENV_VARIABLES \
                                  if  var in os.environ])
