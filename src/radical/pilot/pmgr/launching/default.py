@@ -31,8 +31,8 @@ from .base import PMGRLaunchingComponent
 # local constants
 DEFAULT_AGENT_SPAWNER = 'POPEN'
 DEFAULT_RP_VERSION    = 'local'
-DEFAULT_VIRTENV       = '%(global_sandbox)s/ve'
 DEFAULT_VIRTENV_MODE  = 'update'
+DEFAULT_VIRTENV_DIST  = 'default'
 DEFAULT_AGENT_CONFIG  = 'default'
 
 JOB_CANCEL_DELAY      = 12000# seconds between cancel signal and job kill
@@ -67,7 +67,7 @@ class Default(PMGRLaunchingComponent):
         self._check_lock    = threading.RLock()  # lock on maipulating the above
         self._saga_fs_cache = dict()             # cache of saga directories
         self._saga_js_cache = dict()             # cache of saga job services
-        self._sandboxes     = dict()             # cache of global sandbox URLs
+        self._sandboxes     = dict()             # cache of resource sandbox URLs
         self._cache_lock    = threading.RLock()  # lock for cache
 
         self._mod_dir       = os.path.dirname(os.path.abspath(__file__))
@@ -83,8 +83,9 @@ class Default(PMGRLaunchingComponent):
         # we listen for pilot cancel commands
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
 
-        _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
-                ru.get_version([self._root_dir, self._mod_dir])
+        self._log.info(ru.get_version([self._mod_dir, self._root_dir]))
+        self._rp_version, _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
+                ru.get_version([self._mod_dir, self._root_dir])
 
 
     # --------------------------------------------------------------------------
@@ -150,7 +151,10 @@ class Default(PMGRLaunchingComponent):
             now = time.time()
             with self._pilots_lock:
                 for pid in pids:
-                    self._pilots[pid]['pilot']['cancel_requested'] = now
+                    if pid in self._pilots:
+                        self._pilots[pid]['pilot']['cancel_requested'] = now
+
+        return True
 
         return True
 
@@ -287,6 +291,8 @@ class Default(PMGRLaunchingComponent):
 
         except Exception as e:
             self._log.exception('pilot kill failed')
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -567,6 +573,10 @@ class Default(PMGRLaunchingComponent):
         sid           = self._session.uid
         database_url  = self._session.dburl
 
+        # some default values are determined at runtime
+        default_virtenv = '%%(resource_sandbox)s/ve.%s.%s' % \
+                          (resource, self._rp_version)
+
         # ------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
         agent_launch_method     = rcfg.get('agent_launch_method')
@@ -585,10 +595,11 @@ class Default(PMGRLaunchingComponent):
         task_launch_method      = rcfg.get('task_launch_method')
         rp_version              = rcfg.get('rp_version',          DEFAULT_RP_VERSION)
         virtenv_mode            = rcfg.get('virtenv_mode',        DEFAULT_VIRTENV_MODE)
-        virtenv                 = rcfg.get('virtenv',             DEFAULT_VIRTENV)
+        virtenv                 = rcfg.get('virtenv',             default_virtenv)
         cores_per_node          = rcfg.get('cores_per_node', 0)
         health_check            = rcfg.get('health_check', True)
         python_dist             = rcfg.get('python_dist')
+        virtenv_dist            = rcfg.get('virtenv_dist',        DEFAULT_VIRTENV_DIST)
         cu_tmp                  = rcfg.get('cu_tmp')
         spmd_variation          = rcfg.get('spmd_variation')
         shared_filesystem       = rcfg.get('shared_filesystem', True)
@@ -609,20 +620,19 @@ class Default(PMGRLaunchingComponent):
         candidate_hosts = pilot['description']['candidate_hosts']
 
         # make sure that mandatory args are known
-        print 'mas: %s' % mandatory_args
-        import sys
-        sys.stdout.write('mas: %s\n' % mandatory_args)
-        sys.stdout.flush()
         for ma in mandatory_args:
             if pilot['description'].get(ma) is None:
                 raise  ValueError('attribute "%s" is required for "%s"' \
                                  % (ma, resource))
 
         # get pilot and global sandbox
-        global_sandbox   = self._session._get_global_sandbox (pilot).path
+        resource_sandbox = self._session._get_resource_sandbox (pilot).path
         session_sandbox  = self._session._get_session_sandbox(pilot).path
         pilot_sandbox    = self._session._get_pilot_sandbox  (pilot).path
-        pilot['sandbox'] = str(self._session._get_pilot_sandbox(pilot))
+
+        pilot['resource_sandbox'] = str(self._session._get_resource_sandbox(pilot))
+        pilot['pilot_sandbox']    = str(self._session._get_pilot_sandbox(pilot))
+        pilot['client_sandbox']   = str(self._session._get_client_sandbox())
 
         # Agent configuration that is not part of the public API.
         # The agent config can either be a config dict, or
@@ -636,23 +646,18 @@ class Default(PMGRLaunchingComponent):
             agent_config = rc_agent_config
 
         if isinstance(agent_config, dict):
-            # nothing to do
+
+            # use dict as is
             agent_cfg = agent_config
-            pass
 
         elif isinstance(agent_config, basestring):
             try:
-                if os.path.exists(agent_config):
-                    agent_cfg_file = agent_config
-
-                else:
-                    # otherwise interpret as a config name
-                    agent_cfg_file = os.path.join(self._conf_dir, "agent_%s.json" % agent_config)
+                # interpret as a config name
+                agent_cfg_file = os.path.join(self._conf_dir, "agent_%s.json" % agent_config)
 
                 self._log.info("Read agent config file: %s",  agent_cfg_file)
                 agent_cfg = ru.read_json(agent_cfg_file)
 
-                # no matter how we read the config file, we
                 # allow for user level overload
                 user_cfg_file = '%s/.radical/pilot/config/%s' \
                               % (os.environ['HOME'], os.path.basename(agent_cfg_file))
@@ -668,12 +673,12 @@ class Default(PMGRLaunchingComponent):
 
         else:
             # we can't handle this type
-            raise TypeError('agent config must be string (filename) or dict')
+            raise TypeError('agent config must be string (config name) or dict')
 
         # expand variables in virtenv string
-        virtenv = virtenv % {'pilot_sandbox'   :   pilot_sandbox,
+        virtenv = virtenv % {'pilot_sandbox'   : pilot_sandbox,
                              'session_sandbox' : session_sandbox,
-                             'global_sandbox'  :  global_sandbox}
+                             'resource_sandbox': resource_sandbox}
 
         # Check for deprecated global_virtenv
         if 'global_virtenv' in rcfg:
@@ -759,6 +764,7 @@ class Default(PMGRLaunchingComponent):
         # ------------------------------------------------------------------
         # sanity checks
         if not python_dist        : raise RuntimeError("missing python distribution")
+        if not virtenv_dist       : raise RuntimeError("missing virtualenv distribution")
         if not agent_spawner      : raise RuntimeError("missing agent spawner")
         if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
         if not lrms               : raise RuntimeError("missing LRMS")
@@ -811,6 +817,7 @@ class Default(PMGRLaunchingComponent):
         bootstrap_args += " -m '%s'" % virtenv_mode
         bootstrap_args += " -r '%s'" % rp_version
         bootstrap_args += " -b '%s'" % python_dist
+        bootstrap_args += " -g '%s'" % virtenv_dist
         bootstrap_args += " -v '%s'" % virtenv
         bootstrap_args += " -y '%d'" % runtime
 
@@ -839,7 +846,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['logdir']             = '.'
         agent_cfg['pilot_sandbox']      = pilot_sandbox
         agent_cfg['session_sandbox']    = session_sandbox
-        agent_cfg['global_sandbox']     = global_sandbox
+        agent_cfg['resource_sandbox']   = resource_sandbox
         agent_cfg['agent_launch_method']= agent_launch_method
         agent_cfg['task_launch_method'] = task_launch_method
         agent_cfg['mpi_launch_method']  = mpi_launch_method

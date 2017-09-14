@@ -124,24 +124,31 @@ class ORTE(LaunchMethod):
                     raise Exception("ORTE DVM process disappeared")
 
         # ----------------------------------------------------------------------
-        def _watch_dvm(dvm_process):
+        def _watch_dvm():
 
             logger.info('starting DVM watcher')
 
-            while dvm_process.poll() is None:
+            retval = dvm_process.poll()
+            while retval is None:
                 line = dvm_process.stdout.readline().strip()
                 if line:
                     logger.debug('dvm output: %s' % line)
                 else:
                     time.sleep(1.0)
 
+            if retval != 0:
+                # send a kill signal to the main thread.
+                # We know that Python and threading are likely not to play well
+                # with signals - but this is an exceptional case, and not part
+                # of the stadard termination sequence.  If the signal is
+                # swallowed, the next `orte-submit` call will trigger
+                # termination anyway.
+                os.kill(os.getpid())
+
             logger.info('DVM stopped (%d)' % dvm_process.returncode)
-            # TODO: Tear down everything?
         # ----------------------------------------------------------------------
 
-        dvm_watcher = threading.Thread(target=_watch_dvm, args=(dvm_process,),
-                                       name="DVMWatcher")
-        dvm_watcher.daemon = True
+        dvm_watcher = ru.Thread(target=_watch_dvm, name="DVMWatcher")
         dvm_watcher.start()
 
         lm_info = {'dvm_uri'     : dvm_uri,
