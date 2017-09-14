@@ -323,6 +323,14 @@ class Component(ru.Process):
 
         self._log  = self._session._get_logger(self.uid, level=self._debug)
         self._prof = ru.Profiler(self.uid, path=self._session.logdir)
+      # self._prof.register_timing(name='component_lifetime',
+      #                            scope='uid=%s' % self.uid,
+      #                            start='component_start',
+      #                            stop='component_stop')
+      # self._prof.register_timing(name='entity_runtime',
+      #                            scope='entity',
+      #                            start='get',
+      #                            stop=['put', 'drop'])
 
         self._q    = None
         self._in   = None
