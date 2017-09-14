@@ -1362,23 +1362,29 @@ class Component(ru.Process):
             # now we can push the buckets as bulks
             for _state,_things in buckets.iteritems():
 
+                ts = time.time()
                 if _state in rps.FINAL:
                     # things in final state are dropped
                     for thing in _things:
                         self._log.debug('final %s [%s]', thing['uid'], _state)
+                        self._prof.prof('drop', uid=thing['uid'], state=_state,
+                                        timestamp=ts)
                     continue
 
                 if _state not in self._outputs:
                     # unknown target state -- error
                     for thing in _things:
                         self._log.debug("lost  %s [%s]", thing['uid'], _state)
-                    self._log.warn("caller: %s [%s]", ru.get_caller_name(), self.uid)
+                        self._prof.prof('lost', uid=thing['uid'], state=_state,
+                                        timestamp=ts)
                     continue
 
                 if not self._outputs[_state]:
                     # empty output -- drop thing
                     for thing in _things:
                         self._log.debug('drop  %s [%s]', thing['uid'], _state)
+                        self._prof.prof('drop', uid=thing['uid'], state=_state,
+                                        timestamp=ts)
                     continue
 
                 output = self._outputs[_state]
