@@ -23,7 +23,7 @@ class APRun(LaunchMethod):
     #
     def _configure(self):
         # aprun: job launcher for Cray systems
-        self.launch_command= ru.which('aprun')
+        self.launch_command = ru.which('aprun')
 
         # TODO: ensure that only one concurrent aprun per node is executed!
 
@@ -49,7 +49,14 @@ class APRun(LaunchMethod):
             pes = task_cores
         else:
             pes = 1
-        aprun_command = "%s -n %d %s" % (self.launch_command, pes, task_command)
+
+        node_set = set()
+        for slot in opaque_slots['task_slots']:
+            node_set.add(slot.split(':')[0])
+        node_list = ','.joint(list(node_set))
+
+        aprun_command = "%s -L %s-n %d %s" \
+                      % (self.launch_command, node_list, pes, task_command)
 
         return aprun_command, None
 
