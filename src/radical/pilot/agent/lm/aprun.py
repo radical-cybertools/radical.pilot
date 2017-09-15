@@ -53,9 +53,9 @@ class APRun(LaunchMethod):
         node_set = set()
         for slot in opaque_slots['task_slots']:
             node_set.add(slot.split(':')[0])
-        node_list = ','.joint(list(node_set))
+        node_list = ','.join(list(node_set))
 
-        aprun_command = "%s -L %s-n %d %s" \
+        aprun_command = "%s -L %s -n %d %s" \
                       % (self.launch_command, node_list, pes, task_command)
 
         return aprun_command, None
