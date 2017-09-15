@@ -137,13 +137,13 @@ class UnitManager(rpu.Component):
         # register the state notification pull cb
         # FIXME: we may want to have the frequency configurable
         # FIXME: this should be a tailing cursor in the update worker
-        self.register_timed_cb(self._state_pull_cb, 
+        self.register_timed_cb(self._state_pull_cb,
                                timer=self._cfg['db_poll_sleeptime'])
 
         # register callback which pulls units back from agent
         # FIXME: this should be a tailing cursor in the update worker
         # FIXME: make frequency configurable
-        self.register_timed_cb(self._unit_pull_cb, 
+        self.register_timed_cb(self._unit_pull_cb,
                                timer=self._cfg['db_poll_sleeptime'])
 
         # also listen to the state pubsub for unit state changes
@@ -436,6 +436,8 @@ class UnitManager(rpu.Component):
         if self._terminate.is_set():
             return False
 
+        self._log.debug('umgr state cb: %s', msg)
+
         cmd = msg.get('cmd')
         arg = msg.get('arg')
 
@@ -498,6 +500,8 @@ class UnitManager(rpu.Component):
 
         with self._cb_lock:
             for cb_name, cb_val in self._callbacks[rpt.UNIT_STATE].iteritems():
+            
+                self._log.debug('%s calls state cb %s for %s', self.uid, cb_name, unit_obj.uid)
 
                 cb      = cb_val['cb']
                 cb_data = cb_val['cb_data']

@@ -441,7 +441,8 @@ class Session(rs.Session):
         if self._closed:
             return
 
-        self._log.report.info('closing session %s' % self._uid)
+        self._log.report.info('closing session %s\n%s', self._uid,
+                ru.get_stacktrace())
         self._log.debug("session %s closing" % (str(self._uid)))
         self.prof.prof("close", uid=self._uid)
 
