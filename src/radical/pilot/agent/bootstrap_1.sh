@@ -4,7 +4,7 @@
 # these custom functions can break assumed/expected behavior
 export PS1='#'
 unset PROMPT_COMMAND
-unset -f `set | grep -e '^[^ ]* ()' | cut -f 1 -d ' '`
+unset -f cd ls uname pwd date bc cat echo
 
 # interleave stdout and stderr, to get a coherent set of log messages
 if test -z "$RP_BOOTSTRAP_1_REDIR"
