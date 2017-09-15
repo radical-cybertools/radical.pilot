@@ -113,7 +113,7 @@ class ComputePilot(object):
     #
     def __str__(self):
 
-        return [self.uid, self.resource, self.state]
+        return str([self.uid, self.resource, self.state])
 
 
     # --------------------------------------------------------------------------
