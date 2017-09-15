@@ -106,7 +106,7 @@ class ComputePilot(object):
     #
     def __repr__(self):
 
-        return str(self.as_dict())
+        return str(self)
 
 
     # --------------------------------------------------------------------------

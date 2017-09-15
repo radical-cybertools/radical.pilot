@@ -306,7 +306,7 @@ class UnitManager(rpu.Component):
             else:
                 units = list(unit_cursor)
 
-            self._log.debug(" === units pulled: %3d (pilot dead)" % len(units))
+            self._log.debug(" === units pulled: pilot dead: %s", [u['uid'] for u in units])
 
             if not units:
                 return True
@@ -436,8 +436,6 @@ class UnitManager(rpu.Component):
         if self._terminate.is_set():
             return False
 
-        self._log.debug('umgr state cb: %s', msg)
-
         cmd = msg.get('cmd')
         arg = msg.get('arg')
 
@@ -450,12 +448,18 @@ class UnitManager(rpu.Component):
 
         for thing in things:
 
-            if 'type' in thing and thing['type'] == 'unit':
+            if thing.get('type') == 'unit':
+        
+                self._log.debug('umgr state cb for unit: %s', thing['uid'])
 
                 # we got the state update from the state callback - don't
                 # publish it again
-                if not self._update_unit(thing, publish=False):
-                    return False
+                self._update_unit(thing, publish=False)
+
+            else:
+
+                self._log.debug('umgr state cb ignores %s/%s', thing.get('uid'),
+                        thing.get('state'))
 
         return True
 
