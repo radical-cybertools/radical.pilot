@@ -423,14 +423,10 @@ class Continuous(AgentSchedulingComponent):
                 break
 
 
-
         # if we did not find anything, there is not much we can do at this point
-        if not cores and not gpus:
+        if alloced_cores < requested_cores or alloced_gpus < requested_gpus:
             # signal failure
             return None
-
-        assert (alloced_cores == requested_cores)
-        assert (alloced_gpus  == requested_gpus )
 
         return slots
 
