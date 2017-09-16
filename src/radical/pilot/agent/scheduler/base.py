@@ -192,7 +192,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # configure the scheduler instance
         self._configure()
-        self._log.debug("slot status after  initialization        : %s", self.slot_status())
+        self._log.debug("slot status after  init      : %s", self.slot_status())
 
 
     # --------------------------------------------------------------------------

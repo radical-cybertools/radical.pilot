@@ -405,7 +405,7 @@ class Continuous(AgentSchedulingComponent):
                     slots['nodes'] = list()
 
                 # try next node
-                break
+                continue
 
             # we found something - add to the existing allocation, switch gears
             # (not first anymore), and try to find more if needed
