@@ -219,6 +219,13 @@
         "cores"    : 64
     },
 
+    "ornl.titan" : {
+        "project"  : "CSC230",
+        "queue"    : "debug",
+        "schema"   : "local",
+        "cores"    : 64
+    },
+
     "ornl.titan_aprun" : {
         "project"  : "CSC230",
         "queue"    : "debug",
@@ -246,6 +253,14 @@
         "schema"   : "local",
         "cores"    : 64,
         "gpus"     : 4
+    },
+
+
+    "ornl.rhea"   : {
+        "project"  : "BIP149",
+        "queue"    : "batch",
+        "schema"   : "local",
+        "cores"    : 64
     },
 
     "nersc.hopper" : {
