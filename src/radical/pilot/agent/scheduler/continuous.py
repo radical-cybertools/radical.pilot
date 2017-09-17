@@ -260,8 +260,12 @@ class Continuous(AgentSchedulingComponent):
 
         requested_procs  = cud['cpu_processes']
         threads_per_proc = cud['cpu_threads']
-        requested_cores  = requested_procs * threads_per_proc
         requested_gpus   = cud['gpu_processes']
+
+        if not threads_per_proc:
+            threads_per_proc = 1
+
+        requested_cores = requested_procs * threads_per_proc
 
         if  requested_cores > self._lrms_cores_per_node or \
             requested_gpus  > self._lrms_gpus_per_node:
@@ -327,8 +331,12 @@ class Continuous(AgentSchedulingComponent):
 
         requested_procs  = cud['cpu_processes']
         threads_per_proc = cud['cpu_threads']
-        requested_cores  = requested_procs * threads_per_proc
         requested_gpus   = cud['gpu_processes']
+
+        if not threads_per_proc:
+            threads_per_proc = 1
+
+        requested_cores = requested_procs * threads_per_proc
 
         # First and last nodes can be a partial allocation - all other nodes can
         # only be partial when `scattered` is set.
