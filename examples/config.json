@@ -226,13 +226,6 @@
         "cores"    : 64
     },
 
-    "ornl.titan_aprun" : {
-        "project"  : "CSC230",
-        "queue"    : "debug",
-        "schema"   : "local",
-        "cores"    : 64
-    },
-
     "ornl.titan_ortelib" : {
         "project"  : "CSC230",
         "queue"    : "debug",
@@ -255,9 +248,8 @@
         "gpus"     : 4
     },
 
-
-    "ornl.rhea"   : {
-        "project"  : "BIP149",
+    "ornl.rhea_aprun"   : {
+        "project"  : "CSC230",
         "queue"    : "batch",
         "schema"   : "local",
         "cores"    : 64

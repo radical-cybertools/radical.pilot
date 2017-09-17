@@ -620,6 +620,7 @@ class Default(PMGRLaunchingComponent):
         cu_post_exec            = rcfg.get('cu_post_exec')
         export_to_cu            = rcfg.get('export_to_cu')
         mandatory_args          = rcfg.get('mandatory_args', [])
+        saga_jd_supplement      = rcfg.get('saga_jd_supplement', {})
 
         import pprint
         self._log.debug(cores_per_node)
@@ -975,6 +976,12 @@ class Default(PMGRLaunchingComponent):
         jd.queue                 = queue
         jd.candidate_hosts       = candidate_hosts
         jd.environment           = dict()
+
+        # we set any saga_jd_supplement keys which are not already set above
+        for key, val in saga_jd_supplement.iteritems():
+            if not jd[key]:
+                self._log.debug('supplement %s: %s', key, val)
+                jd[key] = val
 
         if 'RADICAL_PILOT_PROFILE' in os.environ :
             jd.environment['RADICAL_PILOT_PROFILE'] = 'TRUE'
