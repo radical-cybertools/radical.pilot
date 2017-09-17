@@ -3,18 +3,10 @@
     "titan_aprun": {
         "description"                 : "The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/titan/)",
         "notes"                       : "Requires the use of an RSA SecurID on every connection.",
-        "schemas"                     : ["local", "ssh", "go"],
-        "ssh"                         : {
-            "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
-            "filesystem_endpoint"     : "sftp://titan.ccs.ornl.gov/"
-        },
+        "schemas"                     : ["local"],
         "local"                       : {
             "job_manager_endpoint"    : "torque://localhost",
             "filesystem_endpoint"     : "file://localhost/"
-        },
-        "go"                          : {
-            "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
-            "filesystem_endpoint"     : "go://olcf#dtn/"
         },
         "default_queue"               : "batch",
         "lrms"                        : "TORQUE",
@@ -38,11 +30,51 @@
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "use",
-        "virtenv"                     : "/lustre/atlas2/csc230/world-shared/ve.rp.20017.06.26",
+        "virtenv"                     : "/lustre/atlas2/csc230/world-shared/ve.rp.titan.20017.08.07",
         "stage_cacerts"               : true,
         "python_dist"                 : "default",
         "virtenv_dist"                : "system",
-        "gpus_per_node"               : 1
+        "gpus_per_node"               : 1,
+        "saga_jd_supplement"          : {"candidate_hosts" : ["titan"]}
+    },
+
+    "rhea_aprun": {
+        "description"                 : "The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/titan/)",
+        "notes"                       : "Requires the use of an RSA SecurID on every connection.",
+        "schemas"                     : ["local"],
+        "local"                       : {
+            "job_manager_endpoint"    : "torque://localhost",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_queue"               : "batch",
+        "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
+        "agent_config"                : "cray_aprun",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "APRUN",
+        "task_launch_method"          : "APRUN",
+        "mpi_launch_method"           : "APRUN",
+        "pre_bootstrap_1"             : [
+            "module purge",
+            "module load PE-gnu",
+            "module load python",
+            "module load python_pip",
+            "module load python_virtualenv",
+            # Workaround for ZMQ runtime failure
+            "export LD_PRELOAD=/lib64/librt.so.1"
+        ],
+        "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
+        "valid_roots"                 : ["/lustre/atlas/scratch"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "use",
+        "virtenv"                     : "/lustre/atlas2/csc230/world-shared/ve.rp.rhea.20017.08.07",
+        "stage_cacerts"               : true,
+        "python_dist"                 : "default",
+        "virtenv_dist"                : "system",
+        "gpus_per_node"               : 1,
+        "saga_jd_supplement"          : {"candidate_hosts" : ["rhea"]},
+        "forward_tunnel_endpoint"     : "rhea-login4g.ccs.ornl.gov"
     },
 
     "titan_orte": {
