@@ -216,13 +216,10 @@ class Session(rs.Session):
                     raise ValueError("incomplete DBURL '%s' no db name!" % self._dburl)
 
         # initialize profiling
-        self.prof = self._get_profiler(self._cfg['owner'])
+        self._prof = self._get_profiler(self._cfg['owner'])
 
-        if self._reconnected:
-            self.prof.prof('reconnect session', uid=self._uid)
-
-        else:
-            self.prof.prof('start session', uid=self._uid)
+        if not self._reconnected:
+            self._prof.prof('session_start', uid=self._uid)
             self._log.report.info ('<<new session: ')
             self._log.report.plain('[%s]' % self._uid)
             self._log.report.info ('<<database   : ')
@@ -364,6 +361,8 @@ class Session(rs.Session):
 
         self.is_valid()
 
+        self._prof.prof('config_parser_start', uid=self._uid)
+
         # Loading all "default" resource configurations
         module_path  = os.path.dirname(os.path.abspath(__file__))
         default_cfgs = "%s/configs/resource_*.json" % module_path
@@ -381,6 +380,8 @@ class Session(rs.Session):
             for rc in rcs:
                 self._log.info("Load resource configurations for %s" % rc)
                 self._resource_configs[rc] = rcs[rc].as_dict() 
+                self._log.debug('read rcfg for %s (%s)', 
+                        rc, self._resource_configs[rc].get('cores_per_node'))
 
         home         = os.environ.get('HOME', '')
         user_cfgs    = "%s/.radical/pilot/configs/resource_*.json" % home
@@ -406,6 +407,9 @@ class Session(rs.Session):
                     # new config -- add as is
                     self._resource_configs[rc] = rcs[rc].as_dict() 
 
+                self._log.debug('fix  rcfg for %s (%s)', 
+                        rc, self._resource_configs[rc].get('cores_per_node'))
+
         default_aliases = "%s/configs/resource_aliases.json" % module_path
         self._resource_aliases = ru.read_json_str(default_aliases)['aliases']
 
@@ -416,7 +420,7 @@ class Session(rs.Session):
                           ru.read_json_str(usr_aliases).get('aliases', {}),
                           policy='overwrite')
 
-        self.prof.prof('configs parsed', uid=self._uid)
+        self._prof.prof('config_parser_stop', uid=self._uid)
 
 
     # --------------------------------------------------------------------------
@@ -443,7 +447,7 @@ class Session(rs.Session):
 
         self._log.report.info('closing session %s' % self._uid)
         self._log.debug("session %s closing" % (str(self._uid)))
-        self.prof.prof("close", uid=self._uid)
+        self._prof.prof("session_close", uid=self._uid)
 
         # set defaults
         if cleanup   == None: cleanup   = True
@@ -475,13 +479,13 @@ class Session(rs.Session):
             bridge.join()
             self._log.debug("session %s closed bridge %s", self._uid, bridge.uid)
 
-        self.prof.prof("closing", msg=cleanup, uid=self._uid)
         if self._dbs:
             self._log.debug("session %s closes db (%s)", self._uid, cleanup)
             self._dbs.close(delete=cleanup)
+
         self._log.debug("session %s closed (delete=%s)", self._uid, cleanup)
-        self.prof.prof("closed", uid=self._uid)
-        self.prof.close()
+        self._prof.prof("session_stop", uid=self._uid)
+        self._prof.close()
 
         # support GC
         for x in self._to_close: 
@@ -500,12 +504,12 @@ class Session(rs.Session):
         # after all is said and done, we attempt to download the pilot log- and
         # profiles, if so wanted
         if download:
-            # let file systems settle
             time.sleep(5)
-
+            self._prof.prof("session_fetch_start", uid=self._uid)
             self.fetch_json()
             self.fetch_profiles()
             self.fetch_logfiles()
+            self._prof.prof("session_fetch_stop", uid=self._uid)
 
         self._log.report.info('<<session lifetime: %.1fs' % (self.closed - self.created))
         self._log.report.ok('>>ok\n')
@@ -802,9 +806,14 @@ class Session(rs.Session):
             for rc in rcs:
                 self._log.info("Loaded resource configurations for %s" % rc)
                 self._resource_configs[rc] = rcs[rc].as_dict() 
+                self._log.debug('add  rcfg for %s (%s)', 
+                        rc, self._resource_configs[rc].get('cores_per_node'))
 
         else:
             self._resource_configs[resource_config.label] = resource_config.as_dict()
+            self._log.debug('Add  rcfg for %s (%s)', 
+                    resource_config.label, 
+                    self._resource_configs[resource_config.label].get('cores_per_node'))
 
     # -------------------------------------------------------------------------
     #
@@ -824,6 +833,7 @@ class Session(rs.Session):
             raise RuntimeError("Resource '%s' is not known." % resource)
 
         resource_cfg = copy.deepcopy(self._resource_configs[resource])
+        self._log.debug('get rcfg 1 for %s (%s)',  resource, resource_cfg.get('cores_per_node'))
 
         if  not schema:
             if 'schemas' in resource_cfg:
@@ -838,6 +848,8 @@ class Session(rs.Session):
                 # merge schema specific resource keys into the
                 # resource config
                 resource_cfg[key] = resource_cfg[schema][key]
+
+        self._log.debug('get rcfg 2 for %s (%s)',  resource, resource_cfg.get('cores_per_node'))
 
         return resource_cfg
 

@@ -44,7 +44,8 @@
         "export_to_cu"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"], 
-        "cu_pre_exec"                 : ["module restore"]
+        "cu_pre_exec"                 : ["module restore"],
+        "gpus_per_node"               : 1
     },
 
     "stampede_orte": {
@@ -94,7 +95,8 @@
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "default"
+        "python_dist"                 : "default",
+        "gpus_per_node"               : 1
     },
 
     "stampede_ortelib": {
@@ -144,7 +146,8 @@
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "default"
+        "python_dist"                 : "default",
+        "gpus_per_node"               : 1
     },
 
     "stampede_yarn": {
@@ -187,7 +190,8 @@
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "default"
+        "python_dist"                 : "default",
+        "gpus_per_node"               : 1
     },
 
     "stampede_spark": {
@@ -235,7 +239,8 @@
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "default"
+        "python_dist"                 : "default",
+        "gpus_per_node"               : 1
     },
 
     "wrangler_ssh": {
@@ -509,7 +514,7 @@
             "filesystem_endpoint"     : "gsisftp://blacklight.psc.xsede.org/"
         },
         "default_queue"               : "batch",
-        "cores_per_node"              : "16",
+        "cores_per_node"              : 16,
         "lrms"                        : "TORQUE",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
@@ -542,7 +547,7 @@
             "filesystem_endpoint"     : "gsisftp://greenfield.psc.xsede.org/"
         },
         "default_queue"               : "batch",
-        "cores_per_node"              : "15",
+        "cores_per_node"              : 15,
         "lrms"                        : "TORQUE",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
@@ -577,7 +582,7 @@
             "filesystem_endpoint"     : "gsisftp://comet.sdsc.xsede.org/"
         },
         "default_queue"               : "compute",
-        "cores_per_node"              : "24",
+        "cores_per_node"              : 24,
         "lrms"                        : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
@@ -610,7 +615,7 @@
             "filesystem_endpoint"     : "gsisftp://comet.sdsc.xsede.org/"
         },
         "default_queue"               : "compute",
-        "cores_per_node"              : "24",
+        "cores_per_node"              : 24,
         "lrms"                        : "SLURM",
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
@@ -644,7 +649,7 @@
             "filesystem_endpoint"     : "gsisftp://comet.sdsc.xsede.org/"
         },
         "default_queue"               : "compute",
-        "cores_per_node"              : "24",
+        "cores_per_node"              : 24,
         "lrms"                        : "SLURM",
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
@@ -678,7 +683,7 @@
             "filesystem_endpoint"     : "gsisftp://comet.sdsc.xsede.org/"
         },
         "default_queue"               : "compute",
-        "cores_per_node"              : "24",
+        "cores_per_node"              : 24,
         "lrms"                        : "SLURM",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
@@ -712,7 +717,7 @@
             "filesystem_endpoint"     : "sftp://supermic.cct-lsu.xsede.org/"
         },
         "default_queue"               : "workq",
-        "cores_per_node"              : "20",
+        "cores_per_node"              : 20,
         "lrms"                        : "TORQUE",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
@@ -782,7 +787,7 @@
             "filesystem_endpoint"     : "sftp://supermic.cct-lsu.xsede.org/"
         },
         "default_queue"               : "workq",
-        "cores_per_node"              : "20",
+        "cores_per_node"              : 20,
         "lrms"                        : "TORQUE",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",

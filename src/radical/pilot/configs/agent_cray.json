@@ -3,8 +3,8 @@
     "staging_schema"       : "staging",
     "max_io_loglength"     : 1024,
     "bulk_collection_size" :  100,
-    "bulk_collection_time" : 5.0,
-    "db_poll_sleeptime"    : 1.0,
+    "bulk_collection_time" :  1.0,
+    "db_poll_sleeptime"    :  1.0,
     "network_interface"    : "ipogif0",
 
     "target"  : "local",

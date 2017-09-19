@@ -156,7 +156,7 @@ class ORTE(LaunchMethod):
 
         # we need to inform the actual LM instance about the DVM URI.  So we
         # pass it back to the LRMS which will keep it in an 'lm_info', which
-        # will then be passed as part of the opaque_slots via the scheduler
+        # will then be passed as part of the slots via the scheduler
         return lm_info
 
 
@@ -191,32 +191,24 @@ class ORTE(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cores']
-        task_mpi     = cud.get('mpi')       or False
-        task_args    = cud.get('arguments') or []
+        task_args    = cud.get('arguments', [])
+        task_cores   = cud.get('cpu_processes', 0) + cud.get('gpu_processes', 0)
+        task_mpi     = bool('mpi' in cud.get('cpu_process_type', '').lower())
+
+     #  import pprint
+     #  self._log.debug('prep %s', pprint.pformat(cu))
+        self._log.debug('prep %s', cu['uid'])
+
         task_argstr  = self._create_arg_string(task_args)
 
-        if 'task_slots' not in opaque_slots:
-            raise RuntimeError('No task_slots to launch via %s: %s' \
-                               % (self.name, opaque_slots))
-
-        if 'lm_info' not in opaque_slots:
-            raise RuntimeError('No lm_info to launch via %s: %s' \
-                    % (self.name, opaque_slots))
-
-        if not opaque_slots['lm_info']:
-            raise RuntimeError('lm_info missing for %s: %s' \
-                               % (self.name, opaque_slots))
-
-        if 'dvm_uri' not in opaque_slots['lm_info']:
+        if 'dvm_uri' not in slots['lm_info']:
             raise RuntimeError('dvm_uri not in lm_info for %s: %s' \
-                    % (self.name, opaque_slots))
+                    % (self.name, slots))
 
-        task_slots = opaque_slots['task_slots']
-        dvm_uri    = opaque_slots['lm_info']['dvm_uri']
+        dvm_uri    = slots['lm_info']['dvm_uri']
 
         if task_argstr:
             task_command = "%s %s" % (task_exec, task_argstr)
@@ -224,15 +216,27 @@ class ORTE(LaunchMethod):
             task_command = task_exec
 
         # Construct the hosts_string, env vars
-        # On some Crays, like on ARCHER, the hostname is "archer_N".
-        # In that case we strip off the part upto and including the underscore.
-        #
-        # TODO: If this ever becomes a problem, i.e. we encounter "real" hostnames
-        #       with underscores in it, or other hostname mangling, we need to turn
-        #       this into a system specific regexp or so.
-        #
-        hosts_string = ",".join([slot.split(':')[0].rsplit('_', 1)[-1] for slot in task_slots])
-        export_vars  = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
+        hosts_string = ''
+        for node in slots['nodes']:
+
+            # On some Crays, like on ARCHER, the hostname is "archer_N".  In
+            # that case we strip off the part upto and including the underscore.
+            #
+            # TODO: If this ever becomes a problem, i.e. we encounter "real"
+            #       hostnames with underscores in it, or other hostname 
+            #       mangling, we need to turn this into a system specific 
+            #       regexp or so.
+            node_id = node[1].rsplit('_', 1)[-1] 
+
+            # add all cpu and gpu process slots to the node list.
+            for cpu_slot in node[2]: hosts_string += '%s,' % node_id
+            for gpu_slot in node[3]: hosts_string += '%s,' % node_id
+
+        # remove last ','
+        hosts_string = hosts_string.rstrip(',')
+        export_vars  = ' '.join(['-x ' + var \
+                                 for var in self.EXPORT_ENV_VARIABLES \
+                                 if  var in os.environ])
 
         # Additional (debug) arguments to orterun
         debug_strings = [
@@ -244,9 +248,9 @@ class ORTE(LaunchMethod):
         if task_mpi: np_flag = '-np %s' % task_cores
         else       : np_flag = '-np 1'
 
-        orte_command = '%s %s --hnp "%s" %s --bind-to none %s -host %s %s' % (self.launch_command, 
-                ' '.join(debug_strings), dvm_uri, export_vars, np_flag, 
-                hosts_string, task_command)
+        orte_command = '%s %s --hnp "%s" %s --bind-to none %s -host %s %s' % \
+                (self.launch_command, ' '.join(debug_strings), dvm_uri, 
+                 export_vars, np_flag, hosts_string, task_command)
 
         return orte_command, None
 

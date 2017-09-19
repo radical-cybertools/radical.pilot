@@ -77,25 +77,6 @@ class Shell(AgentExecutingComponent):
         # simplify shell startup / prompt detection
         os.environ['PS1'] = '$ '
 
-        # FIXME:
-        #
-        # The AgentExecutingComponent needs the LaunchMethods to construct
-        # commands.  Those need the scheduler for some lookups and helper
-        # methods, and the scheduler needs the LRMS.  The LRMS can in general
-        # only initialized in the original agent environment -- which ultimately
-        # limits our ability to place the CU execution on other nodes.
-        #
-        # As a temporary workaround we pass a None-Scheduler -- this will only
-        # work for some launch methods, and specifically not for ORTE, DPLACE
-        # and RUNJOB.
-        #
-        # The clean solution seems to be to make sure that, on 'allocating', the
-        # scheduler derives all information needed to use the allocation and
-        # attaches them to the CU, so that the launch methods don't need to look
-        # them up again.  This will make the 'opaque_slots' more opaque -- but
-        # that is the reason of their existence (and opaqueness) in the first
-        # place...
-
         self._task_launcher = rp.agent.LM.create(
                 name    = self._cfg['task_launch_method'],
                 cfg     = self._cfg,
@@ -174,8 +155,6 @@ class Shell(AgentExecutingComponent):
         self._watcher.start ()
 
         self.gtod = "%s/gtod" % self._pwd
-
-        self._prof.prof('run setup done', uid=self._pilot_id)
 
 
     # --------------------------------------------------------------------------
@@ -264,8 +243,7 @@ class Shell(AgentExecutingComponent):
 
             self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
-            assert(cu['opaque_slots']) # FIXME: no assert, but check
-            self._prof.prof('exec', msg='unit launch', uid=cu['uid'])
+            assert(cu['slots'])
 
             # Start a new subprocess to launch the unit
             self.spawn(launcher=launcher, cu=cu)
@@ -280,7 +258,7 @@ class Shell(AgentExecutingComponent):
                             % (str(e), traceback.format_exc())
 
             # Free the Slots, Flee the Flots, Ree the Frots!
-            if cu['opaque_slots']:
+            if cu.get('slots'):
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
@@ -445,8 +423,6 @@ class Shell(AgentExecutingComponent):
         uid     = cu['uid']
         sandbox = '%s/%s' % (self._pwd, uid)
 
-        self._prof.prof('spawn', msg='unit spawn', uid=uid)
-
         # prep stdout/err so that we can append w/o checking for None
         cu['stdout'] = ''
         cu['stderr'] = ''
@@ -456,12 +432,11 @@ class Shell(AgentExecutingComponent):
         cmd       = self._cu_to_cmd (cu, launcher)
         run_cmd   = "BULK\nLRUN\n%s\nLRUN_EOT\nBULK_RUN\n" % cmd
 
-        self._prof.prof('control', msg='launch script constructed', uid=cu['uid'])
-
       # TODO: Remove this commented out block?
       # if  self.lrms.target_is_macos :
       #     run_cmd = run_cmd.replace ("\\", "\\\\\\\\") # hello MacOS
 
+        self._prof.prof('exec_start', uid=cu['uid'])
         ret, out, _ = self.launcher_shell.run_sync (run_cmd)
 
         if  ret != 0 :
@@ -486,10 +461,11 @@ class Shell(AgentExecutingComponent):
         # 'BULK COMPLETED message from lrun
         ret, out = self.launcher_shell.find_prompt ()
         if  ret != 0 :
+            self._prof.prof('exec_fail', uid=cu['uid'])
             raise RuntimeError ("failed to run unit '%s': (%s)(%s)" \
                              % (run_cmd, ret, out))
 
-        self._prof.prof('spawn', msg='spawning passed to pty', uid=uid)
+        self._prof.prof('exec_ok', uid=cu['uid'])
 
         # for convenience, we link the ExecWorker job-cwd to the unit sandbox
         try:
@@ -501,7 +477,6 @@ class Shell(AgentExecutingComponent):
         # FIXME: this is too late, there is already a race with the monitoring
         # thread for this CU execution.  We need to communicate the PIDs/CUs via
         # a queue again!
-        self._prof.prof('pass', msg="to watcher (%s)" % cu['state'], uid=cu['uid'])
         with self._registry_lock :
             self._registry[pid] = cu
 
@@ -513,7 +488,6 @@ class Shell(AgentExecutingComponent):
         MONITOR_READ_TIMEOUT = 1.0   # check for stop signal now and then
         static_cnt           = 0
 
-        self._prof.prof('run', uid=self._pilot_id)
         try:
 
             self.monitor_shell.run_async ("MONITOR")
@@ -599,8 +573,6 @@ class Shell(AgentExecutingComponent):
                         cu = self._registry.get (pid, None)
 
                     if cu:
-                        self._prof.prof('passed', msg="ExecWatcher picked up unit",
-                                state=cu['state'], uid=cu['uid'])
                         self._handle_event (cu, pid, state, data)
                     else:
                         self._cached_events.append ([pid, state, data])
@@ -628,7 +600,7 @@ class Shell(AgentExecutingComponent):
                              pid, state, data)
             return
 
-        self._prof.prof('exec', msg='execution complete', uid=cu['uid'])
+        self._prof.prof('exec_stop', uid=cu['uid'])
 
         # for final states, we can free the slots.
         self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
@@ -638,14 +610,12 @@ class Shell(AgentExecutingComponent):
 
         if rp_state in [rps.FAILED, rps.CANCELED] :
             # The unit failed - fail after staging output
-            self._prof.prof('final', msg="execution failed", uid=cu['uid'])
             cu['target_state'] = rps.FAILED
 
         else:
             # The unit finished cleanly, see if we need to deal with
             # output data.  We always move to stageout, even if there are no
             # directives -- at the very least, we'll upload stdout/stderr
-            self._prof.prof('final', msg="execution succeeded", uid=cu['uid'])
             cu['target_state'] = rps.DONE
 
         self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
@@ -656,4 +626,5 @@ class Shell(AgentExecutingComponent):
                 del(self._registry[pid])
 
 
+# ------------------------------------------------------------------------------
 

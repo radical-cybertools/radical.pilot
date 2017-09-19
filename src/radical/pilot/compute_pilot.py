@@ -71,7 +71,7 @@ class ComputePilot(object):
         # initialize state
         self._pmgr          = pmgr
         self._session       = self._pmgr.session
-        self._prof          = self._session.prof
+        self._prof          = self._session._prof
         self._uid           = ru.generate_id('pilot.%(counter)04d', ru.ID_CUSTOM)
         self._state         = rps.NEW
         self._log           = pmgr._log
@@ -561,13 +561,13 @@ class ComputePilot(object):
 
             assert(action in [COPY, LINK, MOVE, TRANSFER])
 
-            self._prof.prof('staging_begin', uid=self.uid, msg=did)
+            self._prof.prof('staging_in_start', uid=self.uid, msg=did)
 
             src = complete_url(src, src_context, self._log)
             tgt = complete_url(tgt, tgt_context, self._log)
 
             if action in [COPY, LINK, MOVE]:
-                self._prof.prof('staging_end', uid=self.uid, msg=did)
+                self._prof.prof('staging_in_fail', uid=self.uid, msg=did)
                 raise ValueError("invalid action '%s' on pilot level" % action)
 
             self._log.info('transfer %s to %s', src, tgt)
@@ -590,7 +590,7 @@ class ComputePilot(object):
             saga_dir = self._cache[key]
             saga_dir.copy(src, tgt, flags=flags)
 
-            self._prof.prof('staging_end', uid=self.uid, msg=did)
+            self._prof.prof('staging_in_stop', uid=self.uid, msg=did)
 
 
 # ------------------------------------------------------------------------------

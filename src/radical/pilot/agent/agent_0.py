@@ -110,6 +110,9 @@ class Agent_0(rpu.Worker):
         # ready to rumble!
         rpu.Worker.__init__(self, cfg, session)
 
+        # this is the earlier point to sync bootstrapper and agent # profiles
+        self._prof.prof('sync_rel', msg='agent_0 start', uid=self._pid)
+
         # Create LRMS which will give us the set of agent_nodes to use for
         # sub-agent startup.  Add the remaining LRMS information to the
         # config, for the benefit of the scheduler).
@@ -154,6 +157,10 @@ class Agent_0(rpu.Worker):
         # we have to perform, really
         self.register_timed_cb(self._check_units_cb,
                                timer=self._cfg['db_poll_sleeptime'])
+
+
+        # record hostname in profile to enable mapping of profile entries
+        self._prof.prof('hostname', msg=ru.get_hostname(), uid=self._pid)
 
 
     # --------------------------------------------------------------------------
@@ -298,23 +305,30 @@ class Agent_0(rpu.Worker):
                 #        the 'agent_node' string as 'agent_string:0' and
                 #        obtain a well format slot...
                 # FIXME: it is actually tricky to translate the agent_node
-                #        into a viable 'opaque_slots' structure, as that is
+                #        into a viable 'slots' structure, as that is
                 #        usually done by the schedulers.  So we leave that
                 #        out for the moment, which will make this unable to
                 #        work with a number of launch methods.  Can the
                 #        offset computation be moved to the LRMS?
                 ls_name = "%s/%s.sh" % (os.getcwd(), sa)
-                opaque_slots = {
-                        'task_slots'   : ['%s:0' % node],
-                        'task_offsets' : [],
-                        'lm_info'      : self._cfg['lrms_info']['lm_info']}
+                slots = {
+                  'cpu_processes' : 1,
+                  'cpu_threads'   : 1,
+                  'gpu_processes' : 0,
+                  'gpu_threads'   : 0,
+                  'nodes'         : [[node[0], node[1], [[0]], []]],
+                  'cores_per_node': self._cfg['lrms_info']['cores_per_node'],
+                  'gpus_per_node' : self._cfg['lrms_info']['gpus_per_node'],
+                  'lm_info'       : self._cfg['lrms_info']['lm_info']
+                }
                 agent_cmd = {
-                        'opaque_slots' : opaque_slots,
+                        'uid'          : sa,
+                        'slots'        : slots,
                         'description'  : {
-                            'cores'      : 1,
-                            'executable' : "/bin/sh",
-                            'mpi'        : False,
-                            'arguments'  : ["%s/bootstrap_2.sh" % os.getcwd(), sa]
+                            'cpu_processes' : 1,
+                            'executable'    : "/bin/sh",
+                            'mpi'           : False,
+                            'arguments'     : ["%s/bootstrap_2.sh" % os.getcwd(), sa]
                             }
                         }
                 cmd, hop = agent_lm.construct_command(agent_cmd,
@@ -376,9 +390,6 @@ class Agent_0(rpu.Worker):
 
         self.is_valid()
 
-        self._prof.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!',
-                        uid=self._owner)
-
         if not self._check_commands(): return False
         if not self._check_state   (): return False
 
@@ -408,10 +419,12 @@ class Agent_0(rpu.Worker):
             cmd = spec['cmd']
             arg = spec['arg']
 
-            self._prof.prof('cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" \
-                            % (cmd, arg), uid=self._owner)
+            self._prof.prof('cmd', msg="%s : %s" % (cmd, arg), uid=self._pid)
 
-            if cmd == 'cancel_pilot':
+            if cmd == 'heartbeat':
+                self._log.info('heartbeat_in')
+
+            elif cmd == 'cancel_pilot':
                 self._log.info('cancel pilot cmd')
                 self._final_cause = 'cancel'
                 with open('./killme.signal', 'w+') as f:
@@ -428,7 +441,6 @@ class Agent_0(rpu.Worker):
                                                   'arg' : arg})
             else:
                 self._log.error('could not interpret cmd "%s" - ignore', cmd)
-                return False  # abort
 
         return True
 
@@ -489,13 +501,14 @@ class Agent_0(rpu.Worker):
                         document = {'$set'  : {'control' : 'agent'}})
 
         self._log.info("units pulled: %4d", len(unit_list))
-        self._prof.prof('get', msg="bulk size: %d" % len(unit_list), uid=self._pid)
+        self._prof.prof('get', msg="bulk size: %d" % len(unit_list),
+                        uid=self._pid)
 
         for unit in unit_list:
 
             # we need to make sure to have the correct state:
             unit['state'] = rps._unit_state_collapse(unit['states'])
-            self._prof.prof('get', msg="bulk size: %d" % len(unit_list), uid=unit['uid'])
+            self._prof.prof('get', uid=unit['uid'])
 
             # FIXME: raise or fail unit!
             if unit['control'] != 'agent_pending':

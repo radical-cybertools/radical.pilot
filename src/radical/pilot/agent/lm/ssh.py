@@ -53,21 +53,22 @@ class SSH(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
         task_argstr  = self._create_arg_string(task_args)
 
-        if not 'task_slots' in opaque_slots:
-            raise RuntimeError('insufficient information to launch via %s: %s' \
-                    % (self.name, opaque_slots))
+        task_slots   = slots.get('task_slots')
 
-        task_slots = opaque_slots['task_slots']
+        if not task_slots:
+            raise RuntimeError('insufficient information to launch via %s: %s' \
+                    % (self.name, slots))
 
         if not launch_script_hop :
             raise ValueError ("LaunchMethodSSH.construct_command needs launch_script_hop!")
+
+        # FIXME: assert that all task slots point to the same node (hostname)
 
         # Get the host of the first entry in the acquired slot
         host = task_slots[0].split(':')[0]
@@ -78,7 +79,9 @@ class SSH(LaunchMethod):
             task_command = task_exec
 
         # Pass configured and available environment variables to the remote shell
-        export_vars = ' '.join(['%s=%s' % (var, os.environ[var]) for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
+        export_vars = ' '.join(['%s=%s' % (var, os.environ[var])     \
+                                for var in self.EXPORT_ENV_VARIABLES \
+                                if  var in os.environ])
 
         # Command line to execute launch script via ssh on host
         ssh_hop_cmd = "%s %s %s %s" % (self.launch_command, host, export_vars, launch_script_hop)

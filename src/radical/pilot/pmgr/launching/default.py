@@ -578,6 +578,17 @@ class Default(PMGRLaunchingComponent):
                           (resource, self._rp_version)
 
         # ------------------------------------------------------------------
+        # pilot description and resource configuration
+        number_cores    = pilot['description']['cores']
+        number_gpus     = pilot['description']['gpus']
+        runtime         = pilot['description']['runtime']
+        queue           = pilot['description']['queue']
+        project         = pilot['description']['project']
+        cleanup         = pilot['description']['cleanup']
+        memory          = pilot['description']['memory']
+        candidate_hosts = pilot['description']['candidate_hosts']
+
+        # ------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
         agent_launch_method     = rcfg.get('agent_launch_method')
         agent_dburl             = rcfg.get('agent_mongodb_endpoint', database_url)
@@ -597,6 +608,7 @@ class Default(PMGRLaunchingComponent):
         virtenv_mode            = rcfg.get('virtenv_mode',        DEFAULT_VIRTENV_MODE)
         virtenv                 = rcfg.get('virtenv',             default_virtenv)
         cores_per_node          = rcfg.get('cores_per_node', 0)
+        gpus_per_node           = rcfg.get('gpus_per_node',  0)
         health_check            = rcfg.get('health_check', True)
         python_dist             = rcfg.get('python_dist')
         virtenv_dist            = rcfg.get('virtenv_dist',        DEFAULT_VIRTENV_DIST)
@@ -609,15 +621,9 @@ class Default(PMGRLaunchingComponent):
         export_to_cu            = rcfg.get('export_to_cu')
         mandatory_args          = rcfg.get('mandatory_args', [])
 
-        # ------------------------------------------------------------------
-        # get parameters from the pilot description
-        number_cores    = pilot['description']['cores']
-        runtime         = pilot['description']['runtime']
-        queue           = pilot['description']['queue']
-        project         = pilot['description']['project']
-        cleanup         = pilot['description']['cleanup']
-        memory          = pilot['description']['memory']
-        candidate_hosts = pilot['description']['candidate_hosts']
+        import pprint
+        self._log.debug(cores_per_node)
+        self._log.debug(pprint.pformat(rcfg))
 
         # make sure that mandatory args are known
         for ma in mandatory_args:
@@ -809,6 +815,13 @@ class Default(PMGRLaunchingComponent):
             number_cores   = int(cores_per_node
                            * math.ceil(float(number_cores)/cores_per_node))
 
+        # if gpus_per_node is set (!= None), then we need to
+        # allocation full nodes, and thus round up
+        if gpus_per_node:
+            gpus_per_node = int(gpus_per_node)
+            number_gpus   = int(gpus_per_node
+                           * math.ceil(float(number_gpus)/gpus_per_node))
+
         # set mandatory args
         bootstrap_args  = ""
         bootstrap_args += " -d '%s'" % ':'.join(sdist_names)
@@ -836,6 +849,7 @@ class Default(PMGRLaunchingComponent):
 
         agent_cfg['owner']              = 'agent_0'
         agent_cfg['cores']              = number_cores
+        agent_cfg['gpus']               = number_gpus
         agent_cfg['lrms']               = lrms
         agent_cfg['spawner']            = agent_spawner
         agent_cfg['scheduler']          = agent_scheduler
@@ -851,6 +865,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['task_launch_method'] = task_launch_method
         agent_cfg['mpi_launch_method']  = mpi_launch_method
         agent_cfg['cores_per_node']     = cores_per_node
+        agent_cfg['gpus_per_node']      = gpus_per_node
         agent_cfg['cu_tmp']             = cu_tmp
         agent_cfg['export_to_cu']       = export_to_cu
         agent_cfg['cu_pre_exec']        = cu_pre_exec
@@ -952,6 +967,7 @@ class Default(PMGRLaunchingComponent):
         jd.output                = "bootstrap_1.out"
         jd.error                 = "bootstrap_1.err"
         jd.total_cpu_count       = number_cores
+        jd.total_gpu_count       = number_gpus
         jd.processes_per_host    = cores_per_node
         jd.spmd_variation        = spmd_variation
         jd.wall_time_limit       = runtime

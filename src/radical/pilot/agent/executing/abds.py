@@ -195,7 +195,7 @@ class ABDS(AgentExecutingComponent):
 
             self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
-            assert(cu['opaque_slots']) # FIXME: no assert, but check
+            assert(cu['slots']) # FIXME: no assert, but check
             self._prof.prof('exec', msg='unit launch', uid=cu['uid'])
 
             # Start a new subprocess to launch the unit
@@ -211,7 +211,7 @@ class ABDS(AgentExecutingComponent):
                             % (str(e), traceback.format_exc())
 
             # Free the Slots, Flee the Flots, Ree the Frots!
-            if cu['opaque_slots']:
+            if cu['slots']:
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
