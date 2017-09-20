@@ -472,8 +472,6 @@ def get_session_description(sid, src=None, dburl=None):
         fix_uids(json)
     fix_json(json)
 
-    ru.write_json(json, '/tmp/t.json')
-
     assert(sid == json['session']['uid']), 'sid inconsistent'
 
     ret             = dict()
