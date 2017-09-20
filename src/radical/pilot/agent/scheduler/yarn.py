@@ -205,7 +205,7 @@ class Yarn(AgentSchedulingComponent):
         # put it on the wait queue.
         if self._try_allocation(cu):
             self._prof.prof('schedule', msg="allocation succeeded", uid=cu['uid'])
-            self.advance(cu, rps.EXECUTING_PENDING, publish=True, push=True)
+            self.advance(cu, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
 
         else:
             # No resources available, put in wait queue

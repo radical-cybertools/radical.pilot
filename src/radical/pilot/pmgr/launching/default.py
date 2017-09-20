@@ -32,6 +32,7 @@ from .base import PMGRLaunchingComponent
 DEFAULT_AGENT_SPAWNER = 'POPEN'
 DEFAULT_RP_VERSION    = 'local'
 DEFAULT_VIRTENV_MODE  = 'update'
+DEFAULT_VIRTENV_DIST  = 'default'
 DEFAULT_AGENT_CONFIG  = 'default'
 
 JOB_CANCEL_DELAY      = 12000# seconds between cancel signal and job kill
@@ -82,9 +83,9 @@ class Default(PMGRLaunchingComponent):
         # we listen for pilot cancel commands
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
 
-        self._log.info(ru.get_version([self._root_dir, self._mod_dir]))
+        self._log.info(ru.get_version([self._mod_dir, self._root_dir]))
         self._rp_version, _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
-                ru.get_version([self._root_dir, self._mod_dir])
+                ru.get_version([self._mod_dir, self._root_dir])
 
 
     # --------------------------------------------------------------------------
@@ -598,6 +599,7 @@ class Default(PMGRLaunchingComponent):
         cores_per_node          = rcfg.get('cores_per_node', 0)
         health_check            = rcfg.get('health_check', True)
         python_dist             = rcfg.get('python_dist')
+        virtenv_dist            = rcfg.get('virtenv_dist',        DEFAULT_VIRTENV_DIST)
         cu_tmp                  = rcfg.get('cu_tmp')
         spmd_variation          = rcfg.get('spmd_variation')
         shared_filesystem       = rcfg.get('shared_filesystem', True)
@@ -644,23 +646,18 @@ class Default(PMGRLaunchingComponent):
             agent_config = rc_agent_config
 
         if isinstance(agent_config, dict):
-            # nothing to do
+
+            # use dict as is
             agent_cfg = agent_config
-            pass
 
         elif isinstance(agent_config, basestring):
             try:
-                if os.path.exists(agent_config):
-                    agent_cfg_file = agent_config
-
-                else:
-                    # otherwise interpret as a config name
-                    agent_cfg_file = os.path.join(self._conf_dir, "agent_%s.json" % agent_config)
+                # interpret as a config name
+                agent_cfg_file = os.path.join(self._conf_dir, "agent_%s.json" % agent_config)
 
                 self._log.info("Read agent config file: %s",  agent_cfg_file)
                 agent_cfg = ru.read_json(agent_cfg_file)
 
-                # no matter how we read the config file, we
                 # allow for user level overload
                 user_cfg_file = '%s/.radical/pilot/config/%s' \
                               % (os.environ['HOME'], os.path.basename(agent_cfg_file))
@@ -676,7 +673,7 @@ class Default(PMGRLaunchingComponent):
 
         else:
             # we can't handle this type
-            raise TypeError('agent config must be string (filename) or dict')
+            raise TypeError('agent config must be string (config name) or dict')
 
         # expand variables in virtenv string
         virtenv = virtenv % {'pilot_sandbox'   : pilot_sandbox,
@@ -767,6 +764,7 @@ class Default(PMGRLaunchingComponent):
         # ------------------------------------------------------------------
         # sanity checks
         if not python_dist        : raise RuntimeError("missing python distribution")
+        if not virtenv_dist       : raise RuntimeError("missing virtualenv distribution")
         if not agent_spawner      : raise RuntimeError("missing agent spawner")
         if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
         if not lrms               : raise RuntimeError("missing LRMS")
@@ -819,6 +817,7 @@ class Default(PMGRLaunchingComponent):
         bootstrap_args += " -m '%s'" % virtenv_mode
         bootstrap_args += " -r '%s'" % rp_version
         bootstrap_args += " -b '%s'" % python_dist
+        bootstrap_args += " -g '%s'" % virtenv_dist
         bootstrap_args += " -v '%s'" % virtenv
         bootstrap_args += " -y '%d'" % runtime
 
