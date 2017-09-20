@@ -164,10 +164,13 @@ class Continuous(AgentSchedulingComponent):
         # TODO: This assumes all hosts have the same number of cores
 
         first_slot = task_slots[0]
+
         # Get the host and the core part
         [first_slot_host, first_slot_core] = first_slot.split(':')
+
         # Find the entry in the the all_slots list based on the host
         slot_entry = (slot for slot in self.slots if slot["node"] == first_slot_host).next()
+
         # Transform it into an index in to the all_slots list
         all_slots_slot_index = self.slots.index(slot_entry)
 
