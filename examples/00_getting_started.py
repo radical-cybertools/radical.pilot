@@ -60,7 +60,7 @@ if __name__ == '__main__':
                 'project'       : config[resource]['project'],
                 'queue'         : config[resource]['queue'],
                 'access_schema' : config[resource]['schema'],
-                'cores'         : 1024
+                'cores'         : 64
                 }
         pdesc = rp.ComputePilotDescription(pd_init)
 
@@ -86,10 +86,11 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.executable       = '/bin/date'
-            cud.gpu_processes    = 1
+            cud.gpu_processes    = 0
             cud.cpu_processes    = 2
             cud.cpu_threads      = 2
             cud.cpu_process_type = rp.MPI
+            cud.cpu_thread_type  = rp.OpenMP
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')

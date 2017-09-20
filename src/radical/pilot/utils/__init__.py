@@ -26,4 +26,8 @@ from .pubsub       import *
 from .analysis     import *
 from .session      import *
 from .component    import *
+from .slot_utils   import *
+
+
+# ------------------------------------------------------------------------------
 
