@@ -39,7 +39,7 @@ class MPIRunCCMRun(LaunchMethod):
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cores']
+        task_cores   = cud['cpu_processes']  # FIXME: handle cpu_threads
         task_args    = cud.get('arguments', [])
         task_argstr  = self._create_arg_string(task_args)
 

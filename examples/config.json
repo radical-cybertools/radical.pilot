@@ -4,7 +4,16 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 32
+        "cores"    : 32,
+        "gpus"     : 2
+    },
+
+    "local.localhost_aprun" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 32,
+        "gpus"     : 2
     },
 
     "local.localhost_orte" : {
@@ -210,7 +219,7 @@
         "cores"    : 64
     },
 
-    "ornl.titan_aprun" : {
+    "ornl.titan" : {
         "project"  : "CSC230",
         "queue"    : "debug",
         "schema"   : "local",
@@ -234,6 +243,14 @@
     "ornl.titan_aprun"   : {
         "project"  : "CSC230",
         "queue"    : "debug",
+        "schema"   : "local",
+        "cores"    : 64,
+        "gpus"     : 4
+    },
+
+    "ornl.rhea_aprun"   : {
+        "project"  : "CSC230",
+        "queue"    : "batch",
         "schema"   : "local",
         "cores"    : 64
     },

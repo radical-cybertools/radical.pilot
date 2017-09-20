@@ -122,6 +122,7 @@ class Update(rpu.Worker):
         for entry in self._uids:
             uid   = entry[0]
             state = entry[2]
+
             if state:
                 self._prof.prof('update_pushed', uid=uid, msg=state)
             else:

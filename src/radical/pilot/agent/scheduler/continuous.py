@@ -77,6 +77,21 @@ class Continuous(AgentSchedulingComponent):
 
         # TODO: use real core/gpu numbers for non-exclusive reservations
 
+        # cray's aprun for example does not allow us to oversubscribe CPU cores
+        # on a node, so we can't, say, run n CPU processes on an n-core node,
+        # and than add one additional process for a GPU application.  If
+        # `oversubscribe` is set to False (which is the default for now), we'll
+        # prevent that behavior by allocating one additional CPU core for each 
+        # requested GPU process.
+        self._oversubscribe = self._cfg.get('oversubscribe', False)
+        self._scattered     = self._cfg.get('scattered',     False)
+
+        # FIXME: for non-oversubscribing mode, we reserve a number of cores 
+        #        for the GPU processes - even if those GPUs are not used by 
+        #        a specific workload
+        if not self._oversubscribe:
+            self._lrms_cores_per_node -= self._lrms_gpus_per_node
+
         self.nodes = []
         for node, node_uid in self._lrms_node_list:
             self.nodes.append({
@@ -86,14 +101,12 @@ class Continuous(AgentSchedulingComponent):
                 'gpus' : [rpc.FREE] * self._lrms_gpus_per_node
             })
 
-        self._scattered = self._cfg.get('scattered', False)
-
-
     # --------------------------------------------------------------------------
     #
     def slot_status(self):
-        """Returns a multi-line string corresponding to slot status.
-        """
+        '''
+        Returns a multi-line string corresponding to slot status.
+        '''
 
         ret = "|"
         for node in self.nodes:
@@ -114,7 +127,8 @@ class Continuous(AgentSchedulingComponent):
     def _allocate_slot(self, cud):
 
         # single_node is enforced for non-message passing tasks
-        if cud['mpi']:
+        if  cud['cpu_process_type'] == 'MPI' or \
+            cud['gpu_process_type'] == 'MPI' :
             slots = self._alloc_mpi(cud)
         else:
             slots = self._alloc_nompi(cud)
@@ -243,10 +257,14 @@ class Continuous(AgentSchedulingComponent):
         Find a suitable set of cores and gpus *within a single node*.
         '''
 
-        requested_procs  = cud['cores']
-        requested_gpus   = cud['gpus']
-        threads_per_proc = cud['threads_per_proc']
-        requested_cores  = requested_procs * threads_per_proc
+        requested_procs  = cud['cpu_processes']
+        threads_per_proc = cud['cpu_threads']
+        requested_gpus   = cud['gpu_processes']
+
+        if not threads_per_proc:
+            threads_per_proc = 1
+
+        requested_cores = requested_procs * threads_per_proc
 
         if  requested_cores > self._lrms_cores_per_node or \
             requested_gpus  > self._lrms_gpus_per_node:
@@ -310,10 +328,14 @@ class Continuous(AgentSchedulingComponent):
         spawn the requested number of threads on its slots.
         '''
 
-        requested_procs  = cud['cores']
-        requested_gpus   = cud['gpus']
-        threads_per_proc = cud['threads_per_proc']
-        requested_cores  = requested_procs * threads_per_proc
+        requested_procs  = cud['cpu_processes']
+        threads_per_proc = cud['cpu_threads']
+        requested_gpus   = cud['gpu_processes']
+
+        if not threads_per_proc:
+            threads_per_proc = 1
+
+        requested_cores = requested_procs * threads_per_proc
 
         # First and last nodes can be a partial allocation - all other nodes can
         # only be partial when `scattered` is set.
@@ -370,8 +392,8 @@ class Continuous(AgentSchedulingComponent):
                 requested_gpus  - alloced_gpus  <= gpus_per_node      :
                 is_last = True
 
-            if is_first or is_last or self._scattered or is_last: partial = True
-            else                                                : partial = False
+            if is_first or self._scattered or is_last: partial = True
+            else                                     : partial = False
 
             find_cores  = min(requested_cores - alloced_cores, cores_per_node)
             find_gpus   = min(requested_gpus  - alloced_gpus,  gpus_per_node )
@@ -390,7 +412,7 @@ class Continuous(AgentSchedulingComponent):
                     slots['nodes'] = list()
 
                 # try next node
-                break
+                continue
 
             # we found something - add to the existing allocation, switch gears
             # (not first anymore), and try to find more if needed
@@ -408,14 +430,10 @@ class Continuous(AgentSchedulingComponent):
                 break
 
 
-
         # if we did not find anything, there is not much we can do at this point
-        if not cores and not gpus:
+        if alloced_cores < requested_cores or alloced_gpus < requested_gpus:
             # signal failure
             return None
-
-        assert (alloced_cores == requested_cores)
-        assert (alloced_gpus  == requested_gpus )
 
         return slots
 

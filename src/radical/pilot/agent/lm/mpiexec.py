@@ -23,6 +23,9 @@ class MPIExec(LaunchMethod):
         # mpiexec (e.g. on SuperMUC)
         self.launch_command = self._find_executable([
             'mpiexec',            # General case
+            'mpiexec.mpich',      # Linux, MPICH
+            'mpiexec.hydra',      # Linux, MPICH
+            'mpiexec.openempi',   # Linux, MPICH
             'mpiexec-mpich-mp',   # Mac OSX MacPorts
             'mpiexec-openmpi-mp'  # Mac OSX MacPorts
         ])
@@ -34,7 +37,6 @@ class MPIExec(LaunchMethod):
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
         task_argstr  = self._create_arg_string(task_args)
 
@@ -46,12 +48,15 @@ class MPIExec(LaunchMethod):
         self._log.debug('\nslots: %s', pprint.pformat(slots))
         self._log.debug('\ncud  : %s', pprint.pformat(cud))
 
-        # extract a map of hosts and #slots from slots.  We count cpu and gpyu
-        # slot sets, but do not account for threads,
+        # extract a map of hosts and #slots from slots.  We count cpu and gpu
+        # slot sets, but do not account for threads.  Since multiple slots
+        # entries can have the same node names, we *add* new information.
         host_slots = dict()
         for node in slots['nodes']:
-            #               NAME           #CORES         #GPUS
-            host_slots[node[0]] = len(node[2]) + len(node[3])
+            node_name = node[0]
+            if node_name not in host_slots:
+                host_slots[node_name] = 0
+            host_slots[node_name] += len(node[2]) + len(node[3])  # cpu + gpu
         self._log.debug('\nhslot: %s', pprint.pformat(host_slots))
 
         # If we have a CU with many cores, and the compression didn't work

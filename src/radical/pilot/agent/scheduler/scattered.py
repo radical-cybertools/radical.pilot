@@ -70,7 +70,7 @@ class Scattered(AgentSchedulingComponent):
     #
     def _allocate_slot(self, cud):
 
-        cores_requested = cud['cores']
+        cores_requested = cud['cpu_processes'] * cud['cpu_threads']
         gpus_requested  = cud['gpus']
 
         offsets = []

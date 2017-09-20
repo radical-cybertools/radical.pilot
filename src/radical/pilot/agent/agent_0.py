@@ -312,16 +312,23 @@ class Agent_0(rpu.Worker):
                 #        offset computation be moved to the LRMS?
                 ls_name = "%s/%s.sh" % (os.getcwd(), sa)
                 slots = {
-                        'task_slots'   : ['%s:0' % node],
-                        'task_offsets' : [],
-                        'lm_info'      : self._cfg['lrms_info']['lm_info']}
+                  'cpu_processes' : 1,
+                  'cpu_threads'   : 1,
+                  'gpu_processes' : 0,
+                  'gpu_threads'   : 0,
+                  'nodes'         : [[node[0], node[1], [[0]], []]],
+                  'cores_per_node': self._cfg['lrms_info']['cores_per_node'],
+                  'gpus_per_node' : self._cfg['lrms_info']['gpus_per_node'],
+                  'lm_info'       : self._cfg['lrms_info']['lm_info']
+                }
                 agent_cmd = {
+                        'uid'          : sa,
                         'slots'        : slots,
                         'description'  : {
-                            'cores'      : 1,
-                            'executable' : "/bin/sh",
-                            'mpi'        : False,
-                            'arguments'  : ["%s/bootstrap_2.sh" % os.getcwd(), sa]
+                            'cpu_processes' : 1,
+                            'executable'    : "/bin/sh",
+                            'mpi'           : False,
+                            'arguments'     : ["%s/bootstrap_2.sh" % os.getcwd(), sa]
                             }
                         }
                 cmd, hop = agent_lm.construct_command(agent_cmd,

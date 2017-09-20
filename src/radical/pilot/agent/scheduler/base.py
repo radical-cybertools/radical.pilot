@@ -39,25 +39,26 @@ SCHEDULER_NAME_SPARK        = "SPARK"
 #               ]
 #
 # That is then mapped into an internal representation, which is really the same
-# but allows to keep track of resource usage:
+# but allows to keep track of resource usage, by setting the fields to
+# `rpc.FREE == '-'` or `rpc.BUSY == '#'`:
 #
-#    nodelist = [{name : 'node_1', cores: [................], gpus : [..]},
-#                {name : 'node_2', cores: {................], gpus : [..]},
+#    nodelist = [{name : 'node_1', cores: [----------------], gpus : [--]},
+#                {name : 'node_2', cores: {----------------], gpus : [--]},
 #                ...
 #               ]
 #
 # When allocating a set of resource for a unit (2 cores, 1 gpu), we can now
 # record those as used:
 #
-#    nodelist = [{name : 'node_1', cores: [##..............], gpus : [#.]},
-#                {name : 'node_2', cores: {................], gpus : [..]},
+#    nodelist = [{name : 'node_1', cores: [##--------------], gpus : [#-]},
+#                {name : 'node_2', cores: {----------------], gpus : [--]},
 #                ...
 #               ]
 #
 # This solves the second part from our list above.  The third part, unit
 # requirements, are obtained from the unit dict passed for scheduling: the unit
 # description contains requests for `cores` and `gpus`, and also flags the use
-# of `mpi`
+# of `mpi`.
 #
 # Note that the unit dict will also contain `threads_per_proc`: the scheduler
 # will have to make sure that for each process to be placed, the  given number
@@ -72,23 +73,24 @@ SCHEDULER_NAME_SPARK        = "SPARK"
 # for system with 8 cores & 1 gpu per node):
 #
 #     cu = { ...
-#            'cores             : 4,
-#            'gpus'             : 2,
-#            `threads_per_proc' : 2
-#            'slots' :
-#            {                 # [[node name,  [core indexes],   [gpu indexes]]]
-#              'nodes'         : [[nodename_1, [[0, 2], [4, 6]], [[0]        ]],
-#                                 [nodename_2, [[1, 3], [5, 7]], [[0]        ]]],
-#              'cores_per_node': 8,
-#              'gpus_per_node' : 1,
-#              'lm_info'       : { ... }
-#            }
-#          }
+#       'cpu_processes'    : 4,
+#       'cpu_process_type' : 'mpi',
+#       'cpu_threads'      : 2,
+#       'gpu_processes     : 2,
+#       'slots' :
+#       {                 # [[nodename, [node_uid], [core indexes],   [gpu idx]]]
+#         'nodes'         : [[node_1,   node_uid_1, [[0, 2], [4, 6]], [[0]    ]],
+#                            [node_2,   node_uid_2, [[1, 3], [5, 7]], [[0]    ]]],
+#         'cores_per_node': 8,
+#         'gpus_per_node' : 1,
+#         'lm_info'       : { ... }
+#       }
+#     }
 #
 # The repsective launch method is expected to create processes on the respective
 # given set of cores (nodename_1, cores 0 and 4; nodename_2, cores 1 and 5), and
 # on the respective GPUs.  The other reserved cores are for the application to
-# spawn threads on (`threads_per_proc=2`).
+# spawn threads on (`cpu_threads=2`).
 #
 # A scheduler MAY attach other information to the `slots` structure, with the
 # intent to support the launch methods to enact the placement decition made by
@@ -190,7 +192,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # configure the scheduler instance
         self._configure()
-        self._log.debug("after  initialization        : %s", self.slot_status())
+        self._log.debug("slot status after  init      : %s", self.slot_status())
 
 
     # --------------------------------------------------------------------------
@@ -290,8 +292,8 @@ class AgentSchedulingComponent(rpu.Component):
                             self.slot_status())
 
         self._log.debug("%s [%s/%s] : %s", cu['uid'],
-                        cu['description']['cores'],
-                        cu['description']['gpus'],
+                        cu['description']['cpu_processes'],
+                        cu['description']['gpu_processes'],
                         pprint.pformat(cu['slots']))
         return True
 
