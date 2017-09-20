@@ -97,11 +97,14 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable     = '/usr/bin/wc'
-            cud.arguments      = ['-c', 'input.dat']
+            cud.executable     = '/bin/echo'
+            cud.arguments      = ['-c', 'input.dat', '%d' % i]
             cud.input_staging  = {'source': 'pilot:///input.dat', 
                                   'target': 'unit:///input.dat',
                                   'action': rp.LINK}
+            cud.output_staging = {'source': 'unit:///STDOUT',
+                                  'target': 'pilot:///STDOUT.%06d'%i,
+                                  'action': rp.COPY }
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
