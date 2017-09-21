@@ -106,14 +106,14 @@ class ComputePilot(object):
     #
     def __repr__(self):
 
-        return str(self.as_dict())
+        return str(self)
 
 
     # --------------------------------------------------------------------------
     #
     def __str__(self):
 
-        return [self.uid, self.resource, self.state]
+        return str([self.uid, self.resource, self.state])
 
 
     # --------------------------------------------------------------------------
@@ -123,7 +123,7 @@ class ComputePilot(object):
         self._log.info("[Callback]: pilot %s state: %s.", self.uid, self.state)
 
         if self.state == rps.FAILED and self._exit_on_error:
-            self._log.error("[Callback]: pilot '%s' failed", self.uid)
+            self._log.error(" === [Callback]: pilot '%s' failed (exit on error)", self.uid)
             # FIXME: how to tell main?  Where are we in the first place?
           # ru.cancel_main_thread('int')
             raise RuntimeError('pilot %s failed - fatal!' % self.uid)
@@ -140,6 +140,8 @@ class ComputePilot(object):
         Return True if state changed, False otherwise
         """
 
+        if pilot_dict['uid'] != self.uid:
+            self._log.error('incorrect uid: %s / %s', pilot_dict['uid'], self.uid)
         assert(pilot_dict['uid'] == self.uid), 'update called on wrong instance'
 
         # NOTE: this method relies on state updates to arrive in order, and
@@ -148,8 +150,15 @@ class ComputePilot(object):
         target  = pilot_dict['state']
 
         if target not in [rps.FAILED, rps.CANCELED]:
-            assert(rps._pilot_state_value(target) - rps._pilot_state_value(current)), \
+
+
+            try:
+                assert(rps._pilot_state_value(target) - rps._pilot_state_value(current)), \
                             'invalid state transition'
+            except:
+                self._log.error(' === %s: invalid state transition to %s', self.uid, target)
+                raise
+
             # FIXME
 
         self._state = target
@@ -164,6 +173,7 @@ class ComputePilot(object):
             cb_data = cb_val['cb_data']
 
           # print ' ~~~ call pcbs: %s -> %s : %s' % (self.uid, self.state, cb_name)
+            self._log.debug('%s calls cb %s', self.uid, cb)
             
             if cb_data: cb(self, self.state, cb_data)
             else      : cb(self, self.state)

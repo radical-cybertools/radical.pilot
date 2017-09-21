@@ -192,6 +192,8 @@ class Default(PMGRLaunchingComponent):
 
         states = tc.get_states()
 
+        self._log.debug('bulk states: %s', states)
+
         # if none of the states is final, we have nothing to do.
         # We can't rely on the ordering of tasks and states in the task
         # container, so we hope that the task container's bulk state query lead
@@ -200,8 +202,12 @@ class Default(PMGRLaunchingComponent):
 
         final_pilots = list()
         with self._pilots_lock, self._check_lock:
+
             for pid in self._checking:
+
                 state = self._pilots[pid]['job'].state
+                self._log.debug('=== saga job state: %s %s', pid, state)
+
                 if state in [rs.job.DONE, rs.job.FAILED, rs.job.CANCELED]:
                     pilot = self._pilots[pid]['pilot']
                     if state == rs.job.DONE    : pilot['state'] = rps.DONE
@@ -216,6 +222,8 @@ class Default(PMGRLaunchingComponent):
                 with self._check_lock:
                     # stop monitoring this pilot
                     self._checking.remove(pilot['uid'])
+
+                self._log.debug('=== final pilot %s %s', pilot['uid'], pilot['state'])
 
             self.advance(final_pilots, push=False, publish=True)
 
@@ -237,6 +245,7 @@ class Default(PMGRLaunchingComponent):
 
                 if time_cr and time_cr + JOB_CANCEL_DELAY < time.time():
                     del(pilot['cancel_requested'])
+                    self.log.debug(' === cancel pilot %s', pid)
                     to_cancel.append(pid)
 
         if not to_cancel:
@@ -281,6 +290,7 @@ class Default(PMGRLaunchingComponent):
                         continue
 
                     to_advance.append(pilot)
+                    self._log.debug(' === request cancel for %s', pilot['uid'])
                     tc.add(job)
 
                 tc.cancel()

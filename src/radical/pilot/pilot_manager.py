@@ -265,6 +265,9 @@ class PilotManager(rpu.Component):
         if self._terminate.is_set():
             return False
 
+
+        self._log.debug('state event: %s', msg)
+
         cmd = msg.get('cmd')
         arg = msg.get('arg')
 
@@ -346,6 +349,7 @@ class PilotManager(rpu.Component):
                 cb_data = cb_val['cb_data']
                 
               # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, self.state, cb_name)
+                self._log.debug('pmgr calls cb %s for %s', pilot_obj.uid, cb)
 
                 if cb_data: cb(pilot_obj, state, cb_data)
                 else      : cb(pilot_obj, state)
@@ -626,6 +630,8 @@ class PilotManager(rpu.Component):
               compute pilot objects to cancel.
         """
         self.is_valid()
+
+        self._log.debug('in cancel_pilots: %s', ru.get_stacktrace())
 
         if not uids:
             with self._pilots_lock:
