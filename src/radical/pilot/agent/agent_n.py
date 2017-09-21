@@ -45,6 +45,7 @@ class Agent_n(rpu.Worker):
         self._uid         = agent_name
         self._pilot_id    = cfg['pilot_id']
         self._session_id  = cfg['session_id']
+        self._final_cause = None
 
         # Create a session.  
         #
@@ -86,6 +87,17 @@ class Agent_n(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
+    def wait_final(self):
+
+        while self._final_cause is None:
+            self._log.info('no final cause -> alive')
+            time.sleep(1)
+
+        self._log.debug(' === final: %s', self._final_cause)
+
+
+    # --------------------------------------------------------------------------
+    #
     def finalize_parent(self):
 
         # tear things down in reverse order
@@ -93,6 +105,8 @@ class Agent_n(rpu.Worker):
             self._log.debug('close  session %s', self._session.uid)
             self._session.close()
             self._log.debug('closed session %s', self._session.uid)
+
+        self._final_cause = 'finalized'
 
 
 # ------------------------------------------------------------------------------

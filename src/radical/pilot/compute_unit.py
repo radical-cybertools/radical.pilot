@@ -151,9 +151,13 @@ class ComputeUnit(object):
         target  = unit_dict['state']
 
         if target not in [rps.FAILED, rps.CANCELED]:
-            self._log.error('%s: invalid state transition to %s', self.uid, target)
-            assert(rps._unit_state_value(target) - rps._unit_state_value(current) == 1), \
+            try:
+                assert(rps._unit_state_value(target) - rps._unit_state_value(current) == 1), \
                             'invalid state transition'
+            except:
+                self._log.error('%s: invalid state transition %s -> %s',
+                                self.uid, current, target)
+                raise
 
         self._state = target
 

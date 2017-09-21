@@ -156,7 +156,8 @@ class ComputePilot(object):
                 assert(rps._pilot_state_value(target) - rps._pilot_state_value(current)), \
                             'invalid state transition'
             except:
-                self._log.error(' === %s: invalid state transition to %s', self.uid, target)
+                self._log.error(' === %s: invalid state transition %s -> %s', 
+                        self.uid, current, target)
                 raise
 
             # FIXME
