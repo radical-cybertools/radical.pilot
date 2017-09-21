@@ -210,7 +210,6 @@ class Backfilling(UMGRSchedulingComponent):
                 uid = unit['uid']
                     
                 # not yet scheduled - put in wait pool
-                self._prof.prof('wait', uid=uid)
                 self._wait_pool[uid] = unit
                         
         self._schedule_units()

@@ -271,7 +271,7 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
             sandbox  = saga.filesystem.Directory (sandbox_url, session=session)
 
             # Try to fetch a tarball of logfiles, so that we can get them all in one (SAGA) go!
-            LOGILES_TARBALL   = '%s.log.tgz' % pilot['uid']
+            LOGFILES_TARBALL  = '%s.log.tgz' % pilot['uid']
             tarball_available = False
             try:
                 if  sandbox.is_file(LOGFILES_TARBALL) and \

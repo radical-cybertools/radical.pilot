@@ -182,6 +182,8 @@ class Default(PMGRLaunchingComponent):
 
         states = tc.get_states()
 
+        self._log.debug('bulk states: %s', states)
+
         # if none of the states is final, we have nothing to do.
         # We can't rely on the ordering of tasks and states in the task
         # container, so we hope that the task container's bulk state query lead
@@ -190,8 +192,12 @@ class Default(PMGRLaunchingComponent):
 
         final_pilots = list()
         with self._pilots_lock, self._check_lock:
+
             for pid in self._checking:
+
                 state = self._pilots[pid]['job'].state
+                self._log.debug('=== saga job state: %s %s', pid, state)
+
                 if state in [rs.job.DONE, rs.job.FAILED, rs.job.CANCELED]:
                     pilot = self._pilots[pid]['pilot']
                     if state == rs.job.DONE    : pilot['state'] = rps.DONE
@@ -206,6 +212,8 @@ class Default(PMGRLaunchingComponent):
                 with self._check_lock:
                     # stop monitoring this pilot
                     self._checking.remove(pilot['uid'])
+
+                self._log.debug('=== final pilot %s %s', pilot['uid'], pilot['state'])
 
             self.advance(final_pilots, push=False, publish=True)
 
@@ -229,6 +237,7 @@ class Default(PMGRLaunchingComponent):
                     self._log.debug('pilot needs killing: %s :  %s + %s < %s',
                             pid, time_cr, JOB_CANCEL_DELAY, time.time())
                     del(pilot['cancel_requested'])
+                    self._log.debug(' === cancel pilot %s', pid)
                     to_cancel.append(pid)
 
         if to_cancel:
@@ -244,6 +253,10 @@ class Default(PMGRLaunchingComponent):
         Send a cancellation request to the pilots.  This call will not wait for
         the request to get enacted, nor for it to arrive, but just send it.
         '''
+
+        if not pids or not self._pilots: 
+            # nothing to do
+            return
 
         # send the cancelation request to the pilots
         # FIXME: the cancellation request should not go directly to the DB, but
@@ -272,6 +285,11 @@ class Default(PMGRLaunchingComponent):
         '''
 
         self._log.debug(' === killing pilots: %s', pids)
+
+        if not pids or not self._pilots: 
+            # nothing to do
+            return
+
         # find the most recent cancellation request
         with self._pilots_lock:
             self._log.debug(' === killing pilots: %s', 
@@ -337,6 +355,7 @@ class Default(PMGRLaunchingComponent):
 
                     self._log.debug('plan cancellation of %s : %s', pilot, job)
                     to_advance.append(pilot)
+                    self._log.debug(' === request cancel for %s', pilot['uid'])
                     tc.add(job)
 
                 self._log.debug('cancellation start')
@@ -474,6 +493,7 @@ class Default(PMGRLaunchingComponent):
             info = self._prepare_pilot(resource, rcfg, pilot)
             ft_list += info['ft']
             jd_list.append(info['jd'])
+            self._prof.prof('staging_in_start', uid=pilot['uid'])
 
         for ft in ft_list:
             src     = os.path.abspath(ft['src'])
@@ -549,6 +569,7 @@ class Default(PMGRLaunchingComponent):
             else:
                 js_tmp  = rs.job.Service(js_url, session=self._session)
                 self._saga_js_cache[js_url] = js_tmp
+
      ## cmd = "tar zmxvf %s/%s -C / ; rm -f %s" % \
         cmd = "tar zmxvf %s/%s -C %s" % \
                 (session_sandbox, tar_name, session_sandbox)
@@ -557,6 +578,10 @@ class Default(PMGRLaunchingComponent):
 
         self._log.debug('tar cmd : %s', cmd)
         self._log.debug('tar done: %s, %s, %s', j.state, j.stdout, j.stderr)
+
+        for pilot in pilots:
+            self._prof.prof('staging_in_stop', uid=pilot['uid'])
+            self._prof.prof('submission_start', uid=pilot['uid'])
 
         # look up or create JS for actual pilot submission.  This might result
         # in the same JS, or not.
@@ -616,6 +641,9 @@ class Default(PMGRLaunchingComponent):
             # make sure we watch that pilot
             with self._check_lock:
                 self._checking.append(pid)
+
+        for pilot in pilots:
+            self._prof.prof('submission_stop', uid=pilot['uid'])
 
 
     # --------------------------------------------------------------------------

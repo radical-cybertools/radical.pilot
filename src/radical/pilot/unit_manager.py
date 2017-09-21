@@ -122,7 +122,6 @@ class UnitManager(rpu.Component):
 
         # only now we have a logger... :/
         self._log.report.info('<<create unit manager')
-        self._prof.prof('create umgr', uid=self._uid)
 
         # The output queue is used to forward submitted units to the
         # scheduling component.
@@ -137,13 +136,13 @@ class UnitManager(rpu.Component):
         # register the state notification pull cb
         # FIXME: we may want to have the frequency configurable
         # FIXME: this should be a tailing cursor in the update worker
-        self.register_timed_cb(self._state_pull_cb, 
+        self.register_timed_cb(self._state_pull_cb,
                                timer=self._cfg['db_poll_sleeptime'])
 
         # register callback which pulls units back from agent
         # FIXME: this should be a tailing cursor in the update worker
         # FIXME: make frequency configurable
-        self.register_timed_cb(self._unit_pull_cb, 
+        self.register_timed_cb(self._unit_pull_cb,
                                timer=self._cfg['db_poll_sleeptime'])
 
         # also listen to the state pubsub for unit state changes
@@ -152,7 +151,7 @@ class UnitManager(rpu.Component):
         # let session know we exist
         self._session._register_umgr(self)
 
-        self._prof.prof('UMGR setup done')
+        self._prof.prof('setup_done', uid=self._uid)
         self._log.report.ok('>>ok\n')
 
 
@@ -214,7 +213,6 @@ class UnitManager(rpu.Component):
             for m in rpt.UMGR_METRICS:
                 self._callbacks[m] = dict()
 
-        self._session.prof.prof('closed umgr', uid=self._uid)
         self._log.info("Closed UnitManager %s." % self._uid)
 
         self._closed = True
@@ -412,6 +410,8 @@ class UnitManager(rpu.Component):
 
             # we need to make sure to have the correct state:
             uid = unit['uid']
+            self._prof.prof('get', uid=uid)
+
             old = unit['state']
             new = rps._unit_state_collapse(unit['states'])
 
@@ -420,7 +420,6 @@ class UnitManager(rpu.Component):
 
             unit['state']   = new
             unit['control'] = 'umgr'
-            self._prof.prof('get', msg="bulk size: %d" % len(units), uid=uid)
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline).
@@ -448,12 +447,18 @@ class UnitManager(rpu.Component):
 
         for thing in things:
 
-            if 'type' in thing and thing['type'] == 'unit':
+            if thing.get('type') == 'unit':
+        
+                self._log.debug('umgr state cb for unit: %s', thing['uid'])
 
                 # we got the state update from the state callback - don't
                 # publish it again
-                if not self._update_unit(thing, publish=False):
-                    return False
+                self._update_unit(thing, publish=False)
+
+            else:
+
+                self._log.debug('umgr state cb ignores %s/%s', thing.get('uid'),
+                        thing.get('state'))
 
         return True
 
@@ -498,6 +503,8 @@ class UnitManager(rpu.Component):
 
         with self._cb_lock:
             for cb_name, cb_val in self._callbacks[rpt.UNIT_STATE].iteritems():
+            
+                self._log.debug('%s calls state cb %s for %s', self.uid, cb_name, unit_obj.uid)
 
                 cb      = cb_val['cb']
                 cb_data = cb_val['cb_data']
