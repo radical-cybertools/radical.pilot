@@ -125,12 +125,10 @@ class Default(UMGRStagingOutputComponent):
                        'pilot'    : unit['pilot_sandbox'], 
                        'resource' : unit['resource_sandbox']}
 
-        sandbox = rs.Url(unit["unit_sandbox"])
-        tmp     = rs.Url(unit["unit_sandbox"])
-
         # url used for cache (sandbox url w/o path)
+        tmp      = rs.Url(unit["unit_sandbox"])
         tmp.path = '/'
-        key = str(tmp)
+        key      = str(tmp)
 
         if key not in self._cache:
             self._cache[key] = rs.filesystem.Directory(tmp, 
@@ -138,17 +136,17 @@ class Default(UMGRStagingOutputComponent):
         saga_dir = self._cache[key]
 
 
-
         # Loop over all transfer directives and execute them.
         for sd in actionables:
 
+            tr
             action = sd['action']
             flags  = sd['flags']
             did    = sd['uid']
             src    = sd['source']
             tgt    = sd['target']
 
-            self._prof.prof('staging_begin', uid=uid, msg=did)
+            self._prof.prof('staging_out_start', uid=uid, msg=did)
 
             self._log.debug('src: %s', src)
             self._log.debug('tgt: %s', tgt)
@@ -164,13 +162,8 @@ class Default(UMGRStagingOutputComponent):
             else:
                 copy_flags = 0
 
-            # FIXME: this should be a proper test for absoluteness of URL
-            if not tgt.path.startswith('/'):
-                tgt.path = '%s/%s' % (sandbox.path, tgt.path)
-
             saga_dir.copy(src, tgt, flags=copy_flags)
-
-            self._prof.prof('staging_end', uid=uid, msg=did)
+            self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
         # all staging is done -- at this point the unit is final
         unit['state'] = unit['target_state']

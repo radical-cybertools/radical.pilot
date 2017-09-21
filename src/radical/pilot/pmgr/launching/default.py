@@ -35,7 +35,7 @@ DEFAULT_VIRTENV_MODE  = 'update'
 DEFAULT_VIRTENV_DIST  = 'default'
 DEFAULT_AGENT_CONFIG  = 'default'
 
-JOB_CANCEL_DELAY      = 12000# seconds between cancel signal and job kill
+JOB_CANCEL_DELAY      = 300  # seconds between cancel signal and job kill
 JOB_CHECK_INTERVAL    =  60  # seconds between runs of the job state check loop
 JOB_CHECK_MAX_MISSES  =   3  # number of times to find a job missing before
                              # declaring it dead
@@ -103,6 +103,7 @@ class Default(PMGRLaunchingComponent):
         with self._pilots_lock:
             pids = self._pilots.keys()
 
+        self._cancel_pilots(pids)
         self._kill_pilots(pids)
 
         with self._cache_lock:
@@ -143,18 +144,7 @@ class Default(PMGRLaunchingComponent):
 
             self._log.info('received pilot_cancel command (%s)', pids)
 
-            # send the cancelation equest to the pilots
-            self._session._dbs.pilot_command('cancel_pilot', [], pids)
-
-            # recod time of request, so that forceful termination can happen
-            # after a certain delay
-            now = time.time()
-            with self._pilots_lock:
-                for pid in pids:
-                    if pid in self._pilots:
-                        self._pilots[pid]['pilot']['cancel_requested'] = now
-
-        return True
+            self._cancel_pilots(pids)
 
         return True
 
@@ -244,27 +234,99 @@ class Default(PMGRLaunchingComponent):
                     continue
 
                 if time_cr and time_cr + JOB_CANCEL_DELAY < time.time():
+                    self._log.debug('pilot needs killing: %s :  %s + %s < %s',
+                            pid, time_cr, JOB_CANCEL_DELAY, time.time())
                     del(pilot['cancel_requested'])
                     self.log.debug(' === cancel pilot %s', pid)
                     to_cancel.append(pid)
 
-        if not to_cancel:
-            return True
-
-        self._kill_pilots(to_cancel)
+        if to_cancel:
+            self._kill_pilots(to_cancel)
 
         return True
 
 
     # --------------------------------------------------------------------------
     #
+    def _cancel_pilots(self, pids):
+        '''
+        Send a cancellation request to the pilots.  This call will not wait for
+        the request to get enacted, nor for it to arrive, but just send it.
+        '''
+
+        if not pids or not self._pilots: 
+            # nothing to do
+            return
+
+        # send the cancelation request to the pilots
+        # FIXME: the cancellation request should not go directly to the DB, but
+        #        through the DB abstraction layer...
+        self._session._dbs.pilot_command('cancel_pilot', [], pids)
+        self._log.debug('pilot(s).need(s) cancellation %s', pids)
+
+        # recod time of request, so that forceful termination can happen
+        # after a certain delay
+        now = time.time()
+        with self._pilots_lock:
+            for pid in pids:
+                if pid in self._pilots:
+                    self._log.debug(' ==== update cancel req: %s %s', pid, now)
+                    self._pilots[pid]['pilot']['cancel_requested'] = now
+
+
+    # --------------------------------------------------------------------------
+    #
     def _kill_pilots(self, pids):
+        '''
+        Forcefully kill a set of pilots.  For pilots which have just recently be
+        cancelled, we will wait a certain amount of time to give them a chance
+        to termimate on their own (which allows to flush profiles and logfiles,
+        etc).  After that delay, we'll make sure they get killed.
+        '''
 
-        if not pids:
-            return  # nothing to do
+        self._log.debug(' === killing pilots: %s', pids)
 
-        if not isinstance(pids, list):
-            pids = [pids]
+        if not pids or not self._pilots: 
+            # nothing to do
+            return
+
+        # find the most recent cancellation request
+        with self._pilots_lock:
+            self._log.debug(' === killing pilots: %s', 
+                              [p['pilot'].get('cancel_requested', 0) 
+                               for p in self._pilots.values()])
+            last_cancel = max([p['pilot'].get('cancel_requested', 0) 
+                               for p in self._pilots.values()])
+
+        self._log.debug(' === killing pilots: last cancel: %s', last_cancel)
+
+        # we wait for up to JOB_CANCEL_DELAY for a pilt
+        while time.time() < (last_cancel + JOB_CANCEL_DELAY):
+
+            self._log.debug(' === killing pilots: check %s < %s + %s',
+                    time.time(), last_cancel, JOB_CANCEL_DELAY)
+
+            alive_pids = list()
+            for pid in pids:
+
+                if pid not in self._pilots:
+                    self._log.error('unknown: %s', pid)
+                    raise ValueError('unknown pilot %s' % pid)
+
+                pilot = self._pilots[pid]['pilot']
+                if pilot['state'] not in rp.FINAL:
+                    self._log.debug(' === killing pilots: alive %s', pid)
+                    alive_pids.append(pid)
+                else:
+                    self._log.debug(' === killing pilots: dead  %s', pid)
+
+            pids = alive_pids
+            if not alive_pids:
+                # nothing to do anymore
+                return
+
+            # avoid busy poll)
+            time.sleep(1)
 
         to_advance = list()
 
@@ -274,6 +336,8 @@ class Default(PMGRLaunchingComponent):
                 if pid in self._checking:
                     self._checking.remove(pid)
 
+
+        self._log.debug(' === killing pilots: kill! %s', pids)
         try:
             with self._pilots_lock:
                 tc = rs.job.Container()
@@ -289,12 +353,15 @@ class Default(PMGRLaunchingComponent):
                     if pilot['state'] in rp.FINAL:
                         continue
 
+                    self._log.debug('plan cancellation of %s : %s', pilot, job)
                     to_advance.append(pilot)
                     self._log.debug(' === request cancel for %s', pilot['uid'])
                     tc.add(job)
 
+                self._log.debug('cancellation start')
                 tc.cancel()
                 tc.wait()
+                self._log.debug('cancellation done')
 
             # set canceled state
             self.advance(to_advance, state=rps.CANCELED, push=False, publish=True)
@@ -426,6 +493,7 @@ class Default(PMGRLaunchingComponent):
             info = self._prepare_pilot(resource, rcfg, pilot)
             ft_list += info['ft']
             jd_list.append(info['jd'])
+            self._prof.prof('staging_in_start', uid=pilot['uid'])
 
         for ft in ft_list:
             src     = os.path.abspath(ft['src'])
@@ -501,6 +569,7 @@ class Default(PMGRLaunchingComponent):
             else:
                 js_tmp  = rs.job.Service(js_url, session=self._session)
                 self._saga_js_cache[js_url] = js_tmp
+
      ## cmd = "tar zmxvf %s/%s -C / ; rm -f %s" % \
         cmd = "tar zmxvf %s/%s -C %s" % \
                 (session_sandbox, tar_name, session_sandbox)
@@ -509,6 +578,10 @@ class Default(PMGRLaunchingComponent):
 
         self._log.debug('tar cmd : %s', cmd)
         self._log.debug('tar done: %s, %s, %s', j.state, j.stdout, j.stderr)
+
+        for pilot in pilots:
+            self._prof.prof('staging_in_stop', uid=pilot['uid'])
+            self._prof.prof('submission_start', uid=pilot['uid'])
 
         # look up or create JS for actual pilot submission.  This might result
         # in the same JS, or not.
@@ -568,6 +641,9 @@ class Default(PMGRLaunchingComponent):
             # make sure we watch that pilot
             with self._check_lock:
                 self._checking.append(pid)
+
+        for pilot in pilots:
+            self._prof.prof('submission_stop', uid=pilot['uid'])
 
 
     # --------------------------------------------------------------------------

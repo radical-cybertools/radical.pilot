@@ -111,9 +111,10 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
             PROFILES_TARBALL = '%s.prof.tgz' % pilot['uid']
             tarball_available = False
             try:
-                if sandbox.is_file(PROFILES_TARBALL):
-                    log.warn("Profiles tarball exists")
+                if  sandbox.is_file(PROFILES_TARBALL) and \
+                    sandbox.get_size(PROFILES_TARBALL):
 
+                    log.info("profiles tarball exists")
                     ftgt = saga.Url('%s/%s' % (tgt_url, PROFILES_TARBALL))
 
                     if skip_existing and os.path.isfile(ftgt.path) \
@@ -165,8 +166,8 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
             profiles = sandbox.list('*.prof')
             for prof in profiles:
 
-                ret.append("%s" % ftgt.path)
                 ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['uid'], prof))
+                ret.append("%s" % ftgt.path)
 
                 if skip_existing and os.path.isfile(ftgt.path) \
                                  and os.stat(ftgt.path).st_size > 0:
@@ -273,7 +274,8 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
             LOGILES_TARBALL   = '%s.log.tgz' % pilot['uid']
             tarball_available = False
             try:
-                if sandbox.is_file(LOGILES_TARBALL):
+                if  sandbox.is_file(LOGFILES_TARBALL) and \
+                    sandbox.get_size(LOGFILES_TARBALL):
 
                     log.info("logfiles tarball exists")
                     ftgt = saga.Url('%s/%s' % (tgt_url, LOGILES_TARBALL))

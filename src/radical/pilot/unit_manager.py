@@ -122,7 +122,6 @@ class UnitManager(rpu.Component):
 
         # only now we have a logger... :/
         self._log.report.info('<<create unit manager')
-        self._prof.prof('create umgr', uid=self._uid)
 
         # The output queue is used to forward submitted units to the
         # scheduling component.
@@ -152,7 +151,7 @@ class UnitManager(rpu.Component):
         # let session know we exist
         self._session._register_umgr(self)
 
-        self._prof.prof('UMGR setup done')
+        self._prof.prof('setup_done', uid=self._uid)
         self._log.report.ok('>>ok\n')
 
 
@@ -214,7 +213,6 @@ class UnitManager(rpu.Component):
             for m in rpt.UMGR_METRICS:
                 self._callbacks[m] = dict()
 
-        self._session.prof.prof('closed umgr', uid=self._uid)
         self._log.info("Closed UnitManager %s." % self._uid)
 
         self._closed = True
@@ -306,7 +304,7 @@ class UnitManager(rpu.Component):
             else:
                 units = list(unit_cursor)
 
-            self._log.debug(" === units pulled: pilot dead: %s", [u['uid'] for u in units])
+            self._log.debug("units pulled: %3d (pilot dead)" % len(units))
 
             if not units:
                 return True
@@ -394,7 +392,7 @@ class UnitManager(rpu.Component):
 
         if not unit_cursor.count():
             # no units whatsoever...
-            self._log.info(" === units pulled:    0")
+            self._log.info("units pulled:    0")
             return True  # this is not an error
 
         # update the units to avoid pulling them again next time.
@@ -412,15 +410,16 @@ class UnitManager(rpu.Component):
 
             # we need to make sure to have the correct state:
             uid = unit['uid']
+            self._prof.prof('get', uid=uid)
+
             old = unit['state']
             new = rps._unit_state_collapse(unit['states'])
 
             if old != new:
-                self._log.debug(" === unit  pulled %s: %s / %s", uid, old, new)
+                self._log.debug("unit  pulled %s: %s / %s", uid, old, new)
 
             unit['state']   = new
             unit['control'] = 'umgr'
-            self._prof.prof('get', msg="bulk size: %d" % len(units), uid=uid)
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline).

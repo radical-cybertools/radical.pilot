@@ -133,8 +133,6 @@ class RoundRobin(UMGRSchedulingComponent):
 
                 # no pilots, no schedule...
                 with self._wait_lock:
-                    for unit in units:
-                        self._prof.prof('wait', uid=unit['uid'])
                     self._wait_pool += units
                     return
 

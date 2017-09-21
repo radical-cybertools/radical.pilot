@@ -322,7 +322,15 @@ class Component(ru.Process):
             self._owner = 'root'
 
         self._log  = self._session._get_logger(self.uid, level=self._debug)
-        self._prof = self._session._get_profiler(self.uid)
+        self._prof = ru.Profiler(self.uid, path=self._session.logdir)
+      # self._prof.register_timing(name='component_lifetime',
+      #                            scope='uid=%s' % self.uid,
+      #                            start='component_start',
+      #                            stop='component_stop')
+      # self._prof.register_timing(name='entity_runtime',
+      #                            scope='entity',
+      #                            start='get',
+      #                            stop=['put', 'drop'])
 
         self._q    = None
         self._in   = None
@@ -502,7 +510,6 @@ class Component(ru.Process):
             # FIXME: do same for profiler?
             super(Component, self)._ru_set_logger(self._log)
 
-        self._prof.prof('initialize', uid=self.uid)
         self._log.info('initialize %s',   self.uid)
         self._log.info('cfg: %s', pprint.pformat(self._cfg))
 
@@ -577,6 +584,7 @@ class Component(ru.Process):
 
         # call component level initialize
         self.initialize_parent()
+        self._prof.prof('component_init')
 
 
     def initialize_parent(self):
@@ -607,6 +615,7 @@ class Component(ru.Process):
 
         # call component level initialize
         self.initialize_child()
+        self._prof.prof('component_init')
 
     def initialize_child(self):
         pass # can be overloaded
@@ -628,7 +637,7 @@ class Component(ru.Process):
 
         self._log.debug('%s close prof', self.uid)
         try:
-            self._prof.prof("stopped", uid=self.name)
+            self._prof.prof('component_final')
             self._prof.close()
         except Exception:
             pass
@@ -701,7 +710,7 @@ class Component(ru.Process):
         with termination.
         '''
 
-        self._log.info('stop %s (%s : %s : %s) [%s]', self.uid, os.getpid(),
+        self._log.info(' === stop %s (%s : %s : %s) [%s]', self.uid, os.getpid(),
                        self.pid, ru.get_thread_name(), ru.get_caller_name())
 
         super(Component, self).stop(timeout)
@@ -1085,7 +1094,14 @@ class Component(ru.Process):
             # ------------------------------------------------------------------
             def work_cb(self):
                 self.is_valid()
-                topic, msg = self._q.get_nowait(500)  # timout in ms
+                topic, msg = None, None
+                try:
+                    topic, msg = self._q.get_nowait(500)  # timout in ms
+                except Exception as e:
+                    if not self._ru_term.is_set():
+                        # abort during termination
+                        return False
+
                 if topic and msg:
                     if not isinstance(msg,list):
                         msg = [msg]
@@ -1201,7 +1217,11 @@ class Component(ru.Process):
             # pushing them
             buckets = dict()
             for thing in things:
+                
                 state = thing['state']
+                uid   = thing['uid']
+                self._prof.prof('get', uid=uid, state=state)
+
                 if not state in buckets:
                     buckets[state] = list()
                 buckets[state].append(thing)
@@ -1228,8 +1248,6 @@ class Component(ru.Process):
                             to_cancel.append(thing)
 
                         self._log.debug('got %s (%s)', ttype, uid)
-                        self._prof.prof(event='get', state=state, uid=uid, msg=input.name)
-                        self._prof.prof(event='work start', state=state, uid=uid)
 
                     if to_cancel:
                         self.advance(to_cancel, rps.CANCELED, publish=True, push=False)
@@ -1237,22 +1255,17 @@ class Component(ru.Process):
                     with self._cb_lock:
                         self._workers[state](things)
 
-                    for thing in things:
-                        self._prof.prof(event='work done ', state=state, uid=uid)
-
                 except Exception as e:
+
                     # this is not fatal -- only the 'things' fail, not
                     # the component
-
                     self._log.exception("worker %s failed", self._workers[state])
                     self.advance(things, rps.FAILED, publish=True, push=False)
 
-                    for thing in things:
-                        self._prof.prof(event='failed', msg=str(e), 
-                                        uid=thing['uid'], state=state)
 
         # keep work_cb registered
         return True
+
 
     # --------------------------------------------------------------------------
     #
@@ -1303,13 +1316,14 @@ class Component(ru.Process):
             if state:
                 # state advance done here
                 thing['state'] = state
+            _state = thing['state']
 
-            self._log.debug('advance bulk: %s [%s]', uid, len(things))
-            self._prof.prof('advance', uid=uid, state=thing['state'], timestamp=timestamp)
+            self._prof.prof('advance', uid=uid, state=_state, 
+                            timestamp=timestamp)
 
-            if not thing['state'] in buckets:
-                buckets[thing['state']] = list()
-            buckets[thing['state']].append(thing)
+            if not _state in buckets:
+                buckets[_state] = list()
+            buckets[_state].append(thing)
 
         # should we publish state information on the state pubsub?
         if publish:
@@ -1339,7 +1353,8 @@ class Component(ru.Process):
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'update', 'arg': to_publish})
             ts = time.time()
             for thing in things:
-                self._prof.prof('publish', uid=thing['uid'], state=thing['state'], timestamp=ts)
+                self._prof.prof('publish', uid=thing['uid'], 
+                                state=thing['state'], timestamp=ts)
 
         # never carry $all across component boundaries!
         else:
@@ -1355,46 +1370,40 @@ class Component(ru.Process):
             # now we can push the buckets as bulks
             for _state,_things in buckets.iteritems():
 
-                self._log.debug("bucket: %s : %s", _state, [t['uid'] for t in _things])
-
+                ts = time.time()
                 if _state in rps.FINAL:
                     # things in final state are dropped
                     for thing in _things:
-                        self._log.debug('push %s ===| %s', thing['uid'], _state)
+                        self._log.debug('final %s [%s]', thing['uid'], _state)
+                        self._prof.prof('drop', uid=thing['uid'], state=_state,
+                                        timestamp=ts)
                     continue
 
                 if _state not in self._outputs:
                     # unknown target state -- error
-                    self._log.error("caller: %s", ru.get_caller_name())
-                    self._log.error("%s can't route state %s (%s)" \
-                                 % (self.uid, _state, self._outputs.keys()))
+                    for thing in _things:
+                        self._log.debug("lost  %s [%s]", thing['uid'], _state)
+                        self._prof.prof('lost', uid=thing['uid'], state=_state,
+                                        timestamp=ts)
                     continue
 
                 if not self._outputs[_state]:
                     # empty output -- drop thing
                     for thing in _things:
-                        self._log.debug('%s %s ~~~| %s', 'push', thing['uid'], _state)
+                        self._log.debug('drop  %s [%s]', thing['uid'], _state)
+                        self._prof.prof('drop', uid=thing['uid'], state=_state,
+                                        timestamp=ts)
                     continue
 
                 output = self._outputs[_state]
 
                 # push the thing down the drain
-                # FIXME: we should assert that the things are in a PENDING state.
-                #        Better yet, enact the *_PENDING transition right here...
                 self._log.debug('put bulk %s: %s', _state, len(_things))
                 output.put(_things)
 
                 ts = time.time()
                 for thing in _things:
-                    
-                    # never carry $all across component boundaries!
-                    if '$all' in thing:
-                        del(thing['$all'])
-
-                    uid = thing['uid']
-
-                    self._log.debug('push %s ---> %s', uid, _state)
-                    self._prof.prof('put', uid=uid, state=_state,
+                    self._prof.prof('put', uid=thing['uid'], state=_state,
                                     msg=output.name, timestamp=ts)
 
 

@@ -110,6 +110,9 @@ class Agent_0(rpu.Worker):
         # ready to rumble!
         rpu.Worker.__init__(self, cfg, session)
 
+        # this is the earlier point to sync bootstrapper and agent # profiles
+        self._prof.prof('sync_rel', msg='agent_0 start', uid=self._pid)
+
         # Create LRMS which will give us the set of agent_nodes to use for
         # sub-agent startup.  Add the remaining LRMS information to the
         # config, for the benefit of the scheduler).
@@ -156,11 +159,16 @@ class Agent_0(rpu.Worker):
                                timer=self._cfg['db_poll_sleeptime'])
 
 
+        # record hostname in profile to enable mapping of profile entries
+        self._prof.prof('hostname', msg=ru.get_hostname(), uid=self._pid)
+
+
     # --------------------------------------------------------------------------
     #
     def finalize_parent(self):
 
         # tear things down in reverse order
+        self._prof.flush()
 
         self.unregister_timed_cb(self._check_units_cb)
         self.unregister_output(rps.AGENT_STAGING_INPUT_PENDING)
@@ -185,6 +193,7 @@ class Agent_0(rpu.Worker):
             self._log.debug('close  session %s', self._session.uid)
             self._session.close()
             self._log.debug('closed session %s', self._session.uid)
+        self._prof.flush()
 
 
     # --------------------------------------------------------------------------
@@ -376,9 +385,6 @@ class Agent_0(rpu.Worker):
 
         self.is_valid()
 
-        self._prof.prof('heartbeat', msg='Listen! Listen! Listen to the heartbeat!',
-                        uid=self._owner)
-
         if not self._check_commands(): return False
         if not self._check_state   (): return False
 
@@ -408,18 +414,21 @@ class Agent_0(rpu.Worker):
             cmd = spec['cmd']
             arg = spec['arg']
 
-            self._prof.prof('cmd', msg="mongodb to HeartbeatMonitor (%s : %s)" \
-                            % (cmd, arg), uid=self._owner)
+            self._prof.prof('cmd', msg="%s : %s" % (cmd, arg), uid=self._pid)
 
-            if cmd == 'cancel_pilot':
+            if cmd == 'heartbeat':
+                self._log.info('heartbeat_in')
+
+            elif cmd == 'cancel_pilot':
                 self._log.info('cancel pilot cmd')
                 self._final_cause = 'cancel'
-                with open('./killme.signal', 'w+') as f:
-                    f.write('cancel pilot cmd received\n')
-
               # ru.attach_pudb(logger=self._log)
 
                 self.stop()
+
+                with open('./killme.signal', 'w+') as f:
+                    f.write('cancel pilot cmd received\n')
+
                 return False  # we are done
 
             elif cmd == 'cancel_unit':
@@ -428,7 +437,6 @@ class Agent_0(rpu.Worker):
                                                   'arg' : arg})
             else:
                 self._log.error('could not interpret cmd "%s" - ignore', cmd)
-                return False  # abort
 
         return True
 
@@ -489,20 +497,21 @@ class Agent_0(rpu.Worker):
                         document = {'$set'  : {'control' : 'agent'}})
 
         self._log.info("units pulled: %4d", len(unit_list))
-        self._prof.prof('get', msg="bulk size: %d" % len(unit_list), uid=self._pid)
+        self._prof.prof('get', msg="bulk size: %d" % len(unit_list),
+                        uid=self._pid)
 
         for unit in unit_list:
 
             # we need to make sure to have the correct state:
             unit['state'] = rps._unit_state_collapse(unit['states'])
-            self._prof.prof('get', msg="bulk size: %d" % len(unit_list), uid=unit['uid'])
+            self._prof.prof('get', uid=unit['uid'])
 
             # FIXME: raise or fail unit!
             if unit['control'] != 'agent_pending':
-                self._log.error(' === invalid control: %s', (pprint.pformat(unit)))
+                self._log.error('invalid control: %s', (pprint.pformat(unit)))
 
             if unit['state'] != rps.AGENT_STAGING_INPUT_PENDING:
-                self._log.error(' === invalid state: %s', (pprint.pformat(unit)))
+                self._log.error('invalid state: %s', (pprint.pformat(unit)))
 
             unit['control'] = 'agent'
 
