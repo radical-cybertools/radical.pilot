@@ -504,7 +504,7 @@ class Component(ru.Process):
             # get debugging, logging, profiling set up
           # self._dh   = ru.DebugHelper(name=self.uid)
             self._log  = self._session._get_logger(self.uid, level=self._debug)
-            self._prof = self._session._get_profiler(self.uid)
+            self._prof = ru.Profiler(self.uid, path=self._session.logdir)
 
             # make sure that the Process base class uses the same logger
             # FIXME: do same for profiler?
