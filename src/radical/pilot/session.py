@@ -441,7 +441,8 @@ class Session(rs.Session):
         if self._closed:
             return
 
-        self._log.report.info('closing session %s' % self._uid)
+        self._log.report.info('closing session %s\n%s', self._uid,
+                ru.get_stacktrace())
         self._log.debug("session %s closing" % (str(self._uid)))
         self._prof.prof("session_close", uid=self._uid)
 
@@ -765,6 +766,17 @@ class Session(rs.Session):
 
         if return_scalar: return umgrs[0]
         else            : return umgrs
+
+
+    # -------------------------------------------------------------------------
+    #
+    def list_resources(self):
+        '''
+        Returns a list of known resource labels which can be used in a pilot
+        description.  Not that resource aliases won't be listed.
+        '''
+
+        return sorted(self._resource_configs.keys())
 
 
     # -------------------------------------------------------------------------
