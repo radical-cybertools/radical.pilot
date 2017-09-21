@@ -646,23 +646,18 @@ class Default(PMGRLaunchingComponent):
             agent_config = rc_agent_config
 
         if isinstance(agent_config, dict):
-            # nothing to do
+
+            # use dict as is
             agent_cfg = agent_config
-            pass
 
         elif isinstance(agent_config, basestring):
             try:
-                if os.path.exists(agent_config):
-                    agent_cfg_file = agent_config
-
-                else:
-                    # otherwise interpret as a config name
-                    agent_cfg_file = os.path.join(self._conf_dir, "agent_%s.json" % agent_config)
+                # interpret as a config name
+                agent_cfg_file = os.path.join(self._conf_dir, "agent_%s.json" % agent_config)
 
                 self._log.info("Read agent config file: %s",  agent_cfg_file)
                 agent_cfg = ru.read_json(agent_cfg_file)
 
-                # no matter how we read the config file, we
                 # allow for user level overload
                 user_cfg_file = '%s/.radical/pilot/config/%s' \
                               % (os.environ['HOME'], os.path.basename(agent_cfg_file))
@@ -678,7 +673,7 @@ class Default(PMGRLaunchingComponent):
 
         else:
             # we can't handle this type
-            raise TypeError('agent config must be string (filename) or dict')
+            raise TypeError('agent config must be string (config name) or dict')
 
         # expand variables in virtenv string
         virtenv = virtenv % {'pilot_sandbox'   : pilot_sandbox,

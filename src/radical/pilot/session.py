@@ -768,6 +768,17 @@ class Session(rs.Session):
 
     # -------------------------------------------------------------------------
     #
+    def list_resources(self):
+        '''
+        Returns a list of known resource labels which can be used in a pilot
+        description.  Not that resource aliases won't be listed.
+        '''
+
+        return sorted(self._resource_configs.keys())
+
+
+    # -------------------------------------------------------------------------
+    #
     def add_resource_config(self, resource_config):
         """Adds a new :class:`radical.pilot.ResourceConfig` to the PilotManager's 
            dictionary of known resources, or accept a string which points to
