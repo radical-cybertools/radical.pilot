@@ -330,9 +330,9 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
             # If we dont have a tarball (for whichever reason), fetch individual logfiles
             logfiles = sandbox.list('*.log')
 
-            for log in logfiles:
+            for logfile in logfiles:
 
-                ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['uid'], log))
+                ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['uid'], logfile))
                 ret.append("%s" % ftgt.path)
 
                 if skip_existing and os.path.isfile(ftgt.path) \
@@ -340,7 +340,7 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
 
                     continue
 
-                log_file = saga.filesystem.File("%s%s" % (sandbox_url, log), session=session)
+                log_file = saga.filesystem.File("%s%s" % (sandbox_url, logfile), session=session)
                 log_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
                 log_file.close()
 

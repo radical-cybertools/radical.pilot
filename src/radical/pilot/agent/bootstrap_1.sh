@@ -1838,16 +1838,6 @@ echo "agent $AGENT_PID is final ($AGENT_EXITCODE)"
 profile_event 'agent_final' "$AGENT_PID:$AGENT_EXITCODE `date --rfc-3339=ns | cut -c -23`"
 
 
-if test -e "./killme.signal"
-then
-    # this agent has been canceled.  We don't care (much) how it died)
-    if ! test "$AGENT_EXITCODE" = "0"
-    then
-        echo "changing exit code from $AGENT_EXITCODE to 0 for canceled pilot"
-        AGENT_EXITCODE=0
-    fi
-fi
-
 # # stop the packer.  We don't want to just kill it, as that might leave us with
 # # corrupted tarballs...
 # touch exit.signal
@@ -1934,6 +1924,29 @@ then
     echo "#"
     echo "# -------------------------------------------------------------------"
 fi
+
+echo "# -------------------------------------------------------------------"
+echo "#"
+if test -e "./killme.signal"
+then
+    # this agent died cleanly, and we can rely on thestate information given.
+    final_state=$(cat ./killme.signal)
+    if ! test "$AGENT_EXITCODE" = "0"
+    then
+        echo "changing exit code from $AGENT_EXITCODE to 0 for canceled pilot"
+        AGENT_EXITCODE=0
+    fi
+fi
+if test -z "$final_state"
+then
+    # assume this agent died badly
+    echo 'reset final state to FAILED'
+    final_state='FAILED'
+fi
+
+echo "# -------------------------------------------------------------------"
+echo "# push final pilot state: $SESSION_ID $PILOT_ID $final_state"
+$PYTHON `which radical-pilot-agent-statepush` agent_0.cfg $final_state
 
 echo
 echo "# -------------------------------------------------------------------"

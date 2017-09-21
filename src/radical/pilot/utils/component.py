@@ -1417,7 +1417,8 @@ class Component(ru.Process):
         self.is_valid()
 
         if pubsub not in self._publishers:
-            raise RuntimeError("can't route '%s' notification: %s" % (pubsub, msg))
+            raise RuntimeError("can't route '%s' notification: %s" % (pubsub,
+                self._publishers.keys()))
 
         if not self._publishers[pubsub]:
             raise RuntimeError("no route for '%s' notification: %s" % (pubsub, msg))
