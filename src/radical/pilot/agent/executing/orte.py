@@ -247,7 +247,7 @@ class ORTE(AgentExecutingComponent):
 
         else:
             cu['started'] = time.time()
-            self._log.debug("unit %s startup ok", uid))
+            self._log.debug("unit %s startup ok", uid)
             self.advance(cu, rps.AGENT_EXECUTING, publish=True, push=False)
 
 
