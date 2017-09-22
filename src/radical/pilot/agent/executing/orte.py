@@ -466,7 +466,7 @@ class ORTE(AgentExecutingComponent):
             self.task_map[index[0]] = cu      # map ORTE index to CU
             self._prof.prof('exec_ok', uid=cu['uid'])
 
-        self._log.debug("Task %d submitted!", task)
+        self._log.debug("Task %d submitted!", cu['uid'])
 
 
 # ------------------------------------------------------------------------------
