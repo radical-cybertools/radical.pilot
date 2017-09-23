@@ -151,7 +151,7 @@ class Agent_0(rpu.Worker):
                      'lm_info'      : self._lrms.lm_info.get('version_info'),
                      'lm_detail'    : self._lrms.lm_info.get('lm_detail')},
                  '$set'             : ['resource_details']}
-        self.advance(pilot, publish=True, push=False, prof=True)
+        self.advance(pilot, publish=True, push=False)
 
         # register idle callback to pull for units -- which is the only action
         # we have to perform, really

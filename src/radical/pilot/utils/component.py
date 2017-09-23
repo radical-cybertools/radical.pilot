@@ -1444,19 +1444,5 @@ class Worker(Component):
         Component.__init__(self, cfg=cfg, session=session)
 
 
-    # --------------------------------------------------------------------------
-    #
-    # we overload state changing methods from component and assert neutrality
-    # FIXME: we should insert hooks around callback invocations, too
-    #
-    def advance(self, things, state=None, publish=True, push=False, prof=True):
-
-        if state:
-            raise RuntimeError("worker %s cannot advance state (%s)"
-                    % (self.uid, state))
-
-        Component.advance(self, things, state, publish, push, prof)
-
-
 # ------------------------------------------------------------------------------
 
