@@ -343,7 +343,7 @@ class UnitManager(rpu.Component):
                     self._log.debug('restart unit %s', u.uid)
 
             # final units are not pushed
-            self.advance(units, publish=True, push=False) 
+            self.advance(units, publish=False, push=False)
 
             return True
 
@@ -423,7 +423,7 @@ class UnitManager(rpu.Component):
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline).
-        self.advance(units, publish=True, push=True)
+        self.advance(units, publish=False, push=True)
 
         return True
 
@@ -757,7 +757,7 @@ class UnitManager(rpu.Component):
 
         # Only after the insert can we hand the units over to the next
         # components (ie. advance state).
-        self.advance(unit_docs, rps.UMGR_SCHEDULING_PENDING, publish=True, push=True)
+        self.advance(unit_docs, rps.UMGR_SCHEDULING_PENDING, publish=False, push=True)
         self._log.report.ok('>>ok\n')
 
         if ret_list: return units

@@ -161,7 +161,7 @@ class Popen(AgentExecutingComponent) :
         if not isinstance(units, list):
             units = [units]
 
-        self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
+        self.advance(units, rps.AGENT_EXECUTING, publish=False, push=False)
 
         ru.raise_on('work bulk')
 
@@ -465,7 +465,7 @@ class Popen(AgentExecutingComponent) :
                     # directives -- at the very least, we'll upload stdout/stderr
                     cu['target_state'] = rps.DONE
 
-                self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
+                self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=False, push=True)
 
         return action
 

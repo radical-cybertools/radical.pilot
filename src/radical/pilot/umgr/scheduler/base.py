@@ -277,7 +277,7 @@ class UMGRSchedulingComponent(rpu.Component):
                                 unit['sandbox'] = self._session._get_unit_sandbox(unit, pilot)
 
                         self.advance(early_units, rps.UMGR_STAGING_INPUT_PENDING, 
-                                     publish=True, push=True)
+                                     publish=False, push=True)
 
             # let the scheduler know
             self.add_pilots([pilot['uid'] for pilot in pilots])
@@ -371,7 +371,7 @@ class UMGRSchedulingComponent(rpu.Component):
         if not isinstance(units, list):
             units = [units]
 
-        self.advance(units, rps.UMGR_SCHEDULING, publish=True, push=False)
+        self.advance(units, rps.UMGR_SCHEDULING, publish=False, push=False)
 
         to_schedule = list()
 
@@ -396,7 +396,7 @@ class UMGRSchedulingComponent(rpu.Component):
                             unit['sandbox'] = self._session._get_unit_sandbox(unit, pilot)
 
                         self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING, 
-                                     publish=True, push=True)
+                                     publish=False, push=True)
                     else:
                         # otherwise keep in `self._early` until we learn about
                         # the pilot

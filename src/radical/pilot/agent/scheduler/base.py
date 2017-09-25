@@ -204,7 +204,7 @@ class AgentSchedulingComponent(rpu.Component):
             if self._try_allocation(cu):
 
                 # allocated cu -- advance it
-                self.advance(cu, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
+                self.advance(cu, rps.AGENT_EXECUTING_PENDING, publish=False, push=True)
 
                 # remove it from the wait queue
                 with self._wait_lock :
@@ -264,7 +264,7 @@ class AgentSchedulingComponent(rpu.Component):
         if not isinstance(units, list):
             units = [units]
 
-        self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
+        self.advance(units, rps.AGENT_SCHEDULING, publish=False, push=False)
 
         for unit in units:
 
@@ -279,7 +279,7 @@ class AgentSchedulingComponent(rpu.Component):
         # straight away and move it to execution, or we have to
         # put it on the wait queue.
         if self._try_allocation(cu):
-            self.advance(cu, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
+            self.advance(cu, rps.AGENT_EXECUTING_PENDING, publish=False, push=True)
 
         else:
             # No resources available, put in wait queue

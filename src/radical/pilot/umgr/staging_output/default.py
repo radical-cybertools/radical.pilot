@@ -68,7 +68,7 @@ class Default(UMGRStagingOutputComponent):
         if not isinstance(units, list):
             units = [units]
 
-        self.advance(units, rps.UMGR_STAGING_OUTPUT, publish=True, push=False)
+        self.advance(units, rps.UMGR_STAGING_OUTPUT, publish=False, push=False)
 
         # we first filter out any units which don't need any output staging, and
         # advance them again as a bulk.  We work over the others one by one, and
