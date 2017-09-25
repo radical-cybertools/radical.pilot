@@ -287,6 +287,7 @@ class DBSession(object):
         # model, ie. is the largest of any state the pilot progressed through
         for doc in docs:
             doc['state'] = rps._pilot_state_collapse(doc['states'])
+
         return docs
 
 
