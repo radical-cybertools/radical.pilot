@@ -4,7 +4,7 @@
 # a functional pilot manager.
 {
     # time to sleep between database polls (seconds)
-    "db_poll_sleeptime" : 10.0,
+    "db_poll_sleeptime" : 1.0,
 
     "bridges" : {
         "pmgr_launching_queue" : {"log_level" : "debug",
