@@ -7,13 +7,13 @@
     "default_dburl"      : "mongodb://rp:rp@ds015335.mlab.com:15335/rp",
 
     "bridges" : {
-        "log_pubsub"     : {"log_level" : "debug",
+        "log_pubsub"     : {"log_level" : "off",
                             "stall_hwm" : 1,
                             "bulk_size" : 0},
-        "state_pubsub"   : {"log_level" : "debug",
+        "state_pubsub"   : {"log_level" : "off",
                             "stall_hwm" : 1,
                             "bulk_size" : 0},
-        "control_pubsub" : {"log_level" : "debug",
+        "control_pubsub" : {"log_level" : "off",
                             "stall_hwm" : 1,
                             "bulk_size" : 0}
     },
