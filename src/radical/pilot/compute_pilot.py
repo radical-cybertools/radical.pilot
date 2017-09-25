@@ -71,7 +71,7 @@ class ComputePilot(object):
         # initialize state
         self._pmgr          = pmgr
         self._session       = self._pmgr.session
-        self._prof          = self._session.prof
+        self._prof          = self._session._prof
         self._uid           = ru.generate_id('pilot.%(counter)04d', ru.ID_CUSTOM)
         self._state         = rps.NEW
         self._log           = pmgr._log
@@ -106,14 +106,14 @@ class ComputePilot(object):
     #
     def __repr__(self):
 
-        return str(self.as_dict())
+        return str(self)
 
 
     # --------------------------------------------------------------------------
     #
     def __str__(self):
 
-        return [self.uid, self.resource, self.state]
+        return str([self.uid, self.resource, self.state])
 
 
     # --------------------------------------------------------------------------
@@ -123,7 +123,7 @@ class ComputePilot(object):
         self._log.info("[Callback]: pilot %s state: %s.", self.uid, self.state)
 
         if self.state == rps.FAILED and self._exit_on_error:
-            self._log.error("[Callback]: pilot '%s' failed", self.uid)
+            self._log.error(" === [Callback]: pilot '%s' failed (exit on error)", self.uid)
             # FIXME: how to tell main?  Where are we in the first place?
           # ru.cancel_main_thread('int')
             raise RuntimeError('pilot %s failed - fatal!' % self.uid)
@@ -140,6 +140,8 @@ class ComputePilot(object):
         Return True if state changed, False otherwise
         """
 
+        if pilot_dict['uid'] != self.uid:
+            self._log.error('incorrect uid: %s / %s', pilot_dict['uid'], self.uid)
         assert(pilot_dict['uid'] == self.uid), 'update called on wrong instance'
 
         # NOTE: this method relies on state updates to arrive in order, and
@@ -148,8 +150,16 @@ class ComputePilot(object):
         target  = pilot_dict['state']
 
         if target not in [rps.FAILED, rps.CANCELED]:
-            assert(rps._pilot_state_value(target) - rps._pilot_state_value(current)), \
+
+
+            try:
+                assert(rps._pilot_state_value(target) - rps._pilot_state_value(current)), \
                             'invalid state transition'
+            except:
+                self._log.error(' === %s: invalid state transition %s -> %s', 
+                        self.uid, current, target)
+                raise
+
             # FIXME
 
         self._state = target
@@ -164,6 +174,7 @@ class ComputePilot(object):
             cb_data = cb_val['cb_data']
 
           # print ' ~~~ call pcbs: %s -> %s : %s' % (self.uid, self.state, cb_name)
+            self._log.debug('%s calls cb %s', self.uid, cb)
             
             if cb_data: cb(self, self.state, cb_data)
             else      : cb(self, self.state)
@@ -561,13 +572,13 @@ class ComputePilot(object):
 
             assert(action in [COPY, LINK, MOVE, TRANSFER])
 
-            self._prof.prof('staging_begin', uid=self.uid, msg=did)
+            self._prof.prof('staging_in_start', uid=self.uid, msg=did)
 
             src = complete_url(src, src_context, self._log)
             tgt = complete_url(tgt, tgt_context, self._log)
 
             if action in [COPY, LINK, MOVE]:
-                self._prof.prof('staging_end', uid=self.uid, msg=did)
+                self._prof.prof('staging_in_fail', uid=self.uid, msg=did)
                 raise ValueError("invalid action '%s' on pilot level" % action)
 
             self._log.info('transfer %s to %s', src, tgt)
@@ -590,7 +601,7 @@ class ComputePilot(object):
             saga_dir = self._cache[key]
             saga_dir.copy(src, tgt, flags=flags)
 
-            self._prof.prof('staging_end', uid=self.uid, msg=did)
+            self._prof.prof('staging_in_stop', uid=self.uid, msg=did)
 
 
 # ------------------------------------------------------------------------------

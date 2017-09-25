@@ -118,7 +118,6 @@
         ],
         "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
         "valid_roots"                 : ["/lustre/atlas/scratch"],
-        "rp_version"                  : "debug",
         "rp_version"                  : "local",
         "virtenv_mode"                : "use",
         "virtenv"                     : "/lustre/atlas2/csc230/world-shared/ve.rp.20017.06.26",

@@ -69,7 +69,7 @@ class Default(UMGRStagingInputComponent):
         if not isinstance(units, list):
             units = [units]
 
-        self.advance(units, rps.UMGR_STAGING_INPUT, publish=True, push=False)
+        self.advance(units, rps.UMGR_STAGING_INPUT, publish=False, push=False)
 
         # we first filter out any units which don't need any input staging, and
         # advance them again as a bulk.  We work over the others one by one, and
@@ -118,6 +118,8 @@ class Default(UMGRStagingInputComponent):
 
         uid = unit['uid']
 
+        self._prof.prof("create_sandbox_start", uid=uid)
+
         src_context = {'pwd'      : os.getcwd(),                # !!!
                        'unit'     : unit['unit_sandbox'], 
                        'pilot'    : unit['pilot_sandbox'], 
@@ -139,12 +141,11 @@ class Default(UMGRStagingInputComponent):
 
         if key not in self._cache:
             self._cache[key] = rs.filesystem.Directory(tmp, 
-                    session=self._session)
-        saga_dir = self._cache[key]
+                                             session=self._session)
 
-        self._prof.prof("create sandbox", msg=str(sandbox))
+        saga_dir = self._cache[key]
         saga_dir.make_dir(sandbox, flags=rs.filesystem.CREATE_PARENTS)
-        self._prof.prof("created sandbox", uid=uid)
+        self._prof.prof("create_sandbox_stop", uid=uid)
 
         # Loop over all transfer directives and execute them.
         for sd in actionables:
@@ -155,7 +156,7 @@ class Default(UMGRStagingInputComponent):
             src    = sd['source']
             tgt    = sd['target']
 
-            self._prof.prof('staging_begin', uid=uid, msg=did)
+            self._prof.prof('staging_in_start', uid=uid, msg=did)
 
             src = complete_url(src, src_context, self._log)
             tgt = complete_url(tgt, tgt_context, self._log)
@@ -166,7 +167,7 @@ class Default(UMGRStagingInputComponent):
                 copy_flags = 0
 
             saga_dir.copy(src, tgt, flags=copy_flags)
-            self._prof.prof('staging_end', uid=uid, msg=did)
+            self._prof.prof('staging_in_stop', uid=uid, msg=did)
 
         # staging is done, we can advance the unit at last
         self.advance(unit, rps.AGENT_STAGING_INPUT_PENDING, publish=True, push=True)
