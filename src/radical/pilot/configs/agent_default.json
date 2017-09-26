@@ -23,10 +23,10 @@
     "bulk_collection_size" : 1024,
 
     # max time period to collect db notifications into bulks (seconds)
-    "bulk_collection_time" : 5.0,
+    "bulk_collection_time" : 2.0,
 
     # time to sleep between database polls (seconds)
-    "db_poll_sleeptime"    : 30.0,
+    "db_poll_sleeptime"    : 5.0,
 
     # agent_0 must always have target 'local' at this point
     # mode 'shared'   : local node is also used for CUs

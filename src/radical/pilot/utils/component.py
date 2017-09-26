@@ -383,16 +383,16 @@ class Component(ru.Process):
                 valid = False
 
         if valid:
-            for bridge in self._bridges:
-                if not bridge.is_valid(term):
-                    self._log.warn("bridge %s is invalid" % bridge.uid)
+            for component in self._components:
+                if not component.is_valid(term):
+                    self._log.warn("sub component %s is invalid" % component.uid)
                     valid = False
                     break
 
         if valid:
-            for component in self._components:
-                if not component.is_valid(term):
-                    self._log.warn("sub component %s is invalid" % component.uid)
+            for bridge in self._bridges:
+                if not bridge.is_valid(term):
+                    self._log.warn("bridge %s is invalid" % bridge.uid)
                     valid = False
                     break
 
@@ -644,13 +644,13 @@ class Component(ru.Process):
 
         with self._cb_lock:
 
-            for bridge in self._bridges:
-                bridge.stop()
-            self._bridges = list()
-
             for comp in self._components:
                 comp.stop()
             self._components = list()
+
+            for bridge in self._bridges:
+                bridge.stop()
+            self._bridges = list()
 
           # #  FIXME: the stuff below caters to unsuccessful or buggy termination
           # #         routines - but for now all those should be served by the
@@ -1264,6 +1264,7 @@ class Component(ru.Process):
 
 
         # keep work_cb registered
+        self._prof.flush()  # FIXME
         return True
 
 
