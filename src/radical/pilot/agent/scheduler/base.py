@@ -111,11 +111,11 @@ SCHEDULER_NAME_SPARK        = "SPARK"
 # the thread creation for the application.
 #
 # The scheduler algorithm will then attempt to find a suitable set of cores and
-# gpus in the nodelist into which the CU can be placed.  It will mark those as
-# `rpc.BUSY`, and attach the set of cores/gpus to the CU dictionary, as (here
+# gpus in the nodelist into which the unit can be placed.  It will mark those as
+# `rpc.BUSY`, and attach the set of cores/gpus to the unit dictionary, as (here
 # for system with 8 cores & 1 gpu per node):
 #
-#     cu = { ...
+#     unit = { ...
 #       'cpu_processes'    : 4,
 #       'cpu_process_type' : 'mpi',
 #       'cpu_threads'      : 2,
@@ -383,52 +383,52 @@ class AgentSchedulingComponent(rpu.Component):
             # we got a new unit to schedule.  Either we can place it
             # straight away and move it to execution, or we have to
             # put it in the wait pool.
-            if self._try_allocation(cu):
+            if self._try_allocation(unit):
                 # we could schedule the unit - advance its state, notify worls
                 # about the state change, and push the unit out toward the next
                 # component.
-                self.advance(cu, rps.AGENT_EXECUTING_PENDING, 
+                self.advance(unit, rps.AGENT_EXECUTING_PENDING, 
                              publish=True, push=True)
             else:
                 # no resources available, put in wait queue
                 with self._wait_lock :
-                    self._wait_pool.append(cu)
+                    self._wait_pool.append(unit)
 
 
     # --------------------------------------------------------------------------
     #
-    def _try_allocation(self, cu):
+    def _try_allocation(self, unit):
         """
-        attempt to allocate cores/gpus for a specific CU.
+        attempt to allocate cores/gpus for a specific unit.
         """
 
         # needs to be locked as we try to acquire slots here, but slots are
         # freed in a different thread.  But we keep the lock duration short...
         with self._slot_lock :
 
-            self._prof.prof('schedule_try', uid=cu['uid'])
-            cu['slots'] = self._allocate_slot(cu['description'])
+            self._prof.prof('schedule_try', uid=unit['uid'])
+            unit['slots'] = self._allocate_slot(unit['description'])
 
 
         # the lock is freed here
-        if not cu['slots']:
+        if not unit['slots']:
 
-            # signal the CU remains unhandled (Fales signals that failure)
-            self._prof.prof('schedule_fail', uid=cu['uid'])
+            # signal the unit remains unhandled (Fales signals that failure)
+            self._prof.prof('schedule_fail', uid=unit['uid'])
             return False
 
 
         # got an allocation, we can go off and launch the process
-        self._prof.prof('schedule_ok', uid=cu['uid'])
+        self._prof.prof('schedule_ok', uid=unit['uid'])
 
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("after  allocate   %s: %s", cu['uid'],
+            self._log.debug("after  allocate   %s: %s", unit['uid'],
                             self.slot_status())
 
-        self._log.debug("%s [%s/%s] : %s [%s]", cu['uid'],
-                        cu['description']['cpu_processes'],
-                        cu['description']['gpu_processes'],
-                        pprint.pformat(cu['slots']))
+        self._log.debug("%s [%s/%s] : %s [%s]", unit['uid'],
+                        unit['description']['cpu_processes'],
+                        unit['description']['gpu_processes'],
+                        pprint.pformat(unit['slots']))
         # True signals success
         return True
 
@@ -437,32 +437,32 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def unschedule_cb(self, topic, msg):
         """
-        release (for whatever reason) all slots allocated to this CU
+        release (for whatever reason) all slots allocated to this unit
         """
 
-        cu = msg
+        unit = msg
 
-        if not cu['slots']:
+        if not unit['slots']:
             # Nothing to do -- how come?
-            self._log.error("cannot unschedule: %s (no slots)" % cu)
+            self._log.error("cannot unschedule: %s (no slots)" % unit)
             return True
 
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("before unschedule %s: %s", cu['uid'], self.slot_status())
+            self._log.debug("before unschedule %s: %s", unit['uid'], self.slot_status())
 
         # needs to be locked as we try to release slots, but slots are acquired
         # in a different thread....
         with self._slot_lock :
-            self._prof.prof('unschedule_start', uid=cu['uid'])
-            self._release_slot(cu['slots'])
-            self._prof.prof('unschedule_stop',  uid=cu['uid'])
+            self._prof.prof('unschedule_start', uid=unit['uid'])
+            self._release_slot(unit['slots'])
+            self._prof.prof('unschedule_stop',  uid=unit['uid'])
 
         # notify the rescheduling thread, ie. trigger a reschedule to utilize
         # the freed slots for units waiting in the wait pool.
-        self.publish(rpc.AGENT_RESCHEDULE_PUBSUB, cu)
+        self.publish(rpc.AGENT_RESCHEDULE_PUBSUB, unit)
 
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("after  unschedule %s: %s", cu['uid'], self.slot_status())
+            self._log.debug("after  unschedule %s: %s", unit['uid'], self.slot_status())
 
         # return True to keep the cb registered
         return True
@@ -476,31 +476,31 @@ class AgentSchedulingComponent(rpu.Component):
         we can attempt to schedule units from the wait pool.
         '''
 
-        # we ignore any passed CU.  In principle the cu info could be used to
+        # we ignore any passed unit.  In principle the unit info could be used to
         # determine which slots have been freed.  No need for that optimization
         # right now.  This will become interesting once reschedule becomes too
         # expensive.
         # FIXME: optimization
 
-        cu = msg
+        unit = msg
 
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("before reschedule %s: %s", cu['uid'],
+            self._log.debug("before reschedule %s: %s", unit['uid'],
                             self.slot_status())
 
         # cycle through wait queue, and see if we get anything placed now.  We
         # cycle over a copy of the list, so that we can modify the list on the
         # fly,without locking the whole loop.  However, this is costly, too.
-        for cu in self._wait_pool[:]:
+        for unit in self._wait_pool[:]:
 
-            if self._try_allocation(cu):
+            if self._try_allocation(unit):
 
-                # allocated cu -- advance it
-                self.advance(cu, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
+                # allocated unit -- advance it
+                self.advance(unit, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
 
                 # remove it from the wait queue
                 with self._wait_lock :
-                    self._wait_pool.remove(cu)
+                    self._wait_pool.remove(unit)
 
             else:
                 # Break out of this loop if we didn't manage to schedule a task
