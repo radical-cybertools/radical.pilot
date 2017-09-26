@@ -47,14 +47,15 @@ SCHEDULER_NAME_SPARK        = "SPARK"
 #         else:
 #            wait.append(unit)   # place unit in a wait list
 #
-#   - event management:
-#       - unit finished execution, cores/gpus can be reused
-#         This triggers an 'unschedule' (free resources) and reschedule (check
-#         waitlist if any waiting unit can be placed now).
+#   - notification management:
+#     - the scheduler receives notifications about units which completed
+#       execution, and whose resources can now be used again for other units,
+#     - the above triggers an 'unschedule' (free resources) action and also a
+#       `schedule` action (check waitlist if waiting units can now be placed).
+#
 #
 # A scheduler implementation will derive from this base class, and overload the
 # following three methods:
-#
 #
 #   _configure():
 #     - make sure that the base class configuration is usable
@@ -72,7 +73,6 @@ SCHEDULER_NAME_SPARK        = "SPARK"
 #   - the layout of the resource (nodes, cores, gpus);
 #   - the current state of those (what cores/gpus are used by other units)
 #   - the requirements of the unit (single/multi node, cores, gpus)
-#
 #
 # The first part (layout) is provided by the LRMS, in the form of a nodelist:
 #
@@ -162,7 +162,7 @@ SCHEDULER_NAME_SPARK        = "SPARK"
 # TODO:  use named tuples for the slot structure to make the code more readable,
 #        specifically for the LMs.
 #
-
+#
 # ==============================================================================
 #
 class AgentSchedulingComponent(rpu.Component):
@@ -222,8 +222,8 @@ class AgentSchedulingComponent(rpu.Component):
         # NOTE: we could use a local queue here.  Using a zmq bridge goes toward
         #       an distributed scheduler, and is also easier to implement right
         #       now, since `Component` provides the right mechanisms...
-        self.register_publisher (rpc.AGENT_RESCHEDULE_PUBSUB)
-        self.register_subscriber(rpc.AGENT_RESCHEDULE_PUBSUB, self.reschedule_cb)
+        self.register_publisher (rpc.AGENT_SCHEDULE_PUBSUB)
+        self.register_subscriber(rpc.AGENT_SCHEDULE_PUBSUB, self.schedule_cb)
 
         # The scheduler needs the LRMS information which have been collected
         # during agent startup.  We dig them out of the config at this point.
@@ -299,9 +299,6 @@ class AgentSchedulingComponent(rpu.Component):
     # NOTE: any scheduler implementation which uses a different nodelist
     #       structure MUST overload this method.
     def _change_slot_states(self, slots, new_state):
-
-        # FIXME: we don't know if we should change state for cores or gpus...
-      # self._log.debug('slots: %s', pprint.pformat(slots))
 
         for node_name, node_uid, cores, gpus in slots['nodes']:
 
@@ -457,9 +454,9 @@ class AgentSchedulingComponent(rpu.Component):
             self._release_slot(unit['slots'])
             self._prof.prof('unschedule_stop',  uid=unit['uid'])
 
-        # notify the rescheduling thread, ie. trigger a reschedule to utilize
-        # the freed slots for units waiting in the wait pool.
-        self.publish(rpc.AGENT_RESCHEDULE_PUBSUB, unit)
+        # notify the scheduling thread, ie. trigger an attempt to use the freed
+        # slots for units waiting in the wait pool.
+        self.publish(rpc.AGENT_SCHEDULE_PUBSUB, unit)
 
         if self._log.isEnabledFor(logging.DEBUG):
             self._log.debug("after  unschedule %s: %s", unit['uid'], self.slot_status())
@@ -470,7 +467,7 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def reschedule_cb(self, topic, msg):
+    def schedule_cb(self, topic, msg):
         '''
         This cb is triggered after a unit's resources became available again, so
         we can attempt to schedule units from the wait pool.
@@ -478,14 +475,14 @@ class AgentSchedulingComponent(rpu.Component):
 
         # we ignore any passed unit.  In principle the unit info could be used to
         # determine which slots have been freed.  No need for that optimization
-        # right now.  This will become interesting once reschedule becomes too
+        # right now.  This will become interesting once schedule becomes too
         # expensive.
         # FIXME: optimization
 
         unit = msg
 
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("before reschedule %s: %s", unit['uid'],
+            self._log.debug("before schedule   %s: %s", unit['uid'],
                             self.slot_status())
 
         # cycle through wait queue, and see if we get anything placed now.  We
