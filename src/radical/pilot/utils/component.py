@@ -710,7 +710,7 @@ class Component(ru.Process):
 
     # --------------------------------------------------------------------------
     #
-    def register_input(self, states, input, worker):
+    def register_input(self, states, input, worker=None):
         """
         Using this method, the component can be connected to a queue on which
         things are received to be worked upon.  The given set of states (which
@@ -733,7 +733,6 @@ class Component(ru.Process):
 
         if not isinstance(states, list):
             states = [states]
-
 
         name = '%s.%s.%s' % (self.uid, worker.__name__, '_'.join(states))
 
