@@ -463,7 +463,7 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _update_unit(self, unit_dict, publish=False):
+    def _update_unit(self, unit_dict, publish=False, advance=False):
 
         # FIXME: this is breaking the bulk!
 
@@ -490,7 +490,11 @@ class UnitManager(rpu.Component):
             for s in passed:
                 unit_dict['state'] = s
                 self._units[uid]._update(unit_dict)
-                self.advance(unit_dict, s, publish=publish, push=False)
+
+                # we don't usually advance state at this point, but also keep up
+                # with state changes reported from elsewhere
+                if advance:
+                    self.advance(unit_dict, s, publish=publish, push=False)
 
             return True
 
