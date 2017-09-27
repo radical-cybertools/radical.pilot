@@ -200,6 +200,14 @@ class Agent_0(rpu.Worker):
 
         self._log.debug(' === final: %s', self._final_cause)
 
+        #some thread wants us to terminate
+        self.stop()
+
+        # we should be done now- but ask the bootstrapper to make sure
+        with open('./killme.signal', 'w+') as f:
+            f.write(rps.CANCELED)
+            f.flush()
+
       # if self._session:
       #     self._log.debug('close  session %s', self._session.uid)
       #     self._session.close()
@@ -435,10 +443,6 @@ class Agent_0(rpu.Worker):
 
               # self.stop()
                 self._ru_term.set()
-
-                with open('./killme.signal', 'w+') as f:
-                    f.write(rps.CANCELED)
-                    f.flush()
 
                 self._final_cause = 'cancel'
                 return False  # we are done
