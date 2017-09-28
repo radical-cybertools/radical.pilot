@@ -65,6 +65,7 @@
         "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",
+        "cores_per_node"              : "15",
         "pre_bootstrap_1"             : [
             "module swap PrgEnv-pgi PrgEnv-gnu",
             "module load python",
