@@ -42,7 +42,7 @@ if __name__ == '__main__':
         umgr.add_pilots(pilot)
 
         prep  = '/lustre/atlas/world-shared/csc230/rp_benchmark_prep/'
-        files = 'bpti.gro  mdout.mdp  md_prev.cpt  md.tpr  posre_100.itp posre_10.itp  prep.log  prep.pbs  run3.mdp  topol.top'.split()
+        files = 'md.tpr'.split()
         sds   = list()
         for f in files:
             sds.append({'source': 'file://localhost/%s/%s' % (prep, f),
@@ -55,7 +55,7 @@ if __name__ == '__main__':
             cud = rp.ComputeUnitDescription()
             cud.executable       = 'gmx_mpi'
           # cud.arguments        = 'mdrun -deffnm md -ntomp 4 -pin on -pinoffset 0'.split()
-            cud.arguments        = 'mdrun -deffnm md -ntomp 1 -pin off'.split()
+            cud.arguments        = 'mdrun -deffnm md -ntomp 1'.split()
             cud.environment      = {'PMI_NO_FORK' : 'True'}
             cud.input_staging    = sds
             cud.cores            = unit_size
