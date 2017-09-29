@@ -198,7 +198,7 @@ class Agent_0(rpu.Worker):
             self._log.info('no final cause -> alive')
             time.sleep(1)
 
-        self._log.debug(' === final: %s', self._final_cause)
+        self._log.debug('final: %s', self._final_cause)
 
       # if self._session:
       #     self._log.debug('close  session %s', self._session.uid)

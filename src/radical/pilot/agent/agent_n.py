@@ -93,7 +93,7 @@ class Agent_n(rpu.Worker):
             self._log.info('no final cause -> alive')
             time.sleep(1)
 
-        self._log.debug(' === final: %s', self._final_cause)
+        self._log.debug('final: %s', self._final_cause)
 
 
     # --------------------------------------------------------------------------
