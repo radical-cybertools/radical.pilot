@@ -90,7 +90,7 @@ class Agent_n(rpu.Worker):
     def wait_final(self):
 
         while self._final_cause is None:
-            self._log.info('no final cause -> alive')
+          # self._log.info('no final cause -> alive')
             time.sleep(1)
 
         self._log.debug('final: %s', self._final_cause)
