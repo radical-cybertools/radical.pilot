@@ -24,7 +24,7 @@ class APRun(LaunchMethod):
     #
     def _configure(self):
         # aprun: job launcher for Cray systems
-        self.launch_command= ru.which('aprun')
+        self.launch_command = ru.which('aprun')
 
         # TODO: ensure that only one concurrent aprun per node is executed!
 
