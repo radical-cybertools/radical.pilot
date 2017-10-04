@@ -55,9 +55,11 @@ if __name__ == '__main__':
             cud = rp.ComputeUnitDescription()
             cud.executable       = 'gmx_mpi'
           # cud.arguments        = 'mdrun -deffnm md -ntomp 4 -pin on -pinoffset 0'.split()
-            cud.arguments        = 'mdrun -deffnm md -ntomp 1'.split()
+            cud.arguments        = 'mdrun -deffnm md'.split()
             cud.environment      = {'PMI_NO_FORK' : 'True'}
             cud.input_staging    = sds
+          # cud.cpu_processes    = unit_size
+          # cud.cpu_process_type = rp.MPI
             cud.cores            = unit_size
             cud.mpi              = True
             cuds.append(cud)

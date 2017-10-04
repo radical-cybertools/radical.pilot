@@ -70,7 +70,7 @@
             "module swap PrgEnv-pgi PrgEnv-gnu",
             "module load python",
             "module use --append /lustre/atlas/world-shared/csc230/openmpi/modules/",
-            "module load openmpi/2017_05_04_539f71d",
+            "module load openmpi/2017_10_03_539f71d",
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
         ],
@@ -82,6 +82,50 @@
         "stage_cacerts"               : true,
         "python_dist"                 : "default",
         "virtenv_dist"                : "system"
+    },
+
+    "titan_orte_new": {
+        "description"                 : "The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/titan/)",
+        "notes"                       : "Requires the use of an RSA SecurID on every connection.",
+        "schemas"                     : ["ssh", "local", "go"],
+        "ssh"                         : {
+            "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
+            "filesystem_endpoint"     : "sftp://titan.ccs.ornl.gov/"
+        },
+        "local"                       : {
+            "job_manager_endpoint"    : "torque://localhost",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "go"                          : {
+            "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
+            "filesystem_endpoint"     : "go://olcf#dtn/"
+        },
+        "default_queue"               : "batch",
+        "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
+        "agent_config"                : "cray",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "ORTE",
+        "task_launch_method"          : "ORTE",
+        "mpi_launch_method"           : "ORTE",
+        "pre_bootstrap_1"             : [
+            "module swap PrgEnv-pgi PrgEnv-gnu",
+            "module load python",
+            "module use --append /lustre/atlas/world-shared/csc230/openmpi/modules/",
+            "module load openmpi/2017_10_02_d9b2c94",
+            # Workaround for ZMQ runtime failure
+            "export LD_PRELOAD=/lib64/librt.so.1"
+        ],
+        "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
+        "valid_roots"                 : ["/lustre/atlas/scratch"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "use",
+        "virtenv"                     : "/lustre/atlas2/csc230/world-shared/ve.rp.20017.06.26",
+        "stage_cacerts"               : true,
+        "python_dist"                 : "default",
+        "virtenv_dist"                : "system",
+        "gpus_per_node"               : 0
     },
 
     "titan_ortelib": {
@@ -113,7 +157,7 @@
             "module swap PrgEnv-pgi PrgEnv-gnu",
             "module load python",
             "module use --append /lustre/atlas/world-shared/csc230/openmpi/modules/",
-            "module load openmpi/2017_05_04_539f71d",
+            "module load openmpi/2017_10_03_539f71d",
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
         ],
