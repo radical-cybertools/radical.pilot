@@ -205,8 +205,9 @@ class ORTELib(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_mpi     = cud.get('mpi')       or False
-        task_args    = cud.get('arguments') or []
+        task_mpi     = cud.get('mpi', False)
+        task_env     = cud.get('environment', dict())
+        task_args    = cud.get('arguments',   list())
         task_argstr  = self._create_arg_string(task_args)
 
         if 'task_slots' not in opaque_slots:
@@ -220,6 +221,9 @@ class ORTELib(LaunchMethod):
         else:
             task_command = task_exec
 
+        if task_mpi: np_flag = '-np %s' % task_cores
+        else       : np_flag = '-np 1'
+
         # Construct the hosts_string, env vars
         # On some Crays, like on ARCHER, the hostname is "archer_N".
         # In that case we strip off the part upto and including the underscore.
@@ -232,12 +236,28 @@ class ORTELib(LaunchMethod):
         export_vars  = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
         # Additional (debug) arguments to orterun
-        debug_strings = [
-            #'--debug-devel',
-            #'--mca oob_base_verbose 100',
-            #'--mca rml_base_verbose 100'
-        ]
-        orte_command = '%s %s %s --bind-to none -np %d -host %s' % (
-            self.launch_command, ' '.join(debug_strings), export_vars, task_cores if task_mpi else 1, hosts_string)
+        debug_flags = [
+                       #'--debug-devel',
+                       #'--mca oob_base_verbose 100',
+                       #'--mca rml_base_verbose 100'
+                      ]
+        debug_string = ' '.join(debug_flags)
+
+
+        env_string = ''
+        env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
+        if env_list:
+            env_string = ''
+            for var in env_list:
+                env_string += '-x "%s" ' % var
+
+
+        orte_command = '%s %s %s --bind-to none %s -host %s' % (
+            self.launch_command, debug_string, export_vars, 
+            np_flag, hosts_string)
 
         return orte_command, task_command
+
+
+# ------------------------------------------------------------------------------
+

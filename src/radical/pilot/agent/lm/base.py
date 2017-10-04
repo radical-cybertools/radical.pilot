@@ -37,12 +37,13 @@ LM_NAME_SPARK         = 'SPARK'
 class LaunchMethod(object):
 
     # List of environment variables that designated Launch Methods should export
+    # FIXME: we should find out what env vars are changed or added by 
+    #        cud.pre_exec, and then should also export those.  That would make
+    #        our launch script ore complicated though...
     EXPORT_ENV_VARIABLES = [
-      # 'LD_LIBRARY_PATH',
-      # 'PATH',
-      # 'PYTHONPATH',
-      # 'PYTHON_DIR',
-      # 'RADICAL_PILOT_PROFILE'
+        'LD_LIBRARY_PATH',
+        'PATH',
+        'PYTHONPATH',
     ]
 
     # --------------------------------------------------------------------------
@@ -323,6 +324,7 @@ class LaunchMethod(object):
                     arg_string += '"%s" ' % arg  # Otherwise return between double quotes.
 
         return arg_string
+
 
 # ------------------------------------------------------------------------------
 
