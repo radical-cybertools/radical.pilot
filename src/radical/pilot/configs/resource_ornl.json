@@ -40,8 +40,8 @@
         "stage_cacerts"               : true,
         "python_dist"                 : "default",
         "virtenv_dist"                : "system",
-        "gpus_per_node"               : 1,
-        "saga_jd_supplement"          : {"candidate_hosts" : ["titan"]}
+        "gpus_per_node"               : 1
+     #  "saga_jd_supplement"          : {"candidate_hosts" : ["titan"]}
     },
 
     "rhea_aprun": {
