@@ -202,6 +202,9 @@ def combine_profiles(profs):
           # print 'unsynced profile %s' % pname
             continue
 
+        if prof[0]['event'] != 'sync abs':
+            continue
+
         t_prof = prof[0]['time']
 
         host, ip, t_sys, t_ntp, t_mode = prof[0]['msg'].split(':')
@@ -241,6 +244,9 @@ def combine_profiles(profs):
             continue
 
         if not prof[0]['msg']:
+            continue
+
+        if prof[0]['event'] != 'sync abs':
             continue
 
         host, ip, _, _, _ = prof[0]['msg'].split(':')
