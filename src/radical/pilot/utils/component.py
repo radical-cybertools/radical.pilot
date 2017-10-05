@@ -1264,7 +1264,6 @@ class Component(ru.Process):
 
 
         # keep work_cb registered
-        self._prof.flush()  # FIXME
         return True
 
 
