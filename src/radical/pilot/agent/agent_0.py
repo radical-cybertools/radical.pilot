@@ -169,6 +169,9 @@ class Agent_0(rpu.Worker):
 
         # tear things down in reverse order
         self._prof.flush()
+        self._log.info('publish "terminate" cmd')
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
+                                          'arg' : None})
 
         self.unregister_timed_cb(self._check_units_cb)
         self.unregister_output(rps.AGENT_STAGING_INPUT_PENDING)
@@ -440,6 +443,10 @@ class Agent_0(rpu.Worker):
             elif cmd == 'cancel_pilot':
                 self._log.info('cancel pilot cmd')
               # ru.attach_pudb(logger=self._log)
+              #
+                self._log.info('publish "terminate" cmd')
+                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
+                                                  'arg' : None})
 
               # self.stop()
                 self._ru_term.set()
