@@ -435,9 +435,13 @@ class Component(ru.Process):
 
             with self._cancel_lock:
                 self._cancel_list += uids
+
+        if cmd == 'terminate':
+            self._log.info('got termination command')
+            self.stop()
+
         else:
-            pass
-          # self._log.debug('command ignored: %s', cmd)
+            self._log.debug('command ignored: %s', cmd)
 
         return True
 
@@ -700,6 +704,7 @@ class Component(ru.Process):
 
     def finalize_child(self):
         pass # can be overloaded
+
 
     # --------------------------------------------------------------------------
     #
