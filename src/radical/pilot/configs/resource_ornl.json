@@ -34,7 +34,7 @@
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "use",
-        "virtenv"                     : "/lustre/atlas2/csc230/world-shared/ve.rp.20017.06.26",
+        "virtenv"                     : "/lustre/atlas2/csc230/world-shared/ve.rp.titan.20017.10.06",
         "stage_cacerts"               : true,
         "python_dist"                 : "default",
         "virtenv_dist"                : "system"
@@ -78,7 +78,7 @@
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "use",
-        "virtenv"                     : "/lustre/atlas2/csc230/world-shared/ve.rp.20017.06.26",
+        "virtenv"                     : "/lustre/atlas2/csc230/world-shared/ve.rp.titan.20017.10.06",
         "stage_cacerts"               : true,
         "python_dist"                 : "default",
         "virtenv_dist"                : "system"
@@ -121,7 +121,7 @@
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "use",
-        "virtenv"                     : "/lustre/atlas2/csc230/world-shared/ve.rp.20017.06.26",
+        "virtenv"                     : "/lustre/atlas2/csc230/world-shared/ve.rp.titan.20017.10.06",
         "stage_cacerts"               : true,
         "python_dist"                 : "default",
         "virtenv_dist"                : "system"
