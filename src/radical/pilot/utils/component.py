@@ -705,9 +705,10 @@ class Component(ru.Process):
     #
     def stop(self, timeout=None):
         '''
-        Before calling the ru.Process stop, we need to terminate and join all
-        threads, as those might otherwise invoke callback which can interfere
-        with termination.
+        We need to terminate and join all threads, close all comunication
+        channels, etc.  But we trust on the correct invocation of the finalizers
+        to do all this, and thus here only forward the stop request to the base
+        class.
         '''
 
         self._log.info('stop %s (%s : %s : %s) [%s]', self.uid, os.getpid(),
