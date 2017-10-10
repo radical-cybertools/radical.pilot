@@ -217,14 +217,16 @@ class Popen(AgentExecutingComponent) :
         sandbox = '%s/%s' % (self._pwd, cu['uid'])
 
         # make sure the sandbox exists
+        self._prof.prof('exec_mkdir', uid=cu['uid'])
         rpu.rec_makedir(sandbox)
+        self._prof.prof('exec_mkdir_done', uid=cu['uid'])
         launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % sandbox
 
         # prep stdout/err so that we can append w/o checking for None
         cu['stdout'] = ''
         cu['stderr'] = ''
 
-        self._log.debug("Created launch_script: %s", launch_script_name)
+        self._log.debug("Create launch_script: %s", launch_script_name)
 
         with open(launch_script_name, "w") as launch_script:
             launch_script.write('#!/bin/sh\n\n')
