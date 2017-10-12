@@ -193,7 +193,7 @@ class APRun(LaunchMethod):
         # Now that we have the node specs, and also know what nodes to apply
         # them to, we can construct the aprun command:
         aprun_command = self.launch_command
-        for node_spec,info in node_specs:
+        for node_spec,info in node_specs.iteritems():
 
             # nprocs must be uniform
             nprocs_list = list(info['nprocs'])

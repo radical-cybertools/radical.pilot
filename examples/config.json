@@ -241,7 +241,7 @@
     },
 
     "ornl.titan_aprun"   : {
-        "project"  : "CSC230",
+        "project"  : "BIP149",
         "queue"    : "debug",
         "schema"   : "local",
         "cores"    : 64,

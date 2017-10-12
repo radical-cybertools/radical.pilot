@@ -52,7 +52,7 @@ if __name__ == '__main__':
                       'project'       : config[resource]['project'],
                       'queue'         : config[resource]['queue'],
                       'access_schema' : config[resource]['schema'],
-                      'cores'         : config[resource]['cores'],
+                      'cores'         : 16*10,
                       'gpus'          : config[resource]['gpus'],
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
@@ -99,11 +99,11 @@ if __name__ == '__main__':
             cud = rp.ComputeUnitDescription()
             cud.executable       = '/bin/sh'
             cud.arguments        = ['/lustre/atlas/scratch/merzky1/csc230/radical.pilot.sandbox/09_mpi_units.sh']
-            cud.cpu_processes    = 24
+            cud.cpu_processes    = 0
             cud.cpu_threads      = 1
             cud.cpu_process_type = rp.MPI
             cud.cpu_thread_type  = rp.OpenMP
-            cud.gpu_processes    = 2
+            cud.gpu_processes    = 4
             cud.gpu_threads      = 1
             cud.gpu_process_type = rp.MPI
             cud.gpu_thread_type  = rp.OpenMP
