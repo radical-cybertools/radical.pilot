@@ -78,9 +78,9 @@ class APRun(LaunchMethod):
         # (CPUs here mostly means cores)
         #
         # Example:
-        #     aprun -L node_1 -n 1 -d 3 -cc 0,1,2       cmd : \
-        #           -L node_2 -n 1 -d 3 -cc 0,1,2       cmd : \
-        #           -L node_3 -n 2 -d 3 -cc 0,1,2:3,4,5 cmd :
+        #     aprun -L node_1 -n 1 -N 1 -d 3 -cc 0,1,2       cmd : \
+        #           -L node_2 -n 1 -N 1 -d 3 -cc 0,1,2       cmd : \
+        #           -L node_3 -n 2 -N 2 -d 3 -cc 0,1,2:3,4,5 cmd :
         #
         # Each node can only be used *once* in that way for any individual
         # aprun command.  This means that the depth must be uniform for that
@@ -106,13 +106,13 @@ class APRun(LaunchMethod):
         # same layout:
         #
         #   original:
-        #     aprun -L node_1 -n 1 -d 3 -cc 0,1,2       cmd : \
-        #           -L node_2 -n 1 -d 3 -cc 0,1,2       cmd : \
-        #           -L node_3 -n 2 -d 3 -cc 0,1,2:3,4,5 cmd :
+        #     aprun -L node_1 -n 1  -N 1 -d 3 -cc 0,1,2       cmd : \
+        #           -L node_2 -n 1  -N 1 -d 3 -cc 0,1,2       cmd : \
+        #           -L node_3 -n 2  -N 2 -d 3 -cc 0,1,2:3,4,5 cmd :
         #
         #   collapsed:
-        #     aprun -L node_1,node_2 -n 2 -d 3 -cc 0,1,2       cmd : \
-        #           -L node_3        -n 2 -d 3 -cc 0,1,2:3,4,5 cmd :
+        #     aprun -L node_1,node_2 -n 2 -N 1 -d 3 -cc 0,1,2       cmd : \
+        #           -L node_3        -n 2 -N 2 -d 3 -cc 0,1,2:3,4,5 cmd :
         #
         # Note that the `-n` argument needs to be adjusted accordingly.
         #
@@ -200,8 +200,8 @@ class APRun(LaunchMethod):
             nprocs      = nprocs_list[0]
             assert(len(nprocs_list) == 1), nprocs_list
 
-            aprun_command += ' -n %d -L %s %s %s :' % \
-                             (nprocs * len(info['nodes']),
+            aprun_command += ' -n %d -N %s -L %s %s %s :' % \
+                             (nprocs * len(info['nodes']), nprocs,
                               ','.join(info['nodes']), node_spec, cmd)
 
         # remove trailing colon from above
