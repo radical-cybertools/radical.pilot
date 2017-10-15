@@ -250,7 +250,6 @@ class UnitManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def __str__(self):
-
         """
         Returns a string representation of the UnitManager object.
         """
@@ -345,7 +344,7 @@ class UnitManager(rpu.Component):
                     self._log.debug('restart unit %s', u.uid)
 
             # final units are not pushed
-            self.advance(units, publish=True, push=False) 
+            self.advance(units, publish=True, push=False)
 
             return True
 
@@ -423,8 +422,9 @@ class UnitManager(rpu.Component):
             self._prof.prof('get', msg="bulk size: %d" % len(units), uid=uid)
 
         # now we really own the CUs, and can start working on them (ie. push
-        # them into the pipeline).
-        self.advance(units, publish=True, push=True)
+        # them into the pipeline).  We don't record state transition profile
+        # events though - the transition has already happened.
+        self.advance(units, publish=True, push=True, prof=False)
 
         return True
 
@@ -487,7 +487,8 @@ class UnitManager(rpu.Component):
             for s in passed:
                 unit_dict['state'] = s
                 self._units[uid]._update(unit_dict)
-                self.advance(unit_dict, s, publish=publish, push=False)
+                self.advance(unit_dict, s, publish=publish, push=False,
+                                           prof=False)
 
             return True
 
