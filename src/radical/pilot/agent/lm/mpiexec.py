@@ -3,6 +3,8 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import radical.utils as ru
+
 from .base import LaunchMethod
 
 
@@ -29,10 +31,20 @@ class MPIExec(LaunchMethod):
 
         # alas, the way to transplant env variables to the target node differs
         # per mpi(run) version...
-        version_info = sp.check_output(['%s -v' % self.launch_command], shell=True)
-        if 'version:' in version_info:
-            self.launch_version = version_info.split(':')[1].strip().lower()
-        else:
+        out, err, ret = ru.sh_callout('%s -v' % self.launch_command)
+
+        if ret != 0:
+            out, err, ret = ru.sh_callout('%s -info' % self.launch_command)
+
+        self.launch_version = ''
+        for line in out.splitlines():
+            if 'HYDRA build details:' in line:
+                self.launch_version += 'hydra-'
+            if 'version:' in line.lower():
+                self.launch_version += line.split(':')[1].strip().lower()
+                break
+
+        if not self.launch_version:
             self.launch_version = 'unknown'
 
 
@@ -85,7 +97,7 @@ class MPIExec(LaunchMethod):
         env_string = ''
         env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
         if env_list:
-            if 'mvapich2' in self.launch_version:
+            if 'hydra' in self.launch_version:
                 env_string = '-envlist "%s"' % ','.join(env_list)
 
             elif 'openmpi' in self.launch_version:
@@ -102,10 +114,10 @@ class MPIExec(LaunchMethod):
                     env_string += '%s="$%s" ' % (var, var)
 
 
-        mpiexec_command = "%s -n %s %s %s %s" % (self.launch_command,
+        command = "%s -n %s %s %s %s" % (self.launch_command,
                   task_cores, hosts_string, env_string, task_command)
 
-        return mpiexec_command, None
+        return command, None
 
 
 # ------------------------------------------------------------------------------

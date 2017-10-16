@@ -54,18 +54,22 @@ class LaunchMethod(object):
         self._cfg     = cfg
         self._session = session
         self._log     = self._session._log
+        self._log.debug('create LM: %s', type(self))
 
         # A per-launch_method list of environment to remove from the CU environment
         self.env_removables = []
 
         self.launch_command = None
+        self.launch_version = None
         self._configure()
         # TODO: This doesn't make too much sense for LM's that use multiple
         #       commands, perhaps this needs to move to per LM __init__.
         if self.launch_command is None:
             raise RuntimeError("Launch command not found for LaunchMethod '%s'" % self.name)
 
-        self._log.info("Discovered launch command: '%s'.", self.launch_command)
+        self._log.debug('launch_command: %s [%s]', self.launch_command,
+                                                   self.launch_version)
+
 
 
     # --------------------------------------------------------------------------
