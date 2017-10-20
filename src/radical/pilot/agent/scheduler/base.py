@@ -36,7 +36,8 @@ class AgentSchedulingComponent(rpu.Component):
         self.slots = None
         self._lrms  = None
 
-        self._uid = ru.generate_id('agent.scheduling.%(counter)s', ru.ID_CUSTOM)
+        self._uid = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
+                                   ru.ID_CUSTOM)
 
         rpu.Component.__init__(self, cfg, session)
 
