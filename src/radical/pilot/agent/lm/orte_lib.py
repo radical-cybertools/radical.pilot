@@ -5,8 +5,7 @@ __license__   = "MIT"
 
 import os
 import time
-import threading
-import subprocess
+import subprocess as sp
 
 import radical.utils as ru
 
@@ -44,78 +43,68 @@ class ORTELib(LaunchMethod):
                the DVM.
         """
 
-        dvm_command = ru.which('orte-dvm')
-        if not dvm_command:
+        dvm_cmd  = ru.which('orte-dvm')
+        dvm_args = [ '--report-uri',            '-',
+                     '--mca odls_base_verbose', '100',
+                     '--mca rml_base_verbose',  '100',
+                     '--debug-devel',
+                   ]
+
+        if not dvm_cmd:
             raise Exception("Couldn't find orte-dvm")
 
         # Now that we found the orte-dvm, get ORTE version
-        orte_info = {}
-        oi_output = subprocess.check_output(['orte-info|grep "Open RTE"'], shell=True)
-        oi_lines = oi_output.split('\n')
-        for line in oi_lines:
+        info = dict()
+        out, _, _ = ru.sh_callout('orte-info | grep "Open RTE"', shell=True)
+
+        for line in out.splitlines():
             if not line:
                 continue
+
             key, val = line.split(':')
-            if 'Open RTE' == key.strip():
-                orte_info['version'] = val.strip()
-            elif  'Open RTE repo revision' == key.strip():
-                orte_info['version_detail'] = val.strip()
-        logger.info("Found Open RTE: %s / %s",
-                    orte_info['version'], orte_info['version_detail'])
+            key = key.strip()
+            val = val.strip()
+
+            if   key == 'Open RTE'              : info['version']        = val
+            elif key == 'Open RTE repo revision': info['version_detail'] = val
+
+        logger.info("Found Open RTE: %s [%s]",
+                    info['version'], info['version_detail'])
 
         # Use (g)stdbuf to disable buffering.
         # We need this to get the "DVM ready",
         # without waiting for orte-dvm to complete.
         # The command seems to be generally available on our Cray's,
         # if not, we can code some home-coooked pty stuff.
-        stdbuf_cmd =  cls._find_executable(['stdbuf', 'gstdbuf'])
+        stdbuf_cmd  = cls._find_executable(['stdbuf', 'gstdbuf'])
+        stdbuf_args = ["-oL"]
         if not stdbuf_cmd:
             raise Exception("Couldn't find (g)stdbuf")
-        stdbuf_arg = "-oL"
 
-        # Base command = (g)stdbuf <args> + orte-dvm + debug_args
-        dvm_args = [stdbuf_cmd, stdbuf_arg, dvm_command]
-
-        # Additional (debug) arguments to orte-dvm
-        debug_strings = [
-            #'--debug-devel',
-            #'--mca odls_base_verbose 100',
-            #'--mca rml_base_verbose 100',
-        ]
-        # Split up the debug strings into args and add them to the dvm_args
-        [dvm_args.extend(ds.split()) for ds in debug_strings]
-
+        command = [stdbuf_cmd] + stdbuf_args + [dvm_cmd] + dvm_args
         vm_size = len(lrms.node_list)
-        logger.info("Starting ORTE DVM on %d nodes with '%s' ...", vm_size, ' '.join(dvm_args))
-        dvm_process = subprocess.Popen(dvm_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
         dvm_uri = None
+
+        logger.info("Starting ORTE DVM on %d nodes with '%s'", vm_size, command)
+        dvm_process = sp.Popen(command, stdout=sp.PIPE, stderr=sp.STDOUT)
+
         while True:
 
+            # we expect the first line to contain `://` to contain the DVM URI,
+            # and nothing else
             line = dvm_process.stdout.readline().strip()
 
-            if line.startswith('VMURI:'):
-
-                if len(line.split(' ')) != 2:
-                    raise Exception("Unknown VMURI format: %s" % line)
-
-                label, dvm_uri = line.split(' ', 1)
-
-                if label != 'VMURI:':
-                    raise Exception("Unknown VMURI format: %s" % line)
-
+            if '://' in line:
+                dvm_uri = line
                 logger.info("ORTE DVM URI: %s" % dvm_uri)
 
             elif line == 'DVM ready':
-
+                logger.info("ORTE DVM startup successful!")
                 if not dvm_uri:
                     raise Exception("VMURI not found!")
-
-                logger.info("ORTE DVM startup successful!")
                 break
 
             else:
-
                 # Check if the process is still around,
                 # and log output in debug mode.
                 if None == dvm_process.poll():
@@ -154,7 +143,7 @@ class ORTELib(LaunchMethod):
         dvm_watcher.start()
 
         lm_info = {'dvm_uri'     : dvm_uri,
-                   'version_info': {name: orte_info}}
+                   'version_info': {name: info}}
 
         # we need to inform the actual LM instance about the DVM URI.  So we
         # pass it back to the LRMS which will keep it in an 'lm_info', which
@@ -165,8 +154,8 @@ class ORTELib(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     # NOTE: ORTE_LIB LM relies on the ORTE LaunchMethod's lrms_config_hook and
-    # lrms_shutdown_hook. These are "always" called, as even in the ORTE_LIB
-    # case we use ORTE for the sub-agent launch.
+    #       lrms_shutdown_hook. These are "always" called, as even in the
+    #       ORTE_LIB case we use ORTE for the sub-agent launch.
     #
     @classmethod
     def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
@@ -178,10 +167,11 @@ class ORTELib(LaunchMethod):
         if 'dvm_uri' in lm_info:
             try:
                 logger.info('terminating dvm')
-                orte_submit = ru.which('orterun')
-                if not orte_submit:
-                    raise Exception("Couldn't find orterun")
-                subprocess.Popen([orte_submit, "--hnp", lm_info['dvm_uri'], "--terminate"])
+                dvm_uri = lm_info['dvm_uri']
+                prun    = ru.which('prun')
+                if not prun:
+                    raise Exception("Couldn't find prun")
+                ru.sh_callout('%s --hnp "%s" --terminate' % (prun, dvm_uri))
 
             except Exception as e:
                 logger.exception('dmv termination failed')
@@ -191,7 +181,7 @@ class ORTELib(LaunchMethod):
     #
     def _configure(self):
 
-        self.launch_command = ru.which('orterun')
+        self.launch_command = ru.which('prun')
 
         # Request to create a background asynchronous event loop
         os.putenv("OMPI_MCA_ess_tool_async_progress", "enabled")
@@ -210,7 +200,7 @@ class ORTELib(LaunchMethod):
         task_argstr  = self._create_arg_string(task_args)
 
         if 'task_slots' not in opaque_slots:
-            raise RuntimeError('No task_slots to launch via %s: %s' \
+            raise RuntimeError('No task_slots to launch via %s: %s'
                                % (self.name, opaque_slots))
 
         task_slots = opaque_slots['task_slots']
@@ -224,20 +214,30 @@ class ORTELib(LaunchMethod):
         # On some Crays, like on ARCHER, the hostname is "archer_N".
         # In that case we strip off the part upto and including the underscore.
         #
-        # TODO: If this ever becomes a problem, i.e. we encounter "real" hostnames
-        #       with underscores in it, or other hostname mangling, we need to turn
-        #       this into a system specific regexp or so.
+        # TODO: If this ever becomes a problem, i.e. we encounter "real"
+        #       hostnames with underscores in it, or other hostname mangling,
+        #       we need to turn this into a system specific regexp or so.
         #
-        hosts_string = ",".join([slot.split(':')[0].rsplit('_', 1)[-1] for slot in task_slots])
-        export_vars  = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
+        hosts_string = ",".join([slot.split(':')[0].rsplit('_', 1)[-1]
+                                             for slot in task_slots])
+        export_vars  = ' '.join(['-x ' + var for var  in self.EXPORT_ENV_VARIABLES
+                                             if  var  in os.environ])
 
-        # Additional (debug) arguments to orterun
+        # Additional (debug) arguments to prun
         debug_strings = [
-            #'--debug-devel',
-            #'--mca oob_base_verbose 100',
-            #'--mca rml_base_verbose 100'
-        ]
-        orte_command = '%s %s %s --bind-to none -np %d -host %s' % (
-            self.launch_command, ' '.join(debug_strings), export_vars, task_cores if task_mpi else 1, hosts_string)
+                         '--debug-devel',
+                         '--mca oob_base_verbose 100',
+                         '--mca rml_base_verbose 100'
+                        ]
 
-        return orte_command, task_command
+        if task_mpi: np_flag = '-np %s' % task_cores
+        else       : np_flag = '-np 1'
+
+        command = '%s %s %s --bind-to none %s -host %s' % \
+                  (self.launch_command, ' '.join(debug_strings),
+                   export_vars, np_flag, hosts_string)
+
+        return command, task_command
+
+# ------------------------------------------------------------------------------
+

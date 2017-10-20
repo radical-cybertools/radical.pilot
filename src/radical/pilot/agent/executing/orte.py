@@ -79,19 +79,19 @@ class ORTE(AgentExecutingComponent):
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
-        self._cancel_lock    = threading.RLock()
-        self._cus_to_cancel  = list()
-        self._watch_queue    = Queue.Queue ()
+        self._cancel_lock   = threading.RLock()
+        self._cus_to_cancel = list()
+        self._watch_queue   = Queue.Queue()
+        self.task_map       = dict()
+        self.task_map_lock  = threading.Lock()
 
-        self._pilot_id = self._cfg['pilot_id']
+        self._pilot_id      = self._cfg['pilot_id']
 
-        self.task_map = {}
-        self.task_map_lock = threading.Lock()
 
         # we needs the LaunchMethods to construct commands.
-        assert(self._cfg['task_launch_method'] == \
-               self._cfg['mpi_launch_method' ] == \
-               "ORTE_LIB"), "ORTE_LIB spawner only works with ORTE_LIB LM's."
+        assert(self._cfg['task_launch_method'] ==
+               self._cfg['mpi_launch_method' ] == "ORTE_LIB"), \
+               "ORTE_LIB spawner only works with ORTE_LIB LM's."
 
         self._task_launcher = rp.agent.LM.create(name    = "ORTE_LIB",
                                                  cfg     = self._cfg,
@@ -100,7 +100,7 @@ class ORTE(AgentExecutingComponent):
         self._cu_environment   = self._populate_cu_environment()
 
         self.gtod   = "%s/gtod" % self._pwd
-        self.tmpdir = tempfile.gettempdir()
+        self.tmpdir = "%s/orte_tmp" % os.getcwd()
 
 
     # --------------------------------------------------------------------------
@@ -303,7 +303,7 @@ class ORTE(AgentExecutingComponent):
             raise RuntimeError('dvm_uri not in lm_info for %s: %s' \
                                % (self.name, opaque_slots))
 
-        dvm_uri    = opaque_slots['lm_info']['dvm_uri']
+        dvm_uri = opaque_slots['lm_info']['dvm_uri']
 
         # Notify orte that we are using threads and that we require mutexes
         orte_lib.opal_set_using_threads(True)
@@ -457,11 +457,11 @@ class ORTE(AgentExecutingComponent):
         with self.task_map_lock:
 
             self._prof.prof('exec_start', uid=cu['uid'])
-            rc = orte_lib.orte_submit_job(argv, index, orte_lib.launch_cb, 
-                                          self._myhandle, orte_lib.finish_cb, 
-                                          self._myhandle)
-            if rc:
-                raise Exception("submit job failed with error: %d" % rc)
+            ret = orte_lib.orte_submit_job(argv, index,
+                                           orte_lib.launch_cb, self._myhandle,
+                                           orte_lib.finish_cb, self._myhandle)
+            if ret:
+                raise Exception("submit job failed with error: %d" % ret)
 
             self.task_map[index[0]] = cu      # map ORTE index to CU
             self._prof.prof('exec_ok', uid=cu['uid'])

@@ -157,7 +157,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "pre_bootstrap_1"             : ["export OMPI=/home/merzky/radical/ompi/installed/2017_09_18_539f71d",
+        "pre_bootstrap_1"             : ["export OMPI=/home/merzky/radical/ompi/src/ompi/install",
                                          "export PATH=$OMPI/bin/:$PATH",
                                          "export LD_LIBRARY_PATH=$OMPI/lib/:$LD_LIBRARY_PATH",
                                          "export PKG_CONFIG_PATH=$OMPI/share/pkgconfig/:$PKG_CONFIG_PATH"]
@@ -188,10 +188,13 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "pre_bootstrap_1"             : ["export OMPI=/home/merzky/radical/ompi/installed/2017_09_18_539f71d",
+        "pre_bootstrap_1"             : ["export OMPI=/home/merzky/radical/ompi/src/ompi/install",
                                          "export PATH=$OMPI/bin/:$PATH",
                                          "export LD_LIBRARY_PATH=$OMPI/lib/:$LD_LIBRARY_PATH",
-                                         "export PKG_CONFIG_PATH=$OMPI/share/pkgconfig/:$PKG_CONFIG_PATH"]
+                                         "export PKG_CONFIG_PATH=$OMPI/share/pkgconfig/:$PKG_CONFIG_PATH"],
+        "pre_bootstrap_2"             : ["echo ==================== cffi",
+                                         "which python",
+                                         "python -c 'from orte_cffi import ffi, lib as orte_lib'"]
   }
 }
 
