@@ -18,13 +18,14 @@
 
 export OMPI_DIR=$HOME/ompi/                          # target location for install
 export OMPI_COMMIT=539f71d                           # OpenMPI commit to install
-export OMPI_COMMIT=master                            # OpenMPI commit to install
+export OMPI_COMMIT=master                            # 
+export OMPI_COMMIT=59682c2c49                        #
 export OMPI_LABEL=$(date '+%Y_%m_%d'_${OMPI_COMMIT}) # module flag for installed version
 export OMPI_LABEL=2017_10_05_master
 export MAKEFLAGS=-j16                                # speed up build on multicore machines
 
 
-# The environments below are only important during build time
+m # The environments below are only important during build time
 # and can generally point anywhere on the filesystem.
 
 orig=$(pwd)
