@@ -54,7 +54,7 @@ class IBRun(LaunchMethod):
 
         ibrun_offset = task_offsets
 
-        ibrun_command = "%s -n %s -o %d %s" % \
+        ibrun_command = "%s -n %s -o %d tacc_affinity %s" % \
                         (self.launch_command, task_cores,
                          ibrun_offset, task_command)
 
