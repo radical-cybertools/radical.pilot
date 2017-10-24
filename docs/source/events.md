@@ -162,6 +162,8 @@ indication on event ordering *within each individual component*.
 
 ### AgentExecutingComponent: (Component)
 
+    exec_mkdir          : creation of sandbox requested              (uid: uid)
+    exec_mkdir_done     : creation of sandbox completed              (uid: uid)
     exec_start          : pass to exec layer (orte, ssh, mpi...)     (uid: uid)
     exec_ok             : exec layer accepted task                   (uid: uid)
     exec_fail           : exec layer refused task                    (uid: uid, [RUNTIME], optional)
