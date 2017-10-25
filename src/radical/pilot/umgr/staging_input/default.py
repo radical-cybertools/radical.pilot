@@ -258,8 +258,8 @@ class Default(UMGRStagingInputComponent):
                   # ru.sh_callout('rm -r %s' % tmp_path)
 
                     # get a job service handle to the target resource and run
-                    # the untar command
-                    js_url = pilot['js_url']
+                    # the untar command.  Use the hop to skip the batch system
+                    js_url = pilot['js_hop']
                     self._log.debug(' === js  : %s', js_url)
 
                     if  js_url in self._js_cache:
