@@ -260,6 +260,7 @@ class Default(UMGRStagingInputComponent):
                     # get a job service handle to the target resource and run
                     # the untar command
                     js_url = pilot['js_url']
+                    self._log.debug(' === js  : %s', js_url)
 
                     if  js_url in self._js_cache:
                         js_tmp = self._js_cache[js_url]
