@@ -93,13 +93,23 @@ class ComputePilot(object):
         # `as_dict()` needs `pilot_dict` and other attributes.  Those should all
         # be available at this point (apart from the sandboxes), so we now
         # query for those sandboxes.
-        self._resource_sandbox = None
-        self._pilot_sandbox    = None
-        self._client_sandbox   = None
+        self._pilot_jsurl      = ru.Url()
+        self._pilot_jshop      = ru.Url()
+        self._resource_sandbox = ru.Url()
+        self._pilot_sandbox    = ru.Url()
+        self._client_sandbox   = ru.Url()
 
-        self._resource_sandbox = self._session._get_resource_sandbox(self.as_dict())
-        self._pilot_sandbox    = self._session._get_pilot_sandbox(self.as_dict())
+        self._log.debug(' ===== 1: %s [%s]', self._pilot_sandbox, type(self._pilot_sandbox))
+
+        pilot = self.as_dict()
+        self._log.debug(' ===== 2: %s [%s]', pilot['pilot_sandbox'], type(pilot['pilot_sandbox']))
+
+        self._pilot_jsurl, self._pilot_jshop \
+                               = self._session._get_jsurl           (pilot)
+        self._resource_sandbox = self._session._get_resource_sandbox(pilot)
+        self._pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
         self._client_sandbox   = self._session._get_client_sandbox()
+        self._log.debug(' ===== 3: %s [%s]', self._pilot_sandbox, type(self._pilot_sandbox))
 
 
     # --------------------------------------------------------------------------
@@ -199,10 +209,11 @@ class ComputePilot(object):
             'stdout':           self.stdout,
             'stderr':           self.stderr,
             'resource':         self.resource,
-            'resource_sandbox': str(self.resource_sandbox),
-            'pilot_sandbox':    str(self.pilot_sandbox),
-            'client_sandbox':   str(self.client_sandbox),
-            'sandbox':          self.sandbox,      # FIXME: this is redundant
+            'resource_sandbox': str(self._resource_sandbox),
+            'pilot_sandbox':    str(self._pilot_sandbox),
+            'client_sandbox':   str(self._client_sandbox),
+            'js_url':           str(self._pilot_jsurl),
+            'js_hop':           str(self._pilot_jshop),
             'description':      self.description,  # this is a deep copy
             'resource_details': self.resource_details
         }
@@ -348,10 +359,6 @@ class ComputePilot(object):
 
     # --------------------------------------------------------------------------
     #
-    @property
-    def sandbox(self):
-        return self.pilot_sandbox
-
     @property
     def pilot_sandbox(self):
         """

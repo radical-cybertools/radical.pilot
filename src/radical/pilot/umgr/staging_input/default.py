@@ -4,16 +4,15 @@ __license__   = "MIT"
 
 
 import os
+import pprint
 import tempfile
-import multithreading      as mt
+import threading     as mt
 
-import saga                as rs
-import radical.utils       as ru
+import saga          as rs
+import radical.utils as ru
 
-from .... import pilot     as rp
-from ...  import utils     as rpu
-from ...  import states    as rps
-from ...  import constants as rpc
+from ...   import states    as rps
+from ...   import constants as rpc
 
 from .base import UMGRStagingInputComponent
 
@@ -27,7 +26,7 @@ from ...staging_directives import complete_url
 #   tar : unpack a locally created tar which contains all sandboxes
 
 UNIT_BULK_MKDIR_THRESHOLD = 128
-UNIT_BULK_MKDIR_MECHANISM = 'saga'
+UNIT_BULK_MKDIR_MECHANISM = 'tar'
 
 
 # ==============================================================================
@@ -64,16 +63,17 @@ class Default(UMGRStagingInputComponent):
         # FIXME: this queue is inaccessible, needs routing via mongodb
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING, None)
 
-        # we subscribe to pilot state updates, as we learn about pilot
-        # configurations this way, which we can use for some optimizations.
-        self.register_subscriber(rpc.STATE_PUBSUB, self._base_state_cb)
+        # we subscribe to the command channel to learn about pilots being added
+        # to this unit manager.
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._base_command_cb)
+
 
 
     # --------------------------------------------------------------------------
     #
     def finalize_child(self):
 
-        self.unregister_subscriber(rpc.STATE_PUBSUB, self._base_state_cb)
+        self.unregister_subscriber(rpc.STATE_PUBSUB, self._base_command_cb)
 
         try:
             [fs.close() for fs in self._fs_cache.values()]
@@ -85,27 +85,28 @@ class Default(UMGRStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _base_state_cb(self, topic, msg):
+    def _base_command_cb(self, topic, msg):
 
-        # keep track of pilot state changes and updates self._pilots
-        # accordingly.  Unit state changes are be ignored.
+        # keep track of `add_pilots` commands and updates self._pilots
+        # accordingly.
 
         cmd = msg.get('cmd')
         arg = msg.get('arg')
 
-        # FIXME: get cmd string consistent throughout the code
-        if cmd not in ['update', 'state_update']:
-            return True
+        if cmd not in ['add_pilots']:
+            self._log.debug(' === skip cmd %s', cmd)
 
-        if not isinstance(arg, list): things = [arg]
-        else                        : things =  arg
+        pilots = arg.get('pilots', [])
 
-        pilots = [t for t in things if t['type'] == 'pilot']
+        if not isinstance(pilots, list):
+            pilots = [pilots]
 
-        for pilot in pilots:
-            pid = pilot['uid']
-            if pid not in self._pilots:
-                self._pilots[pid] = pilot
+        with self._pilots_lock:
+            for pilot in pilots:
+                pid = pilot['uid']
+                self._log.debug(' === add pilot %s', pid)
+                if pid not in self._pilots:
+                    self._pilots[pid] = pilot
 
         return True
 
@@ -182,24 +183,30 @@ class Default(UMGRStagingInputComponent):
         # now trigger the bulk mkdiur for all filesystems which have more than
         # a certain units tohandle in this bulk:
 
+        self._log.debug(pprint.pformat(units_by_pid))
+
         for pid in units_by_pid:
+
+            self._log.debug(' === pid %s', pid)
 
             with self._pilots_lock:
                 pilot = self._pilots.get(pid)
 
             if not pilot:
                 # we don't feel inclined to optimize for unknown pilots
+                self._log.debug(' === pid unknown - skip optimizion', pid)
                 continue
-            
-            session_sbox = self._session._get_session_sandbox(pilot)
-            pilot_sbox   = self._session._get_pilot_sandbox  (pilot)
-            unit_sboxes     = units_by_pid[pid]
 
+            session_sbox = self._session._get_session_sandbox(pilot)
+            self._log.debug(' ==== sbox: %s [%s]', session_sbox, type(session_sbox))
+            unit_sboxes  = units_by_pid[pid]
+
+            self._log.debug(' === %s >= %s ?', len(unit_sboxes), UNIT_BULK_MKDIR_THRESHOLD)
             if len(unit_sboxes) >= UNIT_BULK_MKDIR_THRESHOLD:
 
                 # no matter the bulk mechanism, we need a SAGA handle to the
                 # remote FS
-                sbox_fs      = ru.Url(session_sbox)
+                sbox_fs      = ru.Url(session_sbox)  # deep copy
                 sbox_fs.path = '/'
                 sbox_fs_str  = str(sbox_fs)
                 if sbox_fs_str not in self._fs_cache:
@@ -214,6 +221,8 @@ class Default(UMGRStagingInputComponent):
                 #    both
                 if UNIT_BULK_MKDIR_MECHANISM == 'saga':
 
+                    self._log.debug(' === saga')
+
                     tc = rs.task.Container()
                     for sbox in unit_sboxes:
                         tc.add(saga_dir.make_dir(sbox, ttype=rs.TASK))
@@ -221,37 +230,36 @@ class Default(UMGRStagingInputComponent):
                     tc.wait()
 
                 elif UNIT_BULK_MKDIR_MECHANISM == 'tar':
+                    self._log.debug(' === tar')
 
                     tmp_path = tempfile.mkdtemp(prefix='rp_agent_tar_dir')
                     tmp_dir  = os.path.abspath(tmp_path)
-                    tar_name = '%s.%s.tgz' % (self.uid)
+                    tar_name = '%s.%s.tgz' % (self._session.uid, self.uid)
                     tar_tgt  = '%s/%s'     % (tmp_dir, tar_name)
                     tar_url  = ru.Url('file://localhost/%s' % tar_tgt)
 
                     for sbox in unit_sboxes:
-                        os.makedirs('%s/%s' % (tmp_dir, sbox))
+                        os.makedirs('%s/%s' % (tmp_dir, ru.Url(sbox).path))
 
                     cmd = "cd %s && tar zchf %s *" % (tmp_dir, tar_tgt)
                     out, err, ret = ru.sh_callout(cmd, shell=True)
+                    self._log.debug(' === tar : %s', cmd)
+                    self._log.debug(' === tar : %s\n---\n%s\n---\n%s', out, err, ret)
 
                     if ret:
                         raise RuntimeError('failed callout %s: %s' % (cmd, err))
 
-                    tar_rem      = rs.Url(fs_url)
-                    tar_rem.path = "%s/%s" % (session_sbox, tar_name)
+                    tar_rem_path = "%s/%s" % (str(session_sbox), tar_name)
 
-                    saga_dir.copy(tar_url, tar_rem, flags=rs.filesystem.CREATE_PARENTS)
+                    self._log.debug(' === sbox: %s [%s]', session_sbox, type(session_sbox))
+                    self._log.debug(' === copy: %s -> %s', tar_url, tar_rem_path)
+                    saga_dir.copy(tar_url, tar_rem_path, flags=rs.filesystem.CREATE_PARENTS)
 
-                    ru.sh_callout('rm -r %s' % tmp_path)
+                  # ru.sh_callout('rm -r %s' % tmp_path)
 
                     # get a job service handle to the target resource and run
                     # the untar command
-                    resrc   = pilot['description']['resource']
-                    schema  = pilot['description']['access_schema']
-                    rcfg    = self._session.get_resource_config(resrc, schema)
-                    js_ep   = rcfg['job_manager_endpoint']
-                    js_hop  = rcfg.get('job_manager_hop', js_ep)
-                    js_url  = rs.Url(js_hop)
+                    js_url = pilot['js_url']
 
                     if  js_url in self._js_cache:
                         js_tmp = self._js_cache[js_url]
@@ -259,16 +267,19 @@ class Default(UMGRStagingInputComponent):
                         js_tmp = rs.job.Service(js_url, session=self._session)
                         self._js_cache[js_url] = js_tmp
 
-                    cmd = "tar zmxvf %s/%s -C %s" % \
-                            (session_sbox, tar_name, session_sbox)
-                    j = js_tmp.run_job(cmd)
+                    cmd = "tar zmxvf %s/%s -C /" % (session_sbox.path, tar_name)
+                    j   = js_tmp.run_job(cmd)
                     j.wait()
+                    self._log.debug(' === untar : %s', cmd)
+                    self._log.debug(' === untar : %s\n---\n%s\n---\n%s',
+                            j.get_stdout_string(), j.get_stderr_string(),
+                            j.exit_code)
 
 
         if no_staging_units:
 
             # nothing to stage, push to the agent
-            self.advance(no_staging_units, rps.AGENT_STAGING_INPUT_PENDING, 
+            self.advance(no_staging_units, rps.AGENT_STAGING_INPUT_PENDING,
                          publish=True, push=True)
 
         for unit,actionables in staging_units:
