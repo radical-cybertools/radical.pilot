@@ -843,9 +843,11 @@ class Session(rs.Session):
                 raise RuntimeError("schema %s unknown for resource %s" \
                                   % (schema, resource))
 
+            self._log.debug(' ===== merge %s [%s]', resource, schema)
             for key in resource_cfg[schema]:
                 # merge schema specific resource keys into the
                 # resource config
+                self._log.debug(' ===== merge %s: %s', key, resource_cfg[schema][key])
                 resource_cfg[key] = resource_cfg[schema][key]
 
         return resource_cfg
@@ -1062,6 +1064,7 @@ class Session(rs.Session):
         resrc   = pilot['description']['resource']
         schema  = pilot['description']['access_schema']
         rcfg    = self.get_resource_config(resrc, schema)
+        self._log.debug(' ===== rcfg: %s', pprint.pformat(rcfg))
         js_url  = rs.Url(rcfg.get('job_manager_endpoint'))
         js_hop  = rs.Url(rcfg.get('job_manager_hop', js_url))
 
