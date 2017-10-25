@@ -53,7 +53,7 @@
             "filesystem_endpoint"     : "sftp://titan.ccs.ornl.gov/"
         },
         "local"                       : {
-            "filesystem_endpoint"     : "fork://localhost/",
+            "job_manager_hop"         : "fork://localhost/",
             "job_manager_endpoint"    : "torque://localhost",
             "filesystem_endpoint"     : "file://localhost/"
         },
@@ -100,7 +100,7 @@
             "filesystem_endpoint"     : "sftp://titan.ccs.ornl.gov/"
         },
         "local"                       : {
-            "filesystem_endpoint"     : "fork://localhost/",
+            "job_manager_hop"         : "fork://localhost/",
             "job_manager_endpoint"    : "torque://localhost",
             "filesystem_endpoint"     : "file://localhost/"
         },
