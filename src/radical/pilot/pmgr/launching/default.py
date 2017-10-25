@@ -482,6 +482,7 @@ class Default(PMGRLaunchingComponent):
 
         session_sandbox = self._session._get_session_sandbox(pilots[0]).path
 
+
         # we will create the session sandbox before we untar, so we can use that
         # as workdir, and pack all paths relative to that session sandbox.  That
         # implies that we have to recheck that all URLs in fact do point into
@@ -544,11 +545,8 @@ class Default(PMGRLaunchingComponent):
 
         shutil.rmtree(tmp_dir)
 
-
-        # we now need to untar on the target machine -- if needed use the hop
-        js_ep   = rcfg['job_manager_endpoint']
-        js_hop  = rcfg.get('job_manager_hop', js_ep)
-        js_url  = rs.Url(js_hop)
+        # we now need to untar on the target machine.
+        js_url = ru.Url(pilots[0]['js_url'])
 
         # well, we actually don't need to talk to the lrms, but only need
         # a shell on the headnode.  That seems true for all LRMSs we use right
@@ -584,7 +582,8 @@ class Default(PMGRLaunchingComponent):
             self._prof.prof('submission_start', uid=pilot['uid'])
 
         # look up or create JS for actual pilot submission.  This might result
-        # in the same JS, or not.
+        # in the same js url as above, or not.
+        js_ep  = rcfg['job_manager_endpoint']
         with self._cache_lock:
             if js_ep in self._saga_js_cache:
                 js = self._saga_js_cache[js_ep]
