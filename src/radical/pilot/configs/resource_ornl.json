@@ -4,14 +4,17 @@
         "notes"                       : "Requires the use of an RSA SecurID on every connection.",
         "schemas"                     : ["local", "ssh", "go"],
         "ssh"                         : {
-            "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
+            "job_manager_hop"         : "ssh://titan.ccs.ornl.gov/",
+            "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov/",
             "filesystem_endpoint"     : "sftp://titan.ccs.ornl.gov/"
         },
         "local"                       : {
-            "job_manager_endpoint"    : "torque://localhost",
+            "job_manager_hop"         : "fork://localhost/",
+            "job_manager_endpoint"    : "torque://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
         "go"                          : {
+            "job_manager_hop"         : "ssh://titan.ccs.ornl.gov/",
             "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
             "filesystem_endpoint"     : "go://olcf#dtn/"
         },
@@ -33,9 +36,11 @@
         "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
+        "virtenv_mode"                : "use",
+        "virtenv"                     : "/lustre/atlas2/csc230/world-shared/ve.rp.titan.20017.10.06",
         "stage_cacerts"               : true,
-        "python_dist"                 : "default"
+        "python_dist"                 : "default",
+        "virtenv_dist"                : "system"
     },
 
     "titan_orte": {
@@ -43,14 +48,17 @@
         "notes"                       : "Requires the use of an RSA SecurID on every connection.",
         "schemas"                     : ["ssh", "local", "go"],
         "ssh"                         : {
+            "job_manager_hop"         : "ssh://titan.ccs.ornl.gov/",
             "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
             "filesystem_endpoint"     : "sftp://titan.ccs.ornl.gov/"
         },
         "local"                       : {
+            "job_manager_hop"         : "fork://localhost/",
             "job_manager_endpoint"    : "torque://localhost",
             "filesystem_endpoint"     : "file://localhost/"
         },
         "go"                          : {
+            "job_manager_hop"         : "ssh://titan.ccs.ornl.gov/",
             "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
             "filesystem_endpoint"     : "go://olcf#dtn/"
         },
@@ -63,6 +71,7 @@
         "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",
+        "cores_per_node"              : "16",
         "pre_bootstrap_1"             : [
             "module swap PrgEnv-pgi PrgEnv-gnu",
             "module load python",
@@ -74,9 +83,11 @@
         "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
+        "virtenv_mode"                : "use",
+        "virtenv"                     : "/lustre/atlas2/csc230/world-shared/ve.rp.titan.20017.10.06",
         "stage_cacerts"               : true,
-        "python_dist"                 : "default"
+        "python_dist"                 : "default",
+        "virtenv_dist"                : "system"
     },
 
     "titan_ortelib": {
@@ -84,14 +95,17 @@
         "notes"                       : "Requires the use of an RSA SecurID on every connection.",
         "schemas"                     : ["ssh", "local", "go"],
         "ssh"                         : {
+            "job_manager_hop"         : "ssh://titan.ccs.ornl.gov/",
             "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
             "filesystem_endpoint"     : "sftp://titan.ccs.ornl.gov/"
         },
         "local"                       : {
+            "job_manager_hop"         : "fork://localhost/",
             "job_manager_endpoint"    : "torque://localhost",
             "filesystem_endpoint"     : "file://localhost/"
         },
         "go"                          : {
+            "job_manager_hop"         : "ssh://titan.ccs.ornl.gov/",
             "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
             "filesystem_endpoint"     : "go://olcf#dtn/"
         },
@@ -114,11 +128,12 @@
         ],
         "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
         "valid_roots"                 : ["/lustre/atlas/scratch"],
-        "rp_version"                  : "debug",
         "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
+        "virtenv_mode"                : "use",
+        "virtenv"                     : "/lustre/atlas2/csc230/world-shared/ve.rp.titan.20017.10.06",
         "stage_cacerts"               : true,
-        "python_dist"                 : "default"
+        "python_dist"                 : "default",
+        "virtenv_dist"                : "system"
     }
 }
 
