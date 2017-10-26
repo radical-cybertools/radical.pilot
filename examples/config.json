@@ -7,6 +7,13 @@
         "cores"    : 2
     },
 
+    "local.localhost_orte" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 2
+    },
+
     "local.localhost_anaconda" : {
         "project"  : null,
         "queue"    : null,
@@ -109,7 +116,21 @@
         "project"  : "TG-MCB090174",
         "queue"    : "workq",
         "schema"   : "gsissh",
-        "cores"    : 64
+        "cores"    : 80
+    },
+
+    "xsede.supermic_orte" : {
+        "project"  : "TG-CCR140028",
+        "queue"    : "workq",
+        "schema"   : "gsissh",
+        "cores"    : 80
+    },
+
+    "xsede.supermic_ortelib" : {
+        "project"  : "TG-CCR140028",
+        "queue"    : "workq",
+        "schema"   : "gsissh",
+        "cores"    : 80
     },
 
     "xsede.stampede" : {

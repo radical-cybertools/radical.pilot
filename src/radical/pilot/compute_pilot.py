@@ -71,7 +71,7 @@ class ComputePilot(object):
         # initialize state
         self._pmgr          = pmgr
         self._session       = self._pmgr.session
-        self._prof          = self._session.prof
+        self._prof          = self._session._prof
         self._uid           = ru.generate_id('pilot.%(counter)04d', ru.ID_CUSTOM)
         self._state         = rps.NEW
         self._log           = pmgr._log
@@ -93,27 +93,37 @@ class ComputePilot(object):
         # `as_dict()` needs `pilot_dict` and other attributes.  Those should all
         # be available at this point (apart from the sandboxes), so we now
         # query for those sandboxes.
-        self._resource_sandbox = None
-        self._pilot_sandbox    = None
-        self._client_sandbox   = None
+        self._pilot_jsurl      = ru.Url()
+        self._pilot_jshop      = ru.Url()
+        self._resource_sandbox = ru.Url()
+        self._pilot_sandbox    = ru.Url()
+        self._client_sandbox   = ru.Url()
 
-        self._resource_sandbox = self._session._get_resource_sandbox(self.as_dict())
-        self._pilot_sandbox    = self._session._get_pilot_sandbox(self.as_dict())
+        self._log.debug(' ===== 1: %s [%s]', self._pilot_sandbox, type(self._pilot_sandbox))
+
+        pilot = self.as_dict()
+        self._log.debug(' ===== 2: %s [%s]', pilot['pilot_sandbox'], type(pilot['pilot_sandbox']))
+
+        self._pilot_jsurl, self._pilot_jshop \
+                               = self._session._get_jsurl           (pilot)
+        self._resource_sandbox = self._session._get_resource_sandbox(pilot)
+        self._pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
         self._client_sandbox   = self._session._get_client_sandbox()
+        self._log.debug(' ===== 3: %s [%s]', self._pilot_sandbox, type(self._pilot_sandbox))
 
 
     # --------------------------------------------------------------------------
     #
     def __repr__(self):
 
-        return str(self.as_dict())
+        return str(self)
 
 
     # --------------------------------------------------------------------------
     #
     def __str__(self):
 
-        return [self.uid, self.resource, self.state]
+        return str([self.uid, self.resource, self.state])
 
 
     # --------------------------------------------------------------------------
@@ -123,7 +133,7 @@ class ComputePilot(object):
         self._log.info("[Callback]: pilot %s state: %s.", self.uid, self.state)
 
         if self.state == rps.FAILED and self._exit_on_error:
-            self._log.error("[Callback]: pilot '%s' failed", self.uid)
+            self._log.error(" === [Callback]: pilot '%s' failed (exit on error)", self.uid)
             # FIXME: how to tell main?  Where are we in the first place?
           # ru.cancel_main_thread('int')
             raise RuntimeError('pilot %s failed - fatal!' % self.uid)
@@ -140,6 +150,8 @@ class ComputePilot(object):
         Return True if state changed, False otherwise
         """
 
+        if pilot_dict['uid'] != self.uid:
+            self._log.error('incorrect uid: %s / %s', pilot_dict['uid'], self.uid)
         assert(pilot_dict['uid'] == self.uid), 'update called on wrong instance'
 
         # NOTE: this method relies on state updates to arrive in order, and
@@ -148,8 +160,16 @@ class ComputePilot(object):
         target  = pilot_dict['state']
 
         if target not in [rps.FAILED, rps.CANCELED]:
-            assert(rps._pilot_state_value(target) - rps._pilot_state_value(current)), \
+
+
+            try:
+                assert(rps._pilot_state_value(target) - rps._pilot_state_value(current)), \
                             'invalid state transition'
+            except:
+                self._log.error(' === %s: invalid state transition %s -> %s', 
+                        self.uid, current, target)
+                raise
+
             # FIXME
 
         self._state = target
@@ -164,6 +184,7 @@ class ComputePilot(object):
             cb_data = cb_val['cb_data']
 
           # print ' ~~~ call pcbs: %s -> %s : %s' % (self.uid, self.state, cb_name)
+            self._log.debug('%s calls cb %s', self.uid, cb)
             
             if cb_data: cb(self, self.state, cb_data)
             else      : cb(self, self.state)
@@ -188,10 +209,11 @@ class ComputePilot(object):
             'stdout':           self.stdout,
             'stderr':           self.stderr,
             'resource':         self.resource,
-            'resource_sandbox': str(self.resource_sandbox),
-            'pilot_sandbox':    str(self.pilot_sandbox),
-            'client_sandbox':   str(self.client_sandbox),
-            'sandbox':          self.sandbox,      # FIXME: this is redundant
+            'resource_sandbox': str(self._resource_sandbox),
+            'pilot_sandbox':    str(self._pilot_sandbox),
+            'client_sandbox':   str(self._client_sandbox),
+            'js_url':           str(self._pilot_jsurl),
+            'js_hop':           str(self._pilot_jshop),
             'description':      self.description,  # this is a deep copy
             'resource_details': self.resource_details
         }
@@ -337,10 +359,6 @@ class ComputePilot(object):
 
     # --------------------------------------------------------------------------
     #
-    @property
-    def sandbox(self):
-        return self.pilot_sandbox
-
     @property
     def pilot_sandbox(self):
         """
@@ -561,13 +579,13 @@ class ComputePilot(object):
 
             assert(action in [COPY, LINK, MOVE, TRANSFER])
 
-            self._prof.prof('staging_begin', uid=self.uid, msg=did)
+            self._prof.prof('staging_in_start', uid=self.uid, msg=did)
 
             src = complete_url(src, src_context, self._log)
             tgt = complete_url(tgt, tgt_context, self._log)
 
             if action in [COPY, LINK, MOVE]:
-                self._prof.prof('staging_end', uid=self.uid, msg=did)
+                self._prof.prof('staging_in_fail', uid=self.uid, msg=did)
                 raise ValueError("invalid action '%s' on pilot level" % action)
 
             self._log.info('transfer %s to %s', src, tgt)
@@ -590,7 +608,7 @@ class ComputePilot(object):
             saga_dir = self._cache[key]
             saga_dir.copy(src, tgt, flags=flags)
 
-            self._prof.prof('staging_end', uid=self.uid, msg=did)
+            self._prof.prof('staging_in_stop', uid=self.uid, msg=did)
 
 
 # ------------------------------------------------------------------------------

@@ -19,7 +19,7 @@ from ...  import states    as rps
 from ...  import constants as rpc
 from .base import AgentExecutingComponent
 
-# ----------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 def rec_makedir(target):
 
@@ -88,26 +88,16 @@ class ORTE(AgentExecutingComponent):
         self.task_map = {}
         self.task_map_lock = threading.Lock()
 
-        # run watcher thread
-        self._watcher = threading.Thread(target=self._watch, name="Watcher")
-        self._watcher.daemon = True
-        self._watcher.start ()
+        # we needs the LaunchMethods to construct commands.
+        assert(self._cfg['task_launch_method'] == \
+               self._cfg['mpi_launch_method' ] == \
+               "ORTE_LIB"), "ORTE_LIB spawner only works with ORTE_LIB LM's."
 
-        # The AgentExecutingComponent needs the LaunchMethods to construct
-        # commands.
-        if not (self._cfg['task_launch_method'] ==
-                self._cfg['mpi_launch_method'] ==
-                "ORTE_LIB"):
-            raise Exception("ORTE_LIB spawner only works with ORTE_LIB LM's.")
-
-        self._task_launcher = rp.agent.LM.create(
-            name    = "ORTE_LIB",
-            cfg     = self._cfg,
-            session = self._session)
-
+        self._task_launcher = rp.agent.LM.create(name    = "ORTE_LIB",
+                                                 cfg     = self._cfg,
+                                                 session = self._session)
         self._orte_initialized = False
-
-        self._cu_environment = self._populate_cu_environment()
+        self._cu_environment   = self._populate_cu_environment()
 
         self.gtod   = "%s/gtod" % self._pwd
         self.tmpdir = tempfile.gettempdir()
@@ -209,7 +199,8 @@ class ORTE(AgentExecutingComponent):
             if not launcher:
                 raise RuntimeError("no launcher (mpi=%s)" % cu['description']['mpi'])
 
-            self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
+            self._log.debug("Launching unit with %s (%s).", 
+                            launcher.name, launcher.launch_command)
 
             assert(cu['opaque_slots']), 'unit unscheduled'
             self._prof.prof('exec', msg='unit launch', uid=cu['_id'])
@@ -239,28 +230,24 @@ class ORTE(AgentExecutingComponent):
 
         with self.task_map_lock:
             cu = self.task_map[task]
-        cu_id = cu['_id']
+        uid = cu['uid']
 
         if status:
             with self.task_map_lock:
                 del self.task_map[task]
 
             # unit launch failed
-            self._prof.prof('final', msg="startup failed", uid=cu_id)
-            self._log.debug("[%s] Unit %s startup failed: %s." % (time.ctime(), cu_id, status))
-
-            # Free the Slots, Flee the Flots, Ree the Frots!
+            self._prof.prof('exec_fail', uid=uid)
+            self._log.error("unit %s startup failed: %s", uid, status)
             self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             cu['target_state'] = rps.FAILED
-            self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
+            self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, 
+                         publish=True, push=True)
 
         else:
             cu['started'] = time.time()
-
-            self._prof.prof('passed', msg="ExecWatcher picked up unit", uid=cu_id)
-            self._log.debug("[%s] Unit %s has spawned." % (time.ctime(), cu_id))
-
+            self._log.debug("unit %s startup ok", uid)
             self.advance(cu, rps.AGENT_EXECUTING, publish=True, push=False)
 
 
@@ -274,37 +261,33 @@ class ORTE(AgentExecutingComponent):
             cu = self.task_map[task]
             del self.task_map[task]
 
-        self._prof.prof('exec', msg='execution complete', uid=cu['_id'])
-
-        # we have a valid return code -- unit is final
-        self._log.info("Unit %s has return code %s.", cu['_id'], exit_code)
+        self._prof.prof('exec_stop', uid=uid)
+        self._log.info("unit %s finished [%s]", cu['uid'], exit_code)
 
         cu['exit_code'] = exit_code
         cu['finished']  = timestamp
 
-        # Free the Slots, Flee the Flots, Ree the Frots!
         self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
         if exit_code != 0:
-            # The unit failed - fail after staging output
-            self._prof.prof('final', msg="execution failed", uid=cu['_id'])
+            # unit failed - fail after staging output
             cu['target_state'] = rps.FAILED
 
         else:
-            # The unit finished cleanly, see if we need to deal with
-            # output data.  We always move to stageout, even if there are no
-            # directives -- at the very least, we'll upload stdout/stderr
-            self._prof.prof('final', msg="execution succeeded", uid=cu['_id'])
+            # unit finished cleanly.  We always move to stageout, even if there 
+            # are no staging directives -- at the very least, we'll upload
+            # stdout/stderr
             cu['target_state'] = rps.DONE
 
-        # TODO: push=False because this is a callback?
-        self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
+        self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, 
+                     publish=True, push=True)
 
 
     # --------------------------------------------------------------------------
     #
     def init_orte(self, cu):
-        # TODO: it feels as a hack to get the DVM URI from the first CU
+
+        # FIXME: it feels as a hack to get the DVM URI from the CU
 
         opaque_slots = cu['opaque_slots']
 
@@ -322,13 +305,13 @@ class ORTE(AgentExecutingComponent):
 
         dvm_uri    = opaque_slots['lm_info']['dvm_uri']
 
-        # Notify the runtime that we are using threads and that we require mutexes
+        # Notify orte that we are using threads and that we require mutexes
         orte_lib.opal_set_using_threads(True)
 
         argv_keepalive = [
-            ffi.new("char[]", "RADICAL-Pilot"), # Will be stripped off by the library
+            ffi.new("char[]", "RADICAL-Pilot"), # will be stripped off by lib
             ffi.new("char[]", "--hnp"), ffi.new("char[]", str(dvm_uri)),
-            ffi.NULL, # Required
+            ffi.NULL, # required
         ]
         argv = ffi.new("char *[]", argv_keepalive)
         ret = orte_lib.orte_submit_init(3, argv, ffi.NULL)
@@ -342,48 +325,49 @@ class ORTE(AgentExecutingComponent):
     #
     def spawn(self, launcher, cu):
 
-        self._prof.prof('spawn', msg='unit spawn', uid=cu['_id'])
-
         # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
         #       class definition.
         sandbox = '%s/%s' % (self._pwd, cu['uid'])
 
         if False:
-            cu_tmpdir = '%s/%s' % (self.tmpdir, cu['_id'])
+            cu_tmpdir = '%s/%s' % (self.tmpdir, cu['uid'])
         else:
             cu_tmpdir = sandbox
 
         rec_makedir(cu_tmpdir)
 
         # TODO: pre_exec
-        #     # Before the Big Bang there was nothing
-        #     if cu['description']['pre_exec']:
-        #         fail = ' (echo "pre_exec failed"; false) || exit'
-        #         pre  = ''
-        #         for elem in cu['description']['pre_exec']:
-        #             pre += "%s || %s\n" % (elem, fail)
-        #         # Note: extra spaces below are for visual alignment
-        #         launch_script.write("# Pre-exec commands\n")
-        #         if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #             launch_script.write("echo pre  start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
-        #         launch_script.write(pre)
-        #         if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #             launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
+        # # Before the Big Bang there was nothing
+        # if cu['description']['pre_exec']:
+        #     fail = ' (echo "pre_exec failed"; false) || exit'
+        #     pre  = ''
+        #     for elem in cu['description']['pre_exec']:
+        #         pre += "%s || %s\n" % (elem, fail)
+        #     # Note: extra spaces below are for visual alignment
+        #     launch_script.write("# Pre-exec commands\n")
+        #     if 'RADICAL_PILOT_PROFILE' in os.environ:
+        #         launch_script.write("echo pre  start `%s` >> %s/PROF\n"\
+        #                           % (cu['gtod'], cu_tmpdir))
+        #     launch_script.write(pre)
+        #     if 'RADICAL_PILOT_PROFILE' in os.environ:
+        #         launch_script.write("echo pre  stop `%s` >> %s/PROF\n" \
+        #                           % (cu['gtod'], cu_tmpdir))
 
         # TODO: post_exec
-        #     # After the universe dies the infrared death, there will be nothing
-        #     if cu['description']['post_exec']:
-        #         fail = ' (echo "post_exec failed"; false) || exit'
-        #         post = ''
-        #         for elem in cu['description']['post_exec']:
-        #             post += "%s || %s\n" % (elem, fail)
-        #         launch_script.write("# Post-exec commands\n")
-        #         if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #             launch_script.write("echo post start `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
-        #         launch_script.write('%s\n' % post)
-        #         if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #             launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (cu['gtod'], cu_tmpdir))
-
+        # # After the universe dies the infrared death, there will be nothing
+        # if cu['description']['post_exec']:
+        #     fail = ' (echo "post_exec failed"; false) || exit'
+        #     post = ''
+        #     for elem in cu['description']['post_exec']:
+        #         post += "%s || %s\n" % (elem, fail)
+        #     launch_script.write("# Post-exec commands\n")
+        #     if 'RADICAL_PILOT_PROFILE' in os.environ:
+        #         launch_script.write("echo post start `%s` >> %s/PROF\n" \
+        #                           % (cu['gtod'], cu_tmpdir))
+        #     launch_script.write('%s\n' % post)
+        #     if 'RADICAL_PILOT_PROFILE' in os.environ:
+        #         launch_script.write("echo post stop  `%s` >> %s/PROF\n" \
+        #                           % (cu['gtod'], cu_tmpdir))
 
 
         # The actual command line, constructed per launch-method
@@ -411,7 +395,7 @@ class ORTE(AgentExecutingComponent):
             "RP_PILOT_ID=%s" % self._cfg['pilot_id'],
             "RP_AGENT_ID=%s" % self._cfg['agent_name'],
             "RP_SPAWNER_ID=%s" % self.uid,
-            "RP_UNIT_ID=%s" % cu['_id']
+            "RP_UNIT_ID=%s" % cu['uid']
         ]
         for env in rp_envs:
             arg_list.append(ffi.new("char[]", "-x"))
@@ -440,18 +424,22 @@ class ORTE(AgentExecutingComponent):
         arg_list.append(ffi.new("char[]", "sh"))
         arg_list.append(ffi.new("char[]", "-c"))
         if 'RADICAL_PILOT_PROFILE' in os.environ:
-            task_command = "echo script start_script `%s` >> %s/PROF; " % (self.gtod, cu_tmpdir) + \
-                      "echo script after_cd `%s` >> %s/PROF; " % (self.gtod, cu_tmpdir) + \
-                      task_command + \
-                      "; echo script after_exec `%s` >> %s/PROF" % (self.gtod, cu_tmpdir)
-        arg_list.append(ffi.new("char[]", str("%s; exit $RETVAL" % str(task_command))))
+            task_command = "echo script start_script `%s` >> %s/PROF; " \
+                         % (self.gtod, cu_tmpdir) \
+                         + "echo script after_cd `%s` >> %s/PROF; " \
+                         % (self.gtod, cu_tmpdir) \
+                         + task_command \
+                         + "; echo script after_exec `%s` >> %s/PROF" \
+                         % (self.gtod, cu_tmpdir)
+        arg_list.append(ffi.new("char[]", str("%s; exit $RETVAL" \
+                                            % str(task_command))))
 
-        self._log.debug("Launching unit %s via %s %s", cu['_id'], orte_command, task_command)
+        self._log.debug("Launching unit %s via %s %s", cu['uid'], 
+                        orte_command, task_command)
 
         # NULL termination, required by ORTE
         arg_list.append(ffi.NULL)
         argv = ffi.new("char *[]", arg_list)
-        self._prof.prof('command', msg='launch command constructed', uid=cu['_id'])
 
         # stdout/stderr filenames can't be set with orte
         # TODO: assert here or earlier?
@@ -459,7 +447,8 @@ class ORTE(AgentExecutingComponent):
         # assert cu['description'].get('stderr') == None
 
         # prepare stdout/stderr
-        # TODO: when mpi==true && cores>1 there will be multiple files that need to be concatenated.
+        # TODO: when mpi==True && cores>1 there will be multiple files that need
+        #       to be concatenated.
         cu['stdout_file'] = os.path.join(cu_tmpdir, 'rank.0/stdout')
         cu['stderr_file'] = os.path.join(cu_tmpdir, 'rank.0/stderr')
 
@@ -467,52 +456,18 @@ class ORTE(AgentExecutingComponent):
         index = ffi.new("int *")
         with self.task_map_lock:
 
-            rc = orte_lib.orte_submit_job(argv, index, orte_lib.launch_cb, self._myhandle, orte_lib.finish_cb, self._myhandle)
+            self._prof.prof('exec_start', uid=cu['uid'])
+            rc = orte_lib.orte_submit_job(argv, index, orte_lib.launch_cb, 
+                                          self._myhandle, orte_lib.finish_cb, 
+                                          self._myhandle)
             if rc:
                 raise Exception("submit job failed with error: %d" % rc)
-            task = index[0]
 
-            # Record the mapping of ORTE index to CU
-            self.task_map[task] = cu
+            self.task_map[index[0]] = cu      # map ORTE index to CU
+            self._prof.prof('exec_ok', uid=cu['uid'])
 
-            # Record the mapping of ORTE index to CU
-            self.task_map[task] = cu
+        self._log.debug("Task %d submitted!", cu['uid'])
 
-        self._prof.prof('spawn', msg='spawning passed to orte', uid=cu['_id'])
 
-        self._log.debug("Task %d submitted!", task)
+# ------------------------------------------------------------------------------
 
-        # Put on the watch queue list to enable the unit to be canceled
-        self._watch_queue.put(cu)
-
-    # --------------------------------------------------------------------------
-    #
-    def _watch(self):
-
-        self._prof.prof('run', uid=self._pilot_id)
-        try:
-            while not self._terminate.is_set():
-                try:
-                    cu = self._watch_queue.get_nowait()
-
-                    if cu['_id'] in self._cus_to_cancel:
-
-                        # We got a request to cancel this cu
-                        # TODO: What is the equivalent on ORTE?
-                        # cu['proc'].kill()
-
-                        with self._cancel_lock:
-                            self._cus_to_cancel.remove(cu['_id'])
-
-                        self._prof.prof('final', msg="execution canceled", uid=cu['_id'])
-
-                        self.publish('unschedule', cu)
-                        self.advance(cu, rps.CANCELED, publish=True, push=False)
-
-                except Queue.Empty:
-                    # nothing found -- no problem
-                    time.sleep(1)
-
-        except Exception as e:
-            self._log.exception("Error in ExecWorker watch loop (%s)" % e)
-            # FIXME: this should signal the ExecWorker for shutdown...

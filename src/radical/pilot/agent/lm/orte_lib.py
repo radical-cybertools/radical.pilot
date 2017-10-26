@@ -77,11 +77,14 @@ class ORTELib(LaunchMethod):
         dvm_args = [stdbuf_cmd, stdbuf_arg, dvm_command]
 
         # Additional (debug) arguments to orte-dvm
-        debug_strings = [
-            #'--debug-devel',
-            #'--mca odls_base_verbose 100',
-            #'--mca rml_base_verbose 100',
-        ]
+        if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
+            debug_strings = [ # '--debug-devel',
+                              # '--mca odls_base_verbose 100',
+                              # '--mca rml_base_verbose 100'
+                            ]
+        else:
+            debug_strings = []
+
         # Split up the debug strings into args and add them to the dvm_args
         [dvm_args.extend(ds.split()) for ds in debug_strings]
 
@@ -232,12 +235,19 @@ class ORTELib(LaunchMethod):
         export_vars  = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
         # Additional (debug) arguments to orterun
-        debug_strings = [
-            #'--debug-devel',
-            #'--mca oob_base_verbose 100',
-            #'--mca rml_base_verbose 100'
-        ]
-        orte_command = '%s %s %s --bind-to none -np %d -host %s' % (
-            self.launch_command, ' '.join(debug_strings), export_vars, task_cores if task_mpi else 1, hosts_string)
+        if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
+            debug_strings = [ #  '--debug-devel',
+                              #  '--mca oob_base_verbose 100',
+                              #  '--mca rml_base_verbose 100'
+                            ]
+        else:
+            debug_strings = [ # '--debug-devel',
+                              # '--mca oob_base_verbose 100',
+                              # '--mca rml_base_verbose 100'
+                            ]
+
+        orte             # _command = '%s %s %s --bind-to none -np %d -host %s' % (
+            self.launch_command, ' '.join(debug_strings), export_vars, 
+                           task_cores if task_mpi else 1, hosts_string)
 
         return orte_command, task_command
