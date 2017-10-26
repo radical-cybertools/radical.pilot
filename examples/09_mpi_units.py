@@ -19,9 +19,9 @@ import radical.utils as ru
 #
 # ------------------------------------------------------------------------------
 
+PWD = os.path.abspath(os.path.dirname(__file__))
 helloworld_mpi_bin  = 'helloworld_mpi.py'
-helloworld_mpi_path = '%s/%s' % (os.path.abspath(os.path.dirname(__file__)),
-                                 helloworld_mpi_bin)
+helloworld_mpi_path = '%s/%s' % (PWD, helloworld_mpi_bin)
 
 
 #------------------------------------------------------------------------------
@@ -49,7 +49,7 @@ if __name__ == '__main__':
 
         # read the config used for resource details
         report.info('read config')
-        config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
+        config = ru.read_json('%s/config.json' % PWD)
         report.ok('>>ok\n')
 
         report.header('submit pilots')
@@ -92,9 +92,9 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable     = 'python'
-            cud.arguments      = [helloworld_mpi_bin ]
-            cud.input_staging  = [helloworld_mpi_path]
+            cud.executable     = '/bin/sh'
+            cud.arguments      = ['09_mpi_units.sh']
+            cud.input_staging  = ['%s/09_mpi_units.sh' % PWD]
             cud.cores          = 2
             cud.mpi            = True
             cuds.append(cud)

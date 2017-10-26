@@ -49,6 +49,8 @@ class ORTE(LaunchMethod):
 
         # Now that we found the orte-dvm, get ORTE version
         orte_info = {}
+        os.system('orte-info')
+        os.system('orte-info | grep "Open RTE"')
         oi_output = subprocess.check_output(['orte-info|grep "Open RTE"'], shell=True)
         oi_lines = oi_output.split('\n')
         for line in oi_lines:
@@ -76,11 +78,14 @@ class ORTE(LaunchMethod):
         dvm_args = [stdbuf_cmd, stdbuf_arg, dvm_command]
 
         # Additional (debug) arguments to orte-dvm
-        debug_strings = [
-            #'--debug-devel',
-            #'--mca odls_base_verbose 100',
-            #'--mca rml_base_verbose 100',
-        ]
+        if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
+            debug_strings = [ # '--debug-devel',
+                              # '--mca odls_base_verbose 100',
+                              # '--mca rml_base_verbose 100'
+                            ]
+        else:
+            debug_strings = []
+
         # Split up the debug strings into args and add them to the dvm_args
         [dvm_args.extend(ds.split()) for ds in debug_strings]
 
@@ -235,11 +240,13 @@ class ORTE(LaunchMethod):
         export_vars  = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
         # Additional (debug) arguments to orterun
-        debug_strings = [
-            #'--debug-devel',
-            #'--mca oob_base_verbose 100',
-            #'--mca rml_base_verbose 100'
-        ]
+        if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
+            debug_strings = [ # '--debug-devel',
+                              # '--mca oob_base_verbose 100',
+                              # '--mca rml_base_verbose 100'
+                            ]
+        else:
+            debug_strings = []
 
         if task_mpi: np_flag = '-np %s' % task_cores
         else       : np_flag = '-np 1'
