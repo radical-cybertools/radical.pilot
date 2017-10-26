@@ -719,7 +719,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIEXEC",
-        "pre_bootstrap_1"             : ["module load python"],
+        "pre_bootstrap_1"             : ["module load python/2.7.7-anaconda"],
         "default_remote_workdir"      : "/work/$USER",
         "valid_roots"                 : ["/work"],
         "rp_version"                  : "local",
