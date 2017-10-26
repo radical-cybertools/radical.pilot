@@ -79,11 +79,10 @@ class ORTE(LaunchMethod):
 
         # Additional (debug) arguments to orte-dvm
         if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
-            debug_strings = [
-                 '--debug-devel',
-                 '--mca odls_base_verbose 100',
-                 '--mca rml_base_verbose 100'
-            ]
+            debug_strings = [ # '--debug-devel',
+                              # '--mca odls_base_verbose 100',
+                              # '--mca rml_base_verbose 100'
+                            ]
         else:
             debug_strings = []
 
@@ -242,11 +241,10 @@ class ORTE(LaunchMethod):
 
         # Additional (debug) arguments to orterun
         if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
-            debug_strings = [
-                 '--debug-devel',
-                 '--mca oob_base_verbose 100',
-                 '--mca rml_base_verbose 100'
-            ]
+            debug_strings = [ # '--debug-devel',
+                              # '--mca oob_base_verbose 100',
+                              # '--mca rml_base_verbose 100'
+                            ]
         else:
             debug_strings = []
 

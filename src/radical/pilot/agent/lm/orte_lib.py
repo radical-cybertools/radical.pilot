@@ -78,11 +78,10 @@ class ORTELib(LaunchMethod):
 
         # Additional (debug) arguments to orte-dvm
         if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
-            debug_strings = [
-                 '--debug-devel',
-                 '--mca odls_base_verbose 100',
-                 '--mca rml_base_verbose 100'
-            ]
+            debug_strings = [ # '--debug-devel',
+                              # '--mca odls_base_verbose 100',
+                              # '--mca rml_base_verbose 100'
+                            ]
         else:
             debug_strings = []
 
@@ -237,19 +236,17 @@ class ORTELib(LaunchMethod):
 
         # Additional (debug) arguments to orterun
         if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
-            debug_strings = [
-                 '--debug-devel',
-                 '--mca oob_base_verbose 100',
-                 '--mca rml_base_verbose 100'
-            ]
+            debug_strings = [ #  '--debug-devel',
+                              #  '--mca oob_base_verbose 100',
+                              #  '--mca rml_base_verbose 100'
+                            ]
         else:
-            debug_strings = [
-                 '--debug-devel',
-                 '--mca oob_base_verbose 100',
-                 '--mca rml_base_verbose 100'
-            ]
+            debug_strings = [ # '--debug-devel',
+                              # '--mca oob_base_verbose 100',
+                              # '--mca rml_base_verbose 100'
+                            ]
 
-        orte_command = '%s %s %s --bind-to none -np %d -host %s' % (
+        orte             # _command = '%s %s %s --bind-to none -np %d -host %s' % (
             self.launch_command, ' '.join(debug_strings), export_vars, 
                            task_cores if task_mpi else 1, hosts_string)
 
