@@ -157,7 +157,8 @@ class DBSession(object):
         close the session
         """
         if self.closed:
-            raise RuntimeError('No active session.')
+            return None
+          # raise RuntimeError('No active session.')
 
         self._closed = time.time()
 
@@ -180,7 +181,8 @@ class DBSession(object):
         Adds a pilot managers doc
         """
         if self.closed:
-            raise Exception('No active session.')
+            return None
+          # raise Exception('No active session.')
 
         pmgr_doc['_id']  = pmgr_doc['uid']
         pmgr_doc['type'] = 'pmgr'
@@ -200,7 +202,8 @@ class DBSession(object):
         # FIXME: explicit bulk vs. insert(multi=True)
 
         if self.closed:
-            raise Exception('No active session.')
+            return None
+          # raise Exception('No active session.')
 
         bulk = self._c.initialize_ordered_bulk_op()
 
@@ -230,7 +233,8 @@ class DBSession(object):
         """
 
         if self.closed:
-            raise Exception('session is closed')
+            return None
+          # raise Exception('session is closed')
 
         if not self._c:
             raise Exception('session is disconnected ')
@@ -283,6 +287,7 @@ class DBSession(object):
         # model, ie. is the largest of any state the pilot progressed through
         for doc in docs:
             doc['state'] = rps._pilot_state_collapse(doc['states'])
+
         return docs
 
 
@@ -295,7 +300,8 @@ class DBSession(object):
         return dict {uid:unit}
         """
         if self.closed:
-            raise Exception("No active session.")
+            return None
+          # raise Exception("No active session.")
 
         if not unit_ids:
             cursor = self._c.find({'type' : 'unit', 
@@ -326,7 +332,8 @@ class DBSession(object):
         Adds a unit managers document
         """
         if self.closed:
-            raise Exception('No active session.')
+            return None
+          # raise Exception('No active session.')
 
         umgr_doc['_id']  = umgr_doc['uid']
         umgr_doc['type'] = 'umgr'
@@ -346,7 +353,8 @@ class DBSession(object):
         # FIXME: explicit bulk vs. insert(multi=True)
 
         if self.closed:
-            raise Exception('No active session.')
+            return None
+          # raise Exception('No active session.')
 
         # We can only insert DB bulks up to a certain size, which is hardcoded
         # here.  In principle, the update should go to the update worker anyway

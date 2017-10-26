@@ -49,6 +49,8 @@ class ORTE(LaunchMethod):
 
         # Now that we found the orte-dvm, get ORTE version
         orte_info = {}
+        os.system('orte-info')
+        os.system('orte-info | grep "Open RTE"')
         oi_output = subprocess.check_output(['orte-info|grep "Open RTE"'], shell=True)
         oi_lines = oi_output.split('\n')
         for line in oi_lines:

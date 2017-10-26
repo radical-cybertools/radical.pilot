@@ -172,12 +172,12 @@ class ABDS(AgentExecutingComponent):
         if not isinstance(units, list):
             units = [units]
 
-        self.advance(units, rps.ALLOCATING, publish=True, push=False)
+        self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
 
         for unit in units:
             self._handle_unit(unit)
 
-        self.advance(units, rps.EXECUTING_PENDING, publish=True, push=False)
+        self.advance(units, rps.AGENT_EXECUTING_PENDING, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -233,6 +233,7 @@ class ABDS(AgentExecutingComponent):
         # prep stdout/err so that we can append w/o checking for None
         cu['stdout'] = ''
         cu['stderr'] = ''
+        cu['workdir']=sandbox
 
         launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % sandbox
         self._log.debug("Created launch_script: %s", launch_script_name)
@@ -250,7 +251,7 @@ class ABDS(AgentExecutingComponent):
             env_string += 'export RP_AGENT_ID="%s"\n'   % self._cfg['agent_name']
             env_string += 'export RP_SPAWNER_ID="%s"\n' % self.uid
             env_string += 'export RP_UNIT_ID="%s"\n'    % cu['uid']
-            env_string += 'export RP_GTOD="%s"\n'       % cu['gtod']
+            env_string += 'export RP_GTOD="%s"\n'       % self.gtod
             env_string += 'export RP_PROF="%s/PROF"\n'  % sandbox
             # also add any env vars requested for export by the resource config
             for k,v in self._env_cu_export.iteritems():
@@ -386,9 +387,7 @@ class ABDS(AgentExecutingComponent):
 
         try:
             cuid = self.uid.replace('Component', 'Watcher')
-            self._prof = self._session.get_profiler(cuid)
             self._prof.prof('run', uid=self._pilot_id)
-            self._log = self._session._get_logger(cuid, level='DEBUG') # FIXME?
 
             while not self._terminate.is_set():
 
@@ -401,7 +400,7 @@ class ABDS(AgentExecutingComponent):
                     # learn about CUs until all slots are filled, because then
                     # we may not be able to catch finishing CUs in time -- so
                     # there is a fine balance here.  Balance means 100 (FIXME).
-                  # self._prof.prof('ExecWorker popen watcher pull cu from queue')
+                  # self._prof.prof('pull')
                     MAX_QUEUE_BULKSIZE = 100
                     while len(cus) < MAX_QUEUE_BULKSIZE :
                         cus.append (self._watch_queue.get_nowait())
@@ -448,7 +447,7 @@ class ABDS(AgentExecutingComponent):
             # the application is RUNNING it update the state of the CU with the
             # right time stamp. In any other case it works as it was.
             logfile = '%s/%s' % (sandbox, '/YarnApplicationReport.log')
-            if cu['state']==rps.EXECUTING_PENDING \
+            if cu['state']==rps.AGENT_EXECUTING_PENDING \
                     and os.path.isfile(logfile):
 
                 yarnreport = open(logfile,'r')
