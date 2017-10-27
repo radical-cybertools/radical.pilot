@@ -246,8 +246,9 @@ class ORTELib(LaunchMethod):
                               # '--mca rml_base_verbose 100'
                             ]
 
-        orte             # _command = '%s %s %s --bind-to none -np %d -host %s' % (
-            self.launch_command, ' '.join(debug_strings), export_vars, 
-                           task_cores if task_mpi else 1, hosts_string)
+        orte_command = '%s %s %s --bind-to none -np %d -host %s' % (
+                           self.launch_command, ' '.join(debug_strings),
+                           export_vars, task_cores if task_mpi else 1,
+                           hosts_string)
 
         return orte_command, task_command

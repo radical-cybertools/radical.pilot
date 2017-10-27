@@ -346,12 +346,12 @@ class ORTE(AgentExecutingComponent):
         #     # Note: extra spaces below are for visual alignment
         #     launch_script.write("# Pre-exec commands\n")
         #     if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #         launch_script.write("echo pre  start `%s` >> %s/PROF\n"\
-        #                           % (cu['gtod'], cu_tmpdir))
+        #         launch_script.write("echo cu_pre_start `%s` >> %s/%s.prof\n"\
+        #                           % (cu['gtod'], cu_tmpdir, cu['uid']))
         #     launch_script.write(pre)
         #     if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #         launch_script.write("echo pre  stop `%s` >> %s/PROF\n" \
-        #                           % (cu['gtod'], cu_tmpdir))
+        #         launch_script.write("echo cu_pre_stop `%s` >> %s/%s.prof\n" \
+        #                           % (cu['gtod'], cu_tmpdir, cu['uid']))
 
         # TODO: post_exec
         # # After the universe dies the infrared death, there will be nothing
@@ -362,12 +362,12 @@ class ORTE(AgentExecutingComponent):
         #         post += "%s || %s\n" % (elem, fail)
         #     launch_script.write("# Post-exec commands\n")
         #     if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #         launch_script.write("echo post start `%s` >> %s/PROF\n" \
-        #                           % (cu['gtod'], cu_tmpdir))
+        #         launch_script.write("echo cu_post_start `%s` >> %s/%s.prof\n" \
+        #                           % (cu['gtod'], cu_tmpdir, cu['uid']))
         #     launch_script.write('%s\n' % post)
         #     if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #         launch_script.write("echo post stop  `%s` >> %s/PROF\n" \
-        #                           % (cu['gtod'], cu_tmpdir))
+        #         launch_script.write("echo cu_post_stop  `%s` >> %s/%s.prof\n" \
+        #                           % (cu['gtod'], cu_tmpdir, cu['uid']))
 
 
         # The actual command line, constructed per launch-method
@@ -424,13 +424,15 @@ class ORTE(AgentExecutingComponent):
         arg_list.append(ffi.new("char[]", "sh"))
         arg_list.append(ffi.new("char[]", "-c"))
         if 'RADICAL_PILOT_PROFILE' in os.environ:
-            task_command = "echo script start_script `%s` >> %s/PROF; " \
-                         % (self.gtod, cu_tmpdir) \
-                         + "echo script after_cd `%s` >> %s/PROF; " \
-                         % (self.gtod, cu_tmpdir) \
+            task_command = "echo script cu_start `%s` >> %s/%s.prof; " \
+                         % (self.gtod, cu_tmpdir, cu['uid']) \
+                         + "echo script cu_cd_done `%s` >> %s/%s.prof; " \
+                         % (self.gtod, cu_tmpdir, cu['uid']) \
+                         + "echo script cu_exec_start `%s` >> %s/%s.prof; " \
+                         % (self.gtod, cu_tmpdir, cu['uid']) \
                          + task_command \
-                         + "; echo script after_exec `%s` >> %s/PROF" \
-                         % (self.gtod, cu_tmpdir)
+                         + "; echo script cu_exec_stop `%s` >> %s/%s.prof" \
+                         % (self.gtod, cu_tmpdir, cu['uid'])
         arg_list.append(ffi.new("char[]", str("%s; exit $RETVAL" \
                                             % str(task_command))))
 
