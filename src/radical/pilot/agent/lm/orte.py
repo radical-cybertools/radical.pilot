@@ -237,7 +237,7 @@ class ORTE(LaunchMethod):
         #       this into a system specific regexp or so.
         #
         hosts_string = ",".join([slot.split(':')[0].rsplit('_', 1)[-1] for slot in task_slots])
-        export_vars  = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
+        export_vars  = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES])
 
         # Additional (debug) arguments to orterun
         if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
