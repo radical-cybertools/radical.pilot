@@ -179,6 +179,7 @@ indication on event ordering *within each individual component*.
     cu_exec_stop        : unit launch method returned                (uid: uid)
     cu_post_start       : post-exec sequence starts                  (uid: uid, [CU], optional)
     cu_post_stop        : post-exec sequence stops                   (uid: uid, [CU], optional)
+    cu_stop             : startup script stops                       (uid: uid)
 
     exec_cancel_start   : try to cancel task via exec layer (kill)   (uid: uid, [API])
     exec_cancel_stop    : did cancel    task via exec layer (kill)   (uid: uid, [API])
@@ -189,7 +190,7 @@ indication on event ordering *within each individual component*.
     * per unit          : exec_start, cu_start, cu_cd_done, \
                           cu_pre_start, cu_pre_stop, \
                           cu_exec_start, app_start, app_stop, cu_exec_stop, \
-                          cu_post_start, cu_post_stop, exec_stop
+                          cu_post_start, cu_post_stop, cu_stop, exec_stop
 
 
 ### AgentStagingOutputComponent (Component)
