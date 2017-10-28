@@ -198,6 +198,8 @@ indication on event ordering *within each individual component*.
     staging_stdout_stop : reading unit stdout stops                  (uid: uid)
     staging_stderr_start: reading unit stderr starts                 (uid: uid)
     staging_stderr_stop : reading unit stderr stops                  (uid: uid)
+    staging_uprof_start : reading unit profile starts                (uid: uid, [APP])
+    staging_uprof_stop  : reading unit profile stops                 (uid: uid, [APP])
     staging_out_start   : staging request starts                     (uid: uid, msg: did, [CU-DS])
     staging_out_skip    : staging request is not handled here        (uid: uid, msg: did, [CU-DS])
     staging_out_fail    : staging request failed                     (uid: uid, msg: did, [CU-DS])
