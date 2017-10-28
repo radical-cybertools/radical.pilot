@@ -387,7 +387,8 @@ prof(){
 
                 if not action and not cus :
                     # nothing happened at all!  Zzz for a bit.
-                    time.sleep(self._cfg['db_poll_sleeptime'])
+                    # FIXME: make configurable
+                    time.sleep(0.1)
 
         except Exception as e:
             self._log.exception("Error in ExecWorker watch loop (%s)" % e)
