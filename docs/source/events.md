@@ -169,12 +169,27 @@ indication on event ordering *within each individual component*.
     exec_fail           : exec layer refused task                    (uid: uid, [RUNTIME], optional)
     exec_stop           : exec layer passed back control             (uid: uid)
 
+    cu_start            : startup script has been spawned            (uid: uid)
+    cu_cd_done          : startup script changed to unit sandbox     (uid: uid)
+    cu_pre_start        : pre-exec sequence starts                   (uid: uid, [CU], optional)
+    cu_pre_stop         : pre-exec sequence stops                    (uid: uid, [CU], optional)
+    cu_exec_start       : unit launch method gets called now         (uid: uid)
+    app_start           : application reports startup                (uid: uid, [APP], optional)
+    app_stop            : application reports stop                   (uid: uid, [APP], optional)
+    cu_exec_stop        : unit launch method returned                (uid: uid)
+    cu_post_start       : post-exec sequence starts                  (uid: uid, [CU], optional)
+    cu_post_stop        : post-exec sequence stops                   (uid: uid, [CU], optional)
+
     exec_cancel_start   : try to cancel task via exec layer (kill)   (uid: uid, [API])
     exec_cancel_stop    : did cancel    task via exec layer (kill)   (uid: uid, [API])
 
     partial orders
-    * per unit          : exec_start, (exec_ok | exec_fail), exec_stop
+    * per unit          : exec_start, (exec_ok, exec_stop) | exec_fail
     * per unit          : exec_cancel_start, exec_cancel_stop
+    * per unit          : exec_start, cu_start, cu_cd_done, \
+                          cu_pre_start, cu_pre_stop, \
+                          cu_exec_start, app_start, app_stop, cu_exec_stop, \
+                          cu_post_start, cu_post_stop, exec_stop
 
 
 ### AgentStagingOutputComponent (Component)
@@ -183,8 +198,6 @@ indication on event ordering *within each individual component*.
     staging_stdout_stop : reading unit stdout stops                  (uid: uid)
     staging_stderr_start: reading unit stderr starts                 (uid: uid)
     staging_stderr_stop : reading unit stderr stops                  (uid: uid)
-    staging_uprof_start : reading unit profile starts                (uid: uid, [APP])
-    staging_uprof_stop  : reading unit profile stops                 (uid: uid, [APP])
     staging_out_start   : staging request starts                     (uid: uid, msg: did, [CU-DS])
     staging_out_skip    : staging request is not handled here        (uid: uid, msg: did, [CU-DS])
     staging_out_fail    : staging request failed                     (uid: uid, msg: did, [CU-DS])
