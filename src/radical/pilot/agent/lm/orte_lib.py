@@ -43,12 +43,15 @@ class ORTELib(LaunchMethod):
                the DVM.
         """
 
-        dvm_cmd  = ru.which('orte-dvm')
-        dvm_args = [ '--report-uri',            '-',
-                     '--mca odls_base_verbose', '100',
-                     '--mca rml_base_verbose',  '100',
-                     '--debug-devel',
-                   ]
+        dvm_cmd = ru.which('orte-dvm')
+        if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
+            dvm_args = ['--report-uri',            '-',
+                        '--mca odls_base_verbose', '100',
+                        '--mca rml_base_verbose',  '100',
+                        '--debug-devel',
+                       ]
+        else:
+            dvm_args = ['--report-uri', '-']
 
         if not dvm_cmd:
             raise Exception("Couldn't find orte-dvm")
@@ -224,11 +227,11 @@ class ORTELib(LaunchMethod):
                                              if  var  in os.environ])
 
         # Additional (debug) arguments to prun
-        debug_strings = [
-                         '--debug-devel',
-                         '--mca oob_base_verbose 100',
-                         '--mca rml_base_verbose 100'
-                        ]
+        debug_strings = []
+        if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
+            debug_strings = ['--debug-devel',
+                             '--mca oob_base_verbose 100',
+                             '--mca rml_base_verbose 100']
 
         if task_mpi: np_flag = '-np %s' % task_cores
         else       : np_flag = '-np 1'

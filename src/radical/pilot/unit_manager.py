@@ -354,14 +354,14 @@ class UnitManager(rpu.Component):
 
         # pull all unit states from the DB, and compare to the states we know
         # about.  If any state changed, update the unit instance and issue
-        # notification callbacks as needed.
+        # notification callbacks as needed.  Do not advance the state (again).
         # FIXME: we also pull for dead units.  That is not efficient...
         # FIXME: this needs to be converted into a tailed cursor in the update
         #        worker
         units  = self._session._dbs.get_units(umgr_uid=self.uid)
 
         for unit in units:
-            if not self._update_unit(unit, publish=True):
+            if not self._update_unit(unit, publish=True, advance=False):
                 return False
 
         return True
@@ -451,7 +451,7 @@ class UnitManager(rpu.Component):
 
                 # we got the state update from the state callback - don't
                 # publish it again
-                self._update_unit(thing, publish=False)
+                self._update_unit(thing, publish=False, advance=False)
 
             else:
 

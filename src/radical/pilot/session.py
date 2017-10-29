@@ -502,7 +502,7 @@ class Session(rs.Session):
 
           # self._prof.prof("session_fetch_sync", uid=self._uid)
             self._prof.prof("session_fetch_start", uid=self._uid)
-            self._log.debug(' === start download')
+            self._log.debug('start download')
             tgt = os.getcwd()
             self.fetch_json    (tgt='%s/%s' % (tgt, self.uid))
             self.fetch_profiles(tgt=tgt)
@@ -878,6 +878,22 @@ class Session(rs.Session):
 
     # -------------------------------------------------------------------------
     #
+    def _get_client_sandbox(self):
+        """
+        For the session in the client application, this is os.getcwd().  For the
+        session in any other component, specifically in pilot components, the
+        client sandbox needs to be read from the session config (or pilot
+        config).  The latter is not yet implemented, so the pilot can not yet
+        interpret client sandboxes.  Since pilot-side stagting to and from the
+        client sandbox is not yet supported anyway, this seems acceptable
+        (FIXME).
+        """
+
+        return self._client_sandbox
+
+
+    # -------------------------------------------------------------------------
+    #
     def _get_resource_sandbox(self, pilot):
         """
         for a given pilot dict, determine the global RP sandbox, based on the
@@ -903,7 +919,7 @@ class Session(rs.Session):
                 # cache miss -- determine sandbox and fill cache
                 rcfg   = self.get_resource_config(resource, schema)
                 fs_url = rs.Url(rcfg['filesystem_endpoint'])
-        
+
                 # Get the sandbox from either the pilot_desc or resource conf
                 sandbox_raw = pilot['description'].get('sandbox')
                 if not sandbox_raw:
@@ -914,7 +930,7 @@ class Session(rs.Session):
                 if '$' not in sandbox_raw and '`' not in sandbox_raw:
                     # no need to expand further
                     sandbox_base = sandbox_raw
-        
+
                 else:
                     js_url = rs.Url(rcfg['job_manager_endpoint'])
         
@@ -972,8 +988,7 @@ class Session(rs.Session):
                 session_sandbox       = rs.Url(resource_sandbox)
                 session_sandbox.path += '/%s' % self.uid
 
-                with self._cache_lock:
-                    self._cache['session_sandbox'][resource] = session_sandbox
+                self._cache['session_sandbox'][resource] = session_sandbox
 
             return self._cache['session_sandbox'][resource]
 
@@ -988,8 +1003,8 @@ class Session(rs.Session):
 
         self.is_valid()
 
-        pilot_sandbox = pilot.get('sandbox')
-        if pilot_sandbox:
+        pilot_sandbox = pilot.get('pilot_sandbox')
+        if str(pilot_sandbox):
             return rs.Url(pilot_sandbox)
 
         pid = pilot['uid']
@@ -1019,20 +1034,22 @@ class Session(rs.Session):
         return "%s/%s/" % (pilot_sandbox, unit['uid'])
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    def _get_client_sandbox(self):
-        """
-        For the session in the client application, this is os.getcwd().  For the
-        session in any other component, specifically in pilot components, the
-        client sandbox needs to be read from the session config (or pilot
-        config).  The latter is not yet implemented, so the pilot can not yet
-        interpret client sandboxes.  Since pilot-side stagting to and from the
-        client sandbox is not yet supported anyway, this seems acceptable
-        (FIXME).
-        """
+    def _get_jsurl(self, pilot):
+        '''
+        get job service endpoint and hop URL for the pilot's target resource.
+        '''
 
-        return self._client_sandbox
+        self.is_valid()
+
+        resrc   = pilot['description']['resource']
+        schema  = pilot['description']['access_schema']
+        rcfg    = self.get_resource_config(resrc, schema)
+        js_url  = rs.Url(rcfg.get('job_manager_endpoint'))
+        js_hop  = rs.Url(rcfg.get('job_manager_hop', js_url))
+
+        return js_url, js_hop
 
 
 # -----------------------------------------------------------------------------
