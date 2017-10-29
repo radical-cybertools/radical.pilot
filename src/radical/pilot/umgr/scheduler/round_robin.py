@@ -34,6 +34,8 @@ class RoundRobin(UMGRSchedulingComponent):
         self._pids = list()
         self._idx  = 0
 
+        self._log.debug('RoundRobin umgr scheduler configured')
+
 
     # --------------------------------------------------------------------------
     #
@@ -131,8 +133,6 @@ class RoundRobin(UMGRSchedulingComponent):
 
                 # no pilots, no schedule...
                 with self._wait_lock:
-                    for unit in units:
-                        self._prof.prof('wait', uid=unit['uid'])
                     self._wait_pool += units
                     return
 
