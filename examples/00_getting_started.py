@@ -19,7 +19,7 @@ dh = ru.DebugHelper()
 # ------------------------------------------------------------------------------
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
@@ -76,7 +76,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 16  # number of units to run
+        n = 10  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -85,7 +85,8 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable = '/bin/date'
+            cud.pre_exec   = ['. /home/merzky/radical/radical.pilot.1/ve/bin/activate']
+            cud.executable = 'radical-synapse-sample -t 1 -s 1'
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')

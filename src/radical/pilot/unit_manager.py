@@ -246,7 +246,6 @@ class UnitManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def __str__(self):
-
         """
         Returns a string representation of the UnitManager object.
         """
@@ -341,7 +340,7 @@ class UnitManager(rpu.Component):
                     self._log.debug('restart unit %s', u.uid)
 
             # final units are not pushed
-            self.advance(units, publish=True, push=False) 
+            self.advance(units, publish=True, push=False)
 
             return True
 
@@ -355,14 +354,14 @@ class UnitManager(rpu.Component):
 
         # pull all unit states from the DB, and compare to the states we know
         # about.  If any state changed, update the unit instance and issue
-        # notification callbacks as needed.
+        # notification callbacks as needed.  Do not advance the state (again).
         # FIXME: we also pull for dead units.  That is not efficient...
         # FIXME: this needs to be converted into a tailed cursor in the update
         #        worker
         units  = self._session._dbs.get_units(umgr_uid=self.uid)
 
         for unit in units:
-            if not self._update_unit(unit, publish=True):
+            if not self._update_unit(unit, publish=True, advance=False):
                 return False
 
         return True
@@ -420,8 +419,9 @@ class UnitManager(rpu.Component):
             unit['control'] = 'umgr'
 
         # now we really own the CUs, and can start working on them (ie. push
-        # them into the pipeline).
-        self.advance(units, publish=True, push=True)
+        # them into the pipeline).  We don't record state transition profile
+        # events though - the transition has already happened.
+        self.advance(units, publish=True, push=True, prof=False)
 
         return True
 
@@ -451,7 +451,7 @@ class UnitManager(rpu.Component):
 
                 # we got the state update from the state callback - don't
                 # publish it again
-                self._update_unit(thing, publish=False)
+                self._update_unit(thing, publish=False, advance=False)
 
             else:
 
@@ -491,10 +491,9 @@ class UnitManager(rpu.Component):
                 unit_dict['state'] = s
                 self._units[uid]._update(unit_dict)
 
-                # we don't usually advance state at this point, but also keep up
-                # with state changes reported from elsewhere
                 if advance:
-                    self.advance(unit_dict, s, publish=publish, push=False)
+                    self.advance(unit_dict, s, publish=publish, push=False,
+                                 prof=False)
 
             return True
 

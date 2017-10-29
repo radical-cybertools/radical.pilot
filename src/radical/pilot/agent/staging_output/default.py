@@ -124,7 +124,7 @@ class Default(AgentStagingOutputComponent):
     #
     def _handle_unit_stdio(self, unit):
 
-        sandbox = unit['unit_sandbox']
+        sandbox = ru.Url(unit['unit_sandbox']).path
         uid     = unit['uid']
 
         self._prof.prof('staging_stdout_start', uid=uid)
@@ -152,24 +152,30 @@ class Default(AgentStagingOutputComponent):
 
                 unit['stderr'] += rpu.tail(txt)
 
-        self._prof.prof('staging_stderr_stop',  uid=uid)
+        self._prof.prof('staging_stderr_stop', uid=uid)
         self._prof.prof('staging_uprof_start', uid=uid)
 
-        if 'RADICAL_PILOT_PROFILE' in os.environ:
-            if os.path.isfile("%s/PROF" % sandbox):
-                try:
-                    with open("%s/PROF" % sandbox, 'r') as prof_f:
-                        txt = prof_f.read()
-                        for line in txt.split("\n"):
-                            if line:
-                                ts, name, uid, state, event, msg = line.split(',')
-                                self._prof.prof(event=event, name=name, uid=uid, 
-                                                state=state, msg=msg, 
-                                                timestamp=float(ts))
-                except Exception as e:
-                    self._log.error("Pre/Post profile read failed: `%s`" % e)
+        unit_prof = "%s/%s.prof" % (sandbox, uid)
 
-        self._prof.prof('staging_uprof_stop',  uid=uid)
+        if os.path.isfile(unit_prof):
+            self._log.debug(' === found profile for %s', uid)
+            try:
+                with open(unit_prof, 'r') as prof_f:
+                    txt = prof_f.read()
+                    for line in txt.split("\n"):
+                        self._log.debug(' === line: %s', line)
+                        if line:
+                            ts, event, comp, tid, _uid, state, msg = line.split(',')
+                            self._prof.prof(timestamp=float(ts), event=event,
+                                            comp=comp, tid=tid, uid=_uid,
+                                            state=state, msg=msg)
+            except Exception as e:
+                self._log.error("Pre/Post profile read failed: `%s`" % e)
+        else:
+            self._log.debug(' === miss  profile for %s: %s (%s)',
+                    uid, unit_prof, os.getcwd())
+
+        self._prof.prof('staging_uprof_stop', uid=uid)
 
 
     # --------------------------------------------------------------------------
@@ -182,7 +188,7 @@ class Default(AgentStagingOutputComponent):
 
         # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
         #       class definition.
-        sandbox = unit['unit_sandbox']
+        sandbox = ru.Url(unit['unit_sandbox']).path
 
         # By definition, this compoentn lives on the pilot's target resource.
         # As such, we *know* that all staging ops which would refer to the

@@ -71,11 +71,18 @@ class Slurm(LRMS):
             self._log.error("$SLURM_NNODES(%d) != len($SLURM_NODELIST)(%d)",
                            slurm_nnodes, len(slurm_nodes))
 
-        # Report the physical number of cores or the total number of cores
+	# Report the physical number of cores or the total number of cores
         # in case of a single partial node allocation.
-        self.cores_per_node = min(slurm_cpus_on_node, slurm_nprocs)
+        cores_per_node = self._cfg.get('cores_per_node')
+
+        if not cores_per_node:
+            self.cores_per_node = min(slurm_cpus_on_node, slurm_nprocs)
+        else:
+            self.cores_per_node = cores_per_node
+
 
         self.node_list = slurm_nodes
 
+        self.lm_info['cores_per_node'] = cores_per_node
 
 
