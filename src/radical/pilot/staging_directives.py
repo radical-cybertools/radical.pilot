@@ -130,6 +130,9 @@ def complete_url(path, context, log=None):
         * `pilot://`   : the pilot sandbox on the target resource
         * `unit://`    : the unit  sandbox on the target resource
 
+    For the above schemas, we interpret `schema://` the same as `schema:///`,
+    ie. we treat this as a namespace, not as location qualified by a hostname.
+
     The `context` parameter is expected to be a dict which provides a set of
     URLs to be used to expand the path.
 
@@ -170,17 +173,24 @@ def complete_url(path, context, log=None):
 
     log.debug('   %s', schema)
     if schema in ['resource', 'pilot', 'unit', 'pwd']:
+
+        # we interpret any hostname as part of the path element
+        if   purl.host and purl.path: ppath = '%s/%s' % (purl.host, purl.path)
+        elif purl.host              : ppath =    '%s' % (           purl.host)
+        elif purl.path              : ppath =    '%s' % (           purl.path)
+        else                        : ppath =     '.'
+
         if schema not in context:
             raise ValueError('cannot expand schema (%s) for staging' % schema)
 
         log.debug('   expand with %s', context[schema])
-        ret       = ru.Url(context[schema])
+        ret = ru.Url(context[schema])
 
         if schema in ['resource', 'pilot']:
             # use a dedicated staging area dir
             ret.path += '/staging_area'
 
-        ret.path += '/%s' % purl.path
+        ret.path += '/%s' % ppath
         purl      = ret
 
     # if not schema is set, assume file:// on localhost

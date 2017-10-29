@@ -124,7 +124,10 @@ class Default(AgentStagingOutputComponent):
     #
     def _handle_unit_stdio(self, unit):
 
-        sandbox = unit['unit_sandbox']
+        sandbox = ru.Url(unit['unit_sandbox']).path
+        uid     = unit['uid']
+
+        self._prof.prof('staging_stdout_start', uid=uid)
 
         # TODO: disable this at scale?
         if os.path.isfile(unit['stdout_file']):
@@ -136,6 +139,9 @@ class Default(AgentStagingOutputComponent):
 
                 unit['stdout'] += rpu.tail(txt)
 
+        self._prof.prof('staging_stdout_stop',  uid=uid)
+        self._prof.prof('staging_stderr_start', uid=uid)
+
         # TODO: disable this at scale?
         if os.path.isfile(unit['stderr_file']):
             with open(unit['stderr_file'], 'r') as stderr_f:
@@ -146,18 +152,30 @@ class Default(AgentStagingOutputComponent):
 
                 unit['stderr'] += rpu.tail(txt)
 
-        if 'RADICAL_PILOT_PROFILE' in os.environ:
-            if os.path.isfile("%s/PROF" % sandbox):
-                try:
-                    with open("%s/PROF" % sandbox, 'r') as prof_f:
-                        txt = prof_f.read()
-                        for line in txt.split("\n"):
-                            if line:
-                                ts, name, uid, state, event, msg = line.split(',')
-                                self._prof.prof(name=name, uid=uid, state=state,
-                                        event=event, msg=msg, timestamp=float(ts))
-                except Exception as e:
-                    self._log.error("Pre/Post profile read failed: `%s`" % e)
+        self._prof.prof('staging_stderr_stop', uid=uid)
+        self._prof.prof('staging_uprof_start', uid=uid)
+
+        unit_prof = "%s/%s.prof" % (sandbox, uid)
+
+        if os.path.isfile(unit_prof):
+            self._log.debug(' === found profile for %s', uid)
+            try:
+                with open(unit_prof, 'r') as prof_f:
+                    txt = prof_f.read()
+                    for line in txt.split("\n"):
+                        self._log.debug(' === line: %s', line)
+                        if line:
+                            ts, event, comp, tid, _uid, state, msg = line.split(',')
+                            self._prof.prof(timestamp=float(ts), event=event,
+                                            comp=comp, tid=tid, uid=_uid,
+                                            state=state, msg=msg)
+            except Exception as e:
+                self._log.error("Pre/Post profile read failed: `%s`" % e)
+        else:
+            self._log.debug(' === miss  profile for %s: %s (%s)',
+                    uid, unit_prof, os.getcwd())
+
+        self._prof.prof('staging_uprof_stop', uid=uid)
 
 
     # --------------------------------------------------------------------------
@@ -170,7 +188,7 @@ class Default(AgentStagingOutputComponent):
 
         # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
         #       class definition.
-        sandbox = unit['unit_sandbox']
+        sandbox = ru.Url(unit['unit_sandbox']).path
 
         # By definition, this compoentn lives on the pilot's target resource.
         # As such, we *know* that all staging ops which would refer to the
@@ -213,7 +231,7 @@ class Default(AgentStagingOutputComponent):
             src    = sd['source']
             tgt    = sd['target']
 
-            self._prof.prof('staging_begin', uid=uid, msg=did)
+            self._prof.prof('staging_out_start', uid=uid, msg=did)
 
             assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER]), \
                               'invalid staging action'
@@ -222,12 +240,12 @@ class Default(AgentStagingOutputComponent):
             # tgt URLs - those are handled by the umgr staging components
             if '://' in src and src.startswith('client://'):
                 self._log.debug('skip staging for src %s', src)
-                self._prof.prof('staging_end', uid=uid, msg=did)
+                self._prof.prof('staging_out_skip', uid=uid, msg=did)
                 continue
 
             if '://' in tgt and tgt.startswith('client://'):
                 self._log.debug('skip staging for tgt %s', tgt)
-                self._prof.prof('staging_end', uid=uid, msg=did)
+                self._prof.prof('staging_out_skip', uid=uid, msg=did)
                 continue
 
             src = complete_url(src, src_context, self._log)
@@ -265,10 +283,10 @@ class Default(AgentStagingOutputComponent):
                     srm_dir.close()
                 else:
                     self._log.error('no transfer for %s -> %s', src, tgt)
-                    self._prof.prof('staging_end', uid=uid, msg=did)
+                    self._prof.prof('staging_out_fail', uid=uid, msg=did)
                     raise NotImplementedError('unsupported transfer %s' % tgt)
 
-            self._prof.prof('staging_end', uid=uid, msg=did)
+            self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
         # all agent staging is done -- pass on to umgr output staging
         self.advance(unit, rps.UMGR_STAGING_OUTPUT_PENDING, publish=True, push=False)

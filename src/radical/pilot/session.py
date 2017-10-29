@@ -215,14 +215,11 @@ class Session(rs.Session):
                     # really really need a db connection...
                     raise ValueError("incomplete DBURL '%s' no db name!" % self._dburl)
 
-        # initialize profiling
-        self.prof = self._get_profiler(self._cfg['owner'])
+        # initialize profiling, but make sure profile ends up in our logdir
+        self._prof = ru.Profiler(self._cfg['owner'], path=self._logdir)
 
-        if self._reconnected:
-            self.prof.prof('reconnect session', uid=self._uid)
-
-        else:
-            self.prof.prof('start session', uid=self._uid)
+        if not self._reconnected:
+            self._prof.prof('session_start', uid=self._uid)
             self._log.report.info ('<<new session: ')
             self._log.report.plain('[%s]' % self._uid)
             self._log.report.info ('<<database   : ')
@@ -275,6 +272,7 @@ class Session(rs.Session):
         # FIXME: make sure the above code results in a usable session on
         #        reconnect
         self._log.report.ok('>>ok\n')
+
 
     # --------------------------------------------------------------------------
     #
@@ -364,6 +362,8 @@ class Session(rs.Session):
 
         self.is_valid()
 
+        self._prof.prof('config_parser_start', uid=self._uid)
+
         # Loading all "default" resource configurations
         module_path  = os.path.dirname(os.path.abspath(__file__))
         default_cfgs = "%s/configs/resource_*.json" % module_path
@@ -416,7 +416,7 @@ class Session(rs.Session):
                           ru.read_json_str(usr_aliases).get('aliases', {}),
                           policy='overwrite')
 
-        self.prof.prof('configs parsed', uid=self._uid)
+        self._prof.prof('config_parser_stop', uid=self._uid)
 
 
     # --------------------------------------------------------------------------
@@ -441,9 +441,8 @@ class Session(rs.Session):
         if self._closed:
             return
 
-        self._log.report.info('closing session %s' % self._uid)
         self._log.debug("session %s closing" % (str(self._uid)))
-        self.prof.prof("close", uid=self._uid)
+        self._prof.prof("session_close", uid=self._uid)
 
         # set defaults
         if cleanup   == None: cleanup   = True
@@ -475,13 +474,13 @@ class Session(rs.Session):
             bridge.join()
             self._log.debug("session %s closed bridge %s", self._uid, bridge.uid)
 
-        self.prof.prof("closing", msg=cleanup, uid=self._uid)
         if self._dbs:
             self._log.debug("session %s closes db (%s)", self._uid, cleanup)
             self._dbs.close(delete=cleanup)
+
         self._log.debug("session %s closed (delete=%s)", self._uid, cleanup)
-        self.prof.prof("closed", uid=self._uid)
-        self.prof.close()
+        self._prof.prof("session_stop", uid=self._uid)
+        self._prof.close()
 
         # support GC
         for x in self._to_close: 
@@ -500,12 +499,15 @@ class Session(rs.Session):
         # after all is said and done, we attempt to download the pilot log- and
         # profiles, if so wanted
         if download:
-            # let file systems settle
-            time.sleep(5)
 
-            self.fetch_json()
-            self.fetch_profiles()
-            self.fetch_logfiles()
+          # self._prof.prof("session_fetch_sync", uid=self._uid)
+            self._prof.prof("session_fetch_start", uid=self._uid)
+            self._log.debug('start download')
+            tgt = os.getcwd()
+            self.fetch_json    (tgt='%s/%s' % (tgt, self.uid))
+            self.fetch_profiles(tgt=tgt)
+            self.fetch_logfiles(tgt=tgt)
+            self._prof.prof("session_fetch_stop", uid=self._uid)
 
         self._log.report.info('<<session lifetime: %.1fs' % (self.closed - self.created))
         self._log.report.ok('>>ok\n')
@@ -543,6 +545,13 @@ class Session(rs.Session):
     @property
     def uid(self):
         return self._uid
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def logdir(self):
+        return self._logdir
 
 
     # --------------------------------------------------------------------------
@@ -622,17 +631,6 @@ class Session(rs.Session):
         log.info('radical.pilot        version: %s' % rp_version_detail)
 
         return log
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_profiler(self, name, level=None):
-        """
-        This is a thin wrapper around `ru.Profiler()` which makes sure that
-        profiles end up in a separate directory with the name of `session.uid`.
-        """
-
-        return ru.Profiler(name, path=self._logdir)
 
 
     # --------------------------------------------------------------------------
@@ -856,6 +854,7 @@ class Session(rs.Session):
     # -------------------------------------------------------------------------
     #
     def fetch_profiles(self, tgt=None, fetch_client=False):
+
         return rpu.fetch_profiles(self._uid, dburl=self.dburl, tgt=tgt, 
                                   session=self)
 
@@ -863,6 +862,7 @@ class Session(rs.Session):
     # -------------------------------------------------------------------------
     #
     def fetch_logfiles(self, tgt=None, fetch_client=False):
+
         return rpu.fetch_logfiles(self._uid, dburl=self.dburl, tgt=tgt, 
                                   session=self)
 
@@ -870,12 +870,26 @@ class Session(rs.Session):
     # -------------------------------------------------------------------------
     #
     def fetch_json(self, tgt=None, fetch_client=False):
-        if not tgt:
-            tgt = '%s/%s' % (os.getcwd(), self.uid)
 
         return rpu.fetch_json(self._uid, dburl=self.dburl, tgt=tgt,
                               session=self)
 
+
+
+    # -------------------------------------------------------------------------
+    #
+    def _get_client_sandbox(self):
+        """
+        For the session in the client application, this is os.getcwd().  For the
+        session in any other component, specifically in pilot components, the
+        client sandbox needs to be read from the session config (or pilot
+        config).  The latter is not yet implemented, so the pilot can not yet
+        interpret client sandboxes.  Since pilot-side stagting to and from the
+        client sandbox is not yet supported anyway, this seems acceptable
+        (FIXME).
+        """
+
+        return self._client_sandbox
 
 
     # -------------------------------------------------------------------------
@@ -905,7 +919,7 @@ class Session(rs.Session):
                 # cache miss -- determine sandbox and fill cache
                 rcfg   = self.get_resource_config(resource, schema)
                 fs_url = rs.Url(rcfg['filesystem_endpoint'])
-        
+
                 # Get the sandbox from either the pilot_desc or resource conf
                 sandbox_raw = pilot['description'].get('sandbox')
                 if not sandbox_raw:
@@ -916,7 +930,7 @@ class Session(rs.Session):
                 if '$' not in sandbox_raw and '`' not in sandbox_raw:
                     # no need to expand further
                     sandbox_base = sandbox_raw
-        
+
                 else:
                     js_url = rs.Url(rcfg['job_manager_endpoint'])
         
@@ -974,8 +988,7 @@ class Session(rs.Session):
                 session_sandbox       = rs.Url(resource_sandbox)
                 session_sandbox.path += '/%s' % self.uid
 
-                with self._cache_lock:
-                    self._cache['session_sandbox'][resource] = session_sandbox
+                self._cache['session_sandbox'][resource] = session_sandbox
 
             return self._cache['session_sandbox'][resource]
 
@@ -990,8 +1003,8 @@ class Session(rs.Session):
 
         self.is_valid()
 
-        pilot_sandbox = pilot.get('sandbox')
-        if pilot_sandbox:
+        pilot_sandbox = pilot.get('pilot_sandbox')
+        if str(pilot_sandbox):
             return rs.Url(pilot_sandbox)
 
         pid = pilot['uid']
@@ -1021,20 +1034,22 @@ class Session(rs.Session):
         return "%s/%s/" % (pilot_sandbox, unit['uid'])
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    def _get_client_sandbox(self):
-        """
-        For the session in the client application, this is os.getcwd().  For the
-        session in any other component, specifically in pilot components, the
-        client sandbox needs to be read from the session config (or pilot
-        config).  The latter is not yet implemented, so the pilot can not yet
-        interpret client sandboxes.  Since pilot-side stagting to and from the
-        client sandbox is not yet supported anyway, this seems acceptable
-        (FIXME).
-        """
+    def _get_jsurl(self, pilot):
+        '''
+        get job service endpoint and hop URL for the pilot's target resource.
+        '''
 
-        return self._client_sandbox
+        self.is_valid()
+
+        resrc   = pilot['description']['resource']
+        schema  = pilot['description']['access_schema']
+        rcfg    = self.get_resource_config(resrc, schema)
+        js_url  = rs.Url(rcfg.get('job_manager_endpoint'))
+        js_hop  = rs.Url(rcfg.get('job_manager_hop', js_url))
+
+        return js_url, js_hop
 
 
 # -----------------------------------------------------------------------------
