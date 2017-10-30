@@ -265,7 +265,7 @@ class Continuous(AgentSchedulingComponent):
 
         Input:
         cud: Compute Unit description. Needs to specify at least one process,thread
-        of GPU process.
+        or GPU process.
 
         '''
 
@@ -350,14 +350,16 @@ class Continuous(AgentSchedulingComponent):
         'threads_per_proc', as otherwise the application would not be able to
         spawn the requested number of threads on the respective node.
         '''
-
+        
+        # Get the number of processes, threads of GPU processes this unit requests.
+        # For threads, if the entry is not specified in the description, then 
+        # assume it is one thread per process.
         requested_procs  = cud['cpu_processes']
-        threads_per_proc = cud['cpu_threads']
+        threads_per_proc = cud.get('cpu_threads',1)
         requested_gpus   = cud['gpu_processes']
 
-        if not threads_per_proc:
-            threads_per_proc = 1
-
+        # The total number of requested logical cores is equal to the number of
+        # processes times the number of threads per process.
         requested_cores = requested_procs * threads_per_proc
 
         # First and last nodes can be a partial allocation - all other nodes can
