@@ -123,7 +123,9 @@ class Continuous(AgentSchedulingComponent):
         on the same node).
         '''
 
-        # single_node is enforced for non-message passing tasks
+        # Checking whether the unit is MPI or not. Resource allocation is different
+        # between MPI and non-MPI units. The first can span over different nodes
+        # while the second shoud fit in a node.
         if  cud['cpu_process_type'] == 'MPI' or \
             cud['gpu_process_type'] == 'MPI' :
             slots = self._alloc_mpi(cud)
@@ -131,8 +133,9 @@ class Continuous(AgentSchedulingComponent):
             slots = self._alloc_nompi(cud)
 
         if slots:
-            # the unit was placed, we need to reflect the allocation in the
-            # nodelist state
+            # If the unit was placed, we need to reflect the allocation in the
+            # nodelist state and change the state of the specific slots from FREE
+            # to BUSY.
             self._change_slot_states(slots, rpc.BUSY)
 
         return slots
@@ -142,11 +145,15 @@ class Continuous(AgentSchedulingComponent):
     #
     def _release_slot(self, slots):
         '''
-        As the opposite to `_allocate_slot()`, this method will be invoked if
-        a unit does no longer need the resources previously allocation above.
+        This method is envoked when a unit does not need the resources that it
+        had acquired. 
+
+        The input passed are the resource slots a unit had acquired when 
+        `_allocate_slots()` was called.
         '''
 
-        # reflect the request in the nodelist state.
+        # reflect the request in the nodelist state and change the state of the
+        # slots from BUSY to FREE.
         self._change_slot_states(slots, rpc.FREE)
 
 
@@ -255,36 +262,47 @@ class Continuous(AgentSchedulingComponent):
     def _alloc_nompi(self, cud):
         '''
         Find a suitable set of cores and gpus *within a single node*.
+
+        Input:
+        cud: Compute Unit description. Needs to specify at least one process,thread
+        of GPU process.
+
         '''
 
-        # dig out the allocation request details
+        # Get the number of processes, threads of GPU processes this unit requests.
+        # For threads, if the entry is not specified in the description, then 
+        # assume it is one thread per process.
         requested_procs  = cud['cpu_processes']
-        threads_per_proc = cud['cpu_threads']
+        threads_per_proc = cud.get('cpu_threads',1)
         requested_gpus   = cud['gpu_processes']
 
-        if not threads_per_proc:
-            threads_per_proc = 1
+        # The total number of requested logical cores is equal to the number of
+        # processes times the number of threads per process.
 
         requested_cores = requested_procs * threads_per_proc
 
-        # we want the allocation to fit on a single node - make sure this is
-        # actually possible
+        # The allocation has to fit in a single node. If this is true contnue and
+        # try to find a possible allocation, otherwise raise a value error exception.
         if  requested_cores > self._lrms_cores_per_node or \
             requested_gpus  > self._lrms_gpus_per_node     :
             raise ValueError('Non-mpi unit does not fit onto single node')
 
-        # ok, we can go ahead and try to find a matching node.
+        # Initiallize core and gpu list that the unit may allocate. Also initialize
+        # node name and node id variables.
         cores     = list()
         gpus      = list()
         node_name = None
         node_uid  = None
+
         for node in self.nodes:  # FIXME optimization: iteration start
 
-            # attempt to allocate the required number of cores and gpus on this
+            # attempt to find the required number of cores and gpus on this
             # node - do not allow partial matches.
             cores, gpus = self._alloc_node(node, requested_cores, requested_gpus,
                                            partial=False)
 
+            # if the nessecary number of cores and GPUs is found, break the loop.
+            # Else check the next node.
             if  len(cores) == requested_cores and \
                 len(gpus)  == requested_gpus      :
                 # we are done
@@ -292,13 +310,19 @@ class Continuous(AgentSchedulingComponent):
                 node_name = node['name']
                 break
 
+        # In the case there is not enough space for this unit in any node, return
+        # None to signal that no allocation was possible.
         if not cores and not gpus:
-            return None  # signal failure
+            return None
 
-        # we have to communicate to the launcher where exactly processes are to
-        # be placed, and what cores are reserved for application threads.
+        # A suitable allocation was found and the core and gpu map, core and gpu
+        # ids, should be return to the launcher. This way the processes will be
+        # placed in cores with distance equal to the number of threads, leaving
+        # enough space between them.
         core_map, gpu_map = self._get_node_maps(cores, gpus, threads_per_proc)
 
+        # All the information for placing the unit is acquired. Include them in
+        # and return.
         slots = {'nodes'         : [[node_name, node_uid, core_map, gpu_map]],
                  'cores_per_node': self._lrms_cores_per_node,
                  'gpus_per_node' : self._lrms_gpus_per_node,
