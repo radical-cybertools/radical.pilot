@@ -121,22 +121,29 @@ SCHEDULER_NAME_SPARK        = "SPARK"
 #       'cpu_threads'      : 2,
 #       'gpu_processes     : 2,
 #       'slots' :
-#       {                 # [[nodename, [node_uid], 
-                          # [[core indexes for process 1],.., [core indexes for process 4]],   
-                          # [[gpu idx for process 1], .., [gpu idx for process 4]]]
-#         'nodes'         : [[node_1,   node_uid_1, 
-                          # [[0, 2], [4, 6]], 
-                          # [[0]]],
-#                           [node_2,   node_uid_2, 
-                          # [[1, 3], [5, 7]], 
-                          # [[0]    ]]],
+#       {                 # [
+                          #     [   nodename, [node_uid], 
+                          #         [[core indexes for process 1],.., [core indexes for process 4]],   
+                          #         [[gpu index for process 1], .., [gpu index for process 4]]
+                          #     ]
+                          # ]
+#         'nodes'         : [
+                          #     [   node_1,   node_uid_1, 
+                          #         [[0, 2], [4, 6]], 
+                          #         [[0]]
+                          #     ],
+                          #     [   node_2,   node_uid_2, 
+                          #         [[1, 3], [5, 7]], 
+                          #         [[0]]
+                          #     ]
+                          # ]
 #         'cores_per_node': 8,
 #         'gpus_per_node' : 1,
 #         'lm_info'       : { ... }
 #       }
 #     }
 #
-# The repsective launch method is expected to create processes on the respective
+# The respective launch method is expected to create processes on the respective
 # given set of cores (nodename_1, cores 0 and 4; nodename_2, cores 1 and 5), and
 # on the respective GPUs.  The other reserved cores are for the application to
 # spawn threads on (`cpu_threads=2`).
