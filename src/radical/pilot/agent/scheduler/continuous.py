@@ -194,25 +194,15 @@ class Continuous(AgentSchedulingComponent):
 
 
         if partial:
-            # For partial requests, the check simplifies: we need to check if we 
-            # have either some cores *or* gpus to serve the request, if yes we
-            # continue. 
-            # In the following line, we check for its equivalent negative logic:
-            # If both no. of cpus and no. of gpus free on this node do not satisfy the 
-            # request (i.e. there are no free cores and no free gpus), return.
-            # NOTE: This condition needs to checked only for MPI units.
+            # For partial requests, we return if there are no free cores AND
+            # no free gpus.
             if  (requested_cores and not free_cores) and \
                 (requested_gpus  and not free_gpus ):
                 return [], []
 
         else:
-            # For non-partial requests (ie. full requests): we need to check if 
-            # we can serve both, requested cores *and* gpus, if yes we continue.
-            # In the following line, we check for its equivalent negative logic:
-            # If both no. of cpus and no. of gpus free on this node do not satisfy the 
-            # request (i.e. there are no. of requested cores is more than the 
-            # no. of free cores and requested gpus if more than the no. of free
-            # gpus), return. 
+            # For non-partial requests (ie. full requests): its a no-match if either
+            # the cpu or gpu request cannot be served.
             if  requested_cores > free_cores or \
                 requested_gpus  > free_gpus     :
                 return [], []
