@@ -164,7 +164,7 @@ class Continuous(AgentSchedulingComponent):
         '''
         Find up to the requested number of free cores and gpus in the node.
         This call will return two lists, for each matched set.  If the core does
-        not have sufficient free resources to fullfill *both* requests, two
+        not have sufficient free resources to fulfill *both* requests, two
         empty lists are returned.  The call will *not* change the allocation
         status of the node, atomicity must be guaranteed by the caller.
 
@@ -182,32 +182,45 @@ class Continuous(AgentSchedulingComponent):
         requested (but the call will never return more than requested).
         '''
 
-
+        # Create empty list of cores and gpus. This empty list will be populated
+        # with core ids and gpu ids if they are available in the current node.
         cores = list()
         gpus  = list()
 
+        # Count the number of free cores and gpus in the current node. This is 
+        # way quicker than actually finding the core IDs.
         free_cores = node['cores'].count(rpc.FREE)
         free_gpus  = node['gpus' ].count(rpc.FREE)
 
-        # first count the free cores/gpus, as that is way quicker than
-        # actually finding the core IDs.
+
         if partial:
-            # For partial requests the check simpliefies: we just check if we 
-            # have either, some cores *or* gpus, to serve the request
+            # For partial requests, the check simplifies: we need to check if we 
+            # have either some cores *or* gpus to serve the request, if yes we
+            # continue. 
+            # In the following line, we check for its equivalent negative logic:
+            # If both no. of cpus and no. of gpus free on this node do not satisfy the 
+            # request (i.e. there are no free cores and no free gpus), return.
+            # NOTE: This condition needs to checked only for MPI units.
             if  (requested_cores and not free_cores) and \
-                (requested_gpus  and not free_gpus )     :
-                # wa can't serve either request
+                (requested_gpus  and not free_gpus ):
                 return [], []
 
         else:
-            # non-partial requests (ie. full requests): check if we can serve
-            # both, requested cores *and* gpus.
+            # For non-partial requests (ie. full requests): we need to check if 
+            # we can serve both, requested cores *and* gpus, if yes we continue.
+            # In the following line, we check for its equivalent negative logic:
+            # If both no. of cpus and no. of gpus free on this node do not satisfy the 
+            # request (i.e. there are no. of requested cores is more than the 
+            # no. of free cores and requested gpus if more than the no. of free
+            # gpus), return. 
             if  requested_cores > free_cores or \
                 requested_gpus  > free_gpus     :
                 return [], []
 
 
-        # we can serve the partial or full request - alloc the chunks we need
+        # All the boundary cases on the number of available and requested gpus
+        # and cpus have been accounted for at this point.
+        # We can serve the partial or full request - alloc the chunks we need
         # FIXME: chunk gpus, too?
         alloc_cores = min(requested_cores, free_cores) / chunk * chunk
         alloc_gpus  = min(requested_gpus , free_gpus )
@@ -235,9 +248,18 @@ class Continuous(AgentSchedulingComponent):
         core_map = list()
         gpu_map  = list()
 
+        # Question: The following two lines are checking if the number of
+        # available cores is a multiple of the threads per CPU process and then 
+        # finds the number of CPU processes. Why not input the number of CPU
+        # processes to this function?
         assert(not len(cores) % threads_per_proc)
         n_procs =  len(cores) / threads_per_proc
 
+
+        # core_map is a list of list of core ids.
+        # core_map = [cores_for_proc_1,cores_for_proc_2,....., cores_for_proc_N]
+        # cores_for_proc_x = [core_for_thread_1, core_for_thread_2,.., 
+        #                       core_for_thread_M]
         idx = 0
         for p in range(n_procs):
             p_map = list()
@@ -251,6 +273,8 @@ class Continuous(AgentSchedulingComponent):
         assert(idx == len(cores))
 
         # gpu procs are considered single threaded right now (FIXME)
+        # Currently, gpu_map is a list of gpu ids.
+        # gpu_map = [gpu_for_proc_1, gpu_for_proc_2, ...., gpu_for_proc_N]
         for g in gpus:
             gpu_map.append([g])
 
@@ -264,31 +288,30 @@ class Continuous(AgentSchedulingComponent):
         Find a suitable set of cores and gpus *within a single node*.
 
         Input:
-        cud: Compute Unit description. Needs to specify at least one process,thread
-        or GPU process.
+        cud: Compute Unit description. Needs to specify at least one CPU 
+        process and one thread per CPU process, or GPU process.
 
         '''
 
-        # Get the number of processes, threads of GPU processes this unit requests.
-        # For threads, if the entry is not specified in the description, then 
-        # assume it is one thread per process.
+        # Get the number of CPU processes, threads per CPU process 
+        # and, GPU processes this unit requests.
         requested_procs  = cud['cpu_processes']
-        threads_per_proc = cud.get('cpu_threads',1)
+        threads_per_proc = cud['cpu_threads']
         requested_gpus   = cud['gpu_processes']
 
         # The total number of requested logical cores is equal to the number of
-        # processes times the number of threads per process.
-
+        # CPU processes times the number of threads per CPU process.
         requested_cores = requested_procs * threads_per_proc
 
-        # The allocation has to fit in a single node. If this is true contnue and
-        # try to find a possible allocation, otherwise raise a value error exception.
+        # The requested allocation has to fit in a single node. If this is true
+        # continue and try to find a possible allocation, otherwise raise a 
+        # value error exception.
         if  requested_cores > self._lrms_cores_per_node or \
             requested_gpus  > self._lrms_gpus_per_node     :
             raise ValueError('Non-mpi unit does not fit onto single node')
 
-        # Initiallize core and gpu list that the unit may allocate. Also initialize
-        # node name and node id variables.
+        # Initialize core and gpu list that the unit may be allocated. Also 
+        # initialize node name and node id variables.
         cores     = list()
         gpus      = list()
         node_name = None
@@ -301,8 +324,8 @@ class Continuous(AgentSchedulingComponent):
             cores, gpus = self._alloc_node(node, requested_cores, requested_gpus,
                                            partial=False)
 
-            # if the nessecary number of cores and GPUs is found, break the loop.
-            # Else check the next node.
+            # if the necessary number of cores and GPUs are found, break the 
+            # loop. Else check the next node.
             if  len(cores) == requested_cores and \
                 len(gpus)  == requested_gpus      :
                 # we are done
@@ -315,10 +338,10 @@ class Continuous(AgentSchedulingComponent):
         if not cores and not gpus:
             return None
 
-        # A suitable allocation was found and the core and gpu map, core and gpu
-        # ids, should be return to the launcher. This way the processes will be
-        # placed in cores with distance equal to the number of threads, leaving
-        # enough space between them.
+        # A suitable allocation was found and the core map, gpu map, node name
+        # and node id should be returned to the launcher. This way the CPU
+        # processes will have access to N unique cores, where N is the number of
+        # threads in that process.
         core_map, gpu_map = self._get_node_maps(cores, gpus, threads_per_proc)
 
         # All the information for placing the unit is acquired. Include them in
