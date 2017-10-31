@@ -334,7 +334,7 @@ class Continuous(AgentSchedulingComponent):
         if not threads_per_proc:
             threads_per_proc = 1
 
-        requested_cores = requested_procs * threads_per_proc
+        requested_cores = requested_procs * threads_per_proc   # define if the requested_cores refer to physical, logical
 
         # First and last nodes can be a partial allocation - all other nodes can
         # only be partial when `scattered` is set.
@@ -382,7 +382,10 @@ class Continuous(AgentSchedulingComponent):
                          }
 
         # start the search
-        for node in self.nodes:
+        for node in self.nodes: 
+            ## How to improve this search? 
+            ## IDEA: Define weights for cpus & gpus and create a function f(node) = a*cpus + b*gpus
+            ## sort based on function f()
 
             node_uid  = node['uid']
             node_name = node['name']
@@ -405,8 +408,8 @@ class Continuous(AgentSchedulingComponent):
             find_gpus   = min(requested_gpus  - alloced_gpus,  gpus_per_node )
 
             # under the constraints so derived, check what we find on this node
-            cores, gpus = self._alloc_node(node, find_cores, find_gpus,
-                                           chunk=threads_per_proc,
+            cores, gpus = self._alloc_node(node, find_cores, find_gpus,   ## Change _alloc_node to node_availability    
+                                           chunk=threads_per_proc,   
                                            partial=partial)
 
 
@@ -435,7 +438,7 @@ class Continuous(AgentSchedulingComponent):
             alloced_gpus  += len(gpus)
             is_first       = False
 
-            # or maybe don'tcontinue the search if we have in fact enough!
+            # or maybe don't continue the search if we have in fact enough!
             if  alloced_cores == requested_cores and \
                 alloced_gpus  == requested_gpus      :
                 # we are done
