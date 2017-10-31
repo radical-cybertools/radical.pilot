@@ -36,9 +36,16 @@ STDERR                 = 'stderr'
 RESTARTABLE            = 'restartable'
 
 # process / thread types
-POSIX                  = 'POSIX'
+POSIX                  = 'POSIX' # I see posix listed here but I do not see it
+# described with at "..data:: comment. are we using Posix or is it an "artifact"
+# if we are using Posix is there a reason it should be used for RP over OpenMP?
 MPI                    = 'MPI'
 OpenMP                 = 'OpenMP'
+# I see further down in comments below that CUDA is listed and explained but 
+# I do not see it defined here. 
+# I also was curious about the usage of OpenMPs newly released GPU support
+# would it be easier to use Cuda than the newer OpenMP GPU options or is
+# it that Cuda provides better performance?
 
 # ------------------------------------------------------------------------------
 #
