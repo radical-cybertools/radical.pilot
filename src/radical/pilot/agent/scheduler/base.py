@@ -241,6 +241,10 @@ class AgentSchedulingComponent(rpu.Component):
         # during agent startup.  We dig them out of the config at this point.
         #
         # NOTE: this information is insufficient for the torus scheduler!
+
+        # MING: What is lm info? All the other things make sense, but lm_info
+        #       is a bit unclear.
+
         self._pilot_id = self._cfg['pilot_id']
         self._lrms_info           = self._cfg['lrms_info']
         self._lrms_lm_info        = self._cfg['lrms_info']['lm_info']
@@ -310,14 +314,33 @@ class AgentSchedulingComponent(rpu.Component):
     #
     # NOTE: any scheduler implementation which uses a different nodelist
     #       structure MUST overload this method.
+
+    # MING: This function is used to update the node list by taking in a list
+    #       of slots that have been assigned an update them to the new state.
+    #       The nodes are represented as a dictionary, where as the slots are
+    #       represented as a dictionary of a different structure. This confused
+    #       me at first when I tried to read it.
+
     def _change_slot_states(self, slots, new_state):
 
         for node_name, node_uid, cores, gpus in slots['nodes']:
 
             # Find the entry in the the slots list
+
+            # MING: Assuming 'uid' is the ID of the node, it seems a bit
+            #       wasteful to have to look at all of the nodes available
+            #       for use if at most one node can have that uid. Maybe
+            #       it would be worthwhile to simply keep a list of nodes
+            #       that we would read, and keep a dictionary that maps
+            #       the uid of the node to the location on the list?
+
             node = (n for n in self.nodes if n['uid'] == node_uid).next()
             assert(node)
 
+            # MING: This is a bit awkward to read since it node is the node
+            #       dictionary created during initialization, but cores 
+            #       refers to the core map associated with the slots. Can
+            #       be tricky to read at first. Same for GPUs
             for cslot in cores:
                 for core in cslot:
                     node['cores'][core] = new_state
