@@ -54,9 +54,7 @@ def bootstrap_3(agent_name):
         # until then.
         # FIXME: the comment above can't be correct: wait won't do a thing for
         #        for an unspawned component...
-        agent.join()
-        while True:
-            time.sleep(1)
+        agent.wait_final()
 
     finally:
         # in all cases, make sure we perform an orderly shutdown.  I hope python
