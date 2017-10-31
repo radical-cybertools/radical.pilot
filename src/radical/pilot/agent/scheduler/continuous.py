@@ -383,7 +383,7 @@ class Continuous(AgentSchedulingComponent):
 
         # start the search
         for node in self.nodes: 
-            ## How to improve this search? 
+            ## GEORGE: How to improve this search? 
             ## IDEA: Define weights for cpus & gpus and create a function f(node) = a*cpus + b*gpus
             ## sort based on function f()
 
@@ -408,7 +408,7 @@ class Continuous(AgentSchedulingComponent):
             find_gpus   = min(requested_gpus  - alloced_gpus,  gpus_per_node )
 
             # under the constraints so derived, check what we find on this node
-            cores, gpus = self._alloc_node(node, find_cores, find_gpus,   ## Change _alloc_node to node_availability    
+            cores, gpus = self._alloc_node(node, find_cores, find_gpus,   ##GEORGE:  Change _alloc_node to node_availability    
                                            chunk=threads_per_proc,   
                                            partial=partial)
 
@@ -447,7 +447,8 @@ class Continuous(AgentSchedulingComponent):
         # if we did not find enough, there is not much we can do at this point
         if  alloced_cores < requested_cores or \
             alloced_gpus  < requested_gpus     :
-            return None # signal failure
+            return None # signal failure         ## GEORGE: Define what failure signal is that. Fail alloc? 
+                                                 ## is the same signal for all failures?
 
         # this should be nicely filled out now - return
         return slots
