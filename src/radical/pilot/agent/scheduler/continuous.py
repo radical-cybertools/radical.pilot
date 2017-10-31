@@ -236,6 +236,11 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
+
+    '''
+    for each process (containing X threads) generate a process map that requests 1 core per thread.
+    core maps returns a list of lists of process maps
+    '''
     def _get_node_maps(self, cores, gpus, threads_per_proc):
 
         core_map = list()
