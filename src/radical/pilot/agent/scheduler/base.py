@@ -3,8 +3,9 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import logging
 import time
+import pprint
+import logging
 import threading
 
 import radical.utils as ru
@@ -46,10 +47,10 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def initialize_child(self):
 
-        self.register_input(rps.AGENT_SCHEDULING_PENDING, 
+        self.register_input(rps.AGENT_SCHEDULING_PENDING,
                             rpc.AGENT_SCHEDULING_QUEUE, self.work)
 
-        self.register_output(rps.AGENT_EXECUTING_PENDING,  
+        self.register_output(rps.AGENT_EXECUTING_PENDING,
                              rpc.AGENT_EXECUTING_QUEUE)
 
         # we need unschedule updates to learn about units which free their
@@ -85,7 +86,7 @@ class AgentSchedulingComponent(rpu.Component):
         #         probably be solved cleaner.
         pass
 
- 
+
     # --------------------------------------------------------------------------
     #
     # This class-method creates the appropriate sub-class for the Scheduler.
@@ -170,14 +171,13 @@ class AgentSchedulingComponent(rpu.Component):
         # got an allocation, go off and launch the process
         self._prof.prof('schedule_ok', uid=cu['uid'])
 
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("after  allocate   %s: %s", cu['uid'], 
-                            self.slot_status())
-
-        import pprint
-        self._log.debug("%s [%s] : %s", cu['uid'],
-                        cu['description']['cores'],
-                        pprint.pformat(cu['opaque_slots']))
+      # if  self._log.isEnabledFor(logging.DEBUG):
+      #     self._log.debug("after  allocate   %s: %s", cu['uid'],
+      #                     self.slot_status())
+      #
+      # self._log.debug("%s [%s] : %s", cu['uid'],
+      #                 cu['description']['cores'],
+      #                 pprint.pformat(cu['opaque_slots']))
         return True
 
 
@@ -193,9 +193,9 @@ class AgentSchedulingComponent(rpu.Component):
 
         cu = msg
 
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("before reschedule %s: %s", cu['uid'], 
-                            self.slot_status())
+      # if  self._log.isEnabledFor(logging.DEBUG):
+      #     self._log.debug("before reschedule %s: %s", cu['uid'],
+      #                     self.slot_status())
 
         # cycle through wait queue, and see if we get anything running now.  We
         # cycle over a copy of the list, so that we can modify the list on the
@@ -216,9 +216,8 @@ class AgentSchedulingComponent(rpu.Component):
                 #        CUs come after this one - which is naive, ie. wrong.
                 break
 
-        # Note: The extra space below is for visual alignment
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("after  reschedule %s: %s", cu['uid'], self.slot_status())
+      # if  self._log.isEnabledFor(logging.DEBUG):
+      #     self._log.debug("after  reschedule %s: %s", cu['uid'], self.slot_status())
 
         return True
 
@@ -238,8 +237,8 @@ class AgentSchedulingComponent(rpu.Component):
             self._log.error("cannot unschedule: %s (no slots)" % cu)
             return True
 
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("before unschedule %s: %s", cu['uid'], self.slot_status())
+      # if  self._log.isEnabledFor(logging.DEBUG):
+      #     self._log.debug("before unschedule %s: %s", cu['uid'], self.slot_status())
 
         # needs to be locked as we try to release slots, but slots are acquired
         # in a different thread....
@@ -252,8 +251,8 @@ class AgentSchedulingComponent(rpu.Component):
         self.publish(rpc.AGENT_RESCHEDULE_PUBSUB, cu)
 
         # Note: The extra space below is for visual alignment
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("after  unschedule %s: %s", cu['uid'], self.slot_status())
+      #  if self._log.isEnabledFor(logging.DEBUG):
+      #     self._log.debug("after  unschedule %s: %s", cu['uid'], self.slot_status())
 
         return True
 
