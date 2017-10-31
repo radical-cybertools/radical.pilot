@@ -257,7 +257,7 @@ class Continuous(AgentSchedulingComponent):
 
 
         # core_map is a list of list of core indexes.
-        # See Line 124-126 of ../base.py
+        # See top level comment of ../base.py
         idx = 0
         for p in range(n_procs):
             p_map = list()
@@ -272,7 +272,7 @@ class Continuous(AgentSchedulingComponent):
 
         # gpu procs are considered single threaded right now (FIXME)
         # Currently, gpu_map is a list of gpu ids.
-        # See Line 124-126 of ../base.py
+        # See top level comment of ../base.py
         for g in gpus:
             gpu_map.append([g])
 
