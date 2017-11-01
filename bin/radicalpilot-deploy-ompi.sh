@@ -16,16 +16,22 @@
 # Thanks to Mark Santcroos to provide the input for this installation
 # procedure!
 
-export OMPI_DIR=$HOME/ompi/                          # target location for install
+# ------------------------------------------------------------------------------
+# resource specifics
+module unload PrgEnv-pgi || true
+module load   PrgEnv-gnu
+module load cmake3 boost fftw
+module load dynamic-link
+export OMPI_DIR=$HOME/ompi/
+# ------------------------------------------------------------------------------
+
 export OMPI_COMMIT=539f71d                           # OpenMPI commit to install
-export OMPI_COMMIT=master                            # 
-export OMPI_COMMIT=59682c2c49                        #
+export OMPI_COMMIT=b75ed83d4b                        # close to master HEAD
 export OMPI_LABEL=$(date '+%Y_%m_%d'_${OMPI_COMMIT}) # module flag for installed version
-export OMPI_LABEL=2017_10_05_master
 export MAKEFLAGS=-j16                                # speed up build on multicore machines
 
 
-m # The environments below are only important during build time
+# The environments below are only important during build time
 # and can generally point anywhere on the filesystem.
 
 orig=$(pwd)
@@ -47,103 +53,103 @@ export OMPI_INSTALLED=$OMPI_DIR/installed
 mkdir -p $OMPI_DOWNLOAD
 mkdir -p $OMPI_SOURCE
 
-## cd $OMPI_DOWNLOAD
-## wget http://ftp.nluug.nl/gnu/autoconf/autoconf-2.69.tar.gz
-## wget http://ftp.nluug.nl/gnu/automake/automake-1.13.4.tar.gz
-## wget http://nl.mirror.babylon.network/gnu/libtool/libtool-2.4.2.tar.gz
-## wget https://ftp.gnu.org/gnu/m4/m4-1.4.16.tar.gz
-## 
-## cd $OMPI_SOURCE
-## tar -xvzf $OMPI_DOWNLOAD/m4-1.4.16.tar.gz
-## cd m4-1.4.16
-## ./configure --prefix=$OMPI_TOOLS_PREFIX
-## make
-## make install
-## 
-## cd $OMPI_SOURCE
-## tar -xvzf $OMPI_DOWNLOAD/autoconf-2.69.tar.gz
-## cd autoconf-2.69
-## ./configure --prefix=$OMPI_TOOLS_PREFIX
-## make
-## make install
-## 
-## cd $OMPI_SOURCE
-## tar -xvzf $OMPI_DOWNLOAD/automake-1.13.4.tar.gz
-## cd automake-1.13.4
-## ./configure --prefix=$OMPI_TOOLS_PREFIX
-## make
-## make install
-## 
-## cd $OMPI_SOURCE
-## tar -xvzf $OMPI_DOWNLOAD/libtool-2.4.2.tar.gz
-## cd libtool-2.4.2
-## ./configure --prefix=$OMPI_TOOLS_PREFIX
-## make
-## make install
-## 
-## cd $OMPI_SOURCE
-## git clone https://github.com/open-mpi/ompi.git
-## cd ompi
-## git checkout $OMPI_COMMIT
-## ./autogen.pl
-## 
-## export OMPI_BUILD=$OMPI_DIR/build/$OMPI_LABEL
-## mkdir -p $OMPI_BUILD
-## cd $OMPI_BUILD
-## export CFLAGS=-O3
-## export CXXFLAGS=-O3
-## $OMPI_SOURCE/ompi/configure \
-##     --enable-orterun-prefix-by-default \
-##     --with-devel-headers \
-##     --disable-debug \
-##     --enable-static \
-##     --disable-pmix-dstore \
-##     --prefix=$OMPI_INSTALLED/$OMPI_LABEL
-## make
-## make install
-## 
-## 
-## # install libffi on systems which don't have it, so that the pilot ve can
-## # install the `orte_cffi` python module.
-## # libffi documentation needs texi2html which is not commonly available, so we
-## # disable documentation.
-## #
-## # cd $OMPI_SOURCE
-## # git clone https://github.com/libffi/libffi.git
-## # cd libffi
-## # ./autogen.sh
-## # ./configure --prefix=$OMPI_TOOLS_PREFIX --disable-docs
-## # make
-## # make install
-## 
-## 
-## 
-## mkdir -p $OMPI_MODULE
-## cat <<EOT > $OMPI_MODULE/$OMPI_LABEL
-## #%Module########################################################################
-## 
-## ##
-## ## Open MPI from git
-## ##
-## proc ModulesHelp { } {
-##         global version
-## 
-##         puts stderr "Sets up a dynamic build of Open MPI HEAD from git."
-##         puts stderr "Version $OMPI_LABEL @$OMPI_COMMIT"
-## }
-## 
-## module-whatis "Dynamic build of Open MPI from git."
-## 
-## set version $OMPI_LABEL
-## 
-## prepend-path    PATH            $OMPI_INSTALLED/$OMPI_LABEL/bin
-## prepend-path    LD_LIBRARY_PATH $OMPI_INSTALLED/$OMPI_LABEL/lib
-## prepend-path    MANPATH         $OMPI_INSTALLED/$OMPI_LABEL/share/man
-## prepend-path    PKG_CONFIG_PATH $OMPI_INSTALLED/$OMPI_LABEL/share/pkgconfig
-## 
-## setenv          OMPI_MCA_timer_require_monotonic false
-## 
-## EOT
+cd $OMPI_DOWNLOAD
+wget http://ftp.nluug.nl/gnu/autoconf/autoconf-2.69.tar.gz
+wget http://ftp.nluug.nl/gnu/automake/automake-1.13.4.tar.gz
+wget http://nl.mirror.babylon.network/gnu/libtool/libtool-2.4.2.tar.gz
+wget https://ftp.gnu.org/gnu/m4/m4-1.4.16.tar.gz
+
+cd $OMPI_SOURCE
+tar -xvzf $OMPI_DOWNLOAD/m4-1.4.16.tar.gz
+cd m4-1.4.16
+./configure --prefix=$OMPI_TOOLS_PREFIX
+make
+make install
+
+cd $OMPI_SOURCE
+tar -xvzf $OMPI_DOWNLOAD/autoconf-2.69.tar.gz
+cd autoconf-2.69
+./configure --prefix=$OMPI_TOOLS_PREFIX
+make
+make install
+
+cd $OMPI_SOURCE
+tar -xvzf $OMPI_DOWNLOAD/automake-1.13.4.tar.gz
+cd automake-1.13.4
+./configure --prefix=$OMPI_TOOLS_PREFIX
+make
+make install
+
+cd $OMPI_SOURCE
+tar -xvzf $OMPI_DOWNLOAD/libtool-2.4.2.tar.gz
+cd libtool-2.4.2
+./configure --prefix=$OMPI_TOOLS_PREFIX
+make
+make install
+
+cd $OMPI_SOURCE
+git clone https://github.com/open-mpi/ompi.git
+cd ompi
+git checkout $OMPI_COMMIT
+./autogen.pl
+
+export OMPI_BUILD=$OMPI_DIR/build/$OMPI_LABEL
+mkdir -p $OMPI_BUILD
+cd $OMPI_BUILD
+export CFLAGS=-O3
+export CXXFLAGS=-O3
+$OMPI_SOURCE/ompi/configure \
+    --enable-orterun-prefix-by-default \
+    --with-devel-headers \
+    --disable-debug \
+    --enable-static \
+    --disable-pmix-dstore \
+    --prefix=$OMPI_INSTALLED/$OMPI_LABEL
+make
+make install
+
+
+# install libffi on systems which don't have it, so that the pilot ve can
+# install the `orte_cffi` python module.
+# libffi documentation needs texi2html which is not commonly available, so we
+# disable documentation.
+#
+# cd $OMPI_SOURCE
+# git clone https://github.com/libffi/libffi.git
+# cd libffi
+# ./autogen.sh
+# ./configure --prefix=$OMPI_TOOLS_PREFIX --disable-docs
+# make
+# make install
+
+
+
+mkdir -p $OMPI_MODULE
+cat <<EOT > $OMPI_MODULE/$OMPI_LABEL
+#%Module########################################################################
+
+##
+## Open MPI from git
+##
+proc ModulesHelp { } {
+        global version
+
+        puts stderr "Sets up a dynamic build of Open MPI HEAD from git."
+        puts stderr "Version $OMPI_LABEL @$OMPI_COMMIT"
+}
+
+module-whatis "Dynamic build of Open MPI from git."
+
+set version $OMPI_LABEL
+
+prepend-path    PATH            $OMPI_INSTALLED/$OMPI_LABEL/bin
+prepend-path    LD_LIBRARY_PATH $OMPI_INSTALLED/$OMPI_LABEL/lib
+prepend-path    MANPATH         $OMPI_INSTALLED/$OMPI_LABEL/share/man
+prepend-path    PKG_CONFIG_PATH $OMPI_INSTALLED/$OMPI_LABEL/share/pkgconfig
+
+setenv          OMPI_MCA_timer_require_monotonic false
+
+EOT
 
 # ------------------------------------------------------------------------------
 # gromacs
@@ -162,13 +168,9 @@ rm -rf gromacs-5.1.4
 tar xf $OMPI_DOWNLOAD/gromacs-5.1.4.tar.gz
 cd gromacs-5.1.4
 
-# module unload PrgEnv-pgi || true
-# module load   PrgEnv-gnu
-# module load cmake3 boost fftw
-# module load dynamic-link
-# module use --append $OMPI_MODULE
-# module load openmpi/$OMPI_LABEL
-# module list
+module use  --append $OMPI_MODULE
+module load openmpi/$OMPI_LABEL
+module list
 
 cmake \
   -DCMAKE_C_COMPILER=mpicc \
