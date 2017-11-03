@@ -179,7 +179,7 @@ class Yarn(LaunchMethod):
         hadoop_home = None
         if lrms.name == 'YARNLRMS': # FIXME: use constant
             logger.info('Hook called by YARN LRMS')
-            logger.info('NameNode: {0}'.format(lrms.namenode_url))
+            logger.info('NameNode: %s', lrms.namenode_url)
             service_url    = lrms.namenode_url
             rm_url         = "%s:%s" % (lrms.rm_ip, lrms.rm_port)
             rm_ip          = lrms.rm_ip
@@ -336,7 +336,7 @@ class Yarn(LaunchMethod):
         # Construct the args_string which is the arguments given as input to the
         # shell script. Needs to be a string
         self._log.debug("Constructing YARN command")
-        self._log.debug('Opaque Slots {0}'.format(opaque_slots))
+        self._log.debug('Opaque Slots %s', opaque_slots)
 
         if 'lm_info' not in opaque_slots:
             raise RuntimeError('No lm_info to launch via %s: %s' \

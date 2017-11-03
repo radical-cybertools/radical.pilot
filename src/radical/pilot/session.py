@@ -441,7 +441,7 @@ class Session(rs.Session):
         if self._closed:
             return
 
-        self._log.debug("session %s closing" % (str(self._uid)))
+        self._log.debug("session %s closing", self._uid)
         self._prof.prof("session_close", uid=self._uid)
 
         # set defaults
@@ -946,13 +946,13 @@ class Session(rs.Session):
                     else:
                         raise Exception("unsupported access schema: %s" % js_url.schema)
         
-                    self._log.debug("rsup.PTYShell('%s')" % js_url)
+                    self._log.debug("rsup.PTYShell('%s')", js_url)
                     shell = rsup.PTYShell(js_url, self)
         
                     ret, out, err = shell.run_sync(' echo "WORKDIR: %s"' % sandbox_raw)
                     if ret == 0 and 'WORKDIR:' in out:
                         sandbox_base = out.split(":")[1].strip()
-                        self._log.debug("sandbox base %s: '%s'" % (js_url, sandbox_base))
+                        self._log.debug("sandbox base %s: '%s'", js_url, sandbox_base)
                     else:
                         raise RuntimeError("Couldn't get remote working directory.")
         
