@@ -236,7 +236,7 @@ class ORTE(AgentExecutingComponent):
 
             # unit launch failed
             self._prof.prof('exec_fail', uid=uid)
-            self._log.error("unit %s startup failed: %s", uid, status))
+            self._log.error("unit %s startup failed: %s", uid, status)
             self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             cu['target_state'] = rps.FAILED
@@ -245,7 +245,7 @@ class ORTE(AgentExecutingComponent):
 
         else:
             cu['started'] = time.time()
-            self._log.debug("unit %s startup ok", uid))
+            self._log.debug("unit %s startup ok", uid)
             self.advance(cu, rps.AGENT_EXECUTING, publish=True, push=False)
 
 
