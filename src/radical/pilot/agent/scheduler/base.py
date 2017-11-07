@@ -430,6 +430,11 @@ class AgentSchedulingComponent(rpu.Component):
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=unit['uid'])
 
+        self._log.debug("Debug meessage from Georgios!!")  #GEORGIOS 
+        self._log.info("Info message from Georgios!")  # GEORGIOS
+
+        self._prof.prof('Georgios messages printed', uid=unit['uid'])  # time to print 2 of my messages
+
         if self._log.isEnabledFor(logging.DEBUG):
             self._log.debug("after  allocate   %s: %s", unit['uid'],
                             self.slot_status())
