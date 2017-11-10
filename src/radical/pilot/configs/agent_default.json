@@ -80,7 +80,7 @@
             "stall_hwm" : 1,
             "bulk_size" : 0
         },
-        "agent_schedule_pubsub" : {
+        "agent_reschedule_pubsub" : {
             "log_level" : "debug",
             "stall_hwm" : 1,
             "bulk_size" : 0
