@@ -25,6 +25,7 @@ SCHEDULER_NAME_TORUS        = "TORUS"
 SCHEDULER_NAME_YARN         = "YARN"
 SCHEDULER_NAME_SPARK        = "SPARK"
 
+
 # ------------------------------------------------------------------------------
 #
 # An RP agent scheduler will place incoming units onto a set of cores and gpus.
@@ -234,8 +235,8 @@ class AgentSchedulingComponent(rpu.Component):
         # NOTE: we could use a local queue here.  Using a zmq bridge goes toward
         #       an distributed scheduler, and is also easier to implement right
         #       now, since `Component` provides the right mechanisms...
-        self.register_publisher (rpc.AGENT_SCHEDULE_PUBSUB)
-        self.register_subscriber(rpc.AGENT_SCHEDULE_PUBSUB, self.schedule_cb)
+        self.register_publisher (rpc.AGENT_RESCHEDULE_PUBSUB)
+        self.register_subscriber(rpc.AGENT_RESCHEDULE_PUBSUB, self.reschedule_cb)
 
         # The scheduler needs the LRMS information which have been collected
         # during agent startup.  We dig them out of the config at this point.
@@ -266,7 +267,10 @@ class AgentSchedulingComponent(rpu.Component):
 
         # configure the scheduler instance
         self._configure()
-        self._log.debug("slot status after  init      : %s", self.slot_status())
+
+        if self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug("slot status after  init      : %s", 
+                            self.slot_status())
 
 
     # --------------------------------------------------------------------------
@@ -434,10 +438,11 @@ class AgentSchedulingComponent(rpu.Component):
             self._log.debug("after  allocate   %s: %s", unit['uid'],
                             self.slot_status())
 
-        self._log.debug("%s [%s/%s] : %s [%s]", unit['uid'],
-                        unit['description']['cpu_processes'],
-                        unit['description']['gpu_processes'],
-                        pprint.pformat(unit['slots']))
+            self._log.debug("%s [%s/%s] : %s [%s]", unit['uid'],
+                            unit['description']['cpu_processes'],
+                            unit['description']['gpu_processes'],
+                            pprint.pformat(unit['slots']))
+
         # True signals success
         return True
 
@@ -457,7 +462,8 @@ class AgentSchedulingComponent(rpu.Component):
             return True
 
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("before unschedule %s: %s", unit['uid'], self.slot_status())
+            self._log.debug("before unschedule %s: %s", unit['uid'],
+                            self.slot_status())
 
         # needs to be locked as we try to release slots, but slots are acquired
         # in a different thread....
@@ -468,10 +474,11 @@ class AgentSchedulingComponent(rpu.Component):
 
         # notify the scheduling thread, ie. trigger an attempt to use the freed
         # slots for units waiting in the wait pool.
-        self.publish(rpc.AGENT_SCHEDULE_PUBSUB, unit)
+        self.publish(rpc.AGENT_RESCHEDULE_PUBSUB, unit)
 
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("after  unschedule %s: %s", unit['uid'], self.slot_status())
+            self._log.debug("after  unschedule %s: %s", unit['uid'], 
+                            self.slot_status())
 
         # return True to keep the cb registered
         return True
@@ -479,7 +486,7 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def schedule_cb(self, topic, msg):
+    def reschedule_cb(self, topic, msg):
         '''
         This cb is triggered after a unit's resources became available again, so
         we can attempt to schedule units from the wait pool.
@@ -494,7 +501,7 @@ class AgentSchedulingComponent(rpu.Component):
         unit = msg
 
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("before schedule   %s: %s", unit['uid'],
+            self._log.debug("before reschedule %s: %s", unit['uid'],
                             self.slot_status())
 
         # cycle through wait queue, and see if we get anything placed now.  We
@@ -505,7 +512,8 @@ class AgentSchedulingComponent(rpu.Component):
             if self._try_allocation(unit):
 
                 # allocated unit -- advance it
-                self.advance(unit, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
+                self.advance(unit, rps.AGENT_EXECUTING_PENDING,
+                             publish=True, push=True)
 
                 # remove it from the wait queue
                 with self._wait_lock :

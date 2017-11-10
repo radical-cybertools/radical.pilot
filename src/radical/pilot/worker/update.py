@@ -77,6 +77,7 @@ class Update(rpu.Worker):
     #
     def stop(self):
 
+        self._session._log.debug(' === %s stop called', self._uid)
         super(Update, self).stop()
 
 
@@ -119,8 +120,10 @@ class Update(rpu.Worker):
         self._prof.prof('update_pushed', msg='bulk size: %d' % len(self._uids))
 
         for entry in self._uids:
+
             uid   = entry[0]
             state = entry[2]
+
             self._prof.prof('update_pushed', msg=state, uid=uid)
 
         # empty bulk, refresh state

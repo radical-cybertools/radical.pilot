@@ -244,3 +244,10 @@ term iv
       - keep component and bridge handles in the component and clean out after
         fork
 
+cleanup
+-------
+
+  - coding guidelines: clean flake8
+  - remove or revive heartbeat
+  - settle on one termination route
+  

@@ -5,6 +5,7 @@ __license__   = 'MIT'
 
 import os
 import sys
+import time
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -18,7 +19,7 @@ dh = ru.DebugHelper()
 # ------------------------------------------------------------------------------
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
@@ -53,15 +54,14 @@ if __name__ == '__main__':
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
-        pd_init = {
-                'resource'      : resource,
-                'runtime'       : 15,  # pilot runtime (min)
-                'exit_on_error' : True,
-                'project'       : config[resource]['project'],
-                'queue'         : config[resource]['queue'],
-                'access_schema' : config[resource]['schema'],
-                'cores'         : 1024
-                }
+        pd_init = {'resource'      : resource,
+                   'runtime'       : 15,  # pilot runtime (min)
+                   'exit_on_error' : True,
+                   'project'       : config[resource]['project'],
+                   'queue'         : config[resource]['queue'],
+                   'access_schema' : config[resource]['schema'],
+                   'cores'         : config[resource]['cores']
+                  }
         pdesc = rp.ComputePilotDescription(pd_init)
 
         # Launch the pilot.
@@ -76,7 +76,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 256 # number of units to run
+        n = 256  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -85,11 +85,8 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable       = '/bin/date'
-            cud.gpu_processes    = 1
-            cud.cpu_processes    = 2
-            cud.cpu_threads      = 2
-            cud.cpu_process_type = rp.MPI
+            cud.executable    = '/bin/date'
+            cud.cpu_processes = 1
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')

@@ -307,26 +307,26 @@ class Shell(AgentExecutingComponent):
 
         sandbox  = '%s/%s' % (self._pwd, cu['uid'])
 
-        cwd  += "# CU sandbox\n"
-        cwd  += "mkdir -p %s\n" % sandbox
-        cwd  += "cd       %s\n" % sandbox
-        if 'RADICAL_PILOT_PROFILE' in os.environ:
-            cmd += 'echo "`$GTOD`,unit_script,%s,%s,after_cd," >> $RP_PROF\n' %  \
-                   (cu['uid'], rps.AGENT_EXECUTING)
-        if 'RADICAL_PILOT_PROFILE' in os.environ:
-            cwd  += "echo script after_cd `%s` >> %s/PROF\n" % (self.gtod, sandbox)
-        cwd  += "\n"
-
         env  += "# CU environment\n"
-        env  += "export RP_SESSION_ID=%s\n" % self._cfg['session_id']
-        env  += "export RP_PILOT_ID=%s\n"   % self._cfg['pilot_id']
-        env  += "export RP_AGENT_ID=%s\n"   % self._cfg['agent_name']
-        env  += "export RP_SPAWNER_ID=%s\n" % self.uid
-        env  += "export RP_UNIT_ID=%s\n"    % cu['uid']
-        env  += 'export RP_GTOD="%s"\n'     % cu['gtod']
-        env  += 'export RP_PROF="%s"\n'     % sandbox
-        env  += '\n'
-        env  += '\ntouch $RP_PROF\n'
+        env  += "export RP_SESSION_ID=%s\n"     % self._cfg['session_id']
+        env  += "export RP_PILOT_ID=%s\n"       % self._cfg['pilot_id']
+        env  += "export RP_AGENT_ID=%s\n"       % self._cfg['agent_name']
+        env  += "export RP_SPAWNER_ID=%s\n"     % self.uid
+        env  += "export RP_UNIT_ID=%s\n"        % cu['uid']
+        env  += 'export RP_GTOD="%s"\n'         % cu['gtod']
+        if 'RADICAL_PILOT_PROFILE' in os.environ:
+            env += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
+        env  += '''
+prof(){
+    if test -z "$RP_PROF"
+    then
+        return
+    fi
+    event=$1
+    now=$($RP_GTOD)
+    echo "$now,$event,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING," >> $RP_PROF
+}
+'''
 
         # also add any env vars requested for export by the resource config
         for k,v in self._env_cu_export.iteritems():
@@ -338,33 +338,29 @@ class Shell(AgentExecutingComponent):
                 env += "export %s=%s\n"  %  (e, descr['environment'][e])
         env  += "\n"
 
+        cwd  += "# CU sandbox\n"
+        cwd  += "mkdir -p %s\n" % sandbox
+        cwd  += "cd       %s\n" % sandbox
+        cwd  += 'prof cu_cd_done\n'
+        cwd  += "\n"
+
         if  descr['pre_exec'] :
             fail  = ' (echo "pre_exec failed"; false) || exit'
             pre  += "\n# CU pre-exec\n"
-            if 'RADICAL_PILOT_PROFILE' in os.environ:
-                pre += 'echo "`$GTOD`,unit_script,%s,%s,pre_start," >> $RP_PROF\n' %  \
-                       (cu['uid'], rps.AGENT_EXECUTING)
-            pre = ''
+            pre  += 'prof cu_pre_start\n'
             for elem in descr['pre_exec']:
                 pre += "%s || %s\n" % (elem, fail)
             pre  += "\n"
-            if 'RADICAL_PILOT_PROFILE' in os.environ:
-                pre += 'echo "`$GTOD`,unit_script,%s,%s,pre_stop," >> $RP_PROF\n' %  \
-                       (cu['uid'], rps.AGENT_EXECUTING)
+            pre  += 'prof cu_pre_stop\n'
             pre  += "\n"
 
         if  descr['post_exec'] :
             fail  = ' (echo "post_exec failed"; false) || exit'
             post += "\n# CU post-exec\n"
-            if 'RADICAL_PILOT_PROFILE' in os.environ:
-                post += 'echo "`$GTOD`,unit_script,%s,%s,post_start," >> $RP_PROF\n' %  \
-                       (cu['uid'], rps.AGENT_EXECUTING)
+            post += 'prof cu_post_start\n'
             for elem in descr['post_exec']:
                 post += "%s || %s\n" % (elem, fail)
-            post += "\n"
-            if 'RADICAL_PILOT_PROFILE' in os.environ:
-                post += 'echo "`$GTOD`,unit_script,%s,%s,post_stop," >> $RP_PROF\n' %  \
-                       (cu['uid'], rps.AGENT_EXECUTING)
+            post += 'prof cu_post_stop\n'
             post += "\n"
 
         if  descr['arguments']  :
@@ -379,10 +375,8 @@ class Shell(AgentExecutingComponent):
 
         cmd, hop_cmd  = launcher.construct_command(cu, '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"')
 
-        script = '\n%s\n' % env
-        if 'RADICAL_PILOT_PROFILE' in os.environ:
-            script += 'echo "`$GTOD`,unit_script,%s,%s,start_script," >> $RP_PROF\n' %  \
-                      (cu['uid'], rps.AGENT_EXECUTING)
+        script  = '\n%s\n' % env
+        script += 'prof cu_start\n'
 
         if hop_cmd :
             # the script will itself contain a remote callout which calls again
@@ -402,16 +396,15 @@ class Shell(AgentExecutingComponent):
         script += "%s"        %  cwd
         script += "%s"        %  pre
         script += "\n# CU execution\n"
+        script += 'prof cu_exec_start\n'
         script += "%s %s\n\n" % (cmd, io)
         script += "RETVAL=$?\n"
-        if 'RADICAL_PILOT_PROFILE' in os.environ:
-            script += '\necho "`$GTOD`,unit_script,%s,%s,after_exec," >> $RP_PROF\n' %  \
-                      (cu['uid'], rps.AGENT_EXECUTING)
+        script += 'prof cu_exec_stop\n'
         script += "%s"        %  post
         script += "exit $RETVAL\n"
         script += "# ------------------------------------------------------\n\n"
 
-      # self._log.debug ("execution script:\n%s\n" % script)
+      # self._log.debug ("execution script:\n%s\n", script)
 
         return script
 
@@ -497,7 +490,7 @@ class Shell(AgentExecutingComponent):
                 _, out = self.monitor_shell.find (['\n'], timeout=MONITOR_READ_TIMEOUT)
 
                 line = out.strip ()
-              # self._log.debug ('monitor line: %s' % line)
+              # self._log.debug ('monitor line: %s', line)
 
                 if  not line :
 

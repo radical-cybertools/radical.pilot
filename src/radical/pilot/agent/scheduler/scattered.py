@@ -95,7 +95,7 @@ class Scattered(AgentSchedulingComponent):
             'lm_info'      : self._lrms_lm_info
         }
 
-        self._log.debug('Slot allocated: %s' % result)
+        self._log.debug('Slot allocated: %s', result)
 
         return result
 

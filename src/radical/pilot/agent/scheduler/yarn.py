@@ -74,7 +74,6 @@ class Yarn(AgentSchedulingComponent):
                      % (self._service_url, self._rm_url))
 
 
-
     # --------------------------------------------------------------------------
     #
     def slot_status(self):

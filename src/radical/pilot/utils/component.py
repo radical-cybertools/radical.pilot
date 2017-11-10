@@ -322,7 +322,15 @@ class Component(ru.Process):
             self._owner = 'root'
 
         self._log  = self._session._get_logger(self.uid, level=self._debug)
-        self._prof = self._session._get_profiler(self.uid)
+        self._prof = ru.Profiler(self.uid, path=self._session.logdir)
+      # self._prof.register_timing(name='component_lifetime',
+      #                            scope='uid=%s' % self.uid,
+      #                            start='component_start',
+      #                            stop='component_stop')
+      # self._prof.register_timing(name='entity_runtime',
+      #                            scope='entity',
+      #                            start='get',
+      #                            stop=['put', 'drop'])
 
         self._q    = None
         self._in   = None
@@ -427,9 +435,13 @@ class Component(ru.Process):
 
             with self._cancel_lock:
                 self._cancel_list += uids
+
+        if cmd == 'terminate':
+            self._log.info('got termination command')
+            self.stop()
+
         else:
-            pass
-          # self._log.debug('command ignored: %s', cmd)
+            self._log.debug('command ignored: %s', cmd)
 
         return True
 
@@ -496,7 +508,7 @@ class Component(ru.Process):
             # get debugging, logging, profiling set up
           # self._dh   = ru.DebugHelper(name=self.uid)
             self._log  = self._session._get_logger(self.uid, level=self._debug)
-            self._prof = self._session._get_profiler(self.uid)
+            self._prof = ru.Profiler(self.uid, path=self._session.logdir)
 
             # make sure that the Process base class uses the same logger
             # FIXME: do same for profiler?
@@ -693,17 +705,22 @@ class Component(ru.Process):
     def finalize_child(self):
         pass # can be overloaded
 
+
     # --------------------------------------------------------------------------
     #
     def stop(self, timeout=None):
         '''
-        Before calling the ru.Process stop, we need to terminate and join all
-        threads, as those might otherwise invoke callback which can interfere
-        with termination.
+        We need to terminate and join all threads, close all comunication
+        channels, etc.  But we trust on the correct invocation of the finalizers
+        to do all this, and thus here only forward the stop request to the base
+        class.
         '''
 
         self._log.info('stop %s (%s : %s : %s) [%s]', self.uid, os.getpid(),
                        self.pid, ru.get_thread_name(), ru.get_caller_name())
+
+        # FIXME: well, we don't completely trust termination just yet...
+        self._prof.flush()
 
         super(Component, self).stop(timeout)
 
@@ -741,7 +758,7 @@ class Component(ru.Process):
 
         # get address for the queue
         addr = self._cfg['bridges'][input]['addr_out']
-        self._log.debug("using addr %s for input %s" % (addr, input))
+        self._log.debug("using addr %s for input %s", addr, input)
 
         q = rpu_Queue(self._session, input, rpu_QUEUE_OUTPUT, self._cfg, addr=addr)
         self._inputs['name'] = {'queue'  : q,
@@ -831,7 +848,7 @@ class Component(ru.Process):
             else:
                 # get address for the queue
                 addr = self._cfg['bridges'][output]['addr_in']
-                self._log.debug("using addr %s for output %s" % (addr, output))
+                self._log.debug("using addr %s for output %s", addr, output)
 
                 # non-final state, ie. we want a queue to push to
                 q = rpu_Queue(self._session, output, rpu_QUEUE_INPUT, self._cfg, addr=addr)
@@ -943,7 +960,7 @@ class Component(ru.Process):
 
         self.register_watchable(idler)
         self._session._to_stop.append(idler)
-        self._log.debug('%s registered idler %s' % (self.uid, name))
+        self._log.debug('%s registered idler %s', self.uid, name)
 
 
     # --------------------------------------------------------------------------
@@ -994,12 +1011,12 @@ class Component(ru.Process):
         self._log.debug('START: %s register publisher %s', self.uid, pubsub)
 
         addr = self._cfg['bridges'][pubsub]['addr_in']
-        self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
+        self._log.debug("using addr %s for pubsub %s", addr, pubsub)
 
         q = rpu_Pubsub(self._session, pubsub, rpu_PUBSUB_PUB, self._cfg, addr=addr)
         self._publishers[pubsub] = q
 
-        self._log.debug('registered publisher : %s : %s' % (pubsub, q.name))
+        self._log.debug('registered publisher : %s : %s', pubsub, q.name)
 
 
     # --------------------------------------------------------------------------
@@ -1053,7 +1070,7 @@ class Component(ru.Process):
             raise ValueError('no bridge known for pubsub channel %s' % pubsub)
 
         addr = self._cfg['bridges'][pubsub]['addr_out']
-        self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
+        self._log.debug("using addr %s for pubsub %s", addr, pubsub)
 
         # subscription is racey for the *first* subscriber: the bridge gets the
         # subscription request, and forwards it to the publishers -- and only
@@ -1085,7 +1102,14 @@ class Component(ru.Process):
             # ------------------------------------------------------------------
             def work_cb(self):
                 self.is_valid()
-                topic, msg = self._q.get_nowait(500)  # timout in ms
+                topic, msg = None, None
+                try:
+                    topic, msg = self._q.get_nowait(500)  # timout in ms
+                except Exception as e:
+                    if not self._ru_term.is_set():
+                        # abort during termination
+                        return False
+
                 if topic and msg:
                     if not isinstance(msg,list):
                         msg = [msg]
@@ -1115,7 +1139,7 @@ class Component(ru.Process):
 
         self.register_watchable(subscriber)
         self._session._to_stop.append(subscriber)
-        self._log.debug('%s registered %s subscriber %s' % (self.uid, pubsub, name))
+        self._log.debug('%s registered %s subscriber %s', self.uid, pubsub, name)
 
 
     # --------------------------------------------------------------------------
@@ -1254,7 +1278,7 @@ class Component(ru.Process):
     # --------------------------------------------------------------------------
     #
     def advance(self, things, state=None, publish=True, push=False,
-                timestamp=None):
+                timestamp=None, prof=True):
         """
         Things which have been operated upon are pushed down into the queues
         again, only to be picked up by the next component, according to their
@@ -1302,8 +1326,9 @@ class Component(ru.Process):
                 thing['state'] = state
             _state = thing['state']
 
-            self._prof.prof('advance', uid=uid, state=_state, 
-                            timestamp=timestamp)
+            if prof:
+                self._prof.prof('advance', uid=uid, state=_state,
+                                timestamp=timestamp)
 
             if not _state in buckets:
                 buckets[_state] = list()
@@ -1354,23 +1379,28 @@ class Component(ru.Process):
             # now we can push the buckets as bulks
             for _state,_things in buckets.iteritems():
 
+                ts = time.time()
                 if _state in rps.FINAL:
                     # things in final state are dropped
                     for thing in _things:
-                        self._log.debug('final %s [%s]', thing['uid'], _state)
+                        self._prof.prof('drop', uid=thing['uid'], state=_state,
+                                        timestamp=ts)
                     continue
 
                 if _state not in self._outputs:
                     # unknown target state -- error
                     for thing in _things:
                         self._log.debug("lost  %s [%s]", thing['uid'], _state)
-                    self._log.warn("caller: %s [%s]", ru.get_caller_name(), self.uid)
+                        self._prof.prof('lost', uid=thing['uid'], state=_state,
+                                        timestamp=ts)
                     continue
 
                 if not self._outputs[_state]:
                     # empty output -- drop thing
                     for thing in _things:
                         self._log.debug('drop  %s [%s]', thing['uid'], _state)
+                        self._prof.prof('drop', uid=thing['uid'], state=_state,
+                                        timestamp=ts)
                     continue
 
                 output = self._outputs[_state]
@@ -1395,7 +1425,8 @@ class Component(ru.Process):
         self.is_valid()
 
         if pubsub not in self._publishers:
-            raise RuntimeError("can't route '%s' notification: %s" % (pubsub, msg))
+            raise RuntimeError("can't route '%s' notification: %s" % (pubsub,
+                self._publishers.keys()))
 
         if not self._publishers[pubsub]:
             raise RuntimeError("no route for '%s' notification: %s" % (pubsub, msg))
@@ -1419,20 +1450,6 @@ class Worker(Component):
     def __init__(self, cfg, session=None):
 
         Component.__init__(self, cfg=cfg, session=session)
-
-
-    # --------------------------------------------------------------------------
-    #
-    # we overload state changing methods from component and assert neutrality
-    # FIXME: we should insert hooks around callback invocations, too
-    #
-    def advance(self, things, state=None, publish=True, push=False, prof=True):
-
-        if state:
-            raise RuntimeError("worker %s cannot advance state (%s)"
-                    % (self.uid, state))
-
-        Component.advance(self, things, state, publish, push, prof)
 
 
 # ------------------------------------------------------------------------------
