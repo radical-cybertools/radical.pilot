@@ -93,6 +93,7 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.executable       = '/bin/sh'
+            cud.arguments        = ['%s/09_mpi_units.sh' % PWD]
             cud.input_staging    = ['%s/09_mpi_units.sh' % PWD]
             cud.cpu_processes    = p_num
             cud.cpu_threads      = t_num
