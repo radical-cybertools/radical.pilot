@@ -5,6 +5,7 @@ __license__   = "MIT"
 
 import logging
 import time
+import pprint
 import threading
 
 import radical.utils as ru
@@ -174,10 +175,10 @@ class AgentSchedulingComponent(rpu.Component):
             self._log.debug("after  allocate   %s: %s", cu['uid'], 
                             self.slot_status())
 
-        import pprint
-        self._log.debug("%s [%s] : %s", cu['uid'],
-                        cu['description']['cores'],
-                        pprint.pformat(cu['opaque_slots']))
+            self._log.debug("%s [%s] : %s", cu['uid'],
+                            cu['description']['cores'],
+                            pprint.pformat(cu['opaque_slots']))
+
         return True
 
 

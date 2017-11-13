@@ -261,7 +261,7 @@ class ORTE(AgentExecutingComponent):
             cu = self.task_map[task]
             del self.task_map[task]
 
-        self._prof.prof('exec_stop', uid=uid)
+        self._prof.prof('exec_stop', uid=cu['uid'])
         self._log.info("unit %s finished [%s]", cu['uid'], exit_code)
 
         cu['exit_code'] = exit_code

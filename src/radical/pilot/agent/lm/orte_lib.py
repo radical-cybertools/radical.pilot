@@ -111,7 +111,7 @@ class ORTELib(LaunchMethod):
                 # Check if the process is still around,
                 # and log output in debug mode.
                 if None == dvm_process.poll():
-                    logger.debug("ORTE: %s" % line)
+                    logger.debug("ORTE: %s", line)
                 else:
                     # Process is gone: fatal!
                     raise Exception("ORTE DVM process disappeared")
@@ -126,7 +126,7 @@ class ORTELib(LaunchMethod):
             while retval is None:
                 line = dvm_process.stdout.readline().strip()
                 if line:
-                    logger.debug('dvm output: %s' % line)
+                    logger.debug('dvm output: %s', line)
                 else:
                     time.sleep(1.0)
 

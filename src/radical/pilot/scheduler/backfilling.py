@@ -94,7 +94,7 @@ class BackfillingScheduler(Scheduler):
                 logger.info("[SchedulerCallback]: Computeunit %s changed to %s" % (uid, state))
 
                 self.cb_hist[uid].append(state)
-                logger.debug("[SchedulerCallback]: unit state callback history: %s" % (self.cb_hist))
+                logger.debug("[SchedulerCallback]: unit state callback history: %s", self.cb_hist)
 
                 if state == UNSCHEDULED and SCHEDULING in self.cb_hist[uid]:
                     logger.warn("[SchedulerCallback]: ComputeUnit %s with state %s already dealt with." % (uid, state))
@@ -190,7 +190,7 @@ class BackfillingScheduler(Scheduler):
     
     
                 self.pilots[pid]['state'] = state
-                logger.debug ("[SchedulerCallback]: ComputePilot %s changed to %s" % (pid, state))
+                logger.debug ("[SchedulerCallback]: ComputePilot %s changed to %s", pid, state)
     
                 if  state in [PMGR_ACTIVE] :
                     # the pilot is now ready to be used
@@ -433,7 +433,7 @@ class BackfillingScheduler(Scheduler):
             schedule['units']  = dict()
             schedule['pilots'] = self.pilots
 
-            logger.debug ("schedule (%s units waiting)" % len(self.waitq))
+            logger.debug ("schedule (%s units waiting)", len(self.waitq))
 
 
             units_to_schedule = list()
@@ -462,7 +462,7 @@ class BackfillingScheduler(Scheduler):
                     raise RuntimeError ("scheduler requires NEW or UNSCHEDULED units (%s:%s)"\
                                     % (uid, unit.state))
 
-              # logger.debug ("examine unit  %s (%s cores)" % (uid, ud.cores))
+              # logger.debug ("examine unit  %s (%s cores)", uid, ud.cores)
 
                 for pid in self.pilots :
 
@@ -473,7 +473,7 @@ class BackfillingScheduler(Scheduler):
 
                         if  ud.cores <= self.pilots[pid]['caps'] :
                     
-                          # logger.debug ("        unit  %s fits on pilot %s" % (uid, pid))
+                          # logger.debug ("        unit  %s fits on pilot %s", uid, pid)
 
                             self.pilots[pid]['caps'] -= ud.cores
                             schedule['units'][unit]   = pid

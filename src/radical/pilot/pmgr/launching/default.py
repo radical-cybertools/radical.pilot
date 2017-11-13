@@ -529,7 +529,7 @@ class Default(PMGRLaunchingComponent):
         fs_endpoint = rcfg['filesystem_endpoint']
         fs_url      = rs.Url(fs_endpoint)
 
-        self._log.debug ("rs.file.Directory ('%s')" % fs_url)
+        self._log.debug ("rs.file.Directory ('%s')", fs_url)
 
         with self._cache_lock:
             if fs_url in self._saga_fs_cache:
@@ -1077,7 +1077,7 @@ class Default(PMGRLaunchingComponent):
                     'site:%s/%s > %s' % (session_sandbox, cc_name, cc_name)
                 ])
 
-        self._log.debug("Bootstrap command line: %s %s" % (jd.executable, jd.arguments))
+        self._log.debug("Bootstrap command line: %s %s", jd.executable, jd.arguments)
 
         ret['jd'] = jd
         return ret
