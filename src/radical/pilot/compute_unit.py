@@ -35,7 +35,6 @@ class ComputeUnit(object):
 
                       ud = radical.pilot.ComputeUnitDescription()
                       ud.executable = "/bin/date"
-                      ud.cores      = 1
 
                       unit = umgr.submit_units(ud)
     """
@@ -83,11 +82,6 @@ class ComputeUnit(object):
         self._callbacks[rpt.UNIT_STATE][self._default_state_cb.__name__] = {
                 'cb'      : self._default_state_cb, 
                 'cb_data' : None}
-
-        # sanity checks on description
-        for check in ['cores']:
-            if not self._descr.get(check):
-                raise ValueError("ComputeUnitDescription needs '%s'" % check)
 
         if  not self._descr.get('executable') and \
             not self._descr.get('kernel')     :
@@ -151,8 +145,13 @@ class ComputeUnit(object):
         target  = unit_dict['state']
 
         if target not in [rps.FAILED, rps.CANCELED]:
-            assert(rps._unit_state_value(target) - rps._unit_state_value(current) == 1), \
+            try:
+                assert(rps._unit_state_value(target) - rps._unit_state_value(current) == 1), \
                             'invalid state transition'
+            except:
+                self._log.error('%s: invalid state transition %s -> %s',
+                                self.uid, current, target)
+                raise
 
         self._state = target
 
@@ -172,6 +171,8 @@ class ComputeUnit(object):
 
             cb      = cb_val['cb']
             cb_data = cb_val['cb_data']
+
+            self._log.debug('%s calls state cb %s', self.uid, cb)
 
             if cb_data: cb(self, self.state, cb_data)
             else      : cb(self, self.state)

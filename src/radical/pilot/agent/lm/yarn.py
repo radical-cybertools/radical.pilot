@@ -179,7 +179,7 @@ class Yarn(LaunchMethod):
         hadoop_home = None
         if lrms.name == 'YARNLRMS': # FIXME: use constant
             logger.info('Hook called by YARN LRMS')
-            logger.info('NameNode: {0}'.format(lrms.namenode_url))
+            logger.info('NameNode: %s', lrms.namenode_url)
             service_url    = lrms.namenode_url
             rm_url         = "%s:%s" % (lrms.rm_ip, lrms.rm_port)
             rm_ip          = lrms.rm_ip
@@ -238,7 +238,7 @@ class Yarn(LaunchMethod):
             config_core_site(node_name)
             config_hdfs_site(lrms.node_list)
             config_mapred_site()
-            config_yarn_site(lrms.cores_per_node,lrms.node_list,host)
+            config_yarn_site(lrms.cores_per_node,lrms.node_list,host) # FIXME GPU
 
             logger.info('Start Formatting DFS')
             namenode_format = os.system(hadoop_home + '/bin/hdfs namenode -format -force')
@@ -276,7 +276,7 @@ class Yarn(LaunchMethod):
         # The LRMS instance is only available here -- everything which is later
         # needed by the scheduler or launch method is stored in an 'lm_info'
         # dict.  That lm_info dict will be attached to the scheduler's lrms_info
-        # dict, and will be passed around as part of the opaque_slots structure,
+        # dict, and will be passed around as part of the slots structure,
         # so it is available on all LM create_command calls.
         lm_info = {'service_url'   : service_url,
                    'rm_url'        : rm_url,
@@ -324,11 +324,11 @@ class Yarn(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        slots        = cu['slots']
         work_dir     = cu['workdir']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cores']
+        task_cores   = cud['cpu_processes'] * cud['cpu_threads']
         task_env     = cud.get('environment') or {}
         task_args    = cud.get('arguments')   or []
         task_argstr  = self._create_arg_string(task_args)
@@ -336,32 +336,32 @@ class Yarn(LaunchMethod):
         # Construct the args_string which is the arguments given as input to the
         # shell script. Needs to be a string
         self._log.debug("Constructing YARN command")
-        self._log.debug('Opaque Slots {0}'.format(opaque_slots))
+        self._log.debug('Opaque Slots %s', slots)
 
-        if 'lm_info' not in opaque_slots:
+        if 'lm_info' not in slots:
             raise RuntimeError('No lm_info to launch via %s: %s' \
-                    % (self.name, opaque_slots))
+                    % (self.name, slots))
 
-        if not opaque_slots['lm_info']:
+        if not slots['lm_info']:
             raise RuntimeError('lm_info missing for %s: %s' \
-                               % (self.name, opaque_slots))
+                               % (self.name, slots))
 
-        if 'service_url' not in opaque_slots['lm_info']:
+        if 'service_url' not in slots['lm_info']:
             raise RuntimeError('service_url not in lm_info for %s: %s' \
-                    % (self.name, opaque_slots))
+                    % (self.name, slots))
 
-        if 'rm_url' not in opaque_slots['lm_info']:
+        if 'rm_url' not in slots['lm_info']:
             raise RuntimeError('rm_url not in lm_info for %s: %s' \
-                    % (self.name, opaque_slots))
+                    % (self.name, slots))
 
 
-        if 'nodename' not in opaque_slots['lm_info']:
+        if 'nodename' not in slots['lm_info']:
             raise RuntimeError('nodename not in lm_info for %s: %s' \
-                    % (self.name, opaque_slots))
+                    % (self.name, slots))
 
-        service_url = opaque_slots['lm_info']['service_url']
-        rm_url      = opaque_slots['lm_info']['rm_url']
-        client_node = opaque_slots['lm_info']['nodename']
+        service_url = slots['lm_info']['service_url']
+        rm_url      = slots['lm_info']['rm_url']
+        client_node = slots['lm_info']['nodename']
 
         #-----------------------------------------------------------------------
         # Create YARN script

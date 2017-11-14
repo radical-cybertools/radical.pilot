@@ -29,14 +29,8 @@ class Spark(AgentSchedulingComponent):
     #
     def _configure(self):
 
-        #-----------------------------------------------------------------------
         # Find out how many applications you can submit to YARN. And also keep
         # this check happened to update it accordingly
-
-
-        #if 'rm_ip' not in self._cfg['lrms_info']:
-        #    raise RuntimeError('rm_ip not in lm_info for %s' \
-        #            % (self.name))
 
         self._log.info('Checking rm_ip %s',
                             self._cfg['lrms_info']['lm_info']['rm_ip'])
@@ -54,10 +48,16 @@ class Spark(AgentSchedulingComponent):
         self._num_of_cores  = metrics['clusterMetrics']['allocatedVirtualCores']
         self._mem_size      = metrics['clusterMetrics']['allocatedMB']
 
-        self.avail_app   = {'apps'     : max_num_app - num_app,
-                            'timestamp': sample_time}
+        self.avail_app   = max_num_app         - num_app
         self.avail_cores = self._mnum_of_cores - self._num_of_cores
         self.avail_mem   = self._mmem_size     - self._mem_size
+
+
+    # --------------------------------------------------------------------------
+    #
+    def slot_status(self):
+
+         return 'n/a'
 
 
     # --------------------------------------------------------------------------
@@ -69,31 +69,61 @@ class Spark(AgentSchedulingComponent):
         self._log.info('Releasing : %s Cores, %s RAM',
                        opaque_slot['task_slots'][0],
                        opaque_slot['task_slots'][1])
-        self.avail_cores +=opaque_slot['task_slots'][0]
-        self.avail_mem   +=opaque_slot['task_slots'][1]
-        self.avail_app['apps']+=1
+
+        self.avail_cores += opaque_slot['task_slots'][0]
+        self.avail_mem   += opaque_slot['task_slots'][1]
+        self.avail_app   += 1
+
         return True
+
 
     # --------------------------------------------------------------------------
     #
-    def work(self, cu):
+    def _allocate_slot(self, cu):
+        """
+        This implementation checks if the number of cores and memory size
+        that exist in the YARN cluster are enough for an application to fit in
+        it.
+        """
 
-      # self.advance(cu, rp.AGENT_SCHEDULING, publish=True, push=False)
-        self._log.info("Overiding Parent's class method")
-        self.advance(cu, rps.ALLOCATING , publish=True, push=False)
+        # Check if the YARN scheduler queue has space to accept new CUs.
+        # Check about racing conditions in the case that you allowed an
+        # application to start executing and before the statistics in yarn have
+        # refreshed, to send another one that does not fit.
 
-        # we got a new unit to schedule.  Either we can place it
-        # straight away and move it to execution, or we have to
-        # put it on the wait queue.
-        if self._try_allocation(cu):
-            self._prof.prof('schedule', msg="allocation succeeded", uid=cu['_id'])
-            self.advance(cu, rps.EXECUTING_PENDING, publish=False, push=True)
+        # TODO: Allocation should be based on the minimum memor allocation per
+        # container. Each YARN application needs two containers, one for the
+        # Application Master and one for the Container that will run.
 
-        else:
-            # No resources available, put in wait queue
-            self._prof.prof('schedule', msg="allocation failed", uid=cu['_id'])
-            with self._wait_lock :
-                self._wait_pool.append(cu)
+        # We also need the minimum memory of the YARN cluster. This is because
+        # Java issues a JVM out of memory error when the YARN scheduler cannot
+        # accept. It needs to go either from the configuration file or find a
+        # way to take this value for the YARN scheduler config.
+
+        cores_requested = cu['description']['cpu_processes'] \
+                        * cu['description']['threads']
+        mem_requested   = 2048
+        slots           = None
+
+        # If the application requests resources that exist in the cluster, not
+        # necessarily free, then it returns true else it returns false
+        # TODO: Add provision for memory request
+        if  self.avail_app   >= 1               and \
+            self.avail_cores >= cores_requested and \
+            self.avail_mem   >= mem_requested       :
+
+            self.avail_app   -= 1
+            self.avail_cores -= cores_requested
+            self.avail_mem   -= mem_requested
+
+            slots = {'lm_info':{'service_url':self._rm_ip,
+                                'rm_url'     :self._rm_url,
+                                'nodename'   :self._client_node},
+                     'task_slots':[cores_requested, mem_requested]
+                    }
+
+        return slots
+
 
 # ------------------------------------------------------------------------------
 

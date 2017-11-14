@@ -94,7 +94,7 @@ class BackfillingScheduler(Scheduler):
                 logger.info("[SchedulerCallback]: Computeunit %s changed to %s" % (uid, state))
 
                 self.cb_hist[uid].append(state)
-                logger.debug("[SchedulerCallback]: unit state callback history: %s" % (self.cb_hist))
+                logger.debug("[SchedulerCallback]: unit state callback history: %s", self.cb_hist)
 
                 if state == UNSCHEDULED and SCHEDULING in self.cb_hist[uid]:
                     logger.warn("[SchedulerCallback]: ComputeUnit %s with state %s already dealt with." % (uid, state))
@@ -152,19 +152,16 @@ class BackfillingScheduler(Scheduler):
                             unit = self.runqs[pid][uid]
 
                             del self.runqs[pid][uid]
-                            self.pilots[pid]['caps'] += unit.description.cores
+                            self.pilots[pid]['caps'] += unit.description['cpu_processes'] \
+                                                      * unit.description['cpu_threads']
                             self._reschedule (target_pid=pid)
                             found_unit = True
 
-                      #     logger.debug ('unit %s frees %s cores on (-> %s)' \
-                      #                % (uid, unit.description.cores, pid, self.pilots[pid]['caps']))
 
                   # FIXME: this warning should not come up as frequently as it
                   #        does -- needs investigation!
                   # if not found_unit :
                   #     # TODO: pid can not be in self.pilots[]
-                  #     logger.warn ('unit %s freed %s cores on %s (== %s) -- not reused'
-                  #               % (uid, unit.description.cores, pid, self.pilots[pid]['caps']))
 
         except Exception as e :
             logger.exception ("error in unit callback for backfiller (%s) - ignored" % e)
@@ -190,7 +187,7 @@ class BackfillingScheduler(Scheduler):
     
     
                 self.pilots[pid]['state'] = state
-                logger.debug ("[SchedulerCallback]: ComputePilot %s changed to %s" % (pid, state))
+                logger.debug ("[SchedulerCallback]: ComputePilot %s changed to %s", pid, state)
     
                 if  state in [PMGR_ACTIVE] :
                     # the pilot is now ready to be used
@@ -433,7 +430,7 @@ class BackfillingScheduler(Scheduler):
             schedule['units']  = dict()
             schedule['pilots'] = self.pilots
 
-            logger.debug ("schedule (%s units waiting)" % len(self.waitq))
+            logger.debug ("schedule (%s units waiting)", len(self.waitq))
 
 
             units_to_schedule = list()
@@ -457,12 +454,14 @@ class BackfillingScheduler(Scheduler):
                 uid = unit.uid
                 ud  = unit.description
 
+                ud_cores = ud.cpu_processes * ud.cpu_threads
+
                 # sanity check on unit state
                 if  unit.state not in [NEW, SCHEDULING, UNSCHEDULED] :
                     raise RuntimeError ("scheduler requires NEW or UNSCHEDULED units (%s:%s)"\
                                     % (uid, unit.state))
 
-              # logger.debug ("examine unit  %s (%s cores)" % (uid, ud.cores))
+              # logger.debug ("examine unit  %s (%s cores)", uid, ud_cores)
 
                 for pid in self.pilots :
 
@@ -471,11 +470,11 @@ class BackfillingScheduler(Scheduler):
 
                     if  self.pilots[pid]['state'] in [PMGR_ACTIVE] :
 
-                        if  ud.cores <= self.pilots[pid]['caps'] :
-                    
-                          # logger.debug ("        unit  %s fits on pilot %s" % (uid, pid))
+                        if  ud_cores <= self.pilots[pid]['caps'] :
 
-                            self.pilots[pid]['caps'] -= ud.cores
+                          # logger.debug ("        unit  %s fits on pilot %s", uid, pid)
+
+                            self.pilots[pid]['caps'] -= ud_cores
                             schedule['units'][unit]   = pid
 
                             # scheduled units are removed from the waitq
@@ -490,8 +489,8 @@ class BackfillingScheduler(Scheduler):
                 # print a warning if a unit cannot possibly be scheduled, ever
                 can_handle_unit = False
                 for pid in self.pilots :
-                    if  unit.description.cores <= self.pilots[pid]['cores'] :
-                        can_handle_unit=True
+                    if  ud_cores <= self.pilots[pid]['cores'] :
+                        can_handle_unit = True
                         break
 
                 if  not can_handle_unit :
@@ -501,6 +500,7 @@ class BackfillingScheduler(Scheduler):
 
             # tell the UM about the schedule
             self.manager.handle_schedule (schedule)
+
 
     # --------------------------------------------------------------------------
 

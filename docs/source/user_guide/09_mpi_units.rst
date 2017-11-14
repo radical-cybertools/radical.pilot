@@ -22,6 +22,11 @@ below:
 
 This example should result in the unit ID echo'ed *twice*, once per MPI rank.
 
+.. note:: Some RP configurations require MPI applications to be linked against
+          a specific version of OpenMPI.  This is the case when using `orte` or
+          `orte_lib` launch methods in the agent.  Please contact the mailing
+          list if you need support with relinking your application.
+
 Running the Example
 -------------------
 

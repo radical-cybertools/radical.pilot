@@ -36,10 +36,10 @@ class PilotManager(rpu.Component):
 
         pd = radical.pilot.ComputePilotDescription()
         pd.resource = "futuregrid.alamo"
-        pd.cores = 16
+        pd.cpus = 16
 
-        p1 = pm.submit_pilots(pd) # create first pilot with 16 cores
-        p2 = pm.submit_pilots(pd) # create second pilot with 16 cores
+        p1 = pm.submit_pilots(pd)  # create first  pilot with 16 cores
+        p2 = pm.submit_pilots(pd)  # create second pilot with 16 cores
 
         # Create a workload of 128 '/bin/sleep' compute units
         compute_units = []
@@ -105,7 +105,6 @@ class PilotManager(rpu.Component):
 
         # only now we have a logger... :/
         self._log.report.info('<<create pilot manager')
-        self._prof.prof('create pmgr', uid=self._uid)
 
         # The output queue is used to forward submitted pilots to the
         # launching component.
@@ -124,7 +123,8 @@ class PilotManager(rpu.Component):
         # let session know we exist
         self._session._register_pmgr(self)
 
-        self._prof.prof('PMGR setup done')
+        self._prof.prof('setup_done', uid=self._uid)
+
         self._log.report.ok('>>ok\n')
 
 
@@ -148,6 +148,8 @@ class PilotManager(rpu.Component):
     # --------------------------------------------------------------------------
     # 
     def finalize_parent(self):
+
+        self._fail_missing_pilots()
 
         # terminate pmgr components
         for c in self._components:
@@ -190,7 +192,7 @@ class PilotManager(rpu.Component):
 
         self.stop()
 
-        self._session.prof.prof('closed pmgr', uid=self._uid)
+        self._prof.prof('close', uid=self._uid)
         self._log.info("Closed PilotManager %s." % self._uid)
 
         self._closed = True
@@ -264,6 +266,9 @@ class PilotManager(rpu.Component):
 
         if self._terminate.is_set():
             return False
+
+
+        self._log.debug('state event: %s', msg)
 
         cmd = msg.get('cmd')
         arg = msg.get('arg')
@@ -346,6 +351,7 @@ class PilotManager(rpu.Component):
                 cb_data = cb_val['cb_data']
                 
               # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, self.state, cb_name)
+                self._log.debug('pmgr calls cb %s for %s', pilot_obj.uid, cb)
 
                 if cb_data: cb(pilot_obj, state, cb_data)
                 else      : cb(pilot_obj, state)
@@ -424,7 +430,7 @@ class PilotManager(rpu.Component):
                 raise ValueError('pilot runtime must be positive')
 
             if not pd.cores:
-                raise ValueError('pilot core size must be defined')
+                raise ValueError('pilot size must be defined')
 
             if not pd.resource:
                 raise ValueError('pilot target resource must be defined')
@@ -617,6 +623,23 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def _fail_missing_pilots(self):
+        '''
+        During termination, fail all pilots for which we did not manage to
+        obtain a final state - we trust that they'll follow up on their
+        cancellation command in due time, if they can
+        '''
+
+        with self._pilots_lock:
+            for pid in self._pilots:
+                pilot = self._pilots[pid]
+                if pilot.state not in rps.FINAL:
+                    self.advance(pilot.as_dict(), rps.FAILED,
+                                 publish=True, push=False)
+
+
+    # --------------------------------------------------------------------------
+    #
     def cancel_pilots(self, uids=None, _timeout=None):
         """
         Cancel one or more :class:`radical.pilot.ComputePilots`.
@@ -626,6 +649,8 @@ class PilotManager(rpu.Component):
               compute pilot objects to cancel.
         """
         self.is_valid()
+
+        self._log.debug('in cancel_pilots: %s', ru.get_stacktrace())
 
         if not uids:
             with self._pilots_lock:

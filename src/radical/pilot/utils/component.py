@@ -322,7 +322,15 @@ class Component(ru.Process):
             self._owner = 'root'
 
         self._log  = self._session._get_logger(self.uid, level=self._debug)
-        self._prof = self._session._get_profiler(self.uid)
+        self._prof = ru.Profiler(self.uid, path=self._session.logdir)
+      # self._prof.register_timing(name='component_lifetime',
+      #                            scope='uid=%s' % self.uid,
+      #                            start='component_start',
+      #                            stop='component_stop')
+      # self._prof.register_timing(name='entity_runtime',
+      #                            scope='entity',
+      #                            start='get',
+      #                            stop=['put', 'drop'])
 
         self._q    = None
         self._in   = None
@@ -427,9 +435,13 @@ class Component(ru.Process):
 
             with self._cancel_lock:
                 self._cancel_list += uids
+
+        if cmd == 'terminate':
+            self._log.info('got termination command')
+            self.stop()
+
         else:
-            pass
-          # self._log.debug('command ignored: %s', cmd)
+            self._log.debug('command ignored: %s', cmd)
 
         return True
 
@@ -496,13 +508,12 @@ class Component(ru.Process):
             # get debugging, logging, profiling set up
           # self._dh   = ru.DebugHelper(name=self.uid)
             self._log  = self._session._get_logger(self.uid, level=self._debug)
-            self._prof = self._session._get_profiler(self.uid)
+            self._prof = ru.Profiler(self.uid, path=self._session.logdir)
 
             # make sure that the Process base class uses the same logger
             # FIXME: do same for profiler?
             super(Component, self)._ru_set_logger(self._log)
 
-        self._prof.prof('initialize', uid=self.uid)
         self._log.info('initialize %s',   self.uid)
         self._log.info('cfg: %s', pprint.pformat(self._cfg))
 
@@ -577,6 +588,7 @@ class Component(ru.Process):
 
         # call component level initialize
         self.initialize_parent()
+        self._prof.prof('component_init')
 
 
     def initialize_parent(self):
@@ -607,6 +619,7 @@ class Component(ru.Process):
 
         # call component level initialize
         self.initialize_child()
+        self._prof.prof('component_init')
 
     def initialize_child(self):
         pass # can be overloaded
@@ -628,7 +641,7 @@ class Component(ru.Process):
 
         self._log.debug('%s close prof', self.uid)
         try:
-            self._prof.prof("stopped", uid=self.name)
+            self._prof.prof('component_final')
             self._prof.close()
         except Exception:
             pass
@@ -692,24 +705,29 @@ class Component(ru.Process):
     def finalize_child(self):
         pass # can be overloaded
 
+
     # --------------------------------------------------------------------------
     #
     def stop(self, timeout=None):
         '''
-        Before calling the ru.Process stop, we need to terminate and join all
-        threads, as those might otherwise invoke callback which can interfere
-        with termination.
+        We need to terminate and join all threads, close all comunication
+        channels, etc.  But we trust on the correct invocation of the finalizers
+        to do all this, and thus here only forward the stop request to the base
+        class.
         '''
 
         self._log.info('stop %s (%s : %s : %s) [%s]', self.uid, os.getpid(),
                        self.pid, ru.get_thread_name(), ru.get_caller_name())
+
+        # FIXME: well, we don't completely trust termination just yet...
+        self._prof.flush()
 
         super(Component, self).stop(timeout)
 
 
     # --------------------------------------------------------------------------
     #
-    def register_input(self, states, input, worker):
+    def register_input(self, states, input, worker=None):
         """
         Using this method, the component can be connected to a queue on which
         things are received to be worked upon.  The given set of states (which
@@ -733,7 +751,6 @@ class Component(ru.Process):
         if not isinstance(states, list):
             states = [states]
 
-
         name = '%s.%s.%s' % (self.uid, worker.__name__, '_'.join(states))
 
         if name in self._inputs:
@@ -741,7 +758,7 @@ class Component(ru.Process):
 
         # get address for the queue
         addr = self._cfg['bridges'][input]['addr_out']
-        self._log.debug("using addr %s for input %s" % (addr, input))
+        self._log.debug("using addr %s for input %s", addr, input)
 
         q = rpu_Queue(self._session, input, rpu_QUEUE_OUTPUT, self._cfg, addr=addr)
         self._inputs['name'] = {'queue'  : q,
@@ -831,7 +848,7 @@ class Component(ru.Process):
             else:
                 # get address for the queue
                 addr = self._cfg['bridges'][output]['addr_in']
-                self._log.debug("using addr %s for output %s" % (addr, output))
+                self._log.debug("using addr %s for output %s", addr, output)
 
                 # non-final state, ie. we want a queue to push to
                 q = rpu_Queue(self._session, output, rpu_QUEUE_INPUT, self._cfg, addr=addr)
@@ -943,7 +960,7 @@ class Component(ru.Process):
 
         self.register_watchable(idler)
         self._session._to_stop.append(idler)
-        self._log.debug('%s registered idler %s' % (self.uid, name))
+        self._log.debug('%s registered idler %s', self.uid, name)
 
 
     # --------------------------------------------------------------------------
@@ -994,12 +1011,12 @@ class Component(ru.Process):
         self._log.debug('START: %s register publisher %s', self.uid, pubsub)
 
         addr = self._cfg['bridges'][pubsub]['addr_in']
-        self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
+        self._log.debug("using addr %s for pubsub %s", addr, pubsub)
 
         q = rpu_Pubsub(self._session, pubsub, rpu_PUBSUB_PUB, self._cfg, addr=addr)
         self._publishers[pubsub] = q
 
-        self._log.debug('registered publisher : %s : %s' % (pubsub, q.name))
+        self._log.debug('registered publisher : %s : %s', pubsub, q.name)
 
 
     # --------------------------------------------------------------------------
@@ -1053,7 +1070,7 @@ class Component(ru.Process):
             raise ValueError('no bridge known for pubsub channel %s' % pubsub)
 
         addr = self._cfg['bridges'][pubsub]['addr_out']
-        self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
+        self._log.debug("using addr %s for pubsub %s", addr, pubsub)
 
         # subscription is racey for the *first* subscriber: the bridge gets the
         # subscription request, and forwards it to the publishers -- and only
@@ -1085,7 +1102,14 @@ class Component(ru.Process):
             # ------------------------------------------------------------------
             def work_cb(self):
                 self.is_valid()
-                topic, msg = self._q.get_nowait(500)  # timout in ms
+                topic, msg = None, None
+                try:
+                    topic, msg = self._q.get_nowait(500)  # timout in ms
+                except Exception as e:
+                    if not self._ru_term.is_set():
+                        # abort during termination
+                        return False
+
                 if topic and msg:
                     if not isinstance(msg,list):
                         msg = [msg]
@@ -1115,7 +1139,7 @@ class Component(ru.Process):
 
         self.register_watchable(subscriber)
         self._session._to_stop.append(subscriber)
-        self._log.debug('%s registered %s subscriber %s' % (self.uid, pubsub, name))
+        self._log.debug('%s registered %s subscriber %s', self.uid, pubsub, name)
 
 
     # --------------------------------------------------------------------------
@@ -1201,7 +1225,11 @@ class Component(ru.Process):
             # pushing them
             buckets = dict()
             for thing in things:
+                
                 state = thing['state']
+                uid   = thing['uid']
+                self._prof.prof('get', uid=uid, state=state)
+
                 if not state in buckets:
                     buckets[state] = list()
                 buckets[state].append(thing)
@@ -1228,8 +1256,6 @@ class Component(ru.Process):
                             to_cancel.append(thing)
 
                         self._log.debug('got %s (%s)', ttype, uid)
-                        self._prof.prof(event='get', state=state, uid=uid, msg=input.name)
-                        self._prof.prof(event='work start', state=state, uid=uid)
 
                     if to_cancel:
                         self.advance(to_cancel, rps.CANCELED, publish=True, push=False)
@@ -1237,27 +1263,22 @@ class Component(ru.Process):
                     with self._cb_lock:
                         self._workers[state](things)
 
-                    for thing in things:
-                        self._prof.prof(event='work done ', state=state, uid=uid)
-
                 except Exception as e:
+
                     # this is not fatal -- only the 'things' fail, not
                     # the component
-
                     self._log.exception("worker %s failed", self._workers[state])
                     self.advance(things, rps.FAILED, publish=True, push=False)
 
-                    for thing in things:
-                        self._prof.prof(event='failed', msg=str(e), 
-                                        uid=thing['uid'], state=state)
 
         # keep work_cb registered
         return True
 
+
     # --------------------------------------------------------------------------
     #
     def advance(self, things, state=None, publish=True, push=False,
-                timestamp=None):
+                timestamp=None, prof=True):
         """
         Things which have been operated upon are pushed down into the queues
         again, only to be picked up by the next component, according to their
@@ -1303,13 +1324,15 @@ class Component(ru.Process):
             if state:
                 # state advance done here
                 thing['state'] = state
+            _state = thing['state']
 
-            self._log.debug('advance bulk: %s [%s]', uid, len(things))
-            self._prof.prof('advance', uid=uid, state=thing['state'], timestamp=timestamp)
+            if prof:
+                self._prof.prof('advance', uid=uid, state=_state,
+                                timestamp=timestamp)
 
-            if not thing['state'] in buckets:
-                buckets[thing['state']] = list()
-            buckets[thing['state']].append(thing)
+            if not _state in buckets:
+                buckets[_state] = list()
+            buckets[_state].append(thing)
 
         # should we publish state information on the state pubsub?
         if publish:
@@ -1339,7 +1362,8 @@ class Component(ru.Process):
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'update', 'arg': to_publish})
             ts = time.time()
             for thing in things:
-                self._prof.prof('publish', uid=thing['uid'], state=thing['state'], timestamp=ts)
+                self._prof.prof('publish', uid=thing['uid'], 
+                                state=thing['state'], timestamp=ts)
 
         # never carry $all across component boundaries!
         else:
@@ -1355,46 +1379,39 @@ class Component(ru.Process):
             # now we can push the buckets as bulks
             for _state,_things in buckets.iteritems():
 
-                self._log.debug("bucket: %s : %s", _state, [t['uid'] for t in _things])
-
+                ts = time.time()
                 if _state in rps.FINAL:
                     # things in final state are dropped
                     for thing in _things:
-                        self._log.debug('push %s ===| %s', thing['uid'], _state)
+                        self._prof.prof('drop', uid=thing['uid'], state=_state,
+                                        timestamp=ts)
                     continue
 
                 if _state not in self._outputs:
                     # unknown target state -- error
-                    self._log.error("caller: %s", ru.get_caller_name())
-                    self._log.error("%s can't route state %s (%s)" \
-                                 % (self.uid, _state, self._outputs.keys()))
+                    for thing in _things:
+                        self._log.debug("lost  %s [%s]", thing['uid'], _state)
+                        self._prof.prof('lost', uid=thing['uid'], state=_state,
+                                        timestamp=ts)
                     continue
 
                 if not self._outputs[_state]:
                     # empty output -- drop thing
                     for thing in _things:
-                        self._log.debug('%s %s ~~~| %s', 'push', thing['uid'], _state)
+                        self._log.debug('drop  %s [%s]', thing['uid'], _state)
+                        self._prof.prof('drop', uid=thing['uid'], state=_state,
+                                        timestamp=ts)
                     continue
 
                 output = self._outputs[_state]
 
                 # push the thing down the drain
-                # FIXME: we should assert that the things are in a PENDING state.
-                #        Better yet, enact the *_PENDING transition right here...
                 self._log.debug('put bulk %s: %s', _state, len(_things))
                 output.put(_things)
 
                 ts = time.time()
                 for thing in _things:
-                    
-                    # never carry $all across component boundaries!
-                    if '$all' in thing:
-                        del(thing['$all'])
-
-                    uid = thing['uid']
-
-                    self._log.debug('push %s ---> %s', uid, _state)
-                    self._prof.prof('put', uid=uid, state=_state,
+                    self._prof.prof('put', uid=thing['uid'], state=_state,
                                     msg=output.name, timestamp=ts)
 
 
@@ -1408,7 +1425,8 @@ class Component(ru.Process):
         self.is_valid()
 
         if pubsub not in self._publishers:
-            raise RuntimeError("can't route '%s' notification: %s" % (pubsub, msg))
+            raise RuntimeError("can't route '%s' notification: %s" % (pubsub,
+                self._publishers.keys()))
 
         if not self._publishers[pubsub]:
             raise RuntimeError("no route for '%s' notification: %s" % (pubsub, msg))
@@ -1432,20 +1450,6 @@ class Worker(Component):
     def __init__(self, cfg, session=None):
 
         Component.__init__(self, cfg=cfg, session=session)
-
-
-    # --------------------------------------------------------------------------
-    #
-    # we overload state changing methods from component and assert neutrality
-    # FIXME: we should insert hooks around callback invocations, too
-    #
-    def advance(self, things, state=None, publish=True, push=False, prof=True):
-
-        if state:
-            raise RuntimeError("worker %s cannot advance state (%s)"
-                    % (self.uid, state))
-
-        Component.advance(self, things, state, publish, push, prof)
 
 
 # ------------------------------------------------------------------------------
