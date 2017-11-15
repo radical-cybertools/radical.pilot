@@ -303,14 +303,20 @@ class DBSession(object):
             return None
           # raise Exception("No active session.")
 
+        # we only pull units which are not yet owned by the umgr
+
         if not unit_ids:
-            cursor = self._c.find({'type' : 'unit', 
-                                   'umgr' : umgr_uid})
+            cursor = self._c.find({'type'   : 'unit',
+                                   'umgr'   : umgr_uid,
+                                   'control': {'$ne' : 'umgr'},
+                                   })
 
         else:
-            cursor = self._c.find({'type' : 'unit', 
-                                   'uid'  : {'$in': unit_ids},
-                                   'umgr' : umgr_uid})
+            cursor = self._c.find({'type'   : 'unit',
+                                   'umgr'   : umgr_uid,
+                                   'uid'    : {'$in' : unit_ids},
+                                   'control': {'$ne' : 'umgr'  },
+                                   })
 
         # make sure we return every unit doc only once
         # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
