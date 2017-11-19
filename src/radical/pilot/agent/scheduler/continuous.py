@@ -143,12 +143,11 @@ class Continuous(AgentSchedulingComponent):
     def _release_slot(self, slots):
         '''
         This method is called when previously aquired resources are not needed
-        anymore.  `slots` are the resource slots as previously returned by 
+        anymore.  `slots` are the resource slots as previously returned by
         `_allocate_slots()`.
         '''
 
         # reflect the request in the nodelist state (set to `FREE`)
-        # slots from BUSY to FREE.
         self._change_slot_states(slots, rpc.FREE)
 
 
@@ -181,7 +180,7 @@ class Continuous(AgentSchedulingComponent):
         cores = list()
         gpus  = list()
 
-        # first count the number of free cores and gpus. This is 
+        # first count the number of free cores and gpus. This is
         # way quicker than actually finding the core IDs.
         free_cores = node['cores'].count(rpc.FREE)
         free_gpus  = node['gpus' ].count(rpc.FREE)
@@ -190,7 +189,7 @@ class Continuous(AgentSchedulingComponent):
             # For partial requests, return if there are no free cores AND
             # no free gpus.
             if  (requested_cores and not free_cores) and \
-                (requested_gpus  and not free_gpus ):
+                (requested_gpus  and not free_gpus )     :
                 return [], []
 
         else:
@@ -266,7 +265,7 @@ class Continuous(AgentSchedulingComponent):
         Find a suitable set of cores and gpus *within a single node*.
 
         Input:
-        cud: Compute Unit description. Needs to specify at least one CPU 
+        cud: Compute Unit description. Needs to specify at least one CPU
         process and one thread per CPU process, or one GPU process.
         '''
 
