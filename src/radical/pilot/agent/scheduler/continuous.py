@@ -98,12 +98,6 @@ class Continuous(AgentSchedulingComponent):
         # NOTE: for non-oversubscribing mode, we reserve a number of cores
         #       for the GPU processes - even if those GPUs are not used by
         #       a specific workload.
-
-        # MING: What do we do when nodes are oversubscribed? Do we use
-        #       something else?
-
-        # MING: It seems that there are two separate ways for how we track the
-        #       the cores allocated to the 
         if not self._oversubscribe:
             self._lrms_cores_per_node -= self._lrms_gpus_per_node
 
@@ -120,7 +114,7 @@ class Continuous(AgentSchedulingComponent):
 
 
     # --------------------------------------------------------------------------
-    
+    #
     def _allocate_slot(self, cud):
         '''
         This is the main method of this implementation, and is triggered when
@@ -158,7 +152,7 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _alloc_node(self, node, requested_cores, requested_gpus, 
+    def _find_resources(self, node, requested_cores, requested_gpus, 
                     chunk=1, partial=False):
         '''
         Find up to the requested number of free cores and gpus in the node.
@@ -180,8 +174,6 @@ class Continuous(AgentSchedulingComponent):
         When `partial` is set to `True`, we also accept less cores and gpus then
         requested (but the call will never return more than requested).
         '''
-
-        # MING: Maybe we can change the function name to _find_alloc_in_node ?
 
         cores = list()
         gpus  = list()
@@ -209,15 +201,12 @@ class Continuous(AgentSchedulingComponent):
 
         # we can serve the partial or full request - alloc the chunks we need
         # FIXME: chunk gpus, too?
-
-        # MING: We don't really need to include chunk in the arithmetic if
-        #       they cancel out right?
         alloc_cores = min(requested_cores, free_cores) / chunk * chunk
         alloc_gpus  = min(requested_gpus , free_gpus )
 
         # now dig out the core and gpu IDs.
         for idx,state in enumerate(node['cores']):
-            
+
             # MING: Just to check, is this true only when there are no free
             #       cores?
             if alloc_cores == len(cores):
@@ -300,7 +289,7 @@ class Continuous(AgentSchedulingComponent):
 
             # attempt to allocate the required number of cores and gpus on this
             # node - do not allow partial matches.
-            cores, gpus = self._alloc_node(node, requested_cores, requested_gpus,
+            cores, gpus = self._find_resources(node, requested_cores, requested_gpus,
                                            partial=False)
 
             if  len(cores) == requested_cores and \
@@ -423,7 +412,7 @@ class Continuous(AgentSchedulingComponent):
             find_gpus   = min(requested_gpus  - alloced_gpus,  gpus_per_node )
 
             # under the constraints so derived, check what we find on this node
-            cores, gpus = self._alloc_node(node, find_cores, find_gpus,
+            cores, gpus = self._find_resources(node, find_cores, find_gpus,
                                            chunk=threads_per_proc,
                                            partial=partial)
 
