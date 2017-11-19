@@ -5,7 +5,59 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
-0.46.1 Release                                                        2017-09-02
+0.47 Release                                                          2017-11-19
+--------------------------------------------------------------------------------
+
+  - Correctly added 'lm_info.cores_per_node' SLURM 
+  - Torque RM now respects config settings for cpn 
+  - Update events.md 
+  - add SIGUSR2 for clean termination on SGE 
+  - add information about partial event orders 
+  - add issue demonstrators 
+  - add some notes on cpython issue demonstrators 
+  - add xsede.supermic_orte configuration
+  - add xsede.supermic_ortelib configuration 
+  - apply RU's managed process to termination stress test 
+  - attempt to localize aprun units 
+  - better hops for titan 
+  - better integration of CU script and app profs 
+  - catch up with config changes for local testing 
+  - centralize URL derivation for pilot job service endpoints, hops, and sandboxes 
+  - clarify use of namespace vs. full qualified URL in the context of RP file staging 
+  - clean up config management, inheritance 
+  - don't fetch json twice 
+  - ensure that profiles are flushed and packed correctly 
+  - fail missing pilots on termination 
+  - fix AGENT_ACTIVE profile timing
+  - fix close-session purge mode 
+  - fix cray agent config, avoid termination race
+  - fix duplicated transition events 
+  - fix osg config 
+  - fix #1283 
+  - fixing error from bootstrapper + aprun parsing error 
+  - force profile flush earlier
+  - get cpn for ibrun 
+  - implement session.list_resources() per #1419 
+  - make sure a canceled pilot stays canceled 
+  - make cb return codes consistent
+  - make sure profs are flushed on termination 
+  - make sure the umgr only pulls units its interested in 
+  - profile mkdir 
+  - publish resource_details (incl. lm_info) again 
+  - re-add a profile flag to advance() 
+  - remove old controllers 
+  - remove old files 
+  - remove uid clashes for sub-agent components and components in general 
+  - setup number of cores per node on stampede2 
+  - smaller default pilot size for supermic 
+  - switch to ibrun for comet_ssh 
+  - track unit drops 
+  - use js hop for untar 
+  - using new process class 
+  - GPU/CPU pinning test is now complete, needs some env settings in the launchers 
+
+
+0.46.2 Release                                                        2017-09-02
 --------------------------------------------------------------------------------
 
   - hotfix for #1426 - thanks Iannis!
