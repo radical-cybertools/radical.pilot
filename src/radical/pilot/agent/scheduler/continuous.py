@@ -159,7 +159,7 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _alloc_node(self, node, requested_cores, requested_gpus, 
+    def _find_resources(self, node, requested_cores, requested_gpus, 
                     chunk=1, partial=False):
         '''
         Find up to the requested number of free cores and gpus in the node.
@@ -309,7 +309,7 @@ class Continuous(AgentSchedulingComponent):
 
             # attempt to find the required number of cores and gpus on this
             # node - do not allow partial matches.
-            cores, gpus = self._alloc_node(node, requested_cores, requested_gpus,
+            cores, gpus = self._find_resources(node, requested_cores, requested_gpus,
                                            partial=False)
 
             # if the necessary number of cores and GPUs are found, break the 
@@ -442,7 +442,7 @@ class Continuous(AgentSchedulingComponent):
             find_gpus   = min(requested_gpus  - alloced_gpus,  gpus_per_node )
 
             # under the constraints so derived, check what we find on this node
-            cores, gpus = self._alloc_node(node, find_cores, find_gpus,
+            cores, gpus = self._find_resources(node, find_cores, find_gpus,
                                            chunk=threads_per_proc,
                                            partial=partial)
 
