@@ -901,8 +901,8 @@ class UnitManager(rpu.Component):
                 # state(s), but rather check if it ever *has been* in any of
                 # those states
                 match = False
-                if  unit.state not in rps.FINAL or \
-                    rps._unit_state_values[unit.state] < check_state_val:
+                if  unit.state not in rps.FINAL and \
+                    rps._unit_state_values[unit.state] <= check_state_val:
                     # this unit does not match the wait criteria
                     check_again.append(unit)
 
