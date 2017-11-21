@@ -44,7 +44,7 @@ class Component(ru.Process):
     ownership over it, and that no other component will change the 'thing's
     state during that time.
 
-    The main event loop of the component -- run() -- is executed as a separate
+    The main event loop of the component -- work_cb() -- is executed as a separate
     process.  Components inheriting this class should be fully self sufficient,
     and should specifically attempt not to use shared resources.  That will
     ensure that multiple instances of the component can coexist for higher
