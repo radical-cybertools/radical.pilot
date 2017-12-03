@@ -114,7 +114,7 @@ class ABDS(AgentExecutingComponent):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'cancel_unit':
+        if cmd == 'cancel_units':
 
             self._log.info("cancel unit command (%s)" % arg)
             with self._cancel_lock:

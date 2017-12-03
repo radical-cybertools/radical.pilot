@@ -103,11 +103,11 @@ class Popen(AgentExecutingComponent) :
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'cancel_unit':
+        if cmd == 'cancel_units':
 
             self._log.info("cancel unit command (%s)" % arg)
             with self._cancel_lock:
-                self._cus_to_cancel.append(arg)
+                self._cus_to_cancel.extend(arg['uids'])
 
         return True
 
@@ -407,6 +407,7 @@ prof(){
             # poll subprocess object
             exit_code = cu['proc'].poll()
             now       = time.time()
+            uid       = cu['uid']
 
             if exit_code is None:
                 # Process is still running
