@@ -8,6 +8,7 @@ import copy
 import stat
 import time
 import Queue
+import signal
 import tempfile
 import threading
 import traceback
@@ -420,9 +421,11 @@ prof(){
 
                     self._prof.prof('exec_cancel_start', uid=cu['uid'])
 
-                    # We got a request to cancel this cu
+                    # We got a request to cancel this cu - send SIGTERM to the
+                    # process group (which should include the actual launch
+                    # method)
                     action += 1
-                    cu['proc'].kill()
+                    os.killpg(cu['proc'].pid, signal.SIGTERM)
                     cu['proc'].wait() # make sure proc is collected
 
                     with self._cancel_lock:
