@@ -46,6 +46,7 @@ SHARED_FILESYSTEM           = 'shared_filesystem'
 HEALTH_CHECK                = 'health_check'
 PYTHON_DISTRIBUTION         = 'python_dist'
 VIRTENV_DISTRIBUTION        = 'virtenv_dist'
+SAGA_JD_SUPPLEMENT          = 'saga_jd_supplement'
 
 # ------------------------------------------------------------------------------
 #
@@ -253,6 +254,7 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(HEALTH_CHECK           ,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PYTHON_DISTRIBUTION    ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(VIRTENV_DISTRIBUTION   ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(SAGA_JD_SUPPLEMENT     ,  None, attributes.DICT  , attributes.SCALAR, attributes.WRITEABLE)
 
         self['label'] = label
 

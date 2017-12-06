@@ -8,6 +8,10 @@ import radical.utils as ru
 
 from .base import LaunchMethod
 
+# maximum length of command line arguments we support. Beyond that we use
+# a hostfile to specify the process layout.
+ARG_MAX = 4096
+
 
 # ==============================================================================
 #
@@ -74,8 +78,9 @@ class APRun(LaunchMethod):
         # (CPUs here mostly means cores)
         #
         # Example:
-        #     aprun -L node_1 -n 1 -d 3 -cc 0,1,2       cmd : \
-        #           -L node_2 -n 2 -d 3 -cc 0,1,2:3,4,5 cmd :
+        #     aprun -L node_1 -n 1 -N 1 -d 3 -cc 0,1,2       cmd : \
+        #           -L node_2 -n 1 -N 1 -d 3 -cc 0,1,2       cmd : \
+        #           -L node_3 -n 2 -N 2 -d 3 -cc 0,1,2:3,4,5 cmd :
         #
         # Each node can only be used *once* in that way for any individual
         # aprun command.  This means that the depth must be uniform for that
@@ -86,6 +91,31 @@ class APRun(LaunchMethod):
         # basically defines sets of cores (-cc) for each node (-L).  Those sets
         # need to have the same size per node (the depth -d).  The number of
         # sets defines the number of procs to start (-n/-N).
+        #
+        # If the list of arguments for aprun becomes too long, we create
+        # a temporary hostfile instead, and reference it from the aprun command
+        # line.  POSIX specifies 4k characters, and we don't bother to check for
+        # larger sizes, since at that point command lines become unwieldy from
+        # a debugging perspective anyway.
+        #
+        # FIXME: this is not yet implemented, since aprun does not seem to
+        #        support placement files just yet.
+        #
+        # Because of that FIXME above, but also in general to keep the command
+        # line managable, we collapse the aprun node spcs for all nodes with the
+        # same layout:
+        #
+        #   original:
+        #     aprun -L node_1 -n 1  -N 1 -d 3 -cc 0,1,2       cmd : \
+        #           -L node_2 -n 1  -N 1 -d 3 -cc 0,1,2       cmd : \
+        #           -L node_3 -n 2  -N 2 -d 3 -cc 0,1,2:3,4,5 cmd :
+        #
+        #   collapsed:
+        #     aprun -L node_1,node_2 -n 2 -N 1 -d 3 -cc 0,1,2       cmd : \
+        #           -L node_3        -n 2 -N 2 -d 3 -cc 0,1,2:3,4,5 cmd :
+        #
+        # Note that the `-n` argument needs to be adjusted accordingly.
+        #
         nodes = dict()
         for node in slots['nodes']:
 
@@ -106,7 +136,7 @@ class APRun(LaunchMethod):
         # create a node_spec for each node, which contains the aprun options for
         # that node to start the number of application processes on the given
         # core.
-        node_specs = list()
+        node_specs = dict()
         for node_id in nodes:
 
             cpu_slots = nodes[node_id]['cpu']
@@ -142,14 +172,40 @@ class APRun(LaunchMethod):
             # count toal cpu / gpu processes
             nprocs = len(cpu_slots) + len(gpu_slots)
 
-            # add the node spec for this node
-            node_specs.append(' -L %s -n %d -d %d -cc %s -j 2 %s'
-                              % (node_id, nprocs, depth, 
-                                 pin_specs, cmd))
+            # create the unique part of the node spec, and keep spec info like
+            # this:
+            #
+            #   '-d 2 -cc 0,1:2,3' : {'nprocs' : [2, 2],                 # set
+            #                         'nodes'  : ['node_1', 'node_2']},  # list
+            #   ...
+            #
+            # Note that for the same spec string, we should *always* have the
+            # same matching value for `nprocs`.
+            spec_key = '-d %d -cc %s' % (depth, pin_specs)
+            if spec_key not in node_specs:
+                node_specs[spec_key] = {'nprocs': set(),   # number of processes
+                                        'nodes' : list()}  # nodes for this spec
+
+            node_specs[spec_key]['nprocs'].add(nprocs)
+            node_specs[spec_key]['nodes' ].append(node_id)
 
 
-        node_layout   = ' : '.join(node_specs)
-        aprun_command = "%s %s" % (self.launch_command, node_layout)
+        # Now that we have the node specs, and also know what nodes to apply
+        # them to, we can construct the aprun command:
+        aprun_command = self.launch_command
+        for node_spec,info in node_specs.iteritems():
+
+            # nprocs must be uniform
+            nprocs_list = list(info['nprocs'])
+            nprocs      = nprocs_list[0]
+            assert(len(nprocs_list) == 1), nprocs_list
+
+            aprun_command += ' -n %d -N %s -L %s %s %s :' % \
+                             (nprocs * len(info['nodes']), nprocs,
+                              ','.join(info['nodes']), node_spec, cmd)
+
+        # remove trailing colon from above
+        aprun_command = aprun_command[:-1]
         self._log.debug('aprun cmd: %s', aprun_command)
 
         return aprun_command, None

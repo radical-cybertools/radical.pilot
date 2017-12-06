@@ -54,7 +54,8 @@ if __name__ == '__main__':
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
-        pd_init = {'resource'      : resource,
+        pd_init = {
+                   'resource'      : resource,
                    'runtime'       : 15,  # pilot runtime (min)
                    'exit_on_error' : True,
                    'project'       : config[resource]['project'],
@@ -103,14 +104,14 @@ if __name__ == '__main__':
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
-    
+
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
         report.error('caught Exception: %s\n' % e)
         ru.print_exception_trace()
         raise
-   
+
     except (KeyboardInterrupt, SystemExit) as e:
         # the callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
@@ -118,7 +119,7 @@ if __name__ == '__main__':
         # reason).
         ru.print_exception_trace()
         report.warn('exit requested\n')
- 
+
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.
@@ -128,5 +129,5 @@ if __name__ == '__main__':
     report.header()
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
