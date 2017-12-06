@@ -62,7 +62,7 @@ def slots2opaque(slots, nodes):
 #
 # Convert a set of slots into an index into the global slots list
 #
-def _slots2offset(self, task_slots, nodes):
+def _slots2offset(task_slots, nodes):
     '''
     Back-translate the opaque_slots derived above into global core offsets
     '''

@@ -1,6 +1,6 @@
 
-__copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2014-2016, http://radical.rutgers.edu'
+__license__   = 'MIT'
 
 
 import os
@@ -24,7 +24,7 @@ from .  import lm         as rpa_lm
 
 
 # this needs git attribute 'ident' set for this file
-git_ident = "$Id$"
+git_ident = '$Id$'
 
 
 # ==============================================================================
@@ -45,10 +45,10 @@ class Agent_0(rpu.Worker):
     def __init__(self, agent_name):
 
         assert(agent_name == 'agent_0'), 'expect agent_0, not subagent'
-        print "startup agent %s" % agent_name
+        print 'startup agent %s' % agent_name
 
         # load config, create session, init rpu.Worker
-        agent_cfg  = "%s/%s.cfg" % (os.getcwd(), agent_name)
+        agent_cfg  = '%s/%s.cfg' % (os.getcwd(), agent_name)
         cfg        = ru.read_json_str(agent_cfg)
 
         cfg['agent_name'] = agent_name
@@ -65,16 +65,16 @@ class Agent_0(rpu.Worker):
         cfg['workdir']    = os.getcwd()
 
         # sanity check on config settings
-        if not 'cores'               in cfg: raise ValueError("Missing number of cores")
-        if not 'debug'               in cfg: raise ValueError("Missing DEBUG level")
-        if not 'lrms'                in cfg: raise ValueError("Missing LRMS")
-        if not 'dburl'               in cfg: raise ValueError("Missing DBURL")
-        if not 'pilot_id'            in cfg: raise ValueError("Missing pilot id")
-        if not 'runtime'             in cfg: raise ValueError("Missing or zero agent runtime")
-        if not 'scheduler'           in cfg: raise ValueError("Missing agent scheduler")
-        if not 'session_id'          in cfg: raise ValueError("Missing session id")
-        if not 'spawner'             in cfg: raise ValueError("Missing agent spawner")
-        if not 'task_launch_method'  in cfg: raise ValueError("Missing unit launch method")
+        if not 'cores'               in cfg: raise ValueError('Missing number of cores')
+        if not 'debug'               in cfg: raise ValueError('Missing DEBUG level')
+        if not 'lrms'                in cfg: raise ValueError('Missing LRMS')
+        if not 'dburl'               in cfg: raise ValueError('Missing DBURL')
+        if not 'pilot_id'            in cfg: raise ValueError('Missing pilot id')
+        if not 'runtime'             in cfg: raise ValueError('Missing or zero agent runtime')
+        if not 'scheduler'           in cfg: raise ValueError('Missing agent scheduler')
+        if not 'session_id'          in cfg: raise ValueError('Missing session id')
+        if not 'spawner'             in cfg: raise ValueError('Missing agent spawner')
+        if not 'task_launch_method'  in cfg: raise ValueError('Missing unit launch method')
 
         # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold
         # the address of the tunnelized DB endpoint. If it exists, we
@@ -151,7 +151,7 @@ class Agent_0(rpu.Worker):
                      'lm_info'      : self._lrms.lm_info.get('version_info'),
                      'lm_detail'    : self._lrms.lm_info.get('lm_detail')},
                  '$set'             : ['resource_details']}
-        self.advance(pilot, publish=True, push=False, prof=True)
+        self.advance(pilot, publish=True, push=False)
 
         # register idle callback to pull for units -- which is the only action
         # we have to perform, really
@@ -160,7 +160,7 @@ class Agent_0(rpu.Worker):
 
 
         # record hostname in profile to enable mapping of profile entries
-        self._prof.prof('hostname', msg=ru.get_hostname(), uid=self._pid)
+        self._prof.prof(event='hostname', uid=self._pid, msg=ru.get_hostname())
 
 
     # --------------------------------------------------------------------------
@@ -168,6 +168,10 @@ class Agent_0(rpu.Worker):
     def finalize_parent(self):
 
         # tear things down in reverse order
+        self._prof.flush()
+        self._log.info('publish "terminate" cmd')
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
+                                          'arg' : None})
 
         self.unregister_timed_cb(self._check_units_cb)
         self.unregister_output(rps.AGENT_STAGING_INPUT_PENDING)
@@ -183,20 +187,34 @@ class Agent_0(rpu.Worker):
         elif self._final_cause == 'sys.exit' : state = rps.CANCELED
         else                                 : state = rps.FAILED
 
-        # we don't rely on the existence / viability of the update worker at
-        # that point.
-        self._log.debug('update db state: %s: %s', state, self._final_cause)
-        self._update_db(state, self._final_cause)
+      # # we don't rely on the existence / viability of the update worker at
+      # # that point.
+      # self._log.debug('update db state: %s: %s', state, self._final_cause)
+      # self._update_db(state, self._final_cause)
 
-        if self._session:
-            self._log.debug('close  session %s', self._session.uid)
-            self._session.close()
-            self._log.debug('closed session %s', self._session.uid)
+
+    # --------------------------------------------------------------------------
+    #
+    def wait_final(self):
+
+        while self._final_cause is None:
+          # self._log.info('no final cause -> alive')
+            time.sleep(1)
+
+        self._log.debug('final: %s', self._final_cause)
+
+      # if self._session:
+      #     self._log.debug('close  session %s', self._session.uid)
+      #     self._session.close()
+      #     self._log.debug('closed session %s', self._session.uid)
 
 
     # --------------------------------------------------------------------------
     #
     def _update_db(self, state, msg=None):
+
+        # NOTE: we do not push the final pilot state, as that is done by the
+        #       bootstrapper *after* this poilot *actually* finished.
 
         self._log.info('pilot state: %s', state)
         self._log.info('rusage: %s', rpu.get_rusage())
@@ -219,13 +237,10 @@ class Agent_0(rpu.Worker):
 
         ret = self._session._dbs._c.update(
                 {'type'   : 'pilot',
-                 "uid"    : self._pid},
-                {"$push"  : {"states"        : state},
-                 "$set"   : {"state"         : state,
-                             "stdout"        : rpu.tail(out),
-                             "stderr"        : rpu.tail(err),
-                             "logfile"       : rpu.tail(log),
-                             "finished"      : now}
+                 'uid'    : self._pid},
+                {'$set'   : {'stdout'        : rpu.tail(out),
+                             'stderr'        : rpu.tail(err),
+                             'logfile'       : rpu.tail(log)}
                 })
         self._log.debug('update ret: %s', ret)
 
@@ -260,11 +275,11 @@ class Agent_0(rpu.Worker):
     # --------------------------------------------------------------------------
     #
     def _start_sub_agents(self):
-        """
+        '''
         For the list of sub_agents, get a launch command and launch that
         agent instance on the respective node.  We pass it to the seconds
         bootstrap level, there is no need to pass the first one again.
-        """
+        '''
 
         # FIXME: we need a watcher cb to watch sub-agent state
 
@@ -289,7 +304,7 @@ class Agent_0(rpu.Worker):
             if target == 'local':
 
                 # start agent locally
-                cmdline = "/bin/sh -l %s/bootstrap_2.sh %s" % (os.getcwd(), sa)
+                cmdline = '/bin/sh -l %s/bootstrap_2.sh %s' % (os.getcwd(), sa)
 
             elif target == 'node':
 
@@ -338,7 +353,7 @@ class Agent_0(rpu.Worker):
                     # note that 'exec' only makes sense if we don't add any
                     # commands (such as post-processing) after it.
                     ls.write('#!/bin/sh\n\n')
-                    ls.write("exec %s\n" % cmd)
+                    ls.write('exec %s\n' % cmd)
                     st = os.stat(ls_name)
                     os.chmod(ls_name, st.st_mode | stat.S_IEXEC)
 
@@ -346,7 +361,7 @@ class Agent_0(rpu.Worker):
                 else   : cmdline = ls_name
 
             # spawn the sub-agent
-            self._log.info ("create sub-agent %s: %s" % (sa, cmdline))
+            self._log.info ('create sub-agent %s: %s' % (sa, cmdline))
             class _SA(ru.Process):
                 def __init__(self, sa, cmd, log):
                     self._sa   = sa
@@ -359,8 +374,8 @@ class Agent_0(rpu.Worker):
                 def ru_initialize_child(self):
                     sys.stdout = open('%s.out' % self._ru_name, 'w')
                     sys.stderr = open('%s.err' % self._ru_name, 'w')
-                    out = open("%s.out" % self._sa, "w")
-                    err = open("%s.err" % self._sa, "w")
+                    out = open('%s.out' % self._sa, 'w')
+                    err = open('%s.err' % self._sa, 'w')
                     self._proc = sp.Popen(args=self._cmd, stdout=out, stderr=err)
 
                 def work_cb(self):
@@ -406,8 +421,8 @@ class Agent_0(rpu.Worker):
         # FIXME: commands go to pmgr, umgr, session docs
         # FIXME: this is disabled right now
         retdoc = self._session._dbs._c.find_and_modify(
-                    query  = {"uid"  : self._pid},
-                    update = {"$set" : {'cmd': []}}, # Wipe content of array
+                    query  = {'uid'  : self._pid},
+                    update = {'$set' : {'cmd': []}}, # Wipe content of array
                     fields = ['cmd']
                     )
 
@@ -424,15 +439,21 @@ class Agent_0(rpu.Worker):
             if cmd == 'heartbeat':
                 self._log.info('heartbeat_in')
 
+
             elif cmd == 'cancel_pilot':
                 self._log.info('cancel pilot cmd')
-                self._final_cause = 'cancel'
+                self._log.info('publish "terminate" cmd')
+                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
+                                                  'arg' : None})
+
+              # self.stop()
+                self._ru_term.set()
+
                 with open('./killme.signal', 'w+') as f:
-                    f.write('cancel pilot cmd received\n')
+                    f.write(rps.CANCELED)
+                    f.flush()
 
-              # ru.attach_pudb(logger=self._log)
-
-                self.stop()
+                self._final_cause = 'cancel'
                 return False  # we are done
 
             elif cmd == 'cancel_unit':
@@ -453,10 +474,10 @@ class Agent_0(rpu.Worker):
         # we have, terminate.
         if self._runtime:
             if time.time() >= self._starttime + (int(self._runtime) * 60):
-                self._log.info("reached runtime limit (%ss).", self._runtime*60)
+                self._log.info('reached runtime limit (%ss).', self._runtime*60)
                 self._final_cause = 'timeout'
                 self.stop()
-                return False # we are done
+                return False  # we are done
 
         return True
 
@@ -486,14 +507,14 @@ class Agent_0(rpu.Worker):
                                                          'control' : 'agent_pending'})
         if not unit_cursor.count():
             # no units whatsoever...
-            self._log.info("units pulled:    0")
+            self._log.info('units pulled:    0')
             return True  # this is not an error
 
         # update the units to avoid pulling them again next time.
         unit_list = list(unit_cursor)
         unit_uids = [unit['uid'] for unit in unit_list]
 
-        self._log.info("units PULLED: %4d", len(unit_list))
+        self._log.info('units PULLED: %4d', len(unit_list))
 
         self._session._dbs._c.update(multi    = True,
                         spec     = {'type'  : 'unit',
@@ -501,7 +522,7 @@ class Agent_0(rpu.Worker):
                         document = {'$set'  : {'control' : 'agent'}})
 
         self._log.info("units pulled: %4d", len(unit_list))
-        self._prof.prof('get', msg="bulk size: %d" % len(unit_list),
+        self._prof.prof('get', msg='bulk size: %d' % len(unit_list),
                         uid=self._pid)
 
         for unit in unit_list:
@@ -512,17 +533,17 @@ class Agent_0(rpu.Worker):
 
             # FIXME: raise or fail unit!
             if unit['control'] != 'agent_pending':
-                self._log.error(' === invalid control: %s', (pprint.pformat(unit)))
+                self._log.error('invalid control: %s', (pprint.pformat(unit)))
 
             if unit['state'] != rps.AGENT_STAGING_INPUT_PENDING:
-                self._log.error(' === invalid state: %s', (pprint.pformat(unit)))
+                self._log.error('invalid state: %s', (pprint.pformat(unit)))
 
             unit['control'] = 'agent'
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline).  We don't publish nor profile as advance,
         # since that happened already on the module side when the state was set.
-        self.advance(unit_list, publish=False, push=True, prof=False)
+        self.advance(unit_list, publish=False, push=True)
 
         return True
 

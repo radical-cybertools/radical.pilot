@@ -151,7 +151,8 @@ class AgentSchedulingComponent(rpu.Component):
         self.nodes = None
         self._lrms = None
 
-        self._uid = ru.generate_id('agent.scheduling.%(counter)s', ru.ID_CUSTOM)
+        self._uid = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
+                                   ru.ID_CUSTOM)
 
         rpu.Component.__init__(self, cfg, session)
 
@@ -290,11 +291,10 @@ class AgentSchedulingComponent(rpu.Component):
         if self._log.isEnabledFor(logging.DEBUG):
             self._log.debug("after  allocate   %s: %s", cu['uid'],
                             self.slot_status())
-
-        self._log.debug("%s [%s/%s] : %s [%s]", cu['uid'],
-                        cu['description']['cpu_processes'],
-                        cu['description']['gpu_processes'],
-                        pprint.pformat(cu['slots']))
+            self._log.debug("%s [%s/%s] : %s [%s]", cu['uid'],
+                            cu['description']['cpu_processes'],
+                            cu['description']['gpu_processes'],
+                            pprint.pformat(cu['slots']))
         return True
 
 
@@ -311,7 +311,7 @@ class AgentSchedulingComponent(rpu.Component):
         cu = msg
 
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("before reschedule %s: %s", cu['uid'],
+            self._log.debug("before reschedule %s: %s", cu['uid'], 
                             self.slot_status())
 
         # cycle through wait queue, and see if we get anything running now.  We
