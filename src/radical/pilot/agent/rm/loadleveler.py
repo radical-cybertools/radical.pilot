@@ -12,6 +12,8 @@ from ... import utils     as rpu
 from ... import states    as rps
 from ... import constants as rpc
 
+from ..scheduler.torus import Torus
+
 from base import LRMS
 
 
@@ -262,7 +264,7 @@ class LoadLeveler(LRMS):
                      (e[0], [e[1][key] for key in sorted(e[1])], e[2], e[3]))
 
             try:
-                loadl_node_list = [entry[SchedulerTorus.TORUS_BLOCK_NAME] \
+                loadl_node_list = [entry[Torus.TORUS_BLOCK_NAME] \
                                    for entry in self.torus_block]
             except Exception as e:
                 raise RuntimeError("Couldn't construct node list")

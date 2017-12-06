@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import signal
 
 from base import LRMS
 

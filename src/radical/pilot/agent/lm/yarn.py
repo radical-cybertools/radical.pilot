@@ -336,7 +336,7 @@ class Yarn(LaunchMethod):
         # Construct the args_string which is the arguments given as input to the
         # shell script. Needs to be a string
         self._log.debug("Constructing YARN command")
-        self._log.debug('Slots : %s'.format(slots))
+        self._log.debug('Slots : %s', slots)
 
         if 'lm_info' not in slots:
             raise RuntimeError('No lm_info to launch via %s: %s' \
