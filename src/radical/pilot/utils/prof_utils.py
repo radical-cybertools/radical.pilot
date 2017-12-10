@@ -382,7 +382,7 @@ def clean_profile(profile, sid):
 
         else:
             # FIXME: define different event types (we have that somewhere)
-            event['event_type'] = 'event'
+            event['event_type'] = name
             entities[uid]['events'].append(event)
 
 
