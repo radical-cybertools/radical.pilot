@@ -266,7 +266,16 @@ class Default(AgentStagingOutputComponent):
                     self._log.debug("mkdir %s", tgtdir)
                     rpu.rec_makedir(tgtdir)
 
-            if   action == rpc.COPY: shutil.copyfile(src.path, tgt.path)
+            if   action == rpc.COPY: 
+                try:
+                    shutil.copytree(src.path, tgt.path)
+                except OSError as exc: 
+                    # python >2.5
+                    if exc.errno == errno.ENOTDIR:
+                        shutil.copy(src.path, tgt.path)
+                    else: 
+                        raise
+                
             elif action == rpc.LINK: os.symlink     (src.path, tgt.path)
             elif action == rpc.MOVE: shutil.move    (src.path, tgt.path)
             elif action == rpc.TRANSFER:
