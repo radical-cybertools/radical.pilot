@@ -172,7 +172,7 @@ def complete_url(path, context, log=None):
        schema = 'pwd'  
 
     log.debug('   %s', schema)
-    if schema in ['resource', 'pilot', 'unit', 'pwd']:
+    if schema in context.keys():
 
         # we interpret any hostname as part of the path element
         if   purl.host and purl.path: ppath = '%s/%s' % (purl.host, purl.path)

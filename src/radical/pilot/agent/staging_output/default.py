@@ -238,12 +238,12 @@ class Default(AgentStagingOutputComponent):
 
             # we only handle staging which does *not* include 'client://' src or
             # tgt URLs - those are handled by the umgr staging components
-            if '://' in src and src.startswith('client://'):
+            if src.startswith('client://'):
                 self._log.debug('skip staging for src %s', src)
                 self._prof.prof('staging_out_skip', uid=uid, msg=did)
                 continue
 
-            if '://' in tgt and tgt.startswith('client://'):
+            if tgt.startswith('client://'):
                 self._log.debug('skip staging for tgt %s', tgt)
                 self._prof.prof('staging_out_skip', uid=uid, msg=did)
                 continue
@@ -251,6 +251,8 @@ class Default(AgentStagingOutputComponent):
             src = complete_url(src, src_context, self._log)
             tgt = complete_url(tgt, tgt_context, self._log)
 
+
+            # Currently, we use the same schema for files and folders.
             assert(src.schema == 'file'), 'staging src must be file://'
 
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
@@ -262,9 +264,10 @@ class Default(AgentStagingOutputComponent):
             if rpc.CREATE_PARENTS in flags and action != rpc.TRANSFER:
                 tgtdir = os.path.dirname(tgt.path)
                 if tgtdir != sandbox:
-                    # TODO: optimization point: create each dir only once
-                    self._log.debug("mkdir %s", tgtdir)
-                    rpu.rec_makedir(tgtdir)
+                    # create each dir only once
+                    if not os.path.isdir(tgtdir):
+                        self._log.debug("mkdir %s", tgtdir)
+                        rpu.rec_makedir(tgtdir)
 
             if   action == rpc.COPY: 
                 try:
@@ -278,22 +281,24 @@ class Default(AgentStagingOutputComponent):
                 
             elif action == rpc.LINK: os.symlink     (src.path, tgt.path)
             elif action == rpc.MOVE: shutil.move    (src.path, tgt.path)
-            elif action == rpc.TRANSFER:
-
+            elif action == rpc.TRANSFER: pass
+                # This is currently never executed. Commenting it out.
+                # Uncomment and implement when uploads directly to remote URLs
+                # from units are supported.
                 # FIXME: we only handle srm staging right now, and only for
                 #        a specific target proxy. Other TRANSFER directives are
                 #        left to umgr output staging.  We should use SAGA to
                 #        attempt all staging ops which do not target the client
                 #        machine.
-                if tgt.schema == 'srm':
-                    # FIXME: cache saga handles
-                    srm_dir = rs.filesystem.Directory('srm://proxy/?SFN=bogus')
-                    srm_dir.copy(src, tgt)
-                    srm_dir.close()
-                else:
-                    self._log.error('no transfer for %s -> %s', src, tgt)
-                    self._prof.prof('staging_out_fail', uid=uid, msg=did)
-                    raise NotImplementedError('unsupported transfer %s' % tgt)
+                # if tgt.schema == 'srm':
+                #     # FIXME: cache saga handles
+                #     srm_dir = rs.filesystem.Directory('srm://proxy/?SFN=bogus')
+                #     srm_dir.copy(src, tgt)
+                #     srm_dir.close()
+                # else:
+                #     self._log.error('no transfer for %s -> %s', src, tgt)
+                #     self._prof.prof('staging_out_fail', uid=uid, msg=did)
+                #     raise NotImplementedError('unsupported transfer %s' % tgt)
 
             self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
