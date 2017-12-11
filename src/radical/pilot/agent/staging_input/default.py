@@ -146,7 +146,7 @@ class Default(AgentStagingInputComponent):
             src    = sd['source']
             tgt    = sd['target']
 
-            self._prof.prof('staging_begin', uid=uid, msg=did)
+            self._prof.prof('staging_in_start', uid=uid, msg=did)
 
             assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER])
 
@@ -154,12 +154,12 @@ class Default(AgentStagingInputComponent):
             # tgt URLs - those are handled by the umgr staging components
             if '://' in src and src.startswith('client://'):
                 self._log.debug('skip staging for src %s', src)
-                self._prof.prof('staging_end', uid=uid, msg=did)
+                self._prof.prof('staging_in_skip', uid=uid, msg=did)
                 continue
 
             if '://' in tgt and tgt.startswith('client://'):
                 self._log.debug('skip staging for tgt %s', tgt)
-                self._prof.prof('staging_end', uid=uid, msg=did)
+                self._prof.prof('staging_in_skip', uid=uid, msg=did)
                 continue
 
             src = complete_url(src, src_context, self._log)
@@ -177,7 +177,7 @@ class Default(AgentStagingInputComponent):
                 tgtdir = os.path.dirname(tgt.path)
                 if tgtdir != sandbox:
                     # TODO: optimization point: create each dir only once
-                    self._log.debug("mkdir %s" % tgtdir)
+                    self._log.debug("mkdir %s", tgtdir)
                     rpu.rec_makedir(tgtdir)
 
             if   action == rpc.COPY: shutil.copyfile(src.path, tgt.path)
@@ -197,10 +197,10 @@ class Default(AgentStagingInputComponent):
                     srm_dir.close()
                 else:
                     self._log.error('no transfer for %s -> %s', src, tgt)
-                    self._prof.prof('staging_end', uid=uid, msg=did)
+                    self._prof.prof('staging_in_fail', uid=uid, msg=did)
                     raise NotImplementedError('unsupported transfer %s' % src)
 
-            self._prof.prof('staging_end', uid=uid, msg=did)
+            self._prof.prof('staging_in_stop', uid=uid, msg=did)
 
         # all staging is done -- pass on to the scheduler
         self.advance(unit, rps.AGENT_SCHEDULING_PENDING, publish=True, push=True)
