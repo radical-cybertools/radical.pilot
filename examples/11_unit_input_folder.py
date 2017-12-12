@@ -69,18 +69,6 @@ if __name__ == '__main__':
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        ## create folder and a file that is going to be moved 
-        directory ='/tmp/stage_in_folder'
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-
-        # create a folder in the file
-        filename = '/tmp/stage_in_folder/input_file.dat'
-        afile = open(filename,'w')
-        afile.write('hello world!')
-        afile.close()
-
-        # TODO: transfer file to remote machine
            
 
         report.header('submit units')
@@ -89,10 +77,19 @@ if __name__ == '__main__':
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
-        # Create a workload of char-counting a simple file.  We first create the
-        # file right here, and then use it as unit input data for each unit.
-        #os.system('hostname >  input.dat')
-        #os.system('date     >> input.dat')
+        # create a folder to the remote machine
+        cu = rp.ComputeUnitDescription()
+        cu.executable = 'python'
+        cu.arguments = ['make_folders.py']
+        cu.input_staging = ['make_folders.py']
+        umgr.submit_units([cu])
+
+        print "Creating dummy folder"
+        filename = '/tmp/stage_in_folder/input_file.dat'
+
+        umgr.wait_units()
+        print 'Dummy folder created'
+
 
         n = 1   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
