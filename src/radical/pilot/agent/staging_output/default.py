@@ -264,16 +264,13 @@ class Default(AgentStagingOutputComponent):
             if rpc.CREATE_PARENTS in flags and action != rpc.TRANSFER:
                 tgtdir = os.path.dirname(tgt.path)
                 if tgtdir != sandbox:
-                    # create each dir only once
-                    if not os.path.isdir(tgtdir):
-                        self._log.debug("mkdir %s", tgtdir)
-                        rpu.rec_makedir(tgtdir)
+                    self._log.debug("mkdir %s", tgtdir)
+                    rpu.rec_makedir(tgtdir)
 
             if   action == rpc.COPY: 
                 try:
                     shutil.copytree(src.path, tgt.path)
                 except OSError as exc: 
-                    # python >2.5
                     if exc.errno == errno.ENOTDIR:
                         shutil.copy(src.path, tgt.path)
                     else: 
