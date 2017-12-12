@@ -425,8 +425,12 @@ prof(){
                     # process group (which should include the actual launch
                     # method)
                     action += 1
-                    os.killpg(cu['proc'].pid, signal.SIGTERM)
-                    cu['proc'].wait() # make sure proc is collected
+                    try:
+                        os.killpg(cu['proc'].pid, signal.SIGTERM)
+                    except OSError:
+                        # unit is already gone, we ignore this
+                        pass
+                    cu['proc'].wait()  # make sure proc is collected
 
                     with self._cancel_lock:
                         self._cus_to_cancel.remove(cu['uid'])
