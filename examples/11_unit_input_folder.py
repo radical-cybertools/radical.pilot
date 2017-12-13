@@ -64,12 +64,10 @@ if __name__ == '__main__':
                 'access_schema' : config[resource]['schema'],
                 'cores'         : config[resource]['cores'],
                 }
-        pdesc = rp.ComputePilotDescription(pd_init)
 
-        # Launch the pilot.
+        pdesc = rp.ComputePilotDescription(pd_init)
         pilot = pmgr.submit_pilots(pdesc)
 
-           
 
         report.header('submit units')
 
@@ -77,26 +75,31 @@ if __name__ == '__main__':
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
+
+
+
+
+        n = 4   # number of units to run
+
         # create a folder to the remote machine
         cu = rp.ComputeUnitDescription()
         cu.executable = 'python'
-        cu.arguments = ['make_folders.py']
+        cu.arguments = ['make_folders.py', n ]
         cu.input_staging = ['make_folders.py']
         umgr.submit_units([cu])
 
         print "Creating dummy folder"
-        filename = '/tmp/stage_in_folder/input_file.dat'
 
-        umgr.wait_units()
+        folder_cus =  umgr.wait_units()
         print 'Dummy folder created'
 
 
-        n = 1   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
         for i in range(0, n):
 
+            filename = '/tmp/stage_in_folder_%d/input_file.dat'%i
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
