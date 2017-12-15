@@ -2,19 +2,26 @@ import os
 import tarfile
 from shutil import copyfile as cp
 import sys
+import glob
+from time import time
 
+if __name__ == '__main__':
 
-tar = tarfile.open("tartest.tar","w")
-for filename in ["foldername"]:
-    tar.add(filename)
-tar.close
+    
+    folderFiles = glob.glob(sys.argv[1]+'/*')
+    start = time()
+    tar = tarfile.open("tartest.tar","w")
+    for filename in folderFiles:
+        tar.add(filename)
+    tar.close()
+    creation = time()-start
+    cp(sys.argv[2], sys.argv[3])
+    copyTime = time()-creation - start
 
+    untar = tarfile.open("tartest.tar")
+    untar.extractall()
+    untar.close()
 
-cp(sys.argv[1], sys.argv[2])
+    extractTime = time() - copyfile - creation - start
 
-
-untar = tarfile.open("tartest.tar")
-untar.extractall()
-untar.close
-
-
+    print(creation,copyTime,extractTime)

@@ -1,22 +1,27 @@
 import string
 import random
 
-halfMegFile = open('halfMegFile.txt','w')
+if __name__ == '__main__':
+    
+    fileNum = int(sys.argv[1])
+    randString = ''
 
-str = ''
+    for i in range(524288):
+        randString += random.choice(string.letters)
 
-for i in range(524288):
-    str += random.choice(string.letters)
+    for i in range(fileNum):
+        halfMegFile = open('halfMeg/File_%4d.txt'%i,'w')
+        halfMegFile.write(randString)
+        halfMegFile.close()
 
-halfMegFile.write(str)
-halfMegFile.close()
+    randString += randString
+    for i in range(fileNum):
+        halfMegFile = open('meg/File_%4d.txt'%i,'w')
+        megFile.write(randString)
+        megFile.close()
 
-megFile = open('megFile.txt','w')
-str += str
-megFile.write(str)
-megFile.close()
-
-twoMegFile = open('twoMegFile.txt','w')
-str += str
-twoMegFile.write(str)
-twoMegFile.close()
+    randString += randString
+    for i in range(fileNum):
+        halfMegFile = open('twoMeg/File_%4d.txt'%i,'w')
+        twoMegFile.write(randString)
+        twoMegFile.close()
