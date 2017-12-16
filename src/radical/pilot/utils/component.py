@@ -24,8 +24,6 @@ from .pubsub     import PUBSUB_PUB     as rpu_PUBSUB_PUB
 from .pubsub     import PUBSUB_SUB     as rpu_PUBSUB_SUB
 from .pubsub     import PUBSUB_BRIDGE  as rpu_PUBSUB_BRIDGE
 
-SNIPPET_ROOT = '%s/.radical/hooks/' % os.environ.get('HOME', '/tmp')
-
 
 # ==============================================================================
 #
@@ -623,6 +621,9 @@ class Component(ru.Process):
         self.initialize_child()
         self._prof.prof('component_init')
 
+        # inject init hook if it exists
+        exec(ru.get_snippet('on_init.%s' % self.uid))
+
     def initialize_child(self):
         pass # can be overloaded
 
@@ -1218,12 +1219,7 @@ class Component(ru.Process):
             things = input.get_nowait(1000) # timeout in microseconds
 
             # inject input hook if it exists
-            if 'RADICAL_DEBUG' in os.environ:
-                snippet = '%s/on_input.%s.py' % (SNIPPET_ROOT, self.uid)
-                self._log.debug('snippet in : %s' % snippet)
-                if os.path.isfile(snippet):
-                    with open(snippet, 'r') as fin:
-                        exec(fin.read())
+            exec(ru.get_snippet('on_input.%s' % self.uid))
 
             if not things:
                 return True
@@ -1249,15 +1245,6 @@ class Component(ru.Process):
 
             for state,things in buckets.iteritems():
 
-                # inject output hook if it exists
-                if 'RADICAL_DEBUG' in os.environ:
-                    snippet = '%s/on_output.%s.py' % (SNIPPET_ROOT, self.uid)
-                    self._log.debug('snippet out: %s' % snippet)
-                    if os.path.isfile(snippet):
-                        with open(snippet, 'r') as fin:
-                            exec(fin.read())
-
-
                 assert(state in states), 'inconsistent state'
                 assert(state in self._workers), 'no worker for state %s' % state
 
@@ -1282,6 +1269,9 @@ class Component(ru.Process):
 
                     with self._cb_lock:
                         self._workers[state](things)
+
+                    # inject output hook if it exists
+                    exec(ru.get_snippet('on_output.%s' % self.uid))
 
                 except Exception as e:
 
