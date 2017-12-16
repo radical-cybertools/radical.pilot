@@ -94,7 +94,7 @@ class Default(UMGRStagingInputComponent):
         arg = msg.get('arg')
 
         if cmd not in ['add_pilots']:
-            self._log.debug(' === skip cmd %s', cmd)
+            self._log.debug('skip cmd %s', cmd)
 
         pilots = arg.get('pilots', [])
 
@@ -104,7 +104,7 @@ class Default(UMGRStagingInputComponent):
         with self._pilots_lock:
             for pilot in pilots:
                 pid = pilot['uid']
-                self._log.debug(' === add pilot %s', pid)
+                self._log.debug('add pilot %s', pid)
                 if pid not in self._pilots:
                     self._pilots[pid] = pilot
 
@@ -187,21 +187,17 @@ class Default(UMGRStagingInputComponent):
 
         for pid in units_by_pid:
 
-            self._log.debug(' === pid %s', pid)
-
             with self._pilots_lock:
                 pilot = self._pilots.get(pid)
 
             if not pilot:
                 # we don't feel inclined to optimize for unknown pilots
-                self._log.debug(' === pid unknown - skip optimizion', pid)
+                self._log.debug('pid unknown - skip optimizion', pid)
                 continue
 
             session_sbox = self._session._get_session_sandbox(pilot)
-            self._log.debug(' ==== sbox: %s [%s]', session_sbox, type(session_sbox))
             unit_sboxes  = units_by_pid[pid]
 
-            self._log.debug(' === %s >= %s ?', len(unit_sboxes), UNIT_BULK_MKDIR_THRESHOLD)
             if len(unit_sboxes) >= UNIT_BULK_MKDIR_THRESHOLD:
 
                 # no matter the bulk mechanism, we need a SAGA handle to the
@@ -221,8 +217,6 @@ class Default(UMGRStagingInputComponent):
                 #    both
                 if UNIT_BULK_MKDIR_MECHANISM == 'saga':
 
-                    self._log.debug(' === saga')
-
                     tc = rs.task.Container()
                     for sbox in unit_sboxes:
                         tc.add(saga_dir.make_dir(sbox, ttype=rs.TASK))
@@ -230,7 +224,6 @@ class Default(UMGRStagingInputComponent):
                     tc.wait()
 
                 elif UNIT_BULK_MKDIR_MECHANISM == 'tar':
-                    self._log.debug(' === tar')
 
                     tmp_path = tempfile.mkdtemp(prefix='rp_agent_tar_dir')
                     tmp_dir  = os.path.abspath(tmp_path)
@@ -243,16 +236,15 @@ class Default(UMGRStagingInputComponent):
 
                     cmd = "cd %s && tar zchf %s *" % (tmp_dir, tar_tgt)
                     out, err, ret = ru.sh_callout(cmd, shell=True)
-                    self._log.debug(' === tar : %s', cmd)
-                    self._log.debug(' === tar : %s\n---\n%s\n---\n%s', out, err, ret)
+                    self._log.debug('tar : %s\n---\n%s\n---\n%s', out, err, ret)
 
                     if ret:
                         raise RuntimeError('failed callout %s: %s' % (cmd, err))
 
                     tar_rem_path = "%s/%s" % (str(session_sbox), tar_name)
 
-                    self._log.debug(' === sbox: %s [%s]', session_sbox, type(session_sbox))
-                    self._log.debug(' === copy: %s -> %s', tar_url, tar_rem_path)
+                    self._log.debug('sbox: %s [%s]', session_sbox, type(session_sbox))
+                    self._log.debug('copy: %s -> %s', tar_url, tar_rem_path)
                     saga_dir.copy(tar_url, tar_rem_path, flags=rs.filesystem.CREATE_PARENTS)
 
                   # ru.sh_callout('rm -r %s' % tmp_path)
@@ -260,7 +252,7 @@ class Default(UMGRStagingInputComponent):
                     # get a job service handle to the target resource and run
                     # the untar command.  Use the hop to skip the batch system
                     js_url = pilot['js_hop']
-                    self._log.debug(' === js  : %s', js_url)
+                    self._log.debug('js  : %s', js_url)
 
                     if  js_url in self._js_cache:
                         js_tmp = self._js_cache[js_url]
@@ -271,8 +263,8 @@ class Default(UMGRStagingInputComponent):
                     cmd = "tar zmxvf %s/%s -C /" % (session_sbox.path, tar_name)
                     j   = js_tmp.run_job(cmd)
                     j.wait()
-                    self._log.debug(' === untar : %s', cmd)
-                    self._log.debug(' === untar : %s\n---\n%s\n---\n%s',
+                    self._log.debug('untar : %s', cmd)
+                    self._log.debug('untar : %s\n---\n%s\n---\n%s',
                             j.get_stdout_string(), j.get_stderr_string(),
                             j.exit_code)
 
