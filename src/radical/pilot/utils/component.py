@@ -24,6 +24,8 @@ from .pubsub     import PUBSUB_PUB     as rpu_PUBSUB_PUB
 from .pubsub     import PUBSUB_SUB     as rpu_PUBSUB_SUB
 from .pubsub     import PUBSUB_BRIDGE  as rpu_PUBSUB_BRIDGE
 
+SNIPPET_ROOT = '%s/.radical/hooks/' % os.environ.get('HOME', '/tmp')
+
 
 # ==============================================================================
 #
@@ -1215,6 +1217,14 @@ class Component(ru.Process):
             #        non-trivial worker).
             things = input.get_nowait(1000) # timeout in microseconds
 
+            # inject input hook if it exists
+            if 'RADICAL_DEBUG' in os.environ:
+                snippet = '%s/on_input.%s.py' % (SNIPPET_ROOT, self.uid)
+                self._log.debug('snippet in : %s' % snippet)
+                if os.path.isfile(snippet):
+                    with open(snippet, 'r') as fin:
+                        exec(fin.read())
+
             if not things:
                 return True
 
@@ -1238,6 +1248,15 @@ class Component(ru.Process):
             # We now can push bulks of things to the workers
 
             for state,things in buckets.iteritems():
+
+                # inject output hook if it exists
+                if 'RADICAL_DEBUG' in os.environ:
+                    snippet = '%s/on_output.%s.py' % (SNIPPET_ROOT, self.uid)
+                    self._log.debug('snippet out: %s' % snippet)
+                    if os.path.isfile(snippet):
+                        with open(snippet, 'r') as fin:
+                            exec(fin.read())
+
 
                 assert(state in states), 'inconsistent state'
                 assert(state in self._workers), 'no worker for state %s' % state
