@@ -345,6 +345,12 @@ class Component(ru.Process):
         self.is_valid()
         self._session._to_stop.append(self)
 
+        # set up for snippet use: we expect snippets in the application
+        # directory, so in `./snippets/`), and in the pilot sandbox root
+        # (`../../snippets`)
+        ru.add_snippet_path('%s/snippets/'       % os.getcwd())
+        ru.add_snippet_path('%s/../../snippets/' % os.getcwd())
+
 
     # --------------------------------------------------------------------------
     #
