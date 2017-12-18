@@ -1279,7 +1279,7 @@ class Component(ru.Process):
     # --------------------------------------------------------------------------
     #
     def advance(self, things, state=None, publish=True, push=False,
-                timestamp=None):
+                timestamp=None, prof=True):
         """
         Things which have been operated upon are pushed down into the queues
         again, only to be picked up by the next component, according to their
@@ -1327,8 +1327,9 @@ class Component(ru.Process):
                 thing['state'] = state
             _state = thing['state']
 
-            self._prof.prof('advance', uid=uid, state=_state, 
-                            timestamp=timestamp)
+            if prof:
+                self._prof.prof('advance', uid=uid, state=_state,
+                                timestamp=timestamp)
 
             if not _state in buckets:
                 buckets[_state] = list()
