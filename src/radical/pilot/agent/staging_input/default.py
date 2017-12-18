@@ -177,7 +177,7 @@ class Default(AgentStagingInputComponent):
                 tgtdir = os.path.dirname(tgt.path)
                 if tgtdir != sandbox:
                     # TODO: optimization point: create each dir only once
-                    self._log.debug("mkdir %s" % tgtdir)
+                    self._log.debug("mkdir %s", tgtdir)
                     rpu.rec_makedir(tgtdir)
 
             if   action == rpc.COPY: shutil.copyfile(src.path, tgt.path)

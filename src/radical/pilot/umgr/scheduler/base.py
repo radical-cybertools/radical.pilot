@@ -135,18 +135,18 @@ class UMGRSchedulingComponent(rpu.Component):
         arg = msg.get('arg')
 
         self._log.info('scheduler state_cb: %s', cmd)
-      # self._log.debug('base state cb: %s' % cmd)
+      # self._log.debug('base state cb: %s', cmd)
 
         # FIXME: get cmd string consistent throughout the code
         if cmd not in ['update', 'state_update']:
-          # self._log.debug('base state cb: ignore %s' % cmd)
+          # self._log.debug('base state cb: ignore %s', cmd)
             self._log.debug('ignore cmd %s', cmd)
             return True
 
         if not isinstance(arg, list): things = [arg]
         else                        : things =  arg
 
-      # self._log.debug('base state cb: things %s' % things)
+      # self._log.debug('base state cb: things %s', things)
 
         pilots = [t for t in things if t['type'] == 'pilot']
         units  = [t for t in things if t['type'] == 'unit' ]
@@ -154,12 +154,8 @@ class UMGRSchedulingComponent(rpu.Component):
         self._log.debug('update pilots %s', [p['uid'] for p in pilots])
         self._log.debug('update units  %s', [u['uid'] for u in units])
 
-      # self._log.debug(' === base state cb: update  pilots: %s' % [p['uid'] for p in pilots])
         self._update_pilot_states(pilots)
-      # self._log.debug(' === base state cb: updated pilots: %s' % [p['uid'] for p in pilots])
-      # self._log.debug(' === base state cb: update  units:  %s' % [u['uid'] for u in units])
         self._update_unit_states(units)
-      # self._log.debug(' === base state cb: updated units:  %s' % [u['uid'] for u in units])
 
         return True
 
@@ -170,7 +166,7 @@ class UMGRSchedulingComponent(rpu.Component):
 
         self._log.debug('update pilot states for %s', [p['uid'] for p in pilots])
 
-      # self._log.debug('update pilot states for %s' % ([p['uid'] for p in pilots]))
+      # self._log.debug('update pilot states for %s', [p['uid'] for p in pilots])
 
         if not pilots:
             return
@@ -197,15 +193,15 @@ class UMGRSchedulingComponent(rpu.Component):
                 target, passed = rps._pilot_state_progress(pid, current, target) 
 
                 if current != target:
-                  # self._log.debug('%s: %s -> %s' % (pid,  current, target))
+                  # self._log.debug('%s: %s -> %s', pid,  current, target)
                     to_update.append(pid)
                     self._pilots[pid]['state'] = target
                     self._log.debug('update pilot state: %s -> %s', current, passed)
 
-      # self._log.debug('to update: %s' % to_update)
+      # self._log.debug('to update: %s', to_update)
         if to_update:
             self.update_pilots(to_update)
-      # self._log.debug('updated  : %s' % to_update)
+      # self._log.debug('updated  : %s', to_update)
 
 
     # --------------------------------------------------------------------------
@@ -299,7 +295,7 @@ class UMGRSchedulingComponent(rpu.Component):
                         raise ValueError('pilot not added (%s)' % pid)
 
                     self._pilots[pid]['role'] = REMOVED
-                    self._log.debug('removed pilot: %s' % self._pilots[pid])
+                    self._log.debug('removed pilot: %s', self._pilots[pid])
 
             # let the scheduler know
             self.remove_pilots(pids)

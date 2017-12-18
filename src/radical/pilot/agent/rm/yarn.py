@@ -47,11 +47,11 @@ class Yarn(LRMS):
 
         hdfs_conf_output =subprocess.check_output(['hdfs', 'getconf', 
                                                    '-nnRpcAddresses']).split('\n')[0]
-        self._log.debug('Namenode URL = {0}'.format(hdfs_conf_output))
+        self._log.debug('Namenode URL = %s', hdfs_conf_output)
         self.namenode_url = hdfs_conf_output
 
 
-        self._log.debug('Namenode URL = {0}'.format(self.namenode_url))
+        self._log.debug('Namenode URL = %s', self.namenode_url)
 
         # I will leave it for the moment because I have not found another way
         # to take the necessary value yet.

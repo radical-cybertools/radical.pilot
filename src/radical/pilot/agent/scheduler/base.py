@@ -19,6 +19,7 @@ from ... import constants as rpc
 # 'enum' for RPs's pilot scheduler types
 SCHEDULER_NAME_CONTINUOUS   = "CONTINUOUS"
 SCHEDULER_NAME_SCATTERED    = "SCATTERED"
+SCHEDULER_NAME_HOMBRE       = "HOMBRE"
 SCHEDULER_NAME_TORUS        = "TORUS"
 SCHEDULER_NAME_YARN         = "YARN"
 SCHEDULER_NAME_SPARK        = "SPARK"
@@ -102,6 +103,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         from .continuous import Continuous
         from .scattered  import Scattered
+        from .hombre     import Hombre
         from .torus      import Torus
         from .yarn       import Yarn
         from .spark      import Spark
@@ -110,6 +112,7 @@ class AgentSchedulingComponent(rpu.Component):
             impl = {
                 SCHEDULER_NAME_CONTINUOUS : Continuous,
                 SCHEDULER_NAME_SCATTERED  : Scattered,
+                SCHEDULER_NAME_HOMBRE     : Hombre,
                 SCHEDULER_NAME_TORUS      : Torus,
                 SCHEDULER_NAME_YARN       : Yarn,
                 SCHEDULER_NAME_SPARK      : Spark
@@ -171,13 +174,14 @@ class AgentSchedulingComponent(rpu.Component):
         # got an allocation, go off and launch the process
         self._prof.prof('schedule_ok', uid=cu['uid'])
 
-      # if  self._log.isEnabledFor(logging.DEBUG):
-      #     self._log.debug("after  allocate   %s: %s", cu['uid'],
+      # if self._log.isEnabledFor(logging.DEBUG):
+      #     self._log.debug("after  allocate   %s: %s", cu['uid'], 
       #                     self.slot_status())
       #
-      # self._log.debug("%s [%s] : %s", cu['uid'],
-      #                 cu['description']['cores'],
-      #                 pprint.pformat(cu['opaque_slots']))
+      #     self._log.debug("%s [%s] : %s", cu['uid'],
+      #                     cu['description']['cores'],
+      #                     pprint.pformat(cu['opaque_slots']))
+
         return True
 
 

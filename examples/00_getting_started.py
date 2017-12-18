@@ -60,7 +60,7 @@ if __name__ == '__main__':
                    'project'       : config[resource]['project'],
                    'queue'         : config[resource]['queue'],
                    'access_schema' : config[resource]['schema'],
-                   'cores'         : 1024*4 + 2*16
+                   'cores'         : config[resource]['cores'],
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
@@ -86,8 +86,7 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.executable = '/bin/date'
-            cud.cores      = 32
-            cud.mpi        = True
+            cud.cores      = 1
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')

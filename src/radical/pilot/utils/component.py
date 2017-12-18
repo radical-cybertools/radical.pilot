@@ -345,6 +345,12 @@ class Component(ru.Process):
         self.is_valid()
         self._session._to_stop.append(self)
 
+        # set up for snippet use: we expect snippets in the application
+        # directory, so in `./snippets/`), and in the pilot sandbox root
+        # (`../../snippets`)
+        ru.add_snippet_path('%s/snippets/'       % os.getcwd())
+        ru.add_snippet_path('%s/../../snippets/' % os.getcwd())
+
 
     # --------------------------------------------------------------------------
     #
@@ -621,6 +627,9 @@ class Component(ru.Process):
         self.initialize_child()
         self._prof.prof('component_init')
 
+        # inject init hook if it exists
+        exec(ru.get_snippet('on_init.%s' % self.uid))
+
     def initialize_child(self):
         pass # can be overloaded
 
@@ -759,11 +768,11 @@ class Component(ru.Process):
 
         # get address for the queue
         addr = self._cfg['bridges'][input]['addr_out']
-        self._log.debug("using addr %s for input %s" % (addr, input))
+        self._log.debug("using addr %s for input %s", addr, input)
 
         q = rpu_Queue(self._session, input, rpu_QUEUE_OUTPUT, self._cfg, addr=addr)
-        self._inputs['name'] = {'queue'  : q,
-                                'states' : states}
+        self._inputs[name] = {'queue'  : q,
+                              'states' : states}
 
         self._log.debug('registered input %s', name)
 
@@ -849,7 +858,7 @@ class Component(ru.Process):
             else:
                 # get address for the queue
                 addr = self._cfg['bridges'][output]['addr_in']
-                self._log.debug("using addr %s for output %s" % (addr, output))
+                self._log.debug("using addr %s for output %s", addr, output)
 
                 # non-final state, ie. we want a queue to push to
                 q = rpu_Queue(self._session, output, rpu_QUEUE_INPUT, self._cfg, addr=addr)
@@ -961,7 +970,7 @@ class Component(ru.Process):
 
         self.register_watchable(idler)
         self._session._to_stop.append(idler)
-        self._log.debug('%s registered idler %s' % (self.uid, name))
+        self._log.debug('%s registered idler %s', self.uid, name)
 
 
     # --------------------------------------------------------------------------
@@ -1012,12 +1021,12 @@ class Component(ru.Process):
         self._log.debug('START: %s register publisher %s', self.uid, pubsub)
 
         addr = self._cfg['bridges'][pubsub]['addr_in']
-        self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
+        self._log.debug("using addr %s for pubsub %s", addr, pubsub)
 
         q = rpu_Pubsub(self._session, pubsub, rpu_PUBSUB_PUB, self._cfg, addr=addr)
         self._publishers[pubsub] = q
 
-        self._log.debug('registered publisher : %s : %s' % (pubsub, q.name))
+        self._log.debug('registered publisher : %s : %s', pubsub, q.name)
 
 
     # --------------------------------------------------------------------------
@@ -1071,7 +1080,7 @@ class Component(ru.Process):
             raise ValueError('no bridge known for pubsub channel %s' % pubsub)
 
         addr = self._cfg['bridges'][pubsub]['addr_out']
-        self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
+        self._log.debug("using addr %s for pubsub %s", addr, pubsub)
 
         # subscription is racey for the *first* subscriber: the bridge gets the
         # subscription request, and forwards it to the publishers -- and only
@@ -1140,7 +1149,7 @@ class Component(ru.Process):
 
         self.register_watchable(subscriber)
         self._session._to_stop.append(subscriber)
-        self._log.debug('%s registered %s subscriber %s' % (self.uid, pubsub, name))
+        self._log.debug('%s registered %s subscriber %s', self.uid, pubsub, name)
 
 
     # --------------------------------------------------------------------------
@@ -1215,6 +1224,9 @@ class Component(ru.Process):
             #        non-trivial worker).
             things = input.get_nowait(1000) # timeout in microseconds
 
+            # inject input hook if it exists
+            exec(ru.get_snippet('on_input.%s' % self.uid))
+
             if not things:
                 return True
 
@@ -1263,6 +1275,9 @@ class Component(ru.Process):
 
                     with self._cb_lock:
                         self._workers[state](things)
+
+                    # inject output hook if it exists
+                    exec(ru.get_snippet('on_output.%s' % self.uid))
 
                 except Exception as e:
 

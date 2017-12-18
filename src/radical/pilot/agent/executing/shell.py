@@ -361,26 +361,26 @@ prof(){
         cwd  += "# CU sandbox\n"
         cwd  += "mkdir -p %s\n" % sandbox
         cwd  += "cd       %s\n" % sandbox
-        cwd  += 'prof cu_cd_done\n')
+        cwd  += 'prof cu_cd_done\n'
         cwd  += "\n"
 
         if  descr['pre_exec'] :
             fail  = ' (echo "pre_exec failed"; false) || exit'
             pre  += "\n# CU pre-exec\n"
-            pre  += 'prof cu_pre_start\n')
+            pre  += 'prof cu_pre_start\n'
             for elem in descr['pre_exec']:
                 pre += "%s || %s\n" % (elem, fail)
             pre  += "\n"
-            pre  += 'prof cu_pre_stop\n')
+            pre  += 'prof cu_pre_stop\n'
             pre  += "\n"
 
         if  descr['post_exec'] :
             fail  = ' (echo "post_exec failed"; false) || exit'
             post += "\n# CU post-exec\n"
-            post += 'prof cu_post_start\n')
+            post += 'prof cu_post_start\n'
             for elem in descr['post_exec']:
                 post += "%s || %s\n" % (elem, fail)
-            post += 'prof cu_post_stop\n')
+            post += 'prof cu_post_stop\n'
             post += "\n"
 
         if  descr['arguments']  :
@@ -396,7 +396,7 @@ prof(){
         cmd, hop_cmd  = launcher.construct_command(cu, '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"')
 
         script  = '\n%s\n' % env
-        script += 'prof cu_start\n')
+        script += 'prof cu_start\n'
 
         if hop_cmd :
             # the script will itself contain a remote callout which calls again
@@ -416,15 +416,15 @@ prof(){
         script += "%s"        %  cwd
         script += "%s"        %  pre
         script += "\n# CU execution\n"
-        script += 'prof cu_exec_start\n')
+        script += 'prof cu_exec_start\n'
         script += "%s %s\n\n" % (cmd, io)
         script += "RETVAL=$?\n"
-        script += 'prof cu_exec_stop\n')
+        script += 'prof cu_exec_stop\n'
         script += "%s"        %  post
         script += "exit $RETVAL\n"
         script += "# ------------------------------------------------------\n\n"
 
-      # self._log.debug ("execution script:\n%s\n" % script)
+      # self._log.debug ("execution script:\n%s\n", script)
 
         return script
 
@@ -510,7 +510,7 @@ prof(){
                 _, out = self.monitor_shell.find (['\n'], timeout=MONITOR_READ_TIMEOUT)
 
                 line = out.strip ()
-              # self._log.debug ('monitor line: %s' % line)
+              # self._log.debug ('monitor line: %s', line)
 
                 if  not line :
 
