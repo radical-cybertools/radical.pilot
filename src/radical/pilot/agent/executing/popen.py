@@ -103,11 +103,11 @@ class Popen(AgentExecutingComponent) :
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'cancel_unit':
+        if cmd == 'cancel_units':
 
-            self._log.info("cancel unit command (%s)" % arg)
+            self._log.info("cancel_units command (%s)" % arg)
             with self._cancel_lock:
-                self._cus_to_cancel.append(arg)
+                self._cus_to_cancel.extend(arg['uids'])
 
         return True
 
@@ -303,10 +303,10 @@ prof(){
             launch_script.write('''
 # ----------------- for iannis, do not merge -----------------
 log(){
-  echo $* >> LOG
+  echo $* >> %(uid)s.log
 }
 log 1
-%s &
+%(launch_command)s &
 log 2
 PID=$!
 while true
@@ -343,7 +343,8 @@ do
   log while done
 done
 # ----------------- for iannis, do not merge -----------------
-''' % launch_command)
+''' % {'lc' : launch_command, 
+       'uid': cu['uid']})
           # launch_script.write("RETVAL=$?\n")
             launch_script.write('prof cu_exec_stop\n')
 
@@ -464,7 +465,7 @@ done
 
                     # ---------- for iannis, don't merge -----------------------
                     sandbox = '%s/%s' % (self._pwd, cu['uid'])
-                    with open('%s/cancel.sig' % san, 'w') as fout:
+                    with open('%s/cancel.sig' % sandbox, 'w') as fout:
                         fout.write('%f\n' % time.time())
                         fout.flush()
                     # ---------- for iannis, don't merge -----------------------
