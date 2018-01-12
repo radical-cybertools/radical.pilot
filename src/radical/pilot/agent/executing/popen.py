@@ -306,7 +306,7 @@ log(){
   echo $* >> %(uid)s.log
 }
 log 1
-%(launch_command)s &
+%(lc)s &
 log 2
 PID=$!
 while true
