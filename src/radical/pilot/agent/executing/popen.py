@@ -300,8 +300,51 @@ prof(){
 
             launch_script.write("\n# The command to run\n")
             launch_script.write('prof cu_exec_start\n')
-            launch_script.write("%s\n" % launch_command)
-            launch_script.write("RETVAL=$?\n")
+            launch_script.write('''
+# ----------------- for iannis, do not merge -----------------
+log(){
+  echo $* >> LOG
+}
+log 1
+%s &
+log 2
+PID=$!
+while true
+do
+  log while true
+  if test -f cancel.sig
+  then
+    log cancel sig
+    # do our best to cancel the unit
+    kill -0 $PID 2>/dev/null && kill    -$PID 2>/dev/null; sleep 1
+    kill -0 $PID 2>/dev/null && kill -9 -$PID 2>/dev/null; sleep 1
+    kill -0 $PID 2>/dev/null && kill     $PID 2>/dev/null; sleep 1
+    kill -0 $PID 2>/dev/null && kill -9  $PID 2>/dev/null; sleep 1
+    kill -0 $PID 2>/dev/null && printf "\\nFAILED TO KILL LM ($PID)\\n" >> STDERR
+    log cancel done and break
+    break
+  else
+    log no cancel and sleep
+    sleep 1
+  fi
+
+  log check alive
+  # if the task is gone, we collect the process and retval
+  if ! kill -0 $PID 2>/dev/null
+  then
+    log kill failed and task gone
+    wait $PID
+    RETVAL=$?
+    log waited and got $RETVAL and break
+    break
+  else
+    log task is alive
+  fi
+  log while done
+done
+# ----------------- for iannis, do not merge -----------------
+''' % launch_command)
+          # launch_script.write("RETVAL=$?\n")
             launch_script.write('prof cu_exec_stop\n')
 
             # After the universe dies the infrared death, there will be nothing
