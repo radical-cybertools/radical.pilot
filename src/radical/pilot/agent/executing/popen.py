@@ -462,9 +462,16 @@ done
 
                     self._prof.prof('exec_cancel_start', uid=cu['uid'])
 
+                    # ---------- for iannis, don't merge -----------------------
+                    sandbox = '%s/%s' % (self._pwd, cu['uid'])
+                    with open('%s/cancel.sig' % san, 'w') as fout:
+                        fout.write('%f\n' % time.time())
+                        fout.flush()
+                    # ---------- for iannis, don't merge -----------------------
+
                     # We got a request to cancel this cu
                     action += 1
-                    cu['proc'].kill()
+                  # cu['proc'].kill()
                     cu['proc'].wait() # make sure proc is collected
 
                     with self._cancel_lock:
