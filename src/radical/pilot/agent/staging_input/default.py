@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import errno
 import shutil
 
 import saga          as rs
