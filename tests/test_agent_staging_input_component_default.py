@@ -101,9 +101,9 @@ class TestStagingInputComponent(unittest.TestCase):
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    def test_copy_single_file(self, mocked_init, mocked_method, mocked_profile, mocked_raise_on):
+    def test_copy_single_file(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
-        component._prof = mocked_profile
+        component._prof = mocked_profiler
         component._log = ru.get_logger('dummy')
         actionables = list()
         actionables.append({
@@ -127,9 +127,9 @@ class TestStagingInputComponent(unittest.TestCase):
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    def test_copy_single_file_rename(self, mocked_init, mocked_method, mocked_profile, mocked_raise_on):
+    def test_copy_single_file_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
-        component._prof = mocked_profile
+        component._prof = mocked_profiler
         component._log = ru.get_logger('dummy')
         actionables = list()
         actionables.append({
@@ -153,9 +153,9 @@ class TestStagingInputComponent(unittest.TestCase):
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    def test_copy_single_file_noname(self, mocked_init, mocked_method, mocked_profile, mocked_raise_on):
+    def test_copy_single_file_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
-        component._prof = mocked_profile
+        component._prof = mocked_profiler
         component._log = ru.get_logger('dummy')
         actionables = list()
         actionables.append({
@@ -178,9 +178,9 @@ class TestStagingInputComponent(unittest.TestCase):
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    def test_copy_single_folder(self, mocked_init, mocked_method, mocked_profile, mocked_raise_on):
+    def test_copy_single_folder(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
-        component._prof = mocked_profile
+        component._prof = mocked_profiler
         component._log = ru.get_logger('dummy')
         actionables = list()
         actionables.append({
@@ -206,9 +206,9 @@ class TestStagingInputComponent(unittest.TestCase):
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    def test_copy_single_folder_rename(self, mocked_init, mocked_method, mocked_profile, mocked_raise_on):
+    def test_copy_single_folder_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
-        component._prof = mocked_profile
+        component._prof = mocked_profiler
         component._log = ru.get_logger('dummy')
         actionables = list()
         actionables.append({
@@ -234,9 +234,9 @@ class TestStagingInputComponent(unittest.TestCase):
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    def test_copy_single_folder_noname(self, mocked_init, mocked_method, mocked_profile, mocked_raise_on):
+    def test_copy_single_folder_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
-        component._prof = mocked_profile
+        component._prof = mocked_profiler
         component._log = ru.get_logger('dummy')
         actionables = list()
         actionables.append({
@@ -262,9 +262,9 @@ class TestStagingInputComponent(unittest.TestCase):
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    def test_copy_multi_folder(self, mocked_init, mocked_method, mocked_profile, mocked_raise_on):
+    def test_copy_multi_folder(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
-        component._prof = mocked_profile
+        component._prof = mocked_profiler
         component._log = ru.get_logger('dummy')
         actionables = list()
         actionables.append({
@@ -294,9 +294,9 @@ class TestStagingInputComponent(unittest.TestCase):
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    def test_copy_multi_folder_rename(self, mocked_init, mocked_method, mocked_profile, mocked_raise_on):
+    def test_copy_multi_folder_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
-        component._prof = mocked_profile
+        component._prof = mocked_profiler
         component._log = ru.get_logger('dummy')
         actionables = list()
         actionables.append({
@@ -325,9 +325,9 @@ class TestStagingInputComponent(unittest.TestCase):
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    def test_copy_multi_folder_noname(self, mocked_init, mocked_method, mocked_profile, mocked_raise_on):
+    def test_copy_multi_folder_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
-        component._prof = mocked_profile
+        component._prof = mocked_profiler
         component._log = ru.get_logger('dummy')
         actionables = list()
         actionables.append({
