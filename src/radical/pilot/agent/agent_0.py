@@ -496,7 +496,7 @@ class Agent_0(rpu.Worker):
         #        find -- so we do it right here.
         #        This also blocks us from using multiple ingest threads, or from
         #        doing late binding by unit pull :/
-        unit_cursor = self._session._dbs._c.find(spec = {'type'    : 'unit',
+        unit_cursor = self._session._dbs._c.find(filter = {'type'    : 'unit',
                                                          'pilot'   : self._pid,
                                                          'control' : 'agent_pending'})
         if not unit_cursor.count():
@@ -511,7 +511,7 @@ class Agent_0(rpu.Worker):
         self._log.info('units PULLED: %4d', len(unit_list))
 
         self._session._dbs._c.update(multi    = True,
-                        spec     = {'type'  : 'unit',
+                        find     = {'type'  : 'unit',
                                     'uid'   : {'$in'     : unit_uids}},
                         document = {'$set'  : {'control' : 'agent'}})
 
