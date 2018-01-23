@@ -167,6 +167,18 @@ indication on event ordering *within each individual component*.
     exec_start          : pass to exec layer (orte, ssh, mpi...)     (uid: uid)
     exec_ok             : exec layer accepted task                   (uid: uid)
     exec_fail           : exec layer refused task                    (uid: uid, [RUNTIME], optional)
+    cu_start            : cu shell script: starts                    (uid: uid)
+    cu_cd_done          : cu shell script: changed workdir           (uid: uid)
+    cu_post_start       : cu shell script: pre-exec starts           (uid: uid, [CU_PRE])
+    cu_post_stop        : cu shell script: pre_exec stopped          (uid: uid, [CU_PRE])
+    cu_exec_start       : cu shell script: launch method starts      (uid: uid)
+    app_start           : application executable started             (uid: uid, [APP])
+    app_*               : application specific events                (uid: uid, [APP], optional)
+    app_stop            : application executable stops               (uid: uid, [APP])
+    cu_exec_stop        : cu shell script: launch method returned    (uid: uid)
+    cu_post_start       : cu shell script: post-exec starts          (uid: uid, [CU_POST])
+    cu_post_stop        : cu shell script: post_exec stopped         (uid: uid, [CU_POST])
+    cu_stop             : cu shell script: stops                     (uid: uid)
     exec_stop           : exec layer passed back control             (uid: uid)
 
     cu_start            : startup script has been spawned            (uid: uid)
@@ -185,7 +197,10 @@ indication on event ordering *within each individual component*.
     exec_cancel_stop    : did cancel    task via exec layer (kill)   (uid: uid, [API])
 
     partial orders
-    * per unit          : exec_start, (exec_ok, exec_stop) | exec_fail
+    * per unit          : exec_start, (exec_ok | exec_fail), cu_start, 
+                          cu_cd_done, cu_pre_start, cu_pre_stop, cu_exec_start,
+                          app_start, app_*, app_stop, cu_exec_stop,
+                          cu_post_start, cu_post_stop, cu_stop, exec_stop
     * per unit          : exec_cancel_start, exec_cancel_stop
     * per unit          : exec_start, cu_start, cu_cd_done, \
                           cu_pre_start, cu_pre_stop, \
@@ -253,6 +268,8 @@ indication on event ordering *within each individual component*.
       - [CFG-ORTELIB] - only for ORTELIB launch method
     - [CU]            - only for some CU descriptions
       - [CU-DS]       - only for units specifying data staging directives
+      - [CU-PRE]      - only for units specifying pre-exec directives
+      - [CU-POST]     - only for units specifying post-exec directives
     - [PILOT]         - only for certain pilot
     - [APP]           - only for applications writing compatible profiles
     - [RUNTIME]       - only on  certain runtime decisions and system configuration
