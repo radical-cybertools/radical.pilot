@@ -496,7 +496,7 @@ class Agent_0(rpu.Worker):
         #        find -- so we do it right here.
         #        This also blocks us from using multiple ingest threads, or from
         #        doing late binding by unit pull :/
-        unit_cursor = self._session._dbs._c.find(filter = {'type'    : 'unit',
+        unit_cursor = self._session._dbs._c.find({'type'    : 'unit',
                                                          'pilot'   : self._pid,
                                                          'control' : 'agent_pending'})
         if not unit_cursor.count():

@@ -290,7 +290,7 @@ class UnitManager(rpu.Component):
 
             self._log.debug('pilot %s is final - pull units', pilot.uid)
 
-            unit_cursor = self.session._dbs._c.find(filter={
+            unit_cursor = self.session._dbs._c.find({
                 'type'    : 'unit',
                 'pilot'   : pilot.uid,
                 'umgr'    : self.uid,
@@ -383,7 +383,7 @@ class UnitManager(rpu.Component):
         #        again, we update the 'control' field *before* running the next
         #        find -- so we do it right here.
         tgt_states  = rps.FINAL + [rps.UMGR_STAGING_OUTPUT_PENDING]
-        unit_cursor = self.session._dbs._c.find(filter={
+        unit_cursor = self.session._dbs._c.find({
             'type'    : 'unit',
             'umgr'    : self.uid,
             'control' : 'umgr_pending'})
