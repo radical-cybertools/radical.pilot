@@ -313,10 +313,10 @@ class UnitManager(rpu.Component):
             uids = [unit['uid'] for unit in units]
 
             self._session._dbs._c.update(
-                            filter     = {'type'  : 'unit',
+                            {'type'  : 'unit',
                                         'uid'   : {'$in'     : uids}},
-                            document = {'$set'  : {'control' : 'umgr'}},
-                            multi    = True)
+                            {'$set'  : {'control' : 'umgr'}},
+                            multi = True)
 
             to_restart = list()
 
@@ -398,10 +398,10 @@ class UnitManager(rpu.Component):
         uids  = [unit['uid'] for unit in units]
 
         self._session._dbs._c.update(
-                        filter     = {'type'  : 'unit',
+                        {'type'  : 'unit',
                                     'uid'   : {'$in'     : uids}},
-                        document = {'$set'  : {'control' : 'umgr'}},
-                        multi    = True)
+                        {'$set'  : {'control' : 'umgr'}},
+                        multi = True)
 
         self._log.info("units pulled: %4d %s", len(units), [u['uid'] for u in units])
         self._prof.prof('get', msg="bulk size: %d" % len(units), uid=self.uid)

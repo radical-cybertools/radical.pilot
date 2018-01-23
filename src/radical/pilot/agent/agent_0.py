@@ -510,10 +510,11 @@ class Agent_0(rpu.Worker):
 
         self._log.info('units PULLED: %4d', len(unit_list))
 
-        self._session._dbs._c.update(multi    = True,
-                        find     = {'type'  : 'unit',
+        self._session._dbs._c.update(
+                        {'type'  : 'unit',
                                     'uid'   : {'$in'     : unit_uids}},
-                        document = {'$set'  : {'control' : 'agent'}})
+                        {'$set'  : {'control' : 'agent'}},
+                        multi = True)
 
         self._log.info('units pulled: %4d', len(unit_list))
         self._prof.prof('get', msg='bulk size: %d' % len(unit_list),
