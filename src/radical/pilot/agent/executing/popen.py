@@ -328,6 +328,7 @@ prof(){
                 launch_script.write('prof cu_post_stop\n')
 
             launch_script.write("\n# Exit the script with the return code from the command\n")
+            launch_script.write("prof cu_stop\n")
             launch_script.write("exit $RETVAL\n")
 
         # done writing to launch script, get it ready for execution.

@@ -698,8 +698,8 @@
             "export PATH=$PATH",
             "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
         ],
-        #"default_remote_workdir"      : "/oasis/scratch/comet/$USER/temp_project",
-        #"valid_roots"                 : ["/oasis/scratch/comet"],
+       #"default_remote_workdir"      : "/oasis/scratch/comet/$USER/temp_project",
+       #"valid_roots"                 : ["/oasis/scratch/comet"],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
@@ -726,7 +726,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIEXEC",
-        "pre_bootstrap_1"             : ["module load python/2.7.7/GCC-4.9.0"],
+        "pre_bootstrap_1"             : ["module load python/2.7.7-anaconda"],
         "default_remote_workdir"      : "/work/$USER",
         "valid_roots"                 : ["/work"],
         "rp_version"                  : "local",
@@ -755,7 +755,7 @@
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",
         "pre_bootstrap_1"             : [
-            "module load python",
+            "module load python/2.7.7-anaconda",
             "module use -a /worka/work/amerzky/radical.pilot.sandbox/openmpi/modules/",
             "module load openmpi/2017_03_13_6da4dbb"
         ],
@@ -790,7 +790,7 @@
         "task_launch_method"          : "ORTE_LIB",
         "mpi_launch_method"           : "ORTE_LIB",
         "pre_bootstrap_1"             : [
-            "module load python",
+            "module load python/2.7.7-anaconda",
             "module use -a /worka/work/amerzky/radical.pilot.sandbox/openmpi/modules/",
             "module load openmpi/2017_03_13_6da4dbb"
         ],
