@@ -32,7 +32,11 @@ class ContinuousFifo(Continuous):
         uid = cu['uid']
         idx = int(uid.split('.')[1])
 
-        if idx > self._last + 1:
+        # Units are assigned uids in the order of unit creation.
+        # For FIFO, we only need to make sure that the units are allocated in
+        # the order of the uids.
+
+        if idx != self._last + 1:
             # nope - we let this attempt fail
             self._log.debug('defer unit %s [%s]', uid, self._last)
             return False
