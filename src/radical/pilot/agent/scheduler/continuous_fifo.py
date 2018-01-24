@@ -18,8 +18,8 @@ class ContinuousFifo(Continuous):
     #
     def __init__(self, cfg, session):
 
-        self.slots  = None
-        self._index = 0
+        self.slots = None
+        self._last = 0
 
         Continuous.__init__(self, cfg, session)
 
@@ -32,9 +32,9 @@ class ContinuousFifo(Continuous):
         uid = cu['uid']
         idx = int(uid.split('.')[1])
 
-        if idx > self._index + 1:
+        if idx > self._last + 1:
             # nope - we let this attempt fail
-            self._log.debug('defer unit %s [%s]', uid, self._index)
+            self._log.debug('defer unit %s [%s]', uid, self._last)
             return False
 
         # yep: lets try for real
@@ -42,7 +42,7 @@ class ContinuousFifo(Continuous):
 
         if ret: 
             # it worked!  Keep the new index
-            self.last = idx
+            self._last = idx
 
         return ret
 
