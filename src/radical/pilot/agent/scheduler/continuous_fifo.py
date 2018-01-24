@@ -19,7 +19,7 @@ class ContinuousFifo(Continuous):
     def __init__(self, cfg, session):
 
         self.slots = None
-        self._last = 0
+        self._last = -1   # nothing has run, yet - next up is unit.000000
 
         Continuous.__init__(self, cfg, session)
 
