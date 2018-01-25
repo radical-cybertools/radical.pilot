@@ -5,6 +5,7 @@ __license__   = 'MIT'
 
 import os
 import sys
+import time
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -18,7 +19,7 @@ dh = ru.DebugHelper()
 # ------------------------------------------------------------------------------
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
@@ -54,14 +55,14 @@ if __name__ == '__main__':
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pd_init = {
-                'resource'      : resource,
-                'runtime'       : 15,  # pilot runtime (min)
-                'exit_on_error' : True,
-                'project'       : config[resource]['project'],
-                'queue'         : config[resource]['queue'],
-                'access_schema' : config[resource]['schema'],
-                'cores'         : 1024
-                }
+                   'resource'      : resource,
+                   'runtime'       : 15,  # pilot runtime (min)
+                   'exit_on_error' : True,
+                   'project'       : config[resource]['project'],
+                   'queue'         : config[resource]['queue'],
+                   'access_schema' : config[resource]['schema'],
+                   'cores'         : config[resource]['cores']
+                  }
         pdesc = rp.ComputePilotDescription(pd_init)
 
         # Launch the pilot.
@@ -76,7 +77,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 256 # number of units to run
+        n = 256  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -86,10 +87,11 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.executable       = '/bin/date'
-            cud.gpu_processes    = 1
+            cud.gpu_processes    = 0
             cud.cpu_processes    = 2
             cud.cpu_threads      = 2
             cud.cpu_process_type = rp.MPI
+            cud.cpu_thread_type  = rp.OpenMP
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -102,14 +104,14 @@ if __name__ == '__main__':
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
-    
+
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
         report.error('caught Exception: %s\n' % e)
         ru.print_exception_trace()
         raise
-   
+
     except (KeyboardInterrupt, SystemExit) as e:
         # the callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
@@ -117,7 +119,7 @@ if __name__ == '__main__':
         # reason).
         ru.print_exception_trace()
         report.warn('exit requested\n')
- 
+
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.
@@ -127,5 +129,5 @@ if __name__ == '__main__':
     report.header()
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 

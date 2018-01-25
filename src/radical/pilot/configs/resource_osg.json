@@ -85,7 +85,7 @@
             "source /cvmfs/oasis.opensciencegrid.org/osg/modules/lmod/current/init/bash",
             "module load python/2.7"
         ],
-        "rp_version"         : "debug",
+        "rp_version"         : "local",
         "virtenv"            : "./ve_osgconnect",
         "virtenv_mode"       : "create",
         "python_dist"        : "default"
