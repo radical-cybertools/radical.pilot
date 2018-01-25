@@ -26,7 +26,7 @@ class Fork(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, logger, profile):
+    def lrms_config_hook(cls, name, cfg, lrms, logger, profiler):
         return {'version_info': {
             name: {'version': '0.42', 'version_detail': 'There is no spoon'}}}
 
