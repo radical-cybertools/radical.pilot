@@ -116,24 +116,29 @@ SCHEDULER_NAME_SPARK        = "SPARK"
 # for system with 8 cores & 1 gpu per node):
 #
 #     unit = { ...
-#       'cpu_processes'    : 4,
-#       'cpu_process_type' : 'mpi',
-#       'cpu_threads'      : 2,
-#       'gpu_processes     : 2,
+#       'cpu_processes'   : 4,
+#       'cpu_process_type': 'mpi',
+#       'cpu_threads'     : 2,
+#       'gpu_processes    : 2,
 #       'slots' :
-#       {                 # [[nodename, [node_uid], [core indexes],   [gpu idx]]]
-#         'nodes'         : [[node_1,   node_uid_1, [[0, 2], [4, 6]], [[0]    ]],
-#                            [node_2,   node_uid_2, [[1, 3], [5, 7]], [[0]    ]]],
+#       {                 # [[node,   node_uid,   [cpu idx],        [gpu idx]]]
+#         'nodes'         : [[node_1, node_uid_1, [[0, 2], [4, 6]], [[0]    ]],
+#                            [node_2, node_uid_2, [[1, 3], [5, 7]], [[0]    ]]],
 #         'cores_per_node': 8,
 #         'gpus_per_node' : 1,
 #         'lm_info'       : { ... }
 #       }
 #     }
 #
-# The repsective launch method is expected to create processes on the respective
-# given set of cores (nodename_1, cores 0 and 4; nodename_2, cores 1 and 5), and
-# on the respective GPUs.  The other reserved cores are for the application to
-# spawn threads on (`cpu_threads=2`).
+# The `cpu idx` field is a list of sets, where in each set the first core is
+# where an application process is places, while the other cores are reserved for
+# that process' threads.  For GPUs we use the same structure, but GPU processes
+# are currently all considered to be single-threaded.
+#
+# The respective launch method is expected to create processes on the set of
+# cpus and gpus thus specified, (node_1, cores 0 and 4; node_2, cores 1 and 5).
+# The other reserved cores are for the application to spawn threads on
+# (`cpu_threads=2`).
 #
 # A scheduler MAY attach other information to the `slots` structure, with the
 # intent to support the launch methods to enact the placement decition made by
@@ -201,7 +206,8 @@ class AgentSchedulingComponent(rpu.Component):
         self.nodes = None
         self._lrms = None
 
-        self._uid = ru.generate_id('agent.scheduling.%(counter)s', ru.ID_CUSTOM)
+        self._uid = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
+                                   ru.ID_CUSTOM)
 
         rpu.Component.__init__(self, cfg, session)
 
@@ -270,7 +276,8 @@ class AgentSchedulingComponent(rpu.Component):
 
         # configure the scheduler instance
         self._configure()
-        self._log.debug("slot status after  init      : %s", self.slot_status())
+        self._log.debug("slot status after  init      : %s", 
+                        self.slot_status())
 
 
     # --------------------------------------------------------------------------
@@ -441,7 +448,6 @@ class AgentSchedulingComponent(rpu.Component):
             self._prof.prof('schedule_try', uid=unit['uid'])
             unit['slots'] = self._allocate_slot(unit['description'])
 
-
         # the lock is freed here
         if not unit['slots']:
 
@@ -456,11 +462,11 @@ class AgentSchedulingComponent(rpu.Component):
         if self._log.isEnabledFor(logging.DEBUG):
             self._log.debug("after  allocate   %s: %s", unit['uid'],
                             self.slot_status())
+            self._log.debug("%s [%s/%s] : %s [%s]", unit['uid'],
+                            unit['description']['cpu_processes'],
+                            unit['description']['gpu_processes'],
+                            pprint.pformat(unit['slots']))
 
-        self._log.debug("%s [%s/%s] : %s [%s]", unit['uid'],
-                        unit['description']['cpu_processes'],
-                        unit['description']['gpu_processes'],
-                        pprint.pformat(unit['slots']))
         # True signals success
         return True
 
@@ -480,7 +486,8 @@ class AgentSchedulingComponent(rpu.Component):
             return True
 
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("before unschedule %s: %s", unit['uid'], self.slot_status())
+            self._log.debug("before unschedule %s: %s", unit['uid'], 
+                            self.slot_status())
 
         # needs to be locked as we try to release slots, but slots are acquired
         # in a different thread....
@@ -494,7 +501,8 @@ class AgentSchedulingComponent(rpu.Component):
         self.publish(rpc.AGENT_SCHEDULE_PUBSUB, unit)
 
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("after  unschedule %s: %s", unit['uid'], self.slot_status())
+            self._log.debug("after  unschedule %s: %s", unit['uid'], 
+                            self.slot_status())
 
         # return True to keep the cb registered
         return True
