@@ -188,8 +188,10 @@ class ORTE(LaunchMethod):
                              % (orterun, lm_info['dvm_uri']))
                 profiler.prof(event='orte_dvm_stop', uid=cfg['pilot_id'])
             except Exception as e:
-                logger.exception('dvm termination failed')
+                # use the same event name as for runtime failures - those are
+                # not distinguishable at the moment from termination failures
                 profiler.prof(event='orte_dvm_fail', uid=cfg['pilot_id'])
+                logger.exception('dvm termination failed')
 
 
     # --------------------------------------------------------------------------
