@@ -5,7 +5,6 @@ __license__   = "MIT"
 
 import os
 import time
-import pprint
 
 import radical.utils as ru
 
@@ -172,8 +171,9 @@ class Continuous(AgentSchedulingComponent):
 
         NOTE: chunking is only applied to cores at this point.
 
-        When `partial` is set to `True`, we also accept less cores and gpus then
-        requested (but the call will never return more than requested).
+        When `partial` is set to `True`, this method is allowed to return
+        a *partial* match, so to find less cores and gpus then requested (but
+        the call will never return more than requested).
         '''
 
         # list of core and gpu ids available in this node.
