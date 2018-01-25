@@ -271,26 +271,26 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
             sandbox  = saga.filesystem.Directory (sandbox_url, session=session)
 
             # Try to fetch a tarball of logfiles, so that we can get them all in one (SAGA) go!
-            LOGILES_TARBALL   = '%s.log.tgz' % pilot['uid']
+            LOGFILES_TARBALL  = '%s.log.tgz' % pilot['uid']
             tarball_available = False
             try:
                 if  sandbox.is_file(LOGFILES_TARBALL) and \
                     sandbox.get_size(LOGFILES_TARBALL):
 
                     log.info("logfiles tarball exists")
-                    ftgt = saga.Url('%s/%s' % (tgt_url, LOGILES_TARBALL))
+                    ftgt = saga.Url('%s/%s' % (tgt_url, LOGFILES_TARBALL))
 
                     if skip_existing and os.path.isfile(ftgt.path) \
                             and os.stat(ftgt.path).st_size > 0:
 
                         log.info("Skip fetching of '%s/%s' to '%s'.", 
-                                 sandbox_url, LOGILES_TARBALL, tgt_url)
+                                 sandbox_url, LOGFILES_TARBALL, tgt_url)
                         tarball_available = True
                     else:
 
                         log.info("Fetching '%s%s' to '%s'.", 
-                                sandbox_url, LOGILES_TARBALL, tgt_url)
-                        log_file = saga.filesystem.File("%s%s" % (sandbox_url, LOGILES_TARBALL), session=session)
+                                sandbox_url, LOGFILES_TARBALL, tgt_url)
+                        log_file = saga.filesystem.File("%s%s" % (sandbox_url, LOGFILES_TARBALL), session=session)
                         log_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
                         log_file.close()
 
@@ -330,9 +330,9 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
             # If we dont have a tarball (for whichever reason), fetch individual logfiles
             logfiles = sandbox.list('*.log')
 
-            for log in logfiles:
+            for logfile in logfiles:
 
-                ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['uid'], log))
+                ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['uid'], logfile))
                 ret.append("%s" % ftgt.path)
 
                 if skip_existing and os.path.isfile(ftgt.path) \
@@ -340,7 +340,7 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
 
                     continue
 
-                log_file = saga.filesystem.File("%s%s" % (sandbox_url, log), session=session)
+                log_file = saga.filesystem.File("%s%s" % (sandbox_url, logfile), session=session)
                 log_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
                 log_file.close()
 

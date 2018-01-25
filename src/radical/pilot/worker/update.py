@@ -120,6 +120,7 @@ class Update(rpu.Worker):
         self._prof.prof('update_pushed', msg='bulk size: %d' % len(self._uids))
 
         for entry in self._uids:
+
             uid   = entry[0]
             state = entry[2]
 

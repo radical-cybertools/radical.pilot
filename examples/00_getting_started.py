@@ -60,7 +60,7 @@ if __name__ == '__main__':
                    'project'       : config[resource]['project'],
                    'queue'         : config[resource]['queue'],
                    'access_schema' : config[resource]['schema'],
-                   'cores'         : 2
+                   'cores'         : config[resource]['cores']
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
@@ -76,7 +76,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 16  # number of units to run
+        n = 256  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -85,12 +85,12 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable       = '/bin/sleep'
-            cud.arguments        = ['1']
-            cud.gpus             = 0
-            cud.cores            = 1
-            cud.threads_per_proc = 1
-            cud.mpi              = True
+            cud.executable       = '/bin/date'
+            cud.gpu_processes    = 0
+            cud.cpu_processes    = 2
+            cud.cpu_threads      = 2
+            cud.cpu_process_type = rp.MPI
+            cud.cpu_thread_type  = rp.OpenMP
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')

@@ -139,7 +139,6 @@ class Default(UMGRStagingOutputComponent):
         # Loop over all transfer directives and execute them.
         for sd in actionables:
 
-            tr
             action = sd['action']
             flags  = sd['flags']
             did    = sd['uid']

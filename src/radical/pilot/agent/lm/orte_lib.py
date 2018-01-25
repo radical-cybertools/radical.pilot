@@ -77,11 +77,14 @@ class ORTELib(LaunchMethod):
         dvm_args = [stdbuf_cmd, stdbuf_arg, dvm_command]
 
         # Additional (debug) arguments to orte-dvm
-        debug_strings = [
-            #'--debug-devel',
-            #'--mca odls_base_verbose 100',
-            #'--mca rml_base_verbose 100',
-        ]
+        if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
+            debug_strings = [ # '--debug-devel',
+                              # '--mca odls_base_verbose 100',
+                              # '--mca rml_base_verbose 100'
+                            ]
+        else:
+            debug_strings = []
+
         # Split up the debug strings into args and add them to the dvm_args
         [dvm_args.extend(ds.split()) for ds in debug_strings]
 
@@ -119,7 +122,7 @@ class ORTELib(LaunchMethod):
                 # Check if the process is still around,
                 # and log output in debug mode.
                 if None == dvm_process.poll():
-                    logger.debug("ORTE: %s" % line)
+                    logger.debug("ORTE: %s", line)
                 else:
                     # Process is gone: fatal!
                     raise Exception("ORTE DVM process disappeared")
@@ -134,7 +137,7 @@ class ORTELib(LaunchMethod):
             while retval is None:
                 line = dvm_process.stdout.readline().strip()
                 if line:
-                    logger.debug('dvm output: %s' % line)
+                    logger.debug('dvm output: %s', line)
                 else:
                     time.sleep(1.0)
 
@@ -236,11 +239,17 @@ class ORTELib(LaunchMethod):
                                  if  var in os.environ])
 
         # Additional (debug) arguments to orterun
-        debug_strings = [
-            #'--debug-devel',
-            #'--mca oob_base_verbose 100',
-            #'--mca rml_base_verbose 100'
-        ]
+        if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
+            debug_strings = [ #  '--debug-devel',
+                              #  '--mca oob_base_verbose 100',
+                              #  '--mca rml_base_verbose 100'
+                            ]
+        else:
+            debug_strings = [ # '--debug-devel',
+                              # '--mca oob_base_verbose 100',
+                              # '--mca rml_base_verbose 100'
+                            ]
+
         orte_command = '%s %s %s --bind-to none -np %d -host %s' % (
                 self.launch_command, ' '.join(debug_strings), export_vars,
                 task_cores if task_mpi else 1, hosts_string)

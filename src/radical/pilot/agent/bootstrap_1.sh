@@ -9,6 +9,7 @@ unset -f cd ls uname pwd date bc cat echo
 # interleave stdout and stderr, to get a coherent set of log messages
 if test -z "$RP_BOOTSTRAP_1_REDIR"
 then
+    echo "bootstrap_1 stderr redirected to stdout"
     export RP_BOOTSTRAP_1_REDIR=True
     exec 2>&1
 fi
@@ -19,7 +20,10 @@ then
     ulimit -n 512
 fi
 
-echo "bootstrap_1 stderr redirected to stdout"
+# trap 'echo TRAP QUIT' QUIT
+# trap 'echo TRAP EXIT' EXIT
+# trap 'echo TRAP KILL' KILL
+# trap 'echo TRAP TERM' TERM
 
 # ------------------------------------------------------------------------------
 # Copyright 2013-2015, RADICAL @ Rutgers
@@ -208,7 +212,7 @@ timeout()
     TIMEOUT="$1"; shift
     COMMAND="$*"
 
-    RET=./timetrap.ret
+    RET="./timetrap.$$.ret"
 
     timetrap()
     {
@@ -224,8 +228,51 @@ timeout()
     wait
 
     ret=`cat $RET || echo 2`
+    rm -f $RET
     echo "------------------"
     return $ret
+}
+
+
+# ------------------------------------------------------------------------------
+#
+# a similar method is `waitfor()`, which will test a condition in certain
+# intervals and return once that condition is met, or finish after a timeout.
+# Other than `timeout()` above, this method will not create subshells, and thus
+# can be utilized for job control etc.
+#
+waitfor()
+{
+    INTERVAL="$1"; shift
+    TIMEOUT="$1";  shift
+    COMMAND="$*"
+
+    START=`echo \`./gtod\` | cut -f 1 -d .`
+    END=$((START + TIMEOUT))
+    NOW=$START
+
+    echo "COND start '$COMMAND' (I: $INTERVAL T: $TIMEOUT)"
+    while test "$NOW" -lt "$END"
+    do
+        sleep "$INTERVAL"
+        $COMMAND
+        RET=$?
+        if ! test "$RET" = 0
+        then
+            echo "COND failed ($RET)"
+            break
+        else
+            echo "COND ok ($RET)"
+        fi
+        NOW=`echo \`./gtod\` | cut -f 1 -d .`
+    done
+
+    if test "$RET" = 0
+    then
+        echo "COND timeout"
+    fi
+
+    return $RET
 }
 
 
@@ -993,6 +1040,7 @@ virtenv_create()
         if test "$?" = 1
         then
             # this is titan
+          # wheeled="--no-use-wheel"
             wheeled="--no-binary :all:"
         else
             wheeled=""
@@ -1523,7 +1571,7 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
     ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$HOSTPORT -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST &
 
     # Kill ssh process when bootstrap_1 dies, to prevent lingering ssh's
-    trap 'jobs -p | xargs kill' EXIT
+    trap 'jobs -p | grep ssh | xargs kill' EXIT
 
     # and export to agent
     export RADICAL_PILOT_DB_HOSTPORT=$BIND_ADDRESS:$DBPORT
@@ -1764,14 +1812,19 @@ do
     then 
         if test -e "./killme.signal"
         then
+            profile_event 'killme' "`date --rfc-3339=ns | cut -c -23`"
+            profile_event 'sigterm' "`date --rfc-3339=ns | cut -c -23`"
             echo "send SIGTERM to $AGENT_PID ($$)"
             kill -15 $AGENT_PID
-            sleep 1
+            waitfor 1 30 "kill -0  $AGENT_PID"
+            test "$?" = 0 || break
+
+            profile_event 'sigkill' "`date --rfc-3339=ns | cut -c -23`"
             echo "send SIGKILL to $AGENT_PID ($$)"
             kill  -9 $AGENT_PID
-            break
         fi
     else 
+        profile_event 'agent_gone' "`date --rfc-3339=ns | cut -c -23`"
         echo "agent $AGENT_PID is gone"
         break
     fi
@@ -1782,17 +1835,8 @@ echo "agent $AGENT_PID is final"
 wait $AGENT_PID
 AGENT_EXITCODE=$?
 echo "agent $AGENT_PID is final ($AGENT_EXITCODE)"
+profile_event 'agent_final' "$AGENT_PID:$AGENT_EXITCODE `date --rfc-3339=ns | cut -c -23`"
 
-
-if test -e "./killme.signal"
-then
-    # this agent has been canceled.  We don't care (much) how it died)
-    if ! test "$AGENT_EXITCODE" = "0"
-    then
-        echo "changing exit code from $AGENT_EXITCODE to 0 for canceled pilot"
-        AGENT_EXITCODE=0
-    fi
-fi
 
 # # stop the packer.  We don't want to just kill it, as that might leave us with
 # # corrupted tarballs...
@@ -1829,7 +1873,7 @@ then
     echo "#"
     echo "# -------------------------------------------------------------------"
     echo
-    FINAL_SLEEP=3
+    FINAL_SLEEP=5
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# We wait for some seconds for the FS to flush profiles."
@@ -1853,11 +1897,14 @@ then
         nprofs=`echo *.prof | wc -w`
         nend=`tail -n 1 *.prof | grep END | wc -l`
     done
+    echo "nprofs $nprofs =? nend $nend"
+    date
     echo
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Tarring profiles ..."
-    tar -czf $PROFILES_TARBALL *.prof || true
+    tar -czf $PROFILES_TARBALL.tmp *.prof || true
+    mv $PROFILES_TARBALL.tmp $PROFILES_TARBALL
     ls -l $PROFILES_TARBALL
     echo "#"
     echo "# -------------------------------------------------------------------"
@@ -1871,11 +1918,35 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Tarring logfiles ..."
-    tar -czf $LOGFILES_TARBALL *.{log,out,err,cfg} || true
+    tar -czf $LOGFILES_TARBALL.tmp *.{log,out,err,cfg} || true
+    mv $LOGFILES_TARBALL.tmp $LOGFILES_TARBALL
     ls -l $LOGFILES_TARBALL
     echo "#"
     echo "# -------------------------------------------------------------------"
 fi
+
+echo "# -------------------------------------------------------------------"
+echo "#"
+if test -e "./killme.signal"
+then
+    # this agent died cleanly, and we can rely on thestate information given.
+    final_state=$(cat ./killme.signal)
+    if ! test "$AGENT_EXITCODE" = "0"
+    then
+        echo "changing exit code from $AGENT_EXITCODE to 0 for canceled pilot"
+        AGENT_EXITCODE=0
+    fi
+fi
+if test -z "$final_state"
+then
+    # assume this agent died badly
+    echo 'reset final state to FAILED'
+    final_state='FAILED'
+fi
+
+echo "# -------------------------------------------------------------------"
+echo "# push final pilot state: $SESSION_ID $PILOT_ID $final_state"
+$PYTHON `which radical-pilot-agent-statepush` agent_0.cfg $final_state
 
 echo
 echo "# -------------------------------------------------------------------"

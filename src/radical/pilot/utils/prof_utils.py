@@ -92,9 +92,6 @@ def get_session_profile(sid, src=None):
         # FIXME: legacy host notation - deprecated
         hostmap = get_hostmap_deprecated(profiles)
 
-  # import pprint
-  # pprint.pprint(hostmap)
-
     return profile, accuracy, hostmap
 
 
@@ -123,8 +120,11 @@ def get_session_description(sid, src=None, dburl=None):
     if not src:
         src = "%s/%s" % (os.getcwd(), sid)
 
-    ftmp = fetch_json(sid=sid, dburl=dburl, tgt=src, skip_existing=True)
-    json = ru.read_json(ftmp)
+    if os.path.isfile('%s/%s.json' % (src, sid)):
+        json = ru.read_json('%s/%s.json' % (src, sid))
+    else:
+        ftmp = fetch_json(sid=sid, dburl=dburl, tgt=src, skip_existing=True)
+        json = ru.read_json(ftmp)
 
     # make sure we have uids
     # FIXME v0.47: deprecate
@@ -203,11 +203,13 @@ def get_session_description(sid, src=None, dburl=None):
         tree[umgr]['children'].append(uid)
         tree[uid] = {'uid'         : uid,
                      'etype'       : 'unit',
-                     'cfg'         : unit['description'],
+                     'cfg'         : unit,
                      'description' : unit['description'],
                      'has'         : list(),
                      'children'    : list()
                     }
+        # remove duplicate
+        del(tree[uid]['cfg']['description'])
 
     ret['tree'] = tree
 

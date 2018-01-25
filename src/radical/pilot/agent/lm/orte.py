@@ -49,6 +49,8 @@ class ORTE(LaunchMethod):
 
         # Now that we found the orte-dvm, get ORTE version
         orte_info = {}
+        os.system('orte-info')
+        os.system('orte-info | grep "Open RTE"')
         oi_output = subprocess.check_output(['orte-info|grep "Open RTE"'], shell=True)
         oi_lines = oi_output.split('\n')
         for line in oi_lines:
@@ -76,11 +78,14 @@ class ORTE(LaunchMethod):
         dvm_args = [stdbuf_cmd, stdbuf_arg, dvm_command]
 
         # Additional (debug) arguments to orte-dvm
-        debug_strings = [
-            #'--debug-devel',
-            #'--mca odls_base_verbose 100',
-            #'--mca rml_base_verbose 100',
-        ]
+        if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
+            debug_strings = [ # '--debug-devel',
+                              # '--mca odls_base_verbose 100',
+                              # '--mca rml_base_verbose 100'
+                            ]
+        else:
+            debug_strings = []
+
         # Split up the debug strings into args and add them to the dvm_args
         [dvm_args.extend(ds.split()) for ds in debug_strings]
 
@@ -118,7 +123,7 @@ class ORTE(LaunchMethod):
                 # Check if the process is still around,
                 # and log output in debug mode.
                 if None == dvm_process.poll():
-                    logger.debug("ORTE: %s" % line)
+                    logger.debug("ORTE: %s", line)
                 else:
                     # Process is gone: fatal!
                     raise Exception("ORTE DVM process disappeared")
@@ -132,7 +137,7 @@ class ORTE(LaunchMethod):
             while retval is None:
                 line = dvm_process.stdout.readline().strip()
                 if line:
-                    logger.debug('dvm output: %s' % line)
+                    logger.debug('dvm output: %s', line)
                 else:
                     time.sleep(1.0)
 
@@ -217,6 +222,7 @@ class ORTE(LaunchMethod):
 
         # Construct the hosts_string, env vars
         hosts_string = ''
+        depths       = set()
         for node in slots['nodes']:
 
             # On some Crays, like on ARCHER, the hostname is "archer_N".  In
@@ -231,6 +237,14 @@ class ORTE(LaunchMethod):
             # add all cpu and gpu process slots to the node list.
             for cpu_slot in node[2]: hosts_string += '%s,' % node_id
             for gpu_slot in node[3]: hosts_string += '%s,' % node_id
+            for cpu_slot in node[2]: depths.add(len(cpu_slot))
+
+        assert(len(depths) == 1), depths
+        depth = list(depths)[0]
+
+        map_flag = ''
+        if depth > 1:
+            map_flag = '--map-by ppr:%d:core' % depth
 
         # remove last ','
         hosts_string = hosts_string.rstrip(',')
@@ -239,18 +253,22 @@ class ORTE(LaunchMethod):
                                  if  var in os.environ])
 
         # Additional (debug) arguments to orterun
-        debug_strings = [
-            #'--debug-devel',
-            #'--mca oob_base_verbose 100',
-            #'--mca rml_base_verbose 100'
-        ]
+        if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
+            debug_strings = ['-display-devel-map', 
+                             '-display-allocation', 
+                             '--debug-devel',
+                             '--mca oob_base_verbose 100',
+                             '--mca rml_base_verbose 100'
+                            ]
+        else:
+            debug_strings = []
 
         if task_mpi: np_flag = '-np %s' % task_cores
         else       : np_flag = '-np 1'
 
-        orte_command = '%s %s --hnp "%s" %s --bind-to none %s -host %s %s' % \
+        orte_command = '%s %s --hnp "%s" %s %s --bind-to none %s -host %s %s' % \
                 (self.launch_command, ' '.join(debug_strings), dvm_uri, 
-                 export_vars, np_flag, hosts_string, task_command)
+                 export_vars, np_flag, map_flag, hosts_string, task_command)
 
         return orte_command, None
 

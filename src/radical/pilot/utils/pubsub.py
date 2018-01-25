@@ -306,7 +306,7 @@ class Pubsub(ru.Process):
         assert(self._role == PUBSUB_PUB), 'incorrect role on put'
         assert(isinstance(msg,dict)),     'invalide message type'
 
-      # self._log.debug("?> %s" % pprint.pformat(msg))
+      # self._log.debug("?> %s", pprint.pformat(msg)
 
         topic = topic.replace(' ', '_')
         data  = msgpack.packb(msg) 
