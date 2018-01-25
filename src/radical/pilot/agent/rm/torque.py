@@ -62,6 +62,13 @@ class Torque(LRMS):
             torque_cores_per_node = None
             self._log.warning(msg)
 
+        if self._cfg.get('cores_per_node'):
+            cfg_cpn = self._cfg.get('cores_per_node')
+            self._log.info('overwriting cores_per_node[%s] from cfg [%s]', 
+                    torque_cores_per_node, cfg_cpn)
+            torque_cores_per_node = cfg_cpn
+
+
         if torque_cores_per_node in [None, 1]:
             # lets see if SAGA has been forthcoming with some information
             self._log.warning("fall back to $SAGA_PPN : %s", os.environ.get ('SAGA_PPN', None))
