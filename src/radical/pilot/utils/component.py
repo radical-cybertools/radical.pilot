@@ -759,7 +759,7 @@ class Component(ru.Process):
 
         # get address for the queue
         addr = self._cfg['bridges'][input]['addr_out']
-        self._log.debug("using addr %s for input %s" % (addr, input))
+        self._log.debug("using addr %s for input %s", addr, input)
 
         q = rpu_Queue(self._session, input, rpu_QUEUE_OUTPUT, self._cfg, addr=addr)
         self._inputs['name'] = {'queue'  : q,
@@ -849,7 +849,7 @@ class Component(ru.Process):
             else:
                 # get address for the queue
                 addr = self._cfg['bridges'][output]['addr_in']
-                self._log.debug("using addr %s for output %s" % (addr, output))
+                self._log.debug("using addr %s for output %s", addr, output)
 
                 # non-final state, ie. we want a queue to push to
                 q = rpu_Queue(self._session, output, rpu_QUEUE_INPUT, self._cfg, addr=addr)
@@ -961,7 +961,7 @@ class Component(ru.Process):
 
         self.register_watchable(idler)
         self._session._to_stop.append(idler)
-        self._log.debug('%s registered idler %s' % (self.uid, name))
+        self._log.debug('%s registered idler %s', self.uid, name)
 
 
     # --------------------------------------------------------------------------
@@ -1012,12 +1012,12 @@ class Component(ru.Process):
         self._log.debug('START: %s register publisher %s', self.uid, pubsub)
 
         addr = self._cfg['bridges'][pubsub]['addr_in']
-        self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
+        self._log.debug("using addr %s for pubsub %s", addr, pubsub)
 
         q = rpu_Pubsub(self._session, pubsub, rpu_PUBSUB_PUB, self._cfg, addr=addr)
         self._publishers[pubsub] = q
 
-        self._log.debug('registered publisher : %s : %s' % (pubsub, q.name))
+        self._log.debug('registered publisher : %s : %s', pubsub, q.name)
 
 
     # --------------------------------------------------------------------------
@@ -1071,7 +1071,7 @@ class Component(ru.Process):
             raise ValueError('no bridge known for pubsub channel %s' % pubsub)
 
         addr = self._cfg['bridges'][pubsub]['addr_out']
-        self._log.debug("using addr %s for pubsub %s" % (addr, pubsub))
+        self._log.debug("using addr %s for pubsub %s", addr, pubsub)
 
         # subscription is racey for the *first* subscriber: the bridge gets the
         # subscription request, and forwards it to the publishers -- and only
@@ -1140,7 +1140,7 @@ class Component(ru.Process):
 
         self.register_watchable(subscriber)
         self._session._to_stop.append(subscriber)
-        self._log.debug('%s registered %s subscriber %s' % (self.uid, pubsub, name))
+        self._log.debug('%s registered %s subscriber %s', self.uid, pubsub, name)
 
 
     # --------------------------------------------------------------------------
@@ -1279,7 +1279,7 @@ class Component(ru.Process):
     # --------------------------------------------------------------------------
     #
     def advance(self, things, state=None, publish=True, push=False,
-                timestamp=None):
+                timestamp=None, prof=True):
         """
         Things which have been operated upon are pushed down into the queues
         again, only to be picked up by the next component, according to their
@@ -1327,8 +1327,9 @@ class Component(ru.Process):
                 thing['state'] = state
             _state = thing['state']
 
-            self._prof.prof('advance', uid=uid, state=_state, 
-                            timestamp=timestamp)
+            if prof:
+                self._prof.prof('advance', uid=uid, state=_state,
+                                timestamp=timestamp)
 
             if not _state in buckets:
                 buckets[_state] = list()

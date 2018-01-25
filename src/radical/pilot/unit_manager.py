@@ -301,7 +301,7 @@ class UnitManager(rpu.Component):
             else:
                 units = list(unit_cursor)
 
-            self._log.debug("units pulled: %3d (pilot dead)" % len(units))
+            self._log.debug("units pulled: %3d (pilot dead)", len(units))
 
             if not units:
                 return True

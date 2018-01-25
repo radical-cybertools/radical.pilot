@@ -173,7 +173,10 @@ def purge_sessions(db, dbname, age, session):
     database    = db[dbname]
 
     for sid in session_ids:
-        database.drop_collection(sid)
+
+        db.drop_collection(sid)
+      # collection = database[sid]
+      # collection.drop()
         print 'purged session %s' % sid
 
 
