@@ -716,7 +716,7 @@ class Component(ru.Process):
         class.
         '''
 
-        self._log.info(' === stop %s (%s : %s : %s) [%s]', self.uid, os.getpid(),
+        self._log.info('stop %s (%s : %s : %s) [%s]', self.uid, os.getpid(),
                        self.pid, ru.get_thread_name(), ru.get_caller_name())
 
         # FIXME: well, we don't completely trust termination just yet...
