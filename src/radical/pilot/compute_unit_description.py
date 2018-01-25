@@ -67,59 +67,37 @@ class ComputeUnitDescription(attributes.Attributes):
        default: `None`
 
 
-    .. data:: cores 
+    .. data:: cpu_processes    
+       number of application processes to start on CPU cores
+       default: 0
 
-       The number of cores required by the executable. (int).  RP will not
-       control how the executable makes use of the assigned cores, it only
-       ensures that those are available to the executable (but see `mpi` below).
+    .. data:: cpu_threads      
+       number of threads each process will start on CPU cores
+       default: 1
 
-       default: `1`
+    .. data:: cpu_process_type 
+       process type, determines startup method (POSIX, MPI) 
+       default: POSIX
 
+    .. data:: cpu_thread_type  
+       thread type, influences startup and environment (POSIX, OpenMP)
+       default: POSIX
 
-    .. data:: threads_per_process 
+    .. data:: gpu_processes    
+       number of application processes to start on GPU cores
+       default: 0
 
-       The number of threads which the application is expected to create per
-       process.  RP will reserve the respective number of cores for each
-       process, but leaves the thread creation and management completely to the
-       application.  Note that this is also the case for MPI applications (see
-       `mpi` flag below): RP will only spawn the given number of MPI processes,
-       but the application can utilize the additional cores by creating threads.
+    .. data:: gpu_threads      
+       number of threads each process will start on GPU cores
+       default: 1
 
-       The count defaults to `1`, meaning that the spawned process will only
-       consist of a single thread, and no additional cores are reserved.
+    .. data:: gpu_process_type 
+       process type, determines startup method (POSIX, MPI) 
+       default: POSIX
 
-       NOTE: we interpret the given `core` count as number of processes.  This
-             is semantically not correct, as gpus are also used by processes.
-             RP does not yet allow to specify threads for gpus - that might
-             change in a later version, and will likely require changes in
-             property names for the compute unit descriptions.
-
-       default: `1`
-
-
-    .. data:: mpi
-
-       A flag (bool) which can be set to indicate that each processes to be
-       started are MPI processes.
-
-       default: `False`.
-
-
-       #  FIXME: these entries need fixing
-    .. data:: open_mp
-
-       A flag (bool) which can be set to indicate that the CPU processes will
-       spawn OpenMP threads
-
-       default: `False`.
-
-
-    .. data:: cuda
-
-       A flag (bool) which can be set to indicate that the GPU processes will
-       spawn CUDA threads
-
-       default: `False`.
+    .. data:: gpu_thread_type  
+       thread type, influences startup and environment (POSIX, OpenMP, CUDA)
+       default: POSIX
 
 
     .. data:: name 
