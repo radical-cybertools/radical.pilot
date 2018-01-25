@@ -11,6 +11,31 @@
 # (`examples/09_mpi_units.py`) will have to check if the correct set of ID pairs
 # is found.
 
+GPU_IDS=$(lspci | grep ' VGA ' | cut -d" " -f 1)
+GPU_NUM=$(echo "$GPU_IDS" | wc -w)
+CPU_NUM=$(cat /proc/cpuinfo | grep processor | wc -l)
+for GPU_ID in $GPU_IDS
+do
+    GPU_INFO=$(lspci -v -s $GPU_ID)
+done
+
+
+# TODO: evaluate GPU pinning
+export CUDA_VISIBLE_DEVICES="0"  # NVIDIA / CUDA   (comma separated list)
+export GPU_DEVICE_ORDINAL="0"    # AMD    / OpenCL (comma separated list)
+# https://stackoverflow.com/questions/43967405/
+# https://stackoverflow.com/questions/14380927/ 
+
+# OpenCV pinning to cpu or gpu
+export OPENCV_OPENCL_DEVICE=":GPU:0"  # AMD    / OpenCV (outdated?) 
+export OPENCV_OPENCL_DEVICE=":CPU:1"  # AMD    / OpenCV (outdated?) 
+# https://docs.opencv.org/2.4/modules/ocl/doc/introduction.html
+
+CPU_ID=$(cat /proc/$$/stat | cut -f 40 -d ' ')
+GPU_ID="$CUDA_VISIBLE_DEVICES"
+test -z "$GPU_ID" && GPU_ID="$GPU_DEVICE_ORDINAL"
+
+
 OMP_NUM="$OMP_NUM_THREADS"
 MPI_RANK="$PMI_RANK$PMIX_RANK$ALPS_APP_PE"
 NODE=$(hostname)
@@ -30,8 +55,8 @@ fail() (echo "$*"; exit 1)
 test -z "$OMP_NUM"  && fail 'OMP_NUM_THREADS / ALPS_APP_DEPTH not set'
 test -z "$MPI_RANK" && fail 'PMI_RANK / PMIX_RANK / ALPS_APP_PE not set'
 
-for idx in $(seq $OMP_NUM); do (echo "$NODE:$MPI_RANK:$idx/$OMP_NUM ")& done
-for idx in $(seq $OMP_NUM); do wait                                   ; done
+for idx in $(seq $OMP_NUM); do (echo "$NODE:$MPI_RANK:$idx/$OMP_NUM @ $CPU_ID/$CPU_NUM : $GPU_ID/$GPU_NUM")& done
+for idx in $(seq $OMP_NUM); do wait; done
 
 # sleep 1
 # if test "$MPI_RANK" = 0
