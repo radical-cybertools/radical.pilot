@@ -402,10 +402,7 @@ class Continuous(AgentSchedulingComponent):
                          }
 
         # start the search
-        for node in self.nodes: 
-            ## GEORGE: How to improve this search? 
-            ## IDEA: Define weights for cpus & gpus and create a function f(node) = a*cpus + b*gpus
-            ## sort based on function f()
+        for node in self.nodes:
 
             node_uid  = node['uid']
             node_name = node['name']
@@ -467,8 +464,7 @@ class Continuous(AgentSchedulingComponent):
         # if we did not find enough, there is not much we can do at this point
         if  alloced_cores < requested_cores or \
             alloced_gpus  < requested_gpus     :
-            return None # signal failure         ## GEORGE: Define what failure signal is that. Fail alloc? 
-                                                 ## is the same signal for all failures?
+            return None # signal failure
 
         # this should be nicely filled out now - return
         return slots
