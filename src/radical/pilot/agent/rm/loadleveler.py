@@ -12,6 +12,8 @@ from ... import utils     as rpu
 from ... import states    as rps
 from ... import constants as rpc
 
+from ..scheduler.torus import Torus
+
 from base import LRMS
 
 
@@ -248,7 +250,6 @@ class LoadLeveler(LRMS):
             self._log.debug("BG Shape Allocated: %s" % loadl_bg_block_shape_str)
             self._log.debug("BG Size Allocated : %d" % loadl_bg_block_size)
 
-
             # Build nodes data structure to be handled by Torus Scheduler
             try:
                 self.torus_block = self._bgq_construct_block(
@@ -263,7 +264,7 @@ class LoadLeveler(LRMS):
                      (e[0], [e[1][key] for key in sorted(e[1])], e[2], e[3]))
 
             try:
-                loadl_node_list = [entry[SchedulerTorus.TORUS_BLOCK_NAME] \
+                loadl_node_list = [entry[Torus.TORUS_BLOCK_NAME] \
                                    for entry in self.torus_block]
             except Exception as e:
                 raise RuntimeError("Couldn't construct node list")
@@ -277,7 +278,7 @@ class LoadLeveler(LRMS):
             self._log.debug("Node list constructed: %s" % loadl_node_list)
             self._log.debug("Shape table constructed: ")
             for (size, dim) in [(key, self.shape_table[key]) for key in sorted(self.shape_table)]:
-                self._log.debug("%s %s" % (size, [dim[key]   for key in sorted(dim)]))
+                self._log.debug("%s %s", (size, [dim[key] for key in sorted(dim)]))
 
             # Determine the number of cpus per node
             loadl_cpus_per_node = self.BGQ_CORES_PER_NODE
@@ -301,7 +302,7 @@ class LoadLeveler(LRMS):
     #
     def _bgq_nodename_by_loc(self, midplanes, board, location):
 
-        self._log.debug("Starting nodebyname - midplanes:%s, board:%d" % (midplanes, board))
+        self._log.debug("Starting nodebyname - midplanes:%s, board:%d", midplanes, board)
 
         node = self.BGQ_BLOCK_STARTING_CORNERS[board]
 
@@ -309,12 +310,12 @@ class LoadLeveler(LRMS):
         #       It might because of the starting blocks ...
         for dim in self.BGQ_DIMENSION_LABELS: # [::-1]:
             max_length = location[dim]
-            self._log.debug("Within dim loop dim:%s, max_length: %d" % (dim, max_length))
+            self._log.debug("Within dim loop dim:%s, max_length: %d", dim, max_length)
 
             cur_length = 0
             # Loop while we are not at the final depth
             while cur_length < max_length:
-                self._log.debug("beginning of while loop, cur_length: %d" % cur_length)
+                self._log.debug("beginning of while loop, cur_length: %d", cur_length)
 
                 if cur_length % 2 == 0:
                     # Stay within the board
@@ -322,21 +323,21 @@ class LoadLeveler(LRMS):
 
                 else:
                     # We jump to another board.
-                    self._log.debug("jumping to new board from board: %d, dim: %s)" % (board, dim))
+                    self._log.debug("jumping to new board from board: %d, dim: %s)", board, dim)
                     board = self.BGQ_MIDPLANE_TOPO[board][dim]
-                    self._log.debug("board is now: %d" % board)
+                    self._log.debug("board is now: %d", board)
 
                     # If we switch boards in the B dimension,
                     # we seem to "land" at the opposite E dimension.
                     if dim  == 'B':
                         node = self.BGQ_BOARD_TOPO[node]['E']
 
-                self._log.debug("node is now: %d" % node)
+                self._log.debug("node is now: %d", node)
 
                 # Increase the length for the next iteration
                 cur_length += 1
 
-            self._log.debug("Wrapping inside dim loop dim:%s" % (dim))
+            self._log.debug("Wrapping inside dim loop dim:%s", dim)
 
         # TODO: This will work for midplane expansion in one dimension only
         midplane_idx = max(location.values()) / 4
@@ -344,8 +345,8 @@ class LoadLeveler(LRMS):
         midplane = midplanes[midplane_idx]['M']
 
         nodename = 'R%.2d-M%.1d-N%.2d-J%.2d' % (rack, midplane, board, node)
-        self._log.debug("from location %s constructed node name: %s, left at board: %d" % \
-                        (self.loc2str(location), nodename, board))
+        self._log.debug("from location %s constructed node name: %s, left at board: %d",
+                        self.loc2str(location), nodename, board)
 
         return nodename
 
@@ -546,7 +547,7 @@ class LoadLeveler(LRMS):
 
             # block_shape = llq_shape * BGQ_MIDPLANE_SHAPE
             block_shape = self._multiply_shapes(self.BGQ_MIDPLANE_SHAPE, llq_shape)
-            self._log.debug("Resulting shape after multiply: %s" % block_shape)
+            self._log.debug("Resulting shape after multiply: %s", block_shape)
 
         elif block_size == 512:
             # Full midplane

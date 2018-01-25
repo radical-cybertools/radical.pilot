@@ -9,18 +9,12 @@ import copy
 import time
 import threading
 
-import saga          as rs
 import radical.utils as ru
-
-rs.fs = rs.filesystem
 
 from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
 from . import types     as rpt
-
-from .staging_directives import expand_staging_directives, complete_url
-from .staging_directives import TRANSFER, COPY, LINK, MOVE, STAGING_AREA
 
 
 # ------------------------------------------------------------------------------
@@ -93,27 +87,37 @@ class ComputePilot(object):
         # `as_dict()` needs `pilot_dict` and other attributes.  Those should all
         # be available at this point (apart from the sandboxes), so we now
         # query for those sandboxes.
-        self._resource_sandbox = None
-        self._pilot_sandbox    = None
-        self._client_sandbox   = None
+        self._pilot_jsurl      = ru.Url()
+        self._pilot_jshop      = ru.Url()
+        self._resource_sandbox = ru.Url()
+        self._pilot_sandbox    = ru.Url()
+        self._client_sandbox   = ru.Url()
 
-        self._resource_sandbox = self._session._get_resource_sandbox(self.as_dict())
-        self._pilot_sandbox    = self._session._get_pilot_sandbox(self.as_dict())
+        self._log.debug(' ===== 1: %s [%s]', self._pilot_sandbox, type(self._pilot_sandbox))
+
+        pilot = self.as_dict()
+        self._log.debug(' ===== 2: %s [%s]', pilot['pilot_sandbox'], type(pilot['pilot_sandbox']))
+
+        self._pilot_jsurl, self._pilot_jshop \
+                               = self._session._get_jsurl           (pilot)
+        self._resource_sandbox = self._session._get_resource_sandbox(pilot)
+        self._pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
         self._client_sandbox   = self._session._get_client_sandbox()
+        self._log.debug(' ===== 3: %s [%s]', self._pilot_sandbox, type(self._pilot_sandbox))
 
 
     # --------------------------------------------------------------------------
     #
     def __repr__(self):
 
-        return str(self.as_dict())
+        return str(self)
 
 
     # --------------------------------------------------------------------------
     #
     def __str__(self):
 
-        return [self.uid, self.resource, self.state]
+        return str([self.uid, self.resource, self.state])
 
 
     # --------------------------------------------------------------------------
@@ -123,7 +127,7 @@ class ComputePilot(object):
         self._log.info("[Callback]: pilot %s state: %s.", self.uid, self.state)
 
         if self.state == rps.FAILED and self._exit_on_error:
-            self._log.error("[Callback]: pilot '%s' failed", self.uid)
+            self._log.error(" === [Callback]: pilot '%s' failed (exit on error)", self.uid)
             # FIXME: how to tell main?  Where are we in the first place?
           # ru.cancel_main_thread('int')
             raise RuntimeError('pilot %s failed - fatal!' % self.uid)
@@ -140,6 +144,8 @@ class ComputePilot(object):
         Return True if state changed, False otherwise
         """
 
+        if pilot_dict['uid'] != self.uid:
+            self._log.error('incorrect uid: %s / %s', pilot_dict['uid'], self.uid)
         assert(pilot_dict['uid'] == self.uid), 'update called on wrong instance'
 
         # NOTE: this method relies on state updates to arrive in order, and
@@ -148,8 +154,16 @@ class ComputePilot(object):
         target  = pilot_dict['state']
 
         if target not in [rps.FAILED, rps.CANCELED]:
-            assert(rps._pilot_state_value(target) - rps._pilot_state_value(current)), \
+
+
+            try:
+                assert(rps._pilot_state_value(target) - rps._pilot_state_value(current)), \
                             'invalid state transition'
+            except:
+                self._log.error(' === %s: invalid state transition %s -> %s', 
+                        self.uid, current, target)
+                raise
+
             # FIXME
 
         self._state = target
@@ -164,6 +178,7 @@ class ComputePilot(object):
             cb_data = cb_val['cb_data']
 
           # print ' ~~~ call pcbs: %s -> %s : %s' % (self.uid, self.state, cb_name)
+            self._log.debug('%s calls cb %s', self.uid, cb)
             
             if cb_data: cb(self, self.state, cb_data)
             else      : cb(self, self.state)
@@ -188,10 +203,11 @@ class ComputePilot(object):
             'stdout':           self.stdout,
             'stderr':           self.stderr,
             'resource':         self.resource,
-            'resource_sandbox': str(self.resource_sandbox),
-            'pilot_sandbox':    str(self.pilot_sandbox),
-            'client_sandbox':   str(self.client_sandbox),
-            'sandbox':          self.sandbox,      # FIXME: this is redundant
+            'resource_sandbox': str(self._resource_sandbox),
+            'pilot_sandbox':    str(self._pilot_sandbox),
+            'client_sandbox':   str(self._client_sandbox),
+            'js_url':           str(self._pilot_jsurl),
+            'js_hop':           str(self._pilot_jshop),
             'description':      self.description,  # this is a deep copy
             'resource_details': self.resource_details
         }
@@ -337,10 +353,6 @@ class ComputePilot(object):
 
     # --------------------------------------------------------------------------
     #
-    @property
-    def sandbox(self):
-        return self.pilot_sandbox
-
     @property
     def pilot_sandbox(self):
         """
@@ -529,68 +541,18 @@ class ComputePilot(object):
     # --------------------------------------------------------------------------
     #
     def stage_in(self, directives):
-        """Stages the content of the staging directive into the pilot's
-        staging area"""
+        '''
+        Stages the content of the staging directive into the pilot's
+        staging area
+        '''
 
-        # Wait until we can assume the pilot directory to be created
-        # # FIXME: can't we create it ourself?
-        if self.state == rps.NEW:
-            self.wait(state=[rps.PMGR_LAUNCHING_PENDING, rps.PMGR_LAUNCHING,
-                             rps.PMGR_ACTIVE_PENDING,    rps.PMGR_ACTIVE])
-        elif self.state in rps.FINAL:
-            raise Exception("Pilot already finished, no need to stage anymore!")
+        # This staging request is actually served by the pmgr *launching*
+        # component, because that already has a channel open to the target
+        # resource which we can reuse.  We might eventually implement or
+        # interface to a dedicated data movement service though.
 
-        # NOTE: no unit sandboxes defined!
-        src_context = {'pwd'      : self._client_sandbox,     # !!!
-                       'pilot'    : self._pilot_sandbox,
-                       'resource' : self._resource_sandbox}
-        tgt_context = {'pwd'      : self._pilot_sandbox,      # !!!
-                       'pilot'    : self._pilot_sandbox,
-                       'resource' : self._resource_sandbox}
-
-        # Iterate over all directives
-        for sd in expand_staging_directives(directives):
-
-            # TODO: respect flags in directive
-
-            action = sd['action']
-            flags  = sd['flags']
-            did    = sd['uid']
-            src    = sd['source']
-            tgt    = sd['target']
-
-            assert(action in [COPY, LINK, MOVE, TRANSFER])
-
-            self._prof.prof('staging_in_start', uid=self.uid, msg=did)
-
-            src = complete_url(src, src_context, self._log)
-            tgt = complete_url(tgt, tgt_context, self._log)
-
-            if action in [COPY, LINK, MOVE]:
-                self._prof.prof('staging_in_fail', uid=self.uid, msg=did)
-                raise ValueError("invalid action '%s' on pilot level" % action)
-
-            self._log.info('transfer %s to %s', src, tgt)
-
-            # FIXME: make sure that tgt URL points to the right resource
-            # FIXME: honor sd flags if given (recursive...)
-            flags = rs.fs.CREATE_PARENTS
-
-            # Define and open the staging directory for the pilot
-            # We use the target dir construct here, so that we can create
-            # the directory if it does not yet exist.
-
-            # url used for cache (sandbox url w/o path)
-            tmp      = rs.Url(self._pilot_sandbox)
-            tmp.path = '/'
-            key = str(tmp)
-            if key not in self._cache:
-                self._cache[key] = rs.fs.Directory(tmp, session=self._session,
-                                                   flags=flags)
-            saga_dir = self._cache[key]
-            saga_dir.copy(src, tgt, flags=flags)
-
-            self._prof.prof('staging_in_stop', uid=self.uid, msg=did)
+        # send the staging request to the pmg launcher
+        self._pmgr._pilot_staging_input(self.as_dict(), directives)
 
 
 # ------------------------------------------------------------------------------

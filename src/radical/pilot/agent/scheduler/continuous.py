@@ -5,7 +5,6 @@ __license__   = "MIT"
 
 import os
 import time
-import pprint
 
 import radical.utils as ru
 
@@ -123,7 +122,7 @@ class Continuous(AgentSchedulingComponent):
         on the same node).
         '''
 
-        # single_node is enforced for non-message passing tasks
+        # single_node allocation is enforced for non-message passing tasks
         if  cud['cpu_process_type'] == 'MPI' or \
             cud['gpu_process_type'] == 'MPI' :
             slots = self._alloc_mpi(cud)
@@ -132,7 +131,7 @@ class Continuous(AgentSchedulingComponent):
 
         if slots:
             # the unit was placed, we need to reflect the allocation in the
-            # nodelist state
+            # nodelist state (BUSY)
             self._change_slot_states(slots, rpc.BUSY)
 
         return slots
@@ -142,22 +141,23 @@ class Continuous(AgentSchedulingComponent):
     #
     def _release_slot(self, slots):
         '''
-        As the opposite to `_allocate_slot()`, this method will be invoked if
-        a unit does no longer need the resources previously allocation above.
+        This method is called when previously aquired resources are not needed
+        anymore.  `slots` are the resource slots as previously returned by
+        `_allocate_slots()`.
         '''
 
-        # reflect the request in the nodelist state.
+        # reflect the request in the nodelist state (set to `FREE`)
         self._change_slot_states(slots, rpc.FREE)
 
 
     # --------------------------------------------------------------------------
     #
-    def _alloc_node(self, node, requested_cores, requested_gpus, 
+    def _find_resources(self, node, requested_cores, requested_gpus, 
                     chunk=1, partial=False):
         '''
         Find up to the requested number of free cores and gpus in the node.
         This call will return two lists, for each matched set.  If the core does
-        not have sufficient free resources to fullfill *both* requests, two
+        not have sufficient free resources to fulfill *both* requests, two
         empty lists are returned.  The call will *not* change the allocation
         status of the node, atomicity must be guaranteed by the caller.
 
@@ -171,36 +171,36 @@ class Continuous(AgentSchedulingComponent):
 
         NOTE: chunking is only applied to cores at this point.
 
-        When `partial` is set to `True`, we also accept less cores and gpus then
-        requested (but the call will never return more than requested).
+        When `partial` is set to `True`, this method is allowed to return
+        a *partial* match, so to find less cores and gpus then requested (but
+        the call will never return more than requested).
         '''
 
-
+        # list of core and gpu ids available in this node.
         cores = list()
         gpus  = list()
 
+        # first count the number of free cores and gpus. This is
+        # way quicker than actually finding the core IDs.
         free_cores = node['cores'].count(rpc.FREE)
         free_gpus  = node['gpus' ].count(rpc.FREE)
 
-        # first count the free cores/gpus, as that is way quicker than
-        # actually finding the core IDs.
         if partial:
-            # For partial requests the check simpliefies: we just check if we 
-            # have either, some cores *or* gpus, to serve the request
+            # For partial requests, return if there are no free cores AND
+            # no free gpus.
             if  (requested_cores and not free_cores) and \
                 (requested_gpus  and not free_gpus )     :
-                # wa can't serve either request
                 return [], []
 
         else:
-            # non-partial requests (ie. full requests): check if we can serve
-            # both, requested cores *and* gpus.
+            # For non-partial requests (ie. full requests): its a no-match if
+            # either the cpu or gpu request cannot be served.
             if  requested_cores > free_cores or \
                 requested_gpus  > free_gpus     :
                 return [], []
 
 
-        # we can serve the partial or full request - alloc the chunks we need
+        # We can serve the partial or full request - alloc the chunks we need
         # FIXME: chunk gpus, too?
         alloc_cores = min(requested_cores, free_cores) / chunk * chunk
         alloc_gpus  = min(requested_gpus , free_gpus )
@@ -224,10 +224,18 @@ class Continuous(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     #
     def _get_node_maps(self, cores, gpus, threads_per_proc):
+        '''
+        For a given set of cores and gpus, chunk them into sub-sets so that each
+        sub-set can host one application process and all threads of that
+        process.  Note that we currently consider all GPU applications to be
+        single-threaded.
+        For more details, see top level comment of `base.py`.
+        '''
 
         core_map = list()
         gpu_map  = list()
 
+        # make sure the core sets can host the requested number of threads
         assert(not len(cores) % threads_per_proc)
         n_procs =  len(cores) / threads_per_proc
 
@@ -255,6 +263,10 @@ class Continuous(AgentSchedulingComponent):
     def _alloc_nompi(self, cud):
         '''
         Find a suitable set of cores and gpus *within a single node*.
+
+        Input:
+        cud: Compute Unit description. Needs to specify at least one CPU
+        process and one thread per CPU process, or one GPU process.
         '''
 
         # dig out the allocation request details
@@ -262,49 +274,54 @@ class Continuous(AgentSchedulingComponent):
         threads_per_proc = cud['cpu_threads']
         requested_gpus   = cud['gpu_processes']
 
+        # make sure that processes are at least single-threaded
         if not threads_per_proc:
             threads_per_proc = 1
 
+        # cores needed for all threads and processes
         requested_cores = requested_procs * threads_per_proc
 
-        # we want the allocation to fit on a single node - make sure this is
-        # actually possible
+        # make sure that the requested allocation fits on a single node
         if  requested_cores > self._lrms_cores_per_node or \
             requested_gpus  > self._lrms_gpus_per_node     :
             raise ValueError('Non-mpi unit does not fit onto single node')
 
-        # ok, we can go ahead and try to find a matching node.
+        # ok, we can go ahead and try to find a matching node
         cores     = list()
         gpus      = list()
         node_name = None
         node_uid  = None
+
         for node in self.nodes:  # FIXME optimization: iteration start
 
-            # attempt to allocate the required number of cores and gpus on this
+            # attempt to find the required number of cores and gpus on this
             # node - do not allow partial matches.
-            cores, gpus = self._alloc_node(node, requested_cores, requested_gpus,
+            cores, gpus = self._find_resources(node, requested_cores, requested_gpus,
                                            partial=False)
 
             if  len(cores) == requested_cores and \
                 len(gpus)  == requested_gpus      :
-                # we are done
+                # we found the needed resources - break out of search loop
                 node_uid  = node['uid']
                 node_name = node['name']
                 break
 
+        # If we did not find any node to host this request, return `None`
         if not cores and not gpus:
-            return None  # signal failure
+            return None
 
-        # we have to communicate to the launcher where exactly processes are to
-        # be placed, and what cores are reserved for application threads.
+        # We have to communicate to the launcher where exactly processes are to
+        # be placed, and what cores are reserved for application threads.  See
+        # the top level comment of `base.py` for details on the data structure
+        # used to specify process and thread to core mapping.
         core_map, gpu_map = self._get_node_maps(cores, gpus, threads_per_proc)
 
+        # all the information for placing the unit is acquired - return them
         slots = {'nodes'         : [[node_name, node_uid, core_map, gpu_map]],
                  'cores_per_node': self._lrms_cores_per_node,
                  'gpus_per_node' : self._lrms_gpus_per_node,
                  'lm_info'       : self._lrms_lm_info
                  }
-
         return slots
 
 
@@ -327,13 +344,16 @@ class Continuous(AgentSchedulingComponent):
         spawn the requested number of threads on the respective node.
         '''
 
+        # dig out the allocation request details
         requested_procs  = cud['cpu_processes']
         threads_per_proc = cud['cpu_threads']
         requested_gpus   = cud['gpu_processes']
 
+        # make sure that processes are at least single-threaded
         if not threads_per_proc:
             threads_per_proc = 1
 
+        # cores needed for all threads and processes
         requested_cores = requested_procs * threads_per_proc
 
         # First and last nodes can be a partial allocation - all other nodes can
@@ -405,7 +425,7 @@ class Continuous(AgentSchedulingComponent):
             find_gpus   = min(requested_gpus  - alloced_gpus,  gpus_per_node )
 
             # under the constraints so derived, check what we find on this node
-            cores, gpus = self._alloc_node(node, find_cores, find_gpus,
+            cores, gpus = self._find_resources(node, find_cores, find_gpus,
                                            chunk=threads_per_proc,
                                            partial=partial)
 
