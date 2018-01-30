@@ -338,12 +338,7 @@ class Default(UMGRStagingInputComponent):
             src = complete_url(src, src_context, self._log)
             tgt = complete_url(tgt, tgt_context, self._log)
 
-            if rpc.CREATE_PARENTS in flags:
-                copy_flags = rs.filesystem.CREATE_PARENTS
-            else:
-                copy_flags = 0
-
-            saga_dir.copy(src, tgt, flags=copy_flags)
+            saga_dir.copy(src, tgt, flags=flags)
             self._prof.prof('staging_in_stop', uid=uid, msg=did)
 
         # staging is done, we can advance the unit at last
