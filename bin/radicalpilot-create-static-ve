@@ -24,7 +24,8 @@ help(){
 
     cat <<EOT
 
-    usage: $0 <target> [-h]
+    usage: $0 -h
+    usage: $0 <target>
 
     This script creates a virtualenv at the given target location.  That
     virtualenv should be suitable to be used as static VE for a radical.pilot
@@ -34,6 +35,17 @@ EOT
     exit $ret
 }
 
+
+# ------------------------------------------------------------------------------
+#
+progress(){
+
+  while read X
+  do
+    echo -n .
+  done
+  echo
+}
 
 # ------------------------------------------------------------------------------
 #
@@ -64,76 +76,25 @@ case $prefix in
         prefix="`pwd`/$prefix"
         ;;
 esac
-echo "using install prefix $prefix"
+
 
 # create the ve, install bare necessities
 mkdir -p "$prefix"
-mkdir -p "$prefix/rp_install"
 
-virtualenv "$prefix"
+echo -n "create  virtualenv"
+stdbuf -oL virtualenv "$prefix" | progress
 .          "$prefix"/bin/activate
-pip install --upgrade $setuptools || exit 1
-pip install --upgrade $pip        || exit 1
-pip install --upgrade $reqs       || exit 1
 
-# install the radical stack (utils, saga, pilot) into a separate tree
-# ($prefix/rp_install(, so that any local install can use the ve *w/o* 
-# the radical stack, by re-routing PYTHONPATH
-python_version=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
-ve_mod_prefix=` python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
-rp_mod_prefix=`echo $ve_mod_prefix | sed -e "s|$prefix|$prefix/rp_install/|"`
+# echo "--- update  setuptools"
+# pip install --upgrade $setuptools || exit 1
+# echo "--- update  pip"
+# pip install --upgrade $pip        || exit 1
 
-# we actually stop at this point.  RP has other dependencies nowadays, which are
-# not always solved by the simple script above, namely ORTE, and
-# morespecifically (and indirectly) libffi.  radical-pilot-deploy-ompi.sh needs
-# to run before rp installation has a chance to succeed (usually).
-exit
+for req in $reqs
+do
+    echo -n "install $req "
+    stdbuf -oL pip install --upgrade $req | progress   || exit 1
+done
 
-
-# NOTE: the code below is left in, as it might get reactivated at some point.
-PYTHONPATH="$rp_mod_prefix:$PYTHONPATH"
-export PYTHONPATH
-
-PATH="$prefix/rp_install/bin:$PATH"
-export PATH
-
-# we need to add the radical name __init__.py manually here --
-# distutil is broken and will not install it.  That file is necessary to have
-# the 'radical' namespace searchable by python's import.
-mkdir -p   "$rp_mod_prefix/radical/"
-ru_ns_init="$rp_mod_prefix/radical/__init__.py"
-echo                                              >  $ru_ns_init
-echo 'import pkg_resources'                       >> $ru_ns_init
-echo 'pkg_resources.declare_namespace (__name__)' >> $ru_ns_init
-echo                                              >> $ru_ns_init
-
-PIP_INSTALL="pip install --install-option='--prefix=$prefix/rp_install'"
-$PIP_INSTALL radical.utils || exit 1
-$PIP_INSTALL saga-python   || exit 1
-$PIP_INSTALL radical.pilot || exit 1
-
-OLD_SAGA_VERBOSE=$SAGA_VERBOSE
-OLD_RADICAL_VERBOSE=$RADICAL_VERBOSE
-OLD_RADICAL_PILOT_VERBOSE=$RADICAL_PILOT_VERBOSE
-
-SAGA_VERBOSE=WARNING
-RADICAL_VERBOSE=WARNING
-RADICAL_PILOT_VERBOSE=WARNING
-
-# print the ve information and stack versions for verification
 echo
-echo "---------------------------------------------------------------------"
-echo
-echo "PYTHONPATH: $PYTHONPATH"
-echo "python: `which python` (`python --version`)"
-python -c 'print "utils :",; import radical.utils as ru; print ru.version_detail,; print ru.__file__'
-python -c 'print "saga  :",; import saga          as rs; print rs.version_detail,; print rs.__file__'
-python -c 'print "pilot :",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__'
-echo
-echo "---------------------------------------------------------------------"
-echo
-
-SAGA_VERBOSE=$OLD_SAGA_VERBOSE
-RADICAL_VERBOSE=$OLD_RADICAL_VERBOSE
-RADICAL_PILOT_VERBOSE=$OLD_RADICAL_PILOT_VERBOSE
 
