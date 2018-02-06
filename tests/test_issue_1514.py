@@ -11,20 +11,12 @@ import radical.pilot as rp
 import saga as rs
 from radical.pilot.umgr.staging_input.default import Default
 import json
-
+import saga.filesystem.constants as constants
 
 try: 
     import mock 
 except ImportError: 
     from unittest import mock
-
-# Transfer file or folder using SAGA
-def transfer(src, dest, cfg_file, access_schema):
-    # TODO: SAGA methods to transfer file of folder
-    ctx = saga.Context("ssh")
-
-    session = saga.Session()
-    session.add_context(ctx)
 
 # Resource to test on
 resource_name = 'xsede.supermic'
@@ -73,14 +65,6 @@ class Test_UMGR_Staging_Input_Component(unittest.TestCase):
         remote_dir.make_dir(session_sandbox, flags=rs.filesystem.CREATE_PARENTS)
         remote_dir.make_dir(pilot_sandbox, flags=rs.filesystem.CREATE_PARENTS)
         remote_dir.make_dir(staging_area, flags=rs.filesystem.CREATE_PARENTS)
-
-
-        # # Copy sample data
-        # for data in sample_data:
-        #     transfer(   src = os.path.join(sample_data_folder, data), 
-        #                 dest = os.path.join(staging_area, data),
-        #                 cfg_file = cfg_file,
-        #                 access_schema = access_schema)
 
         self.cfg = dict()
         self.cfg["cname"] = "UMGRStagingInputComponent"
@@ -181,7 +165,7 @@ class Test_UMGR_Staging_Input_Component(unittest.TestCase):
                                 'source': os.path.join(local_sample_data, sample_data[1]),
                                 'action': rp.TRANSFER,
                                 'target': 'unit:///%s'%sample_data[1],
-                                'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+                                'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED, rp.RECURSIVE],
                                 'priority': 0
                             })
         
@@ -215,7 +199,7 @@ class Test_UMGR_Staging_Input_Component(unittest.TestCase):
                                 'source': os.path.join(local_sample_data, sample_data[2]),
                                 'action': rp.TRANSFER,
                                 'target': 'unit:///%s'%sample_data[2],
-                                'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+                                'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED, rp.RECURSIVE],
                                 'priority': 0
                             })
         
@@ -284,7 +268,7 @@ class Test_UMGR_Staging_Input_Component(unittest.TestCase):
                                 'source': os.path.join(local_sample_data, sample_data[1]),
                                 'action': rp.TRANSFER,
                                 'target': os.path.join(staging_area, sample_data[1]),
-                                'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+                                'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED, rp.RECURSIVE],
                                 'priority': 0
                             })
         
@@ -317,7 +301,7 @@ class Test_UMGR_Staging_Input_Component(unittest.TestCase):
                                 'source': os.path.join(local_sample_data, sample_data[2]),
                                 'action': rp.TRANSFER,
                                 'target': os.path.join(staging_area, sample_data[2]),
-                                'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+                                'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED, rp.RECURSIVE],
                                 'priority': 0
                             })
         
