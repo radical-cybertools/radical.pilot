@@ -163,6 +163,14 @@ class Default(AgentStagingInputComponent):
                 self._prof.prof('staging_in_skip', uid=uid, msg=did)
                 continue
 
+            # Fix for when the target PATH is empty
+            # we assume current directory is the unit staging 'unit://'
+            # and we assume the file to be copied is the base filename of the source
+            if tgt is None: tgt = ''
+            if tgt.strip() == '':
+                tgt = 'unit:///{}'.format(os.path.basename(src))
+
+
             src = complete_url(src, src_context, self._log)
             tgt = complete_url(tgt, tgt_context, self._log)
 
