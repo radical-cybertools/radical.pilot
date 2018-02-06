@@ -162,7 +162,10 @@ class Test_UMGR_Staging_Input_Component(unittest.TestCase):
 
         assert sample_data[0] in remote_dir.list()
 
-
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
     def test_transfer_single_folder_to_unit(self, 
                                             mocked_init, 
                                             mocked_method, 
@@ -193,7 +196,10 @@ class Test_UMGR_Staging_Input_Component(unittest.TestCase):
         assert sample_data[1] in remote_dir.list()
 
 
-
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
     def test_transfer_multiple_folders_to_unit(self, 
                                             mocked_init, 
                                             mocked_method, 
@@ -224,7 +230,10 @@ class Test_UMGR_Staging_Input_Component(unittest.TestCase):
         assert sample_data[2] in remote_dir.list()
 
 
-
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
     def test_transfer_single_file_to_staging_area(  self, 
                                             mocked_init, 
                                             mocked_method, 
@@ -256,7 +265,10 @@ class Test_UMGR_Staging_Input_Component(unittest.TestCase):
         assert sample_data[0] in remote_dir.list()
 
 
-
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
     def test_transfer_single_folder_to_staging_area(self, 
                                             mocked_init, 
                                             mocked_method, 
@@ -285,7 +297,11 @@ class Test_UMGR_Staging_Input_Component(unittest.TestCase):
                                                 session=self.session)
 
         assert sample_data[1] in remote_dir.list()
-
+        
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
     def test_transfer_multiple_folders_to_staging_area(self, 
                                             mocked_init, 
                                             mocked_method, 
