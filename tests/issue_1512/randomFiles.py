@@ -1,5 +1,6 @@
 import string
 import random
+import sys
 
 if __name__ == '__main__':
     
@@ -16,12 +17,12 @@ if __name__ == '__main__':
 
     randString += randString
     for i in range(fileNum):
-        halfMegFile = open('meg/File_%04d.txt'%i,'w')
+        megFile = open('meg/File_%04d.txt'%i,'w')
         megFile.write(randString)
         megFile.close()
 
     randString += randString
     for i in range(fileNum):
-        halfMegFile = open('twoMeg/File_%04d.txt'%i,'w')
+        twoMegFile = open('twoMeg/File_%04d.txt'%i,'w')
         twoMegFile.write(randString)
         twoMegFile.close()
