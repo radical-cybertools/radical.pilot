@@ -37,11 +37,11 @@ session_id = 'rp.session.testing.local.0000'
 
 # Staging testing folder locations
 cur_dir = os.path.dirname(os.path.abspath(__file__))
-local_sample_data = os.path.join(cur_dir, 'staging-testing-sandbox/sample-data')
+local_sample_data = os.path.join(cur_dir, 'sample-data')
 sample_data = [
-                    'single-file',
-                    'single-folder',
-                    'multi-folder'
+                    'single_file.txt',
+                    'single_folder',
+                    'multi_folder'
                 ]
 
 # Get the remote sandbox path from rp config files
@@ -297,7 +297,7 @@ class Test_UMGR_Staging_Input_Component(unittest.TestCase):
                                                 session=self.session)
 
         assert sample_data[1] in remote_dir.list()
-        
+
     @mock.patch.object(Default, '__init__', return_value=None)
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
@@ -332,5 +332,5 @@ class Test_UMGR_Staging_Input_Component(unittest.TestCase):
         assert sample_data[2] in remote_dir.list()
 
 if __name__ == '__main__':
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestStagingInputComponent)
+    suite = unittest.TestLoader().loadTestsFromTestCase(Test_UMGR_Staging_Input_Component)
     unittest.TextTestRunner(verbosity=2).run(suite)
