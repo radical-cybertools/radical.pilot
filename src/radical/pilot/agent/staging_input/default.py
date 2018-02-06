@@ -198,7 +198,14 @@ class Default(AgentStagingInputComponent):
                     else: 
                         raise
                         
-            elif action == rpc.LINK: os.symlink     (src.path, tgt.path)
+            elif action == rpc.LINK:
+                # Fix issue/1513 if link source is file and target is folder
+                # should support POSSIX standard where link is created
+                # with the same name as the source
+                if os.path.isfile(src.path) and os.path.isdir(tgt.path):
+                    os.symlink     (src.path, os.path.join(tgt.path, os.path.basename(src.path)))
+                else: # default behavior
+                    os.symlink     (src.path, tgt.path)
             elif action == rpc.MOVE: shutil.move    (src.path, tgt.path)
             elif action == rpc.TRANSFER: pass
                 # This is currently never executed. Commenting it out.
