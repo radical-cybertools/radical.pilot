@@ -169,12 +169,60 @@ class Test_UMGR_Staging_Input_Component(unittest.TestCase):
                                             mocked_profiler, 
                                             mocked_raise_on):
 
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+                                'uid'   : ru.generate_id('sd'),
+                                'source': os.path.join(local_sample_data, sample_data[1]),
+                                'action': rp.TRANSFER,
+                                'target': 'unit:///%s'%sample_data[1],
+                                'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+                                'priority': 0
+                            })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...      
+        remote_dir = saga.filesystem.Directory(self.unit_directory,
+                                                session=self.session)
+
+        assert sample_data[1] in remote_dir.list()
+
+
 
     def test_transfer_multiple_folders_to_unit(self, 
                                             mocked_init, 
                                             mocked_method, 
                                             mocked_profiler, 
                                             mocked_raise_on):
+
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+                                'uid'   : ru.generate_id('sd'),
+                                'source': os.path.join(local_sample_data, sample_data[2]),
+                                'action': rp.TRANSFER,
+                                'target': 'unit:///%s'%sample_data[2],
+                                'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+                                'priority': 0
+                            })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...      
+        remote_dir = saga.filesystem.Directory(self.unit_directory,
+                                                session=self.session)
+
+        assert sample_data[2] in remote_dir.list()
+
 
 
     def test_transfer_single_file_to_staging_area(  self, 
@@ -183,12 +231,60 @@ class Test_UMGR_Staging_Input_Component(unittest.TestCase):
                                             mocked_profiler, 
                                             mocked_raise_on):
 
+
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+                                'uid'   : ru.generate_id('sd'),
+                                'source': os.path.join(local_sample_data, sample_data[0]),
+                                'action': rp.TRANSFER,
+                                'target': os.path.join(staging_area, sample_data[0]),
+                                'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+                                'priority': 0
+                            })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...      
+        remote_dir = saga.filesystem.Directory(self.staging_area,
+                                                session=self.session)
+
+        assert sample_data[0] in remote_dir.list()
+
+
+
     def test_transfer_single_folder_to_staging_area(self, 
                                             mocked_init, 
                                             mocked_method, 
                                             mocked_profiler, 
                                             mocked_raise_on):
 
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+                                'uid'   : ru.generate_id('sd'),
+                                'source': os.path.join(local_sample_data, sample_data[1]),
+                                'action': rp.TRANSFER,
+                                'target': os.path.join(staging_area, sample_data[1]),
+                                'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+                                'priority': 0
+                            })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...      
+        remote_dir = saga.filesystem.Directory(self.staging_area,
+                                                session=self.session)
+
+        assert sample_data[1] in remote_dir.list()
 
     def test_transfer_multiple_folders_to_staging_area(self, 
                                             mocked_init, 
@@ -196,7 +292,28 @@ class Test_UMGR_Staging_Input_Component(unittest.TestCase):
                                             mocked_profiler, 
                                             mocked_raise_on):
 
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+                                'uid'   : ru.generate_id('sd'),
+                                'source': os.path.join(local_sample_data, sample_data[2]),
+                                'action': rp.TRANSFER,
+                                'target': os.path.join(staging_area, sample_data[2]),
+                                'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+                                'priority': 0
+                            })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
 
+        # Verify the actionables were done...      
+        remote_dir = saga.filesystem.Directory(self.staging_area,
+                                                session=self.session)
+
+        assert sample_data[2] in remote_dir.list()
 
 if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(TestStagingInputComponent)
