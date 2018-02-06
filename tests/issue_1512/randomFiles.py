@@ -10,18 +10,18 @@ if __name__ == '__main__':
         randString += random.choice(string.letters)
 
     for i in range(fileNum):
-        halfMegFile = open('halfMeg/File_%4d.txt'%i,'w')
+        halfMegFile = open('halfMeg/File_%04d.txt'%i,'w')
         halfMegFile.write(randString)
         halfMegFile.close()
 
     randString += randString
     for i in range(fileNum):
-        halfMegFile = open('meg/File_%4d.txt'%i,'w')
+        halfMegFile = open('meg/File_%04d.txt'%i,'w')
         megFile.write(randString)
         megFile.close()
 
     randString += randString
     for i in range(fileNum):
-        halfMegFile = open('twoMeg/File_%4d.txt'%i,'w')
+        halfMegFile = open('twoMeg/File_%04d.txt'%i,'w')
         twoMegFile.write(randString)
         twoMegFile.close()
