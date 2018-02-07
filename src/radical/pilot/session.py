@@ -144,9 +144,6 @@ class Session(rs.Session):
         # The resource configuration dictionary associated with the session.
         self._resource_configs = {}
 
-        # initialize the base class (saga session)
-        rs.Session.__init__(self)
-
         # if a config is given, us its values:
         if cfg:
             self._cfg = copy.deepcopy(cfg)
@@ -199,6 +196,10 @@ class Session(rs.Session):
 
         self._dburl = ru.Url(dburl)
         self._cfg['dburl'] = str(self._dburl)
+
+        # now we have config and uid - initialize base class (saga session)
+        rs.Session.__init__(self, uid=self._uid)
+
 
         # ----------------------------------------------------------------------
         # create new session
