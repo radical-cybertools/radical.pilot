@@ -247,7 +247,6 @@ class AgentSchedulingComponent(rpu.Component):
         # during agent startup.  We dig them out of the config at this point.
         #
         # NOTE: this information is insufficient for the torus scheduler!
-
         self._pilot_id = self._cfg['pilot_id']
         self._lrms_info           = self._cfg['lrms_info']
         self._lrms_lm_info        = self._cfg['lrms_info']['lm_info']
@@ -321,9 +320,9 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def _change_slot_states(self, slots, new_state):
         '''
-        This function is used to update the node state for list of slots that
-        have allocated or deallocated.  For details on the data structure, see
-        top of `base.py`.
+        This function is used to update the state for a list of slots that
+        have been allocated or deallocated.  For details on the data structure,
+        see top of `base.py`.
         '''
 
         for node_name, node_uid, cores, gpus in slots['nodes']:
@@ -340,7 +339,7 @@ class AgentSchedulingComponent(rpu.Component):
             node = (n for n in self.nodes if n['uid'] == node_uid).next()
             assert(node)
 
-            # iterate over cores/gpus in the node's allocation, and set state
+            # iterate over cores/gpus in the slot, and update state
             for cslot in cores:
                 for core in cslot:
                     node['cores'][core] = new_state

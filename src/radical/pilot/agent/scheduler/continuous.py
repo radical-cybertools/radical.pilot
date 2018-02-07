@@ -207,7 +207,7 @@ class Continuous(AgentSchedulingComponent):
         # now dig out the core and gpu IDs.
         for idx,state in enumerate(node['cores']):
 
-            # break if we have enough cores, else continue to pick FREE # ones
+            # break if we have enough cores, else continue to pick FREE ones
             if alloc_cores == len(cores):
                 break
             if state == rpc.FREE:
@@ -215,7 +215,7 @@ class Continuous(AgentSchedulingComponent):
 
         for idx,state in enumerate(node['gpus']):
 
-            # break if we have enough gpus, else continue to pick FREE # ones
+            # break if we have enough gpus, else continue to pick FREE ones
             if alloc_gpus == len(gpus):
                 break
             if state == rpc.FREE:
