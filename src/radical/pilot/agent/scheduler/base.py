@@ -317,14 +317,29 @@ class AgentSchedulingComponent(rpu.Component):
     #
     # NOTE: any scheduler implementation which uses a different nodelist
     #       structure MUST overload this method.
+    #
     def _change_slot_states(self, slots, new_state):
+        '''
+        This function is used to update the state for a list of slots that
+        have been allocated or deallocated.  For details on the data structure,
+        see top of `base.py`.
+        '''
 
         for node_name, node_uid, cores, gpus in slots['nodes']:
 
             # Find the entry in the the slots list
+
+            # TODO: [Optimization] Assuming 'uid' is the ID of the node, it
+            #       seems a bit wasteful to have to look at all of the nodes
+            #       available for use if at most one node can have that uid.
+            #       Maybe it would be worthwhile to simply keep a list of nodes
+            #       that we would read, and keep a dictionary that maps the uid
+            #       of the node to the location on the list?
+
             node = (n for n in self.nodes if n['uid'] == node_uid).next()
             assert(node)
 
+            # iterate over cores/gpus in the slot, and update state
             for cslot in cores:
                 for core in cslot:
                     node['cores'][core] = new_state
