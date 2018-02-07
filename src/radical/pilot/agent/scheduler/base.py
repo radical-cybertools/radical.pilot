@@ -174,13 +174,13 @@ class AgentSchedulingComponent(rpu.Component):
         # got an allocation, go off and launch the process
         self._prof.prof('schedule_ok', uid=cu['uid'])
 
-      # if self._log.isEnabledFor(logging.DEBUG):
-      #     self._log.debug("after  allocate   %s: %s", cu['uid'], 
-      #                     self.slot_status())
-      #
-      #     self._log.debug("%s [%s] : %s", cu['uid'],
-      #                     cu['description']['cores'],
-      #                     pprint.pformat(cu['opaque_slots']))
+        if self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug("after  allocate   %s: %s", cu['uid'], 
+                            self.slot_status())
+       
+            self._log.debug("%s [%s] : %s", cu['uid'],
+                            cu['description']['cores'],
+                            pprint.pformat(cu['opaque_slots']))
 
         return True
 
@@ -197,9 +197,9 @@ class AgentSchedulingComponent(rpu.Component):
 
         cu = msg
 
-      # if  self._log.isEnabledFor(logging.DEBUG):
-      #     self._log.debug("before reschedule %s: %s", cu['uid'],
-      #                     self.slot_status())
+        if  self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug("before reschedule %s: %s", cu['uid'],
+                            self.slot_status())
 
         # cycle through wait queue, and see if we get anything running now.  We
         # cycle over a copy of the list, so that we can modify the list on the
@@ -209,7 +209,7 @@ class AgentSchedulingComponent(rpu.Component):
             if self._try_allocation(cu):
 
                 # allocated cu -- advance it
-                self.advance(cu, rps.AGENT_EXECUTING_PENDING, publish=False, push=True)
+                self.advance(cu, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
 
                 # remove it from the wait queue
                 with self._wait_lock :
@@ -220,8 +220,8 @@ class AgentSchedulingComponent(rpu.Component):
                 #        CUs come after this one - which is naive, ie. wrong.
                 break
 
-      # if  self._log.isEnabledFor(logging.DEBUG):
-      #     self._log.debug("after  reschedule %s: %s", cu['uid'], self.slot_status())
+        if  self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug("after  reschedule %s: %s", cu['uid'], self.slot_status())
 
         return True
 
@@ -241,8 +241,8 @@ class AgentSchedulingComponent(rpu.Component):
             self._log.error("cannot unschedule: %s (no slots)" % cu)
             return True
 
-      # if  self._log.isEnabledFor(logging.DEBUG):
-      #     self._log.debug("before unschedule %s: %s", cu['uid'], self.slot_status())
+        if  self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug("before unschedule %s: %s", cu['uid'], self.slot_status())
 
         # needs to be locked as we try to release slots, but slots are acquired
         # in a different thread....
@@ -255,8 +255,8 @@ class AgentSchedulingComponent(rpu.Component):
         self.publish(rpc.AGENT_RESCHEDULE_PUBSUB, cu)
 
         # Note: The extra space below is for visual alignment
-      #  if self._log.isEnabledFor(logging.DEBUG):
-      #     self._log.debug("after  unschedule %s: %s", cu['uid'], self.slot_status())
+         if self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug("after  unschedule %s: %s", cu['uid'], self.slot_status())
 
         return True
 
@@ -268,7 +268,7 @@ class AgentSchedulingComponent(rpu.Component):
         if not isinstance(units, list):
             units = [units]
 
-        self.advance(units, rps.AGENT_SCHEDULING, publish=False, push=False)
+        self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
 
         for unit in units:
 
@@ -283,7 +283,7 @@ class AgentSchedulingComponent(rpu.Component):
         # straight away and move it to execution, or we have to
         # put it on the wait queue.
         if self._try_allocation(cu):
-            self.advance(cu, rps.AGENT_EXECUTING_PENDING, publish=False, push=True)
+            self.advance(cu, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
 
         else:
             # No resources available, put in wait queue

@@ -135,8 +135,8 @@ class UnitManager(rpu.Component):
 
         # register the state notification pull cb
         # FIXME: this should be a tailing cursor in the update worker
-      # self.register_timed_cb(self._state_pull_cb,
-      #                        timer=self._cfg['db_poll_sleeptime'])
+        self.register_timed_cb(self._state_pull_cb,
+                               timer=self._cfg['db_poll_sleeptime'])
 
         # register callback which pulls units back from agent
         # FIXME: this should be a tailing cursor in the update worker
@@ -763,7 +763,7 @@ class UnitManager(rpu.Component):
 
         # Only after the insert can we hand the units over to the next
         # components (ie. advance state).
-        self.advance(unit_docs, rps.UMGR_SCHEDULING_PENDING, publish=False, push=True)
+        self.advance(unit_docs, rps.UMGR_SCHEDULING_PENDING, publish=True, push=True)
         self._log.report.ok('>>ok\n')
 
         if ret_list: return units

@@ -57,7 +57,7 @@ class Default(AgentStagingInputComponent):
         if not isinstance(units, list):
             units = [units]
 
-        self.advance(units, rps.AGENT_STAGING_INPUT, publish=False, push=False)
+        self.advance(units, rps.AGENT_STAGING_INPUT, publish=True, push=False)
 
         ru.raise_on('work bulk')
 
@@ -86,7 +86,7 @@ class Default(AgentStagingInputComponent):
 
         if no_staging_units:
             self.advance(no_staging_units, rps.AGENT_SCHEDULING_PENDING,
-                         publish=False, push=True)
+                         publish=True, push=True)
 
         for unit,actionables in staging_units:
             self._handle_unit(unit, actionables)
@@ -203,7 +203,7 @@ class Default(AgentStagingInputComponent):
             self._prof.prof('staging_in_stop', uid=uid, msg=did)
 
         # all staging is done -- pass on to the scheduler
-        self.advance(unit, rps.AGENT_SCHEDULING_PENDING, publish=False, push=True)
+        self.advance(unit, rps.AGENT_SCHEDULING_PENDING, publish=True, push=True)
 
 
 # ------------------------------------------------------------------------------

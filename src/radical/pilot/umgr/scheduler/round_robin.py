@@ -114,7 +114,7 @@ class RoundRobin(UMGRSchedulingComponent):
                         unit['sandbox'] = self._session._get_unit_sandbox(unit, pilot)
 
                     self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING,
-                                 publish=False, push=True)
+                                 publish=True, push=True)
 
                 else:
                     # not yet scheduled - put in wait pool
@@ -165,7 +165,7 @@ class RoundRobin(UMGRSchedulingComponent):
             # advance all units
             self.advance(units_fail, rps.FAILED, publish=True, push=False)
             self.advance(units_ok,   rps.UMGR_STAGING_INPUT_PENDING,
-                         publish=False, push=True)
+                         publish=True, push=True)
 
 
 # ------------------------------------------------------------------------------

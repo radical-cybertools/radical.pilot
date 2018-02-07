@@ -345,11 +345,11 @@ class Component(ru.Process):
         self.is_valid()
         self._session._to_stop.append(self)
 
-        # set up for snippet use: we expect snippets in the application
-        # directory, so in `./snippets/`), and in the pilot sandbox root
-        # (`../../snippets`)
-        ru.add_snippet_path('%s/snippets/'       % os.getcwd())
-        ru.add_snippet_path('%s/../../snippets/' % os.getcwd())
+      # # set up for snippet use: we expect snippets in the application
+      # # directory, so in `./snippets/`), and in the pilot sandbox root
+      # # (`../../snippets`)
+      # ru.add_snippet_path('%s/snippets/'       % os.getcwd())
+      # ru.add_snippet_path('%s/../../snippets/' % os.getcwd())
 
 
     # --------------------------------------------------------------------------
@@ -627,8 +627,8 @@ class Component(ru.Process):
         self.initialize_child()
         self._prof.prof('component_init')
 
-        # inject init hook if it exists
-        exec(ru.get_snippet('on_init.%s' % self.uid))
+      # # inject init hook if it exists
+      # exec(ru.get_snippet('on_init.%s' % self.uid))
 
     def initialize_child(self):
         pass # can be overloaded
@@ -1224,8 +1224,8 @@ class Component(ru.Process):
             #        non-trivial worker).
             things = input.get_nowait(1000) # timeout in microseconds
 
-            # inject input hook if it exists
-            exec(ru.get_snippet('on_input.%s' % self.uid))
+          # # inject input hook if it exists
+          # exec(ru.get_snippet('on_input.%s' % self.uid))
 
             if not things:
                 return True
@@ -1276,8 +1276,8 @@ class Component(ru.Process):
                     with self._cb_lock:
                         self._workers[state](things)
 
-                    # inject output hook if it exists
-                    exec(ru.get_snippet('on_output.%s' % self.uid))
+                  # # inject output hook if it exists
+                  # exec(ru.get_snippet('on_output.%s' % self.uid))
 
                 except Exception as e:
 
