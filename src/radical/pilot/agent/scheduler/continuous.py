@@ -455,7 +455,7 @@ class Continuous(AgentSchedulingComponent):
             alloced_gpus  += len(gpus)
             is_first       = False
 
-            # or maybe don'tcontinue the search if we have in fact enough!
+            # or maybe don't continue the search if we have in fact enough!
             if  alloced_cores == requested_cores and \
                 alloced_gpus  == requested_gpus      :
                 # we are done
