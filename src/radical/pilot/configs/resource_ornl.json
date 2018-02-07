@@ -87,21 +87,11 @@
     "titan_orte": {
         "description"                 : "The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/titan/)",
         "notes"                       : "Requires the use of an RSA SecurID on every connection.",
-        "schemas"                     : ["ssh", "local", "go"],
-        "ssh"                         : {
-            "job_manager_hop"         : "ssh://titan.ccs.ornl.gov/",
-            "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
-            "filesystem_endpoint"     : "sftp://titan.ccs.ornl.gov/"
-        },
+        "schemas"                     : ["local"],
         "local"                       : {
             "job_manager_hop"         : "fork://localhost/",
             "job_manager_endpoint"    : "torque://localhost",
             "filesystem_endpoint"     : "file://localhost/"
-        },
-        "go"                          : {
-            "job_manager_hop"         : "ssh://titan.ccs.ornl.gov/",
-            "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
-            "filesystem_endpoint"     : "go://olcf#dtn/"
         },
         "default_queue"               : "batch",
         "lrms"                        : "TORQUE",
@@ -117,7 +107,7 @@
             "module swap PrgEnv-pgi PrgEnv-gnu",
             "module load python",
             "module use --append /lustre/atlas/world-shared/csc230/openmpi/modules/",
-            "module load openmpi/2017_05_04_539f71d",
+            "module load openmpi/2018_01_16_539f71d",
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
         ],
@@ -134,21 +124,11 @@
     "titan_ortelib": {
         "description"                 : "The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/titan/)",
         "notes"                       : "Requires the use of an RSA SecurID on every connection.",
-        "schemas"                     : ["ssh", "local", "go"],
-        "ssh"                         : {
-            "job_manager_hop"         : "ssh://titan.ccs.ornl.gov/",
-            "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
-            "filesystem_endpoint"     : "sftp://titan.ccs.ornl.gov/"
-        },
+        "schemas"                     : ["local"],
         "local"                       : {
             "job_manager_hop"         : "fork://localhost/",
             "job_manager_endpoint"    : "torque://localhost",
             "filesystem_endpoint"     : "file://localhost/"
-        },
-        "go"                          : {
-            "job_manager_hop"         : "ssh://titan.ccs.ornl.gov/",
-            "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
-            "filesystem_endpoint"     : "go://olcf#dtn/"
         },
         "default_queue"               : "batch",
         "lrms"                        : "TORQUE",
@@ -163,7 +143,7 @@
             "module swap PrgEnv-pgi PrgEnv-gnu",
             "module load python",
             "module use --append /lustre/atlas/world-shared/csc230/openmpi/modules/",
-            "module load openmpi/2017_05_04_539f71d",
+            "module load openmpi/2018_01_16_539f71d",
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
         ],
