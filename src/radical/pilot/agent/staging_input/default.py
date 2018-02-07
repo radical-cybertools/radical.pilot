@@ -173,7 +173,7 @@ class Default(AgentStagingInputComponent):
 
             # SAGA will take care of dir creation - but we do it manually
             # for local ops (copy, link, move)
-            if rpc.CREATE_PARENTS in flags and action != rpc.TRANSFER:
+            if flags & rpc.CREATE_PARENTS and action != rpc.TRANSFER:
                 tgtdir = os.path.dirname(tgt.path)
                 if tgtdir != sandbox:
                     # TODO: optimization point: create each dir only once
