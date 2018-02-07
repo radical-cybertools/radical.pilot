@@ -154,21 +154,21 @@ class Backfilling(UMGRSchedulingComponent):
                 self._log.debug('update  unit: %s [%s] [%s]',  uid, pid, state)
 
                 if not pid:
-                    self._log.debug('upd unit  %s no pilot', uid)
                     # we are not interested in state updates for unscheduled
                     # units
+                    self._log.debug('upd unit  %s no pilot', uid)
                     continue
 
                 if not pid in self._pilots:
-                    self._log.debug('upd unit  %s not handled', uid)
                     # we don't handle the pilot of this unit
+                    self._log.debug('upd unit  %s not handled', uid)
                     continue
 
                 info = self._pilots[pid]['info']
 
                 if uid in info['done']:
-                    self._log.debug('upd unit  %s in done', uid)
                     # we don't need further state udates
+                    self._log.debug('upd unit  %s in done', uid)
                     continue
 
                 if  rps._unit_state_value(state) <= \
@@ -177,8 +177,8 @@ class Backfilling(UMGRSchedulingComponent):
                     continue
 
                 if not uid in info['units']:
-                    self._log.debug('upd unit  %s not in units', uid)
                     # this contradicts the unit's assignment
+                    self._log.debug('upd unit  %s not in units', uid)
                     self._log.error('bf: unit %s on %s inconsistent', uid, pid)
                     raise RuntimeError('inconsistent scheduler state')
 

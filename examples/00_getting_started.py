@@ -54,8 +54,7 @@ if __name__ == '__main__':
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
-        pd_init = {
-                   'resource'      : resource,
+        pd_init = {'resource'      : resource,
                    'runtime'       : 15,  # pilot runtime (min)
                    'exit_on_error' : True,
                    'project'       : config[resource]['project'],

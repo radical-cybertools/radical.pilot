@@ -124,7 +124,10 @@ class Update(rpu.Worker):
             uid   = entry[0]
             state = entry[2]
 
-            self._prof.prof('update_pushed', msg=state, uid=uid)
+            if state:
+                self._prof.prof('update_pushed', uid=uid, msg=state)
+            else:
+                self._prof.prof('update_pushed', uid=uid)
 
         # empty bulk, refresh state
         self._last = now

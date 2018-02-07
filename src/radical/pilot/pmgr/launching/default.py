@@ -128,7 +128,12 @@ class Default(PMGRLaunchingComponent):
 
         self._log.debug('launcher got %s', msg)
 
-        if cmd == 'cancel_pilots':
+        if cmd == 'pilot_staging_input_request':
+
+            self._handle_pilot_input_staging(arg['pilot'], arg['sds'])
+
+
+        elif cmd == 'cancel_pilots':
 
             # on cancel_pilot requests, we forward the DB entries via MongoDB,
             # by pushing a pilot update.  We also mark the pilot for
@@ -150,10 +155,6 @@ class Default(PMGRLaunchingComponent):
 
             self._cancel_pilots(pids)
 
-
-        elif cmd == 'pilot_staging_input_request':
-
-            self._handle_pilot_input_staging(arg['pilot'], arg['sds'])
 
         return True
 

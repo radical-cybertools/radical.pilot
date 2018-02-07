@@ -4,14 +4,10 @@ __license__   = "MIT"
 
 
 import os
-import time
 
 import radical.utils as ru
 
-from ... import utils     as rpu
-from ... import states    as rps
-from ... import constants as rpc
-
+from ...   import constants as rpc
 from .base import AgentSchedulingComponent
 
 import inspect
@@ -26,11 +22,13 @@ import threading as mt
 import cProfile
 cprof = cProfile.Profile()
 
+
 def cprof_it(func):
     def wrapper(*args, **kwargs):
         retval = cprof.runcall(func, *args, **kwargs)
         return retval
     return wrapper
+
 
 def dec_all_methods(dec):
     def dectheclass(cls):
@@ -64,7 +62,8 @@ class Continuous(AgentSchedulingComponent):
     #
     def finalize_child(self):
 
-        if "CONTINUOUS" in os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "").split():
+        cprof_env = os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "")
+        if "CONTINUOUS" in cprof_env.split():
             self_thread = mt.current_thread()
             cprof.dump_stats("python-%s.profile" % self_thread.name)
 
@@ -153,7 +152,7 @@ class Continuous(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     #
     def _find_resources(self, node, requested_cores, requested_gpus, 
-                    chunk=1, partial=False):
+                        chunk=1, partial=False):
         '''
         Find up to the requested number of free cores and gpus in the node.
         This call will return two lists, for each matched set.  If the core does
@@ -186,8 +185,8 @@ class Continuous(AgentSchedulingComponent):
         free_gpus  = node['gpus' ].count(rpc.FREE)
 
         if partial:
-            # For partial requests, return if there are no free cores AND
-            # no free gpus.
+            # For partial requests the check simpliefies: we just check if we
+            # have either, some cores *or* gpus, to serve the request
             if  (requested_cores and not free_cores) and \
                 (requested_gpus  and not free_gpus )     :
                 return [], []
@@ -252,7 +251,8 @@ class Continuous(AgentSchedulingComponent):
             core_map.append(p_map)
 
         if idx != len(cores):
-            self._log.debug('%s -- %s -- %s -- %s', idx, len(cores), cores, n_procs)
+            self._log.debug('%s -- %s -- %s -- %s',
+                            idx, len(cores), cores, n_procs)
         assert(idx == len(cores))
 
         # gpu procs are considered single threaded right now (FIXME)
@@ -384,7 +384,7 @@ class Continuous(AgentSchedulingComponent):
 
         cores_per_node = self._lrms_cores_per_node
         gpus_per_node  = self._lrms_gpus_per_node
-        
+
         if  requested_cores  > cores_per_node   and \
             cores_per_node   % threads_per_proc and \
             self._scattered is False:
@@ -454,7 +454,7 @@ class Continuous(AgentSchedulingComponent):
             self._log.debug('found %s cores, %s gpus', cores, gpus)
             core_map, gpu_map = self._get_node_maps(cores, gpus, threads_per_proc)
             slots['nodes'].append([node_name, node_uid, core_map, gpu_map])
-            
+
             alloced_cores += len(cores)
             alloced_gpus  += len(gpus)
             is_first       = False
