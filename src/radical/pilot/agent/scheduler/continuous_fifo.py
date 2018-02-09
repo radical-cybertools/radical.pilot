@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 from .continuous import Continuous
+from .base import AgentSchedulingComponent
 
 # ------------------------------------------------------------------------------
 #
@@ -42,7 +43,7 @@ class ContinuousFifo(Continuous):
             return False
 
         # yep: lets try for real
-        ret = Continuous.try_allocatio(self, cu)
+        ret = Continuous._try_allocation(self, cu)
 
         if ret: 
             # it worked!  Keep the new index
