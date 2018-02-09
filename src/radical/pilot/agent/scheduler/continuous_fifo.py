@@ -4,7 +4,6 @@ __license__   = "MIT"
 
 
 from .continuous import Continuous
-from .base import AgentSchedulingComponent
 
 # ------------------------------------------------------------------------------
 #
