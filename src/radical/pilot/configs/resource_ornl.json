@@ -4,7 +4,6 @@
         "notes"                       : "Requires the use of an RSA SecurID on every connection.",
         "schemas"                     : ["local", "ssh", "go"],
         "ssh"                         : {
-            "job_manager_hop"         : "ssh://titan.ccs.ornl.gov/",
             "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov/",
             "filesystem_endpoint"     : "sftp://titan.ccs.ornl.gov/"
         },
@@ -14,7 +13,6 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "go"                          : {
-            "job_manager_hop"         : "ssh://titan.ccs.ornl.gov/",
             "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
             "filesystem_endpoint"     : "go://olcf#dtn/"
         },
@@ -48,7 +46,6 @@
         "notes"                       : "Requires the use of an RSA SecurID on every connection.",
         "schemas"                     : ["ssh", "local", "go"],
         "ssh"                         : {
-            "job_manager_hop"         : "ssh://titan.ccs.ornl.gov/",
             "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
             "filesystem_endpoint"     : "sftp://titan.ccs.ornl.gov/"
         },
@@ -58,7 +55,6 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "go"                          : {
-            "job_manager_hop"         : "ssh://titan.ccs.ornl.gov/",
             "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
             "filesystem_endpoint"     : "go://olcf#dtn/"
         },
@@ -95,7 +91,6 @@
         "notes"                       : "Requires the use of an RSA SecurID on every connection.",
         "schemas"                     : ["ssh", "local", "go"],
         "ssh"                         : {
-            "job_manager_hop"         : "ssh://titan.ccs.ornl.gov/",
             "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
             "filesystem_endpoint"     : "sftp://titan.ccs.ornl.gov/"
         },
@@ -105,7 +100,6 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "go"                          : {
-            "job_manager_hop"         : "ssh://titan.ccs.ornl.gov/",
             "job_manager_endpoint"    : "torque+ssh://titan.ccs.ornl.gov",
             "filesystem_endpoint"     : "go://olcf#dtn/"
         },

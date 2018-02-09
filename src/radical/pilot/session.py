@@ -1047,8 +1047,15 @@ class Session(rs.Session):
         resrc   = pilot['description']['resource']
         schema  = pilot['description']['access_schema']
         rcfg    = self.get_resource_config(resrc, schema)
+
         js_url  = rs.Url(rcfg.get('job_manager_endpoint'))
         js_hop  = rs.Url(rcfg.get('job_manager_hop', js_url))
+
+        # make sure the js_hop url points to an interactive access
+        if '+gsissh' in js_hop.schema or \
+           'gsissh+' in js_hop.schema    : js_hop.schema = 'gsissh'
+        if '+ssh'    in js_hop.schema or \
+           'ssh+'    in js_hop.schema    : js_hop.schema = 'ssh'
 
         return js_url, js_hop
 

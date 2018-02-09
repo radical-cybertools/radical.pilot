@@ -68,6 +68,7 @@ class LRMS(object):
         self._cfg            = cfg
         self._session        = session
         self._log            = self._session._log
+        self._prof           = self._session._prof
         self.requested_cores = self._cfg['cores']
 
         self._log.info("Configuring LRMS %s.", self.name)
@@ -147,7 +148,8 @@ class LRMS(object):
                 try:
                     from .... import pilot as rp
                     ru.dict_merge(self.lm_info,
-                            rp.agent.LM.lrms_config_hook(lm, self._cfg, self, self._log))
+                            rp.agent.LM.lrms_config_hook(lm, self._cfg, self,
+                                self._log, self._prof))
                 except Exception as e:
                     self._log.exception("lrms config hook failed")
                     raise
@@ -242,7 +244,8 @@ class LRMS(object):
                     from .... import pilot as rp
                     ru.dict_merge(self.lm_info,
                     rp.agent.LM.lrms_shutdown_hook(lm, self._cfg, self,
-                                                    self.lm_info, self._log))
+                                                    self.lm_info, self._log,
+                                                    self._prof))
                 except Exception as e:
                     self._log.exception("lrms shutdown hook failed")
                     raise
