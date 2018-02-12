@@ -7,6 +7,7 @@ import os
 import pprint
 import tempfile
 import threading     as mt
+import tarfile
 
 import saga          as rs
 import radical.utils as ru
@@ -325,26 +326,32 @@ class Default(UMGRStagingInputComponent):
         self._prof.prof("create_sandbox_stop", uid=uid)
 
         # Loop over all transfer directives and execute them.
+
+        tar_file = tarfile.open(uid+'.tar','w')
         for sd in actionables:
 
-            action = sd['action']
-            flags  = sd['flags']
-            did    = sd['uid']
+            #action = sd['action']
+            #flags  = sd['flags']
+            #did    = sd['uid']
             src    = sd['source']
             tgt    = sd['target']
+            tar_file.add(src,archname=tgt)
 
-            self._prof.prof('staging_in_start', uid=uid, msg=did)
 
-            src = complete_url(src, src_context, self._log)
-            tgt = complete_url(tgt, tgt_context, self._log)
+        tar_file.close()
 
-            if rpc.CREATE_PARENTS in flags:
-                copy_flags = rs.filesystem.CREATE_PARENTS
-            else:
-                copy_flags = 0
+        self._prof.prof('staging_in_start', uid=uid, msg=did)
 
-            saga_dir.copy(src, tgt, flags=copy_flags)
-            self._prof.prof('staging_in_stop', uid=uid, msg=did)
+        src = complete_url(uid+'.tar', src_context, self._log)
+        tgt = complete_url(tgt+'.tar', tgt_context, self._log)
+
+        if rpc.CREATE_PARENTS in flags:
+            copy_flags = rs.filesystem.CREATE_PARENTS
+        else:
+            copy_flags = 0
+
+        saga_dir.copy(src, tgt, flags=copy_flags)
+        self._prof.prof('staging_in_stop', uid=uid, msg=did)
 
         # staging is done, we can advance the unit at last
         self.advance(unit, rps.AGENT_STAGING_INPUT_PENDING, publish=True, push=True)
