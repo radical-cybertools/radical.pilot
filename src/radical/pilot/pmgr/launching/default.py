@@ -734,7 +734,25 @@ class Default(PMGRLaunchingComponent):
         ret = {'ft' : list(),
                'jd' : None  }
 
-        # ------------------------------------------------------------------
+        # ----------------------------------------------------------------------
+        # the rcfg can contain keys with string expansion placeholders where
+        # values from the pilot description need filling in.  A prominent
+        # example is `%(pd.project)s`, where the pilot description's `PROJECT`
+        # value needs to be filled in (here in lowercase).
+        expand = dict()
+        for k,v in pilot.description:
+            expand['pd.%s' % k] = v
+            expand['pd.%s' % k.upper()] = v.upper()
+            expand['pd.%s' % k.lower()] = v.lower()
+
+        for k in rcfg:
+            orig     = rcfg[k]
+            rcfg[k]  = rcfg[k] % expand
+            expanded = rcfg[k]
+            if orig != expanded:
+                self._log.debug('RCFG:\n%s\n%s', orig, expanded)
+
+        # ----------------------------------------------------------------------
         # Database connection parameters
         sid           = self._session.uid
         database_url  = self._session.dburl
@@ -743,7 +761,7 @@ class Default(PMGRLaunchingComponent):
         default_virtenv = '%%(resource_sandbox)s/ve.%s.%s' % \
                           (resource, self._rp_version)
 
-        # ------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
         agent_launch_method     = rcfg.get('agent_launch_method')
         agent_dburl             = rcfg.get('agent_mongodb_endpoint', database_url)
