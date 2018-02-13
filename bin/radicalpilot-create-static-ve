@@ -94,7 +94,7 @@ then
     # the same place
     echo "invoke BW magic"
     module load bwpy
-    exec cbwpy-environ -- /bin/sh "$script" "$prefix" bwpy
+    exec bwpy-environ -- /bin/sh "$script" "$prefix" bwpy
 
 elif test "$arg" = "bwpy"
 then
@@ -153,7 +153,7 @@ then
             echo "patch $p"
             mv $p $p-exe
             echo "#!/bin/sh" > $p
-            echo "exec cbwpy-environ -- $cwd/$p-exe \"\$@\"" >> $p
+            echo "exec bwpy-environ -- $cwd/$p-exe \"\$@\"" >> $p
             chmod 0755  $p
         else
             echo "skip  $p"
