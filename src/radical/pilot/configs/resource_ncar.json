@@ -49,7 +49,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
-        "pre_bootstrap_1"             : ["module load python/2.7.13"],
+        "pre_bootstrap_1"             : ["module load python/2.7.14"],
         "default_remote_workdir"      : ["$TMPDIR"],
         "valid_roots"                 : ["/glade/scratch","/glade/p/work","/glade/u/home"],
         "rp_version"                  : "local",
