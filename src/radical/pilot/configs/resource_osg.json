@@ -7,12 +7,10 @@
         "schemas"            : ["ssh", "gsissh"],
         "mandatory_args"     : ["project"],
         "ssh"                : {
-            "job_manager_hop"     : "ssh://xd-login.opensciencegrid.org",
             "job_manager_endpoint": "condor+ssh://xd-login.opensciencegrid.org",
             "filesystem_endpoint" : "sftp://xd-login.opensciencegrid.org/"
         },
         "gsissh"             : {
-            "job_manager_hop"     : "gsissh://xd-login.opensciencegrid.org",
             "job_manager_endpoint": "condor+gsissh://xd-login.opensciencegrid.org",
             "filesystem_endpoint" : "gsisftp://xd-login.opensciencegrid.org/"
         },
@@ -63,12 +61,10 @@
         "schemas"            : ["ssh", "gsissh"],
         "mandatory_args"     : ["project"],
         "ssh"                : {
-            "job_manager_hop"     : "ssh://login.osgconnect.net",
             "job_manager_endpoint": "condor+ssh://login.osgconnect.net",
             "filesystem_endpoint" : "sftp://login.osgconnect.net/"
         },
         "gsissh"             : {
-            "job_manager_hop"     : "gsissh://login.osgconnect.net",
             "job_manager_endpoint": "condor+gsissh://login.osgconnect.net",
             "filesystem_endpoint" : "gsisftp://login.osgconnect.net/"
         },
