@@ -54,7 +54,7 @@
         "valid_roots"                 : ["/glade/scratch","/glade/p/work","/glade/u/home"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "use",
-        "virtenv"                     : "??",    
+        "virtenv"                     : "/glade/p/work/vivekb/ve.rp.cheyenne.2018.02.13",    
         "stage_cacerts"               : true,
         "python_dist"                 : "default",
         "virtenv_dist"                : "system"
