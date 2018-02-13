@@ -330,16 +330,11 @@ class Default(UMGRStagingInputComponent):
             src = complete_url(src, src_context, self._log)
             tgt = complete_url(tgt, tgt_context, self._log)
 
-            if rpc.CREATE_PARENTS in flags:
-                staging_flags = rs.filesystem.CREATE_PARENTS
+            if flags:
+                staging_flags = reduce(lambda x, y: x | y, flags)
             else:
                 staging_flags = 0
-
-            if os.path.isdir(src.path):
-                staging_flags = staging_flags | rs.filesystem.RECURSIVE
-
-            self._log.info('LOOK HERE: %s, %s, %s, %s'%(src.path, os.path.isdir(src.path), staging_flags, flags))
-
+            
             saga_dir.copy(src, tgt, flags=staging_flags)
             self._prof.prof('staging_in_stop', uid=uid, msg=did)
 

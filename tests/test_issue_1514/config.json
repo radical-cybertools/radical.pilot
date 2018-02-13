@@ -40,7 +40,7 @@
             "job_manager_endpoint"    : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
-        "default_remote_workdir"      : "/tmp",
+        "default_remote_workdir"      : "/home/vivek/",
         "lrms"                        : "FORK",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
