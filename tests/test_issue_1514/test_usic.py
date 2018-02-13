@@ -21,10 +21,9 @@ access_schema = 'ssh'
 path_to_rp_config_file = './config.json'
 
 # path_to_rp_config_file = os.path.realpath(os.path.join(os.getcwd(), 
-#                                         '../../src/radical/pilot/configs/resource_%s.json'%resource_name.split('.')[1]))
+#                                         '../../src/radical/pilot/configs/resource_%s.json'%resource_name.split('.')[0]))
 
-with open(path_to_rp_config_file, 'r') as fp:
-    cfg_file = json.load(fp)[resource_name.split('.')[1]]
+cfg_file = ru.read_json(path_to_rp_config_file)[resource_name.split('.')[1]]
 
 # Stating session information
 session_id = 'rp.session.testing.local.0000'
