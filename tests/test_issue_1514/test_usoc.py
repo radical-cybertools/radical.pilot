@@ -21,7 +21,7 @@ access_schema = 'ssh'
 
 path_to_rp_config_file = './config.json'
 
-# path_to_rp_config_file = os.path.realpath(os.path.join(os.getcwd(), 
+# path_to_rp_config_file = os.path.realpath(os.path.join(os.getcwd(),
 #                                         '../../src/radical/pilot/configs/resource_%s.json'%resource_name.split('.')[0]))
 
 cfg_file = ru.read_json(path_to_rp_config_file)[resource_name.split('.')[1]]
@@ -44,6 +44,7 @@ session_sandbox = os.path.join(rp_sandbox, session_id)
 pilot_sandbox = os.path.join(session_sandbox, 'pilot.0000')
 tgt_loc = '/tmp/'
 
+
 def setUp():
 
     # Add SAGA method to only create directories on remote - don't transfer yet!
@@ -55,7 +56,7 @@ def setUp():
     unit = dict()
     unit['uid'] = 'unit.00000'
     unit['target_state'] = 'DONE'
-    unit['resource_sandbox'] = session_sandbox 
+    unit['resource_sandbox'] = session_sandbox
     unit['pilot_sandbox'] = pilot_sandbox
     unit['unit_sandbox'] = os.path.join(pilot_sandbox, 'unit.00000')
 
@@ -66,16 +67,17 @@ def setUp():
                                          session=session)
 
     # Move all files and folders into unit sandbox
-    src_file = rs.filesystem.File(os.path.join(local_sample_data,sample_data[0]), session=session)
+    src_file = rs.filesystem.File(os.path.join(local_sample_data, sample_data[0]), session=session)
     src_file.copy(remote_dir.url.path)
 
-    src_dir1 = rs.filesystem.File(os.path.join(local_sample_data,sample_data[1]), session=session)
-    src_dir1.copy(remote_dir.url.path, rsf.CREATE_PARENTS | rsf.RECURSIVE)    
+    src_dir1 = rs.filesystem.File(os.path.join(local_sample_data, sample_data[1]), session=session)
+    src_dir1.copy(remote_dir.url.path, rsf.CREATE_PARENTS | rsf.RECURSIVE)
 
-    src_dir2 = rs.filesystem.File(os.path.join(local_sample_data,sample_data[2]), session=session)
+    src_dir2 = rs.filesystem.File(os.path.join(local_sample_data, sample_data[2]), session=session)
     src_dir2.copy(remote_dir.url.path, rsf.CREATE_PARENTS | rsf.RECURSIVE)
 
     return unit, session
+
 
 def tearDown(session, data):
 
@@ -87,17 +89,17 @@ def tearDown(session, data):
         os.remove(tgt_loc + data)
     except:
         shutil.rmtree(tgt_loc + data)
-    
+
 
 @mock.patch.object(Default, '__init__', return_value=None)
 @mock.patch.object(Default, 'advance')
 @mock.patch.object(ru.Profiler, 'prof')
 @mock.patch('radical.utils.raise_on')
 def test_transfer_single_file_from_unit(
-                                      mocked_init,
-                                      mocked_method,
-                                      mocked_profiler,
-                                      mocked_raise_on):
+        mocked_init,
+        mocked_method,
+        mocked_profiler,
+        mocked_raise_on):
 
     # Get a unit to transfer data for
     unit, session = setUp()
@@ -111,12 +113,12 @@ def test_transfer_single_file_from_unit(
     component._session = session
     component._log = ru.get_logger('dummy')
 
-    # Create an "actionable" with a single file staging 
+    # Create an "actionable" with a single file staging
     # for our unit
     actionables = list()
     actionables.append({
         'uid': ru.generate_id('sd'),
-        'source': 'unit:///%s'%sample_data[0],
+        'source': 'unit:///%s' % sample_data[0],
         'action': rp.TRANSFER,
         'target': tgt_loc,
         'flags':    [rsf.CREATE_PARENTS],
@@ -136,7 +138,7 @@ def test_transfer_single_file_from_unit(
     # Verify tearDown
     with pytest.raises(rs.BadParameter):
         remote_dir = rs.filesystem.Directory(unit['unit_sandbox'],
-                                            session=session)
+                                             session=session)
 
 
 @mock.patch.object(Default, '__init__', return_value=None)
@@ -144,10 +146,10 @@ def test_transfer_single_file_from_unit(
 @mock.patch.object(ru.Profiler, 'prof')
 @mock.patch('radical.utils.raise_on')
 def test_transfer_single_folder_from_unit(
-                                        mocked_init,
-                                        mocked_method,
-                                        mocked_profiler,
-                                        mocked_raise_on):
+        mocked_init,
+        mocked_method,
+        mocked_profiler,
+        mocked_raise_on):
 
     # Get a unit to transfer data for
     unit, session = setUp()
@@ -161,12 +163,12 @@ def test_transfer_single_folder_from_unit(
     component._session = session
     component._log = ru.get_logger('dummy')
 
-    # Create an "actionable" with a folder containing a file 
+    # Create an "actionable" with a folder containing a file
     # staged with our unit
     actionables = list()
     actionables.append({
         'uid': ru.generate_id('sd'),
-        'source': 'unit:///%s'%sample_data[1],
+        'source': 'unit:///%s' % sample_data[1],
         'action': rp.TRANSFER,
         'target': tgt_loc,
         'flags':    [rsf.CREATE_PARENTS, rsf.RECURSIVE],
@@ -179,24 +181,25 @@ def test_transfer_single_folder_from_unit(
 
     # Verify the actionables were done...
     assert sample_data[1] in [os.path.basename(x) for x in glob('/tmp/*')]
-    assert sample_data[0] in [os.path.basename(x) for x in glob('/tmp/%s/*'%sample_data[1])]
+    assert sample_data[0] in [os.path.basename(x) for x in glob('/tmp/%s/*' % sample_data[1])]
 
     tearDown(session=session, data=sample_data[1])
 
     # Verify tearDown
     with pytest.raises(rs.BadParameter):
         remote_dir = rs.filesystem.Directory(unit['unit_sandbox'],
-                                           session=session)
+                                             session=session)
+
 
 @mock.patch.object(Default, '__init__', return_value=None)
 @mock.patch.object(Default, 'advance')
 @mock.patch.object(ru.Profiler, 'prof')
 @mock.patch('radical.utils.raise_on')
 def test_transfer_multiple_folders_from_unit(
-                                           mocked_init,
-                                           mocked_method,
-                                           mocked_profiler,
-                                           mocked_raise_on):
+        mocked_init,
+        mocked_method,
+        mocked_profiler,
+        mocked_raise_on):
 
     # Get a unit to transfer data for
     unit, session = setUp()
@@ -210,12 +213,12 @@ def test_transfer_multiple_folders_from_unit(
     component._session = session
     component._log = ru.get_logger('dummy')
 
-    # Create an "actionable" with a folder containing another folder 
+    # Create an "actionable" with a folder containing another folder
     # containing a file staged with our unit
     actionables = list()
     actionables.append({
         'uid': ru.generate_id('sd'),
-        'source': 'unit:///%s'%sample_data[2],
+        'source': 'unit:///%s' % sample_data[2],
         'action': rp.TRANSFER,
         'target': tgt_loc,
         'flags':    [rsf.CREATE_PARENTS, rsf.RECURSIVE],
@@ -228,12 +231,12 @@ def test_transfer_multiple_folders_from_unit(
 
     # Verify the actionables were done...
     assert sample_data[2] in [os.path.basename(x) for x in glob('/tmp/*')]
-    assert sample_data[1] in [os.path.basename(x) for x in glob('/tmp/%s/*'%sample_data[2])]
-    assert sample_data[0] in [os.path.basename(x) for x in glob('/tmp/%s/%s/*.*'%(sample_data[2],sample_data[1]))]
-    
+    assert sample_data[1] in [os.path.basename(x) for x in glob('/tmp/%s/*' % sample_data[2])]
+    assert sample_data[0] in [os.path.basename(x) for x in glob('/tmp/%s/%s/*.*' % (sample_data[2], sample_data[1]))]
+
     tearDown(session=session, data=sample_data[2])
 
     # Verify tearDown
     with pytest.raises(rs.BadParameter):
         remote_dir = rs.filesystem.Directory(unit['unit_sandbox'],
-                                           session=session)
+                                             session=session)
