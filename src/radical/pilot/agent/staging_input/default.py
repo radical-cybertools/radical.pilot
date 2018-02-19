@@ -5,6 +5,7 @@ __license__   = "MIT"
 
 import os
 import shutil
+import tarfile
 
 import saga          as rs
 import radical.utils as ru
@@ -75,7 +76,7 @@ class Default(AgentStagingInputComponent):
             actionables = list()
             for sd in unit['description'].get('input_staging', []):
 
-                if sd['action'] in [rpc.LINK, rpc.COPY, rpc.MOVE]:
+                if sd['action'] in [rpc.LINK, rpc.COPY, rpc.MOVE, rpc.TARBALL]:
                     actionables.append(sd)
 
             if actionables:
@@ -199,7 +200,11 @@ class Default(AgentStagingInputComponent):
                     self._log.error('no transfer for %s -> %s', src, tgt)
                     self._prof.prof('staging_in_fail', uid=uid, msg=did)
                     raise NotImplementedError('unsupported transfer %s' % src)
-
+            elif action == rpc.TARBALL:
+                tar = tarfile.open(uid+'tar')
+                tar.extractall()
+                tar.close()
+                os.remove(uid+'.tar')
             self._prof.prof('staging_in_stop', uid=uid, msg=did)
 
         # all staging is done -- pass on to the scheduler

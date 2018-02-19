@@ -141,7 +141,7 @@ class Default(UMGRStagingInputComponent):
             actionables = list()
             for sd in unit['description'].get('input_staging', []):
 
-                if sd['action'] == rpc.TRANSFER:
+                if sd['action'] in [rpc.TRANSFER, rpc.TARBALL]:
                     actionables.append(sd)
 
             if actionables:
@@ -327,31 +327,37 @@ class Default(UMGRStagingInputComponent):
 
         # Loop over all transfer directives and execute them.
 
-        tar_file = tarfile.open(uid+'.tar','w')
         for sd in actionables:
 
-            #action = sd['action']
-            #flags  = sd['flags']
-            #did    = sd['uid']
+            action = sd['action']
+            flags  = sd['flags']
+            did    = sd['uid']
             src    = sd['source']
             tgt    = sd['target']
-            tar_file.add(src,archname=tgt)
+            if action == rpc.TARBALL:
+                if not os.path.isfile(uid+'.tar'):
+                    tar_file = tarfile.open(uid+'.tar','w')
+                tar_file.add(src,archname=tgt)
+            elif action == rpc.TRANSFER:
+                self._prof.prof('staging_in_start', uid=uid, msg=did)
+
+                src = complete_url(src, src_context, self._log)
+                tgt = complete_url(tgt, tgt_context, self._log)
+
+                saga_dir.copy(src, tgt, flags=flags)
+                self._prof.prof('staging_in_stop', uid=uid, msg=did)
 
 
-        tar_file.close()
+        if os.path.isfile(uid+'.tar'):
+            tar_file.close()
 
-        self._prof.prof('staging_in_start', uid=uid, msg=did)
+            self._prof.prof('staging_in_start', uid=uid, msg=did)
 
-        src = complete_url(uid+'.tar', src_context, self._log)
-        tgt = complete_url(tgt+'.tar', tgt_context, self._log)
+            src = complete_url(uid+'.tar', src_context, self._log)
+            tgt = complete_url(uid+'.tar', tgt_context, self._log)
 
-        if rpc.CREATE_PARENTS in flags:
-            copy_flags = rs.filesystem.CREATE_PARENTS
-        else:
-            copy_flags = 0
-
-        saga_dir.copy(src, tgt, flags=copy_flags)
-        self._prof.prof('staging_in_stop', uid=uid, msg=did)
+            saga_dir.copy(src, tgt, flags=rs.filesystem.CREATE_PARENTS)
+            self._prof.prof('staging_in_stop', uid=uid, msg=did)
 
         # staging is done, we can advance the unit at last
         self.advance(unit, rps.AGENT_STAGING_INPUT_PENDING, publish=True, push=True)
