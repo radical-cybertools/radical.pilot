@@ -169,6 +169,11 @@ class Default(AgentStagingInputComponent):
             if tgt is None: tgt = ''
             if tgt.strip() == '':
                 tgt = 'unit:///{}'.format(os.path.basename(src))
+            # Fix for when the target PATH is exists *and* it is a folder
+            # we assume the 'current directory' is the target folder
+            # and we assume the file to be copied is the base filename of the source
+            elif os.path.exists(tgt.strip()) and os.path.isdir(tgt.strip()):
+                tgt = os.path.join(tgt, os.path.basename(src))
 
 
             src = complete_url(src, src_context, self._log)
@@ -179,7 +184,6 @@ class Default(AgentStagingInputComponent):
 
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                 assert(src.schema == 'file'), 'staging src expected as file://'
-
 
             # SAGA will take care of dir creation - but we do it manually
             # for local ops (copy, link, move)

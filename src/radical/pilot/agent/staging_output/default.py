@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import errno
 import shutil
 
 import saga          as rs
@@ -254,18 +255,21 @@ class Default(AgentStagingOutputComponent):
             if tgt is None: tgt = ''
             if tgt.strip() == '':
                 tgt = 'unit:///{}'.format(os.path.basename(src))
+            # Fix for when the target PATH is exists *and* it is a folder
+            # we assume the 'current directory' is the target folder
+            # and we assume the file to be copied is the base filename of the source
+            elif os.path.exists(tgt.strip()) and os.path.isdir(tgt.strip()):
+                tgt = os.path.join(tgt, os.path.basename(src))
                 
 
             src = complete_url(src, src_context, self._log)
             tgt = complete_url(tgt, tgt_context, self._log)
-
 
             # Currently, we use the same schema for files and folders.
             assert(src.schema == 'file'), 'staging src must be file://'
 
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                 assert(tgt.schema == 'file'), 'staging tgt expected as file://'
-
 
             # SAGA will take care of dir creation - but we do it manually
             # for local ops (copy, link, move)

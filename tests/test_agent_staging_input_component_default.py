@@ -38,7 +38,7 @@ workdir = os.path.join(pilot_sandbox, 'pilot.0000')
 
 # Sample data & sample empty configuration
 sample_data_folder = os.path.join(resource_sandbox, 'sample-data')
-cfg_file = os.path.join(sample_data_folder, 'sample_configuration.json')
+cfg_file = os.path.join(sample_data_folder, 'sample_configuration_staging_input.json')
 sample_data = [
     'single-file',
     'single-folder',
@@ -88,16 +88,25 @@ class TestStagingInputComponent(unittest.TestCase):
         # Pilot staging directory
         self.pilot_directory = os.path.join(workdir, 'staging_area')
 
+        # Some other output directory
+        self.output_directory = os.path.join(workdir, 'output_directory')
+
         # Create unit folder
         os.makedirs(self.unit_directory)
 
+        # Create the other output directory
+        os.makedirs(self.output_directory)
+
     def tearDown(self):
         
-        # Clean output directory
+        # Clean unit output directory
         shutil.rmtree(self.unit_directory)
 
         # Clean staging_area
         shutil.rmtree(os.path.join(workdir, 'staging_area'))
+
+        # Clean other output directory
+        shutil.rmtree(self.output_directory)
 
 
     @mock.patch.object(Default, '__init__', return_value=None)
@@ -1156,6 +1165,524 @@ class TestStagingInputComponent(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(self.unit_directory, 'multi-folder/folder-1/file-2')))
         self.assertTrue(os.path.isfile(os.path.join(self.unit_directory, 'multi-folder/folder-2/file-1')))
         self.assertTrue(os.path.isfile(os.path.join(self.unit_directory, 'multi-folder/folder-2/file-2')))
+
+
+    ######################################################################
+    ######################################################################
+    # Test a different destination (other than the unit:// folder)
+    # using self.output_directory
+    ######################################################################
+    ######################################################################
+
+
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
+    def test_copy_single_file_other_dir(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+            'uid'   : ru.generate_id('sd'),
+            'source': 'pilot:///single-file',
+            'action': rp.COPY,
+            'target': os.path.join(self.output_directory, 'single-file'),
+            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'priority': 0
+        })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...        
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-file')))
+
+
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
+    def test_link_single_file_other_dir(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+            'uid'   : ru.generate_id('sd'),
+            'source': 'pilot:///single-file',
+            'action': rp.LINK,
+            'target': os.path.join(self.output_directory, 'single-file'),
+            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'priority': 0
+        })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...
+        self.assertTrue(os.path.exists(os.path.join(self.pilot_directory, 'single-file'))) 
+        self.assertTrue(os.path.islink(os.path.join(self.output_directory, 'single-file')))
+
+
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
+    def test_move_single_file_other_dir(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+            'uid'   : ru.generate_id('sd'),
+            'source': 'pilot:///single-file',
+            'action': rp.MOVE,
+            'target': os.path.join(self.output_directory, 'single-file'),
+            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'priority': 0
+        })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...        
+        self.assertFalse(os.path.exists(os.path.join(self.pilot_directory, 'single-file')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-file')))
+
+
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
+    def test_copy_single_file_other_dir_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+            'uid'   : ru.generate_id('sd'),
+            'source': 'pilot:///single-file',
+            'action': rp.COPY,
+            'target': os.path.join(self.output_directory, 'new-single-file'),
+            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'priority': 0
+        })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...        
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-single-file')))
+
+
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
+    def test_link_single_file_other_dir_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+            'uid'   : ru.generate_id('sd'),
+            'source': 'pilot:///single-file',
+            'action': rp.LINK,
+            'target': os.path.join(self.output_directory, 'new-single-file'),
+            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'priority': 0
+        })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...        
+        self.assertTrue(os.path.exists(os.path.join(self.pilot_directory, 'single-file'))) 
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-single-file')))
+
+
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
+    def test_move_single_file_other_dir_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+            'uid'   : ru.generate_id('sd'),
+            'source': 'pilot:///single-file',
+            'action': rp.MOVE,
+            'target': os.path.join(self.output_directory, 'new-single-file'),
+            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'priority': 0
+        })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...        
+        self.assertFalse(os.path.exists(os.path.join(self.pilot_directory, 'single-file')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-single-file')))
+
+
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
+    def test_copy_single_file_other_dir_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+            'uid'   : ru.generate_id('sd'),
+            'source': 'pilot:///single-file',
+            'action': rp.COPY,
+            'target': self.output_directory,
+            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'priority': 0
+        })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...        
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-file')))
+
+
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
+    def test_link_single_file_other_dir_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+            'uid'   : ru.generate_id('sd'),
+            'source': 'pilot:///single-file',
+            'action': rp.LINK,
+            'target': self.output_directory,
+            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'priority': 0
+        })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...        
+        self.assertTrue(os.path.exists(os.path.join(self.pilot_directory, 'single-file')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-file')))
+
+
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
+    def test_move_single_file_other_dir_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+            'uid'   : ru.generate_id('sd'),
+            'source': 'pilot:///single-file',
+            'action': rp.MOVE,
+            'target': self.output_directory,
+            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'priority': 0
+        })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...        
+        self.assertFalse(os.path.exists(os.path.join(self.pilot_directory, 'single-file')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-file')))
+
+
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
+    def test_copy_single_folder_other_dir(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+            'uid'   : ru.generate_id('sd'),
+            'source': 'pilot:///single-folder',
+            'action': rp.COPY,
+            'target': os.path.join(self.output_directory, 'single-folder'),
+            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'priority': 0
+        })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...        
+        self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'single-folder')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-folder/file-1')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-folder/file-2')))
+
+
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
+    def test_link_single_folder_other_dir(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+            'uid'   : ru.generate_id('sd'),
+            'source': 'pilot:///single-folder',
+            'action': rp.LINK,
+            'target': os.path.join(self.output_directory, 'single-folder'),
+            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'priority': 0
+        })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...
+        self.assertTrue(os.path.isdir(os.path.join(self.pilot_directory, 'single-folder')))
+        self.assertTrue(os.path.isfile(os.path.join(self.pilot_directory, 'single-folder/file-1')))
+        self.assertTrue(os.path.isfile(os.path.join(self.pilot_directory, 'single-folder/file-2')))
+        self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'single-folder')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-folder/file-1')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-folder/file-2')))
+
+
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
+    def test_move_single_folder_other_dir(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+            'uid'   : ru.generate_id('sd'),
+            'source': 'pilot:///single-folder',
+            'action': rp.MOVE,
+            'target': os.path.join(self.output_directory, 'single-folder'),
+            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'priority': 0
+        })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...
+        self.assertFalse(os.path.exists(os.path.join(self.pilot_directory, 'single-folder')))
+        self.assertFalse(os.path.exists(os.path.join(self.pilot_directory, 'single-folder/file-1')))
+        self.assertFalse(os.path.exists(os.path.join(self.pilot_directory, 'single-folder/file-2')))
+        self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'single-folder')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-folder/file-1')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-folder/file-2')))
+
+
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
+    def test_copy_single_folder_other_dir_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+            'uid'   : ru.generate_id('sd'),
+            'source': 'pilot:///single-folder',
+            'action': rp.COPY,
+            'target': os.path.join(self.output_directory, 'new-single-folder'),
+            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'priority': 0
+        })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...        
+        self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'new-single-folder')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-single-folder/file-1')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-single-folder/file-2')))
+
+
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
+    def test_link_single_folder_other_dir_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+            'uid'   : ru.generate_id('sd'),
+            'source': 'pilot:///single-folder',
+            'action': rp.LINK,
+            'target': os.path.join(self.output_directory, 'new-single-folder'),
+            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'priority': 0
+        })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...        
+        self.assertTrue(os.path.isdir(os.path.join(self.pilot_directory, 'single-folder')))
+        self.assertTrue(os.path.isfile(os.path.join(self.pilot_directory, 'single-folder/file-1')))
+        self.assertTrue(os.path.isfile(os.path.join(self.pilot_directory, 'single-folder/file-2')))
+        self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'new-single-folder')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-single-folder/file-1')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-single-folder/file-2')))
+
+
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
+    def test_move_single_folder_other_dir_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+            'uid'   : ru.generate_id('sd'),
+            'source': 'pilot:///single-folder',
+            'action': rp.MOVE,
+            'target': os.path.join(self.output_directory, 'new-single-folder'),
+            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'priority': 0
+        })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...        
+        self.assertFalse(os.path.exists(os.path.join(self.pilot_directory, 'single-folder')))
+        self.assertFalse(os.path.exists(os.path.join(self.pilot_directory, 'single-folder/file-1')))
+        self.assertFalse(os.path.exists(os.path.join(self.pilot_directory, 'single-folder/file-2')))
+        self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'new-single-folder')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-single-folder/file-1')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-single-folder/file-2')))
+
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
+    def test_copy_single_folder_other_dir_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+            'uid'   : ru.generate_id('sd'),
+            'source': 'pilot:///single-folder',
+            'action': rp.COPY,
+            'target': self.output_directory,
+            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'priority': 0
+        })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...        
+        self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'single-folder')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-folder/file-1')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-folder/file-2')))
+
+
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
+    def test_link_single_folder_other_dir_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+            'uid'   : ru.generate_id('sd'),
+            'source': 'pilot:///single-folder',
+            'action': rp.LINK,
+            'target': self.output_directory,
+            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'priority': 0
+        })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...        
+
+        self.assertTrue(os.path.exists(os.path.join(self.pilot_directory, 'single-folder')))
+        self.assertTrue(os.path.exists(os.path.join(self.pilot_directory, 'single-folder/file-1')))
+        self.assertTrue(os.path.exists(os.path.join(self.pilot_directory, 'single-folder/file-2')))
+        self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'single-folder')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-folder/file-1')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-folder/file-2')))
+
+
+    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(Default, 'advance')
+    @mock.patch.object(ru.Profiler, 'prof')
+    @mock.patch('radical.utils.raise_on')
+    def test_move_single_folder_other_dir_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+        component = Default(cfg=self.cfg, session=None)
+        component._prof = mocked_profiler
+        component._log = ru.get_logger('dummy')
+        actionables = list()
+        actionables.append({
+            'uid'   : ru.generate_id('sd'),
+            'source': 'pilot:///single-folder',
+            'action': rp.MOVE,
+            'target': self.output_directory,
+            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'priority': 0
+        })
+        
+        # Call the component's '_handle_unit' function
+        # Should perform all of the actionables in order
+        component._handle_unit(self.unit, actionables)
+
+        # Verify the actionables were done...        
+        self.assertFalse(os.path.exists(os.path.join(self.pilot_directory, 'single-folder')))
+        self.assertFalse(os.path.exists(os.path.join(self.pilot_directory, 'single-folder/file-1')))
+        self.assertFalse(os.path.exists(os.path.join(self.pilot_directory, 'single-folder/file-2')))
+        self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'single-folder')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-folder/file-1')))
+        self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-folder/file-2')))
 
 
 if __name__ == '__main__':
