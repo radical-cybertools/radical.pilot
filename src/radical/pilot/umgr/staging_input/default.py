@@ -333,8 +333,11 @@ class Default(UMGRStagingInputComponent):
             did    = sd['uid']
             src    = sd['source']
             tgt    = sd['target']
-            self._log.debug('Giannis: %s,%s',src,tgt)
             if action == rpc.TARBALL:
+                # If the staging method is tarball, check initially if the tar 
+                # file exists. If not create it. Add each file in the tarball
+                # and append the directive to the removables.
+
                 if not os.path.isfile(uid+'.tar'):
                     tar_file = tarfile.open(uid+'.tar','w')
                 tar_file.add(src.split('client:///')[1],arcname=tgt.split('unit:///')[1])
@@ -351,6 +354,10 @@ class Default(UMGRStagingInputComponent):
 
 
         if os.path.isfile(uid+'.tar'):
+            # if a tarball exists close it and do the transfer. After it is done
+            # delete the tarball. Remove any directive that was use to create the
+            # tarball and add a single one that communicates to the agent that
+            # this type of transfer was executed.
             tar_file.close()
 
             self._prof.prof('staging_in_start', uid=uid, msg=did)

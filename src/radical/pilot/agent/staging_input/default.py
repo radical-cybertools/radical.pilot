@@ -201,6 +201,8 @@ class Default(AgentStagingInputComponent):
                     self._prof.prof('staging_in_fail', uid=uid, msg=did)
                     raise NotImplementedError('unsupported transfer %s' % src)
             elif action == rpc.TARBALL:
+                # If somethig was staged via the tarball method, the tarball is
+                # extracted and then removed from the unit folder.
                 tar = tarfile.open(tgtdir+'/'+uid+'.tar')
                 tar.extractall(path=tgtdir)
                 tar.close()
