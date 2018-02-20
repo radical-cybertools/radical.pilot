@@ -1,54 +1,326 @@
+
 {
-    "supermic_ssh": {
-        "description"                 : "SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)",
-        "notes"                       : "Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.",
-        "schemas"                     : ["gsissh", "ssh"],
-        "gsissh"                      : {
-            "job_manager_endpoint"    : "torque+gsissh://supermic.cct-lsu.xsede.org:2222/",
-            "filesystem_endpoint"     : "gsisftp://supermic.cct-lsu.xsede.org:2222/"
-        },
-        "ssh"                         : {
-            "job_manager_endpoint"    : "torque+ssh://supermic.cct-lsu.xsede.org/",
-            "filesystem_endpoint"     : "sftp://supermic.cct-lsu.xsede.org/"
-        },
-        "default_queue"               : "workq",
-        "cores_per_node"              : "20",
-        "lrms"                        : "TORQUE",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "MPIEXEC",
-        "pre_bootstrap_1"             : ["module load python/2.7.7-anaconda"],
-        "default_remote_workdir"      : "/work/$USER",
-        "valid_roots"                 : ["/work"],
-        "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
-        "python_dist"                 : "default"
+    "local.localhost" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 2
     },
-    "localhost": {
-        "description"                 : "Your local machine.",
-        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
-        "schemas"                     : ["local", "ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "ssh://localhost/",
-            "filesystem_endpoint"     : "sftp://localhost/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
-        "default_remote_workdir"      : "$HOME",
-        "lrms"                        : "FORK",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "FORK",
-        "task_launch_method"          : "FORK",
-        "mpi_launch_method"           : "MPIEXEC",
-        "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
-        "python_dist"                 : "default"
+
+    "local.localhost_orte" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 2
+    },
+
+    "local.localhost_anaconda" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 2
+    },
+
+    "local.devel" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 64
+    },
+
+    "local.localhost_spark_ana" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 2
+    },
+
+    "local.localhost_orte" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 2
+    },
+
+    "local.localhost_ortelib" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 2
+    },
+
+    "ncsa.bw" : {
+        "project"  : "gk4",
+        "queue"    : "debug",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "ncsa.bw_lib" : {
+        "project"  : "gk4",
+        "queue"    : "debug",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "ncsa.bw_local" : {
+        "project"  : null,
+        "queue"    : "debug",
+        "schema"   : null,
+        "cores"    : 64
+    },
+
+    "ncsa.bw_ccm" : {
+        "project"  : "gk4",
+        "queue"    : "debug",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "nersc.edison" : {
+        "project"  : null,
+        "queue"    : "debug",
+        "schema"   : "ssh",
+        "cores"    : 64
+    },
+
+    "epsrc.archer" : {
+        "project"  : "e290",
+        "queue"    : "short",
+        "schema"   : null,
+        "cores"    : 64
+    },
+
+    "epsrc.archer_orte" : {
+        "project"  : "e290",
+        "queue"    : "short",
+        "schema"   : null,
+        "cores"    : 64
+    },
+
+    "lrz.supermuc" : {
+        "project"  : "e290",
+        "queue"    : "short",
+        "schema"   : null,
+        "cores"    : 64
+    },
+
+    "xsede.supermic_ssh" : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "workq",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "xsede.supermic" : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "workq",
+        "schema"   : "gsissh",
+        "cores"    : 80
+    },
+
+    "xsede.supermic_orte" : {
+        "project"  : "TG-CCR140028",
+        "queue"    : "workq",
+        "schema"   : "gsissh",
+        "cores"    : 80
+    },
+
+    "xsede.supermic_ortelib" : {
+        "project"  : "TG-CCR140028",
+        "queue"    : "workq",
+        "schema"   : "gsissh",
+        "cores"    : 80
+    },
+
+    "xsede.stampede" : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "development",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "xsede.stampede_orte" : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "development",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "xsede.stampede_ortelib" : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "development",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "xsede.bridges" : {
+        "project"  : null,
+        "queue"    : "RM",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "xsede.wrangler" : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "debug",
+        "schema"   : "gsissh",
+        "cores"    : 24
+    },
+
+    "xsede.comet"  : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "compute",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "xsede.comet_ssh"  : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "compute",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "xsede.comet_ortelib"  : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "debug",
+        "schema"   : "gsissh",
+        "cores"    : 96
+    },
+
+    "xsede.gordon" : {
+        "project"  : "unc100",
+        "queue"    : "normal",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "xsede.blacklight" : {
+        "project"  : null,
+        "queue"    : "debug",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "xsede.greenfield" : {
+        "project"  : null,
+        "queue"    : "debug",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "xsede.trestles" : {
+        "project"  : "TG-MCB090174" ,
+        "queue"    : "shared",
+        "schema"   : null,
+        "cores"    : 64
+    },
+
+    "xsede.darter_aprun" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "futuregrid.india" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 64
+    },
+
+    "ornl.titan_aprun" : {
+        "project"  : "CSC230",
+        "queue"    : "debug",
+        "schema"   : "local",
+        "cores"    : 64
+    },
+
+    "ornl.titan_ortelib" : {
+        "project"  : "CSC230",
+        "queue"    : "debug",
+        "schema"   : "local",
+        "cores"    : 64
+    },
+
+    "ornl.titan_orte"   : {
+        "project"  : "CSC230",
+        "queue"    : "debug",
+        "schema"   : "local",
+        "cores"    : 64
+    },
+
+    "ornl.titan_aprun"   : {
+        "project"  : "CSC230",
+        "queue"    : "debug",
+        "schema"   : "local",
+        "cores"    : 64
+    },
+
+    "nersc.hopper" : {
+        "project"  : null,
+        "queue"    : "debug",
+        "schema"   : "ssh",
+        "cores"    : 64
+    },
+
+    "yale.grace"   : {
+        "project"  : null,
+        "queue"    : "shared",
+        "schema"   : "ssh",
+        "cores"    : 64
+    },
+
+    "osg.xsede-virt-clust"   : {
+      # "project"  : "TG-CCR140028",
+        "project"  : "TG-MCB090174",
+        "queue"    : null,
+        "schema"   : "gsissh",
+        "cores"    : 1
+    },
+
+    "osg.connect" : {
+        "project"  : "RADICAL",
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 64
+    }, 
+
+    "lumc.shark"   : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 16
+    },
+
+    "lumc.gb-ui"   : {
+        "project"  : null,
+        "queue"    : "express",
+        "schema"   : "ssh",
+        "cores"    : 4
+    },
+
+    "das5.fs1"   : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 1
+    },
+
+    "radical.one" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 8
+    }, 
+
+    "radical.two" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 8
     }
 }
+
