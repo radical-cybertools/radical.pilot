@@ -12,8 +12,6 @@ os.environ['RADICAL_PILOT_VERBOSE'] = verbose
 import radical.pilot as rp
 import radical.utils as ru
 
-verbose='INFO'
-
 # ------------------------------------------------------------------------------
 #
 # READ the RADICAL-Pilot documentation: http://radicalpilot.readthedocs.org/
