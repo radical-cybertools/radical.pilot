@@ -112,6 +112,7 @@ if __name__ == '__main__':
         # create a new CU description, and fill it.
         # Here we don't use dict initialization.
         # Test for single file 
+        
         cud = rp.ComputeUnitDescription()
         cud.executable     = '/usr/bin/wc'
         cud.arguments      = ['-c', 'single_file.txt']
