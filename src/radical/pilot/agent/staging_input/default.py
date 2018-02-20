@@ -201,9 +201,9 @@ class Default(AgentStagingInputComponent):
                     self._prof.prof('staging_in_fail', uid=uid, msg=did)
                     raise NotImplementedError('unsupported transfer %s' % src)
             elif action == rpc.TARBALL:
-                self._log.debug('Giannis:%s',unit_sandbox)
-                tar = tarfile.open(unit_sandbox+uid+'.tar')
-                tar.extractall(path=unit_sandbox)
+                self._log.debug('Giannis:%s',tgt.path)
+                tar = tarfile.open(tgt.path+uid+'.tar')
+                tar.extractall(path=tgt.path)
                 tar.close()
                 os.remove(unit_sandbox+uid+'.tar')
             self._prof.prof('staging_in_stop', uid=uid, msg=did)
