@@ -19,9 +19,9 @@ from glob import glob
 import shutil
 
 
-#------------------------------------------------------------------------------
-#
-
+# Setup for all tests
+#-----------------------------------------------------------------------------------------------------------------------
+resource = 'local.localhost'
 cur_dir = os.path.dirname(os.path.abspath(__file__))
 local_sample_data = os.path.join(cur_dir, 'sample_data')
 sample_data = [
@@ -30,23 +30,23 @@ sample_data = [
     'multi_folder'
     ] 
 
+
 def test_integration():
-
-    # use the resource specified as argument, fall back to localhost
-    resource = 'local.localhost'
-
-    # Create a new session. No need to try/except this: if session creation
-    # fails, there is not much we can do anyways...
+    
+    # RP script to launch the CUs
+    # ------------------------------------------------------------------------------------------------------------------
+    ## Create a new session. No need to try/except this: if session creation
+    ## fails, there is not much we can do anyways...
     session = rp.Session()
 
-    # read the config used for resource details
+    ## read the config used for resource details
     config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
 
-    # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+    ## Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
     pmgr = rp.PilotManager(session=session)
 
-    # Define an [n]-core local pilot that runs for [x] minutes
-    # Here we use a dict to initialize the description object
+    ## Define an [n]-core local pilot that runs for [x] minutes
+    ## Here we use a dict to initialize the description object
     pd_init = {
             'resource'      : resource,
             'runtime'       : 15,  # pilot runtime (min)
@@ -58,16 +58,16 @@ def test_integration():
             }
     pdesc = rp.ComputePilotDescription(pd_init)
 
-    # Launch the pilot.
+    ## Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
 
-    # Register the ComputePilot in a UnitManager object.
+    ## Register the ComputePilot in a UnitManager object.
     umgr = rp.UnitManager(session=session)
     umgr.add_pilots(pilot)
 
     cuds = list()      
     
-    # Test for single file 
+    ## Test for single file 
     cud = rp.ComputeUnitDescription()
     cud.executable     = '/bin/date'
     cud.input_staging  = {'source':os.path.join(local_sample_data, sample_data[0]), 
@@ -80,7 +80,7 @@ def test_integration():
   
     cuds.append(cud)
 
-    # Test for single folder
+    ## Test for single folder
     cud = rp.ComputeUnitDescription()
     cud.executable     = '/bin/date'
     cud.input_staging  = {'source':os.path.join(local_sample_data, sample_data[1]), 
@@ -92,8 +92,7 @@ def test_integration():
                           'action': rp.TRANSFER}
     cuds.append(cud)
 
-    # Test for multiple folder
-    
+    ## Test for multiple folder
     cud = rp.ComputeUnitDescription()
     cud.executable     = '/bin/date'
     cud.input_staging  = {'source':os.path.join(local_sample_data, sample_data[2]), 
@@ -106,17 +105,17 @@ def test_integration():
 
     cuds.append(cud)
 
-    # Submit the previously created ComputeUnit descriptions to the
-    # PilotManager. This will trigger the selected scheduler to start
-    # assigning ComputeUnits to the ComputePilots.
+    ## Submit the previously created ComputeUnit descriptions to the
+    ## PilotManager. This will trigger the selected scheduler to start
+    ## assigning ComputeUnits to the ComputePilots.
     units = umgr.submit_units(cuds)
 
-    # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
+    ## Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
     umgr.wait_units()
+    # ------------------------------------------------------------------------------------------------------------------
   
-    # Get the correct config from the RP config files
-    # We will use this to get the workdir and assert if the file and folders
-    # were staged
+    # Extract info from RP config file
+    #-------------------------------------------------------------------------------------------------------------------
     config_loc = '../../src/radical/pilot/configs/resource_%s.json'%resource.split('.')[0]
     path_to_rp_config_file = os.path.realpath(os.path.join(os.getcwd(),config_loc))
     cfg_file = ru.read_json(path_to_rp_config_file)[resource.split('.')[1]]
@@ -129,7 +128,10 @@ def test_integration():
     # ------------------------------------------------------------------------------------------------------------------
     remote_dir = rs.filesystem.Directory(   units[0].sandbox, 
                                             session=session)
+
+    ## Test on remote
     assert sample_data[0] in [x.path for x in remote_dir.list()]
+    ## Test on client
     local_file = sample_data[0].split('.')[0] + '_2.' + sample_data[0].split('.')[1]
     assert local_file in [os.path.basename(x) for x in glob('./*')]
     # ------------------------------------------------------------------------------------------------------------------
@@ -139,12 +141,14 @@ def test_integration():
     # ------------------------------------------------------------------------------------------------------------------
     remote_dir = rs.filesystem.Directory(   units[1].sandbox, 
                                             session=session) 
+    ## Test on remote
     assert sample_data[1] in [x.path for x in remote_dir.list()]
     for x in remote_dir.list():
         if remote_dir.is_dir(x):
             child_x_dir = rs.filesystem.Directory(os.path.join(units[1].sandbox, x.path) ,
                                                     session=session)
             assert sample_data[0] in [cx.path for cx in child_x_dir.list()]
+    ## Test on client
     local_folder_1 = sample_data[1] + '_2'
     assert local_folder_1 in [os.path.basename(x) for x in glob('./*')]
     assert sample_data[0] in [os.path.basename(x) for x in glob('./%s/*'%local_folder_1)]
@@ -156,6 +160,7 @@ def test_integration():
     remote_dir = rs.filesystem.Directory(   units[2].sandbox, 
                                             session=session)
 
+    ## Test on remote
     assert sample_data[2] in [x.path for x in remote_dir.list()]
     for x in remote_dir.list():
         if remote_dir.is_dir(x):
@@ -171,19 +176,26 @@ def test_integration():
 
                     assert sample_data[0] in [gcx.path for gcx in gchild_x_dir.list()]
 
+    ## Test on client
     local_folder_2 = sample_data[2] + '_2'
     assert local_folder_2 in [os.path.basename(x) for x in glob('./*')]
     assert sample_data[1] in [os.path.basename(x) for x in glob('./%s/*'%local_folder_2)]
     assert sample_data[0] in [os.path.basename(x) for x in glob('./%s/%s/*'%(local_folder_2, sample_data[1]))]
     # ------------------------------------------------------------------------------------------------------------------
 
+
     # Cleanup - remote
+    # ------------------------------------------------------------------------------------------------------------------
     remote_dir = rs.filesystem.Directory(pilot.resource_sandbox, session=session)
     remote_dir.remove(pilot.pilot_sandbox, rsf.RECURSIVE)
+    # ------------------------------------------------------------------------------------------------------------------
+
 
     # Cleanup - local
+    # ------------------------------------------------------------------------------------------------------------------
     os.remove('./%s'%local_file)
     shutil.rmtree('./%s'%local_folder_1)
     shutil.rmtree('./%s'%local_folder_2)
+    # ------------------------------------------------------------------------------------------------------------------
 
     session.close(cleanup=True) 
