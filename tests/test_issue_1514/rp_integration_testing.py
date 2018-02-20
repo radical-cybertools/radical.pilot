@@ -10,6 +10,7 @@ import sys
 import radical.pilot as rp
 import radical.utils as ru
 import saga as rs
+import traceback 
 
 import saga.filesystem.constants as constants
 
@@ -49,6 +50,7 @@ if __name__ == '__main__':
     # fails, there is not much we can do anyways...
     session = rp.Session()
 
+
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
     # the whole RP stack down via a 'session.close()' call in the 'finally'
@@ -80,12 +82,12 @@ if __name__ == '__main__':
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
-        access_schema = 'ssh'
-        cfg_file = ru.read_json(path_to_rp_config_file)[resource]
-        remote_dir = rs.filesystem.Directory(cfg_file[access_schema]["filesystem_endpoint"],
-                                                 session=session)
+        # access_schema = 'ssh'
+        # cfg_file = ru.read_json(path_to_rp_config_file)[resource]
+        # remote_dir = rs.filesystem.Directory(cfg_file[access_schema]["filesystem_endpoint"],
+        #                                          session=session)
 
-        session_id = 'rp.session.testing.local.0000'
+        # session_id = 'rp.session.testing.local.0000'
         report.header('submit units')
 
         # Register the ComputePilot in a UnitManager object.
@@ -113,8 +115,8 @@ if __name__ == '__main__':
         # Test for single file 
         
         cud = rp.ComputeUnitDescription()
-        cud.executable     = '/usr/bin/date'
-        cud.arguments      = ['-c', 'single_file.txt']
+        cud.executable     = 'date'
+        cud.arguments      = ['single_file.txt']
         cud.input_staging  = {'source':os.path.join(local_sample_data, sample_data[0]), 
                               'target':'unit:///%s' % sample_data[0],
                               'action': rp.TRANSFER} 
@@ -128,8 +130,8 @@ if __name__ == '__main__':
         # Test for single folder
 
         cud = rp.ComputeUnitDescription()
-        cud.executable     = '/usr/bin/date'
-        cud.arguments      = ['-c', 'single_folder']
+        cud.executable     = 'date'
+        cud.arguments      = ['single_folder']
         cud.input_staging  = {'source':os.path.join(local_sample_data, sample_data[1]), 
                               'target':'unit:///%s' % sample_data[1],
                               'action': rp.TRANSFER} 
@@ -142,8 +144,8 @@ if __name__ == '__main__':
         # Test for multiple folder
         
         cud = rp.ComputeUnitDescription()
-        cud.executable     = '/usr/bin/date'
-        cud.arguments      = ['-c', 'multi_folder']
+        cud.executable     = 'date'
+        cud.arguments      = ['multi_folder']
         cud.input_staging  = {'source':os.path.join(local_sample_data, sample_data[2]), 
                               'target':'unit:///%s' % sample_data[2],
                               'action': rp.TRANSFER} 
@@ -179,14 +181,15 @@ if __name__ == '__main__':
     except Exception as e:
         # Something unexpected happened in the pilot code above
         report.error('caught Exception: %s\n' % e)
+        print traceback.format_exc()
         raise
 
-    except (KeyboardInterrupt, SystemExit) as e:
-        # the callback called sys.exit(), and we can here catch the
-        # corresponding KeyboardInterrupt exception for shutdown.  We also catch
-        # SystemExit (which gets raised if the main threads exits for some other
-        # reason).
-        report.warn('exit requested\n')
+    # except (KeyboardInterrupt, SystemExit) as e:
+    #     # the callback called sys.exit(), and we can here catch the
+    #     # corresponding KeyboardInterrupt exception for shutdown.  We also catch
+    #     # SystemExit (which gets raised if the main threads exits for some other
+    #     # reason).
+    #     report.warn('exit requested\n')
 
         
 
@@ -195,37 +198,45 @@ if __name__ == '__main__':
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.
 
-        # # Verify the actionables were done for single file transfer: 
-        # assert sample_data[0] in [x.path for x in remote_dir.list()]
+        # Verify the actionables were done for single file transfer: 
 
-        # # Verify the actionables were done for single folder transfer: 
-        # assert sample_data[1] in [x.path for x in remote_dir.list()]
+        config_loc = '../../src/radical/pilot/configs/resource_%s.json'%resource.split('.')[0]
+        path_to_rp_config_file = os.path.realpath(os.path.join(os.getcwd(),config_loc))
+        cfg_file = ru.read_json(path_to_rp_config_file)[resource.split('.')[1]]
+        access_schema = config[resource]['schema']
 
-        # for x in remote_dir.list():
-        #     if remote_dir.is_dir(x):
-        #         child_x_dir = rs.filesystem.Directory(os.path.join(unit['unit_sandbox'],x.path) ,
-        #                                                 session=session)
-        #         assert sample_data[0] in [cx.path for cx in child_x_dir.list()]
+        remote_dir = rs.filesystem.Directory(cfg_file[access_schema]["filesystem_endpoint"]+units[0].sandbox,
+                                                 session=session)
+        assert sample_data[0] in [x.path for x in remote_dir.list()]
+
+        # Verify the actionables were done for single folder transfer: 
+        assert sample_data[1] in [x.path for x in remote_dir.list()]
+
+        for x in remote_dir.list():
+            if remote_dir.is_dir(x):
+                child_x_dir = rs.filesystem.Directory(os.path.join(unit['unit_sandbox'],x.path) ,
+                                                        session=session)
+                assert sample_data[0] in [cx.path for cx in child_x_dir.list()]
 
 
-        # # Verify the actionables were done for multiple folder transfer: 
+        # Verify the actionables were done for multiple folder transfer: 
 
-        # for x in remote_dir.list():
-        #     if remote_dir.is_dir(x):
-        #         child_x_dir = rs.filesystem.Directory(os.path.join(unit['unit_sandbox'],x.path) ,
-        #                                             session=session)
+        for x in remote_dir.list():
+            if remote_dir.is_dir(x):
+                child_x_dir = rs.filesystem.Directory(os.path.join(unit['unit_sandbox'],x.path) ,
+                                                    session=session)
 
-        #         assert sample_data[1] in [cx.path for cx in child_x_dir.list()]
+                assert sample_data[1] in [cx.path for cx in child_x_dir.list()]
 
-        #         for y in child_x_dir.list():
-        #             if child_x_dir.is_dir(y):
-        #                 gchild_x_dir= rs.filesystem.Directory(os.path.join(unit['unit_sandbox'],x.path + '/' + y.path) ,
-        #                                             session=session)
+                for y in child_x_dir.list():
+                    if child_x_dir.is_dir(y):
+                        gchild_x_dir= rs.filesystem.Directory(os.path.join(unit['unit_sandbox'],x.path + '/' + y.path) ,
+                                                    session=session)
 
-        #                 assert sample_data[0] in [gcx.path for gcx in gchild_x_dir.list()]
+                        assert sample_data[0] in [gcx.path for gcx in gchild_x_dir.list()]
 
         report.header('finalize')
-        session.close()
+        session.close(cleanup=True) 
 
 
 
