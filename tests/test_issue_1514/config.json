@@ -20,7 +20,7 @@
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIEXEC",
         "pre_bootstrap_1"             : ["module load python/2.7.7-anaconda"],
-        "default_remote_workdir"      : "/home/vivek91",
+        "default_remote_workdir"      : "/work/$USER",
         "valid_roots"                 : ["/work"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
@@ -40,7 +40,7 @@
             "job_manager_endpoint"    : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
-        "default_remote_workdir"      : "/home/vivek/",
+        "default_remote_workdir"      : "$HOME",
         "lrms"                        : "FORK",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
