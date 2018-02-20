@@ -104,7 +104,7 @@ class Default(AgentStagingInputComponent):
         # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
         #       class definition.
         sandbox = unit['unit_sandbox']
-
+        
         # By definition, this compoentn lives on the pilot's target resource.
         # As such, we *know* that all staging ops which would refer to the
         # resource now refer to file://localhost, and thus translate the unit,
@@ -201,11 +201,10 @@ class Default(AgentStagingInputComponent):
                     self._prof.prof('staging_in_fail', uid=uid, msg=did)
                     raise NotImplementedError('unsupported transfer %s' % src)
             elif action == rpc.TARBALL:
-                self._log.debug('Giannis:%s',tgt.path)
-                tar = tarfile.open(tgt.path+uid+'.tar')
-                tar.extractall(path=tgt.path)
+                tar = tarfile.open(tgtdir+'/'+uid+'.tar')
+                tar.extractall(path=tgtdir)
                 tar.close()
-                os.remove(unit_sandbox+uid+'.tar')
+                os.remove(tgtdir+'/'+uid+'.tar')
             self._prof.prof('staging_in_stop', uid=uid, msg=did)
 
         # all staging is done -- pass on to the scheduler
