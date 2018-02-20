@@ -143,7 +143,7 @@ def test_transfer_single_file_to_unit(
         'source': os.path.join(local_sample_data, sample_data[0]),
         'action': rp.TRANSFER,
         'target': 'unit:///%s' % sample_data[0],
-        'flags':    [rsf.CREATE_PARENTS],
+        'flags':    [],
         'priority': 0
     })
 
@@ -200,7 +200,7 @@ def test_transfer_single_folder_to_unit(
         'source': os.path.join(local_sample_data, sample_data[1]),
         'action': rp.TRANSFER,
         'target': 'unit:///%s' % sample_data[1],
-        'flags':    [rsf.CREATE_PARENTS, rsf.RECURSIVE],
+        'flags' : [],
         'priority': 0
     })
 
@@ -264,7 +264,7 @@ def test_transfer_multiple_folders_to_unit(
         'source': os.path.join(local_sample_data, sample_data[2]),
         'action': rp.TRANSFER,
         'target': 'unit:///%s' % sample_data[2],
-        'flags':    [rsf.CREATE_PARENTS, rsf.RECURSIVE],
+        'flags' :    [],
         'priority': 0
     })
 

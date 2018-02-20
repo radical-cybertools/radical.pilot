@@ -164,7 +164,7 @@ def test_transfer_single_file_from_unit(
         'source': 'unit:///%s' % sample_data[0],
         'action': rp.TRANSFER,
         'target': tgt_loc,
-        'flags':    [rsf.CREATE_PARENTS],
+        'flags':    [],
         'priority': 0
     })
 
@@ -217,7 +217,7 @@ def test_transfer_single_folder_from_unit(
         'source': 'unit:///%s' % sample_data[1],
         'action': rp.TRANSFER,
         'target': tgt_loc,
-        'flags':    [rsf.CREATE_PARENTS, rsf.RECURSIVE],
+        'flags':    [],
         'priority': 0
     })
 
@@ -271,7 +271,7 @@ def test_transfer_multiple_folders_from_unit(
         'source': 'unit:///%s' % sample_data[2],
         'action': rp.TRANSFER,
         'target': tgt_loc,
-        'flags':    [rsf.CREATE_PARENTS, rsf.RECURSIVE],
+        'flags':    [],
         'priority': 0
     })
 
