@@ -8,43 +8,79 @@ from radical.pilot.umgr.staging_output.default import Default
 import saga.filesystem as rsf
 import pytest
 from glob import glob
+import re
+import saga.utils.pty_shell as rsups
 
 try:
     import mock
 except ImportError:
     from unittest import mock
 
-# Resource to test on
+
+# User Input for test
+#-----------------------------------------------------------------------------------------------------------------------
 resource_name = 'local.localhost'
-# resource_name = 'xsede.supermic_ssh'
 access_schema = 'ssh'
+#-----------------------------------------------------------------------------------------------------------------------
 
-path_to_rp_config_file = './config.json'
 
-# path_to_rp_config_file = os.path.realpath(os.path.join(os.getcwd(),
-#                                         '../../src/radical/pilot/configs/resource_%s.json'%resource_name.split('.')[0]))
-
+# Extract info from RP config file
+#-----------------------------------------------------------------------------------------------------------------------
+config_loc = '../../src/radical/pilot/configs/resource_%s.json'%resource_name.split('.')[0]
+path_to_rp_config_file = os.path.realpath(os.path.join(os.getcwd(),config_loc))
 cfg_file = ru.read_json(path_to_rp_config_file)[resource_name.split('.')[1]]
 
-# Stating session information
+## Resolve environment variables in cfg
+if '$' in cfg_file['default_remote_workdir']:
+    target = cfg_file[access_schema]["filesystem_endpoint"].split('//')[1]
+
+    shell   = rsups.PTYShell('%s://%s'%(access_schema, target))
+    _, out, _ = shell.run_sync('env')
+
+    env = dict()
+    for line in out.split('\n'):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            k, v  = line.split('=', 1)
+            env[k] = v
+        except:
+            pass
+
+    test = cfg_file['default_remote_workdir']
+    for k,v in env.iteritems():
+        test = re.sub(r'\$%s\b' % k, v, test)
+
+    cfg_file['default_remote_workdir'] = test
+#-----------------------------------------------------------------------------------------------------------------------
+
+
+# Setup for all tests
+#-----------------------------------------------------------------------------------------------------------------------
+## Stating session id
 session_id = 'rp.session.testing.local.0000'
 
-# Staging testing folder locations
+## Sample data to be staged -- available in cwd
 cur_dir = os.path.dirname(os.path.abspath(__file__))
 local_sample_data = os.path.join(cur_dir, 'sample_data')
 sample_data = [
-    'single_file.txt',
-    'single_folder',
-    'multi_folder'
-]
+                'single_file.txt',
+                'single_folder',
+                'multi_folder'
+            ]
 
-# Get the remote sandbox path from rp config files
+## Get the remote sandbox path from rp config files and
+## reproduce same folder structure as during execution
 rp_sandbox = os.path.join(cfg_file["default_remote_workdir"], 'radical.pilot.sandbox')
 session_sandbox = os.path.join(rp_sandbox, session_id)
 pilot_sandbox = os.path.join(session_sandbox, 'pilot.0000')
 tgt_loc = '/tmp/'
+#-----------------------------------------------------------------------------------------------------------------------
 
 
+# Setup to be done for every test
+#-----------------------------------------------------------------------------------------------------------------------
 def setUp():
 
     # Add SAGA method to only create directories on remote - don't transfer yet!
@@ -77,20 +113,27 @@ def setUp():
     src_dir2.copy(remote_dir.url.path, rsf.CREATE_PARENTS | rsf.RECURSIVE)
 
     return unit, session
+#-----------------------------------------------------------------------------------------------------------------------
 
 
+# Cleanup any folders and files to leave the system state
+# as prior to the test
+#-----------------------------------------------------------------------------------------------------------------------
 def tearDown(session, data):
 
     # Clean entire session directory
     remote_dir = rs.filesystem.Directory(rp_sandbox, session=session)
     remote_dir.remove(session_sandbox, rsf.RECURSIVE)
-    # Clean tmp directory
+    # Clean tmp directory -- the target on the local machine
     try:
         os.remove(tgt_loc + data)
     except:
         shutil.rmtree(tgt_loc + data)
+#-----------------------------------------------------------------------------------------------------------------------
 
 
+# Test umgr output staging of a single file
+#-----------------------------------------------------------------------------------------------------------------------
 @mock.patch.object(Default, '__init__', return_value=None)
 @mock.patch.object(Default, 'advance')
 @mock.patch.object(ru.Profiler, 'prof')
@@ -130,7 +173,7 @@ def test_transfer_single_file_from_unit(
     component._handle_unit(unit, actionables)
 
     # Verify the actionables were done...
-    assert sample_data[0] in [os.path.basename(x) for x in glob('/tmp/*.*')]
+    assert sample_data[0] in [os.path.basename(x) for x in glob('%s/*.*'%tgt_loc)]
 
     # Tear-down the files and folders
     tearDown(session=session, data=sample_data[0])
@@ -139,8 +182,11 @@ def test_transfer_single_file_from_unit(
     with pytest.raises(rs.BadParameter):
         remote_dir = rs.filesystem.Directory(unit['unit_sandbox'],
                                              session=session)
+#-----------------------------------------------------------------------------------------------------------------------
 
 
+# Test umgr input staging of a single folder with a file
+#-----------------------------------------------------------------------------------------------------------------------
 @mock.patch.object(Default, '__init__', return_value=None)
 @mock.patch.object(Default, 'advance')
 @mock.patch.object(ru.Profiler, 'prof')
@@ -180,17 +226,21 @@ def test_transfer_single_folder_from_unit(
     component._handle_unit(unit, actionables)
 
     # Verify the actionables were done...
-    assert sample_data[1] in [os.path.basename(x) for x in glob('/tmp/*')]
-    assert sample_data[0] in [os.path.basename(x) for x in glob('/tmp/%s/*' % sample_data[1])]
+    assert sample_data[1] in [os.path.basename(x) for x in glob('%s/*'%tgt_loc)]
+    assert sample_data[0] in [os.path.basename(x) for x in glob('%s/%s/*' % (tgt_loc, sample_data[1]))]
 
+    # Tear-down the files and folders
     tearDown(session=session, data=sample_data[1])
 
     # Verify tearDown
     with pytest.raises(rs.BadParameter):
         remote_dir = rs.filesystem.Directory(unit['unit_sandbox'],
                                              session=session)
+#-----------------------------------------------------------------------------------------------------------------------
 
 
+# Test umgr input staging of a folder consisting of a folder consisting of a file
+#-----------------------------------------------------------------------------------------------------------------------
 @mock.patch.object(Default, '__init__', return_value=None)
 @mock.patch.object(Default, 'advance')
 @mock.patch.object(ru.Profiler, 'prof')
@@ -230,13 +280,15 @@ def test_transfer_multiple_folders_from_unit(
     component._handle_unit(unit, actionables)
 
     # Verify the actionables were done...
-    assert sample_data[2] in [os.path.basename(x) for x in glob('/tmp/*')]
-    assert sample_data[1] in [os.path.basename(x) for x in glob('/tmp/%s/*' % sample_data[2])]
-    assert sample_data[0] in [os.path.basename(x) for x in glob('/tmp/%s/%s/*.*' % (sample_data[2], sample_data[1]))]
+    assert sample_data[2] in [os.path.basename(x) for x in glob('%s/*'%tgt_loc)]
+    assert sample_data[1] in [os.path.basename(x) for x in glob('%s/%s/*' % (tgt_loc, sample_data[2]))]
+    assert sample_data[0] in [os.path.basename(x) for x in glob('%s/%s/%s/*.*' % (tgt_loc, sample_data[2], sample_data[1]))]
 
+    # Tear-down the files and folders
     tearDown(session=session, data=sample_data[2])
 
     # Verify tearDown
     with pytest.raises(rs.BadParameter):
         remote_dir = rs.filesystem.Directory(unit['unit_sandbox'],
                                              session=session)
+#-----------------------------------------------------------------------------------------------------------------------

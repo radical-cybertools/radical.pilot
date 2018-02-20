@@ -7,52 +7,84 @@ import saga as rs
 from radical.pilot.umgr.staging_input.default import Default
 import saga.filesystem as rsf
 import pytest
+import re
+import saga.utils.pty_shell as rsups
+
 
 try:
     import mock
 except ImportError:
     from unittest import mock
 
-# Resource to test on
+# User Input for test
+#-----------------------------------------------------------------------------------------------------------------------
 resource_name = 'local.localhost'
-# resource_name = 'xsede.supermic_ssh'
 access_schema = 'ssh'
+#-----------------------------------------------------------------------------------------------------------------------
 
-path_to_rp_config_file = './config.json'
 
-# path_to_rp_config_file = os.path.realpath(os.path.join(os.getcwd(),
-#                                         '../../src/radical/pilot/configs/resource_%s.json'%resource_name.split('.')[0]))
-
+# Extract info from RP config file
+#-----------------------------------------------------------------------------------------------------------------------
+config_loc = '../../src/radical/pilot/configs/resource_%s.json'%resource_name.split('.')[0]
+path_to_rp_config_file = os.path.realpath(os.path.join(os.getcwd(),config_loc))
 cfg_file = ru.read_json(path_to_rp_config_file)[resource_name.split('.')[1]]
 
-# Stating session information
+## Resolve environment variables in cfg
+if '$' in cfg_file['default_remote_workdir']:
+    target = cfg_file[access_schema]["filesystem_endpoint"].split('//')[1]
+
+    shell   = rsups.PTYShell('%s://%s'%(access_schema, target))
+    _, out, _ = shell.run_sync('env')
+
+    env = dict()
+    for line in out.split('\n'):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            k, v  = line.split('=', 1)
+            env[k] = v
+        except:
+            pass
+
+    test = cfg_file['default_remote_workdir']
+    for k,v in env.iteritems():
+        test = re.sub(r'\$%s\b' % k, v, test)
+
+    cfg_file['default_remote_workdir'] = test
+#-----------------------------------------------------------------------------------------------------------------------
+
+
+# Setup for all tests
+#-----------------------------------------------------------------------------------------------------------------------
+## Stating session id
 session_id = 'rp.session.testing.local.0000'
 
-# Staging testing folder locations
+## Sample data to be staged -- available in cwd
 cur_dir = os.path.dirname(os.path.abspath(__file__))
 local_sample_data = os.path.join(cur_dir, 'sample_data')
 sample_data = [
-    'single_file.txt',
-    'single_folder',
-    'multi_folder'
-]
+                'single_file.txt',
+                'single_folder',
+                'multi_folder'
+            ]
 
-# Get the remote sandbox path from rp config files
+## Get the remote sandbox path from rp config files and
+## reproduce same folder structure as during execution
 rp_sandbox = os.path.join(cfg_file["default_remote_workdir"], 'radical.pilot.sandbox')
 session_sandbox = os.path.join(rp_sandbox, session_id)
 pilot_sandbox = os.path.join(session_sandbox, 'pilot.0000')
-staging_area = os.path.join(pilot_sandbox, 'staging_area')
+#-----------------------------------------------------------------------------------------------------------------------
 
 
+# Setup to be done for every test
+#-----------------------------------------------------------------------------------------------------------------------
 def setUp():
 
     # Add SAGA method to only create directories on remote - don't transfer yet!
     session = rs.Session()
     remote_dir = rs.filesystem.Directory(cfg_file[access_schema]["filesystem_endpoint"],
                                          session=session)
-
-    # Create the remote directories with all the parents
-    remote_dir.make_dir(staging_area, flags=rs.filesystem.CREATE_PARENTS)
 
     # Unit Configuration
     unit = dict()
@@ -65,17 +97,22 @@ def setUp():
     remote_dir.make_dir(unit['unit_sandbox'], flags=rsf.CREATE_PARENTS)
 
     return unit, session
+#-----------------------------------------------------------------------------------------------------------------------
 
 
-def tearDown():
+# Cleanup any folders and files to leave the system state
+# as prior to the test
+#-----------------------------------------------------------------------------------------------------------------------
+def tearDown(session):
 
-    # # Clean entire rp_sandbox directory
-    try:
-        shutil.rmtree(rp_sandbox)
-    except Exception as ex:
-        print 'Need SAGA method to delete files on remote'
+    # Clean entire session directory
+    remote_dir = rs.filesystem.Directory(rp_sandbox, session=session)
+    remote_dir.remove(session_sandbox, rsf.RECURSIVE)
+#-----------------------------------------------------------------------------------------------------------------------
 
 
+# Test umgr input staging of a single file
+#-----------------------------------------------------------------------------------------------------------------------
 @mock.patch.object(Default, '__init__', return_value=None)
 @mock.patch.object(Default, 'advance')
 @mock.patch.object(ru.Profiler, 'prof')
@@ -86,7 +123,7 @@ def test_transfer_single_file_to_unit(
         mocked_profiler,
         mocked_raise_on):
 
-    # Get a unit to transfer data for
+    # Get a unit to transfer data + session to use for RPC
     unit, session = setUp()
 
     # Instantiate the USIC
@@ -122,14 +159,17 @@ def test_transfer_single_file_to_unit(
     assert sample_data[0] in [x.path for x in remote_dir.list()]
 
     # Tear-down the files and folders
-    tearDown()
+    tearDown(session)
 
     # Verify tearDown
     with pytest.raises(rs.BadParameter):
         remote_dir = rs.filesystem.Directory(unit['unit_sandbox'],
                                              session=session)
+#-----------------------------------------------------------------------------------------------------------------------
 
 
+# Test umgr input staging of a single folder with a file
+#-----------------------------------------------------------------------------------------------------------------------
 @mock.patch.object(Default, '__init__', return_value=None)
 @mock.patch.object(Default, 'advance')
 @mock.patch.object(ru.Profiler, 'prof')
@@ -182,14 +222,18 @@ def test_transfer_single_folder_to_unit(
 
             assert sample_data[0] in [cx.path for cx in child_x_dir.list()]
 
-    tearDown()
+    # Tear-down the files and folders
+    tearDown(session)
 
     # Verify tearDown
     with pytest.raises(rs.BadParameter):
         remote_dir = rs.filesystem.Directory(unit['unit_sandbox'],
                                              session=session)
+#-----------------------------------------------------------------------------------------------------------------------
 
 
+# Test umgr input staging of a folder consisting of a folder consisting of a file
+#-----------------------------------------------------------------------------------------------------------------------
 @mock.patch.object(Default, '__init__', return_value=None)
 @mock.patch.object(Default, 'advance')
 @mock.patch.object(ru.Profiler, 'prof')
@@ -249,9 +293,11 @@ def test_transfer_multiple_folders_to_unit(
 
                     assert sample_data[0] in [gcx.path for gcx in gchild_x_dir.list()]
 
-    tearDown()
+    # Tear-down the files and folders
+    tearDown(session)
 
     # Verify tearDown
     with pytest.raises(rs.BadParameter):
         remote_dir = rs.filesystem.Directory(unit['unit_sandbox'],
                                              session=session)
+#-----------------------------------------------------------------------------------------------------------------------
