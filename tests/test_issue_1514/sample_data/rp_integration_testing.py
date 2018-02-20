@@ -114,11 +114,14 @@ if __name__ == '__main__':
         # Test for single file 
         
         cud = rp.ComputeUnitDescription()
-        cud.executable     = '/usr/bin/wc'
+        cud.executable     = '/usr/bin/date'
         cud.arguments      = ['-c', 'single_file.txt']
-        cud.input_staging  = {'source':'os.path.join(local_sample_data, sample_data[0])', 
+        cud.input_staging  = {'source':os.path.join(local_sample_data, sample_data[0]), 
                               'target':'unit:///%s' % sample_data[0],
                               'action': rp.TRANSFER} 
+        cud.output_staging = {'source':'unit:///%s' %single_file.txt, 
+                              'target': './single_file_2.txt',
+                              'action': rp.TRANSFER}
         
       
         cuds.append(cud)
@@ -126,22 +129,29 @@ if __name__ == '__main__':
         # Test for single folder
 
         cud = rp.ComputeUnitDescription()
-        cud.executable     = '/usr/bin/wc'
+        cud.executable     = '/usr/bin/date'
         cud.arguments      = ['-c', 'single_folder']
-        cud.input_staging  = {'source':'os.path.join(local_sample_data, sample_data[1])', 
+        cud.input_staging  = {'source':os.path.join(local_sample_data, sample_data[1]), 
                               'target':'unit:///%s' % sample_data[1],
                               'action': rp.TRANSFER} 
 
+        cud.output_staging = {'source':'unit:///%s' % sample_data[1], 
+                              'target': './sample_data_2',
+                              'action': rp.TRANSFER}
         cuds.append(cud)
 
         # Test for multiple folder
         
         cud = rp.ComputeUnitDescription()
-        cud.executable     = '/usr/bin/wc'
+        cud.executable     = '/usr/bin/date'
         cud.arguments      = ['-c', 'multi_folder']
-        cud.input_staging  = {'source':'os.path.join(local_sample_data, sample_data[2])', 
+        cud.input_staging  = {'source':os.path.join(local_sample_data, sample_data[2]), 
                               'target':'unit:///%s' % sample_data[2],
-                              'action': rp.TRANSFER}                 
+                              'action': rp.TRANSFER} 
+
+        cud.output_staging = {'source':'unit:///%s' % sample_data[2], 
+                              'target': './sample_data_3',
+                              'action': rp.TRANSFER}                
 
         cuds.append(cud)
         report.progress()
@@ -179,6 +189,13 @@ if __name__ == '__main__':
         # reason).
         report.warn('exit requested\n')
 
+        
+
+
+    finally:
+        # always clean up the session, no matter if we caught an exception or
+        # not.  This will kill all remaining pilots.
+
         # Verify the actionables were done for single file transfer: 
         assert sample_data[0] in [x.path for x in remote_dir.list()]
 
@@ -208,15 +225,8 @@ if __name__ == '__main__':
 
                         assert sample_data[0] in [gcx.path for gcx in gchild_x_dir.list()]
 
-
-
-    finally:
-        # always clean up the session, no matter if we caught an exception or
-        # not.  This will kill all remaining pilots.
         report.header('finalize')
         session.close()
-
-
 
 
 
