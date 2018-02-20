@@ -6,6 +6,8 @@ __license__   = 'MIT'
 import os
 import sys
 
+verbose  = os.environ.get('RADICAL_PILOT_VERBOSE', 'REPORT')
+os.environ['RADICAL_PILOT_VERBOSE'] = verbose
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -80,7 +82,7 @@ if __name__ == '__main__':
         os.system('hostname >  input.dat')
         os.system('date     >> input.dat')
 
-        n = 10   # number of units to run
+        n = 128   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -91,7 +93,7 @@ if __name__ == '__main__':
             cud = rp.ComputeUnitDescription()
             cud.executable     = '/usr/bin/wc'
             cud.arguments      = ['-c', 'input.dat']
-            cud.input_staging  = ['input.dat','/home/vivek/Research/repos/radical.pilot/examples']
+            cud.input_staging  = ['input.dat']
             
           # this is a shortcut for:
           # cud.input_staging  = {'source': 'client:///input.dat', 
