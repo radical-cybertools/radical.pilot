@@ -140,7 +140,6 @@ class Default(UMGRStagingInputComponent):
             # component
             actionables = list()
             for sd in unit['description'].get('input_staging', []):
-
                 if sd['action'] in [rpc.TRANSFER, rpc.TARBALL]:
                     actionables.append(sd)
 
@@ -326,7 +325,7 @@ class Default(UMGRStagingInputComponent):
         self._prof.prof("create_sandbox_stop", uid=uid)
 
         # Loop over all transfer directives and execute them.
-
+        removables = list()
         for sd in actionables:
 
             action = sd['action']
@@ -334,10 +333,13 @@ class Default(UMGRStagingInputComponent):
             did    = sd['uid']
             src    = sd['source']
             tgt    = sd['target']
+            self._log.debug('Giannis: %s,%s',src,tgt)
             if action == rpc.TARBALL:
                 if not os.path.isfile(uid+'.tar'):
                     tar_file = tarfile.open(uid+'.tar','w')
-                tar_file.add(src,archname=tgt)
+                tar_file.add(src.split('client:///')[1],arcname=tgt.split('unit:///')[1])
+                removables.append(sd)
+                sid = sd.get('uid')
             elif action == rpc.TRANSFER:
                 self._prof.prof('staging_in_start', uid=uid, msg=did)
 
@@ -358,6 +360,16 @@ class Default(UMGRStagingInputComponent):
 
             saga_dir.copy(src, tgt, flags=rs.filesystem.CREATE_PARENTS)
             self._prof.prof('staging_in_stop', uid=uid, msg=did)
+            for sd in removables:
+                unit['description']['input_staging'].remove(sd)
+            unit['description']['input_staging'].append({'uid': sid, 
+                                                         'priority': 0, 
+                                                         'source': 'client:///'+uid+'.tar', 
+                                                         'flags': ['CreateParents', 'SkipFailed'], 
+                                                         'action': 'Tarball',
+                                                         'target': 'unit:///'+uid+'.tar'
+                                                        })
+            os.remove(uid+'.tar')
 
         # staging is done, we can advance the unit at last
         self.advance(unit, rps.AGENT_STAGING_INPUT_PENDING, publish=True, push=True)

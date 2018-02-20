@@ -149,11 +149,11 @@ class Default(AgentStagingInputComponent):
 
             self._prof.prof('staging_in_start', uid=uid, msg=did)
 
-            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER])
+            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER, rpc.TARBALL])
 
             # we only handle staging which does *not* include 'client://' src or
             # tgt URLs - those are handled by the umgr staging components
-            if '://' in src and src.startswith('client://'):
+            if '://' in src and src.startswith('client://') and action != rpc.TARBALL:
                 self._log.debug('skip staging for src %s', src)
                 self._prof.prof('staging_in_skip', uid=uid, msg=did)
                 continue
@@ -201,6 +201,7 @@ class Default(AgentStagingInputComponent):
                     self._prof.prof('staging_in_fail', uid=uid, msg=did)
                     raise NotImplementedError('unsupported transfer %s' % src)
             elif action == rpc.TARBALL:
+                self._log.debug('Giannis: %s',sd)
                 tar = tarfile.open(uid+'tar')
                 tar.extractall()
                 tar.close()

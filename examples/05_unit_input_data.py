@@ -35,7 +35,7 @@ if __name__ == '__main__':
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
-    session = rp.Session()
+    session = rp.Session(uid='TarTest')
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
@@ -80,8 +80,10 @@ if __name__ == '__main__':
         # file right here, and then use it as unit input data for each unit.
         os.system('hostname >  input.dat')
         os.system('date     >> input.dat')
+        os.system('hostname >  input2.dat')
+        os.system('date     >> input2.dat')
 
-        n = 128   # number of units to run
+        n = 1   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -92,12 +94,15 @@ if __name__ == '__main__':
             cud = rp.ComputeUnitDescription()
             cud.executable     = '/usr/bin/wc'
             cud.arguments      = ['-c', 'input.dat']
-            cud.input_staging  = ['input.dat']
+            #cud.input_staging  = ['input.dat']
             
           # this is a shortcut for:
-          # cud.input_staging  = {'source': 'client:///input.dat', 
-          #                       'target': 'unit:///input.dat',
-          #                       'action': rp.Transfer}
+            cud.input_staging  = [{'source': 'client:///input.dat', 
+                                   'target': 'unit:///input.dat',
+                                   'action': rp.TARBALL},
+                                  {'source': 'client:///input2.dat', 
+                                   'target': 'unit:///input2.dat',
+                                   'action': rp.TARBALL}]
 
             cuds.append(cud)
             report.progress()
