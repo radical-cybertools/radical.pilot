@@ -15,21 +15,14 @@ import saga.filesystem as rsf
 import saga.filesystem.constants as constants
 import re
 import saga.utils.pty_shell as rsups
-
-verbose='INFO'
-
-# ------------------------------------------------------------------------------
-#
-# READ the RADICAL-Pilot documentation: http://radicalpilot.readthedocs.org/
-#
-# ------------------------------------------------------------------------------
+from glob import glob
+import shutil
 
 
 #------------------------------------------------------------------------------
 #
 
 cur_dir = os.path.dirname(os.path.abspath(__file__))
-path_to_rp_config_file = './config.json'
 local_sample_data = os.path.join(cur_dir, 'sample_data')
 sample_data = [
     'single_file.txt',
@@ -47,11 +40,7 @@ def test_integration():
     session = rp.Session()
 
     # read the config used for resource details
-    report.info('read config')
     config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
-    report.ok('>>ok\n')
-
-    report.header('submit pilots')
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
     pmgr = rp.PilotManager(session=session)
@@ -71,9 +60,6 @@ def test_integration():
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
-
-    # session_id = 'rp.session.testing.local.0000'
-    report.header('submit units')
 
     # Register the ComputePilot in a UnitManager object.
     umgr = rp.UnitManager(session=session)
@@ -119,21 +105,18 @@ def test_integration():
                           'action': rp.TRANSFER}                
 
     cuds.append(cud)
-    # report.ok('>>ok\n')
 
     # Submit the previously created ComputeUnit descriptions to the
     # PilotManager. This will trigger the selected scheduler to start
     # assigning ComputeUnits to the ComputePilots.
-    
     units = umgr.submit_units(cuds)
 
     # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
-    # report.header('gather results')
     umgr.wait_units()
   
- 
-    # Verify the actionables were done for single file transfer: 
-
+    # Get the correct config from the RP config files
+    # We will use this to get the workdir and assert if the file and folders
+    # were staged
     config_loc = '../../src/radical/pilot/configs/resource_%s.json'%resource.split('.')[0]
     path_to_rp_config_file = os.path.realpath(os.path.join(os.getcwd(),config_loc))
     cfg_file = ru.read_json(path_to_rp_config_file)[resource.split('.')[1]]
@@ -141,41 +124,66 @@ def test_integration():
     if not access_schema:
         access_schema = 'ssh'
 
-    print units[0].sandbox
-    remote_dir = rs.filesystem.Directory(   cfg_file[access_schema]["job_manager_endpoint"] + 
-                                            units[0].sandbox, 
+
+    # Verify the actionables were done for single file transfer
+    # ------------------------------------------------------------------------------------------------------------------
+    remote_dir = rs.filesystem.Directory(   units[0].sandbox, 
                                             session=session)
     assert sample_data[0] in [x.path for x in remote_dir.list()]
+    local_file = sample_data[0].split('.')[0] + '_2.' + sample_data[0].split('.')[1]
+    assert local_file in [os.path.basename(x) for x in glob('./*')]
+    # ------------------------------------------------------------------------------------------------------------------
 
-    # # Verify the actionables were done for single folder transfer
-    remote_dir = rs.filesystem.Directory(   access_schema + '://' + 
-                                            units[1].sandbox, 
+
+    # Verify the actionables were done for single folder transfer
+    # ------------------------------------------------------------------------------------------------------------------
+    remote_dir = rs.filesystem.Directory(   units[1].sandbox, 
                                             session=session) 
     assert sample_data[1] in [x.path for x in remote_dir.list()]
-
     for x in remote_dir.list():
         if remote_dir.is_dir(x):
-            child_x_dir = rs.filesystem.Directory(os.path.join(unit['unit_sandbox'],x.path) ,
+            child_x_dir = rs.filesystem.Directory(os.path.join(units[1].sandbox, x.path) ,
                                                     session=session)
             assert sample_data[0] in [cx.path for cx in child_x_dir.list()]
+    local_folder_1 = sample_data[1] + '_2'
+    assert local_folder_1 in [os.path.basename(x) for x in glob('./*')]
+    assert sample_data[0] in [os.path.basename(x) for x in glob('./%s/*'%local_folder_1)]
+    # ------------------------------------------------------------------------------------------------------------------
 
 
-    # # Verify the actionables were done for multiple folder transfer: 
+    # Verify the actionables were done for multiple folder transfer: 
+    # ------------------------------------------------------------------------------------------------------------------
+    remote_dir = rs.filesystem.Directory(   units[2].sandbox, 
+                                            session=session)
 
-    # for x in remote_dir.list():
-    #     if remote_dir.is_dir(x):
-    #         child_x_dir = rs.filesystem.Directory(os.path.join(unit['unit_sandbox'],x.path) ,
-    #                                             session=session)
+    assert sample_data[2] in [x.path for x in remote_dir.list()]
+    for x in remote_dir.list():
+        if remote_dir.is_dir(x):
+            child_x_dir = rs.filesystem.Directory(os.path.join(units[2].sandbox,x.path) ,
+                                                session=session)
 
-    #         assert sample_data[1] in [cx.path for cx in child_x_dir.list()]
+            assert sample_data[1] in [cx.path for cx in child_x_dir.list()]
 
-    #         for y in child_x_dir.list():
-    #             if child_x_dir.is_dir(y):
-    #                 gchild_x_dir= rs.filesystem.Directory(os.path.join(unit['unit_sandbox'],x.path + '/' + y.path) ,
-    #                                             session=session)
+            for y in child_x_dir.list():
+                if child_x_dir.is_dir(y):
+                    gchild_x_dir= rs.filesystem.Directory(os.path.join(units[2].sandbox,x.path + '/' + y.path) ,
+                                                session=session)
 
-    #                 assert sample_data[0] in [gcx.path for gcx in gchild_x_dir.list()]
+                    assert sample_data[0] in [gcx.path for gcx in gchild_x_dir.list()]
 
-    # report.header('finalize')
+    local_folder_2 = sample_data[2] + '_2'
+    assert local_folder_2 in [os.path.basename(x) for x in glob('./*')]
+    assert sample_data[1] in [os.path.basename(x) for x in glob('./%s/*'%local_folder_2)]
+    assert sample_data[0] in [os.path.basename(x) for x in glob('./%s/%s/*'%(local_folder_2, sample_data[1]))]
+    # ------------------------------------------------------------------------------------------------------------------
+
+    # Cleanup - remote
+    remote_dir = rs.filesystem.Directory(pilot.resource_sandbox, session=session)
+    remote_dir.remove(pilot.pilot_sandbox, rsf.RECURSIVE)
+
+    # Cleanup - local
+    os.remove('./%s'%local_file)
+    shutil.rmtree('./%s'%local_folder_1)
+    shutil.rmtree('./%s'%local_folder_2)
+
     session.close(cleanup=True) 
-
