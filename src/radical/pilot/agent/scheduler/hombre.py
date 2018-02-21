@@ -25,7 +25,7 @@ class Hombre(AgentSchedulingComponent):
     HOMBRE: HOMogeneous Bag-of-task REsource allocator.  Don't kill me...
 
     The scheduler implementation manages a set of resources (cores).  When it
-    gets the first scheduling request, it will assume that to bre representative
+    gets the first scheduling request, it will assume that to be representative
     *for all future sccheduling requests*, ie. it assumes that all tasks are
     homogeneous.  It thus splits the resources into equal sized chunks and
     assigns them to the incoming requests.  The chunking is fast, no decisions
