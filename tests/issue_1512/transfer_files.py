@@ -58,7 +58,6 @@ def transfer_file(src_files,target_dir,resource,tar):
 
     print(end_time-start_time)
 
-
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
