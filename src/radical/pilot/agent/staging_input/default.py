@@ -104,7 +104,7 @@ class Default(AgentStagingInputComponent):
         # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
         #       class definition.
         sandbox = unit['unit_sandbox']
-        
+
         # By definition, this compoentn lives on the pilot's target resource.
         # As such, we *know* that all staging ops which would refer to the
         # resource now refer to file://localhost, and thus translate the unit,
@@ -203,10 +203,10 @@ class Default(AgentStagingInputComponent):
             elif action == rpc.TARBALL:
                 # If somethig was staged via the tarball method, the tarball is
                 # extracted and then removed from the unit folder.
-                tar = tarfile.open(tgtdir+'/'+uid+'.tar')
-                tar.extractall(path=tgtdir)
+                tar = tarfile.open(os.path.dirname(tgt.path) + '/ ' + uid + '.tar')
+                tar.extractall(path=os.path.dirname(tgt.path))
                 tar.close()
-                os.remove(tgtdir+'/'+uid+'.tar')
+                os.remove(os.path.dirname(tgt.path) + '/' + uid + '.tar')
             self._prof.prof('staging_in_stop', uid=uid, msg=did)
 
         # all staging is done -- pass on to the scheduler
