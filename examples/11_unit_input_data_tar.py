@@ -80,8 +80,10 @@ if __name__ == '__main__':
         # file right here, and then use it as unit input data for each unit.
         os.system('hostname >  input.dat')
         os.system('date     >> input.dat')
+        os.system('hostname >  input2.dat')
+        os.system('date     >> input2.dat')
 
-        n = 128   # number of units to run
+        n = 16   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -90,14 +92,16 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable     = '/usr/bin/wc'
-            cud.arguments      = ['-c', 'input.dat']
-            #cud.input_staging  = ['input.dat']
-            
-          # this is a shortcut for:
+            cud.executable     = '/usr/bin/ls'
+            cud.arguments      = ['-all']
+
+            # Move multiple files to a CU by using a tarball
             cud.input_staging  = [{'source': 'client:///input.dat', 
                                    'target': 'unit:///input.dat',
-                                   'action': rp.TRANSFER}]
+                                   'action': rp.TARBALL},
+                                  {'source': 'client:///input2.dat', 
+                                   'target': 'unit:///input2.dat',
+                                   'action': rp.TARBALL}]
 
             cuds.append(cud)
             report.progress()

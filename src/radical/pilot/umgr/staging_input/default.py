@@ -148,7 +148,6 @@ class Default(UMGRStagingInputComponent):
             else:
                 no_staging_units.append(unit)
 
-
         # Optimization: if we obtained a large bulk of units, we at this point
         # attempt a bulk mkdir for the unit sandboxes, to free the agent of
         # performing that operation.  That implies that the agent needs to check
@@ -326,6 +325,7 @@ class Default(UMGRStagingInputComponent):
 
         # Loop over all transfer directives and execute them.
         removables = list()
+        tar_file = None
         for sd in actionables:
 
             action = sd['action']
@@ -338,11 +338,15 @@ class Default(UMGRStagingInputComponent):
                 # file exists. If not create it. Add each file in the tarball
                 # and append the directive to the removables.
 
-                if not os.path.isfile(uid+'.tar'):
-                    tar_file = tarfile.open(uid+'.tar','w')
+                self._prof.prof('staging_in_start', uid=uid, msg='using tarball')
+                self._prof.prof('staging_in_stop', uid=uid, msg=did)
+                if not os.path.isfile(uid + '.tar'):
+                    tar_file = tarfile.open(uid + '.tar','w')
                 tar_file.add(src.split('client:///')[1],arcname=tgt.split('unit:///')[1])
+                self._prof.prof('added_file_in_tarball', uid=uid, msg=did)
                 removables.append(sd)
-                sid = sd.get('uid')
+                sid = ru.generate_id('sd')
+                self._prof.prof('tarball_create_stop', uid=uid, msg=did)
             elif action == rpc.TRANSFER:
                 self._prof.prof('staging_in_start', uid=uid, msg=did)
 
@@ -353,17 +357,15 @@ class Default(UMGRStagingInputComponent):
                 self._prof.prof('staging_in_stop', uid=uid, msg=did)
 
 
-        if os.path.isfile(uid+'.tar'):
+        if tar_file:
             # if a tarball exists close it and do the transfer. After it is done
             # delete the tarball. Remove any directive that was use to create the
             # tarball and add a single one that communicates to the agent that
             # this type of transfer was executed.
             tar_file.close()
 
-            self._prof.prof('staging_in_start', uid=uid, msg=did)
-
-            src = complete_url(uid+'.tar', src_context, self._log)
-            tgt = complete_url(uid+'.tar', tgt_context, self._log)
+            src = complete_url(uid + '.tar', src_context, self._log)
+            tgt = complete_url(uid + '.tar', tgt_context, self._log)
 
             saga_dir.copy(src, tgt, flags=rs.filesystem.CREATE_PARENTS)
             self._prof.prof('staging_in_stop', uid=uid, msg=did)
@@ -371,12 +373,12 @@ class Default(UMGRStagingInputComponent):
                 unit['description']['input_staging'].remove(sd)
             unit['description']['input_staging'].append({'uid': sid, 
                                                          'priority': 0, 
-                                                         'source': 'client:///'+uid+'.tar', 
-                                                         'flags': ['CreateParents', 'SkipFailed'], 
-                                                         'action': 'Tarball',
-                                                         'target': 'unit:///'+uid+'.tar'
+                                                         'source': 'client:///' + uid + '.tar', 
+                                                         'flags': rpc.DEFAULT_FLAGS, 
+                                                         'action': rpc.TARBALL,
+                                                         'target': 'unit:///' + uid + '.tar'
                                                         })
-            os.remove(uid+'.tar')
+            os.remove(uid + '.tar')
 
         # staging is done, we can advance the unit at last
         self.advance(unit, rps.AGENT_STAGING_INPUT_PENDING, publish=True, push=True)
