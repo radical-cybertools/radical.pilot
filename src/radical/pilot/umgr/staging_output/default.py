@@ -156,12 +156,7 @@ class Default(UMGRStagingOutputComponent):
             self._log.debug('src: %s', src)
             self._log.debug('tgt: %s', tgt)
 
-            if rpc.CREATE_PARENTS in flags:
-                copy_flags = rs.filesystem.CREATE_PARENTS
-            else:
-                copy_flags = 0
-
-            saga_dir.copy(src, tgt, flags=copy_flags)
+            saga_dir.copy(src, tgt, flags=flags)
             self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
         # all staging is done -- at this point the unit is final

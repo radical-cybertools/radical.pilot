@@ -58,11 +58,12 @@ MOVE     = 'Move'     # local mv
 TRANSFER = 'Transfer' # saga remote transfer TODO: This might just be a special case of copy
 
 #
-# Flags
+# Flags - inherit from RS where possible, add custom ones
 #
-CREATE_PARENTS = 'CreateParents'  # Create parent directories while writing file
-SKIP_FAILED    = 'SkipFailed'     # Don't stage out files if tasks failed
-NON_FATAL      = 'NonFatal'       # Don't fail the CU if input is missing
+import saga as rs
+CREATE_PARENTS = rs.filesystem.CREATE_PARENTS  # Create parent directories while writing file
+SKIP_FAILED    = 4096                          # Don't stage out files if tasks failed
+NON_FATAL      = 8192                          # Don't fail the CU if input is missing
 
 #
 # CU MPI flags
@@ -79,7 +80,7 @@ GPU_OpenMP     = 'GPU_OpenMP'
 #
 DEFAULT_ACTION   = TRANSFER
 DEFAULT_PRIORITY = 0
-DEFAULT_FLAGS    = [CREATE_PARENTS, SKIP_FAILED]
+DEFAULT_FLAGS    = CREATE_PARENTS | SKIP_FAILED
 STAGING_AREA     = 'staging_area'
 
 
