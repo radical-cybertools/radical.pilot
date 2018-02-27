@@ -32,9 +32,7 @@ cfg_file = ru.read_json(path_to_rp_config_file)[resource_name.split('.')[1]]
 
 ## Resolve environment variables in cfg
 if '$' in cfg_file['default_remote_workdir']:
-    target = cfg_file[access_schema]["filesystem_endpoint"].split('//')[1]
-
-    shell   = rsups.PTYShell('%s://%s'%(access_schema, target))
+    shell   = rsups.PTYShell(cfg_file[access_schema]["filesystem_endpoint"])
     _, out, _ = shell.run_sync('env')
 
     env = dict()
