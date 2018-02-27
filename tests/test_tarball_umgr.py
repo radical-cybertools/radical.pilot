@@ -6,18 +6,21 @@ import json
 import random
 import string
 import unittest
+import glob
+
 import radical.utils as ru
 import radical.pilot as rp
 from radical.pilot.umgr.staging_input.default import Default
 import saga as rs
-import glob
 
-try: 
-    import mock 
-except ImportError: 
+try:
+    import mock
+except ImportError:
     from unittest import mock
 
 # Copy file or folder
+
+
 def copy(src, dest):
     try:
         shutil.copytree(src, dest)
@@ -41,8 +44,10 @@ workdir = unit_sandbox
 
 # Sample data & sample empty configuration
 sample_data_folder = os.path.join(resource_sandbox, 'sample-data')
-cfg_file = os.path.join(sample_data_folder, 'sample_configuration_staging_input_umgr.json')
+cfg_file = os.path.join(
+    sample_data_folder, 'sample_configuration_staging_input_umgr.json')
 sample_data = ['file']
+
 
 class TestStagingInputComponent(unittest.TestCase):
 
@@ -50,7 +55,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def setUpClass(cls):
         pass
         # Recursively create sandbox, session and pilot folders
-        #os.makedirs(workdir)
+        # os.makedirs(workdir)
 
     @classmethod
     def tearDownClass(cls):
@@ -74,26 +79,37 @@ class TestStagingInputComponent(unittest.TestCase):
         self.unit['unit_sandbox'] = os.path.join(self.cfg['workdir'])
         self.unit['pilot_sandbox'] = self.cfg['workdir']
         self.unit['resource_sandbox'] = self.cfg['resource_sandbox']
+        self.unit['description']['input_staging'] = [{
+            'uid': ru.generate_id('sd'),
+            'source': 'client:///' + workdir + '/file',
+            'action': rp.TARBALL,
+            'target': 'unit:///file',
+            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'priority': 0
+        }]
 
         # Unit output directory
         self.unit_directory = os.path.join(workdir)
 
         # Pilot staging directory
-        self.pilot_directory = pilot_sandbox  #os.path.join(workdir, 'staging_area')
+        # os.path.join(workdir, 'staging_area')
+        self.pilot_directory = pilot_sandbox
 
         # Some other output directory
-        self.output_directory = unit_sandbox #os.path.join(workdir, 'output_directory')
+        # os.path.join(workdir, 'output_directory')
+        self.output_directory = unit_sandbox
 
         # Create unit folder
         os.makedirs(self.unit_directory)
 
         # Create the other output directory
-        #os.makedirs(self.output_directory)
+        # os.makedirs(self.output_directory)
 
-        shutil.copy("staging-testing-sandbox/sample-data/file",os.path.join(workdir))
+        shutil.copy("staging-testing-sandbox/sample-data/file",
+                    os.path.join(workdir))
 
     def tearDown(self):
-        
+
         # Clean unit output directory
         shutil.rmtree(self.unit_directory)
 
@@ -101,16 +117,15 @@ class TestStagingInputComponent(unittest.TestCase):
         #shutil.rmtree(os.path.join(workdir, 'staging_area'))
 
         # Clean other output directory
-        #shutil.rmtree(self.output_directory)
+        # shutil.rmtree(self.output_directory)
 
     @mock.patch.object(Default, '__init__', return_value=None)
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    @mock.patch.object(rs.filesystem.Directory, 'make_dir') # mock make_dir
-    @mock.patch.object(rs.filesystem.Directory, 'copy') # mock copy
-
-    #include all mocked things in order
+    @mock.patch.object(rs.filesystem.Directory, 'make_dir')  # mock make_dir
+    @mock.patch.object(rs.filesystem.Directory, 'copy')  # mock copy
+    # include all mocked things in order
     def test_tarball(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on, mocked_make_dir, mocked_copy):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
@@ -121,22 +136,15 @@ class TestStagingInputComponent(unittest.TestCase):
         component._pilots = dict()
         actionables = list()
         tar_file = None
-        actionables.append({
-                            'uid'   : ru.generate_id('sd'),
-                            'source': 'client:///' + workdir + '/file',
-                            'action': rp.TARBALL,
-                            'target': 'unit:///file',
-                            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
-                            'priority': 0
-                                     })
-        
-        #print "unit_context", glob.glob(unit_sandbox+'/*')
+        actionables.append(self.unit['description']['input_staging'][0])
+
+        # print "unit_context", glob.glob(unit_sandbox+'/*')
         # Call the component's '_handle_unit' function
         # Should perform all of the actionables
         component._handle_unit(self.unit, actionables)
         # Verify the actionables were done...
         #self.assertTrue(os.path.isfile(os.path.join(self.unit_directory, 'file')))
-                                                                                                     
+
 
 if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(TestStagingInputComponent)
