@@ -24,15 +24,13 @@ access_schema = 'ssh'
 #-----------------------------------------------------------------------------------------------------------------------
 
 
-# Extract info from RP config file
-#-----------------------------------------------------------------------------------------------------------------------
-config_loc = '../../src/radical/pilot/configs/resource_%s.json' % resource_name.split('.')[0]
-path_to_rp_config_file = os.path.realpath(os.path.join(os.getcwd(), config_loc))
-cfg_file = ru.read_json(path_to_rp_config_file)[resource_name.split('.')[1]]
-
 # Resolve environment variables in cfg
-if '$' in cfg_file['default_remote_workdir']:
-    shell = rsups.PTYShell(cfg_file[access_schema]["filesystem_endpoint"])
+#-----------------------------------------------------------------------------------------------------------------------
+def parse_rwd(rwd, fs_endpoint):
+    if '$' not in rwd:
+        return rwd
+
+    shell = rsups.PTYShell(fs_endpoint)
     _, out, _ = shell.run_sync('env')
 
     env = dict()
@@ -46,11 +44,11 @@ if '$' in cfg_file['default_remote_workdir']:
         except:
             pass
 
-    test = cfg_file['default_remote_workdir']
+    parsed_rwd = rwd
     for k, v in env.iteritems():
-        test = re.sub(r'\$%s\b' % k, v, test)
+        parsed_rwd = re.sub(r'\$%s\b' % k, v, parsed_rwd)
 
-    cfg_file['default_remote_workdir'] = test
+    return parsed_rwd
 #-----------------------------------------------------------------------------------------------------------------------
 
 
@@ -68,11 +66,7 @@ sample_data = [
     'multi_folder'
 ]
 
-# Get the remote sandbox path from rp config files and
-# reproduce same folder structure as during execution
-rp_sandbox = os.path.join(cfg_file["default_remote_workdir"], 'radical.pilot.sandbox')
-session_sandbox = os.path.join(rp_sandbox, session_id)
-pilot_sandbox = os.path.join(session_sandbox, 'pilot.0000')
+# Set location on client to download data
 tgt_loc = '/tmp/'
 #-----------------------------------------------------------------------------------------------------------------------
 
@@ -82,9 +76,17 @@ tgt_loc = '/tmp/'
 def setUp():
 
     # Add SAGA method to only create directories on remote - don't transfer yet!
-    session = rs.Session()
-    remote_dir = rs.filesystem.Directory(cfg_file[access_schema]["filesystem_endpoint"],
-                                         session=session)
+    session = rp.Session()
+    # Get FS endpoint from session object
+    filesystem_endpoint = session.get_resource_config(resource_name)[access_schema]["filesystem_endpoint"]
+    # Get default rwd from session object and parse it
+    default_rwd = parse_rwd(session.get_resource_config(resource_name)["default_remote_workdir"], filesystem_endpoint)
+
+    # Get the remote sandbox path from rp config files and
+    # reproduce same folder structure as during execution
+    rp_sandbox = os.path.join(default_rwd, 'radical.pilot.sandbox')
+    session_sandbox = os.path.join(rp_sandbox, session_id)
+    pilot_sandbox = os.path.join(session_sandbox, 'pilot.0000')
 
     # Unit Configuration
     unit = dict()
@@ -95,10 +97,10 @@ def setUp():
     unit['unit_sandbox'] = os.path.join(pilot_sandbox, 'unit.00000')
 
     # Create unit folder on remote - don't transfer yet!
+    remote_dir = rs.filesystem.Directory(filesystem_endpoint, session=session)
     remote_dir.make_dir(unit['unit_sandbox'], flags=rsf.CREATE_PARENTS)
 
-    remote_dir = rs.filesystem.Directory(unit['unit_sandbox'],
-                                         session=session)
+    remote_dir = rs.filesystem.Directory(unit['unit_sandbox'], session=session)
 
     # Move all files and folders into unit sandbox
     src_file = rs.filesystem.File(os.path.join(local_sample_data, sample_data[0]), session=session)
@@ -117,11 +119,14 @@ def setUp():
 # Cleanup any folders and files to leave the system state
 # as prior to the test
 #-----------------------------------------------------------------------------------------------------------------------
-def tearDown(session, data):
+def tearDown(unit, session, data):
 
     # Clean entire session directory
+    filesystem_endpoint = session.get_resource_config(resource_name)[access_schema]["filesystem_endpoint"]
+    default_rwd = parse_rwd(session.get_resource_config(resource_name)["default_remote_workdir"], filesystem_endpoint)
+    rp_sandbox = os.path.join(default_rwd, 'radical.pilot.sandbox')
     remote_dir = rs.filesystem.Directory(rp_sandbox, session=session)
-    remote_dir.remove(session_sandbox, rsf.RECURSIVE)
+    remote_dir.remove(unit['resource_sandbox'], rsf.RECURSIVE)
     # Clean tmp directory -- the target on the local machine
     try:
         os.remove(tgt_loc + data)
@@ -174,7 +179,7 @@ def test_transfer_single_file_from_unit(
     assert sample_data[0] in [os.path.basename(x) for x in glob('%s/*.*' % tgt_loc)]
 
     # Tear-down the files and folders
-    tearDown(session=session, data=sample_data[0])
+    tearDown(unit=unit, session=session, data=sample_data[0])
 
     # Verify tearDown
     with pytest.raises(rs.BadParameter):
@@ -228,7 +233,7 @@ def test_transfer_single_folder_from_unit(
     assert sample_data[0] in [os.path.basename(x) for x in glob('%s/%s/*' % (tgt_loc, sample_data[1]))]
 
     # Tear-down the files and folders
-    tearDown(session=session, data=sample_data[1])
+    tearDown(unit=unit, session=session, data=sample_data[1])
 
     # Verify tearDown
     with pytest.raises(rs.BadParameter):
@@ -284,7 +289,7 @@ def test_transfer_multiple_folders_from_unit(
         '%s/%s/%s/*.*' % (tgt_loc, sample_data[2], sample_data[1]))]
 
     # Tear-down the files and folders
-    tearDown(session=session, data=sample_data[2])
+    tearDown(unit=unit, session=session, data=sample_data[2])
 
     # Verify tearDown
     with pytest.raises(rs.BadParameter):
