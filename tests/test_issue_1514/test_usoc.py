@@ -26,13 +26,13 @@ access_schema = 'ssh'
 
 # Extract info from RP config file
 #-----------------------------------------------------------------------------------------------------------------------
-config_loc = '../../src/radical/pilot/configs/resource_%s.json'%resource_name.split('.')[0]
-path_to_rp_config_file = os.path.realpath(os.path.join(os.getcwd(),config_loc))
+config_loc = '../../src/radical/pilot/configs/resource_%s.json' % resource_name.split('.')[0]
+path_to_rp_config_file = os.path.realpath(os.path.join(os.getcwd(), config_loc))
 cfg_file = ru.read_json(path_to_rp_config_file)[resource_name.split('.')[1]]
 
-## Resolve environment variables in cfg
+# Resolve environment variables in cfg
 if '$' in cfg_file['default_remote_workdir']:
-    shell   = rsups.PTYShell(cfg_file[access_schema]["filesystem_endpoint"])
+    shell = rsups.PTYShell(cfg_file[access_schema]["filesystem_endpoint"])
     _, out, _ = shell.run_sync('env')
 
     env = dict()
@@ -41,13 +41,13 @@ if '$' in cfg_file['default_remote_workdir']:
         if not line:
             continue
         try:
-            k, v  = line.split('=', 1)
+            k, v = line.split('=', 1)
             env[k] = v
         except:
             pass
 
     test = cfg_file['default_remote_workdir']
-    for k,v in env.iteritems():
+    for k, v in env.iteritems():
         test = re.sub(r'\$%s\b' % k, v, test)
 
     cfg_file['default_remote_workdir'] = test
@@ -56,20 +56,20 @@ if '$' in cfg_file['default_remote_workdir']:
 
 # Setup for all tests
 #-----------------------------------------------------------------------------------------------------------------------
-## Stating session id
+# Stating session id
 session_id = 'rp.session.testing.local.0000'
 
-## Sample data to be staged -- available in cwd
+# Sample data to be staged -- available in cwd
 cur_dir = os.path.dirname(os.path.abspath(__file__))
 local_sample_data = os.path.join(cur_dir, 'sample_data')
 sample_data = [
-                'single_file.txt',
-                'single_folder',
-                'multi_folder'
-            ]
+    'single_file.txt',
+    'single_folder',
+    'multi_folder'
+]
 
-## Get the remote sandbox path from rp config files and
-## reproduce same folder structure as during execution
+# Get the remote sandbox path from rp config files and
+# reproduce same folder structure as during execution
 rp_sandbox = os.path.join(cfg_file["default_remote_workdir"], 'radical.pilot.sandbox')
 session_sandbox = os.path.join(rp_sandbox, session_id)
 pilot_sandbox = os.path.join(session_sandbox, 'pilot.0000')
@@ -171,7 +171,7 @@ def test_transfer_single_file_from_unit(
     component._handle_unit(unit, actionables)
 
     # Verify the actionables were done...
-    assert sample_data[0] in [os.path.basename(x) for x in glob('%s/*.*'%tgt_loc)]
+    assert sample_data[0] in [os.path.basename(x) for x in glob('%s/*.*' % tgt_loc)]
 
     # Tear-down the files and folders
     tearDown(session=session, data=sample_data[0])
@@ -224,7 +224,7 @@ def test_transfer_single_folder_from_unit(
     component._handle_unit(unit, actionables)
 
     # Verify the actionables were done...
-    assert sample_data[1] in [os.path.basename(x) for x in glob('%s/*'%tgt_loc)]
+    assert sample_data[1] in [os.path.basename(x) for x in glob('%s/*' % tgt_loc)]
     assert sample_data[0] in [os.path.basename(x) for x in glob('%s/%s/*' % (tgt_loc, sample_data[1]))]
 
     # Tear-down the files and folders
@@ -278,9 +278,10 @@ def test_transfer_multiple_folders_from_unit(
     component._handle_unit(unit, actionables)
 
     # Verify the actionables were done...
-    assert sample_data[2] in [os.path.basename(x) for x in glob('%s/*'%tgt_loc)]
+    assert sample_data[2] in [os.path.basename(x) for x in glob('%s/*' % tgt_loc)]
     assert sample_data[1] in [os.path.basename(x) for x in glob('%s/%s/*' % (tgt_loc, sample_data[2]))]
-    assert sample_data[0] in [os.path.basename(x) for x in glob('%s/%s/%s/*.*' % (tgt_loc, sample_data[2], sample_data[1]))]
+    assert sample_data[0] in [os.path.basename(x) for x in glob(
+        '%s/%s/%s/*.*' % (tgt_loc, sample_data[2], sample_data[1]))]
 
     # Tear-down the files and folders
     tearDown(session=session, data=sample_data[2])
