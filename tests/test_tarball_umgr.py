@@ -60,7 +60,7 @@ class TestStagingInputComponent(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         # Delete all test staging directories
-        shutil.rmtree(session_sandbox)
+        pass
 
     def setUp(self):
 
@@ -79,7 +79,7 @@ class TestStagingInputComponent(unittest.TestCase):
         self.unit['unit_sandbox'] = os.path.join(self.cfg['workdir'])
         self.unit['pilot_sandbox'] = self.cfg['workdir']
         self.unit['resource_sandbox'] = self.cfg['resource_sandbox']
-        self.unit['description']['input_staging'] = [{
+        self.unit['description'] = {'input_staging': [{
             'uid': ru.generate_id('sd'),
             'source': 'client:///' + workdir + '/file',
             'action': rp.TARBALL,
@@ -87,6 +87,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
             'priority': 0
         }]
+        }
 
         # Unit output directory
         self.unit_directory = os.path.join(workdir)
@@ -111,7 +112,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def tearDown(self):
 
         # Clean unit output directory
-        shutil.rmtree(self.unit_directory)
+        os.remove(self.unit['uid'] + '.tar')
 
         # Clean staging_area
         #shutil.rmtree(os.path.join(workdir, 'staging_area'))
@@ -125,8 +126,9 @@ class TestStagingInputComponent(unittest.TestCase):
     @mock.patch('radical.utils.raise_on')
     @mock.patch.object(rs.filesystem.Directory, 'make_dir')  # mock make_dir
     @mock.patch.object(rs.filesystem.Directory, 'copy')  # mock copy
+    @mock.patch.object(os,'remove')
     # include all mocked things in order
-    def test_tarball(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on, mocked_make_dir, mocked_copy):
+    def test_tarball(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on, mocked_make_dir, mocked_copy,mocked_remove):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
         component._log = ru.get_logger('dummy')
@@ -143,7 +145,7 @@ class TestStagingInputComponent(unittest.TestCase):
         # Should perform all of the actionables
         component._handle_unit(self.unit, actionables)
         # Verify the actionables were done...
-        #self.assertTrue(os.path.isfile(os.path.join(self.unit_directory, 'file')))
+        self.assertTrue(os.path.isfile(os.path.join(os.getcwd(), self.unit['uid'] + '.tar')))
 
 
 if __name__ == '__main__':
