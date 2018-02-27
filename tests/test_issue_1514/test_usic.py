@@ -286,7 +286,7 @@ def test_transfer_multiple_folders_to_unit(
 
             for y in child_x_dir.list():
                 if child_x_dir.is_dir(y):
-                    gchild_x_dir = rs.filesystem.Directory(os.path.join(unit['unit_sandbox'], x.path + '/' + y.path),
+                    gchild_x_dir = rs.filesystem.Directory(os.path.join(unit['unit_sandbox'], x.path, y.path),
                                                            session=session)
 
                     assert sample_data[0] in [gcx.path for gcx in gchild_x_dir.list()]
