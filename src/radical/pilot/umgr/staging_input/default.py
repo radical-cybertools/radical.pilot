@@ -343,13 +343,10 @@ class Default(UMGRStagingInputComponent):
             # Check if the src is a folder, if true
             # add recursive flag if not already specified
             if os.path.isdir(src.path):
-                if rs.filesystem.RECURSIVE not in flags:
-                    flags += [rs.filesystem.RECURSIVE]
+                flags += [rs.filesystem.RECURSIVE]
 
-            # Check if create parents flag is set,
-            # if not set it.
-            if rs.filesystem.CREATE_PARENTS not in flags:
-                flags += [rs.filesystem.CREATE_PARENTS]
+            # Always set CREATE_PARENTS
+            flags += [rs.filesystem.CREATE_PARENTS]
 
             if flags:
                 staging_flags = reduce(lambda x, y: x | y, flags)
