@@ -118,9 +118,7 @@ def test_integration():
     config_loc = '../../src/radical/pilot/configs/resource_%s.json' % resource.split('.')[0]
     path_to_rp_config_file = os.path.realpath(os.path.join(os.getcwd(), config_loc))
     cfg_file = ru.read_json(path_to_rp_config_file)[resource.split('.')[1]]
-    access_schema = config[resource]['schema']
-    if not access_schema:
-        access_schema = 'ssh'
+    access_schema = config[resource].get('schema', 'ssh')
 
     # Verify the actionables were done for single file transfer
     # ------------------------------------------------------------------------------------------------------------------
