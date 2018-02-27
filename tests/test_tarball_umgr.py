@@ -112,17 +112,23 @@ class TestStagingInputComponent(unittest.TestCase):
     @mock.patch.object(rs.filesystem.Directory, '__init__') # mock init
     @mock.patch.object(rs.filesystem.Directory, 'make_dir') # mock make_dir
     @mock.patch.object(rs.filesystem.Directory, 'copy') # mock copy
-    @mock.patch.object(Default, 'register_input')
-    @mock.patch.object(Default, 'register_output')
-    @mock.patch.object(Default, 'register_subscriber')
-
+    #@mock.patch.object(Default, 'register_input')
+    #@mock.patch.object(Default, 'register_output')
+    #@mock.patch.object(Default, 'register_subscriber')
+    #@mock.patch.object(Default, '_fs_cache')
+    #fs_cache=dict()
+    #js_cache=dict()
+    #pilots  =dict()
 
     #include all mocked things in order
-    def test_tarball(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on, mocked_saga_dir_init, mocked_make_dir, mocked_copy, mocked_register_input, mocked_register_output, mocked_register_subscriber):
+    def test_tarball(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on, mocked_saga_dir_init, mocked_make_dir, mocked_copy):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
         component._log = ru.get_logger('dummy')
-        component.initialize_child()
+        #component.initialize_child()
+        component._fs_cache = dict()
+        component._js_cache = dict()
+        component._pilots = dict()
         actionables = list()
         actionables.append({
                             'uid'   : ru.generate_id('sd'),
