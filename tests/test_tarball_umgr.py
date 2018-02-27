@@ -90,7 +90,7 @@ class TestStagingInputComponent(unittest.TestCase):
         # Create the other output directory
         #os.makedirs(self.output_directory)
 
-        shutil.copy("staging-testing-sandbox/sample-data/unit.000000.tar",os.path.join(workdir))
+        shutil.copy("staging-testing-sandbox/sample-data/file",os.path.join(workdir))
 
     def tearDown(self):
         
@@ -120,9 +120,10 @@ class TestStagingInputComponent(unittest.TestCase):
         component._js_cache = dict()
         component._pilots = dict()
         actionables = list()
+        tar_file = None
         actionables.append({
                             'uid'   : ru.generate_id('sd'),
-                            'source': 'client:///file',
+                            'source': 'client:///' + workdir + '/file',
                             'action': rp.TARBALL,
                             'target': 'unit:///file',
                             'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
@@ -132,7 +133,6 @@ class TestStagingInputComponent(unittest.TestCase):
         #print "unit_context", glob.glob(unit_sandbox+'/*')
         # Call the component's '_handle_unit' function
         # Should perform all of the actionables
-        #self.assertTrue('rp.TARBALL' in actionables)
         component._handle_unit(self.unit, actionables)
         # Verify the actionables were done...
         #self.assertTrue(os.path.isfile(os.path.join(self.unit_directory, 'file')))
