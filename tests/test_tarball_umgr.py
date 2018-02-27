@@ -42,9 +42,7 @@ workdir = unit_sandbox
 # Sample data & sample empty configuration
 sample_data_folder = os.path.join(resource_sandbox, 'sample-data')
 cfg_file = os.path.join(sample_data_folder, 'sample_configuration_staging_input_umgr.json')
-sample_data = [
-    #'unit.000000.tar'
-    'file']
+sample_data = ['file']
 
 class TestStagingInputComponent(unittest.TestCase):
 
@@ -109,13 +107,8 @@ class TestStagingInputComponent(unittest.TestCase):
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    #@mock.patch.object(rs.filesystem.Directory, '__init__') # mock init
     @mock.patch.object(rs.filesystem.Directory, 'make_dir') # mock make_dir
     @mock.patch.object(rs.filesystem.Directory, 'copy') # mock copy
-    #@mock.patch.object(Default, 'register_input')
-    #@mock.patch.object(Default, 'register_output')
-    #@mock.patch.object(Default, 'register_subscriber')
-    #@mock.patch.object(Default, '_fs_cache')
 
     #include all mocked things in order
     def test_tarball(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on, mocked_make_dir, mocked_copy):
@@ -138,11 +131,10 @@ class TestStagingInputComponent(unittest.TestCase):
         
         #print "unit_context", glob.glob(unit_sandbox+'/*')
         # Call the component's '_handle_unit' function
-        # Should perform all of the actionables 
+        # Should perform all of the actionables
+        #self.assertTrue('rp.TARBALL' in actionables)
         component._handle_unit(self.unit, actionables)
-        print "unit_context", glob.glob(unit_sandbox+'/*')
         # Verify the actionables were done...
-        self.assertTrue('rp.TARBALL' in actionables)
         #self.assertTrue(os.path.isfile(os.path.join(self.unit_directory, 'file')))
                                                                                                      
 
