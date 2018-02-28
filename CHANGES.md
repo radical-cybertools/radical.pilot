@@ -5,6 +5,20 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+
+
+0.47.2 Release                                                        2018-02-28
+--------------------------------------------------------------------------------
+
+  - fix issue 1538
+  - fix issue 1554
+  - expose profiler to LM hooks (#1522) 
+  - fix bin names (#1549) 
+  - fix event docs, add an event for symmetry (#1527) 
+  - name attribute has been changed to uid, fixes issue #1518
+  - make use of flags consistent between RP and RS (#1547) 
+
+
 0.47 Release                                                          2017-11-19
 --------------------------------------------------------------------------------
 
