@@ -221,8 +221,6 @@ class Default(UMGRStagingInputComponent):
                 #    both
                 if UNIT_BULK_MKDIR_MECHANISM == 'saga':
 
-                    self._log.debug(' === saga')
-
                     tc = rs.task.Container()
                     for sbox in unit_sboxes:
                         tc.add(saga_dir.make_dir(sbox, ttype=rs.TASK))
@@ -230,8 +228,6 @@ class Default(UMGRStagingInputComponent):
                     tc.wait()
 
                 elif UNIT_BULK_MKDIR_MECHANISM == 'tar':
-
-                    self._log.debug(' === tar')
 
                     tmp_path = tempfile.mkdtemp(prefix='rp_agent_tar_dir')
                     tmp_dir  = os.path.abspath(tmp_path)
@@ -244,7 +240,7 @@ class Default(UMGRStagingInputComponent):
 
                     cmd = "cd %s && tar zchf %s *" % (tmp_dir, tar_tgt)
                     out, err, ret = ru.sh_callout(cmd, shell=True)
-                    self._log.debug(' === tar : %s', cmd)
+                    self._log.debug('tar : %s', cmd)
                     self._log.debug('tar : %s\n---\n%s\n---\n%s', out, err, ret)
 
 
@@ -253,8 +249,8 @@ class Default(UMGRStagingInputComponent):
 
                     tar_rem_path = "%s/%s" % (str(session_sbox), tar_name)
 
-                    self._log.debug(' === sbox: %s [%s]', session_sbox, type(session_sbox))
-                    self._log.debug(' === copy: %s -> %s', tar_url, tar_rem_path)
+                    self._log.debug('sbox: %s [%s]', session_sbox, type(session_sbox))
+                    self._log.debug('copy: %s -> %s', tar_url, tar_rem_path)
                     saga_dir.copy(tar_url, tar_rem_path, flags=rs.filesystem.CREATE_PARENTS)
 
                   # ru.sh_callout('rm -r %s' % tmp_path)
@@ -273,8 +269,8 @@ class Default(UMGRStagingInputComponent):
                     cmd = "tar zmxvf %s/%s -C /" % (session_sbox.path, tar_name)
                     j   = js_tmp.run_job(cmd)
                     j.wait()
-                    self._log.debug(' === untar : %s', cmd)
-                    self._log.debug(' === untar : %s\n---\n%s\n---\n%s',
+                    self._log.debug('untar : %s', cmd)
+                    self._log.debug('untar : %s\n---\n%s\n---\n%s',
                             j.get_stdout_string(), j.get_stderr_string(),
                             j.exit_code)
 
@@ -343,17 +339,12 @@ class Default(UMGRStagingInputComponent):
             # Check if the src is a folder, if true
             # add recursive flag if not already specified
             if os.path.isdir(src.path):
-                flags += [rs.filesystem.RECURSIVE]
+                flags |= rs.filesystem.RECURSIVE
 
             # Always set CREATE_PARENTS
-            flags += [rs.filesystem.CREATE_PARENTS]
+            flags |= rs.filesystem.CREATE_PARENTS
 
-            if flags:
-                staging_flags = reduce(lambda x, y: x | y, flags)
-            else:
-                staging_flags = 0
-            
-            saga_dir.copy(src, tgt, flags=staging_flags)
+            saga_dir.copy(src, tgt, flags=flags)
             self._prof.prof('staging_in_stop', uid=uid, msg=did)
 
         # staging is done, we can advance the unit at last
