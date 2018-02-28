@@ -43,17 +43,9 @@ workdir = unit_sandbox
 # Sample data & sample empty configuration
 sample_data_folder = os.path.join(resource_sandbox, 'sample-data')
 cfg_file = os.path.join(sample_data_folder, 'sample_configuration_staging_input.json')
-sample_data = [
-    'unit.000000.tar'
-]
+sample_data = ['unit.000000.tar']
 
 class TestStagingInputComponent(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        pass
-        # Recursively create sandbox, session and pilot folders
-        #os.makedirs(workdir)
 
     @classmethod
     def tearDownClass(cls):
@@ -90,8 +82,7 @@ class TestStagingInputComponent(unittest.TestCase):
         # Create unit folder
         os.makedirs(self.unit_directory)
 
-        # Create the other output directory
-        #os.makedirs(self.output_directory)
+    
 
         shutil.copy("staging-testing-sandbox/sample-data/unit.000000.tar",os.path.join(workdir))
 
@@ -99,12 +90,6 @@ class TestStagingInputComponent(unittest.TestCase):
         
         # Clean unit output directory
         shutil.rmtree(self.unit_directory)
-
-        # Clean staging_area
-        #shutil.rmtree(os.path.join(workdir, 'staging_area'))
-
-        # Clean other output directory
-        #shutil.rmtree(self.output_directory)
 
     @mock.patch.object(Default, '__init__', return_value=None)
     @mock.patch.object(Default, 'advance')
