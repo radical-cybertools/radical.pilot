@@ -134,7 +134,7 @@ class LaunchMethod(object):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, logger):
+    def lrms_config_hook(cls, name, cfg, lrms, logger, profiler):
         """
         This hook will allow the LRMS to perform launch methods specific
         configuration steps.  The LRMS layer MUST ensure that this hook is
@@ -163,13 +163,13 @@ class LaunchMethod(object):
             return None
 
         logger.info('call LRMS config hook for LaunchMethod %s: %s' % (name, impl))
-        return impl.lrms_config_hook(name, cfg, lrms, logger)
+        return impl.lrms_config_hook(name, cfg, lrms, logger, profiler)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger, profiler):
         """
         This hook is symmetric to the config hook above, and is called during
         shutdown sequence, for the sake of freeing allocated resources.
@@ -194,7 +194,7 @@ class LaunchMethod(object):
             return None
 
         logger.info('call LRMS shutdown hook for LaunchMethod %s: %s' % (name, impl))
-        return impl.lrms_shutdown_hook(name, cfg, lrms, lm_info, logger)
+        return impl.lrms_shutdown_hook(name, cfg, lrms, lm_info, logger, profiler)
 
 
     # --------------------------------------------------------------------------

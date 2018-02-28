@@ -159,17 +159,12 @@ class Default(UMGRStagingOutputComponent):
             # Check if the src is a folder, if true
             # add recursive flag if not already specified
             if os.path.isdir(src.path):
-                flags += [rs.filesystem.RECURSIVE]
+                flags |= rs.filesystem.RECURSIVE
 
             # Always set CREATE_PARENTS
-            flags += [rs.filesystem.CREATE_PARENTS]
+            flags |= rs.filesystem.CREATE_PARENTS
 
-            if flags:
-                staging_flags = reduce(lambda x, y: x | y, flags)
-            else:
-                staging_flags = 0
-
-            saga_dir.copy(src, tgt, flags=staging_flags)
+            saga_dir.copy(src, tgt, flags=flags)
             self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
         # all staging is done -- at this point the unit is final
