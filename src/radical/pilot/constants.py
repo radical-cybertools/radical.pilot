@@ -60,17 +60,19 @@ TRANSFER = 'Transfer' # saga remote transfer TODO: This might just be a special 
 #
 # Flags - inherit from RS where possible, add custom ones
 #
-import saga as rs
-CREATE_PARENTS = rs.filesystem.CREATE_PARENTS  # Create parent directories while writing file
-SKIP_FAILED    = 4096                          # Don't stage out files if tasks failed
-NON_FATAL      = 8192                          # Don't fail the CU if input is missing
+import saga.filesystem as rsf
+
+CREATE_PARENTS = rsf.CREATE_PARENTS  # Create parent directories if needed
+SKIP_FAILED    = 4096                # Don't stage out files if tasks failed
+NON_FATAL      = 8192                # Don't fail the CU if input is missing
+
 
 #
 # Defaults
 #
 DEFAULT_ACTION   = TRANSFER
 DEFAULT_PRIORITY = 0
-DEFAULT_FLAGS    = CREATE_PARENTS | SKIP_FAILED
+DEFAULT_FLAGS    = CREATE_PARENTS
 STAGING_AREA     = 'staging_area'
 
 
@@ -78,4 +80,6 @@ STAGING_AREA     = 'staging_area'
 SCHEDULER_ROUND_ROBIN  = "round_robin"
 SCHEDULER_BACKFILLING  = "backfilling"
 SCHEDULER_DEFAULT      = SCHEDULER_ROUND_ROBIN
+
+# ------------------------------------------------------------------------------
 

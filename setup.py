@@ -300,7 +300,7 @@ setup_args = {
                             'msgpack-python',
                             'pyzmq'
                            ],
-    'tests_require'      : [],
+    'tests_require'      : ['pytest'],
     'test_suite'         : '%s.tests' % name,
     'zip_safe'           : False,
   # 'build_sphinx'       : {
