@@ -40,7 +40,7 @@ def test_integration():
     session = rp.Session()
 
     # read the config used for resource details
-    config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
+    config = ru.read_json('%s/../../examples/config.json' % os.path.dirname(os.path.abspath(__file__)))
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
     pmgr = rp.PilotManager(session=session)
