@@ -30,15 +30,16 @@ def copy(src, dest):
 session_id = 'rp.session.testing.local.0000'
 
 # Staging testing folder locations
-directory = os.path.dirname(os.path.abspath(__file__))
+directory        = os.path.dirname(os.path.abspath(__file__))
 resource_sandbox = os.path.join(directory, 'staging-testing-sandbox')
-session_sandbox = os.path.join(resource_sandbox, session_id)
-pilot_sandbox = session_sandbox
-workdir = os.path.join(pilot_sandbox, 'pilot.0000')
+session_sandbox  = os.path.join(resource_sandbox, session_id)
+pilot_sandbox    = session_sandbox
+workdir          = os.path.join(pilot_sandbox, 'pilot.0000')
 
 # Sample data & sample empty configuration
 sample_data_folder = os.path.join(resource_sandbox, 'sample-data')
-cfg_file = os.path.join(sample_data_folder, 'sample_configuration_staging_input.json')
+cfg_file           = os.path.join(sample_data_folder,
+                                  'sample_configuration_staging_input.json')
 sample_data = [
     'single-file',
     'single-folder',
@@ -59,28 +60,31 @@ class TestStagingInputComponent(unittest.TestCase):
         shutil.rmtree(session_sandbox)
 
     def setUp(self):
-                
+
         # Recursively create sandbox and staging folders
         os.makedirs(os.path.join(workdir, 'staging_area'))
 
         # Copy sample data
         for data in sample_data:
-            copy(os.path.join(sample_data_folder, data), os.path.join(workdir, 'staging_area', data))
+            copy(os.path.join(sample_data_folder, data), os.path.join(workdir,
+                 'staging_area', data))
 
         # Component configuration
-        with open(cfg_file) as fp:
-            self.cfg = json.load(fp)
-        self.cfg['session_id'] = session_id
+      # with open(cfg_file) as fp:
+      #     self.cfg = json.load(fp)
+        self.cfg = dict()
+
+        self.cfg['session_id']       = session_id
         self.cfg['resource_sandbox'] = resource_sandbox
-        self.cfg['session_sandbox'] = session_sandbox
-        self.cfg['pilot_sandbox'] = pilot_sandbox
-        self.cfg['workdir'] = workdir
+        self.cfg['session_sandbox']  = session_sandbox
+        self.cfg['pilot_sandbox']    = pilot_sandbox
+        self.cfg['workdir']          = workdir
 
         # Unit Configuration
         self.unit = dict()
-        self.unit['uid'] = 'unit.00000'
-        self.unit['unit_sandbox'] = os.path.join(self.cfg['workdir'], 'unit.00000')
-        self.unit['pilot_sandbox'] = self.cfg['workdir']
+        self.unit['uid']              = 'unit.00000'
+        self.unit['unit_sandbox']     = os.path.join(self.cfg['workdir'], 'unit.00000')
+        self.unit['pilot_sandbox']    = self.cfg['workdir']
         self.unit['resource_sandbox'] = self.cfg['resource_sandbox']
 
         # Unit output directory
@@ -123,7 +127,7 @@ class TestStagingInputComponent(unittest.TestCase):
                             'source': 'client:///wrongthing',
                             'action': rp.TARBALL,
                             'target': 'unit:///unit.00000.tar',
-                            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+                            'flags':  rp.CREATE_PARENTS,
                             'priority': 0
                                      })
         # Call the component's '_handle_unit' function
@@ -153,7 +157,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.COPY,
             'target': 'unit:///single-file',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -179,7 +183,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.LINK,
             'target': 'unit:///single-file',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -206,7 +210,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.MOVE,
             'target': 'unit:///single-file',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -233,7 +237,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.COPY,
             'target': 'unit:///new-single-file',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -259,7 +263,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.LINK,
             'target': 'unit:///new-single-file',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -286,7 +290,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.MOVE,
             'target': 'unit:///new-single-file',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -313,7 +317,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.COPY,
             'target': '',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -339,7 +343,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.LINK,
             'target': '',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -366,7 +370,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.MOVE,
             'target': '',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -393,7 +397,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-folder',
             'action': rp.COPY,
             'target': 'unit:///single-folder',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -421,7 +425,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-folder',
             'action': rp.LINK,
             'target': 'unit:///single-folder',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -452,7 +456,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-folder',
             'action': rp.MOVE,
             'target': 'unit:///single-folder',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -483,7 +487,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-folder',
             'action': rp.COPY,
             'target': 'unit:///new-single-folder',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -511,7 +515,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-folder',
             'action': rp.LINK,
             'target': 'unit:///new-single-folder',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -542,7 +546,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-folder',
             'action': rp.MOVE,
             'target': 'unit:///new-single-folder',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -572,7 +576,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-folder',
             'action': rp.COPY,
             'target': '',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -600,7 +604,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-folder',
             'action': rp.LINK,
             'target': '',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -632,7 +636,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-folder',
             'action': rp.MOVE,
             'target': '',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -663,7 +667,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.COPY,
             'target': 'unit:///new-single-folder/single-file',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -691,7 +695,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.LINK,
             'target': 'unit:///new-single-folder/single-file',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -719,7 +723,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.MOVE,
             'target': 'unit:///new-single-folder/single-file',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -747,7 +751,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.COPY,
             'target': 'unit:///new-single-folder/new-single-file',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -775,7 +779,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.LINK,
             'target': 'unit:///new-single-folder/new-single-file',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -803,7 +807,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.MOVE,
             'target': 'unit:///new-single-folder/new-single-file',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -831,7 +835,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.COPY,
             'target': 'unit:///new-single-folder/',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -859,7 +863,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.LINK,
             'target': 'unit:///new-single-folder/',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -887,7 +891,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.MOVE,
             'target': 'unit:///new-single-folder/',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -915,7 +919,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///multi-folder',
             'action': rp.COPY,
             'target': 'unit:///multi-folder',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -948,7 +952,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///multi-folder',
             'action': rp.LINK,
             'target': 'unit:///multi-folder',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -981,7 +985,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///multi-folder',
             'action': rp.MOVE,
             'target': 'unit:///multi-folder',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1014,7 +1018,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///multi-folder',
             'action': rp.COPY,
             'target': 'unit:///new-multi-folder',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1047,7 +1051,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///multi-folder',
             'action': rp.LINK,
             'target': 'unit:///new-multi-folder',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1080,7 +1084,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///multi-folder',
             'action': rp.MOVE,
             'target': 'unit:///new-multi-folder',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1112,7 +1116,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///multi-folder',
             'action': rp.COPY,
             'target': '',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1145,7 +1149,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///multi-folder',
             'action': rp.LINK,
             'target': '',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1178,7 +1182,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///multi-folder',
             'action': rp.MOVE,
             'target': '',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1219,7 +1223,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.COPY,
             'target': os.path.join(self.output_directory, 'single-file'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1245,7 +1249,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.LINK,
             'target': os.path.join(self.output_directory, 'single-file'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1272,7 +1276,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.MOVE,
             'target': os.path.join(self.output_directory, 'single-file'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1299,7 +1303,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.COPY,
             'target': os.path.join(self.output_directory, 'new-single-file'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1325,7 +1329,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.LINK,
             'target': os.path.join(self.output_directory, 'new-single-file'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1352,7 +1356,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.MOVE,
             'target': os.path.join(self.output_directory, 'new-single-file'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1379,7 +1383,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.COPY,
             'target': self.output_directory,
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1405,7 +1409,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.LINK,
             'target': self.output_directory,
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1432,7 +1436,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-file',
             'action': rp.MOVE,
             'target': self.output_directory,
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1459,7 +1463,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-folder',
             'action': rp.COPY,
             'target': os.path.join(self.output_directory, 'single-folder'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1487,7 +1491,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-folder',
             'action': rp.LINK,
             'target': os.path.join(self.output_directory, 'single-folder'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1518,7 +1522,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-folder',
             'action': rp.MOVE,
             'target': os.path.join(self.output_directory, 'single-folder'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1549,7 +1553,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-folder',
             'action': rp.COPY,
             'target': os.path.join(self.output_directory, 'new-single-folder'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1577,7 +1581,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-folder',
             'action': rp.LINK,
             'target': os.path.join(self.output_directory, 'new-single-folder'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1608,7 +1612,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-folder',
             'action': rp.MOVE,
             'target': os.path.join(self.output_directory, 'new-single-folder'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1638,7 +1642,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-folder',
             'action': rp.COPY,
             'target': self.output_directory,
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1666,7 +1670,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-folder',
             'action': rp.LINK,
             'target': self.output_directory,
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
@@ -1698,7 +1702,7 @@ class TestStagingInputComponent(unittest.TestCase):
             'source': 'pilot:///single-folder',
             'action': rp.MOVE,
             'target': self.output_directory,
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':  rp.CREATE_PARENTS,
             'priority': 0
         })
         
