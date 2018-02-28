@@ -34,13 +34,13 @@ def copy(src, dest):
 # Stating session information
 session_id = 'rp.session.testing.local.0000'
 
-# Staging testing folder locations
 directory = os.path.dirname(os.path.abspath(__file__))
+
 resource_sandbox = os.path.join(directory, 'staging-testing-sandbox')
 session_sandbox = os.path.join(resource_sandbox, session_id)
 pilot_sandbox = os.path.join(session_sandbox, 'pilot.0000')
 unit_sandbox = os.path.join(pilot_sandbox, 'unit.000000')
-workdir = unit_sandbox
+
 
 # Sample data & sample empty configuration
 sample_data_folder = os.path.join(resource_sandbox, 'sample-data')
@@ -51,16 +51,7 @@ sample_data = ['file']
 
 class TestStagingInputComponent(unittest.TestCase):
 
-    @classmethod
-    def setUpClass(cls):
-        pass
-        # Recursively create sandbox, session and pilot folders
-        # os.makedirs(workdir)
 
-    @classmethod
-    def tearDownClass(cls):
-        # Delete all test staging directories
-        pass
 
     def setUp(self):
 
@@ -71,17 +62,18 @@ class TestStagingInputComponent(unittest.TestCase):
         self.cfg['resource_sandbox'] = resource_sandbox
         self.cfg['session_sandbox'] = session_sandbox
         self.cfg['pilot_sandbox'] = pilot_sandbox
-        self.cfg['workdir'] = workdir
+        self.cfg['unit_sandbox'] = unit_sandbox
+
 
         # Unit Configuration
         self.unit = dict()
         self.unit['uid'] = 'unit.000000'
-        self.unit['unit_sandbox'] = os.path.join(self.cfg['workdir'])
-        self.unit['pilot_sandbox'] = self.cfg['workdir']
+        self.unit['unit_sandbox'] = os.path.join(self.cfg['unit_sandbox'])
+        self.unit['pilot_sandbox'] = self.cfg['pilot_sandbox']
         self.unit['resource_sandbox'] = self.cfg['resource_sandbox']
         self.unit['description'] = {'input_staging': [{
             'uid': ru.generate_id('sd'),
-            'source': 'client:///' + workdir + '/file',
+            'source': 'client:///' + sample_data_folder + '/file',
             'action': rp.TARBALL,
             'target': 'unit:///file',
             'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
@@ -89,37 +81,14 @@ class TestStagingInputComponent(unittest.TestCase):
         }]
         }
 
-        # Unit output directory
-        self.unit_directory = os.path.join(workdir)
-
-        # Pilot staging directory
-        # os.path.join(workdir, 'staging_area')
-        self.pilot_directory = pilot_sandbox
-
-        # Some other output directory
-        # os.path.join(workdir, 'output_directory')
-        self.output_directory = unit_sandbox
-
-        # Create unit folder
-        os.makedirs(self.unit_directory)
-
-        # Create the other output directory
-        # os.makedirs(self.output_directory)
-
-        shutil.copy("staging-testing-sandbox/sample-data/file",
-                    os.path.join(workdir))
+    
 
     def tearDown(self):
 
         # Clean unit output directory
         os.remove(self.unit['uid'] + '.tar')
 
-        # Clean staging_area
-        #shutil.rmtree(os.path.join(workdir, 'staging_area'))
-
-        # Clean other output directory
-        # shutil.rmtree(self.output_directory)
-
+    
     @mock.patch.object(Default, '__init__', return_value=None)
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
