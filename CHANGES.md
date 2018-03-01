@@ -17,6 +17,9 @@
   - fix event docs, add an event for symmetry (#1527) 
   - name attribute has been changed to uid, fixes issue #1518
   - make use of flags consistent between RP and RS (#1547) 
+  - add support for recursive data staging (#1513. #1514)  (JD, VB, GC)
+  - change staging flags to integers (inherited from RS)
+  - add support for bulk data transfer (#1512) (IP, SM)
 
 
 0.47 Release                                                          2017-11-19
