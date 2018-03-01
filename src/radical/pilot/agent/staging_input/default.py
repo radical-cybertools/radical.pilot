@@ -218,7 +218,7 @@ class Default(AgentStagingInputComponent):
             elif action == rpc.MOVE:
                 shutil.move(src.path, tgt.path)
 
-            elif action == rpc.TRANSFER: pass
+            elif action == rpc.TRANSFER:
 
                 # NOTE:  TRANSFER directives don't arrive here right now.
                 # FIXME: we only handle srm staging right now, and only for
@@ -242,7 +242,7 @@ class Default(AgentStagingInputComponent):
                 # If somethig was staged via the tarball method, the tarball is
                 # extracted and then removed from the unit folder.
                 self._log.debug('extract tarball for %s',uid)
-                tar = tarfile.open('%s/%s.tar' % (os.path.dirname(tgt.path), uid)
+                tar = tarfile.open('%s/%s.tar' % (os.path.dirname(tgt.path), uid))
                 tar.extractall(path=os.path.dirname(tgt.path))
                 tar.close()
 
