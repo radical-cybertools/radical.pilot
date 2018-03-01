@@ -6,6 +6,7 @@ __license__   = "MIT"
 import os
 import errno
 import shutil
+import tarfile
 
 import saga          as rs
 import radical.utils as ru
@@ -76,7 +77,7 @@ class Default(AgentStagingInputComponent):
             actionables = list()
             for sd in unit['description'].get('input_staging', []):
 
-                if sd['action'] in [rpc.LINK, rpc.COPY, rpc.MOVE]:
+                if sd['action'] in [rpc.LINK, rpc.COPY, rpc.MOVE, rpc.TARBALL]:
                     actionables.append(sd)
 
             if actionables:
@@ -149,11 +150,11 @@ class Default(AgentStagingInputComponent):
 
             self._prof.prof('staging_in_start', uid=uid, msg=did)
 
-            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER])
+            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER, rpc.TARBALL])
 
             # we only handle staging which does *not* include 'client://' src or
             # tgt URLs - those are handled by the umgr staging components
-            if src.startswith('client://'):
+            if src.startswith('client://') and action != rpc.TARBALL:
                 self._log.debug('skip staging for src %s', src)
                 self._prof.prof('staging_in_skip', uid=uid, msg=did)
                 continue
@@ -187,7 +188,7 @@ class Default(AgentStagingInputComponent):
 
             # SAGA will take care of dir creation - but we do it manually
             # for local ops (copy, link, move)
-            if rpc.CREATE_PARENTS in flags and action != rpc.TRANSFER:
+            if flags & rpc.CREATE_PARENTS and action != rpc.TRANSFER:
                 tgtdir = os.path.dirname(tgt.path)
                 if tgtdir != sandbox:
                     self._log.debug("mkdir %s", tgtdir)
@@ -203,32 +204,50 @@ class Default(AgentStagingInputComponent):
                         raise
                         
             elif action == rpc.LINK:
-                # Fix issue/1513 if link source is file and target is folder
+
+                # Fix issue/1513 if link source is file and target is folder.
                 # should support POSIX standard where link is created
                 # with the same name as the source
                 if os.path.isfile(src.path) and os.path.isdir(tgt.path):
-                    os.symlink     (src.path, os.path.join(tgt.path, os.path.basename(src.path)))
+                    os.symlink(src.path, 
+                               '%s/%s' % (tgt.path, os.path.basename(src.path)))
+
                 else: # default behavior
-                    os.symlink     (src.path, tgt.path)
-            elif action == rpc.MOVE: shutil.move    (src.path, tgt.path)
+                    os.symlink(src.path, tgt.path)
+
+            elif action == rpc.MOVE:
+                shutil.move(src.path, tgt.path)
+
             elif action == rpc.TRANSFER: pass
-                # This is currently never executed. Commenting it out.
-                # Uncomment and implement when downloads directly to unit
-                # from remote URLs are supported.
+
+                # NOTE:  TRANSFER directives don't arrive here right now.
                 # FIXME: we only handle srm staging right now, and only for
                 #        a specific target proxy. Other TRANSFER directives are
                 #        left to umgr input staging.  We should use SAGA to
-                #        attempt all staging ops which do not target the client
+                #        attempt all staging ops which do not involve the client
                 #        machine.
-                # if src.schema == 'srm':
-                #     # FIXME: cache saga handles
-                #     srm_dir = rs.filesystem.Directory('srm://proxy/?SFN=bogus')
-                #     srm_dir.copy(src, tgt)
-                #     srm_dir.close()
-                # else:
-                #     self._log.error('no transfer for %s -> %s', src, tgt)
-                #     self._prof.prof('staging_in_fail', uid=uid, msg=did)
-                #     raise NotImplementedError('unsupported transfer %s' % src)
+                if src.schema == 'srm':
+                    # FIXME: cache saga handles
+                    srm_dir = rs.filesystem.Directory('srm://proxy/?SFN=bogus')
+                    srm_dir.copy(src, tgt)
+                    srm_dir.close()
+
+                else:
+                    self._log.error('no transfer for %s -> %s', src, tgt)
+                    self._prof.prof('staging_in_fail', uid=uid, msg=did)
+                    raise NotImplementedError('unsupported transfer %s' % src)
+
+            elif action == rpc.TARBALL:
+
+                # If somethig was staged via the tarball method, the tarball is
+                # extracted and then removed from the unit folder.
+                self._log.debug('extract tarball for %s',uid)
+                tar = tarfile.open('%s/%s.tar' % (os.path.dirname(tgt.path), uid)
+                tar.extractall(path=os.path.dirname(tgt.path))
+                tar.close()
+
+              # FIXME: make tarball removal dependent on debug settings
+              # os.remove(os.path.dirname(tgt.path) + '/' + uid + '.tar')
 
             self._prof.prof('staging_in_stop', uid=uid, msg=did)
 
