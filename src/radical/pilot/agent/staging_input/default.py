@@ -5,6 +5,7 @@ __license__   = "MIT"
 
 import os
 import shutil
+import tarfile
 
 import saga          as rs
 import radical.utils as ru
@@ -75,7 +76,7 @@ class Default(AgentStagingInputComponent):
             actionables = list()
             for sd in unit['description'].get('input_staging', []):
 
-                if sd['action'] in [rpc.LINK, rpc.COPY, rpc.MOVE]:
+                if sd['action'] in [rpc.LINK, rpc.COPY, rpc.MOVE, rpc.TARBALL]:
                     actionables.append(sd)
 
             if actionables:
@@ -148,11 +149,11 @@ class Default(AgentStagingInputComponent):
 
             self._prof.prof('staging_in_start', uid=uid, msg=did)
 
-            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER])
+            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER, rpc.TARBALL])
 
             # we only handle staging which does *not* include 'client://' src or
             # tgt URLs - those are handled by the umgr staging components
-            if '://' in src and src.startswith('client://'):
+            if '://' in src and src.startswith('client://') and action != rpc.TARBALL:
                 self._log.debug('skip staging for src %s', src)
                 self._prof.prof('staging_in_skip', uid=uid, msg=did)
                 continue
@@ -199,7 +200,14 @@ class Default(AgentStagingInputComponent):
                     self._log.error('no transfer for %s -> %s', src, tgt)
                     self._prof.prof('staging_in_fail', uid=uid, msg=did)
                     raise NotImplementedError('unsupported transfer %s' % src)
-
+            elif action == rpc.TARBALL:
+                # If somethig was staged via the tarball method, the tarball is
+                # extracted and then removed from the unit folder.
+                self._log.debug('Extracting tarball for unit: %s',uid)
+                tar = tarfile.open(os.path.dirname(tgt.path) + '/' + uid + '.tar')
+                tar.extractall(path=os.path.dirname(tgt.path))
+                tar.close()
+                os.remove(os.path.dirname(tgt.path) + '/' + uid + '.tar')
             self._prof.prof('staging_in_stop', uid=uid, msg=did)
 
         # all staging is done -- pass on to the scheduler
