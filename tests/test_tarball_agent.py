@@ -43,14 +43,6 @@ sample_data = ['unit.000000.tar']
 #
 class TestStagingInputComponent(unittest.TestCase):
 
-    @classmethod
-    def setUpClass(cls):
-        pass
-
-    @classmethod
-    def tearDownClass(cls):
-        # Delete all test staging directories
-        shutil.rmtree(session_sandbox)
 
     def setUp(self):
 
@@ -80,7 +72,6 @@ class TestStagingInputComponent(unittest.TestCase):
 
     def tearDown(self):
         
-        # Clean unit output directory
         shutil.rmtree(self.session_sandbox)
 
 
