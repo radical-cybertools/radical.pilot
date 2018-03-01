@@ -56,6 +56,7 @@ COPY     = 'Copy'     # local cp
 LINK     = 'Link'     # local ln -s
 MOVE     = 'Move'     # local mv
 TRANSFER = 'Transfer' # saga remote transfer TODO: This might just be a special case of copy
+TARBALL  = 'Tarball'  # remote staging will be executed using a tarball.
 
 #
 # Flags - inherit from RS where possible, add custom ones
