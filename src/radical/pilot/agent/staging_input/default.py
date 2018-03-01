@@ -204,7 +204,7 @@ class Default(AgentStagingInputComponent):
                 # If somethig was staged via the tarball method, the tarball is
                 # extracted and then removed from the unit folder.
                 self._log.debug('Extracting tarball for unit: %s',uid)
-                tar = tarfile.open(os.path.dirname(tgt.path) + '/ ' + uid + '.tar')
+                tar = tarfile.open(os.path.dirname(tgt.path) + '/' + uid + '.tar')
                 tar.extractall(path=os.path.dirname(tgt.path))
                 tar.close()
                 os.remove(os.path.dirname(tgt.path) + '/' + uid + '.tar')
