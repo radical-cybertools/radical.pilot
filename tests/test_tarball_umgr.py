@@ -1,6 +1,8 @@
+#!/usr/bin/env python 
 
 import os
 import errno
+import shutil
 import unittest
 
 import radical.utils as ru
@@ -68,8 +70,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def tearDown(self):
 
         # Clean unit output directory
-        print '%s/%s.tar' % (self.unit['unit_sandbox'], self.unit['uid'])
-        os.remove('%s/%s.tar' % (self.unit['unit_sandbox'], self.unit['uid']))
+        shutil.rmtree(self.cfg['session_sandbox'])
 
     
     @mock.patch.object(Default, '__init__', return_value=None)
