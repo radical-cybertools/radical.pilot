@@ -1,19 +1,19 @@
 import os
-import re
 import shutil
 import errno
-import json
-import random
-import string
 import unittest
+
 import radical.utils as ru
 import radical.pilot as rp
+
 from radical.pilot.agent.staging_output.default import Default
+
 
 try: 
     import mock 
 except ImportError: 
     from unittest import mock
+
 
 # Copy file or folder
 def copy(src, dest):
@@ -30,15 +30,16 @@ def copy(src, dest):
 session_id = 'rp.session.testing.local.0000'
 
 # Staging testing folder locations
-directory = os.path.dirname(os.path.abspath(__file__))
+directory        = os.path.dirname(os.path.abspath(__file__))
 resource_sandbox = os.path.join(directory, 'staging-testing-sandbox')
-session_sandbox = os.path.join(resource_sandbox, session_id)
-pilot_sandbox = session_sandbox
-workdir = os.path.join(pilot_sandbox, 'pilot.0000')
+session_sandbox  = os.path.join(resource_sandbox, session_id)
+pilot_sandbox    = session_sandbox
+workdir          = os.path.join(pilot_sandbox, 'pilot.0000')
 
 # Sample data & sample empty configuration
 sample_data_folder = os.path.join(resource_sandbox, 'sample-data')
-cfg_file = os.path.join(sample_data_folder, 'sample_configuration_staging_output.json')
+cfg_file           = os.path.join(sample_data_folder, 
+                                  'sample_configuration_staging_output.json')
 sample_data = [
     'single-file',
     'single-folder',
@@ -61,29 +62,29 @@ class TestStagingOutputComponent(unittest.TestCase):
         unit_uid = 'unit.00000'
 
         # Unit output directory
-        self.unit_directory = os.path.join(workdir, unit_uid)
+        self.unit_sandbox = os.path.join(workdir, unit_uid)
 
         # Pilot staging directory
-        self.pilot_directory = os.path.join(workdir, 'staging_area')
+        self.pilot_sandbox = os.path.join(workdir, 'staging_area')
 
         # Output directory
         self.output_directory = os.path.join(workdir, 'output_area')
 
         # Recursively create sandbox and staging folders
-        os.makedirs(self.unit_directory)
-        os.makedirs(self.pilot_directory)
+        os.makedirs(self.unit_sandbox)
+        os.makedirs(self.pilot_sandbox)
 
         # Create folder where all output is going to be copied to 
         # (i.e., the target folder for all directives)
         os.makedirs(self.output_directory)
 
-        # Copy sample data to unit_directory
+        # Copy sample data to unit_sandbox
         for data in sample_data:
-            copy(os.path.join(sample_data_folder, data), os.path.join(self.unit_directory, data))
+            copy(os.path.join(sample_data_folder, data),
+                    os.path.join(self.unit_sandbox, data))
 
         # Component configuration
-        with open(cfg_file) as fp:
-            self.cfg = json.load(fp)
+        self.cfg = ru.read_json(cfg_file)
         self.cfg['session_id'] = session_id
         self.cfg['resource_sandbox'] = resource_sandbox
         self.cfg['session_sandbox'] = session_sandbox
@@ -93,14 +94,14 @@ class TestStagingOutputComponent(unittest.TestCase):
         # Unit Configuration
         self.unit = dict()
         self.unit['uid'] = unit_uid
-        self.unit['unit_sandbox'] = self.unit_directory
+        self.unit['unit_sandbox'] = self.unit_sandbox
         self.unit['pilot_sandbox'] = self.cfg['workdir']
         self.unit['resource_sandbox'] = self.cfg['resource_sandbox']
 
     def tearDown(self):
         
         # Clean unit directory
-        shutil.rmtree(self.unit_directory)
+        shutil.rmtree(self.unit_sandbox)
 
         # Clean output directory
         shutil.rmtree(self.output_directory)
@@ -123,7 +124,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-file',
             'action': rp.COPY,
             'target': os.path.join(self.output_directory, 'single-file'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -149,7 +150,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-file',
             'action': rp.LINK,
             'target': os.path.join(self.output_directory, 'single-file'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -158,7 +159,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...
-        self.assertTrue(os.path.exists(os.path.join(self.unit_directory, 'single-file'))) 
+        self.assertTrue(os.path.exists(os.path.join(self.unit_sandbox, 'single-file'))) 
         self.assertTrue(os.path.islink(os.path.join(self.output_directory, 'single-file')))
 
 
@@ -176,7 +177,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-file',
             'action': rp.MOVE,
             'target': os.path.join(self.output_directory, 'single-file'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -185,7 +186,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertFalse(os.path.exists(os.path.join(self.unit_directory, 'single-file')))
+        self.assertFalse(os.path.exists(os.path.join(self.unit_sandbox, 'single-file')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-file')))
 
 
@@ -203,7 +204,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-file',
             'action': rp.COPY,
             'target': os.path.join(self.output_directory, 'new-single-file'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -229,7 +230,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-file',
             'action': rp.LINK,
             'target': os.path.join(self.output_directory, 'new-single-file'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -238,7 +239,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertTrue(os.path.exists(os.path.join(self.unit_directory, 'single-file'))) 
+        self.assertTrue(os.path.exists(os.path.join(self.unit_sandbox, 'single-file'))) 
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-single-file')))
 
 
@@ -256,7 +257,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-file',
             'action': rp.MOVE,
             'target': os.path.join(self.output_directory, 'new-single-file'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -265,7 +266,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertFalse(os.path.exists(os.path.join(self.unit_directory, 'single-file')))
+        self.assertFalse(os.path.exists(os.path.join(self.unit_sandbox, 'single-file')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-single-file')))
 
 
@@ -283,7 +284,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-file',
             'action': rp.COPY,
             'target': self.output_directory,
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -309,7 +310,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-file',
             'action': rp.LINK,
             'target': self.output_directory,
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -318,7 +319,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertTrue(os.path.exists(os.path.join(self.unit_directory, 'single-file')))
+        self.assertTrue(os.path.exists(os.path.join(self.unit_sandbox, 'single-file')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-file')))
 
 
@@ -336,7 +337,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-file',
             'action': rp.MOVE,
             'target': self.output_directory,
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -345,7 +346,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertFalse(os.path.exists(os.path.join(self.unit_directory, 'single-file')))
+        self.assertFalse(os.path.exists(os.path.join(self.unit_sandbox, 'single-file')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-file')))
 
 
@@ -363,7 +364,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-folder',
             'action': rp.COPY,
             'target': os.path.join(self.output_directory, 'single-folder'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -391,7 +392,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-folder',
             'action': rp.LINK,
             'target': os.path.join(self.output_directory, 'single-folder'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -400,9 +401,9 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...
-        self.assertTrue(os.path.isdir(os.path.join(self.unit_directory, 'single-folder')))
-        self.assertTrue(os.path.isfile(os.path.join(self.unit_directory, 'single-folder/file-1')))
-        self.assertTrue(os.path.isfile(os.path.join(self.unit_directory, 'single-folder/file-2')))
+        self.assertTrue(os.path.isdir(os.path.join(self.unit_sandbox, 'single-folder')))
+        self.assertTrue(os.path.isfile(os.path.join(self.unit_sandbox, 'single-folder/file-1')))
+        self.assertTrue(os.path.isfile(os.path.join(self.unit_sandbox, 'single-folder/file-2')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'single-folder')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-folder/file-1')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-folder/file-2')))
@@ -422,7 +423,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-folder',
             'action': rp.MOVE,
             'target': os.path.join(self.output_directory, 'single-folder'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -431,9 +432,9 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...
-        self.assertFalse(os.path.exists(os.path.join(self.unit_directory, 'single-folder')))
-        self.assertFalse(os.path.exists(os.path.join(self.unit_directory, 'single-folder/file-1')))
-        self.assertFalse(os.path.exists(os.path.join(self.unit_directory, 'single-folder/file-2')))
+        self.assertFalse(os.path.exists(os.path.join(self.unit_sandbox, 'single-folder')))
+        self.assertFalse(os.path.exists(os.path.join(self.unit_sandbox, 'single-folder/file-1')))
+        self.assertFalse(os.path.exists(os.path.join(self.unit_sandbox, 'single-folder/file-2')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'single-folder')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-folder/file-1')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-folder/file-2')))
@@ -453,7 +454,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-folder',
             'action': rp.COPY,
             'target': os.path.join(self.output_directory, 'new-single-folder'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -481,7 +482,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-folder',
             'action': rp.LINK,
             'target': os.path.join(self.output_directory, 'new-single-folder'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -490,9 +491,9 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertTrue(os.path.isdir(os.path.join(self.unit_directory, 'single-folder')))
-        self.assertTrue(os.path.isfile(os.path.join(self.unit_directory, 'single-folder/file-1')))
-        self.assertTrue(os.path.isfile(os.path.join(self.unit_directory, 'single-folder/file-2')))
+        self.assertTrue(os.path.isdir(os.path.join(self.unit_sandbox, 'single-folder')))
+        self.assertTrue(os.path.isfile(os.path.join(self.unit_sandbox, 'single-folder/file-1')))
+        self.assertTrue(os.path.isfile(os.path.join(self.unit_sandbox, 'single-folder/file-2')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'new-single-folder')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-single-folder/file-1')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-single-folder/file-2')))
@@ -512,7 +513,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-folder',
             'action': rp.MOVE,
             'target': os.path.join(self.output_directory, 'new-single-folder'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -521,9 +522,9 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertFalse(os.path.exists(os.path.join(self.unit_directory, 'single-folder')))
-        self.assertFalse(os.path.exists(os.path.join(self.unit_directory, 'single-folder/file-1')))
-        self.assertFalse(os.path.exists(os.path.join(self.unit_directory, 'single-folder/file-2')))
+        self.assertFalse(os.path.exists(os.path.join(self.unit_sandbox, 'single-folder')))
+        self.assertFalse(os.path.exists(os.path.join(self.unit_sandbox, 'single-folder/file-1')))
+        self.assertFalse(os.path.exists(os.path.join(self.unit_sandbox, 'single-folder/file-2')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'new-single-folder')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-single-folder/file-1')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-single-folder/file-2')))
@@ -542,7 +543,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-folder',
             'action': rp.COPY,
             'target': self.output_directory + '/',
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -570,7 +571,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-folder',
             'action': rp.LINK,
             'target': self.output_directory,
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -580,9 +581,9 @@ class TestStagingOutputComponent(unittest.TestCase):
 
         # Verify the actionables were done...        
 
-        self.assertTrue(os.path.exists(os.path.join(self.unit_directory, 'single-folder')))
-        self.assertTrue(os.path.exists(os.path.join(self.unit_directory, 'single-folder/file-1')))
-        self.assertTrue(os.path.exists(os.path.join(self.unit_directory, 'single-folder/file-2')))
+        self.assertTrue(os.path.exists(os.path.join(self.unit_sandbox, 'single-folder')))
+        self.assertTrue(os.path.exists(os.path.join(self.unit_sandbox, 'single-folder/file-1')))
+        self.assertTrue(os.path.exists(os.path.join(self.unit_sandbox, 'single-folder/file-2')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'single-folder')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-folder/file-1')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-folder/file-2')))
@@ -602,7 +603,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-folder',
             'action': rp.MOVE,
             'target': self.output_directory,
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -611,9 +612,9 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertFalse(os.path.exists(os.path.join(self.unit_directory, 'single-folder')))
-        self.assertFalse(os.path.exists(os.path.join(self.unit_directory, 'single-folder/file-1')))
-        self.assertFalse(os.path.exists(os.path.join(self.unit_directory, 'single-folder/file-2')))
+        self.assertFalse(os.path.exists(os.path.join(self.unit_sandbox, 'single-folder')))
+        self.assertFalse(os.path.exists(os.path.join(self.unit_sandbox, 'single-folder/file-1')))
+        self.assertFalse(os.path.exists(os.path.join(self.unit_sandbox, 'single-folder/file-2')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'single-folder')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-folder/file-1')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'single-folder/file-2')))
@@ -623,7 +624,7 @@ class TestStagingOutputComponent(unittest.TestCase):
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    def test_copy_single_file_to_directory(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+    def test_copy_single_file_to_sandbox(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
         component._log = ru.get_logger('dummy')
@@ -633,7 +634,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-file',
             'action': rp.COPY,
             'target': os.path.join(self.output_directory, 'new-single-folder/single-file'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -642,7 +643,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertTrue(os.path.isfile(os.path.join(self.unit_directory, 'single-file')))
+        self.assertTrue(os.path.isfile(os.path.join(self.unit_sandbox, 'single-file')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'new-single-folder')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-single-folder/single-file')))
 
@@ -651,7 +652,7 @@ class TestStagingOutputComponent(unittest.TestCase):
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    def test_link_single_file_to_directory(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+    def test_link_single_file_to_sandbox(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
         component._log = ru.get_logger('dummy')
@@ -661,7 +662,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-file',
             'action': rp.LINK,
             'target': os.path.join(self.output_directory, 'new-single-folder/single-file'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -670,7 +671,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertTrue(os.path.isfile(os.path.join(self.unit_directory, 'single-file')))
+        self.assertTrue(os.path.isfile(os.path.join(self.unit_sandbox, 'single-file')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'new-single-folder')))
         self.assertTrue(os.path.islink(os.path.join(self.output_directory, 'new-single-folder/single-file')))
 
@@ -679,7 +680,7 @@ class TestStagingOutputComponent(unittest.TestCase):
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    def test_move_single_file_to_directory(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+    def test_move_single_file_to_sandbox(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
         component._log = ru.get_logger('dummy')
@@ -689,7 +690,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-file',
             'action': rp.MOVE,
             'target': os.path.join(self.output_directory, 'new-single-folder/single-file'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -698,7 +699,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertFalse(os.path.exists(os.path.join(self.unit_directory, 'single-file')))
+        self.assertFalse(os.path.exists(os.path.join(self.unit_sandbox, 'single-file')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'new-single-folder')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-single-folder/single-file')))
 
@@ -707,7 +708,7 @@ class TestStagingOutputComponent(unittest.TestCase):
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    def test_copy_single_file_to_directory_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+    def test_copy_single_file_to_sandbox(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
         component._log = ru.get_logger('dummy')
@@ -717,7 +718,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-file',
             'action': rp.COPY,
             'target': os.path.join(self.output_directory, 'new-single-folder/new-single-file'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -726,7 +727,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertTrue(os.path.isfile(os.path.join(self.unit_directory, 'single-file')))
+        self.assertTrue(os.path.isfile(os.path.join(self.unit_sandbox, 'single-file')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'new-single-folder')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-single-folder/new-single-file')))
 
@@ -735,7 +736,7 @@ class TestStagingOutputComponent(unittest.TestCase):
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    def test_link_single_file_to_directory_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+    def test_link_single_file_to_sandbox(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
         component._log = ru.get_logger('dummy')
@@ -745,7 +746,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-file',
             'action': rp.LINK,
             'target': os.path.join(self.output_directory, 'new-single-folder/new-single-file'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -754,7 +755,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertTrue(os.path.isfile(os.path.join(self.unit_directory, 'single-file')))
+        self.assertTrue(os.path.isfile(os.path.join(self.unit_sandbox, 'single-file')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'new-single-folder')))
         self.assertTrue(os.path.islink(os.path.join(self.output_directory, 'new-single-folder/new-single-file')))
 
@@ -763,7 +764,7 @@ class TestStagingOutputComponent(unittest.TestCase):
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    def test_move_single_file_to_directory_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+    def test_move_single_file_to_sandbox(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
         component._log = ru.get_logger('dummy')
@@ -773,7 +774,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-file',
             'action': rp.MOVE,
             'target': os.path.join(self.output_directory, 'new-single-folder/new-single-file'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -782,7 +783,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertFalse(os.path.exists(os.path.join(self.unit_directory, 'single-file')))
+        self.assertFalse(os.path.exists(os.path.join(self.unit_sandbox, 'single-file')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'new-single-folder')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-single-folder/new-single-file')))
 
@@ -791,7 +792,7 @@ class TestStagingOutputComponent(unittest.TestCase):
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    def test_copy_single_file_to_directory_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+    def test_copy_single_file_to_sandbox(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
         component._log = ru.get_logger('dummy')
@@ -801,7 +802,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-file',
             'action': rp.COPY,
             'target': os.path.join(self.output_directory, 'new-single-folder/'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -810,7 +811,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertTrue(os.path.isfile(os.path.join(self.unit_directory, 'single-file')))
+        self.assertTrue(os.path.isfile(os.path.join(self.unit_sandbox, 'single-file')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'new-single-folder')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-single-folder/single-file')))
 
@@ -819,7 +820,7 @@ class TestStagingOutputComponent(unittest.TestCase):
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    def test_link_single_file_to_directory_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+    def test_link_single_file_to_sandbox(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
         component._log = ru.get_logger('dummy')
@@ -829,7 +830,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-file',
             'action': rp.LINK,
             'target': os.path.join(self.output_directory, 'new-single-folder/'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -838,7 +839,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertTrue(os.path.isfile(os.path.join(self.unit_directory, 'single-file')))
+        self.assertTrue(os.path.isfile(os.path.join(self.unit_sandbox, 'single-file')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'new-single-folder')))
         self.assertTrue(os.path.islink(os.path.join(self.output_directory, 'new-single-folder/single-file')))
 
@@ -847,7 +848,7 @@ class TestStagingOutputComponent(unittest.TestCase):
     @mock.patch.object(Default, 'advance')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    def test_move_single_file_to_directory_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
+    def test_move_single_file_to_sandbox(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
         component._log = ru.get_logger('dummy')
@@ -857,7 +858,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///single-file',
             'action': rp.MOVE,
             'target': os.path.join(self.output_directory, 'new-single-folder/'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -866,7 +867,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertFalse(os.path.exists(os.path.join(self.unit_directory, 'single-file')))
+        self.assertFalse(os.path.exists(os.path.join(self.unit_sandbox, 'single-file')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'new-single-folder')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-single-folder/single-file')))
 
@@ -885,7 +886,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///multi-folder',
             'action': rp.COPY,
             'target': os.path.join(self.output_directory, 'multi-folder'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -894,7 +895,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...
-        self.assertTrue(os.path.isdir(os.path.join(self.unit_directory, 'multi-folder')))
+        self.assertTrue(os.path.isdir(os.path.join(self.unit_sandbox, 'multi-folder')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'multi-folder')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'multi-folder/folder-1')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'multi-folder/folder-2')))
@@ -918,7 +919,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///multi-folder',
             'action': rp.LINK,
             'target': os.path.join(self.output_directory, 'multi-folder'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -927,7 +928,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...
-        self.assertTrue(os.path.isdir(os.path.join(self.unit_directory, 'multi-folder')))
+        self.assertTrue(os.path.isdir(os.path.join(self.unit_sandbox, 'multi-folder')))
         self.assertTrue(os.path.islink(os.path.join(self.output_directory, 'multi-folder')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'multi-folder/folder-1')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'multi-folder/folder-2')))
@@ -951,7 +952,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///multi-folder',
             'action': rp.MOVE,
             'target': os.path.join(self.output_directory, 'multi-folder'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -960,7 +961,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertFalse(os.path.exists(os.path.join(self.unit_directory, 'multi-folder')))
+        self.assertFalse(os.path.exists(os.path.join(self.unit_sandbox, 'multi-folder')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'multi-folder')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'multi-folder/folder-1')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'multi-folder/folder-2')))
@@ -984,7 +985,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///multi-folder',
             'action': rp.COPY,
             'target': os.path.join(self.output_directory, 'new-multi-folder'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -993,7 +994,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...
-        self.assertTrue(os.path.exists(os.path.join(self.unit_directory, 'multi-folder')))
+        self.assertTrue(os.path.exists(os.path.join(self.unit_sandbox, 'multi-folder')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'new-multi-folder')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'new-multi-folder/folder-1')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'new-multi-folder/folder-2')))
@@ -1017,7 +1018,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///multi-folder',
             'action': rp.LINK,
             'target': os.path.join(self.output_directory, 'new-multi-folder'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -1026,7 +1027,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertTrue(os.path.isdir(os.path.join(self.unit_directory, 'multi-folder')))
+        self.assertTrue(os.path.isdir(os.path.join(self.unit_sandbox, 'multi-folder')))
         self.assertTrue(os.path.islink(os.path.join(self.output_directory, 'new-multi-folder')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'new-multi-folder/folder-1')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'new-multi-folder/folder-2')))
@@ -1050,7 +1051,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///multi-folder',
             'action': rp.MOVE,
             'target': os.path.join(self.output_directory, 'new-multi-folder'),
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -1059,7 +1060,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertFalse(os.path.exists(os.path.join(self.unit_directory, 'multi-folder')))
+        self.assertFalse(os.path.exists(os.path.join(self.unit_sandbox, 'multi-folder')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'new-multi-folder/folder-1')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'new-multi-folder/folder-2')))
         self.assertTrue(os.path.isfile(os.path.join(self.output_directory, 'new-multi-folder/folder-1/file-1')))
@@ -1082,7 +1083,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///multi-folder',
             'action': rp.COPY,
             'target': self.output_directory,
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -1091,7 +1092,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertTrue(os.path.isdir(os.path.join(self.unit_directory, 'multi-folder')))
+        self.assertTrue(os.path.isdir(os.path.join(self.unit_sandbox, 'multi-folder')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'multi-folder')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'multi-folder/folder-1')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'multi-folder/folder-2')))
@@ -1115,7 +1116,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///multi-folder',
             'action': rp.LINK,
             'target': self.output_directory,
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -1124,7 +1125,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...        
-        self.assertTrue(os.path.isdir(os.path.join(self.unit_directory, 'multi-folder')))
+        self.assertTrue(os.path.isdir(os.path.join(self.unit_sandbox, 'multi-folder')))
         self.assertTrue(os.path.islink(os.path.join(self.output_directory, 'multi-folder')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'multi-folder/folder-1')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'multi-folder/folder-2')))
@@ -1148,7 +1149,7 @@ class TestStagingOutputComponent(unittest.TestCase):
             'source': 'unit:///multi-folder',
             'action': rp.MOVE,
             'target': self.output_directory,
-            'flags':    [rp.CREATE_PARENTS, rp.SKIP_FAILED],
+            'flags':    rp.DEFAULT_FLAGS,
             'priority': 0
         })
         
@@ -1157,7 +1158,7 @@ class TestStagingOutputComponent(unittest.TestCase):
         component._handle_unit_staging(self.unit, actionables)
 
         # Verify the actionables were done...
-        self.assertFalse(os.path.exists(os.path.join(self.unit_directory, 'multi-folder')))
+        self.assertFalse(os.path.exists(os.path.join(self.unit_sandbox, 'multi-folder')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'multi-folder')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'multi-folder/folder-1')))
         self.assertTrue(os.path.isdir(os.path.join(self.output_directory, 'multi-folder/folder-2')))

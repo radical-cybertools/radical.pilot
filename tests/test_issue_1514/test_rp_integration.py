@@ -19,8 +19,8 @@ from glob import glob
 import shutil
 
 
+# ------------------------------------------------------------------------------
 # Setup for all tests
-#-----------------------------------------------------------------------------------------------------------------------
 resource = 'local.localhost'
 cur_dir = os.path.dirname(os.path.abspath(__file__))
 local_sample_data = os.path.join(cur_dir, 'sample_data')
@@ -33,14 +33,15 @@ sample_data = [
 
 def test_integration():
 
+    # --------------------------------------------------------------------------
     # RP script to launch the CUs
-    # ------------------------------------------------------------------------------------------------------------------
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
     session = rp.Session()
 
     # read the config used for resource details
-    config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
+    config = ru.read_json('%s/../../examples/config.json' 
+                          % os.path.dirname(os.path.abspath(__file__)))
 
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
     pmgr = rp.PilotManager(session=session)
@@ -191,3 +192,4 @@ def test_integration():
     # ------------------------------------------------------------------------------------------------------------------
 
     session.close(cleanup=True)
+
