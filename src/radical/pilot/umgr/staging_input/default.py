@@ -350,18 +350,20 @@ class Default(UMGRStagingInputComponent):
 
                 # create a tarfile on the first match, and register for transfer
                 if not tar_file:
-                    tmp_path = tempfile.mkstemp(prefix='rp_usi_%s.' % uid,
+                    tmp_file = tempfile.NamedTemporaryFile(
+                                                prefix='rp_usi_%s.' % uid,
                                                 suffix='.tar',
                                                 delete=False)
-                    tar_file = tarfile.open(tmp_path, 'w')
-                    tar_src  = ru.Url('file://localhost/%s' % tmp_path)
+                    tar_path = tmp_file.name
+                    tar_file = tarfile.open(fileobj=tmp_file, mode='w')
+                    tar_src  = ru.Url('file://localhost/%s' % tar_path)
                     tar_tgt  = ru.Url('unit:////%s.tar'     % uid)
                     tar_did  = ru.generate_id('sd')
                     tar_sd   = {'action' : rpc.TRANSFER, 
-                                'flags'  : rpc.DEFAULT | rcp.CREATE_PARENTS,
+                                'flags'  : rpc.DEFAULT_FLAGS,
                                 'uid'    : tar_did,
-                                'src'    : tar_src,
-                                'tgt'    : tar_tgt,
+                                'source' : tar_src,
+                                'target' : tar_tgt,
                                }
                     new_actionables.append(tar_sd)
 
@@ -407,7 +409,7 @@ class Default(UMGRStagingInputComponent):
             # agent to untar the tarball, and clean up.
             tar_sd['action'] = rpc.TARBALL
             unit['description']['input_staging'].append(tar_sd)
-            os.remove(uid + '.tar')
+            os.remove(tar_path)
 
 
         # staging is done, we can advance the unit at last
