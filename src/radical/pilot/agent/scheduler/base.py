@@ -217,11 +217,16 @@ class AgentSchedulingComponent(rpu.Component):
                 # remove it from the wait queue
                 with self._wait_lock :
                     self._wait_pool.remove(cu)
+
             else:
                 # Break out of this loop if we didn't manage to schedule a task
                 # FIXME: this assumes that no smaller or otherwise more suitable
                 #        CUs come after this one - which is naive, ie. wrong.
-                break
+                # NOTE:  This assumption does indeed break for the fifo
+                #        scheduler, so we disable this now.  But:
+                # TODO:  Optimization: this can be costly
+             #  break
+                pass
 
         # Note: The extra space below is for visual alignment
         if self._log.isEnabledFor(logging.DEBUG):
