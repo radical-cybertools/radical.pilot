@@ -240,6 +240,8 @@ class Popen(AgentExecutingComponent) :
             env_string += 'export RP_TMP="%s"\n'          % self._cu_tmp
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
+            if 'RP_APP_TUNNEL' in os.environ:
+                env_string += 'export RP_APP_TUNNEL="%s"\n' % os.environ['RP_APP_TUNNEL']
 
             env_string += '''
 prof(){
