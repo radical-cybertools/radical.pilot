@@ -33,7 +33,7 @@ class ORTE(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, logger):
+    def lrms_config_hook(cls, name, cfg, lrms, logger, profiler):
         """
         FIXME: this config hook will manipulate the LRMS nodelist.  Not a nice
                thing to do, but hey... :P
@@ -89,6 +89,7 @@ class ORTE(LaunchMethod):
         vm_size = len(lrms.node_list)
         dvm_uri = None
 
+        profiler.prof(event='orte_dvm_start', uid=cfg['pilot_id'])
         logger.info("Starting ORTE DVM on %d nodes with '%s'", vm_size, command)
         dvm_process = sp.Popen(command, stdout=sp.PIPE, stderr=sp.STDOUT)
 
@@ -103,9 +104,11 @@ class ORTE(LaunchMethod):
                 logger.info("ORTE DVM URI: %s" % dvm_uri)
 
             elif line == 'DVM ready':
-                logger.info("ORTE DVM startup successful!")
                 if not dvm_uri:
                     raise Exception("VMURI not found!")
+
+                logger.info("ORTE DVM startup successful!")
+                profiler.prof(event='orte_dvm_ok', uid=cfg['pilot_id'])
                 break
 
             else:
@@ -116,6 +119,8 @@ class ORTE(LaunchMethod):
                 else:
                     # Process is gone: fatal!
                     raise Exception("ORTE DVM process disappeared")
+                    profiler.prof(event='orte_dvm_fail', uid=cfg['pilot_id'])
+
 
 
         # ----------------------------------------------------------------------
@@ -158,7 +163,7 @@ class ORTE(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger, profiler):
         """
         This hook is symmetric to the config hook above, and is called during
         shutdown sequence, for the sake of freeing allocated resources.
@@ -168,13 +173,19 @@ class ORTE(LaunchMethod):
             try:
                 logger.info('terminating dvm')
                 dvm_uri = lm_info['dvm_uri']
-                prun    = ru.which('prun')
-                if not prun:
-                    raise Exception("Couldn't find prun")
-                ru.sh_callout('%s --hnp "%s" --terminate' % (prun, dvm_uri))
+                orterun = ru.which('orterun')
+
+                if not orterun:
+                    raise Exception("Couldn't find orterun")
+
+                ru.sh_callout('%s --hnp %s --terminate' % (orterun, dvm_uri))
+                profiler.prof(event='orte_dvm_stop', uid=cfg['pilot_id'])
 
             except Exception as e:
-                logger.exception('dmv termination failed')
+                # use the same event name as for runtime failures - those are
+                # not distinguishable at the moment from termination failures
+                profiler.prof(event='orte_dvm_fail', uid=cfg['pilot_id'])
+                logger.exception('dvm termination failed')
 
 
     # --------------------------------------------------------------------------

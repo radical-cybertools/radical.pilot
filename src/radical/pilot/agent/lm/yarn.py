@@ -27,7 +27,7 @@ class Yarn(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, logger):
+    def lrms_config_hook(cls, name, cfg, lrms, logger, profile):
         """
         FIXME: this config hook will inspect the LRMS nodelist and, if needed,
                will start the YARN cluster on node[0].
@@ -292,7 +292,7 @@ class Yarn(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger, profile):
         if 'name' not in lm_info:
             raise RuntimeError('name not in lm_info for %s' % name)
 
