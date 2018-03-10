@@ -16,19 +16,21 @@
 # Thanks to Mark Santcroos to provide the input for this installation
 # procedure!
 
-# ------------------------------------------------------------------------------
-# resource specifics
-module unload PrgEnv-pgi || true
-module load   PrgEnv-gnu
-module load cmake3 boost fftw
-module load dynamic-link
-export OMPI_DIR=$HOME/ompi/
-# ------------------------------------------------------------------------------
-
+# export OMPI_DIR=$HOME/ompi/                          # target location for install
+export OMPI_DIR=/lustre/atlas2/csc230/world-shared/openmpi
 export OMPI_COMMIT=539f71d                           # OpenMPI commit to install
-export OMPI_COMMIT=b75ed83d4b                        # close to master HEAD
+export OMPI_COMMIT=master
+export OMPI_COMMIT=64e838c1ac
+export OMPI_COMMIT=7839dc91a8
+export OMPI_COMMIT=a76a61b2c9
+export OMPI_COMMIT=d9b2c94
+export OMPI_COMMIT=47bf0d6f9d
+export OMPI_COMMIT=e88767866e
+export OMPI_COMMIT=51f3fbdb3e  # Fix cmd line passing of DVM URI   Oct 6 2017
+export OMPI_COMMIT=04ec013da9  # 04.03.2018
+export OMPI_LABEL=test
 export OMPI_LABEL=$(date '+%Y_%m_%d'_${OMPI_COMMIT}) # module flag for installed version
-export MAKEFLAGS=-j16                                # speed up build on multicore machines
+export MAKEFLAGS=-j32                                # speed up build on multicore machines
 
 
 # The environments below are only important during build time
@@ -44,54 +46,94 @@ export PATH=$OMPI_TOOLS_PREFIX/bin:$PATH
 # as this path needs to be accessible during job run time.
 # E.g. on Blue Waters, a good location for
 # OMPI_INSTALLED=/projects/sciteam/gk4/openmpi/installed,
-# and OMPI_ALL_MODULES=/projects/sciteam/gk4/openmpi/modules.
+# and OMPI_MODULE_BASE=/projects/sciteam/gk4/openmpi/modules.
 
-export OMPI_ALL_MODULES=$OMPI_DIR/modules
-export OMPI_MODULE=$OMPI_ALL_MODULES/openmpi
+export OMPI_MODULE_BASE=$OMPI_DIR/modules
+export OMPI_MODULE=$OMPI_MODULE_BASE/openmpi
 export OMPI_INSTALLED=$OMPI_DIR/installed
+
+echo $OMPI_DIR/$OMPI_LABEL
+
+TEST=$(hostname -f | grep titan)
+if ! test -z "$TEST"
+then
+    module load   python
+    module load   python_pip
+    module load   python_virtualenv
+
+    # for openmpi build
+    module unload PrgEnv-pgi || true
+    module load   PrgEnv-gnu || true
+    module unload cray-mpich || true
+    module load   torque
+    # ./configure --prefix=/lustre/atlas2/csc230/world-shared/openmpi/src/ompi../../install/test/ --enable-debug --enable-timing --enable-heterogeneous --enable-mpi-cxx --enable-install-libpmix --enable-pmix-timing --with-pmix=internal --with-ugni --with-cray-pmi --with-alps=yes --with-tm 
+  
+    # load what was installed above
+  # module use --append /lustre/atlas2/csc230/world-shared/openmpi/modules
+  # module load openmpi/test
+
+    # for charm build
+  # module load   cudatoolkit   # problems with UCL workload?
+    module load   cmake
+   ## ./build charm++ mpi-linux-x86_64 mpicxx smp omp pthreads -j16
+    # ./build charm++ mpi-linux-x86_64 mpicxx -j16
+
+    # for namd build
+    module load   rca
+   ## ./config CRAY-XE-gnu --charm-base ../charm-openmpi/ --charm-arch mpi-linux-x86_64-omp-pthreads-smp-mpicxx --fftw-prefix /lustre/atlas2/csc230/world-shared/openmpi/applications/namd/namd-openmpi/../fftw-2.1.5/install --with-tcl
+    # ./config CRAY-XE-gnu --charm-base ../charm-openmpi/ --charm-arch -linux-x86_64-mpicxx --fftw-prefix /lustre/atlas2/csc230/world-shared/openmpi/applications/namd/fftw-2.1.5/install --with-tcl
+fi
 
 mkdir -p $OMPI_DOWNLOAD
 mkdir -p $OMPI_SOURCE
 
-cd $OMPI_DOWNLOAD
-wget http://ftp.nluug.nl/gnu/autoconf/autoconf-2.69.tar.gz
-wget http://ftp.nluug.nl/gnu/automake/automake-1.13.4.tar.gz
-wget http://nl.mirror.babylon.network/gnu/libtool/libtool-2.4.2.tar.gz
-wget https://ftp.gnu.org/gnu/m4/m4-1.4.16.tar.gz
+# wget http://ftp.nluug.nl/gnu/autoconf/autoconf-2.69.tar.gz
+# wget http://ftp.nluug.nl/gnu/automake/automake-1.13.4.tar.gz
+# wget http://nl.mirror.babylon.network/gnu/libtool/libtool-2.4.2.tar.gz
+#    wget https://ftp.gnu.org/gnu/m4/m4-1.4.18.tar.gz
+# wget ftp://ftp.gromacs.org/pub/gromacs/gromacs-5.1.4.tar.gz
+# 
+# cd $OMPI_SOURCE
+# tar -xvzf $OMPI_DOWNLOAD/m4-1.4.18.tar.gz
+# cd m4-1.4.18
+# ./configure --prefix=$OMPI_TOOLS_PREFIX
+# make
+# make install
+# 
+# cd $OMPI_SOURCE
+# tar -xvzf $OMPI_DOWNLOAD/autoconf-2.69.tar.gz
+# cd autoconf-2.69
+# ./configure --prefix=$OMPI_TOOLS_PREFIX
+# make
+# make install
+# 
+# cd $OMPI_SOURCE
+# tar -xvzf $OMPI_DOWNLOAD/automake-1.13.4.tar.gz
+# cd automake-1.13.4
+# ./configure --prefix=$OMPI_TOOLS_PREFIX
+# make
+# make install
+# 
+# cd $OMPI_SOURCE
+# tar -xvzf $OMPI_DOWNLOAD/libtool-2.4.2.tar.gz
+# cd libtool-2.4.2
+# ./configure --prefix=$OMPI_TOOLS_PREFIX
+# make
+# make install
 
 cd $OMPI_SOURCE
-tar -xvzf $OMPI_DOWNLOAD/m4-1.4.16.tar.gz
-cd m4-1.4.16
-./configure --prefix=$OMPI_TOOLS_PREFIX
-make
-make install
-
-cd $OMPI_SOURCE
-tar -xvzf $OMPI_DOWNLOAD/autoconf-2.69.tar.gz
-cd autoconf-2.69
-./configure --prefix=$OMPI_TOOLS_PREFIX
-make
-make install
-
-cd $OMPI_SOURCE
-tar -xvzf $OMPI_DOWNLOAD/automake-1.13.4.tar.gz
-cd automake-1.13.4
-./configure --prefix=$OMPI_TOOLS_PREFIX
-make
-make install
-
-cd $OMPI_SOURCE
-tar -xvzf $OMPI_DOWNLOAD/libtool-2.4.2.tar.gz
-cd libtool-2.4.2
-./configure --prefix=$OMPI_TOOLS_PREFIX
-make
-make install
-
-cd $OMPI_SOURCE
-git clone https://github.com/open-mpi/ompi.git
+## git clone https://github.com/open-mpi/ompi.git
 cd ompi
+git checkout master
+git pull
 git checkout $OMPI_COMMIT
 ./autogen.pl
+
+echo "OMPI_DIR      : $OMPI_DIR"
+echo "OMPI_SOURCE   : $OMPI_SOURCE"
+echo "OMPI_BUILD    : $OMPI_BUILD"
+echo "OMPI_INSTALLED: $OMPI_INSTALLED"
+echo "OMPI_LABEL    : $OMPI_LABEL"
 
 export OMPI_BUILD=$OMPI_DIR/build/$OMPI_LABEL
 mkdir -p $OMPI_BUILD
@@ -105,24 +147,13 @@ $OMPI_SOURCE/ompi/configure \
     --enable-static \
     --disable-pmix-dstore \
     --prefix=$OMPI_INSTALLED/$OMPI_LABEL
-make
+make -j 32
 make install
-
 
 # install libffi on systems which don't have it, so that the pilot ve can
 # install the `orte_cffi` python module.
 # libffi documentation needs texi2html which is not commonly available, so we
 # disable documentation.
-#
-# cd $OMPI_SOURCE
-# git clone https://github.com/libffi/libffi.git
-# cd libffi
-# ./autogen.sh
-# ./configure --prefix=$OMPI_TOOLS_PREFIX --disable-docs
-# make
-# make install
-
-
 
 mkdir -p $OMPI_MODULE
 cat <<EOT > $OMPI_MODULE/$OMPI_LABEL
@@ -151,27 +182,34 @@ setenv          OMPI_MCA_timer_require_monotonic false
 
 EOT
 
-# ------------------------------------------------------------------------------
-# gromacs
-#
-PREFIX=$OMPI_INSTALLED/$OMPI_LABEL
-export PATH=$PREFIX/bin:$PATH
-export LD_LIBRARY_PATH=$PREFIX/lib:$LD_LIBRARY_PATH
-export PKG_CONFIG_PATH=$PREFIX/share/pkgconfig:$PKG_CONFIG_PATH
 
-echo "export PREFIX=$PREFIX"
-## cd $OMPI_DOWNLOAD
-## wget ftp://ftp.gromacs.org/pub/gromacs/gromacs-5.1.4.tar.gz
+cd $OMPI_SOURCE
+## git clone https://github.com/libffi/libffi.git
+cd libffi
+git pull
+./autogen.sh
+./configure --prefix=$OMPI_TOOLS_PREFIX --disable-docs
+make
+make install
 
+
+# we also install gromacs
 cd $OMPI_SOURCE
 rm -rf gromacs-5.1.4
 tar xf $OMPI_DOWNLOAD/gromacs-5.1.4.tar.gz
 cd gromacs-5.1.4
 
-module use  --append $OMPI_MODULE
+echo '--------------------------------------'
+pwd -P
+echo module use --append $OMPI_MODULE_BASE
+echo module load openmpi/$OMPI_LABEL
+echo '--------------------------------------'
+
+module use --append $OMPI_MODULE_BASE
 module load openmpi/$OMPI_LABEL
 module list
 
+set -x
 cmake \
   -DCMAKE_C_COMPILER=mpicc \
   -DCMAKE_CXX_COMPILER=mpiCC \
@@ -181,10 +219,13 @@ cmake \
   -DGMX_BUILD_OWN_FFTW=ON \
   -DGMX_OPENMP=OFF \
   -DGMX_SIMD=AVX_128_FMA
+set +x
 make
 make install
+
 
 # this should not be needed - but just in case someone sources this script,
 # we try to end up where we started.
 cd $orig
+
 
