@@ -89,15 +89,20 @@ esac
 
 if test "$arg" = "bw"
 then
+    # BW wants us to run all things python in its own process group (I assume
+    # a cgroup or something), so we spawn that here and continue the script at
+    # the same place
     echo "invoke BW magic"
     module load bwpy
-    exec bwpy-environment -- /bin/sh "$script" "$prefix" bwpy
+    exec bwpy-environ -- /bin/sh "$script" "$prefix" bwpy
 
 elif test "$arg" = "bwpy"
 then
+    # this is where we end up after the `exec` call in the branch above
     echo "create bwpy ve [$prefix]"
 
 else
+    # this is not BW.
     echo "create rct ve [$prefix]"
 
 fi
@@ -127,43 +132,10 @@ python_version=`python -c 'import distutils.sysconfig as sc; print sc.get_python
 ve_mod_prefix=` python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
 rp_mod_prefix=`echo $ve_mod_prefix | sed -e "s|$prefix|$prefix/rp_install/|"`
 
-# # we actually stop at this point.  RP has other dependencies nowadays, which are
-# # not always solved by the simple script above, namely ORTE, and
-# # morespecifically (and indirectly) libffi.  radical-pilot-deploy-ompi.sh needs
-# # to run before rp installation has a chance to succeed (usually).
-# exit
-# 
-# 
-# # NOTE: the code below is left in, as it might get reactivated at some point.
-# PYTHONPATH="$rp_mod_prefix:$PYTHONPATH"
-# export PYTHONPATH
-# 
-# PATH="$prefix/rp_install/bin:$PATH"
-# export PATH
-# 
-# # we need to add the radical name __init__.py manually here --
-# # distutil is broken and will not install it.  That file is necessary to have
-# # the 'radical' namespace searchable by python's import.
-# mkdir -p   "$rp_mod_prefix/radical/"
-# ru_ns_init="$rp_mod_prefix/radical/__init__.py"
-# echo                                              >  $ru_ns_init
-# echo 'import pkg_resources'                       >> $ru_ns_init
-# echo 'pkg_resources.declare_namespace (__name__)' >> $ru_ns_init
-# echo                                              >> $ru_ns_init
-# 
-# PIP_INSTALL="pip install --install-option='--prefix=$prefix/rp_install'"
-# $PIP_INSTALL radical.utils || exit 1
-# $PIP_INSTALL saga-python   || exit 1
-# $PIP_INSTALL radical.pilot || exit 1
-# 
-# OLD_SAGA_VERBOSE=$SAGA_VERBOSE
-# OLD_RADICAL_VERBOSE=$RADICAL_VERBOSE
-# OLD_RADICAL_PILOT_VERBOSE=$RADICAL_PILOT_VERBOSE
-# 
-# SAGA_VERBOSE=WARNING
-# RADICAL_VERBOSE=WARNING
-# RADICAL_PILOT_VERBOSE=WARNING
-
+# BW doesn't like us anymore: after loading the bwpy module, we also need to
+# create a new process group to get a  workable Python.  We thus patch the
+# virtualenv to do the necessary actions automatically, by wrapping the python
+# executable in a small script which sets up that environment.
 if test "$arg" = "bwpy"
 then
 
@@ -172,9 +144,8 @@ then
     cd $prefix/bin
     cwd=$(pwd -P)
 
-    # find binary
-    # NOTE: fucking virtualenv seems to pick the bin name randomly or
-    #       whatever...
+    # find binary - fucking virtualenv seems to pick the bin name randomly or
+    # whatever...
     for p in python python2 python2.7
     do
         if ! test -h $p
@@ -182,7 +153,7 @@ then
             echo "patch $p"
             mv $p $p-exe
             echo "#!/bin/sh" > $p
-            echo "exec bwpy-environment -- $cwd/$p-exe \"\$@\"" >> $p
+            echo "exec bwpy-environ -- $cwd/$p-exe \"\$@\"" >> $p
             chmod 0755  $p
         else
             echo "skip  $p"
