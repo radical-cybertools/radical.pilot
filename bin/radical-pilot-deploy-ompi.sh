@@ -66,6 +66,7 @@ then
     module load   PrgEnv-gnu || true
     module unload cray-mpich || true
     module load   torque
+    module load   pmi
     # ./configure --prefix=/lustre/atlas2/csc230/world-shared/openmpi/src/ompi../../install/test/ --enable-debug --enable-timing --enable-heterogeneous --enable-mpi-cxx --enable-install-libpmix --enable-pmix-timing --with-pmix=internal --with-ugni --with-cray-pmi --with-alps=yes --with-tm 
   
     # load what was installed above
@@ -129,24 +130,47 @@ git pull
 git checkout $OMPI_COMMIT
 ./autogen.pl
 
-echo "OMPI_DIR      : $OMPI_DIR"
-echo "OMPI_SOURCE   : $OMPI_SOURCE"
-echo "OMPI_BUILD    : $OMPI_BUILD"
-echo "OMPI_INSTALLED: $OMPI_INSTALLED"
-echo "OMPI_LABEL    : $OMPI_LABEL"
-
 export OMPI_BUILD=$OMPI_DIR/build/$OMPI_LABEL
 mkdir -p $OMPI_BUILD
 cd $OMPI_BUILD
 export CFLAGS=-O3
 export CXXFLAGS=-O3
-$OMPI_SOURCE/ompi/configure \
-    --enable-orterun-prefix-by-default \
-    --with-devel-headers \
-    --disable-debug \
-    --enable-static \
-    --disable-pmix-dstore \
-    --prefix=$OMPI_INSTALLED/$OMPI_LABEL
+
+echo "========================================="
+echo "OMPI_DIR      : $OMPI_DIR"
+echo "OMPI_SOURCE   : $OMPI_SOURCE"
+echo "OMPI_BUILD    : $OMPI_BUILD"
+echo "OMPI_INSTALLED: $OMPI_INSTALLED"
+echo "OMPI_LABEL    : $OMPI_LABEL"
+echo "modules       :"
+module list 2>&1 | sort
+echo "========================================="
+
+# $OMPI_SOURCE/ompi/configure \
+#     --enable-orterun-prefix-by-default \
+#     --with-devel-headers \
+#     --disable-debug \
+#     --enable-static \
+#     --disable-pmix-dstore \
+#     --prefix=$OMPI_INSTALLED/$OMPI_LABEL
+$OMPI_SOURCE/ompi/configure               \
+    --prefix=$OMPI_INSTALLED/$OMPI_LABEL  \
+    --enable-orterun-prefix-by-default    \
+    --with-devel-headers                  \
+    --disable-debug                       \
+    --enable-static                       \
+    --enable-heterogeneous                \
+    --enable-timing                       \
+    --enable-mpi-cxx                      \
+    --enable-install-libpmix              \
+    --enable-pmix-timing                  \
+    --with-pmix=internal                  \
+    --with-ugni                           \
+    --with-pmi=/opt/cray/pmi/5.0.12/      \
+    --with-tm                             \
+    --with-alps=yes                       \
+
+  # --with-cray-pmi                       \
 make -j 32
 make install
 
