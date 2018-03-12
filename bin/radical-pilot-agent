@@ -5,15 +5,18 @@ __license__   = "MIT"
 
 
 import sys
+import setproctitle
 
 import saga          as rs
 import radical.utils as ru
 import radical.pilot as rp
 
+import radical.pilot.agent as rpa
+
 
 # ==============================================================================
 #
-def bootstrap_3():
+def bootstrap_3(agent_name):
     """
     This method continues where the bootstrap_0/1/2 left off, and will now pass
     control to the Agent class which will spawn the functional components.
@@ -36,8 +39,8 @@ def bootstrap_3():
     try:
         setproctitle.setproctitle('rp.%s' % agent_name)
 
-        if agent_name == 'agent_0': agent = Agent_0(agent_name)
-        else                      : agent = Agent_n(agent_name)
+        if agent_name == 'agent_0': agent = rpa.Agent_0(agent_name)
+        else                      : agent = rpa.Agent_n(agent_name)
 
         print 'start   %s' % agent_name
         agent.start(spawn=False)
@@ -62,7 +65,10 @@ def bootstrap_3():
 #
 if __name__ == "__main__":
 
-    bootstrap_3()
+    if len(sys.argv) != 2:
+        raise RuntimeError('missing agent_name parameter')
+
+    bootstrap_3(sys.argv[1])
 
 
 # ------------------------------------------------------------------------------
