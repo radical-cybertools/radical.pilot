@@ -24,7 +24,8 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : "True",
-        "python_dist"                 : "default"
+        "python_dist"                 : "default",
+        "gpus_per_node"               : 1
     },
 
     "bw_ortelib": {
@@ -58,7 +59,8 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
-        "python_dist"                 : "default"
+        "python_dist"                 : "default",
+        "gpus_per_node"               : 1
     },
 
     "bw_orte": {
@@ -91,7 +93,8 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
-        "python_dist"                 : "default"
+        "python_dist"                 : "default",
+        "gpus_per_node"               : 1
     },
 
     "bw_local_orte": {
@@ -126,7 +129,8 @@
         "virtenv"                     : "/scratch/training/instr004/radical.pilot.sandbox/ve_bw",
         "virtenv_mode"                : "use",
         "stage_cacerts"               : "True",
-        "python_dist"                 : "default"
+        "python_dist"                 : "default",
+        "gpus_per_node"               : 1
     },
 
     "bw_ccm_ssh": {
@@ -158,7 +162,8 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : "True",
-        "python_dist"                 : "default"
+        "python_dist"                 : "default",
+        "gpus_per_node"               : 1
     }
 }
 
