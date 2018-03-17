@@ -67,7 +67,6 @@ while True:
 
 print 'procs  : %5d' % len(procs)
 for p in procs:
-    p.kill()
     p.join()
 
 
