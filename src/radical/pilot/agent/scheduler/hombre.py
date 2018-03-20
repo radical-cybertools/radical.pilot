@@ -124,20 +124,18 @@ class Hombre(AgentSchedulingComponent):
             if self.free:
                 return self.free.pop()
 
-        # no - need to generate a new chunk from the node list
-        if (cores_requested + self.index) < len(self.slots):
+        # no used free chunk - generate a new chunk from the node list
+        if (cores_requested + self.index) >= len(self.slots):
+            # out of resources
+            return None, None
 
-            # we have enough resources to do so
-            slots  = list()
-            offset = self.slots[self.index][1]  # offset of first core
-            for i in range(cores_requested):
-                slots.append(self.slots[self.index][0])
-                self.index += 1
+        slots  = list()
+        offset = self.slots[self.index][1]  # offset of first core
+        for i in range(cores_requested):
+            slots.append(self.slots[self.index][0])
+            self.index += 1
 
-            return slots, offset
-
-        # out of resources - we can't serve this request right now
-        return None, None
+        return slots, offset
 
 
 # ------------------------------------------------------------------------------
