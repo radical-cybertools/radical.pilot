@@ -242,8 +242,6 @@ class Backfilling(UMGRSchedulingComponent):
         than pilot size however.
         """
 
-      # self._log.debug('\n\n === schedule\n')
-
         with self._pilots_lock, self._wait_lock:
 
             # units to advance beyond scheduling

@@ -20,7 +20,7 @@ from .base import AgentStagingOutputComponent
 from ...staging_directives import complete_url
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Default(AgentStagingOutputComponent):
     """
@@ -159,12 +159,10 @@ class Default(AgentStagingOutputComponent):
         unit_prof = "%s/%s.prof" % (sandbox, uid)
 
         if os.path.isfile(unit_prof):
-            self._log.debug(' === found profile for %s', uid)
             try:
                 with open(unit_prof, 'r') as prof_f:
                     txt = prof_f.read()
                     for line in txt.split("\n"):
-                        self._log.debug(' === line: %s', line)
                         if line:
                             ts, event, comp, tid, _uid, state, msg = line.split(',')
                             self._prof.prof(timestamp=float(ts), event=event,
@@ -172,9 +170,6 @@ class Default(AgentStagingOutputComponent):
                                             state=state, msg=msg)
             except Exception as e:
                 self._log.error("Pre/Post profile read failed: `%s`" % e)
-        else:
-            self._log.debug(' === miss  profile for %s: %s (%s)',
-                    uid, unit_prof, os.getcwd())
 
         self._prof.prof('staging_uprof_stop', uid=uid)
 
