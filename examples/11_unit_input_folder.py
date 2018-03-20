@@ -12,6 +12,7 @@ os.environ['RADICAL_PILOT_VERBOSE'] = verbose
 import radical.pilot as rp
 import radical.utils as ru
 
+
 # ------------------------------------------------------------------------------
 #
 # READ the RADICAL-Pilot documentation: http://radicalpilot.readthedocs.org/
@@ -63,9 +64,8 @@ if __name__ == '__main__':
                 'access_schema' : config[resource]['schema'],
                 'cores'         : config[resource]['cores'],
                 }
-        pdesc = rp.ComputePilotDescription(pd_init)
 
-        # Launch the pilot.
+        pdesc = rp.ComputePilotDescription(pd_init)
         pilot = pmgr.submit_pilots(pdesc)
 
 
@@ -75,28 +75,51 @@ if __name__ == '__main__':
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
-        # Create a workload of char-counting a simple file.  We first create the
-        # file right here, and then use it as unit input data for each unit.
-        os.system('hostname >  input.dat')
-        os.system('date     >> input.dat')
 
-        n = 128   # number of units to run
+
+
+
+        n = 4   # number of units to run
+
+        # create a folder to the remote machine
+        cu = rp.ComputeUnitDescription()
+        cu.executable = 'python'
+        cu.arguments = ['make_folders.py', n ]
+        cu.input_staging = ['make_folders.py']
+        umgr.submit_units([cu])
+
+        print "Creating dummy folder"
+
+        folder_cus =  umgr.wait_units()
+        print 'Dummy folder created'
+
+
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
         for i in range(0, n):
 
+            filename = '/tmp/stage_in_folder_%d/input_file.dat'%i
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.executable     = '/usr/bin/wc'
-            cud.arguments      = ['-c', 'input.dat']
-            #cud.input_staging  = ['input.dat']
+            cud.arguments      = ['-c', os.path.join(os.path.split(os.path.dirname(filename))[1],os.path.basename(filename))]   # add folder
+            cud.input_staging  = {'source': os.path.dirname(filename),
+                                  'target': 'unit:///%s'%os.path.split(os.path.dirname(filename))[1] ,
+                                  'action': rp.MOVE
+                                  }
+
+            cud.output_staging = {'source': 'unit:///%s'% os.path.split(os.path.dirname(filename))[1], 
+                                  'target': 'pilot:///folder_%d_moved'%i,
+                                  'action': rp.MOVE
+                                 }
             
           # this is a shortcut for:
-            cud.input_staging  = {'source': 'client:///input.dat', 
-                                  'target': 'unit:///input.dat',
-                                  'action': rp.TRANSFER}
+          # cud.input_staging  = {'source': 'client:///input.dat', 
+          #                       'target': 'unit:///input.dat',
+          #                       'action': rp.Transfer}
+
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -116,8 +139,8 @@ if __name__ == '__main__':
                     % (unit.uid, unit.state[:4], 
                         unit.exit_code, unit.stdout.strip()[:35]))
     
-        # delete the sample input files
-        os.system('rm input.dat')
+        #delete sample files and folders
+        # TODO:
 
 
     except Exception as e:

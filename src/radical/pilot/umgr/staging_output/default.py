@@ -156,6 +156,14 @@ class Default(UMGRStagingOutputComponent):
             self._log.debug('src: %s', src)
             self._log.debug('tgt: %s', tgt)
 
+            # Check if the src is a folder, if true
+            # add recursive flag if not already specified
+            if os.path.isdir(src.path):
+                flags |= rs.filesystem.RECURSIVE
+
+            # Always set CREATE_PARENTS
+            flags |= rs.filesystem.CREATE_PARENTS
+
             saga_dir.copy(src, tgt, flags=flags)
             self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
