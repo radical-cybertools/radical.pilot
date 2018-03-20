@@ -34,7 +34,7 @@ class ORTE(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, logger):
+    def lrms_config_hook(cls, name, cfg, lrms, logger, profiler):
         """
         FIXME: this config hook will manipulate the LRMS nodelist.  Not a nice
                thing to do, but hey... :P
@@ -91,6 +91,7 @@ class ORTE(LaunchMethod):
         [dvm_args.extend(ds.split()) for ds in debug_strings]
 
         vm_size = len(lrms.node_list)
+        profiler.prof(event='orte_dvm_start', uid=cfg['pilot_id'])
         logger.info("Starting ORTE DVM on %d nodes with '%s' ...", vm_size, ' '.join(dvm_args))
         dvm_process = subprocess.Popen(dvm_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
@@ -117,6 +118,7 @@ class ORTE(LaunchMethod):
                     raise Exception("VMURI not found!")
 
                 logger.info("ORTE DVM startup successful!")
+                profiler.prof(event='orte_dvm_ok', uid=cfg['pilot_id'])
                 break
 
             else:
@@ -128,6 +130,8 @@ class ORTE(LaunchMethod):
                 else:
                     # Process is gone: fatal!
                     raise Exception("ORTE DVM process disappeared")
+                    profiler.prof(event='orte_dvm_fail', uid=cfg['pilot_id'])
+
 
         # ----------------------------------------------------------------------
         def _watch_dvm():
@@ -169,7 +173,7 @@ class ORTE(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger, profiler):
         """
         This hook is symmetric to the config hook above, and is called during
         shutdown sequence, for the sake of freeing allocated resources.
@@ -181,9 +185,14 @@ class ORTE(LaunchMethod):
                 orterun = ru.which('orterun')
                 if not orterun:
                     raise Exception("Couldn't find orterun")
-                subprocess.Popen([orterun, "--hnp", lm_info['dvm_uri'], "--terminate"])
+                ru.sh_callout('%s --hnp %s --terminate' 
+                             % (orterun, lm_info['dvm_uri']))
+                profiler.prof(event='orte_dvm_stop', uid=cfg['pilot_id'])
             except Exception as e:
-                logger.exception('dmv termination failed')
+                # use the same event name as for runtime failures - those are
+                # not distinguishable at the moment from termination failures
+                profiler.prof(event='orte_dvm_fail', uid=cfg['pilot_id'])
+                logger.exception('dvm termination failed')
 
 
     # --------------------------------------------------------------------------
