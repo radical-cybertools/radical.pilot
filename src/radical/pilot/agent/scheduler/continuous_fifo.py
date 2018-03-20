@@ -5,6 +5,7 @@ __license__   = "MIT"
 
 from .continuous import Continuous
 
+
 # ------------------------------------------------------------------------------
 #
 # This is a simle extension of the Continuous scheduler which makes RP behave
@@ -20,8 +21,12 @@ class ContinuousFifo(Continuous):
 
         self.slots = None
         self._last = -1   # nothing has run, yet - next up is unit.000000
+        self._n
 
         Continuous.__init__(self, cfg, session)
+
+        # we want to check all units in the wait pool on open slots
+        self._uniform_waitpool = False
 
 
     # --------------------------------------------------------------------------

@@ -37,10 +37,11 @@ class AgentSchedulingComponent(rpu.Component):
     def __init__(self, cfg, session):
 
         self.slots = None
-        self._lrms  = None
+        self._lrms = None
+        self._uid  = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
+                                    ru.ID_CUSTOM)
 
-        self._uid = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
-                                   ru.ID_CUSTOM)
+        self._uniform_waitpool = True   # TODO: move to cfg
 
         rpu.Component.__init__(self, cfg, session)
 
@@ -224,9 +225,10 @@ class AgentSchedulingComponent(rpu.Component):
                 #        CUs come after this one - which is naive, ie. wrong.
                 # NOTE:  This assumption does indeed break for the fifo
                 #        scheduler, so we disable this now.  But:
-                # TODO:  Optimization: this can be costly
-             #  break
-                pass
+                if self._uniform_waitpool:
+                    break
+                else:
+                    pass
 
         # Note: The extra space below is for visual alignment
         if self._log.isEnabledFor(logging.DEBUG):
