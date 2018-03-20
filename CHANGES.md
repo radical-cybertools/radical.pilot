@@ -5,6 +5,17 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.47.4 Release                                                        2018-03-20
+--------------------------------------------------------------------------------
+
+  - fifo agent scheduler (#1537) 
+  - hombre agent scheduler (#1536) 
+  - Fix/issue 1466 (#1544) 
+  - Fix/issue 1501 (#1541) 
+  - switch to new OMPI deployment on titan (#1529) 
+  - add agent configuration doc (#1540) 
+
+
 0.47.3 Release                                                        2018-03-20
 --------------------------------------------------------------------------------
 
