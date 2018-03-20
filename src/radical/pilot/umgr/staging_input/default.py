@@ -7,6 +7,7 @@ import os
 import pprint
 import tempfile
 import threading     as mt
+import tarfile
 
 import saga          as rs
 import radical.utils as ru
@@ -94,7 +95,7 @@ class Default(UMGRStagingInputComponent):
         arg = msg.get('arg')
 
         if cmd not in ['add_pilots']:
-            self._log.debug(' === skip cmd %s', cmd)
+            self._log.debug('skip cmd %s', cmd)
 
         pilots = arg.get('pilots', [])
 
@@ -104,7 +105,7 @@ class Default(UMGRStagingInputComponent):
         with self._pilots_lock:
             for pilot in pilots:
                 pid = pilot['uid']
-                self._log.debug(' === add pilot %s', pid)
+                self._log.debug('add pilot %s', pid)
                 if pid not in self._pilots:
                     self._pilots[pid] = pilot
 
@@ -139,15 +140,13 @@ class Default(UMGRStagingInputComponent):
             # component
             actionables = list()
             for sd in unit['description'].get('input_staging', []):
-
-                if sd['action'] == rpc.TRANSFER:
+                if sd['action'] in [rpc.TRANSFER, rpc.TARBALL]:
                     actionables.append(sd)
 
             if actionables:
                 staging_units.append([unit, actionables])
             else:
                 no_staging_units.append(unit)
-
 
         # Optimization: if we obtained a large bulk of units, we at this point
         # attempt a bulk mkdir for the unit sandboxes, to free the agent of
@@ -187,21 +186,17 @@ class Default(UMGRStagingInputComponent):
 
         for pid in units_by_pid:
 
-            self._log.debug(' === pid %s', pid)
-
             with self._pilots_lock:
                 pilot = self._pilots.get(pid)
 
             if not pilot:
                 # we don't feel inclined to optimize for unknown pilots
-                self._log.debug(' === pid unknown - skip optimizion', pid)
+                self._log.debug('pid unknown - skip optimizion', pid)
                 continue
 
             session_sbox = self._session._get_session_sandbox(pilot)
-            self._log.debug(' ==== sbox: %s [%s]', session_sbox, type(session_sbox))
             unit_sboxes  = units_by_pid[pid]
 
-            self._log.debug(' === %s >= %s ?', len(unit_sboxes), UNIT_BULK_MKDIR_THRESHOLD)
             if len(unit_sboxes) >= UNIT_BULK_MKDIR_THRESHOLD:
 
                 # no matter the bulk mechanism, we need a SAGA handle to the
@@ -221,8 +216,6 @@ class Default(UMGRStagingInputComponent):
                 #    both
                 if UNIT_BULK_MKDIR_MECHANISM == 'saga':
 
-                    self._log.debug(' === saga')
-
                     tc = rs.task.Container()
                     for sbox in unit_sboxes:
                         tc.add(saga_dir.make_dir(sbox, ttype=rs.TASK))
@@ -230,7 +223,6 @@ class Default(UMGRStagingInputComponent):
                     tc.wait()
 
                 elif UNIT_BULK_MKDIR_MECHANISM == 'tar':
-                    self._log.debug(' === tar')
 
                     tmp_path = tempfile.mkdtemp(prefix='rp_agent_tar_dir')
                     tmp_dir  = os.path.abspath(tmp_path)
@@ -243,16 +235,17 @@ class Default(UMGRStagingInputComponent):
 
                     cmd = "cd %s && tar zchf %s *" % (tmp_dir, tar_tgt)
                     out, err, ret = ru.sh_callout(cmd, shell=True)
-                    self._log.debug(' === tar : %s', cmd)
-                    self._log.debug(' === tar : %s\n---\n%s\n---\n%s', out, err, ret)
+
+                    self._log.debug('tar : %s', cmd)
+                    self._log.debug('tar : %s\n---\n%s\n---\n%s', out, err, ret)
 
                     if ret:
                         raise RuntimeError('failed callout %s: %s' % (cmd, err))
 
                     tar_rem_path = "%s/%s" % (str(session_sbox), tar_name)
 
-                    self._log.debug(' === sbox: %s [%s]', session_sbox, type(session_sbox))
-                    self._log.debug(' === copy: %s -> %s', tar_url, tar_rem_path)
+                    self._log.debug('sbox: %s [%s]', session_sbox, type(session_sbox))
+                    self._log.debug('copy: %s -> %s', tar_url, tar_rem_path)
                     saga_dir.copy(tar_url, tar_rem_path, flags=rs.filesystem.CREATE_PARENTS)
 
                   # ru.sh_callout('rm -r %s' % tmp_path)
@@ -260,7 +253,7 @@ class Default(UMGRStagingInputComponent):
                     # get a job service handle to the target resource and run
                     # the untar command.  Use the hop to skip the batch system
                     js_url = pilot['js_hop']
-                    self._log.debug(' === js  : %s', js_url)
+                    self._log.debug('js  : %s', js_url)
 
                     if  js_url in self._js_cache:
                         js_tmp = self._js_cache[js_url]
@@ -271,8 +264,8 @@ class Default(UMGRStagingInputComponent):
                     cmd = "tar zmxvf %s/%s -C /" % (session_sbox.path, tar_name)
                     j   = js_tmp.run_job(cmd)
                     j.wait()
-                    self._log.debug(' === untar : %s', cmd)
-                    self._log.debug(' === untar : %s\n---\n%s\n---\n%s',
+                    self._log.debug('untar : %s', cmd)
+                    self._log.debug('untar : %s\n---\n%s\n---\n%s',
                             j.get_stdout_string(), j.get_stderr_string(),
                             j.exit_code)
 
@@ -324,8 +317,63 @@ class Default(UMGRStagingInputComponent):
         saga_dir.make_dir(sandbox, flags=rs.filesystem.CREATE_PARENTS)
         self._prof.prof("create_sandbox_stop", uid=uid)
 
-        # Loop over all transfer directives and execute them.
+        # Loop over all transfer directives and filter out tarball staging
+        # directives.  Those files are added into a tarball, and a single
+        # actionable to stage that tarball replaces the original actionables.
+
+        # create a new actionable list during the filtering
+        new_actionables = list()
+        tar_file        = None
+
         for sd in actionables:
+
+            # don't touch non-tar SDs
+            if sd['action'] != rpc.TARBALL:
+                new_actionables.append(sd)
+
+            else:
+
+                action = sd['action']
+                flags  = sd['flags']   # NOTE: we don't use those
+                did    = sd['uid']
+                src    = sd['source']
+                tgt    = sd['target']
+
+                src = complete_url(src, src_context, self._log)
+                tgt = complete_url(tgt, tgt_context, self._log)
+
+                self._prof.prof('staging_in_tar_start', uid=uid, msg=did)
+
+                # create a tarfile on the first match, and register for transfer
+                if not tar_file:
+                    tmp_file = tempfile.NamedTemporaryFile(
+                                                prefix='rp_usi_%s.' % uid,
+                                                suffix='.tar',
+                                                delete=False)
+                    tar_path = tmp_file.name
+                    tar_file = tarfile.open(fileobj=tmp_file, mode='w')
+                    tar_src  = ru.Url('file://localhost/%s' % tar_path)
+                    tar_tgt  = ru.Url('unit:////%s.tar'     % uid)
+                    tar_did  = ru.generate_id('sd')
+                    tar_sd   = {'action' : rpc.TRANSFER, 
+                                'flags'  : rpc.DEFAULT_FLAGS,
+                                'uid'    : tar_did,
+                                'source' : tar_src,
+                                'target' : tar_tgt,
+                               }
+                    new_actionables.append(tar_sd)
+
+                # add the src file
+                tar_file.add(src.path, arcname=tgt.path)
+
+                self._prof.prof('staging_in_tar_stop',  uid=uid, msg=did)
+
+        # make sure tarball is flushed to disk
+        if tar_file:
+            tar_file.close()
+
+        # work on the filtered TRANSFER actionables 
+        for sd in new_actionables:
 
             action = sd['action']
             flags  = sd['flags']
@@ -333,13 +381,32 @@ class Default(UMGRStagingInputComponent):
             src    = sd['source']
             tgt    = sd['target']
 
-            self._prof.prof('staging_in_start', uid=uid, msg=did)
+            if action == rpc.TRANSFER:
 
-            src = complete_url(src, src_context, self._log)
-            tgt = complete_url(tgt, tgt_context, self._log)
+                # Check if the src is a folder, if true
+                # add recursive flag if not already specified
+                if os.path.isdir(src.path):
+                    flags |= rs.filesystem.RECURSIVE
 
-            saga_dir.copy(src, tgt, flags=flags)
-            self._prof.prof('staging_in_stop', uid=uid, msg=did)
+                # Always set CREATE_PARENTS
+                flags |= rs.filesystem.CREATE_PARENTS
+
+                src = complete_url(src, src_context, self._log)
+                tgt = complete_url(tgt, tgt_context, self._log)
+
+                self._prof.prof('staging_in_start', uid=uid, msg=did)
+                saga_dir.copy(src, tgt, flags=flags)
+                self._prof.prof('staging_in_stop', uid=uid, msg=did)
+
+
+        if tar_file:
+
+            # some tarball staging was done.  Add a staging directive for the
+            # agent to untar the tarball, and clean up.
+            tar_sd['action'] = rpc.TARBALL
+            unit['description']['input_staging'].append(tar_sd)
+            os.remove(tar_path)
+
 
         # staging is done, we can advance the unit at last
         self.advance(unit, rps.AGENT_STAGING_INPUT_PENDING, publish=True, push=True)

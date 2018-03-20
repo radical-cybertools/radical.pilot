@@ -57,7 +57,8 @@ class SSH(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_args    = cud.get('arguments') or []
+        task_env     = cud.get('environment', dict())
+        task_args    = cud.get('arguments',   list())
         task_argstr  = self._create_arg_string(task_args)
 
         if not 'task_slots' in opaque_slots:
@@ -77,11 +78,21 @@ class SSH(LaunchMethod):
         else:
             task_command = task_exec
 
-        # Pass configured and available environment variables to the remote shell
-        export_vars = ' '.join(['%s=%s' % (var, os.environ[var]) for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
+
+        env_string = ''
+        env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
+        if env_list:
+            # this is a crude version of env transplanting where we prep the
+            # shell command line.  We likely won't survive any complicated vars
+            # (multiline, quotes, etc)
+            env_string = ' '
+            for var in env_string:
+                env_string += '%s="$%s" ' % (var, var)
+
 
         # Command line to execute launch script via ssh on host
-        ssh_hop_cmd = "%s %s %s %s" % (self.launch_command, host, export_vars, launch_script_hop)
+        ssh_hop_cmd = "%s %s %s %s" % (self.launch_command, host, env_string,
+                launch_script_hop)
 
         # Special case, return a tuple that overrides the default command line.
         return task_command, ssh_hop_cmd
