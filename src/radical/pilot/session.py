@@ -144,9 +144,6 @@ class Session(rs.Session):
         # The resource configuration dictionary associated with the session.
         self._resource_configs = {}
 
-        # initialize the base class (saga session)
-        rs.Session.__init__(self)
-
         # if a config is given, us its values:
         if cfg:
             self._cfg = copy.deepcopy(cfg)
@@ -199,6 +196,10 @@ class Session(rs.Session):
 
         self._dburl = ru.Url(dburl)
         self._cfg['dburl'] = str(self._dburl)
+
+        # now we have config and uid - initialize base class (saga session)
+        rs.Session.__init__(self, uid=self._uid)
+
 
         # ----------------------------------------------------------------------
         # create new session
@@ -1046,8 +1047,15 @@ class Session(rs.Session):
         resrc   = pilot['description']['resource']
         schema  = pilot['description']['access_schema']
         rcfg    = self.get_resource_config(resrc, schema)
+
         js_url  = rs.Url(rcfg.get('job_manager_endpoint'))
         js_hop  = rs.Url(rcfg.get('job_manager_hop', js_url))
+
+        # make sure the js_hop url points to an interactive access
+        if '+gsissh' in js_hop.schema or \
+           'gsissh+' in js_hop.schema    : js_hop.schema = 'gsissh'
+        if '+ssh'    in js_hop.schema or \
+           'ssh+'    in js_hop.schema    : js_hop.schema = 'ssh'
 
         return js_url, js_hop
 

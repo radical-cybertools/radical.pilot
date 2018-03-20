@@ -1,0 +1,173 @@
+#!/bin/sh
+
+script="$0"
+prefix="$1"
+arg="$2"
+
+echo 
+echo "script : $script"
+echo "prefix : $prefix"
+echo "arg    : $arg"
+echo
+
+reqs="pymongo==2.8 python-hostlist netifaces==0.10.4 setproctitle ntplib pyzmq"
+reqs="$reqs apache-libcloud colorama backports.ssl-match-hostname msgpack-python"
+reqs="$reqs future"
+
+# setuptools="setuptools==0.6c11"
+# pip="pip==1.4.1"
+
+setuptools="setuptools"
+pip="pip"
+
+# ------------------------------------------------------------------------------
+#
+help(){
+
+    err="$1"
+    ret=0
+    
+    if ! test -z "$err"
+    then
+        ret=1
+        printf "\n    ERROR: $err\n"
+    fi
+
+    cat <<EOT
+
+    usage: $0 <target> [-h]
+
+    This script creates a virtualenv at the given target location.  That
+    virtualenv should be suitable to be used as static VE for a radical.pilot
+    target resource, and can be specified in a resource configuration for RP.
+
+EOT
+    exit $ret
+}
+
+
+# ------------------------------------------------------------------------------
+#
+progress(){
+
+  while read X
+  do
+    echo -n .
+  done
+  echo
+}
+
+# ------------------------------------------------------------------------------
+#
+
+if test "$prefix" = "-h"
+then
+    help 
+fi
+
+if test -z "$prefix"
+then
+    help "missing target"
+fi
+
+# We don't want to overwrite VE's -- the hack to get the namespace import in
+# place is too invasive to be applied to an existing VE.
+if test -e "$prefix"
+then
+    help "target '$prefix' exists"
+fi
+
+# Ensure we install in an absolute path -- pip seems to like that better...
+case $prefix in
+    /*)
+        ;;
+    *)
+        prefix="`pwd`/$prefix"
+        ;;
+esac
+
+
+if test "$arg" = "bw"
+then
+    # BW wants us to run all things python in its own process group (I assume
+    # a cgroup or something), so we spawn that here and continue the script at
+    # the same place
+    echo "invoke BW magic"
+    module load bwpy
+    exec bwpy-environ -- /bin/sh "$script" "$prefix" bwpy
+
+elif test "$arg" = "bwpy"
+then
+    # this is where we end up after the `exec` call in the branch above
+    echo "create bwpy ve [$prefix]"
+
+else
+    # this is not BW.
+    echo "create rct ve [$prefix]"
+
+fi
+
+# create the ve, install bare necessities
+mkdir -p "$prefix"
+
+echo -n "create  virtualenv "
+stdbuf -oL virtualenv "$prefix" | progress
+.          "$prefix"/bin/activate
+
+echo -n "update  setuptools "
+pip install --upgrade $setuptools | progress || exit 1
+echo -n "update  pip "
+pip install --upgrade $pip        | progress || exit 1
+
+for req in $reqs
+do
+    echo -n "install $req "
+    stdbuf -oL pip install --upgrade $req | progress   || exit 1
+done
+
+# install the radical stack (utils, saga, pilot) into a separate tree
+# ($prefix/rp_install(, so that any local install can use the ve *w/o* 
+# the radical stack, by re-routing PYTHONPATH
+python_version=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
+ve_mod_prefix=` python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
+rp_mod_prefix=`echo $ve_mod_prefix | sed -e "s|$prefix|$prefix/rp_install/|"`
+
+# BW doesn't like us anymore: after loading the bwpy module, we also need to
+# create a new process group to get a  workable Python.  We thus patch the
+# virtualenv to do the necessary actions automatically, by wrapping the python
+# executable in a small script which sets up that environment.
+if test "$arg" = "bwpy"
+then
+
+    echo "fix bwpy ve"
+    old_cwd=$(pwd)
+    cd $prefix/bin
+    cwd=$(pwd -P)
+
+    # find binary - fucking virtualenv seems to pick the bin name randomly or
+    # whatever...
+    for p in python python2 python2.7
+    do
+        if ! test -h $p
+        then
+            echo "patch $p"
+            mv $p $p-exe
+            echo "#!/bin/sh" > $p
+            echo "exec bwpy-environ -- $cwd/$p-exe \"\$@\"" >> $p
+            chmod 0755  $p
+        else
+            echo "skip  $p"
+        fi
+    done
+fi
+
+# print the ve information and stack versions for verification
+echo
+echo "---------------------------------------------------------------------"
+echo
+echo "PYTHONPATH: $PYTHONPATH"
+echo "python: `which python` (`python --version`)"
+echo
+echo "---------------------------------------------------------------------"
+echo
+
