@@ -5,6 +5,14 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.47.3 Release                                                        2018-03-20
+--------------------------------------------------------------------------------
+
+  - add resource limit test 
+  - add tmp cheyenne config 
+  - api rendering proposal for partitions 
+  - fix bootstrap sequence (BW)
+  - tighten bootstrap process, add documentation 
 
 
 0.47.2 Release                                                        2018-02-28
