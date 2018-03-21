@@ -310,7 +310,7 @@ class UMGRSchedulingComponent(rpu.Component):
             # find the pilots handling these units and forward the caancellation
             # request
             to_cancel = dict()
-            
+
             with self._units_lock:
                 for pid in self._units:
                     for uid in uids:
@@ -320,7 +320,7 @@ class UMGRSchedulingComponent(rpu.Component):
                             to_cancel[pid].append(uid)
 
             for pid in to_cancel:
-                self._session._dbs.pilot_command(cmd='cancel_units', 
+                self._session._dbs.pilot_command(cmd='cancel_units',
                                                  arg={'uids' : to_cancel[pid]},
                                                  pids=pid)
 

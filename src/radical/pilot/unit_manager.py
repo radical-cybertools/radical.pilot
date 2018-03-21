@@ -989,7 +989,7 @@ class UnitManager(rpu.Component):
 
         # we *always* issue the cancellation command!
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_units', 
-                                          'arg' : {'uids' : uids, 
+                                          'arg' : {'uids' : uids,
                                                    'umgr' : self.uid}})
 
         # In the default case of calling 'advance' above, we just set the state,

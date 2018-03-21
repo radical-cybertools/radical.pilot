@@ -302,52 +302,8 @@ prof(){
 
             launch_script.write("\n# The command to run\n")
             launch_script.write('prof cu_exec_start\n')
-            launch_script.write('''
-# ----------------- for iannis, do not merge -----------------
-log(){
-  echo $* >> %(uid)s.log
-}
-log 1
-%(lc)s &
-log 2
-PID=$!
-while true
-do
-  log while true
-  if test -f cancel.sig
-  then
-    log cancel sig
-    # do our best to cancel the unit
-    kill -0 $PID 2>/dev/null && kill    -$PID 2>/dev/null; sleep 1
-    kill -0 $PID 2>/dev/null && kill -9 -$PID 2>/dev/null; sleep 1
-    kill -0 $PID 2>/dev/null && kill     $PID 2>/dev/null; sleep 1
-    kill -0 $PID 2>/dev/null && kill -9  $PID 2>/dev/null; sleep 1
-    kill -0 $PID 2>/dev/null && printf "\\nFAILED TO KILL LM ($PID)\\n" >> STDERR
-    log cancel done and break
-    break
-  else
-    log no cancel and sleep
-    sleep 1
-  fi
-
-  log check alive
-  # if the task is gone, we collect the process and retval
-  if ! kill -0 $PID 2>/dev/null
-  then
-    log kill failed and task gone
-    wait $PID
-    RETVAL=$?
-    log waited and got $RETVAL and break
-    break
-  else
-    log task is alive
-  fi
-  log while done
-done
-# ----------------- for iannis, do not merge -----------------
-''' % {'lc' : launch_command, 
-       'uid': cu['uid']})
-          # launch_script.write("RETVAL=$?\n")
+            launch_script.write('%s\n' % launch_command)
+            launch_script.write('RETVAL=$?\n')
             launch_script.write('prof cu_exec_stop\n')
 
             # After the universe dies the infrared death, there will be nothing
@@ -388,7 +344,7 @@ done
                                       stdin              = None,
                                       stdout             = _stdout_file_h,
                                       stderr             = _stderr_file_h,
-                                      preexec_fn         = None,
+                                      preexec_fn         = os.setsid,
                                       close_fds          = True,
                                       shell              = True,
                                       cwd                = sandbox,
@@ -406,11 +362,9 @@ done
     def _watch(self):
 
         try:
-
             while not self._terminate.is_set():
 
                 cus = list()
-
                 try:
                     # we don't want to only wait for one CU -- then we would
                     # pull CU state too frequently.  OTOH, we also don't want to
@@ -448,12 +402,10 @@ done
     def _check_running(self):
 
         action = 0
-
         for cu in self._cus_to_watch:
 
             # poll subprocess object
             exit_code = cu['proc'].poll()
-            now       = time.time()
 
             if exit_code is None:
                 # Process is still running
@@ -466,17 +418,10 @@ done
 
                     self._prof.prof('exec_cancel_start', uid=cu['uid'])
 
-                    # ---------- for iannis, don't merge -----------------------
-                    sandbox = '%s/%s' % (self._pwd, cu['uid'])
-                    with open('%s/cancel.sig' % sandbox, 'w') as fout:
-                        fout.write('%f\n' % time.time())
-                        fout.flush()
-                    # ---------- for iannis, don't merge -----------------------
-
                     # We got a request to cancel this cu
                     action += 1
-                  # cu['proc'].kill()
-                    cu['proc'].wait() # make sure proc is collected
+                    cu['proc'].kill()
+                    cu['proc'].wait()  # make sure proc is collected
 
                     with self._cancel_lock:
                         self._cus_to_cancel.remove(cu['uid'])
@@ -522,4 +467,6 @@ done
 
         return action
 
+
+# ------------------------------------------------------------------------------
 
