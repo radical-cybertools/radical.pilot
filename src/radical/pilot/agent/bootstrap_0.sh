@@ -647,12 +647,19 @@ virtenv_setup()
                 src=${sdist%.tar.gz}
                 # NOTE: Condor does not support staging into some arbitrary
                 #       directory, so we may find the dists in pwd
-                if test -e "$SESSION_SANDBOX/$sdist"
-                then
+                if test -e   "$SESSION_SANDBOX/$sdist"; then
                     tar zxmf "$SESSION_SANDBOX/$sdist"
-                else
+
+                elif test -e "./$sdist"; then
                     tar zxmf "./$sdist"
-                    rm  -v   "./$sdist"
+
+                else
+                    echo "missing $sdist"
+                    echo "session sandbox: $SESSION_SANDBOX"
+                    ls -la "$SESSION_SANDBOX"
+                    echo "pilot sandbox: $(pwd)"
+                    ls -la
+                    exit 1
                 fi
                 RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
             done

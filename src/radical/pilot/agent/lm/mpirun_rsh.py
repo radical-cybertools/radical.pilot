@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import subprocess    as sp
 import radical.utils as ru
 
 from .base import LaunchMethod
@@ -33,6 +34,15 @@ class MPIRunRSH(LaunchMethod):
         # the launcher from that version, as experienced on stampede in #572.
         self.launch_command = 'mpirun_rsh'
 
+        # alas, the way to transplant env variables to the target node differs
+        # per mpi(run) version...
+        version_info = sp.check_output(['%s -v' % self.launch_command], shell=True)
+        if 'version:' in version_info:
+            self.launch_version = version_info.split(':')[1].strip().lower()
+        else:
+            self.launch_version = 'unknown'
+
+
     # --------------------------------------------------------------------------
     #
     def construct_command(self, cu, launch_script_hop):
@@ -41,7 +51,8 @@ class MPIRunRSH(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_args    = cud.get('arguments') or []
+        task_env     = cud.get('environment', dict())
+        task_args    = cud.get('arguments',   list())
         task_argstr  = self._create_arg_string(task_args)
 
         if not 'task_slots' in opaque_slots:
@@ -54,6 +65,7 @@ class MPIRunRSH(LaunchMethod):
             task_command = "%s %s" % (task_exec, task_argstr)
         else:
             task_command = task_exec
+
 
         # Extract all the hosts from the slots
         hosts = [slot.split(':')[0] for slot in task_slots]
@@ -71,10 +83,29 @@ class MPIRunRSH(LaunchMethod):
             # Construct the hosts_string ('h1 h2 .. hN')
             hosts_string = " ".join(hosts)
 
-        export_vars = ' '.join([var+"=$"+var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
-        mpirun_rsh_command = "%s -np %d %s %s %s" % (
-            self.launch_command, task_cores, hosts_string, export_vars, task_command)
+        env_string = ''
+        env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
+        if env_list:
+            if 'mvapich2' in self.launch_version:
+                env_string = '-envlist "%s"' % ','.join(env_list)
+
+            elif 'openmpi' in self.launch_version:
+                env_string = ''
+                for var in env_list:
+                    env_string += '-x "%s" ' % var
+
+            else:
+                # this is a crude version of env transplanting where we prep the
+                # shell command line.  We likely won't survive any complicated vars
+                # (multiline, quotes, etc)
+                env_string = ' '
+                for var in env_string:
+                    env_string += '%s="$%s" ' % (var, var)
+
+
+        mpirun_rsh_command = "%s -np %d %s %s %s" % (self.launch_command,
+                      task_cores, hosts_string, env_string, task_command)
 
         return mpirun_rsh_command, None
 

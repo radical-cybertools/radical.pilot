@@ -55,7 +55,7 @@ class Agent_0(rpu.Worker):
 
         self._uid         = agent_name
         self._pid         = cfg['pilot_id']
-        self._session_id  = cfg['session_id']
+        self._sid         = cfg['session_id']
         self._runtime     = cfg['runtime']
         self._starttime   = time.time()
         self._final_cause = None
@@ -94,7 +94,7 @@ class Agent_0(rpu.Worker):
         # from the config copy.
         session_cfg = copy.deepcopy(cfg)
         session_cfg['components'] = dict()
-        session = rp_Session(cfg=session_cfg)
+        session = rp_Session(cfg=session_cfg, uid=self._sid)
 
         # we still want the bridge addresses known though, so make sure they are
         # merged into our own copy, along with any other additions done by the

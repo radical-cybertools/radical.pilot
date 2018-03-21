@@ -30,10 +30,11 @@ class ORTE(LaunchMethod):
         # (sub-)agent and CU execution.
         self.env_removables.extend(["OMPI_", "OPAL_", "PMIX_"])
 
+
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, logger):
+    def lrms_config_hook(cls, name, cfg, lrms, logger, profiler):
         """
         FIXME: this config hook will manipulate the LRMS nodelist.  Not a nice
                thing to do, but hey... :P
@@ -90,6 +91,7 @@ class ORTE(LaunchMethod):
         [dvm_args.extend(ds.split()) for ds in debug_strings]
 
         vm_size = len(lrms.node_list)
+        profiler.prof(event='orte_dvm_start', uid=cfg['pilot_id'])
         logger.info("Starting ORTE DVM on %d nodes with '%s' ...", vm_size, ' '.join(dvm_args))
         dvm_process = subprocess.Popen(dvm_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
@@ -116,6 +118,7 @@ class ORTE(LaunchMethod):
                     raise Exception("VMURI not found!")
 
                 logger.info("ORTE DVM startup successful!")
+                profiler.prof(event='orte_dvm_ok', uid=cfg['pilot_id'])
                 break
 
             else:
@@ -127,6 +130,8 @@ class ORTE(LaunchMethod):
                 else:
                     # Process is gone: fatal!
                     raise Exception("ORTE DVM process disappeared")
+                    profiler.prof(event='orte_dvm_fail', uid=cfg['pilot_id'])
+
 
         # ----------------------------------------------------------------------
         def _watch_dvm():
@@ -168,7 +173,7 @@ class ORTE(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger, profiler):
         """
         This hook is symmetric to the config hook above, and is called during
         shutdown sequence, for the sake of freeing allocated resources.
@@ -180,9 +185,14 @@ class ORTE(LaunchMethod):
                 orterun = ru.which('orterun')
                 if not orterun:
                     raise Exception("Couldn't find orterun")
-                subprocess.Popen([orterun, "--hnp", lm_info['dvm_uri'], "--terminate"])
+                ru.sh_callout('%s --hnp %s --terminate' 
+                             % (orterun, lm_info['dvm_uri']))
+                profiler.prof(event='orte_dvm_stop', uid=cfg['pilot_id'])
             except Exception as e:
-                logger.exception('dmv termination failed')
+                # use the same event name as for runtime failures - those are
+                # not distinguishable at the moment from termination failures
+                profiler.prof(event='orte_dvm_fail', uid=cfg['pilot_id'])
+                logger.exception('dvm termination failed')
 
 
     # --------------------------------------------------------------------------
@@ -200,24 +210,25 @@ class ORTE(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_mpi     = cud.get('mpi')       or False
-        task_args    = cud.get('arguments') or []
+        task_mpi     = cud.get('mpi', False)
+        task_env     = cud.get('environment', dict())
+        task_args    = cud.get('arguments',   list())
         task_argstr  = self._create_arg_string(task_args)
 
         if 'task_slots' not in opaque_slots:
-            raise RuntimeError('No task_slots to launch via %s: %s' \
+            raise RuntimeError('No task_slots to launch via %s: %s'
                                % (self.name, opaque_slots))
 
         if 'lm_info' not in opaque_slots:
-            raise RuntimeError('No lm_info to launch via %s: %s' \
+            raise RuntimeError('No lm_info to launch via %s: %s'
                     % (self.name, opaque_slots))
 
         if not opaque_slots['lm_info']:
-            raise RuntimeError('lm_info missing for %s: %s' \
+            raise RuntimeError('lm_info missing for %s: %s'
                                % (self.name, opaque_slots))
 
         if 'dvm_uri' not in opaque_slots['lm_info']:
-            raise RuntimeError('dvm_uri not in lm_info for %s: %s' \
+            raise RuntimeError('dvm_uri not in lm_info for %s: %s'
                     % (self.name, opaque_slots))
 
         task_slots = opaque_slots['task_slots']
@@ -237,7 +248,6 @@ class ORTE(LaunchMethod):
         #       this into a system specific regexp or so.
         #
         hosts_string = ",".join([slot.split(':')[0].rsplit('_', 1)[-1] for slot in task_slots])
-        export_vars  = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
         # Additional (debug) arguments to orterun
         if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
@@ -247,13 +257,23 @@ class ORTE(LaunchMethod):
                             ]
         else:
             debug_strings = []
+        debug_string = ' '.join(debug_strings)
 
         if task_mpi: np_flag = '-np %s' % task_cores
         else       : np_flag = '-np 1'
 
-        orte_command = '%s %s --hnp "%s" %s --bind-to none %s -host %s %s' % (self.launch_command, 
-                ' '.join(debug_strings), dvm_uri, export_vars, np_flag, 
-                hosts_string, task_command)
+
+        env_string = ''
+        env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
+        if env_list:
+            env_string = ''
+            for var in env_list:
+                env_string += '-x "%s" ' % var
+
+
+        orte_command = '%s %s --hnp "%s" --bind-to none %s -host %s %s %s' % (
+                self.launch_command, debug_string, dvm_uri, np_flag,
+                hosts_string, env_string, task_command)
 
         return orte_command, None
 
