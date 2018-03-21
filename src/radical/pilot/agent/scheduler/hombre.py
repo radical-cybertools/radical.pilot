@@ -23,6 +23,15 @@ import threading as mt
 class Hombre(AgentSchedulingComponent):
     '''
     HOMBRE: HOMogeneous Bag-of-task REsource allocator.  Don't kill me...
+
+    The scheduler implementation manages a set of resources (cores).  When it
+    gets the first scheduling request, it will assume that to be representative
+    *for all future sccheduling requests*, ie. it assumes that all tasks are
+    homogeneous.  It thus splits the resources into equal sized chunks and
+    assigns them to the incoming requests.  The chunking is fast, no decisions
+    need to be made, the scheduler really just hands out pre-defined chunks,
+    which is relatively quick - that's the point, to trade generality with
+    performance.
     '''
 
     # --------------------------------------------------------------------------
@@ -78,8 +87,11 @@ class Hombre(AgentSchedulingComponent):
     def _allocate_slot(self, cores_requested):
 
         if self.chunk is None:
+            # this is the first request - use it to define the chunk size
             self.chunk = cores_requested
+
         else:
+            # this is *not* the first request - make sure it has the same size
             if cores_requested != self.chunk:
                 raise ValueError('hetbre?  %d != %d' % (self.chunk,
                                                         cores_requested))
@@ -107,7 +119,7 @@ class Hombre(AgentSchedulingComponent):
     #
     def _find_slots(self, cores_requested):
 
-        # check if we have used free chunks - return one
+        # check if we have free chunks laying around - return one
         with self.lock:
             if self.free:
                 return self.free.pop()
@@ -124,7 +136,6 @@ class Hombre(AgentSchedulingComponent):
             self.index += 1
 
         return slots, offset
-
 
 
 # ------------------------------------------------------------------------------
