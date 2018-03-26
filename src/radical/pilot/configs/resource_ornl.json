@@ -72,7 +72,7 @@
             "module swap PrgEnv-pgi PrgEnv-gnu",
             "module load python",
             "module use --append /lustre/atlas/world-shared/csc230/openmpi/modules/",
-            "module load openmpi/2018_01_16_539f71d",
+            "module load openmpi/2018_03_11_04ec013da9",
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
         ],
@@ -116,7 +116,7 @@
             "module swap PrgEnv-pgi PrgEnv-gnu",
             "module load python",
             "module use --append /lustre/atlas/world-shared/csc230/openmpi/modules/",
-            "module load openmpi/2018_01_16_539f71d",
+            "module load openmpi/2018_03_11_04ec013da9",
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
         ],
