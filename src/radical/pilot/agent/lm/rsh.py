@@ -40,12 +40,14 @@ class RSH(LaunchMethod):
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_args    = cud.get('arguments') or []
+      # task_cores   = cud['cores']
+        task_env     = cud.get('environment', dict())
+        task_args    = cud.get('arguments',   list())
         task_argstr  = self._create_arg_string(task_args)
 
-        if not 'task_slots' in slots:
-            raise RuntimeError('insufficient information to launch via %s: %s' \
-                    % (self.name, slots))
+        if 'task_slots' not in slots:
+            raise RuntimeError('insufficient information to launch via %s: %s'
+                              % (self.name, slots))
 
         task_slots = slots['task_slots']
 
@@ -59,9 +61,11 @@ class RSH(LaunchMethod):
         else          : task_command = task_exec
 
         # Pass configured and available environment variables to the remote shell
-        export_vars = ' '.join(['%s=%s' % (var, os.environ[var]) 
-                                for var in self.EXPORT_ENV_VARIABLES 
-                                 if var in os.environ])
+        export_vars  = ' '.join(['%s=%s' % (var, os.environ[var]) 
+                                 for var in self.EXPORT_ENV_VARIABLES 
+                                  if var in os.environ])
+        export_vars += ' '.join(['%s=%s' % (var, task_env[var]) 
+                                 for var in task_env]) 
 
         # Command line to execute launch script via rsh on host
         rsh_hop_cmd = "%s %s %s %s" % (self.launch_command, host, 

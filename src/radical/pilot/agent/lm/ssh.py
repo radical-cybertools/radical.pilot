@@ -56,14 +56,16 @@ class SSH(LaunchMethod):
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_args    = cud.get('arguments') or []
+        task_cores   = cud['cores']
+        task_env     = cud.get('environment', dict())
+        task_args    = cud.get('arguments',   list())
         task_argstr  = self._create_arg_string(task_args)
 
         task_slots   = slots.get('task_slots')
 
         if not task_slots:
-            raise RuntimeError('insufficient information to launch via %s: %s' \
-                    % (self.name, slots))
+            raise RuntimeError('insufficient information to launch via %s: %s'
+                              % (self.name, slots))
 
         if not launch_script_hop :
             raise ValueError ("LaunchMethodSSH.construct_command needs launch_script_hop!")
@@ -79,12 +81,16 @@ class SSH(LaunchMethod):
             task_command = task_exec
 
         # Pass configured and available environment variables to the remote shell
-        export_vars = ' '.join(['%s=%s' % (var, os.environ[var])     \
-                                for var in self.EXPORT_ENV_VARIABLES \
-                                if  var in os.environ])
+        export_vars  = ' '.join(['%s=%s' % (var, os.environ[var])
+                                 for var in self.EXPORT_ENV_VARIABLES
+                                 if  var in os.environ])
+
+        export_vars += ' '.join(['%s=%s' % (var, task_env[var]) 
+                                 for var in task_env]) 
 
         # Command line to execute launch script via ssh on host
-        ssh_hop_cmd = "%s %s %s %s" % (self.launch_command, host, export_vars, launch_script_hop)
+        ssh_hop_cmd = "%s %s %s %s" % (self.launch_command, host, export_vars,
+                launch_script_hop)
 
         # Special case, return a tuple that overrides the default command line.
         return task_command, ssh_hop_cmd

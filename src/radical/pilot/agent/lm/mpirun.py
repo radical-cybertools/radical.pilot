@@ -3,7 +3,7 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import os
+import radical.utils as ru
 
 from .base import LaunchMethod
 
@@ -22,12 +22,31 @@ class MPIRun(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
+
         self.launch_command = self._find_executable([
             'mpirun',            # General case
             'mpirun_rsh',        # Gordon @ SDSC
             'mpirun-mpich-mp',   # Mac OSX MacPorts
             'mpirun-openmpi-mp'  # Mac OSX MacPorts
         ])
+
+        # alas, the way to transplant env variables to the target node differs
+        # per mpi(run) version...
+        out, err, ret = ru.sh_callout('%s -v' % self.launch_command)
+
+        if ret != 0:
+            out, err, ret = ru.sh_callout('%s -info' % self.launch_command)
+
+        self.launch_version = ''
+        for line in out.splitlines():
+            if 'HYDRA build details:' in line:
+                self.launch_version += 'hydra-'
+            if 'version:' in line.lower():
+                self.launch_version += line.split(':')[1].strip().lower()
+                break
+
+        if not self.launch_version:
+            self.launch_version = 'unknown'
 
 
     # --------------------------------------------------------------------------
@@ -38,32 +57,41 @@ class MPIRun(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cpu_processes']  # FIXME: handle cpu_threads
-        task_args    = cud.get('arguments', [])
+        task_env     = cud.get('environment', dict())
+        task_args    = cud.get('arguments',   list())
         task_argstr  = self._create_arg_string(task_args)
 
-        if not 'task_slots' in slots:
-            raise RuntimeError('insufficient information to launch via %s: %s' \
-                    % (self.name, slots))
+        # Construct the executable and arguments
+        if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
+        else          : task_command = task_exec
 
-        task_slots = slots['task_slots']
+        env_string = ''
+        env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
+        if env_list:
+            if 'hydra' in self.launch_version:
+                env_string = '-envlist "%s"' % ','.join(env_list)
 
-        if task_argstr:
-            task_command = "%s %s" % (task_exec, task_argstr)
-        else:
-            task_command = task_exec
+            elif 'openmpi' in self.launch_version:
+                for var in env_list:
+                    env_string += '-x "%s" ' % var
 
-        # Construct the hosts_string
-        hosts_string = ",".join([slot.split(':')[0] \
-                                 for slot in task_slots])
-        export_vars  = ' '.join(['-x ' + var \
-                                 for var in self.EXPORT_ENV_VARIABLES \
-                                 if  var in os.environ])
+            else:
+                raise  RuntimeError('cannot identify MPI flavor [%s]' 
+                                   % self.launch_version)
 
-        mpirun_command = "%s %s -np %s -host %s %s" % \
-                (self.launch_command, export_vars, task_cores, hosts_string, 
-                 task_command)
+        if 'task_slots' not in slots:
+            raise RuntimeError('insufficient information to launch via %s: %s'
+                              % (self.name, slots))
 
-        return mpirun_command, None
+        # Extract all the hosts from the slots
+        hosts_string = ",".join([slot.split(':')[0] 
+                                 for slot in slots['task_slots']])
+
+        command = "%s    -np %s -host %s %s %s" \
+                % (self.launch_command,
+                  task_cores, hosts_string, env_string, task_command)
+
+        return command, None
 
 
 # ------------------------------------------------------------------------------

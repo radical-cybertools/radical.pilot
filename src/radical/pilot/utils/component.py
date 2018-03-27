@@ -761,8 +761,8 @@ class Component(ru.Process):
         self._log.debug("using addr %s for input %s", addr, input)
 
         q = rpu_Queue(self._session, input, rpu_QUEUE_OUTPUT, self._cfg, addr=addr)
-        self._inputs['name'] = {'queue'  : q,
-                                'states' : states}
+        self._inputs[name] = {'queue'  : q,
+                              'states' : states}
 
         self._log.debug('registered input %s', name)
 

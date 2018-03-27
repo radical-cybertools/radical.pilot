@@ -33,11 +33,12 @@ class POE(LaunchMethod):
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_args    = cud.get('arguments') or []
+        task_env     = cud.get('environment', dict())
+        task_args    = cud.get('arguments',   list())
         task_argstr  = self._create_arg_string(task_args)
 
-        if not 'task_slots' in slots:
-            raise RuntimeError('insufficient information to launch via %s: %s' \
+        if 'task_slots' not in slots:
+            raise RuntimeError('insufficient information to launch via %s: %s'
                     % (self.name, slots))
 
         task_slots = slots['task_slots']

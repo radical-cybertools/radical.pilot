@@ -206,6 +206,8 @@ class Popen(AgentExecutingComponent) :
             # by the unit), but it seems the most intuitive way to
             # communicate that error to the application/user.
             self._log.exception("error running CU")
+            if cu.get('stderr') is None:
+                cu['stderr'] = ''
             cu['stderr'] += "\nPilot cannot start compute unit:\n%s\n%s" \
                             % (str(e), traceback.format_exc())
 

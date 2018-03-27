@@ -23,10 +23,11 @@ class Runjob(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        # runjob: job launcher for IBM BG/Q systems, e.g. Joule
-        self.launch_command= ru.which('runjob')
 
-        raise NotImplementedError('RUNJOB LM needs to be decoupled from the scheduler/LRMS')
+        # runjob: job launcher for IBM BG/Q systems, e.g. Joule
+        self.launch_command = ru.which('runjob')
+
+        raise NotImplementedError('RUNJOB LM still coupled to scheduler/LRMS')
 
 
     # --------------------------------------------------------------------------
@@ -36,8 +37,9 @@ class Runjob(LaunchMethod):
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cpu_processes']  # FIXME: handle cpu_threads
-        task_args    = cud.get('arguments') or []
+        task_cores   = cud['cpu_processes']            # FIXME: handle threads
+        task_env     = cud.get('environment', dict())  # FIXME: use
+        task_args    = cud.get('arguments',   list())
         task_argstr  = self._create_arg_string(task_args)
 
         if  'loadl_bg_block'      not in slots            or \
@@ -46,8 +48,8 @@ class Runjob(LaunchMethod):
             'lm_info'             not in slots            or \
             'cores_per_node'      not in slots['lm_info'] or \
             'gpus_per_node'       not in slots['lm_info']    :
-            raise RuntimeError('insufficient information to launch via %s: %s' \
-                    % (self.name, slots))
+            raise RuntimeError('insufficient information to launch via %s: %s'
+                              % (self.name, slots))
 
         cores_per_node      = slots['lm_info']['cores_per_node']
         gpus_per_node       = slots['lm_info']['gpus_per_node']

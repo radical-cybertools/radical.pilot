@@ -5,6 +5,42 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.47.4 Release                                                        2018-03-20
+--------------------------------------------------------------------------------
+
+  - fifo agent scheduler (#1537) 
+  - hombre agent scheduler (#1536) 
+  - Fix/issue 1466 (#1544) 
+  - Fix/issue 1501 (#1541) 
+  - switch to new OMPI deployment on titan (#1529) 
+  - add agent configuration doc (#1540) 
+
+
+0.47.3 Release                                                        2018-03-20
+--------------------------------------------------------------------------------
+
+  - add resource limit test 
+  - add tmp cheyenne config 
+  - api rendering proposal for partitions 
+  - fix bootstrap sequence (BW)
+  - tighten bootstrap process, add documentation 
+
+
+0.47.2 Release                                                        2018-02-28
+--------------------------------------------------------------------------------
+
+  - fix issue 1538
+  - fix issue 1554
+  - expose profiler to LM hooks (#1522) 
+  - fix bin names (#1549) 
+  - fix event docs, add an event for symmetry (#1527) 
+  - name attribute has been changed to uid, fixes issue #1518
+  - make use of flags consistent between RP and RS (#1547) 
+  - add support for recursive data staging (#1513. #1514)  (JD, VB, GC)
+  - change staging flags to integers (inherited from RS)
+  - add support for bulk data transfer (#1512) (IP, SM)
+
+
 0.47 Release                                                          2017-11-19
 --------------------------------------------------------------------------------
 

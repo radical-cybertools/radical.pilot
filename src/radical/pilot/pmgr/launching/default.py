@@ -44,8 +44,9 @@ JOB_CHECK_INTERVAL    =  60  # seconds between runs of the job state check loop
 JOB_CHECK_MAX_MISSES  =   3  # number of times to find a job missing before
                              # declaring it dead
 
-LOCAL_SCHEME = 'file'
-BOOTSTRAPPER = "bootstrap_1.sh"
+LOCAL_SCHEME   = 'file'
+BOOTSTRAPPER_0 = "bootstrap_0.sh"
+BOOTSTRAPPER_1 = "bootstrap_1.sh"
 
 # ==============================================================================
 #
@@ -1099,11 +1100,11 @@ class Default(PMGRLaunchingComponent):
 
                 # Copy the bootstrap shell script.
                 bootstrapper_path = os.path.abspath("%s/agent/%s" \
-                        % (self._root_dir, BOOTSTRAPPER))
+                        % (self._root_dir, BOOTSTRAPPER_0))
                 self._log.debug("use bootstrapper %s", bootstrapper_path)
 
                 ret['ft'].append({'src' : bootstrapper_path, 
-                                  'tgt' : '%s/%s' % (session_sandbox, BOOTSTRAPPER),
+                                  'tgt' : '%s/%s' % (session_sandbox, BOOTSTRAPPER_0),
                                   'rem' : False})
 
                 # Some machines cannot run pip due to outdated CA certs.
@@ -1128,9 +1129,9 @@ class Default(PMGRLaunchingComponent):
         jd = rs.job.Description()
 
         if shared_filesystem:
-            bootstrap_tgt = '%s/%s' % (session_sandbox, BOOTSTRAPPER)
+            bootstrap_tgt = '%s/%s' % (session_sandbox, BOOTSTRAPPER_0)
         else:
-            bootstrap_tgt = '%s/%s' % ('.', BOOTSTRAPPER)
+            bootstrap_tgt = '%s/%s' % ('.', BOOTSTRAPPER_0)
 
         jd.name                  = pid
         jd.executable            = "/bin/bash"
@@ -1165,7 +1166,7 @@ class Default(PMGRLaunchingComponent):
         if not shared_filesystem:
 
             jd.file_transfer.extend([
-                'site:%s/%s > %s' % (session_sandbox, BOOTSTRAPPER,   BOOTSTRAPPER),
+                'site:%s/%s > %s' % (session_sandbox, BOOTSTRAPPER_0, BOOTSTRAPPER_0),
                 'site:%s/%s > %s' % (pilot_sandbox,   agent_cfg_name, agent_cfg_name),
                 'site:%s/%s.log.tgz > %s.log.tgz' % (pilot_sandbox, pid, pid),
                 'site:%s/%s.log.tgz < %s.log.tgz' % (pilot_sandbox, pid, pid)
