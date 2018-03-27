@@ -34,13 +34,7 @@ class MPIRunRSH(LaunchMethod):
         # the launcher from that version, as experienced on stampede in #572.
         self.launch_command = 'mpirun_rsh'
 
-        # alas, the way to transplant env variables to the target node differs
-        # per mpi(run) version...
-        version = sp.check_output(['%s -v' % self.launch_command], shell=True)
-        if 'version:' in version:
-            self.launch_version = version.split(':')[1].strip().lower()
-        else:
-            self.launch_version = 'unknown'
+        self.mpi_version, self.mpi_flavor = self._get_mpi_info(self.launch_command)
 
 
     # --------------------------------------------------------------------------
@@ -61,16 +55,12 @@ class MPIRunRSH(LaunchMethod):
         env_string = ''
         env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
         if env_list:
-            if 'mvapich2' in self.launch_version:
+            if self.mpi_flavor == self.MPI_FLAVOR_HYDRA:
                 env_string = '-envlist "%s"' % ','.join(env_list)
 
-            elif 'openmpi' in self.launch_version:
+            elif self.mpi_flavor == self.MPI_FLAVOR_OMPI:
                 for var in env_list:
                     env_string += '-x "%s" ' % var
-
-            else:
-                raise  RuntimeError('cannot identify MPI flavor [%s]' 
-                                   % self.launch_version)
 
         if 'task_slots' not in slots:
             raise RuntimeError('insufficient information to launch via %s: %s'

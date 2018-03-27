@@ -30,23 +30,7 @@ class MPIRun(LaunchMethod):
             'mpirun-openmpi-mp'  # Mac OSX MacPorts
         ])
 
-        # alas, the way to transplant env variables to the target node differs
-        # per mpi(run) version...
-        out, err, ret = ru.sh_callout('%s -v' % self.launch_command)
-
-        if ret != 0:
-            out, err, ret = ru.sh_callout('%s -info' % self.launch_command)
-
-        self.launch_version = ''
-        for line in out.splitlines():
-            if 'HYDRA build details:' in line:
-                self.launch_version += 'hydra-'
-            if 'version:' in line.lower():
-                self.launch_version += line.split(':')[1].strip().lower()
-                break
-
-        if not self.launch_version:
-            self.launch_version = 'unknown'
+        self.mpi_version, self.mpi_flavor = self._get_mpi_info(self.launch_command)
 
 
     # --------------------------------------------------------------------------
@@ -68,16 +52,13 @@ class MPIRun(LaunchMethod):
         env_string = ''
         env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
         if env_list:
-            if 'hydra' in self.launch_version:
+
+            if self.mpi_flavor == self.MPI_FLAVOR_HYDRA:
                 env_string = '-envlist "%s"' % ','.join(env_list)
 
-            elif 'openmpi' in self.launch_version:
+            elif self.mpi_flavor == self.MPI_FLAVOR_OMPI:
                 for var in env_list:
                     env_string += '-x "%s" ' % var
-
-            else:
-                raise  RuntimeError('cannot identify MPI flavor [%s]' 
-                                   % self.launch_version)
 
         if 'task_slots' not in slots:
             raise RuntimeError('insufficient information to launch via %s: %s'

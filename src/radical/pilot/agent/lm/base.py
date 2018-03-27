@@ -46,6 +46,10 @@ class LaunchMethod(object):
         'PYTHONPATH',
     ]
 
+    MPI_FLAVOR_OMPI    = 'OMPI'
+    MPI_FLAVOR_HYDRA   = 'HYDRA'
+    MPI_FLAVOR_UNKNOWN = 'unknown'
+
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, session):
@@ -60,16 +64,15 @@ class LaunchMethod(object):
         self.env_removables = []
 
         self.launch_command = None
-        self.launch_version = None
+        
         self._configure()
+
         # TODO: This doesn't make too much sense for LM's that use multiple
         #       commands, perhaps this needs to move to per LM __init__.
         if self.launch_command is None:
             raise RuntimeError("Launch command not found for LaunchMethod '%s'" % self.name)
 
-        self._log.debug('launch_command: %s [%s]', self.launch_command,
-                                                   self.launch_version)
-
+        self._log.debug('launch_command: %s', self.launch_command)
 
 
     # --------------------------------------------------------------------------
@@ -328,6 +331,56 @@ class LaunchMethod(object):
                     arg_string += '"%s" ' % arg  # Otherwise return between double quotes.
 
         return arg_string
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_mpi_info(self, exe):
+        '''
+        returns version and flavor of MPI version.
+        '''
+
+        version = None
+        flavor  = self.MPI_FLAVOR_UNKNOWN
+
+        out, err, ret = ru.sh_callout('%s -v' % exe)
+
+        if ret:
+            out, err, ret = ru.sh_callout('%s --version' % exe)
+
+        if ret:
+            out, err, ret = ru.sh_callout('%s -info' % exe)
+
+        if not ret:
+            for line in out.splitlines():
+                if 'hydra build details:' in line.lower():
+                    version = line.split(':', 1)[1].strip()
+                    flavor  = self.MPI_FLAVOR_HYDRA
+                    break
+
+                if 'mvapich2' in line.lower():
+                    version = line
+                    flavor  = self.MPI_FLAVOR_HYDRA
+                    break
+
+                if 'version:' in line.lower():
+                    version = line.split(':', 1)[1].strip()
+                    flavor  = self.MPI_FLAVOR_OMPI
+                    break
+
+                if '(open mpi):' in line.lower():
+                    version = line.split(')', 1)[1].strip()
+                    flavor  = self.MPI_FLAVOR_OMPI
+                    break
+
+        if not flavor:
+            raise RuntimeError('cannot identify MPI flavor [%s]' % exe)
+
+        self._log.debug('mpi version: %s [%s]', version, flavor)
+
+        return version, flavor
+
+
 
 
 # ------------------------------------------------------------------------------
