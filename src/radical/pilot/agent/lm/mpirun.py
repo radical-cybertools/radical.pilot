@@ -60,17 +60,22 @@ class MPIRun(LaunchMethod):
                 for var in env_list:
                     env_string += '-x "%s" ' % var
 
-        if 'task_slots' not in slots:
+        if 'nodes' not in slots:
             raise RuntimeError('insufficient information to launch via %s: %s'
                               % (self.name, slots))
 
         # Extract all the hosts from the slots
-        hosts_string = ",".join([slot.split(':')[0] 
-                                 for slot in slots['task_slots']])
+        hostlist = list()
+        for node in slots['nodes']:
+            for cpu_proc in node[2]:
+                hostlist.append(node[0])
+            for gpu_proc in node[3]:
+                hostlist.append(node[0])
+        hosts_string = ",".join(hostlist)
 
-        command = "%s    -np %s -host %s %s %s" \
-                % (self.launch_command,
-                  task_cores, hosts_string, env_string, task_command)
+        command = "%s -np %s -host %s %s %s" \
+                % (self.launch_command, len(hostlist), hosts_string, 
+                   env_string, task_command)
 
         return command, None
 
