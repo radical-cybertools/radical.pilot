@@ -3,6 +3,8 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import radical.utils as ru
+
 from .base import LaunchMethod
 
 
@@ -21,7 +23,7 @@ class MPIRun(LaunchMethod):
     #
     def _configure(self):
 
-        self.launch_command = self._find_executable([
+        self.launch_command = ru.which([
             'mpirun',            # General case
             'mpirun_rsh',        # Gordon @ SDSC
             'mpirun-mpich-mp',   # Mac OSX MacPorts

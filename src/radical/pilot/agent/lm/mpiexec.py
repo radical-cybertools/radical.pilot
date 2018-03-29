@@ -23,7 +23,7 @@ class MPIExec(LaunchMethod):
     #
     def _configure(self):
 
-        self.launch_command = self._find_executable([
+        self.launch_command = ru.which([
             'mpiexec',            # General case
             'mpiexec.mpich',      # Linux, MPICH
             'mpiexec.hydra',      # Linux, MPICH

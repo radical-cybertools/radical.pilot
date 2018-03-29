@@ -71,7 +71,7 @@ class ORTE(LaunchMethod):
         # without waiting for orte-dvm to complete.
         # The command seems to be generally available on our Cray's,
         # if not, we can code some home-coooked pty stuff.
-        stdbuf_cmd =  cls._find_executable(['stdbuf', 'gstdbuf'])
+        stdbuf_cmd =  ru.which(['stdbuf', 'gstdbuf'])
         if not stdbuf_cmd:
             raise Exception("Couldn't find (g)stdbuf")
         stdbuf_arg = "-oL"

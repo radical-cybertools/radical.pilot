@@ -220,27 +220,6 @@ class LaunchMethod(object):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def _find_executable(cls, names):
-        """
-        Takes a (list of) name(s) and looks for an executable in the path.  It
-        will return the first match found, or `None` if none of the given names
-        is found.
-        """
-
-        if not isinstance(names, list):
-            names = [names]
-
-        for name in names:
-            ret = ru.which(name)
-            if ret:
-                return ret
-
-        return None
-
-
-    # --------------------------------------------------------------------------
-    #
-    @classmethod
     def _create_hostfile(cls, all_hosts, separator=' ', impaired=False):
 
         # Open appropriately named temporary file

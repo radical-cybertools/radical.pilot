@@ -24,14 +24,14 @@ class MPIRunDPlace(LaunchMethod):
     #
     def _configure(self):
 
-        self.launch_command = self._find_executable([
+        self.launch_command = ru.which([
             'mpirun',            # General case
             'mpirun_rsh',        # Gordon @ SDSC
             'mpirun-mpich-mp',   # Mac OSX MacPorts
             'mpirun-openmpi-mp'  # Mac OSX MacPorts
         ])
 
-        self.dplace_command = self._find_executable([
+        self.dplace_command = ru.which([
             'dplace',            # General case
         ])
 
@@ -54,6 +54,7 @@ class MPIRunDPlace(LaunchMethod):
         task_argstr  = self._create_arg_string(task_args)
 
         if task_threads > 1:
+            # dplace pinning would disallow threads to map to other cores
             raise ValueError('dplace can not place threads [%d]' % task_threads)
 
         if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
