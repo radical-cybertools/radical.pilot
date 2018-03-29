@@ -22,7 +22,7 @@ class MPIExec(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        # mpiexec (e.g. on SuperMUC)
+
         self.launch_command = self._find_executable([
             'mpiexec',            # General case
             'mpiexec.mpich',      # Linux, MPICH
@@ -53,12 +53,18 @@ class MPIExec(LaunchMethod):
         env_string = ''
         env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
         if env_list:
+
             if self.mpi_flavor == self.MPI_FLAVOR_HYDRA:
                 env_string = '-envlist "%s"' % ','.join(env_list)
 
             elif self.mpi_flavor == self.MPI_FLAVOR_OMPI:
                 for var in env_list:
                     env_string += '-x "%s" ' % var
+
+
+        if 'nodes' not in slots:
+            raise RuntimeError('insufficient information to launch via %s: %s'
+                              % (self.name, slots))
 
         # extract a map of hosts and #slots from slots.  We count cpu and gpu
         # slot sets, but do not account for threads.  Since multiple slots

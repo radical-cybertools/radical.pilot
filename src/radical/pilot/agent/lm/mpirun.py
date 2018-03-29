@@ -3,8 +3,6 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import radical.utils as ru
-
 from .base import LaunchMethod
 
 
@@ -40,7 +38,6 @@ class MPIRun(LaunchMethod):
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cpu_processes']  # FIXME: handle cpu_threads
         task_env     = cud.get('environment', dict())
         task_args    = cud.get('arguments',   list())
         task_argstr  = self._create_arg_string(task_args)
@@ -60,6 +57,7 @@ class MPIRun(LaunchMethod):
                 for var in env_list:
                     env_string += '-x "%s" ' % var
 
+
         if 'nodes' not in slots:
             raise RuntimeError('insufficient information to launch via %s: %s'
                               % (self.name, slots))
@@ -73,7 +71,7 @@ class MPIRun(LaunchMethod):
                 hostlist.append(node[0])
         hosts_string = ",".join(hostlist)
 
-        command = "%s -np %s -host %s %s %s" \
+        command = "%s -np %d -host %s %s %s" \
                 % (self.launch_command, len(hostlist), hosts_string, 
                    env_string, task_command)
 
