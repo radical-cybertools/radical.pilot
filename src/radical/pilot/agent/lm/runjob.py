@@ -23,36 +23,41 @@ class Runjob(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        # runjob: job launcher for IBM BG/Q systems, e.g. Joule
-        self.launch_command= ru.which('runjob')
 
-        raise NotImplementedError('RUNJOB LM needs to be decoupled from the scheduler/LRMS')
+        # runjob: job launcher for IBM BG/Q systems, e.g. Joule
+        self.launch_command = ru.which('runjob')
+
+        raise NotImplementedError('RUNJOB LM still coupled to scheduler/LRMS')
 
 
     # --------------------------------------------------------------------------
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cores']
-        task_env     = cud.get('environment', dict())
+        task_cores   = cud['cpu_processes']            # FIXME: handle threads
+        task_env     = cud.get('environment', dict())  # FIXME: use
         task_args    = cud.get('arguments',   list())
         task_argstr  = self._create_arg_string(task_args)
 
-        if  'cores_per_node'      not in opaque_slots or \
-            'loadl_bg_block'      not in opaque_slots or \
-            'sub_block_shape_str' not in opaque_slots or \
-            'corner_node'         not in opaque_slots    :
-            raise RuntimeError('insufficient information to launch via %s: %s' \
-                    % (self.name, opaque_slots))
+        if  'loadl_bg_block'      not in slots            or \
+            'sub_block_shape_str' not in slots            or \
+            'corner_node'         not in slots            or \
+            'lm_info'             not in slots            or \
+            'cores_per_node'      not in slots['lm_info'] or \
+            'gpus_per_node'       not in slots['lm_info']    :
+            raise RuntimeError('insufficient information to launch via %s: %s'
+                              % (self.name, slots))
 
-        cores_per_node      = opaque_slots['lm_info']['cores_per_node']
-        loadl_bg_block      = opaque_slots['loadl_bg_block']
-        sub_block_shape_str = opaque_slots['sub_block_shape_str']
-        corner_node         = opaque_slots['corner_node']
+        cores_per_node      = slots['lm_info']['cores_per_node']
+        gpus_per_node       = slots['lm_info']['gpus_per_node']
+        loadl_bg_block      = slots['loadl_bg_block']
+        sub_block_shape_str = slots['sub_block_shape_str']
+        corner_node         = slots['corner_node']
 
+        # FIXME GPU
         if task_cores % cores_per_node:
             msg = "Num cores (%d) is not a multiple of %d!" % (task_cores, cores_per_node)
             self._log.exception(msg)
@@ -64,6 +69,7 @@ class Runjob(LaunchMethod):
         # Set the number of tasks/ranks per node
         # TODO: Currently hardcoded, this should be configurable,
         #       but I don't see how, this would be a leaky abstraction.
+        # FIXME GPU
         runjob_command += ' --ranks-per-node %d' % min(cores_per_node, task_cores)
 
         # Run this subjob in the block communicated by LoadLeveler

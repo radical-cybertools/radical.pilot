@@ -320,23 +320,30 @@ class Agent_0(rpu.Worker):
                 #        the 'agent_node' string as 'agent_string:0' and
                 #        obtain a well format slot...
                 # FIXME: it is actually tricky to translate the agent_node
-                #        into a viable 'opaque_slots' structure, as that is
+                #        into a viable 'slots' structure, as that is
                 #        usually done by the schedulers.  So we leave that
                 #        out for the moment, which will make this unable to
                 #        work with a number of launch methods.  Can the
                 #        offset computation be moved to the LRMS?
-                ls_name = '%s/%s.sh' % (os.getcwd(), sa)
-                opaque_slots = {
-                        'task_slots'   : ['%s:0' % node],
-                        'task_offsets' : [],
-                        'lm_info'      : self._cfg['lrms_info']['lm_info']}
+                ls_name = "%s/%s.sh" % (os.getcwd(), sa)
+                slots = {
+                  'cpu_processes' : 1,
+                  'cpu_threads'   : 1,
+                  'gpu_processes' : 0,
+                  'gpu_threads'   : 0,
+                  'nodes'         : [[node[0], node[1], [[0]], []]],
+                  'cores_per_node': self._cfg['lrms_info']['cores_per_node'],
+                  'gpus_per_node' : self._cfg['lrms_info']['gpus_per_node'],
+                  'lm_info'       : self._cfg['lrms_info']['lm_info']
+                }
                 agent_cmd = {
-                        'opaque_slots' : opaque_slots,
+                        'uid'          : sa,
+                        'slots'        : slots,
                         'description'  : {
-                            'cores'      : 1,
-                            'executable' : '/bin/sh',
-                            'mpi'        : False,
-                            'arguments'  : ['%s/bootstrap_2.sh' % os.getcwd(), sa]
+                            'cpu_processes' : 1,
+                            'executable'    : "/bin/sh",
+                            'mpi'           : False,
+                            'arguments'     : ["%s/bootstrap_2.sh" % os.getcwd(), sa]
                             }
                         }
                 cmd, hop = agent_lm.construct_command(agent_cmd,
@@ -427,15 +434,14 @@ class Agent_0(rpu.Worker):
             cmd = spec['cmd']
             arg = spec['arg']
 
-            self._prof.prof('cmd', msg='%s : %s' % (cmd, arg), uid=self._pid)
+            self._prof.prof('cmd', msg="%s : %s" % (cmd, arg), uid=self._pid)
 
             if cmd == 'heartbeat':
                 self._log.info('heartbeat_in')
 
+
             elif cmd == 'cancel_pilot':
                 self._log.info('cancel pilot cmd')
-              # ru.attach_pudb(logger=self._log)
-              #
                 self._log.info('publish "terminate" cmd')
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
                                                   'arg' : None})
@@ -515,7 +521,7 @@ class Agent_0(rpu.Worker):
                                     'uid'   : {'$in'     : unit_uids}},
                         document = {'$set'  : {'control' : 'agent'}})
 
-        self._log.info('units pulled: %4d', len(unit_list))
+        self._log.info("units pulled: %4d", len(unit_list))
         self._prof.prof('get', msg='bulk size: %d' % len(unit_list),
                         uid=self._pid)
 

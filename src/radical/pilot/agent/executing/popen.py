@@ -174,20 +174,28 @@ class Popen(AgentExecutingComponent) :
     def _handle_unit(self, cu):
 
         ru.raise_on('work unit')
+      # import pprint
+      # self._log.info('handle cu: %s', pprint.pformat(cu))
 
         try:
-            if cu['description']['mpi']:
-                launcher = self._mpi_launcher
-            else :
-                launcher = self._task_launcher
+            # prep stdout/err so that we can append w/o checking for None
+            cu['stdout'] = ''
+            cu['stderr'] = ''
+
+            cpt = cu['description']['cpu_process_type']
+            gpt = cu['description']['gpu_process_type']  # FIXME: use
+
+            # FIXME: this switch is insufficient for mixed units (MPI/OpenMP)
+            if cpt == 'MPI': launcher = self._mpi_launcher
+            else           : launcher = self._task_launcher
 
             if not launcher:
-                raise RuntimeError("no launcher (mpi=%s)" % cu['description']['mpi'])
+                raise RuntimeError("no launcher (process type = %s)" % cpt)
 
-            self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
+            self._log.debug("Launching unit with %s (%s).",
+                            launcher.name, launcher.launch_command)
 
-            assert(cu['opaque_slots']) # FIXME: no assert, but check
-            self._prof.prof('exec', msg='unit launch', uid=cu['uid'])
+            assert(cu['slots'])
 
             # Start a new subprocess to launch the unit
             self.spawn(launcher=launcher, cu=cu)
@@ -204,7 +212,7 @@ class Popen(AgentExecutingComponent) :
                             % (str(e), traceback.format_exc())
 
             # Free the Slots, Flee the Flots, Ree the Frots!
-            if cu['opaque_slots']:
+            if cu.get('slots'):
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
@@ -216,6 +224,7 @@ class Popen(AgentExecutingComponent) :
 
         # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
         #       class definition.
+        descr   = cu['description']
         sandbox = '%s/%s' % (self._pwd, cu['uid'])
 
         # make sure the sandbox exists
@@ -223,6 +232,8 @@ class Popen(AgentExecutingComponent) :
         rpu.rec_makedir(sandbox)
         self._prof.prof('exec_mkdir_done', uid=cu['uid'])
         launch_script_name = '%s/%s.sh' % (sandbox, cu['uid'])
+
+        self._log.debug("Created launch_script: %s", launch_script_name)
 
         # prep stdout/err so that we can append w/o checking for None
         cu['stdout'] = ''
@@ -255,11 +266,12 @@ prof(){
 }
 '''
 
+            # FIXME: this should be set by an LM filter or something (GPU)
+            env_string += 'export OMP_NUM_THREADS="%s"\n' % descr['cpu_threads']
+
             # also add any env vars requested for export by the resource config
             for k,v in self._env_cu_export.iteritems():
                 env_string += "export %s=%s\n" % (k,v)
-
-            descr = cu['description']
 
             # also add any env vars requested in the unit description
             if descr['environment']:
@@ -339,19 +351,16 @@ prof(){
 
         self._prof.prof('exec_start', uid=cu['uid'])
         cu['proc'] = subprocess.Popen(args               = cmdline,
-                                      bufsize            = 0,
                                       executable         = None,
                                       stdin              = None,
                                       stdout             = _stdout_file_h,
                                       stderr             = _stderr_file_h,
-                                      preexec_fn         = None,
                                       close_fds          = True,
                                       shell              = True,
                                       cwd                = sandbox,
-                                    # env                = self._cu_environment,
-                                      universal_newlines = False,
-                                      startupinfo        = None,
-                                      creationflags      = 0)
+                                    # This env is the aprun env, not the CU env
+                                    # env                = self._cu_environment
+                                     )
         self._prof.prof('exec_ok', uid=cu['uid'])
 
         self._watch_queue.put(cu)
