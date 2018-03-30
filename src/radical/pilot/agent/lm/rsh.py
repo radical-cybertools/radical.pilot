@@ -32,44 +32,48 @@ class RSH(LaunchMethod):
         # Find rsh command
         self.launch_command = ru.which('rsh')
 
+        if not self.launch_command:
+            raise RuntimeError("rsh not found!")
+
 
     # --------------------------------------------------------------------------
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cores']
+      # task_cores   = cud['cores']
         task_env     = cud.get('environment', dict())
         task_args    = cud.get('arguments',   list())
         task_argstr  = self._create_arg_string(task_args)
 
-        if not 'task_slots' in opaque_slots:
-            raise RuntimeError('insufficient information to launch via %s: %s' \
-                    % (self.name, opaque_slots))
-
-        task_slots = opaque_slots['task_slots']
+        if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
+        else          : task_command = task_exec
 
         if not launch_script_hop:
             raise ValueError("RSH launch method needs launch_script_hop!")
 
-        # Get the host of the first entry in the acquired slot
-        host = task_slots[0].split(':')[0]
+        if 'nodes' not in slots:
+            raise RuntimeError('insufficient information to launch via %s: %s'
+                              % (self.name, slots))
 
-        if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
-        else          : task_command = task_exec
+        if len(slots['nodes'] > 1):
+            raise RuntimeError('rsh cannot run multinode units')
+
+        host = slots['nodes'][0][0]
 
         # Pass configured and available environment variables to the remote shell
-        export_vars = ' '.join(['%s=%s' % (var, os.environ[var]) 
-                                for var in self.EXPORT_ENV_VARIABLES 
-                                 if var in os.environ])
+        export_vars  = ' '.join(['%s=%s' % (var, os.environ[var]) 
+                                 for var in self.EXPORT_ENV_VARIABLES 
+                                  if var in os.environ])
+        export_vars += ' '.join(['%s=%s' % (var, task_env[var]) 
+                                 for var in task_env]) 
 
         # Command line to execute launch script via rsh on host
         rsh_hop_cmd = "%s %s %s %s" % (self.launch_command, host, 
                                        export_vars, launch_script_hop)
 
-        # Special case, return a tuple that overrides the default command line.
         return task_command, rsh_hop_cmd
 
 

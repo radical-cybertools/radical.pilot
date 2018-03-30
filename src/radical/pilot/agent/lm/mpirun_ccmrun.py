@@ -25,91 +25,67 @@ class MPIRunCCMRun(LaunchMethod):
     #
     def _configure(self):
 
-        self.launch_command = self._find_executable([
+        self.launch_command = ru.which([
             'mpirun',            # General case
             'mpirun_rsh',        # Gordon @ SDSC
             'mpirun-mpich-mp',   # Mac OSX MacPorts
             'mpirun-openmpi-mp'  # Mac OSX MacPorts
         ])
 
-        self.ccmrun_command = self._find_executable([
+        self.ccmrun_command = ru.which([
             'ccmrun',            # General case
         ])
 
         if not self.ccmrun_command:
             raise RuntimeError("ccmrun not found!")
 
-        # alas, the way to transplant env variables to the target node differs
-        # per mpi(run) version...
-        out, err, ret = ru.sh_callout('%s -v' % self.launch_command)
-
-        if ret != 0:
-            out, err, ret = ru.sh_callout('%s -info' % self.launch_command)
-
-        self.launch_version = ''
-        for line in out.splitlines():
-            if 'HYDRA build details:' in line:
-                self.launch_version += 'hydra-'
-            if 'version:' in line.lower():
-                self.launch_version += line.split(':')[1].strip().lower()
-                break
-
-        if not self.launch_version:
-            self.launch_version = 'unknown'
+        self.mpi_version, self.mpi_flavor = self._get_mpi_info(self.launch_command)
 
 
     # --------------------------------------------------------------------------
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cores']
         task_env     = cud.get('environment', dict())
         task_args    = cud.get('arguments',   list())
         task_argstr  = self._create_arg_string(task_args)
 
-        if not 'task_slots' in opaque_slots:
-            raise RuntimeError('insufficient information to launch via %s: %s' \
-                    % (self.name, opaque_slots))
-
-        task_slots = opaque_slots['task_slots']
-
-        # Extract all the hosts from the slots
-        # TODO: is there any use in using $HOME/.crayccm/ccm_nodelist.$JOBID?
-        hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
-
         # Construct the executable and arguments
-        if task_argstr:
-            task_command = "%s %s" % (task_exec, task_argstr)
-        else:
-            task_command = task_exec
-
+        if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
+        else          : task_command = task_exec
 
         env_string = ''
         env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
         if env_list:
-            if 'hydra' in self.launch_version:
+
+            if self.mpi_flavor == self.MPI_FLAVOR_HYDRA:
                 env_string = '-envlist "%s"' % ','.join(env_list)
 
-            elif 'openmpi' in self.launch_version:
-                env_string = ''
+            elif self.mpi_flavor == self.MPI_FLAVOR_OMPI:
                 for var in env_list:
                     env_string += '-x "%s" ' % var
 
-            else:
-                # this is a crude version of env transplanting where we prep the
-                # shell command line.  We likely won't survive any complicated vars
-                # (multiline, quotes, etc)
-                env_string = ' '
-                for var in env_string:
-                    env_string += '%s="$%s" ' % (var, var)
 
+        if 'nodes' not in slots:
+            raise RuntimeError('insufficient information to launch via %s: %s'
+                              % (self.name, slots))
+
+        # Extract all the hosts from the slots
+        # TODO: is there any use in using $HOME/.crayccm/ccm_nodelist.$JOBID?
+        hostlist = list()
+        for node in slots['nodes']:
+            for cpu_proc in node[2]:
+                hostlist.append(node[0])
+            for gpu_proc in node[3]:
+                hostlist.append(node[0])
+        hosts_string = ",".join(hostlist)
 
         command = "%s %s -np %d -host %s %s %s" % \
-                  (self.ccmrun_command, self.launch_command,
-                  task_cores, hosts_string, env_string, task_command)
+                  (self.ccmrun_command, self.launch_command, len(hostlist), 
+                   hosts_string, env_string, task_command)
 
         return command, None
 

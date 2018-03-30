@@ -553,7 +553,6 @@ class ComputePilot(object):
 
         # send the staging request to the pmg launcher
         self._pmgr._pilot_staging_input(self.as_dict(), directives)
-        return
 
 
 # ------------------------------------------------------------------------------

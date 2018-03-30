@@ -25,4 +25,8 @@ from .queue        import *
 from .pubsub       import *
 from .session      import *
 from .component    import *
+from .slot_utils   import *
+
+
+# ------------------------------------------------------------------------------
 
