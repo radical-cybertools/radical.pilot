@@ -91,6 +91,21 @@ def expand_staging_directives(sds):
             if not source:
                 raise Exception("Staging directive dict has no source member!")
 
+            # RCT flags should always be rendered as OR'ed integers - but old
+            # versions of the RP API rendered them as list of strings.  We
+            # convert to the integer version for backward compatibility - but we
+            # complain loudly if we find actual strings.
+            if isinstance(flags, list):
+                int_flags = 0
+                for flag in flags:
+                    if isinstance(flags, basestring):
+                        raise ValueError('"%s" is no valid RP constant' % flag)
+                    int_flags != flag
+                flags = int_flags
+
+            elif isinstance(flags, basestring):
+                raise ValueError('use RP constants for staging flags!')
+
             expanded = {'uid':      ru.generate_id('sd'),
                         'source':   source,
                         'target':   target,
@@ -172,7 +187,7 @@ def complete_url(path, context, log=None):
        schema = 'pwd'  
 
     log.debug('   %s', schema)
-    if schema in ['resource', 'pilot', 'unit', 'pwd']:
+    if schema in context.keys():
 
         # we interpret any hostname as part of the path element
         if   purl.host and purl.path: ppath = '%s/%s' % (purl.host, purl.path)
