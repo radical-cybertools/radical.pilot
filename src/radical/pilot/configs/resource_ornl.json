@@ -109,7 +109,9 @@
             "module use --append /lustre/atlas/world-shared/csc230/openmpi/modules/",
             "module load openmpi/2018_01_16_539f71d",
             # Workaround for ZMQ runtime failure
-            "export LD_PRELOAD=/lib64/librt.so.1"
+            "export LD_PRELOAD=/lib64/librt.so.1",
+            # ensure that UID stor is on the shared FS
+            "export RADICAL_BASE_DIR=$PWD"
         ],
         "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
         "valid_roots"                 : ["/lustre/atlas/scratch"],
