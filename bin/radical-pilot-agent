@@ -5,27 +5,70 @@ __license__   = "MIT"
 
 
 import sys
+import setproctitle
 
-import saga                    as rs
-import radical.utils           as ru
-import radical.pilot           as rp
+import saga          as rs
+import radical.utils as ru
+import radical.pilot as rp
+
+import radical.pilot.agent as rpa
 
 
 # ==============================================================================
 #
+def bootstrap_3(agent_name):
+    """
+    This method continues where the bootstrap_0/1/2 left off, and will now pass
+    control to the Agent class which will spawn the functional components.
+    Before doing so, we will check if we happen to be agent instance zero.  If
+    that is the case, some additional python level bootstrap routines kick in,
+    to set the stage for component and sub-agent spawning.
+
+    The agent interprets a config file, which will specify in an 'agents'
+    section:
+      - what nodes should be used for sub-agent startup
+      - what bridges should be started
+      - what are the endpoints for bridges which are not started
+      - what components should be started
+    agent_0 will create derived config files for all sub-agents.
+    """
+
+    print "bootstrap agent %s" % agent_name
+    agent = None
+
+    try:
+        setproctitle.setproctitle('rp.%s' % agent_name)
+
+        if agent_name == 'agent_0': agent = rpa.Agent_0(agent_name)
+        else                      : agent = rpa.Agent_n(agent_name)
+
+        print 'start   %s' % agent_name
+        agent.start(spawn=False)
+        print 'started %s' % agent_name
+
+        # wait until the agent finishes or fails.
+        agent.wait_final()
+
+    finally:
+        # in all cases, make sure we perform an orderly shutdown.  I hope python
+        # does not mind doing all those things in a finally clause of
+        # (essentially) main...
+        print 'finalize %s' % agent_name
+        if agent:
+            agent.stop()
+            print 'stopped  %s' % agent_name
+            agent.join()
+            print 'joined   %s' % agent_name
+
+
+# ------------------------------------------------------------------------------
+#
 if __name__ == "__main__":
 
-    """
-    This script is part of the pilot bootstrapping routine, representing the
-    entry point into Python.
-    """
+    if len(sys.argv) != 2:
+        raise RuntimeError('missing agent_name parameter')
 
-    agent_name=sys.argv[1]
+    bootstrap_3(sys.argv[1])
 
-    print "%s.bootstrap_3 start" % agent_name
-    rp.agent.bootstrap_3(agent_name)
-    print "%s.bootstrap_3 done" % agent_name
 
-#
 # ------------------------------------------------------------------------------
-

@@ -17,11 +17,13 @@ from ... import constants as rpc
 
 # ------------------------------------------------------------------------------
 # 'enum' for RPs's pilot scheduler types
-SCHEDULER_NAME_CONTINUOUS   = "CONTINUOUS"
-SCHEDULER_NAME_SCATTERED    = "SCATTERED"
-SCHEDULER_NAME_TORUS        = "TORUS"
-SCHEDULER_NAME_YARN         = "YARN"
-SCHEDULER_NAME_SPARK        = "SPARK"
+SCHEDULER_NAME_CONTINUOUS      = "CONTINUOUS"
+SCHEDULER_NAME_CONTINUOUS_FIFO = "CONTINUOUS_FIFO"
+SCHEDULER_NAME_SCATTERED       = "SCATTERED"
+SCHEDULER_NAME_HOMBRE          = "HOMBRE"
+SCHEDULER_NAME_TORUS           = "TORUS"
+SCHEDULER_NAME_YARN            = "YARN"
+SCHEDULER_NAME_SPARK           = "SPARK"
 
 
 # ==============================================================================
@@ -35,10 +37,11 @@ class AgentSchedulingComponent(rpu.Component):
     def __init__(self, cfg, session):
 
         self.slots = None
-        self._lrms  = None
+        self._lrms = None
+        self._uid  = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
+                                    ru.ID_CUSTOM)
 
-        self._uid = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
-                                   ru.ID_CUSTOM)
+        self._uniform_waitpool = True   # TODO: move to cfg
 
         rpu.Component.__init__(self, cfg, session)
 
@@ -100,19 +103,23 @@ class AgentSchedulingComponent(rpu.Component):
 
         name = cfg['scheduler']
 
-        from .continuous import Continuous
-        from .scattered  import Scattered
-        from .torus      import Torus
-        from .yarn       import Yarn
-        from .spark      import Spark
+        from .continuous_fifo import ContinuousFifo
+        from .continuous      import Continuous
+        from .scattered       import Scattered
+        from .hombre          import Hombre
+        from .torus           import Torus
+        from .yarn            import Yarn
+        from .spark           import Spark
 
         try:
             impl = {
-                SCHEDULER_NAME_CONTINUOUS : Continuous,
-                SCHEDULER_NAME_SCATTERED  : Scattered,
-                SCHEDULER_NAME_TORUS      : Torus,
-                SCHEDULER_NAME_YARN       : Yarn,
-                SCHEDULER_NAME_SPARK      : Spark
+                SCHEDULER_NAME_CONTINUOUS_FIFO : ContinuousFifo,
+                SCHEDULER_NAME_CONTINUOUS      : Continuous,
+                SCHEDULER_NAME_SCATTERED       : Scattered,
+                SCHEDULER_NAME_HOMBRE          : Hombre,
+                SCHEDULER_NAME_TORUS           : Torus,
+                SCHEDULER_NAME_YARN            : Yarn,
+                SCHEDULER_NAME_SPARK           : Spark
             }[name]
 
             impl = impl(cfg, session)
@@ -211,11 +218,17 @@ class AgentSchedulingComponent(rpu.Component):
                 # remove it from the wait queue
                 with self._wait_lock :
                     self._wait_pool.remove(cu)
+
             else:
                 # Break out of this loop if we didn't manage to schedule a task
                 # FIXME: this assumes that no smaller or otherwise more suitable
                 #        CUs come after this one - which is naive, ie. wrong.
-                break
+                # NOTE:  This assumption does indeed break for the fifo
+                #        scheduler, so we disable this now.  But:
+                if self._uniform_waitpool:
+                    break
+                else:
+                    pass
 
         # Note: The extra space below is for visual alignment
         if self._log.isEnabledFor(logging.DEBUG):
