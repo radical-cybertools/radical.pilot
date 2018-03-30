@@ -16,8 +16,10 @@
 # Thanks to Mark Santcroos to provide the input for this installation
 # procedure!
 
-export OMPI_DIR=$HOME/ompi/                          # target location for install
+# export OMPI_DIR=$HOME/ompi/                          # target location for install
+export OMPI_DIR=/lustre/atlas2/csc230/world-shared/openmpi
 export OMPI_COMMIT=539f71d                           # OpenMPI commit to install
+# export OMPI_COMMIT=d9b2c94
 export OMPI_LABEL=$(date '+%Y_%m_%d'_${OMPI_COMMIT}) # module flag for installed version
 export MAKEFLAGS=-j16                                # speed up build on multicore machines
 
@@ -33,7 +35,7 @@ export PATH=$OMPI_TOOLS_PREFIX/bin:$PATH
 
 # The file system locations of the variables below need a bit more care,
 # as this path needs to be accessible during job run time.
-# E.g. on Blue Waters, a good location for 
+# E.g. on Blue Waters, a good location for
 # OMPI_INSTALLED=/projects/sciteam/gk4/openmpi/installed,
 # and OMPI_ALL_MODULES=/projects/sciteam/gk4/openmpi/modules.
 
@@ -41,42 +43,48 @@ export OMPI_ALL_MODULES=$OMPI_DIR/modules
 export OMPI_MODULE=$OMPI_ALL_MODULES/openmpi
 export OMPI_INSTALLED=$OMPI_DIR/installed
 
+module unload PrgEnv-pgi || true
+module load   PrgEnv-gnu
+module load cmake3 boost fftw
+module load dynamic-link
+
 mkdir -p $OMPI_DOWNLOAD
 mkdir -p $OMPI_SOURCE
 
 cd $OMPI_DOWNLOAD
 wget http://ftp.nluug.nl/gnu/autoconf/autoconf-2.69.tar.gz
-wget http://ftp.nluug.nl/gnu/automake/automake-1.13.3.tar.gz
+wget http://ftp.nluug.nl/gnu/automake/automake-1.13.4.tar.gz
 wget http://nl.mirror.babylon.network/gnu/libtool/libtool-2.4.2.tar.gz
 wget https://ftp.gnu.org/gnu/m4/m4-1.4.16.tar.gz
+wget ftp://ftp.gromacs.org/pub/gromacs/gromacs-5.1.4.tar.gz
+
+## cd $OMPI_SOURCE
+## tar -xvzf $OMPI_DOWNLOAD/m4-1.4.16.tar.gz
+## cd m4-1.4.16
+## ./configure --prefix=$OMPI_TOOLS_PREFIX
+## make
+## make install
+
+## cd $OMPI_SOURCE
+## tar -xvzf $OMPI_DOWNLOAD/autoconf-2.69.tar.gz
+## cd autoconf-2.69
+## ./configure --prefix=$OMPI_TOOLS_PREFIX
+## make
+## make install
 
 cd $OMPI_SOURCE
-tar -xvzf $OMPI_DOWNLOAD/m4-1.4.16.tar.gz
-cd m4-1.4.16
+tar -xvzf $OMPI_DOWNLOAD/automake-1.13.4.tar.gz
+cd automake-1.13.4
 ./configure --prefix=$OMPI_TOOLS_PREFIX
 make
 make install
 
-cd $OMPI_SOURCE
-tar -xvzf $OMPI_DOWNLOAD/autoconf-2.69.tar.gz
-cd autoconf-2.69
-./configure --prefix=$OMPI_TOOLS_PREFIX
-make
-make install
-
-cd $OMPI_SOURCE
-tar -xvzf $OMPI_DOWNLOAD/automake-1.13.3.tar.gz
-cd automake-1.13.3
-./configure --prefix=$OMPI_TOOLS_PREFIX
-make
-make install
-
-cd $OMPI_SOURCE
-tar -xvzf $OMPI_DOWNLOAD/libtool-2.4.2.tar.gz
-cd libtool-2.4.2
-./configure --prefix=$OMPI_TOOLS_PREFIX
-make
-make install
+## cd $OMPI_SOURCE
+## tar -xvzf $OMPI_DOWNLOAD/libtool-2.4.2.tar.gz
+## cd libtool-2.4.2
+## ./configure --prefix=$OMPI_TOOLS_PREFIX
+## make
+## make install
 
 cd $OMPI_SOURCE
 git clone https://github.com/open-mpi/ompi.git
@@ -104,14 +112,14 @@ make install
 # install the `orte_cffi` python module.
 # libffi documentation needs texi2html which is not commonly available, so we
 # disable documentation.
-#
-# cd $OMPI_SOURCE
-# git clone https://github.com/libffi/libffi.git
-# cd libffi
-# ./autogen.sh
-# ./configure --prefix=$OMPI_TOOLS_PREFIX --disable-docs
-# make
-# make install
+
+cd $OMPI_SOURCE
+git clone https://github.com/libffi/libffi.git
+cd libffi
+./autogen.sh
+./configure --prefix=$OMPI_TOOLS_PREFIX --disable-docs
+make
+make install
 
 
 
@@ -143,7 +151,32 @@ setenv          OMPI_MCA_timer_require_monotonic false
 EOT
 
 
+# we also install gromacs
+cd $OMPI_SOURCE
+rm -rf gromacs-5.1.4
+tar xf $OMPI_DOWNLOAD/gromacs-5.1.4.tar.gz
+cd gromacs-5.1.4
+
+module use --append $OMPI_MODULE
+module load openmpi/$OMPI_LABEL
+module list
+set -x
+cmake \
+  -DCMAKE_C_COMPILER=mpicc \
+  -DCMAKE_CXX_COMPILER=mpiCC \
+  -DGMX_MPI=on \
+  -DCMAKE_INSTALL_PREFIX=$OMPI_INSTALLED/$OMPI_LABEL \
+  -DBUILD_SHARED_LIBS=ON \
+  -DGMX_BUILD_OWN_FFTW=ON \
+  -DGMX_OPENMP=OFF \
+  -DGMX_SIMD=AVX_128_FMA
+set +x
+make
+make install
+
+
 # this should not be needed - but just in case someone sources this script,
 # we try to end up where we started.
 cd $orig
+
 

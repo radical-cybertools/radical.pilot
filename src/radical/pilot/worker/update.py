@@ -109,7 +109,7 @@ class Update(rpu.Worker):
 
         try:
             res = self._bulk.execute()
-            self._log.debug("bulk update result: %s", res)
+          # self._log.debug("bulk update result: %s", res)
         except pymongo.errors.OperationFailure as e:
             self._log.exception('bulk exec error: %s' % e.details)
             raise
@@ -117,14 +117,14 @@ class Update(rpu.Worker):
             self._log.exception('mongodb error: %s', e)
             raise
 
-        self._prof.prof('update_pushed', msg='bulk size: %d' % len(self._uids))
+      # self._prof.prof('update_pushed', msg='bulk size: %d' % len(self._uids))
 
         for entry in self._uids:
 
             uid   = entry[0]
             state = entry[2]
 
-            self._prof.prof('update_pushed', msg=state, uid=uid)
+          # self._prof.prof('update_pushed', msg=state, uid=uid)
 
         # empty bulk, refresh state
         self._last = now
@@ -217,7 +217,7 @@ class Update(rpu.Worker):
                 # we don't push clone states to DB
                 return True
 
-            self._prof.prof('update_request', msg=state, uid=uid)
+          # self._prof.prof('update_request', msg=state, uid=uid)
 
             if not state:
                 # nothing to push

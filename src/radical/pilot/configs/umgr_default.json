@@ -7,29 +7,29 @@
     "scheduler" : "round_robin",
 
     # max number of updates to put into a db bulk
-    "bulk_collection_size" : 100,
+    "bulk_collection_size" : 128,
 
     # max time period to collect db notifications into bulks (seconds)
-    "bulk_collection_time" : 1.0,
+    "bulk_collection_time" : 2.0,
 
     # time to sleep between database polls (seconds)
-    "db_poll_sleeptime" : 1.0,
+    "db_poll_sleeptime" : 5.0,
 
     "bridges" : {
-        "umgr_staging_input_queue"  : {"log_level" : "debug",
+        "umgr_staging_input_queue"  : {"log_level" : "off",
                                        "stall_hwm" : 1,
                                        "bulk_size" : 0},
-        "umgr_scheduling_queue"     : {"log_level" : "debug",
+        "umgr_scheduling_queue"     : {"log_level" : "off",
                                        "stall_hwm" : 1,
                                        "bulk_size" : 0},
-        "umgr_staging_output_queue" : {"log_level" : "debug",
+        "umgr_staging_output_queue" : {"log_level" : "off",
                                        "stall_hwm" : 1,
                                        "bulk_size" : 0},
 
-        "umgr_unschedule_pubsub"    : {"log_level" : "debug",
+        "umgr_unschedule_pubsub"    : {"log_level" : "off",
                                        "stall_hwm" : 1,
                                        "bulk_size" : 0},
-        "umgr_reschedule_pubsub"    : {"log_level" : "debug",
+        "umgr_reschedule_pubsub"    : {"log_level" : "off",
                                        "stall_hwm" : 1,
                                        "bulk_size" : 0}
     },

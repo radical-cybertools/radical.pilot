@@ -376,52 +376,57 @@ class UnitManager(rpu.Component):
 
         # pull units from the agent which are about to get back
         # under umgr control, and push them into the respective queues
+        #
         # FIXME: this should also be based on a tailed cursor
         # FIXME: Unfortunately, 'find_and_modify' is not bulkable, so we have
         #        to use 'find'.  To avoid finding the same units over and over 
         #        again, we update the 'control' field *before* running the next
         #        find -- so we do it right here.
-        tgt_states  = rps.FINAL + [rps.UMGR_STAGING_OUTPUT_PENDING]
-        unit_cursor = self.session._dbs._c.find(spec={
-            'type'    : 'unit',
-            'umgr'    : self.uid,
-            'control' : 'umgr_pending'})
+        #
+        # we pull until we don't find anything new, and only then sleep
+        while True:
 
-        if not unit_cursor.count():
-            # no units whatsoever...
-            self._log.info("units pulled:    0")
-            return True  # this is not an error
+            tgt_states  = rps.FINAL + [rps.UMGR_STAGING_OUTPUT_PENDING]
+            unit_cursor = self.session._dbs._c.find(spec={
+                'type'    : 'unit',
+                'umgr'    : self.uid,
+                'control' : 'umgr_pending'})
 
-        # update the units to avoid pulling them again next time.
-        units = list(unit_cursor)
-        uids  = [unit['uid'] for unit in units]
+            if not unit_cursor.count():
+                # no units whatsoever...
+                self._log.info("units pulled:    0")
+                break  # this is not an error
 
-        self._session._dbs._c.update(multi    = True,
-                        spec     = {'type'  : 'unit',
-                                    'uid'   : {'$in'     : uids}},
-                        document = {'$set'  : {'control' : 'umgr'}})
+            # update the units to avoid pulling them again next time.
+            units = list(unit_cursor)
+            uids  = [unit['uid'] for unit in units]
 
-        self._log.info("units pulled: %4d %s", len(units), [u['uid'] for u in units])
-        self._prof.prof('get', msg="bulk size: %d" % len(units), uid=self.uid)
-        for unit in units:
+            self._session._dbs._c.update(multi    = True,
+                            spec     = {'type'  : 'unit',
+                                        'uid'   : {'$in'     : uids}},
+                            document = {'$set'  : {'control' : 'umgr'}})
 
-            # we need to make sure to have the correct state:
-            uid = unit['uid']
-            self._prof.prof('get', uid=uid)
+            self._log.info("units pulled: %4d %s", len(units), [u['uid'] for u in units])
+            self._prof.prof('get', msg="bulk size: %d" % len(units), uid=self.uid)
+            for unit in units:
 
-            old = unit['state']
-            new = rps._unit_state_collapse(unit['states'])
+                # we need to make sure to have the correct state:
+                uid = unit['uid']
+                self._prof.prof('get', uid=uid)
 
-            if old != new:
-                self._log.debug("unit  pulled %s: %s / %s", uid, old, new)
+                old = unit['state']
+                new = rps._unit_state_collapse(unit['states'])
 
-            unit['state']   = new
-            unit['control'] = 'umgr'
+                if old != new:
+                    self._log.debug("unit  pulled %s: %s / %s", uid, old, new)
 
-        # now we really own the CUs, and can start working on them (ie. push
-        # them into the pipeline).  We don't record state transition profile
-        # events though - the transition has already happened.
-        self.advance(units, publish=True, push=True, prof=False)
+                unit['state']   = new
+                unit['control'] = 'umgr'
+
+            # now we really own the CUs, and can start working on them (ie. push
+            # them into the pipeline).  We don't record state transition profile
+            # events though - the transition has already happened.
+            self.advance(units, publish=True, push=True, prof=False)
 
         return True
 

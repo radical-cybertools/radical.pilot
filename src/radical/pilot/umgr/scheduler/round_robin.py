@@ -113,7 +113,7 @@ class RoundRobin(UMGRSchedulingComponent):
                         pilot = self._pilots[pid]['pilot']
                         unit['sandbox'] = self._session._get_unit_sandbox(unit, pilot)
 
-                    self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING, 
+                    self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING,
                                  publish=True, push=True)
 
                 else:
@@ -164,7 +164,7 @@ class RoundRobin(UMGRSchedulingComponent):
 
             # advance all units
             self.advance(units_fail, rps.FAILED, publish=True, push=False)
-            self.advance(units_ok,   rps.UMGR_STAGING_INPUT_PENDING, 
+            self.advance(units_ok,   rps.UMGR_STAGING_INPUT_PENDING,
                          publish=True, push=True)
 
 

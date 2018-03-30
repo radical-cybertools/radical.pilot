@@ -203,6 +203,14 @@ class Agent_0(rpu.Worker):
 
         self._log.debug('final: %s', self._final_cause)
 
+        #some thread wants us to terminate
+        self.stop()
+
+        # we should be done now- but ask the bootstrapper to make sure
+        with open('./killme.signal', 'w+') as f:
+            f.write(rps.CANCELED)
+            f.flush()
+
       # if self._session:
       #     self._log.debug('close  session %s', self._session.uid)
       #     self._session.close()
@@ -443,10 +451,6 @@ class Agent_0(rpu.Worker):
               # self.stop()
                 self._ru_term.set()
 
-                with open('./killme.signal', 'w+') as f:
-                    f.write(rps.CANCELED)
-                    f.flush()
-
                 self._final_cause = 'cancel'
                 return False  # we are done
 
@@ -496,48 +500,52 @@ class Agent_0(rpu.Worker):
         #        find -- so we do it right here.
         #        This also blocks us from using multiple ingest threads, or from
         #        doing late binding by unit pull :/
-        unit_cursor = self._session._dbs._c.find(spec = {'type'    : 'unit',
-                                                         'pilot'   : self._pid,
-                                                         'control' : 'agent_pending'})
-        if not unit_cursor.count():
-            # no units whatsoever...
-            self._log.info('units pulled:    0')
-            return True  # this is not an error
+        #
+        # we do this loop until we don't find anything anymore, and only then
+        # sleep
+        while True:
+            unit_cursor = self._session._dbs._c.find(spec = {'type'    : 'unit',
+                                                             'pilot'   : self._pid,
+                                                             'control' : 'agent_pending'})
+            if not unit_cursor.count():
+                # no units whatsoever...
+                self._log.info('units pulled:    0')
+                break  # this is not an error
 
-        # update the units to avoid pulling them again next time.
-        unit_list = list(unit_cursor)
-        unit_uids = [unit['uid'] for unit in unit_list]
+            # update the units to avoid pulling them again next time.
+            unit_list = list(unit_cursor)
+            unit_uids = [unit['uid'] for unit in unit_list]
 
-        self._log.info('units PULLED: %4d', len(unit_list))
+            self._log.info('units PULLED: %4d', len(unit_list))
 
-        self._session._dbs._c.update(multi    = True,
-                        spec     = {'type'  : 'unit',
-                                    'uid'   : {'$in'     : unit_uids}},
-                        document = {'$set'  : {'control' : 'agent'}})
+            self._session._dbs._c.update(multi    = True,
+                            spec     = {'type'  : 'unit',
+                                        'uid'   : {'$in'     : unit_uids}},
+                            document = {'$set'  : {'control' : 'agent'}})
 
-        self._log.info('units pulled: %4d', len(unit_list))
-        self._prof.prof('get', msg='bulk size: %d' % len(unit_list),
-                        uid=self._pid)
+            self._log.info('units pulled: %4d', len(unit_list))
+            self._prof.prof('get', msg='bulk size: %d' % len(unit_list),
+                            uid=self._pid)
 
-        for unit in unit_list:
+            for unit in unit_list:
 
-            # we need to make sure to have the correct state:
-            unit['state'] = rps._unit_state_collapse(unit['states'])
-            self._prof.prof('get', uid=unit['uid'])
+                # we need to make sure to have the correct state:
+                unit['state'] = rps._unit_state_collapse(unit['states'])
+                self._prof.prof('get', uid=unit['uid'])
 
-            # FIXME: raise or fail unit!
-            if unit['control'] != 'agent_pending':
-                self._log.error('invalid control: %s', (pprint.pformat(unit)))
+                # FIXME: raise or fail unit!
+                if unit['control'] != 'agent_pending':
+                    self._log.error('invalid control: %s', (pprint.pformat(unit)))
 
-            if unit['state'] != rps.AGENT_STAGING_INPUT_PENDING:
-                self._log.error('invalid state: %s', (pprint.pformat(unit)))
+                if unit['state'] != rps.AGENT_STAGING_INPUT_PENDING:
+                    self._log.error('invalid state: %s', (pprint.pformat(unit)))
 
-            unit['control'] = 'agent'
+                unit['control'] = 'agent'
 
-        # now we really own the CUs, and can start working on them (ie. push
-        # them into the pipeline).  We don't publish nor profile as advance,
-        # since that happened already on the module side when the state was set.
-        self.advance(unit_list, publish=False, push=True)
+            # now we really own the CUs, and can start working on them (ie. push
+            # them into the pipeline).  We don't publish nor profile as advance,
+            # since that happened already on the module side when the state was set.
+            self.advance(unit_list, publish=False, push=True)
 
         return True
 

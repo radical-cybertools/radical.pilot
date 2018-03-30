@@ -20,10 +20,10 @@
     "max_io_loglength"     : 1024,
 
     # max number of updates to put into a db bulk
-    "bulk_collection_size" :  100,
+    "bulk_collection_size" : 128,
 
     # max time period to collect db notifications into bulks (seconds)
-    "bulk_collection_time" : 1.0,
+    "bulk_collection_time" : 2.0,
 
     # time to sleep between database polls (seconds)
     "db_poll_sleeptime"    : 1.0,

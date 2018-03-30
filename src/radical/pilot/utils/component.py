@@ -345,6 +345,12 @@ class Component(ru.Process):
         self.is_valid()
         self._session._to_stop.append(self)
 
+      # # set up for snippet use: we expect snippets in the application
+      # # directory, so in `./snippets/`), and in the pilot sandbox root
+      # # (`../../snippets`)
+      # ru.add_snippet_path('%s/snippets/'       % os.getcwd())
+      # ru.add_snippet_path('%s/../../snippets/' % os.getcwd())
+
 
     # --------------------------------------------------------------------------
     #
@@ -383,16 +389,16 @@ class Component(ru.Process):
                 valid = False
 
         if valid:
-            for bridge in self._bridges:
-                if not bridge.is_valid(term):
-                    self._log.warn("bridge %s is invalid" % bridge.uid)
+            for component in self._components:
+                if not component.is_valid(term):
+                    self._log.warn("sub component %s is invalid" % component.uid)
                     valid = False
                     break
 
         if valid:
-            for component in self._components:
-                if not component.is_valid(term):
-                    self._log.warn("sub component %s is invalid" % component.uid)
+            for bridge in self._bridges:
+                if not bridge.is_valid(term):
+                    self._log.warn("bridge %s is invalid" % bridge.uid)
                     valid = False
                     break
 
@@ -621,6 +627,9 @@ class Component(ru.Process):
         self.initialize_child()
         self._prof.prof('component_init')
 
+      # # inject init hook if it exists
+      # exec(ru.get_snippet('on_init.%s' % self.uid))
+
     def initialize_child(self):
         pass # can be overloaded
 
@@ -648,13 +657,13 @@ class Component(ru.Process):
 
         with self._cb_lock:
 
-            for bridge in self._bridges:
-                bridge.stop()
-            self._bridges = list()
-
             for comp in self._components:
                 comp.stop()
             self._components = list()
+
+            for bridge in self._bridges:
+                bridge.stop()
+            self._bridges = list()
 
           # #  FIXME: the stuff below caters to unsuccessful or buggy termination
           # #         routines - but for now all those should be served by the
@@ -1215,6 +1224,9 @@ class Component(ru.Process):
             #        non-trivial worker).
             things = input.get_nowait(1000) # timeout in microseconds
 
+          # # inject input hook if it exists
+          # exec(ru.get_snippet('on_input.%s' % self.uid))
+
             if not things:
                 return True
 
@@ -1263,6 +1275,9 @@ class Component(ru.Process):
 
                     with self._cb_lock:
                         self._workers[state](things)
+
+                  # # inject output hook if it exists
+                  # exec(ru.get_snippet('on_output.%s' % self.uid))
 
                 except Exception as e:
 
