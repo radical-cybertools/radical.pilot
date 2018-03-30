@@ -43,8 +43,8 @@ class Agent_n(rpu.Worker):
         cfg        = ru.read_json_str(agent_cfg)
 
         self._uid         = agent_name
-        self._pilot_id    = cfg['pilot_id']
-        self._session_id  = cfg['session_id']
+        self._pid         = cfg['pilot_id']
+        self._sid         = cfg['session_id']
         self._final_cause = None
 
         # Create a session.  
@@ -57,7 +57,7 @@ class Agent_n(rpu.Worker):
         session_cfg = copy.deepcopy(cfg)
         session_cfg['owner']      = self._uid
         session_cfg['components'] = dict()
-        session = rp_Session(cfg=session_cfg, _connect=False)
+        session = rp_Session(cfg=session_cfg, _connect=False, uid=self._sid)
 
         # we still want the bridge addresses known though, so make sure they are
         # merged into our own copy, along with any other additions done by the
@@ -78,7 +78,7 @@ class Agent_n(rpu.Worker):
     #
     def initialize_parent(self):
 
-        # once bootstrap_3 is done, we signal success to the parent agent
+        # once is done, we signal success to the parent agent
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
                                           'arg' : {'sender' : self._uid, 
                                                    'owner'  : self._owner, 
