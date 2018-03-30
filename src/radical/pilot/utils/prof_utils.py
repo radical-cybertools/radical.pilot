@@ -92,9 +92,6 @@ def get_session_profile(sid, src=None):
         # FIXME: legacy host notation - deprecated
         hostmap = get_hostmap_deprecated(profiles)
 
-  # import pprint
-  # pprint.pprint(hostmap)
-
     return profile, accuracy, hostmap
 
 

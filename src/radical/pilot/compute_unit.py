@@ -35,7 +35,6 @@ class ComputeUnit(object):
 
                       ud = radical.pilot.ComputeUnitDescription()
                       ud.executable = "/bin/date"
-                      ud.cores      = 1
 
                       unit = umgr.submit_units(ud)
     """
@@ -83,11 +82,6 @@ class ComputeUnit(object):
         self._callbacks[rpt.UNIT_STATE][self._default_state_cb.__name__] = {
                 'cb'      : self._default_state_cb, 
                 'cb_data' : None}
-
-        # sanity checks on description
-        for check in ['cores']:
-            if not self._descr.get(check):
-                raise ValueError("ComputeUnitDescription needs '%s'" % check)
 
         if  not self._descr.get('executable') and \
             not self._descr.get('kernel')     :

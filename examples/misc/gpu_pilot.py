@@ -6,30 +6,17 @@ __license__   = 'MIT'
 import os
 import sys
 
-verbose  = os.environ.get('RADICAL_PILOT_VERBOSE', 'REPORT')
-os.environ['RADICAL_PILOT_VERBOSE'] = verbose
-
 import radical.pilot as rp
 import radical.utils as ru
 
-
-# ------------------------------------------------------------------------------
-#
-# READ the RADICAL-Pilot documentation: http://radicalpilot.readthedocs.org/
-#
-# ------------------------------------------------------------------------------
-
-PWD = os.path.abspath(os.path.dirname(__file__))
-helloworld_mpi_bin  = 'helloworld_mpi.py'
-helloworld_mpi_path = '%s/%s' % (PWD, helloworld_mpi_bin)
-
+PWD = os.path.dirname(os.path.abspath(__file__))
 
 #------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
     # we use a reporter class for nicer output
-    report = ru.LogReporter(name='radical.pilot', level=verbose)
+    report = ru.LogReporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
@@ -46,10 +33,9 @@ if __name__ == '__main__':
     # the whole RP stack down via a 'session.close()' call in the 'finally'
     # clause...
     try:
-
         # read the config used for resource details
         report.info('read config')
-        config = ru.read_json('%s/config.json' % PWD)
+        config = ru.read_json('%s/../config.json' % PWD)
         report.ok('>>ok\n')
 
         report.header('submit pilots')
@@ -60,30 +46,31 @@ if __name__ == '__main__':
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pd_init = {
-                'resource'      : resource,
-                'runtime'       : 15,  # pilot runtime (min)
-                'exit_on_error' : True,
-                'project'       : config[resource]['project'],
-                'queue'         : config[resource]['queue'],
-                'access_schema' : config[resource]['schema'],
-                'cores'         : config[resource]['cores'],
-                }
+                      'resource'      : resource,
+                      'runtime'       : 15,  # pilot runtime (min)
+                      'exit_on_error' : True,
+                      'project'       : config[resource]['project'],
+                      'queue'         : config[resource]['queue'],
+                      'access_schema' : config[resource]['schema'],
+                      'cores'         : 16*10,
+                      'gpus'          : config[resource]['gpus'],
+                  }
         pdesc = rp.ComputePilotDescription(pd_init)
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
+
+
         report.header('submit units')
 
         # Register the ComputePilot in a UnitManager object.
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
-        # Create a workload of ComputeUnits. 
-        # Each compute unit runs a MPI test application.
+        # Create a workload of ComputeUnits.
+        # Each compute unit runs '/bin/date'.
 
         n = 2   # number of units to run
-        t_num = 2  # number of threads   (OpenMP)
-        p_num = 3  # number of processes (MPI)
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -92,11 +79,34 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable     = '/bin/sh'
-            cud.arguments      = ['%s/09_mpi_units.sh' % PWD]
-            cud.input_staging  = ['%s/09_mpi_units.sh' % PWD]
-            cud.cores          = 2
-            cud.mpi            = True
+            cud.executable       = '/bin/sh'
+            cud.arguments        = ['/lustre/atlas/scratch/merzky1/csc230/radical.pilot.sandbox/09_mpi_units.sh']
+            cud.cpu_processes    = 2
+            cud.cpu_threads      = 1
+          # cud.cpu_process_type = rp.MPI
+            cud.cpu_thread_type  = rp.OpenMP
+            cud.gpu_processes    = 1
+            cud.gpu_threads      = 1
+          # cud.gpu_process_type = rp.MPI
+            cud.gpu_thread_type  = rp.OpenMP
+            cuds.append(cud)
+            report.progress()
+
+        for i in range(0, n):
+
+            # create a new CU description, and fill it.
+            # Here we don't use dict initialization.
+            cud = rp.ComputeUnitDescription()
+            cud.executable       = '/bin/sh'
+            cud.arguments        = ['/lustre/atlas/scratch/merzky1/csc230/radical.pilot.sandbox/09_mpi_units.sh']
+            cud.cpu_processes    = 0
+            cud.cpu_threads      = 1
+            cud.cpu_process_type = rp.MPI
+            cud.cpu_thread_type  = rp.OpenMP
+            cud.gpu_processes    = 4
+            cud.gpu_threads      = 1
+            cud.gpu_process_type = rp.MPI
+            cud.gpu_thread_type  = rp.OpenMP
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -109,16 +119,10 @@ if __name__ == '__main__':
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
-    
-        report.info('\n')
+
         for unit in units:
-            report.plain('  * %s: %s, exit: %3s, ranks: %s\n'
+            report.plain('  * %s: %s, exit: %3s, out: %s\n'
                     % (unit.uid, unit.state[:4], unit.exit_code, unit.stdout))
-            ranks = unit.stdout.split()
-            for p in range(p_num):
-                for t in range(t_num):
-                    rank = '%d:%d' % (p, t)
-                    assert(rank in ranks), 'missing rank %s' % rank
 
 
     except Exception as e:
@@ -137,10 +141,10 @@ if __name__ == '__main__':
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.
         report.header('finalize')
-        session.close()
+        session.close(cleanup=False)
 
     report.header()
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 

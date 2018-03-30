@@ -29,22 +29,23 @@ class SSH(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        # Find ssh command
+
         command = ru.which('ssh')
 
-        if command is not None:
+        if not command:
+            raise RuntimeError("ssh not found!")
 
-            # Some MPI environments (e.g. SGE) put a link to rsh as "ssh" into
-            # the path.  We try to detect that and then use different arguments.
-            if os.path.islink(command):
+        # Some MPI environments (e.g. SGE) put a link to rsh as "ssh" into
+        # the path.  We try to detect that and then use different arguments.
+        if os.path.islink(command):
 
-                target = os.path.realpath(command)
+            target = os.path.realpath(command)
 
-                if os.path.basename(target) == 'rsh':
-                    self._log.info('Detected that "ssh" is a link to "rsh".')
-                    return target
+            if os.path.basename(target) == 'rsh':
+                self._log.info('Detected that "ssh" is a link to "rsh".')
+                return target
 
-            command = '%s -o StrictHostKeyChecking=no -o ControlMaster=auto' % command
+        command = '%s -o StrictHostKeyChecking=no -o ControlMaster=auto' % command
 
         self.launch_command = command
 
@@ -53,48 +54,39 @@ class SSH(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cores']
         task_env     = cud.get('environment', dict())
         task_args    = cud.get('arguments',   list())
         task_argstr  = self._create_arg_string(task_args)
 
-        if not 'task_slots' in opaque_slots:
-            raise RuntimeError('insufficient information to launch via %s: %s' \
-                    % (self.name, opaque_slots))
-
-        task_slots = opaque_slots['task_slots']
+        if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
+        else          : task_command = task_exec
 
         if not launch_script_hop :
             raise ValueError ("LaunchMethodSSH.construct_command needs launch_script_hop!")
 
-        # Get the host of the first entry in the acquired slot
-        host = task_slots[0].split(':')[0]
+        if 'nodes' not in slots:
+            raise RuntimeError('insufficient information to launch via %s: %s'
+                              % (self.name, slots))
 
-        if task_argstr:
-            task_command = "%s %s" % (task_exec, task_argstr)
-        else:
-            task_command = task_exec
+        if len(slots['nodes'] > 1):
+            raise RuntimeError('rsh cannot run multinode units')
 
+        host = slots['nodes'][0][0]
 
-        env_string = ''
-        env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
-        if env_list:
-            # this is a crude version of env transplanting where we prep the
-            # shell command line.  We likely won't survive any complicated vars
-            # (multiline, quotes, etc)
-            env_string = ' '
-            for var in env_string:
-                env_string += '%s="$%s" ' % (var, var)
+        # Pass configured and available environment variables to the remote shell
+        export_vars  = ' '.join(['%s=%s' % (var, os.environ[var])
+                                 for var in self.EXPORT_ENV_VARIABLES
+                                 if  var in os.environ])
 
+        export_vars += ' '.join(['%s=%s' % (var, task_env[var]) 
+                                 for var in task_env]) 
 
-        # Command line to execute launch script via ssh on host
-        ssh_hop_cmd = "%s %s %s %s" % (self.launch_command, host, env_string,
+        ssh_hop_cmd = "%s %s %s %s" % (self.launch_command, host, export_vars,
                 launch_script_hop)
 
-        # Special case, return a tuple that overrides the default command line.
         return task_command, ssh_hop_cmd
 
 

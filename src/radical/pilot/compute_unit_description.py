@@ -11,10 +11,21 @@ NAME                   = 'name'
 EXECUTABLE             = 'executable'
 ARGUMENTS              = 'arguments'
 ENVIRONMENT            = 'environment'
-CORES                  = 'cores'
+
+CORES                  = 'cores'  # deprecated
+
+CPU_PROCESSES          = 'cpu_processes'
+CPU_PROCESS_TYPE       = 'cpu_process_type'
+CPU_THREADS            = 'cpu_threads'
+CPU_THREAD_TYPE        = 'cpu_thread_type'
+
+GPU_PROCESSES          = 'gpu_processes'
+GPU_PROCESS_TYPE       = 'gpu_process_type'
+GPU_THREADS            = 'gpu_threads'
+GPU_THREAD_TYPE        = 'gpu_thread_type'
+
 INPUT_STAGING          = 'input_staging'
 OUTPUT_STAGING         = 'output_staging'
-MPI                    = 'mpi'
 PRE_EXEC               = 'pre_exec'
 POST_EXEC              = 'post_exec'
 KERNEL                 = 'kernel'
@@ -23,6 +34,13 @@ PILOT                  = 'pilot'
 STDOUT                 = 'stdout'
 STDERR                 = 'stderr'
 RESTARTABLE            = 'restartable'
+
+# process / thread types (for both, CPU and GPU processes/threads)
+POSIX                  = 'POSIX'   # native threads / application threads
+MPI                    = 'MPI'
+OpenMP                 = 'OpenMP'
+CUDA                   = 'CUDA'
+
 
 # ------------------------------------------------------------------------------
 #
@@ -49,23 +67,37 @@ class ComputeUnitDescription(attributes.Attributes):
        default: `None`
 
 
-    .. data:: cores 
+    .. data:: cpu_processes    
+       number of application processes to start on CPU cores
+       default: 0
 
-       The number of cores required by the executable. (int).  RP will not
-       control how the executable makes use of the assigned cores, it only
-       ensures that those are available to the executable (but see `mpi` below).
+    .. data:: cpu_threads      
+       number of threads each process will start on CPU cores
+       default: 1
 
-       default: `1`
+    .. data:: cpu_process_type 
+       process type, determines startup method (POSIX, MPI) 
+       default: POSIX
 
+    .. data:: cpu_thread_type  
+       thread type, influences startup and environment (POSIX, OpenMP)
+       default: POSIX
 
-    .. data:: mpi
+    .. data:: gpu_processes    
+       number of application processes to start on GPU cores
+       default: 0
 
-       Set to true if the task is an MPI task (bool).  If this is set, RP will
-       ensure that the executable is run via mpirun or equivalent.  What MPI is
-       used to start the executable depends on the pilot configuration, and
-       cannot currently be switched on a per-unit basis.
+    .. data:: gpu_threads      
+       number of threads each process will start on GPU cores
+       default: 1
 
-       default: `False`
+    .. data:: gpu_process_type 
+       process type, determines startup method (POSIX, MPI) 
+       default: POSIX
+
+    .. data:: gpu_thread_type  
+       thread type, influences startup and environment (POSIX, OpenMP, CUDA)
+       default: POSIX
 
 
     .. data:: name 
@@ -271,8 +303,6 @@ class ComputeUnitDescription(attributes.Attributes):
         self._attributes_register(CLEANUP,          None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PILOT,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
-      # self._attributes_register(START_TIME,       None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(RUN_TIME,         None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
 
         # I/O
         self._attributes_register(STDOUT,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
@@ -281,34 +311,49 @@ class ComputeUnitDescription(attributes.Attributes):
         self._attributes_register(OUTPUT_STAGING,   None, attributes.ANY,    attributes.VECTOR, attributes.WRITEABLE)
 
         # resource requirements
-        self._attributes_register(CORES,            None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(MPI,              None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(CPU_ARCHITECTURE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(OPERATING_SYSTEM, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(MEMORY,           None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(CPU_PROCESSES,    None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(CPU_PROCESS_TYPE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(CPU_THREADS,      None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(CPU_THREAD_TYPE,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(GPU_PROCESSES,    None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(GPU_PROCESS_TYPE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(GPU_THREADS,      None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(GPU_THREAD_TYPE,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
         # dependencies
       # self._attributes_register(RUN_AFTER,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
       # self._attributes_register(START_AFTER,      None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
       # self._attributes_register(CONCURRENT_WITH,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+      # self._attributes_register(START_TIME,       None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
+      # self._attributes_register(RUN_TIME,         None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
 
         # explicitly set attrib defaults so they get listed and included via as_dict()
-        self.set_attribute (KERNEL,         None)
-        self.set_attribute (NAME,           None)
-        self.set_attribute (EXECUTABLE,     None)
-        self.set_attribute (ARGUMENTS,      None)
-        self.set_attribute (ENVIRONMENT,    None)
-        self.set_attribute (PRE_EXEC,       None)
-        self.set_attribute (POST_EXEC,      None)
-        self.set_attribute (STDOUT,         None)
-        self.set_attribute (STDERR,         None)
-        self.set_attribute (INPUT_STAGING,  None)
-        self.set_attribute (OUTPUT_STAGING, None)
-        self.set_attribute (CORES,             1)
-        self.set_attribute (MPI,           False)
-        self.set_attribute (RESTARTABLE,   False)
-        self.set_attribute (CLEANUP,       False)
-        self.set_attribute (PILOT,          None)
+        self.set_attribute (KERNEL,           None)
+        self.set_attribute (NAME,             None)
+        self.set_attribute (EXECUTABLE,       None)
+        self.set_attribute (ARGUMENTS,        [  ])
+        self.set_attribute (ENVIRONMENT,      {  })
+        self.set_attribute (PRE_EXEC,         [  ])
+        self.set_attribute (POST_EXEC,        [  ])
+        self.set_attribute (STDOUT,           None)
+        self.set_attribute (STDERR,           None)
+        self.set_attribute (INPUT_STAGING,    [  ])
+        self.set_attribute (OUTPUT_STAGING,   [  ])
+
+        self.set_attribute (CPU_PROCESSES,       1)
+        self.set_attribute (CPU_PROCESS_TYPE, None)
+        self.set_attribute (CPU_THREADS,         1)
+        self.set_attribute (CPU_THREAD_TYPE,  None)
+        self.set_attribute (GPU_PROCESSES,       0)
+        self.set_attribute (GPU_PROCESS_TYPE, None)
+        self.set_attribute (GPU_THREADS,         1)
+        self.set_attribute (GPU_THREAD_TYPE,  None)
+
+        self.set_attribute (RESTARTABLE,     False)
+        self.set_attribute (CLEANUP,         False)
+        self.set_attribute (PILOT,            None)
+
+        self._attributes_register_deprecated(CORES, CPU_PROCESSES)
 
         # apply initialization dict
         if from_dict:

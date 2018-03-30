@@ -30,10 +30,10 @@ class CCMRun(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cores']
+        task_cores   = cud['cpu_processes']  # FIXME: cpu_threads
         task_args    = cud.get('arguments') or []
         task_argstr  = self._create_arg_string(task_args)
 
