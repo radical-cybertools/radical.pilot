@@ -259,4 +259,3 @@ indication on event ordering *within each individual component*.
     - [RUNTIME]       - only on  certain runtime decisions and system configuration
     - [INTERNAL]      - only for certain internal states
 
-

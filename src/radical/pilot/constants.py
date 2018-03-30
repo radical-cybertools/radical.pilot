@@ -33,7 +33,7 @@ UMGR_UNSCHEDULE_PUBSUB         = 'umgr_unschedule_pubsub'
 UMGR_RESCHEDULE_PUBSUB         = 'umgr_reschedule_pubsub'
 
 AGENT_UNSCHEDULE_PUBSUB        = 'agent_unschedule_pubsub'
-AGENT_RESCHEDULE_PUBSUB        = 'agent_reschedule_pubsub'
+AGENT_SCHEDULE_PUBSUB          = 'agent_schedule_pubsub'
 
 CONTROL_PUBSUB                 = 'control_pubsub'
 STATE_PUBSUB                   = 'state_pubsub'
@@ -44,8 +44,8 @@ LOG_PUBSUB                     = 'log_pubsub'
 #
 # two-state for resource occupation.
 #
-FREE = 'Free'
-BUSY = 'Busy'
+FREE = 0
+BUSY = 1
 
 
 # ------------------------------------------------------------------------------
@@ -67,6 +67,16 @@ CREATE_PARENTS = rsf.CREATE_PARENTS  # Create parent directories if needed
 SKIP_FAILED    = 4096                # Don't stage out files if tasks failed
 NON_FATAL      = 8192                # Don't fail the CU if input is missing
 
+
+#
+# CU MPI flags
+#
+SERIAL         = 'Serial'
+MPI            = 'MPI'
+OpenMP         = 'OpenMP'
+GPU            = 'GPU'
+GPU_MPI        = 'GPU_MPI'
+GPU_OpenMP     = 'GPU_OpenMP'
 
 #
 # Defaults
