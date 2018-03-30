@@ -857,6 +857,13 @@ class UnitManager(rpu.Component):
         else:
             states = [state]
 
+        # we simplify state check by waiting for the *earliest* of the given
+        # states - if the unit happens to be in any later state, we are sure the
+        # earliest has passed as well.
+        check_state_val = rps._unit_state_values[rps.FINAL[-1]]
+        for state in states:
+            check_state_val = min(check_state_val, rps._unit_state_values[state])
+
         ret_list = True
         if not isinstance(uids, list):
             ret_list = False
@@ -890,9 +897,16 @@ class UnitManager(rpu.Component):
 
             check_again = list()
             for unit in to_check:
-                if  unit.state not in states and \
-                    unit.state not in rps.FINAL:
+
+                # we actually don't check if a unit is in a specific (set of)
+                # state(s), but rather check if it ever *has been* in any of
+                # those states
+                match = False
+                if  unit.state not in rps.FINAL and \
+                    rps._unit_state_values[unit.state] <= check_state_val:
+                    # this unit does not match the wait criteria
                     check_again.append(unit)
+
                 else:
                     # stop watching this unit
                     if unit.state in [rps.FAILED]:
