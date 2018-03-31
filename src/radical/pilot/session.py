@@ -1052,10 +1052,13 @@ class Session(rs.Session):
         js_hop  = rs.Url(rcfg.get('job_manager_hop', js_url))
 
         # make sure the js_hop url points to an interactive access
-        if '+gsissh' in js_hop.schema or \
-           'gsissh+' in js_hop.schema    : js_hop.schema = 'gsissh'
-        if '+ssh'    in js_hop.schema or \
-           'ssh+'    in js_hop.schema    : js_hop.schema = 'ssh'
+        # TODO: this is an unreliable heuristics - we should require the js_hop
+        #       URL to be specified in the resource configs.
+        if   '+gsissh' in js_hop.schema or \
+             'gsissh+' in js_hop.schema    : js_hop.schema = 'gsissh'
+        elif '+ssh'    in js_hop.schema or \
+             'ssh+'    in js_hop.schema    : js_hop.schema = 'ssh'
+        else                               : js_hop.schema = 'fork'
 
         return js_url, js_hop
 
