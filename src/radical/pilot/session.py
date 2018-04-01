@@ -1117,13 +1117,14 @@ class Session(rs.Session):
         print 'autopilot'            
 
         for issue in repo.issues(labels=labels, state='open'):
-          # print '  check: %s' % issue.title
             if issue.title == title:
+                reply = 'excuse: %s' % excuse()
                 issue.create_comment(reply)
                 print '  resolve: %s' % reply
                 return
 
         # issue not found - create
+        body  = 'problem: %s' % excuse()
         issue = repo.create_issue(title=title, body=body, labels=[labels],
                                   assignee=user)
         print '  issue  : %s' % title
