@@ -298,7 +298,8 @@ setup_args = {
                             'setproctitle',
                             'ntplib',
                             'msgpack-python',
-                            'pyzmq'
+                            'pyzmq',
+                            'github3.py'
                            ],
     'tests_require'      : ['mock==2.0.0', 'pytest'],
     'test_suite'         : '%s.tests' % name,
