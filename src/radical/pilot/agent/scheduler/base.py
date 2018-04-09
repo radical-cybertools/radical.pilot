@@ -25,6 +25,7 @@ SCHEDULER_NAME_HOMBRE          = "HOMBRE"
 SCHEDULER_NAME_TORUS           = "TORUS"
 SCHEDULER_NAME_YARN            = "YARN"
 SCHEDULER_NAME_SPARK           = "SPARK"
+SCHEDULER_NAME_CONTINUOUS_DATA      = "CONTINUOUS_DATA"
 
 
 # ------------------------------------------------------------------------------
@@ -309,7 +310,8 @@ class AgentSchedulingComponent(rpu.Component):
                 SCHEDULER_NAME_HOMBRE          : Hombre,
                 SCHEDULER_NAME_TORUS           : Torus,
                 SCHEDULER_NAME_YARN            : Yarn,
-                SCHEDULER_NAME_SPARK           : Spark
+                SCHEDULER_NAME_SPARK           : Spark,
+                SCHEDULER_NAME_CONTINUOUS_DATA: ContinuousData,
             }[name]
 
             impl = impl(cfg, session)
