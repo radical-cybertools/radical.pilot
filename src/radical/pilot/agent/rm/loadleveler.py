@@ -170,14 +170,15 @@ class LoadLeveler(LRMS):
     #
     def _configure(self):
 
-        loadl_node_list = None
+        loadl_node_list     = None
         loadl_cpus_per_node = None
 
         # Determine method for determining hosts,
         # either through hostfile or BG/Q environment.
-        loadl_hostfile = os.environ.get('LOADL_HOSTFILE')
+        loadl_hostfile      = os.environ.get('LOADL_HOSTFILE')
         self.loadl_bg_block = os.environ.get('LOADL_BG_BLOCK')
-        if loadl_hostfile is None and self.loadl_bg_block is None:
+
+        if not loadl_hostfile and not self.loadl_bg_block:
             msg = "Neither $LOADL_HOSTFILE or $LOADL_BG_BLOCK set!"
             self._log.error(msg)
             raise RuntimeError(msg)
