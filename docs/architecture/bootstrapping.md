@@ -24,11 +24,11 @@ instances of each component type, for scaling and reliability purposes.
 
 ### Multiplicity:
 
-    * 1 application          : n pilot jobs
-    * 1 pilot job            : m pilot partitions
-    * 1 pilot partition      : 1 pilot agent
-    * 1 pilot agent          : k pilot agent components
-    * 1 pilot agent component: i pilot agent component instances
+    * 1 application          : 1..n pilot jobs
+    * 1 pilot job            : 1..m pilot partitions
+    * 1 pilot partition      : 1    pilot agent
+    * 1 pilot agent          : k    pilot agent components
+    * 1 pilot agent component: 1..i pilot agent component instances
 
 
 ## Pilot Job Specification
