@@ -267,7 +267,7 @@ class ORTE(LaunchMethod):
         env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
         if env_list:
             env_string = ''
-            for var in env_list:
+            for var in task_env:
                 env_string += '-x "%s" ' % var
 
 

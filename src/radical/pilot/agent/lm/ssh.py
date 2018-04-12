@@ -86,7 +86,7 @@ class SSH(LaunchMethod):
             # shell command line.  We likely won't survive any complicated vars
             # (multiline, quotes, etc)
             env_string = ' '
-            for var in env_string:
+            for var in task_env:
                 env_string += '%s="$%s" ' % (var, var)
 
 

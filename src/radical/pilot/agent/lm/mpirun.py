@@ -85,7 +85,7 @@ class MPIRun(LaunchMethod):
 
             elif 'openmpi' in self.launch_version:
                 env_string = ''
-                for var in env_list:
+                for var in task_env:
                     env_string += '-x "%s" ' % var
 
             else:
