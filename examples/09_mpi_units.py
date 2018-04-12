@@ -72,8 +72,6 @@ if __name__ == '__main__':
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
-
-
         report.header('submit units')
 
         # Register the ComputePilot in a UnitManager object.
@@ -83,7 +81,9 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits. 
         # Each compute unit runs a MPI test application.
 
-        n = 128   # number of units to run
+        n = 2   # number of units to run
+        t_num = 2  # number of threads   (OpenMP)
+        p_num = 3  # number of processes (MPI)
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -93,7 +93,7 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.executable     = '/bin/sh'
-            cud.arguments      = ['09_mpi_units.sh']
+            cud.arguments      = ['%s/09_mpi_units.sh' % PWD]
             cud.input_staging  = ['%s/09_mpi_units.sh' % PWD]
             cud.cores          = 2
             cud.mpi            = True
@@ -112,9 +112,13 @@ if __name__ == '__main__':
     
         report.info('\n')
         for unit in units:
-            report.plain('  * %s: %s, exit: %3s, MPI ranks: %s\n' \
-                    % (unit.uid, unit.state[:4], unit.exit_code,
-                       ','.join(unit.stdout.split('\n'))))
+            report.plain('  * %s: %s, exit: %3s, ranks: %s\n'
+                    % (unit.uid, unit.state[:4], unit.exit_code, unit.stdout))
+            ranks = unit.stdout.split()
+            for p in range(p_num):
+                for t in range(t_num):
+                    rank = '%d:%d' % (p, t)
+                    assert(rank in ranks), 'missing rank %s' % rank
 
 
     except Exception as e:

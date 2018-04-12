@@ -3,7 +3,7 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import os
+import radical.utils as ru
 
 from .base import LaunchMethod
 
@@ -22,45 +22,62 @@ class MPIRun(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        self.launch_command = self._find_executable([
+
+        self.launch_command = ru.which([
             'mpirun',            # General case
             'mpirun_rsh',        # Gordon @ SDSC
             'mpirun-mpich-mp',   # Mac OSX MacPorts
             'mpirun-openmpi-mp'  # Mac OSX MacPorts
         ])
 
+        self.mpi_version, self.mpi_flavor = self._get_mpi_info(self.launch_command)
+
 
     # --------------------------------------------------------------------------
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cores']
-        task_args    = cud.get('arguments') or []
+        task_env     = cud.get('environment', dict())
+        task_args    = cud.get('arguments',   list())
         task_argstr  = self._create_arg_string(task_args)
 
-        if not 'task_slots' in opaque_slots:
-            raise RuntimeError('insufficient information to launch via %s: %s' \
-                    % (self.name, opaque_slots))
+        # Construct the executable and arguments
+        if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
+        else          : task_command = task_exec
 
-        task_slots = opaque_slots['task_slots']
+        env_string = ''
+        env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
+        if env_list:
 
-        if task_argstr:
-            task_command = "%s %s" % (task_exec, task_argstr)
-        else:
-            task_command = task_exec
+            if self.mpi_flavor == self.MPI_FLAVOR_HYDRA:
+                env_string = '-envlist "%s"' % ','.join(env_list)
 
-        # Construct the hosts_string
-        hosts_string = ",".join([slot.split(':')[0] for slot in task_slots])
+            elif self.mpi_flavor == self.MPI_FLAVOR_OMPI:
+                for var in env_list:
+                    env_string += '-x "%s" ' % var
 
-        export_vars = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES if var in os.environ])
 
-        mpirun_command = "%s %s -np %s -host %s %s" % (
-            self.launch_command, export_vars, task_cores, hosts_string, task_command)
+        if 'nodes' not in slots:
+            raise RuntimeError('insufficient information to launch via %s: %s'
+                              % (self.name, slots))
 
-        return mpirun_command, None
+        # Extract all the hosts from the slots
+        hostlist = list()
+        for node in slots['nodes']:
+            for cpu_proc in node[2]:
+                hostlist.append(node[0])
+            for gpu_proc in node[3]:
+                hostlist.append(node[0])
+        hosts_string = ",".join(hostlist)
+
+        command = "%s -np %d -host %s %s %s" \
+                % (self.launch_command, len(hostlist), hosts_string, 
+                   env_string, task_command)
+
+        return command, None
 
 
 # ------------------------------------------------------------------------------

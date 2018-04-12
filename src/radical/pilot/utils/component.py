@@ -44,7 +44,7 @@ class Component(ru.Process):
     ownership over it, and that no other component will change the 'thing's
     state during that time.
 
-    The main event loop of the component -- run() -- is executed as a separate
+    The main event loop of the component -- work_cb() -- is executed as a separate
     process.  Components inheriting this class should be fully self sufficient,
     and should specifically attempt not to use shared resources.  That will
     ensure that multiple instances of the component can coexist for higher
@@ -727,7 +727,7 @@ class Component(ru.Process):
 
     # --------------------------------------------------------------------------
     #
-    def register_input(self, states, input, worker):
+    def register_input(self, states, input, worker=None):
         """
         Using this method, the component can be connected to a queue on which
         things are received to be worked upon.  The given set of states (which
@@ -751,7 +751,6 @@ class Component(ru.Process):
         if not isinstance(states, list):
             states = [states]
 
-
         name = '%s.%s.%s' % (self.uid, worker.__name__, '_'.join(states))
 
         if name in self._inputs:
@@ -762,8 +761,8 @@ class Component(ru.Process):
         self._log.debug("using addr %s for input %s", addr, input)
 
         q = rpu_Queue(self._session, input, rpu_QUEUE_OUTPUT, self._cfg, addr=addr)
-        self._inputs['name'] = {'queue'  : q,
-                                'states' : states}
+        self._inputs[name] = {'queue'  : q,
+                              'states' : states}
 
         self._log.debug('registered input %s', name)
 

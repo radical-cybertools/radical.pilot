@@ -44,8 +44,9 @@ JOB_CHECK_INTERVAL    =  60  # seconds between runs of the job state check loop
 JOB_CHECK_MAX_MISSES  =   3  # number of times to find a job missing before
                              # declaring it dead
 
-LOCAL_SCHEME = 'file'
-BOOTSTRAPPER = "bootstrap_1.sh"
+LOCAL_SCHEME   = 'file'
+BOOTSTRAPPER_0 = "bootstrap_0.sh"
+BOOTSTRAPPER_1 = "bootstrap_1.sh"
 
 # ==============================================================================
 #
@@ -128,7 +129,12 @@ class Default(PMGRLaunchingComponent):
 
         self._log.debug('launcher got %s', msg)
 
-        if cmd == 'cancel_pilots':
+        if cmd == 'pilot_staging_input_request':
+
+            self._handle_pilot_input_staging(arg['pilot'], arg['sds'])
+
+
+        elif cmd == 'cancel_pilots':
 
             # on cancel_pilot requests, we forward the DB entries via MongoDB,
             # by pushing a pilot update.  We also mark the pilot for
@@ -150,10 +156,6 @@ class Default(PMGRLaunchingComponent):
 
             self._cancel_pilots(pids)
 
-
-        elif cmd == 'pilot_staging_input_request':
-
-            self._handle_pilot_input_staging(arg['pilot'], arg['sds'])
 
         return True
 
@@ -599,8 +601,13 @@ class Default(PMGRLaunchingComponent):
         # tar.  If any command fails, this will raise.
         cmd = "cd %s && tar zchf %s *" % (tmp_dir, tar_tgt)
         self._log.debug('cmd: %s', cmd)
-        out = sp.check_output(["/bin/sh", "-c", cmd], stderr=sp.STDOUT)
-        self._log.debug('out: %s', out)
+        try:
+            out = sp.check_output(["/bin/sh", "-c", cmd], stderr=sp.STDOUT)
+        except Exception as e:
+            self._log.exception('callout failed: %s', out)
+            raise
+        else:
+            self._log.debug('out: %s', out)
 
         # remove all files marked for removal-after-pack
         for ft in ft_list:
@@ -744,6 +751,17 @@ class Default(PMGRLaunchingComponent):
                           (resource, self._rp_version)
 
         # ------------------------------------------------------------------
+        # pilot description and resource configuration
+        number_cores    = pilot['description']['cores']
+        number_gpus     = pilot['description']['gpus']
+        runtime         = pilot['description']['runtime']
+        queue           = pilot['description']['queue']
+        project         = pilot['description']['project']
+        cleanup         = pilot['description']['cleanup']
+        memory          = pilot['description']['memory']
+        candidate_hosts = pilot['description']['candidate_hosts']
+
+        # ------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
         agent_launch_method     = rcfg.get('agent_launch_method')
         agent_dburl             = rcfg.get('agent_mongodb_endpoint', database_url)
@@ -763,6 +781,7 @@ class Default(PMGRLaunchingComponent):
         virtenv_mode            = rcfg.get('virtenv_mode',        DEFAULT_VIRTENV_MODE)
         virtenv                 = rcfg.get('virtenv',             default_virtenv)
         cores_per_node          = rcfg.get('cores_per_node', 0)
+        gpus_per_node           = rcfg.get('gpus_per_node',  0)
         health_check            = rcfg.get('health_check', True)
         python_dist             = rcfg.get('python_dist')
         virtenv_dist            = rcfg.get('virtenv_dist',        DEFAULT_VIRTENV_DIST)
@@ -774,16 +793,11 @@ class Default(PMGRLaunchingComponent):
         cu_post_exec            = rcfg.get('cu_post_exec')
         export_to_cu            = rcfg.get('export_to_cu')
         mandatory_args          = rcfg.get('mandatory_args', [])
+        saga_jd_supplement      = rcfg.get('saga_jd_supplement', {})
 
-        # ------------------------------------------------------------------
-        # get parameters from the pilot description
-        number_cores    = pilot['description']['cores']
-        runtime         = pilot['description']['runtime']
-        queue           = pilot['description']['queue']
-        project         = pilot['description']['project']
-        cleanup         = pilot['description']['cleanup']
-        memory          = pilot['description']['memory']
-        candidate_hosts = pilot['description']['candidate_hosts']
+        import pprint
+        self._log.debug(cores_per_node)
+        self._log.debug(pprint.pformat(rcfg))
 
         # make sure that mandatory args are known
         for ma in mandatory_args:
@@ -975,6 +989,13 @@ class Default(PMGRLaunchingComponent):
             number_cores   = int(cores_per_node
                            * math.ceil(float(number_cores)/cores_per_node))
 
+        # if gpus_per_node is set (!= None), then we need to
+        # allocation full nodes, and thus round up
+        if gpus_per_node:
+            gpus_per_node = int(gpus_per_node)
+            number_gpus   = int(gpus_per_node
+                           * math.ceil(float(number_gpus)/gpus_per_node))
+
         # set mandatory args
         bootstrap_args  = ""
         bootstrap_args += " -d '%s'" % ':'.join(sdist_names)
@@ -1002,6 +1023,7 @@ class Default(PMGRLaunchingComponent):
 
         agent_cfg['owner']              = 'agent_0'
         agent_cfg['cores']              = number_cores
+        agent_cfg['gpus']               = number_gpus
         agent_cfg['lrms']               = lrms
         agent_cfg['spawner']            = agent_spawner
         agent_cfg['scheduler']          = agent_scheduler
@@ -1017,6 +1039,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['task_launch_method'] = task_launch_method
         agent_cfg['mpi_launch_method']  = mpi_launch_method
         agent_cfg['cores_per_node']     = cores_per_node
+        agent_cfg['gpus_per_node']      = gpus_per_node
         agent_cfg['cu_tmp']             = cu_tmp
         agent_cfg['export_to_cu']       = export_to_cu
         agent_cfg['cu_pre_exec']        = cu_pre_exec
@@ -1077,11 +1100,11 @@ class Default(PMGRLaunchingComponent):
 
                 # Copy the bootstrap shell script.
                 bootstrapper_path = os.path.abspath("%s/agent/%s" \
-                        % (self._root_dir, BOOTSTRAPPER))
+                        % (self._root_dir, BOOTSTRAPPER_0))
                 self._log.debug("use bootstrapper %s", bootstrapper_path)
 
                 ret['ft'].append({'src' : bootstrapper_path, 
-                                  'tgt' : '%s/%s' % (session_sandbox, BOOTSTRAPPER),
+                                  'tgt' : '%s/%s' % (session_sandbox, BOOTSTRAPPER_0),
                                   'rem' : False})
 
                 # Some machines cannot run pip due to outdated CA certs.
@@ -1106,9 +1129,9 @@ class Default(PMGRLaunchingComponent):
         jd = rs.job.Description()
 
         if shared_filesystem:
-            bootstrap_tgt = '%s/%s' % (session_sandbox, BOOTSTRAPPER)
+            bootstrap_tgt = '%s/%s' % (session_sandbox, BOOTSTRAPPER_0)
         else:
-            bootstrap_tgt = '%s/%s' % ('.', BOOTSTRAPPER)
+            bootstrap_tgt = '%s/%s' % ('.', BOOTSTRAPPER_0)
 
         jd.name                  = pid
         jd.executable            = "/bin/bash"
@@ -1118,6 +1141,7 @@ class Default(PMGRLaunchingComponent):
         jd.output                = "bootstrap_1.out"
         jd.error                 = "bootstrap_1.err"
         jd.total_cpu_count       = number_cores
+        jd.total_gpu_count       = number_gpus
         jd.processes_per_host    = cores_per_node
         jd.spmd_variation        = spmd_variation
         jd.wall_time_limit       = runtime
@@ -1125,6 +1149,12 @@ class Default(PMGRLaunchingComponent):
         jd.queue                 = queue
         jd.candidate_hosts       = candidate_hosts
         jd.environment           = dict()
+
+        # we set any saga_jd_supplement keys which are not already set above
+        for key, val in saga_jd_supplement.iteritems():
+            if not jd[key]:
+                self._log.debug('supplement %s: %s', key, val)
+                jd[key] = val
 
         if 'RADICAL_PILOT_PROFILE' in os.environ :
             jd.environment['RADICAL_PILOT_PROFILE'] = 'TRUE'
@@ -1136,7 +1166,7 @@ class Default(PMGRLaunchingComponent):
         if not shared_filesystem:
 
             jd.file_transfer.extend([
-                'site:%s/%s > %s' % (session_sandbox, BOOTSTRAPPER,   BOOTSTRAPPER),
+                'site:%s/%s > %s' % (session_sandbox, BOOTSTRAPPER_0, BOOTSTRAPPER_0),
                 'site:%s/%s > %s' % (pilot_sandbox,   agent_cfg_name, agent_cfg_name),
                 'site:%s/%s.log.tgz > %s.log.tgz' % (pilot_sandbox, pid, pid),
                 'site:%s/%s.log.tgz < %s.log.tgz' % (pilot_sandbox, pid, pid)

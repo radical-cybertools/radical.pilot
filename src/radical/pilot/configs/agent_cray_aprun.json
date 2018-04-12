@@ -23,7 +23,7 @@
                                          "bulk_size" : 1},
 
         "agent_unschedule_pubsub"    : {"log_level" : "off"},
-        "agent_reschedule_pubsub"    : {"log_level" : "off"},
+        "agent_schedule_pubsub"      : {"log_level" : "off"},
 
         "control_pubsub"             : {"log_level" : "off"},
         "state_pubsub"               : {"log_level" : "off"},

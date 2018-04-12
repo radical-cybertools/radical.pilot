@@ -144,9 +144,6 @@ class Session(rs.Session):
         # The resource configuration dictionary associated with the session.
         self._resource_configs = {}
 
-        # initialize the base class (saga session)
-        rs.Session.__init__(self)
-
         # if a config is given, us its values:
         if cfg:
             self._cfg = copy.deepcopy(cfg)
@@ -199,6 +196,10 @@ class Session(rs.Session):
 
         self._dburl = ru.Url(dburl)
         self._cfg['dburl'] = str(self._dburl)
+
+        # now we have config and uid - initialize base class (saga session)
+        rs.Session.__init__(self, uid=self._uid)
+
 
         # ----------------------------------------------------------------------
         # create new session
@@ -381,6 +382,8 @@ class Session(rs.Session):
             for rc in rcs:
                 self._log.info("Load resource configurations for %s" % rc)
                 self._resource_configs[rc] = rcs[rc].as_dict() 
+                self._log.debug('read rcfg for %s (%s)', 
+                        rc, self._resource_configs[rc].get('cores_per_node'))
 
         home         = os.environ.get('HOME', '')
         user_cfgs    = "%s/.radical/pilot/configs/resource_*.json" % home
@@ -405,6 +408,9 @@ class Session(rs.Session):
                 else:
                     # new config -- add as is
                     self._resource_configs[rc] = rcs[rc].as_dict() 
+
+                self._log.debug('fix  rcfg for %s (%s)', 
+                        rc, self._resource_configs[rc].get('cores_per_node'))
 
         default_aliases = "%s/configs/resource_aliases.json" % module_path
         self._resource_aliases = ru.read_json_str(default_aliases)['aliases']
@@ -441,6 +447,7 @@ class Session(rs.Session):
         if self._closed:
             return
 
+        self._log.report.info('closing session %s' % self._uid)
         self._log.debug("session %s closing", self._uid)
         self._prof.prof("session_close", uid=self._uid)
 
@@ -500,13 +507,13 @@ class Session(rs.Session):
         # profiles, if so wanted
         if download:
 
-          # self._prof.prof("session_fetch_sync", uid=self._uid)
             self._prof.prof("session_fetch_start", uid=self._uid)
             self._log.debug('start download')
             tgt = os.getcwd()
             self.fetch_json    (tgt='%s/%s' % (tgt, self.uid))
             self.fetch_profiles(tgt=tgt)
             self.fetch_logfiles(tgt=tgt)
+
             self._prof.prof("session_fetch_stop", uid=self._uid)
 
         self._log.report.info('<<session lifetime: %.1fs' % (self.closed - self.created))
@@ -811,9 +818,14 @@ class Session(rs.Session):
             for rc in rcs:
                 self._log.info("Loaded resource configurations for %s" % rc)
                 self._resource_configs[rc] = rcs[rc].as_dict() 
+                self._log.debug('add  rcfg for %s (%s)', 
+                        rc, self._resource_configs[rc].get('cores_per_node'))
 
         else:
             self._resource_configs[resource_config.label] = resource_config.as_dict()
+            self._log.debug('Add  rcfg for %s (%s)', 
+                    resource_config.label, 
+                    self._resource_configs[resource_config.label].get('cores_per_node'))
 
     # -------------------------------------------------------------------------
     #
@@ -833,6 +845,7 @@ class Session(rs.Session):
             raise RuntimeError("Resource '%s' is not known." % resource)
 
         resource_cfg = copy.deepcopy(self._resource_configs[resource])
+        self._log.debug('get rcfg 1 for %s (%s)',  resource, resource_cfg.get('cores_per_node'))
 
         if  not schema:
             if 'schemas' in resource_cfg:
@@ -847,6 +860,8 @@ class Session(rs.Session):
                 # merge schema specific resource keys into the
                 # resource config
                 resource_cfg[key] = resource_cfg[schema][key]
+
+        self._log.debug('get rcfg 2 for %s (%s)',  resource, resource_cfg.get('cores_per_node'))
 
         return resource_cfg
 
@@ -1046,8 +1061,15 @@ class Session(rs.Session):
         resrc   = pilot['description']['resource']
         schema  = pilot['description']['access_schema']
         rcfg    = self.get_resource_config(resrc, schema)
+
         js_url  = rs.Url(rcfg.get('job_manager_endpoint'))
         js_hop  = rs.Url(rcfg.get('job_manager_hop', js_url))
+
+        # make sure the js_hop url points to an interactive access
+        if '+gsissh' in js_hop.schema or \
+           'gsissh+' in js_hop.schema    : js_hop.schema = 'gsissh'
+        if '+ssh'    in js_hop.schema or \
+           'ssh+'    in js_hop.schema    : js_hop.schema = 'ssh'
 
         return js_url, js_hop
 
