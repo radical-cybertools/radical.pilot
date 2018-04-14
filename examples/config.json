@@ -231,6 +231,20 @@
         "cores"    : 64
     },
 
+    "ncar.cheyenne": {
+	"project"  : "URTG0014",
+	"queue"    : "regular",
+	"schema"   : "local",
+	"cores"    : 72
+    },
+
+    "ncar.cheyenne_mpirun": {
+	"project"  : "URTG0014",
+	"queue"    : "regular",
+	"schema"   : "local",
+	"cores"    : 72
+    },
+
     "ornl.titan_aprun" : {
         "project"  : "CSC230",
         "queue"    : "debug",
