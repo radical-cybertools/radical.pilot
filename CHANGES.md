@@ -4,6 +4,12 @@
   - For a list of open issues and known problems, see
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
+0.47.7 Release                                                        2018-04-15
+--------------------------------------------------------------------------------
+
+  - bugfix related to radical.entk #255
+
+
 0.47.6 Release                                                        2018-04-12
 --------------------------------------------------------------------------------
 
