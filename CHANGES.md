@@ -4,6 +4,13 @@
   - For a list of open issues and known problems, see
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
+
+0.47.8 Release                                                        2018-04-16
+--------------------------------------------------------------------------------
+
+  - hotfix to catch up with pypi upgrade
+
+
 0.47.7 Release                                                        2018-04-15
 --------------------------------------------------------------------------------
 
