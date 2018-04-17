@@ -191,7 +191,7 @@ class AgentSchedulingComponent(rpu.Component):
     # --------------------------------------------------------------------------
     #
     # the deriving schedulers should in general have the following structure in
-    # self.odes:
+    # self.nodes:
     #
     #   self.nodes = [
     #     { 'name'  : 'name-of-node',
@@ -258,6 +258,7 @@ class AgentSchedulingComponent(rpu.Component):
         self._lrms_node_list      = self._cfg['lrms_info']['node_list']
         self._lrms_cores_per_node = self._cfg['lrms_info']['cores_per_node']
         self._lrms_gpus_per_node  = self._cfg['lrms_info']['gpus_per_node']
+        self._lrms_lfs_per_node   = self._cfg['lrms_info']['lfs_per_node']
 
         # create and initialize the wait pool
         self._wait_pool = list()             # pool of waiting units
@@ -272,8 +273,15 @@ class AgentSchedulingComponent(rpu.Component):
                 'name' : node,
                 'uid'  : node_uid,
                 'cores': [rpc.FREE] * self._lrms_cores_per_node,
-                'gpus' : [rpc.FREE] * self._lrms_gpus_per_node
+                'gpus' : [rpc.FREE] * self._lrms_gpus_per_node,
+                'lfs'  : self._lrms_lfs_per_node
             })
+
+        # configure the scheduler instance
+        self._configure()
+        self._log.debug("slot status after  init      : %s", 
+                        self.slot_status())
+
 
         # configure the scheduler instance
         self._configure()
@@ -311,7 +319,7 @@ class AgentSchedulingComponent(rpu.Component):
                 SCHEDULER_NAME_TORUS           : Torus,
                 SCHEDULER_NAME_YARN            : Yarn,
                 SCHEDULER_NAME_SPARK           : Spark,
-                SCHEDULER_NAME_CONTINUOUS_DATA: ContinuousData,
+                SCHEDULER_NAME_CONTINUOUS_DATA : ContinuousData,
             }[name]
 
             impl = impl(cfg, session)
