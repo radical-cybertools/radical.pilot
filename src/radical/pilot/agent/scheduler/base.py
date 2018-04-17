@@ -19,13 +19,13 @@ from ... import constants as rpc
 # 'enum' for RPs's pilot scheduler types
 #
 SCHEDULER_NAME_CONTINUOUS      = "CONTINUOUS"
+SCHEDULER_NAME_CONTINUOUS_DATA = "CONTINUOUS_DATA"
 SCHEDULER_NAME_CONTINUOUS_FIFO = "CONTINUOUS_FIFO"
-SCHEDULER_NAME_SCATTERED       = "SCATTERED"
 SCHEDULER_NAME_HOMBRE          = "HOMBRE"
+SCHEDULER_NAME_SCATTERED       = "SCATTERED"
+SCHEDULER_NAME_SPARK           = "SPARK"
 SCHEDULER_NAME_TORUS           = "TORUS"
 SCHEDULER_NAME_YARN            = "YARN"
-SCHEDULER_NAME_SPARK           = "SPARK"
-SCHEDULER_NAME_CONTINUOUS_DATA      = "CONTINUOUS_DATA"
 
 
 # ------------------------------------------------------------------------------

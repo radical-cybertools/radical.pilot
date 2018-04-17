@@ -1,89 +1,44 @@
-
-__copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
+__copyright__ = "Copyright 2013-2018, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+from .continuous import Continuous
 
-# AN RP Scheduler that will make schedule decisions based on both data and requirements
-# The data aware scheduler will take into account data requierment too, by extending the node_list information
-# and the CU descritpion
-# nodelist = [{name : 'node_1', cores: 16, gpus : 2, localfilesystem: 128GB},
-#                {name : 'node_2', cores: 16, gpus : 2, localfilesystem: 256GB },
-#                ...
+
+# ------------------------------------------------------------------------------
+#
+# This is an extension of the continuous scheduler with awareness of the 
+# file-storage capabilities on a node. The continuous data aware scheduler will 
+# use two data fields: availability and requirement.
+
+# General idea:
+# The availability will be obtained from the lrms_node_list and assigned to
+# the node list of the class. The requirement will be obtained from the cud in
+# the alloc_nompi and alloc_mpi methods. Using the availability and requirement,
+# the _find_resources method will return the core and gpu ids.
+#
+# self.nodes = [{
+#                   'name'    : 'node_1', 
+#                   'uid'     : xxxx,
+#                   'cores'   : 16, 
+#                   'gpus'    : 2, 
+#                   'local_fs': 128GB
+#               },
+#               {
+#                   'name'    : 'node_2', 
+#                   'uid'     : yyyy,
+#                   'cores'   : 16, 
+#                   'gpus'    : 2, 
+#                   'local_fs': 256GB 
+#                },
 #               ]
-# 
-#
-# PLAN: Investigate possible extention of knapsack algorithm  to take into account the data that need to be scheduled
-#  
-#
-
-
-import os
-
-import radical.utils as ru
-
-from ...   import constants as rpc
-from .base import AgentSchedulingComponent
-
-import inspect
-import threading as mt
-
-
-# ------------------------------------------------------------------------------
-#
-# FIXME: make this a runtime switch depending on cprofile availability
-# FIXME: move this to utils (implies another parameter to `dec_all_methods()`)
-#
-import cProfile
-cprof = cProfile.Profile()
-
-
-def cprof_it(func):
-    def wrapper(*args, **kwargs):
-        retval = cprof.runcall(func, *args, **kwargs)
-        return retval
-    return wrapper
-
-
-def dec_all_methods(dec):
-    def dectheclass(cls):
-        if ru.is_main_thread():
-            cprof_env   = os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "")
-            cprof_elems = cprof_env.split()
-            if "CONTINUOUS" in cprof_elems:
-                for name, m in inspect.getmembers(cls, inspect.ismethod):
-                    setattr(cls, name, dec(m))
-        return cls
-    return dectheclass
-
-
-# ------------------------------------------------------------------------------
-#
-@dec_all_methods(cprof_it)
-class Continuous(AgentSchedulingComponent):
+# Q: How should the nodes be selected for MPI based units? 
+class Continuous(Continuous):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, session):
 
-        self.nodes = None
-
-        AgentSchedulingComponent.__init__(self, cfg, session)
-
-
-    # --------------------------------------------------------------------------
-    #
-    # FIXME: this should not be overloaded here, but in the base class
-    #
-    def finalize_child(self):
-
-        cprof_env = os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "")
-        if "CONTINUOUS" in cprof_env.split():
-            self_thread = mt.current_thread()
-            cprof.dump_stats("python-%s.profile" % self_thread.name)
-
-        # make sure that parent finalizers are called
-        super(Continuous, self).finalize_child()
-
+        Continuous.__init__(self, cfg, session)
 
     # --------------------------------------------------------------------------
     #
@@ -123,44 +78,6 @@ class Continuous(AgentSchedulingComponent):
                     'cores': [rpc.FREE] * self._lrms_cores_per_node,
                     'gpus' : [rpc.FREE] * self._lrms_gpus_per_node
                 })
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _allocate_slot(self, cud):
-        '''
-        This is the main method of this implementation, and is triggered when
-        a unit needs to be mapped to a set of cores / gpus.  We make
-        a distinction between MPI and non-MPI units (non-MPI processes MUST be
-        on the same node).
-        '''
-
-        # single_node allocation is enforced for non-message passing tasks
-        if  cud['cpu_process_type'] == 'MPI' or \
-            cud['gpu_process_type'] == 'MPI' :
-            slots = self._alloc_mpi(cud)
-        else:
-            slots = self._alloc_nompi(cud)
-
-        if slots:
-            # the unit was placed, we need to reflect the allocation in the
-            # nodelist state (BUSY)
-            self._change_slot_states(slots, rpc.BUSY)
-
-        return slots
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _release_slot(self, slots):
-        '''
-        This method is called when previously aquired resources are not needed
-        anymore.  `slots` are the resource slots as previously returned by
-        `_allocate_slots()`.
-        '''
-
-        # reflect the request in the nodelist state (set to `FREE`)
-        self._change_slot_states(slots, rpc.FREE)
 
 
     # --------------------------------------------------------------------------
