@@ -19,7 +19,6 @@ from ... import constants as rpc
 # 'enum' for RPs's pilot scheduler types
 #
 SCHEDULER_NAME_CONTINUOUS      = "CONTINUOUS"
-SCHEDULER_NAME_CONTINUOUS_DATA = "CONTINUOUS_DATA"
 SCHEDULER_NAME_CONTINUOUS_FIFO = "CONTINUOUS_FIFO"
 SCHEDULER_NAME_HOMBRE          = "HOMBRE"
 SCHEDULER_NAME_SCATTERED       = "SCATTERED"
@@ -252,7 +251,7 @@ class AgentSchedulingComponent(rpu.Component):
         # during agent startup.  We dig them out of the config at this point.
         #
         # NOTE: this information is insufficient for the torus scheduler!
-        self._pilot_id = self._cfg['pilot_id']
+        self._pilot_id            = self._cfg['pilot_id']
         self._lrms_info           = self._cfg['lrms_info']
         self._lrms_lm_info        = self._cfg['lrms_info']['lm_info']
         self._lrms_node_list      = self._cfg['lrms_info']['node_list']
