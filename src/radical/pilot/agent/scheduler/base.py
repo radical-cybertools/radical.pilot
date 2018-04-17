@@ -204,6 +204,33 @@ class AgentSchedulingComponent(rpu.Component):
     # respectively.  Some schedulers may need a more elaborate structures - but
     # where the above is suitable, it should be used for code consistency.
     #
+
+
+    # --------------------------------------------------------------------------
+    # Proposal
+    # the deriving schedulers should in general have the following structure in
+    # self.resources:
+    #
+    #   self.resources = {'cores':['+-----+---','+-----+--+','++++--+---',...],
+    #                     'gpus' :['++','--','+-'],
+    #                     'lfs'  :['/tmp+18','/tmp+32','/tmp+16'],
+    #                     'nodes':['node1','node2','node3']
+    #                     }
+    #
+    # The scheduler needs to be able to quickly access all the information from
+    # all nodes. Based on the groups discussion on how the Data Structures with
+    # the availability should be we propose the above scheme. We use a dictionary
+    # where each key contains the available (maximum or current) resources in the
+    # same order. The scheduler decides based on the order of resources, which then
+    # maps to actual node names. This way, the data structure can be extended without
+    # the need to change its parsing, we just add a new key with all the values.
+    # In addition, the scheduler can pull only the information that it needs.
+    #
+    # The free/busy markers are defined in rp.constants.py, and are `-` and `#`,
+    # respectively.  Some schedulers may need a more elaborate structures - but
+    # where the above is suitable, it should be used for code consistency.
+    #
+    
     def __init__(self, cfg, session):
 
         self.nodes = None
