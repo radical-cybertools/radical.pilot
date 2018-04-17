@@ -34,14 +34,14 @@ import threading as mt
 #                   'uid'     : xxxx,
 #                   'cores'   : 16,
 #                   'gpus'    : 2,
-#                   'lfs': 128GB
+#                   'lfs'     : 128
 #               },
 #               {
 #                   'name'    : 'node_2',
 #                   'uid'     : yyyy,
 #                   'cores'   : 16,
 #                   'gpus'    : 2,
-#                   'lfs': 256GB
+#                   'lfs'     : 256
 #                },
 #               ]
 # Q: How should the nodes be selected for MPI based units?
@@ -135,7 +135,7 @@ class Continuous(AgentSchedulingComponent):
                     'uid'  : node_uid,
                     'cores': [rpc.FREE] * self._lrms_cores_per_node,
                     'gpus' : [rpc.FREE] * self._lrms_gpus_per_node,
-                    'lfs' : self._lrms_lfs_per_node
+                    'lfs'  : [rpc.FREE] * self._lrms_lfs_per_node
                 })
 
 
@@ -206,6 +206,7 @@ class Continuous(AgentSchedulingComponent):
         # list of core and gpu ids available in this node.
         cores = list()
         gpus = list()
+        lfs = None
 
         # first count the number of free cores, gpus, and local file storage. 
         # This is way quicker than actually finding the core IDs.
@@ -219,22 +220,22 @@ class Continuous(AgentSchedulingComponent):
             # request
             if  (requested_cores and not free_cores) and \
                     (requested_gpus and not free_gpus) and \
-                        (requested_local_fs and not free_local_fs):
-                return [], []
+                        (requested_lfs and not free_lfs):
+                return [], [], None
 
         else:
             # For non-partial requests (ie. full requests): its a no-match if
             # either the cpu or gpu request cannot be served.
             if  requested_cores > free_cores or \
                     requested_gpus > free_gpus or \
-                        requested_local_fs > free_local_fs:
-                return [], []
+                        requested_lfs > free_lfs:
+                return [], [], None
 
         # We can serve the partial or full request - alloc the chunks we need
         # FIXME: chunk gpus, too?
         alloc_cores = min(requested_cores, free_cores) / chunk * chunk
         alloc_gpus = min(requested_gpus, free_gpus)
-
+        lfs = min(requested_lfs, free_lfs)
 
         # now dig out the core and gpu IDs.
         for idx, state in enumerate(node['cores']):
@@ -253,7 +254,7 @@ class Continuous(AgentSchedulingComponent):
             if state == rpc.FREE:
                 gpus.append(idx)
 
-        return cores, gpus
+        return cores, gpus, lfs
 
 
     # --------------------------------------------------------------------------
@@ -309,7 +310,7 @@ class Continuous(AgentSchedulingComponent):
         requested_procs = cud['cpu_processes']
         threads_per_proc = cud['cpu_threads']
         requested_gpus = cud['gpu_processes']
-        requested_local_fs = cud['local_fs']
+        requested_lfs = cud['lfs']
 
         # make sure that processes are at least single-threaded
         if not threads_per_proc:
@@ -321,12 +322,13 @@ class Continuous(AgentSchedulingComponent):
         # make sure that the requested allocation fits on a single node
         if  requested_cores > self._lrms_cores_per_node or \
                 requested_gpus  > self._lrms_gpus_per_node or \
-                requested_local_fs > self._lrms_fs_per_node:
+                    requested_lfs > self._lrms_lfs_per_node:
             raise ValueError('Non-mpi unit does not fit onto single node')
 
         # ok, we can go ahead and try to find a matching node
         cores = list()
         gpus = list()
+        lfs = None
         node_name = None
         node_uid = None
 
@@ -334,10 +336,10 @@ class Continuous(AgentSchedulingComponent):
 
             # attempt to find the required number of cores and gpus on this
             # node - do not allow partial matches.
-            cores, gpus = self._find_resources(node,
+            cores, gpus, lfs = self._find_resources(node,
                                                requested_cores,
                                                requested_gpus,
-                                               requested_local_fs,
+                                               requested_lfs,
                                                partial=False)
 
             if  len(cores) == requested_cores and \
