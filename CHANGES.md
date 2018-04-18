@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.47.9 Release                                                        2018-04-18
+--------------------------------------------------------------------------------
+
+  - fix default scheduler for localhost
+
+
 0.47.8 Release                                                        2018-04-16
 --------------------------------------------------------------------------------
 
