@@ -255,7 +255,7 @@ class AgentSchedulingComponent(rpu.Component):
         self.publish(rpc.AGENT_RESCHEDULE_PUBSUB, cu)
 
         # Note: The extra space below is for visual alignment
-         if self._log.isEnabledFor(logging.DEBUG):
+        if self._log.isEnabledFor(logging.DEBUG):
             self._log.debug("after  unschedule %s: %s", cu['uid'], self.slot_status())
 
         return True
