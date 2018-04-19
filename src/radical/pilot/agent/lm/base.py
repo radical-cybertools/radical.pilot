@@ -37,10 +37,13 @@ LM_NAME_SPARK         = 'SPARK'
 class LaunchMethod(object):
 
     # List of environment variables that designated Launch Methods should export
+    # FIXME: we should find out what env vars are changed or added by 
+    #        cud.pre_exec, and then should also export those.  That would make
+    #        our launch script ore complicated though...
     EXPORT_ENV_VARIABLES = [
-                             # 'LD_LIBRARY_PATH',
-                             # 'PATH',
-                             # 'PYTHONPATH',
+                               'LD_LIBRARY_PATH',
+                               'PATH',
+                               'PYTHONPATH',
                              # 'PYTHON_DIR',
                                'RADICAL_PILOT_PROFILE',
                                'RP_PROF',
@@ -53,6 +56,7 @@ class LaunchMethod(object):
                                'RP_TMP'
                            ]
 
+
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, session):
@@ -61,18 +65,22 @@ class LaunchMethod(object):
         self._cfg     = cfg
         self._session = session
         self._log     = self._session._log
+        self._log.debug('create LM: %s', type(self))
 
         # A per-launch_method list of environment to remove from the CU environment
         self.env_removables = []
 
         self.launch_command = None
+        self.launch_version = None
         self._configure()
         # TODO: This doesn't make too much sense for LM's that use multiple
         #       commands, perhaps this needs to move to per LM __init__.
         if self.launch_command is None:
             raise RuntimeError("Launch command not found for LaunchMethod '%s'" % self.name)
 
-        self._log.info("Discovered launch command: '%s'.", self.launch_command)
+        self._log.debug('launch_command: %s [%s]', self.launch_command,
+                                                   self.launch_version)
+
 
 
     # --------------------------------------------------------------------------
@@ -331,6 +339,7 @@ class LaunchMethod(object):
                     arg_string += '"%s" ' % arg  # Otherwise return between double quotes.
 
         return arg_string
+
 
 # ------------------------------------------------------------------------------
 

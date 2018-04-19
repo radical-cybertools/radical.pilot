@@ -49,6 +49,13 @@
         "cores"    : 2
     },
 
+    "ncar.cheyenne_mpirun" : {
+        "project"  : "urtg0014",
+        "queue"    : "regular",
+        "schema"   : "fork",
+        "cores"    : 64
+    },
+
     "ncsa.bw" : {
         "project"  : "gk4",
         "queue"    : "debug",
