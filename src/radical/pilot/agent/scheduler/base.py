@@ -310,13 +310,6 @@ class AgentSchedulingComponent(rpu.Component):
         self._log.debug("slot status after  init      : %s", 
                         self.slot_status())
 
-
-        # configure the scheduler instance
-        self._configure()
-        self._log.debug("slot status after  init      : %s", 
-                        self.slot_status())
-
-
     # --------------------------------------------------------------------------
     #
     # This class-method creates the appropriate instance for the scheduler.
@@ -346,8 +339,7 @@ class AgentSchedulingComponent(rpu.Component):
                 SCHEDULER_NAME_HOMBRE          : Hombre,
                 SCHEDULER_NAME_TORUS           : Torus,
                 SCHEDULER_NAME_YARN            : Yarn,
-                SCHEDULER_NAME_SPARK           : Spark,
-                SCHEDULER_NAME_CONTINUOUS_DATA : ContinuousData,
+                SCHEDULER_NAME_SPARK           : Spark
             }[name]
 
             impl = impl(cfg, session)
@@ -371,7 +363,8 @@ class AgentSchedulingComponent(rpu.Component):
         see top of `base.py`.
         '''
 
-        for node_name, node_uid, cores, gpus in slots['nodes']:
+        # for node_name, node_uid, cores, gpus in slots['nodes']:
+        for nodes in slots['nodes']:
 
             # Find the entry in the the slots list
 
@@ -382,17 +375,24 @@ class AgentSchedulingComponent(rpu.Component):
             #       that we would read, and keep a dictionary that maps the uid
             #       of the node to the location on the list?
 
-            node = (n for n in self.nodes if n['uid'] == node_uid).next()
+            node = (n for n in self.nodes if n['uid'] == nodes['uid']).next()
             assert(node)
 
             # iterate over cores/gpus in the slot, and update state
+            cores = nodes['core_map']
             for cslot in cores:
                 for core in cslot:
                     node['cores'][core] = new_state
 
+            gpus = nodes['gpu_map']
             for gslot in gpus:
                 for gpu in gslot:
                     node['gpus'][gpu] = new_state
+
+            if new_state == rpc.BUSY:
+                node['lfs'] -= nodes['lfs']
+            else:
+                node['lfs'] += nodes['lfs']
 
 
     # --------------------------------------------------------------------------

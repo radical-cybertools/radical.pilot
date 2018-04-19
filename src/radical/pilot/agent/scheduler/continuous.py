@@ -1,13 +1,13 @@
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__license__ = "MIT"
 
 
 import os
 
 import radical.utils as ru
 
-from ...   import constants as rpc
+from ... import constants as rpc
 from .base import AgentSchedulingComponent
 
 import inspect
@@ -60,7 +60,7 @@ def cprof_it(func):
 def dec_all_methods(dec):
     def dectheclass(cls):
         if ru.is_main_thread():
-            cprof_env   = os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "")
+            cprof_env = os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "")
             cprof_elems = cprof_env.split()
             if "CONTINUOUS" in cprof_elems:
                 for name, m in inspect.getmembers(cls, inspect.ismethod):
@@ -82,7 +82,6 @@ class Continuous(AgentSchedulingComponent):
 
         AgentSchedulingComponent.__init__(self, cfg, session)
 
-
     # --------------------------------------------------------------------------
     #
     # FIXME: this should not be overloaded here, but in the base class
@@ -96,7 +95,6 @@ class Continuous(AgentSchedulingComponent):
 
         # make sure that parent finalizers are called
         super(Continuous, self).finalize_child()
-
 
     # --------------------------------------------------------------------------
     #
@@ -118,7 +116,7 @@ class Continuous(AgentSchedulingComponent):
         #   also allow to scatter the allocation over discontinuous nodes if
         #   this option is set.  the default is 'False'.
         self._oversubscribe = self._cfg.get('oversubscribe', False)
-        self._scattered     = self._cfg.get('scattered',     False)
+        self._scattered = self._cfg.get('scattered',     False)
 
         # NOTE: for non-oversubscribing mode, we reserve a number of cores
         #       for the GPU processes - even if those GPUs are not used by
@@ -131,13 +129,12 @@ class Continuous(AgentSchedulingComponent):
             self.nodes = []
             for node, node_uid in self._lrms_node_list:
                 self.nodes.append({
-                    'name' : node,
-                    'uid'  : node_uid,
+                    'name': node,
+                    'uid': node_uid,
                     'cores': [rpc.FREE] * self._lrms_cores_per_node,
-                    'gpus' : [rpc.FREE] * self._lrms_gpus_per_node,
-                    'lfs'  : [rpc.FREE] * self._lrms_lfs_per_node
+                    'gpus': [rpc.FREE] * self._lrms_gpus_per_node,
+                    'lfs': self._lrms_lfs_per_node
                 })
-
 
     # --------------------------------------------------------------------------
     #
@@ -151,7 +148,7 @@ class Continuous(AgentSchedulingComponent):
 
         # single_node allocation is enforced for non-message passing tasks
         if  cud['cpu_process_type'] == 'MPI' or \
-            cud['gpu_process_type'] == 'MPI' :
+                cud['gpu_process_type'] == 'MPI':
             slots = self._alloc_mpi(cud)
         else:
             slots = self._alloc_nompi(cud)
@@ -162,7 +159,6 @@ class Continuous(AgentSchedulingComponent):
             self._change_slot_states(slots, rpc.BUSY)
 
         return slots
-
 
     # --------------------------------------------------------------------------
     #
@@ -175,7 +171,6 @@ class Continuous(AgentSchedulingComponent):
 
         # reflect the request in the nodelist state (set to `FREE`)
         self._change_slot_states(slots, rpc.FREE)
-
 
     # --------------------------------------------------------------------------
     #
@@ -208,7 +203,7 @@ class Continuous(AgentSchedulingComponent):
         gpus = list()
         lfs = None
 
-        # first count the number of free cores, gpus, and local file storage. 
+        # first count the number of free cores, gpus, and local file storage.
         # This is way quicker than actually finding the core IDs.
         free_cores = node['cores'].count(rpc.FREE)
         free_gpus = node['gpus'].count(rpc.FREE)
@@ -216,19 +211,19 @@ class Continuous(AgentSchedulingComponent):
 
         if partial:
             # For partial requests the check simplifies: we just check if we
-            # have either, some cores *or* gpus *or* local_fs, to serve the 
+            # have either, some cores *or* gpus *or* local_fs, to serve the
             # request
             if  (requested_cores and not free_cores) and \
-                    (requested_gpus and not free_gpus) and \
-                        (requested_lfs and not free_lfs):
+                (requested_gpus and not free_gpus) and \
+                    (requested_lfs and not free_lfs):
                 return [], [], None
 
         else:
             # For non-partial requests (ie. full requests): its a no-match if
             # either the cpu or gpu request cannot be served.
             if  requested_cores > free_cores or \
-                    requested_gpus > free_gpus or \
-                        requested_lfs > free_lfs:
+                requested_gpus > free_gpus or \
+                    requested_lfs > free_lfs:
                 return [], [], None
 
         # We can serve the partial or full request - alloc the chunks we need
@@ -255,7 +250,6 @@ class Continuous(AgentSchedulingComponent):
                 gpus.append(idx)
 
         return cores, gpus, lfs
-
 
     # --------------------------------------------------------------------------
     #
@@ -294,7 +288,6 @@ class Continuous(AgentSchedulingComponent):
 
         return core_map, gpu_map
 
-
     # --------------------------------------------------------------------------
     #
     def _alloc_nompi(self, cud):
@@ -322,7 +315,7 @@ class Continuous(AgentSchedulingComponent):
         # make sure that the requested allocation fits on a single node
         if  requested_cores > self._lrms_cores_per_node or \
                 requested_gpus  > self._lrms_gpus_per_node or \
-                    requested_lfs > self._lrms_lfs_per_node:
+        requested_lfs > self._lrms_lfs_per_node:
             raise ValueError('Non-mpi unit does not fit onto single node')
 
         # ok, we can go ahead and try to find a matching node
@@ -337,10 +330,10 @@ class Continuous(AgentSchedulingComponent):
             # attempt to find the required number of cores and gpus on this
             # node - do not allow partial matches.
             cores, gpus, lfs = self._find_resources(node,
-                                               requested_cores,
-                                               requested_gpus,
-                                               requested_lfs,
-                                               partial=False)
+                                                    requested_cores,
+                                                    requested_gpus,
+                                                    requested_lfs,
+                                                    partial=False)
 
             if  len(cores) == requested_cores and \
                     len(gpus) == requested_gpus:
@@ -350,7 +343,7 @@ class Continuous(AgentSchedulingComponent):
                 break
 
         # If we did not find any node to host this request, return `None`
-        if not cores and not gpus:
+        if not cores and not gpus and not lfs:
             return None
 
         # We have to communicate to the launcher where exactly processes are to
@@ -360,13 +353,16 @@ class Continuous(AgentSchedulingComponent):
         core_map, gpu_map = self._get_node_maps(cores, gpus, threads_per_proc)
 
         # all the information for placing the unit is acquired - return them
-        slots = {'nodes': [[node_name, node_uid, core_map, gpu_map]],
+        slots = {'nodes': [{'name': node_name,
+                            'uid': node_uid,
+                            'core_map': core_map,
+                            'gpu_map': gpu_map,
+                            'lfs': lfs}],
                  'cores_per_node': self._lrms_cores_per_node,
                  'gpus_per_node': self._lrms_gpus_per_node,
                  'lm_info': self._lrms_lm_info
                  }
         return slots
-
 
     # --------------------------------------------------------------------------
     #
@@ -515,4 +511,3 @@ class Continuous(AgentSchedulingComponent):
 
 
 # ------------------------------------------------------------------------------
-
