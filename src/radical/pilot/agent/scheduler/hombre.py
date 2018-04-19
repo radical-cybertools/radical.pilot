@@ -125,7 +125,7 @@ class Hombre(AgentSchedulingComponent):
                 return self.free.pop()
 
         # no used free chunk - generate a new chunk from the node list
-        if (cores_requested + self.index) >= len(self.slots):
+        if (self.index + cores_requested) > len(self.slots):
             # out of resources
             return None, None
 
