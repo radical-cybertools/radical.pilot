@@ -215,10 +215,42 @@ def test_nonmpi_unit_with_continuous_scheduler(
                     'lm_info': 'INFO', 
                     'gpus_per_node': 1}
 
-    tearDown()
+    # Deallocate slot
+    component._release_slot(slot)
+    assert component.nodes == [ {   'lfs': 3072, 
+                                    'cores': [1, 1], 
+                                    'name': 'a', 
+                                    'gpus': [0], 
+                                    'uid': 1}, 
+                                {   'lfs': 0, 
+                                    'cores': [1, 1], 
+                                    'name': 'b', 
+                                    'gpus': [0], 
+                                    'uid': 2}, 
+                                {   'lfs': 0, 
+                                    'cores': [1, 0], 
+                                    'name': 'c', 
+                                    'gpus': [0], 
+                                    'uid': 3}, 
+                                {   'lfs': 0, 
+                                    'cores': [1, 0], 
+                                    'name': 'd', 
+                                    'gpus': [0], 
+                                    'uid': 4}, 
+                                {   'lfs': 0, 
+                                    'cores': [1, 0], 
+                                    'name': 'e', 
+                                    'gpus': [0], 
+                                    'uid': 5}]
 
-    print component.nodes
-    assert False
+
+    # Allocate CUD which cannot fit on available resources
+    cud = nompi()
+    cud['lfs'] = 5120
+    slot =  component._allocate_slot(cud)
+    assert slot == None
+
+    tearDown()
 #-----------------------------------------------------------------------------------------------------------------------
 
 
