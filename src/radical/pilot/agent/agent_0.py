@@ -503,8 +503,8 @@ class Agent_0(rpu.Worker):
         #        This also blocks us from using multiple ingest threads, or from
         #        doing late binding by unit pull :/
         unit_cursor = self._session._dbs._c.find({'type'    : 'unit',
-                                                         'pilot'   : self._pid,
-                                                         'control' : 'agent_pending'})
+                                                  'pilot'   : self._pid,
+                                                  'control' : 'agent_pending'})
         if not unit_cursor.count():
             # no units whatsoever...
             self._log.info('units pulled:    0')
@@ -516,11 +516,10 @@ class Agent_0(rpu.Worker):
 
         self._log.info('units PULLED: %4d', len(unit_list))
 
-        self._session._dbs._c.update(
-                        {'type'  : 'unit',
-                                    'uid'   : {'$in'     : unit_uids}},
-                        {'$set'  : {'control' : 'agent'}},
-                        multi = True)
+        self._session._dbs._c.update({'type'  : 'unit',
+                                      'uid'   : {'$in'     : unit_uids}},
+                                     {'$set'  : {'control' : 'agent'}},
+                                     multi=True)
 
         self._log.info("units pulled: %4d", len(unit_list))
         self._prof.prof('get', msg='bulk size: %d' % len(unit_list),

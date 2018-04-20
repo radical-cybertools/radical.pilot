@@ -312,11 +312,10 @@ class UnitManager(rpu.Component):
             #        units.
             uids = [unit['uid'] for unit in units]
 
-            self._session._dbs._c.update(
-                            {'type'  : 'unit',
-                                        'uid'   : {'$in'     : uids}},
-                            {'$set'  : {'control' : 'umgr'}},
-                            multi = True)
+            self._session._dbs._c.update({'type'  : 'unit',
+                                          'uid'   : {'$in'     : uids}},
+                                         {'$set'  : {'control' : 'umgr'}},
+                                         multi=True)
 
             to_restart = list()
 
@@ -382,11 +381,9 @@ class UnitManager(rpu.Component):
         #        to use 'find'.  To avoid finding the same units over and over 
         #        again, we update the 'control' field *before* running the next
         #        find -- so we do it right here.
-        tgt_states  = rps.FINAL + [rps.UMGR_STAGING_OUTPUT_PENDING]
-        unit_cursor = self.session._dbs._c.find({
-            'type'    : 'unit',
-            'umgr'    : self.uid,
-            'control' : 'umgr_pending'})
+        unit_cursor = self.session._dbs._c.find({'type'    : 'unit',
+                                                 'umgr'    : self.uid,
+                                                 'control' : 'umgr_pending'})
 
         if not unit_cursor.count():
             # no units whatsoever...
@@ -397,11 +394,10 @@ class UnitManager(rpu.Component):
         units = list(unit_cursor)
         uids  = [unit['uid'] for unit in units]
 
-        self._session._dbs._c.update(
-                        {'type'  : 'unit',
-                                    'uid'   : {'$in'     : uids}},
-                        {'$set'  : {'control' : 'umgr'}},
-                        multi = True)
+        self._session._dbs._c.update({'type'  : 'unit',
+                                      'uid'   : {'$in'     : uids}},
+                                     {'$set'  : {'control' : 'umgr'}},
+                                     multi=True)
 
         self._log.info("units pulled: %4d %s", len(units), [u['uid'] for u in units])
         self._prof.prof('get', msg="bulk size: %d" % len(units), uid=self.uid)
