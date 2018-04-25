@@ -184,8 +184,8 @@ class ORTELib(LaunchMethod):
         if 'dvm_uri' in lm_info:
             try:
                 logger.info('terminating dvm')
-                orte_submit = ru.which('orterun')
-                if not orte_submit:
+                orterun = ru.which('orterun')
+                if not orterun:
                     raise Exception("Couldn't find orterun")
                 ru.sh_callout('%s --hnp %s --terminate' 
                              % (orterun, lm_info['dvm_uri']))

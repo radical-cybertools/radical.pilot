@@ -21,7 +21,6 @@ class ContinuousFifo(Continuous):
 
         self.slots = None
         self._last = -1   # nothing has run, yet - next up is unit.000000
-        self._n
 
         Continuous.__init__(self, cfg, session)
 

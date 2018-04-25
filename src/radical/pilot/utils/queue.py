@@ -136,7 +136,7 @@ class Queue(ru.Process):
 
         self._uid = "%s.%s" % (self._qname.replace('_', '.'), self._role)
         self._uid = ru.generate_id(self._uid)
-        self._log = self._session._get_logger(self._uid, 
+        self._log = self._session._get_logger(name=self._uid, 
                          level=self._cfg.get('log_level', 'debug'))
 
         super(Queue, self).__init__(name=self._uid, log=self._log)
@@ -260,7 +260,7 @@ class Queue(ru.Process):
         assert(self._role == QUEUE_BRIDGE), 'only bridges can be started'
 
         self._uid = self._uid + '.child'
-        self._log = self._session._get_logger(self._uid, 
+        self._log = self._session._get_logger(name=self._uid, 
                          level=self._cfg.get('log_level', 'debug'))
 
         spt.setproctitle('rp.%s' % self._uid)

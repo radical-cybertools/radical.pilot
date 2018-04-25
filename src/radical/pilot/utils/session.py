@@ -28,7 +28,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
     if not log and session:
         log = session._log
     elif not log:
-        log = ru.get_logger('radical.pilot.utils')
+        log = ru.Logger('radical.pilot.utils')
 
     ret = list()
 
@@ -201,7 +201,7 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
     if not log and session:
         log = session._log
     elif not log:
-        log = ru.get_logger('radical.pilot.utils')
+        log = ru.Logger('radical.pilot.utils')
 
     ret = list()
 
@@ -364,7 +364,7 @@ def fetch_json(sid, dburl=None, tgt=None, skip_existing=False, session=None,
     if not log and session:
         log = session._log
     elif not log:
-        log = ru.get_logger('radical.pilot.utils')
+        log = ru.Logger('radical.pilot.utils')
 
     if not tgt:
         tgt = '.'

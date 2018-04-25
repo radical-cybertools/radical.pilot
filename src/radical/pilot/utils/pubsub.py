@@ -86,7 +86,7 @@ class Pubsub(ru.Process):
 
         self._uid = "%s.%s" % (self._channel.replace('_', '.'), self._role)
         self._uid = ru.generate_id(self._uid)
-        self._log = self._session._get_logger(self._uid, 
+        self._log = self._session._get_logger(name=self._uid, 
                          level=self._cfg.get('log_level', 'debug'))
 
         # avoid superfluous logging calls in critical code sections
@@ -206,7 +206,7 @@ class Pubsub(ru.Process):
         assert(self._role == PUBSUB_BRIDGE), 'only bridges can be started'
 
         self._uid = self._uid + '.child'
-        self._log = self._session._get_logger(self._uid, 
+        self._log = self._session._get_logger(name=self._uid, 
                          level=self._cfg.get('log_level', 'debug'))
 
         spt.setproctitle('rp.%s' % self._uid)
