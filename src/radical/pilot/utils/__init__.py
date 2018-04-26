@@ -12,8 +12,9 @@ _root  = "%s/.." % _pwd
 
 version_short, version_detail, version_base, version_branch, \
         sdist_name, sdist_path = _ru.get_version([_root, _pwd])
-version = version_short
-logger  = _ru.Logger('radical.pilot')
+version  =  version_short
+logger   = _ru.Logger('radical.pilot')
+reporter = _ru.Reporter('radical.pilot')
 
 
 # ------------------------------------------------------------------------------

@@ -5,6 +5,7 @@ __license__   = "MIT"
 import saga.attributes as attributes
 
 from .utils import logger
+from .utils import reporter
 
 
 # ------------------------------------------------------------------------------
@@ -124,7 +125,7 @@ class ComputePilotDescription(attributes.Attributes):
     #
     def __init__(self, from_dict=None):
 
-        logger.report.info('<<create pilot description')
+        reporter.info('<<create pilot description')
 
         # initialize attributes
         attributes.Attributes.__init__(self)
@@ -167,11 +168,11 @@ class ComputePilotDescription(attributes.Attributes):
             self.from_dict(from_dict)
 
             if RESOURCE in from_dict and CORES in from_dict:
-                logger.report.plain(' [%s:%s]' % (from_dict[RESOURCE], from_dict[CORES]))
+                reporter.plain(' [%s:%s]' % (from_dict[RESOURCE], from_dict[CORES]))
             elif RESOURCE in from_dict:
-                logger.report.plain(' [%s]' % from_dict[RESOURCE])
+                reporter.plain(' [%s]' % from_dict[RESOURCE])
 
-        logger.report.ok('>>ok\n')
+        reporter.ok('>>ok\n')
 
 
     #---------------------------------------------------------------------------

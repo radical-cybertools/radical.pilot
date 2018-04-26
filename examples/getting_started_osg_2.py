@@ -30,7 +30,7 @@ if __name__ == '__main__':
     start = time.time()
 
     # we use a reporter class for nicer output
-    report = ru.LogReporter(name='radical.pilot')
+    report = ru.Reporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
