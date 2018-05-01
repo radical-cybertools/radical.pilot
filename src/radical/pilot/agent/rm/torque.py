@@ -54,6 +54,9 @@ class Torque(LRMS):
             self._log.warning(msg)
 
         torque_gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
+        torque_lfs_per_node   = {'path':self._cfg.get('lfs_path_per_node',None),
+                                 'size':self._cfg.get('lfs_size_per_node',  0)
+                                }
 
         # Number of cores (processors) per node
         val = os.environ.get('PBS_NUM_PPN')
@@ -104,6 +107,7 @@ class Torque(LRMS):
         # node names are unique, so can serve as node uids
         self.node_list     = [[node, node] for node in torque_node_list]
         self.gpus_per_node = torque_gpus_per_node
+        self.lfs_per_node  = torque_lfs_per_node
 
 
 # ------------------------------------------------------------------------------

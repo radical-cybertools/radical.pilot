@@ -37,6 +37,9 @@ class Fork(LRMS):
         # to preserve the previous behavior (1 node).
         self.cores_per_node = self._cfg.get('cores_per_node', self.requested_cores)
         self.gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
+        self.lfs_per_node   = {'path':self._cfg.get('lfs_path_per_node',None),
+                               'size':self._cfg.get('lfs_size_per_node',  0)
+                              }
 
         self.node_list  = list()
         requested_nodes = int(math.ceil(float(self.requested_cores) / \

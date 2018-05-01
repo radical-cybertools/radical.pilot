@@ -725,7 +725,8 @@
         },
         "default_queue"               : "workq",
         "cores_per_node"              : 20,
-        "lfs_per_node"                : "/var/scratch/",
+        "lfs_path_per_node"           : "/var/scratch/",
+        "lfs_size_per_node"           : 200496
         "lrms"                        : "TORQUE",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
