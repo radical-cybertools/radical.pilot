@@ -25,8 +25,8 @@ import threading as mt
 # General idea:
 # The availability will be obtained from the lrms_node_list and assigned to
 # the node list of the class. The requirement will be obtained from the cud in
-# the alloc_nompi and alloc_mpi methods. Using the availability and requirement,
-# the _find_resources method will return the core and gpu ids.
+# the alloc_nompi and alloc_mpi methods. Using the availability and
+# requirement, the _find_resources method will return the core and gpu ids.
 #
 # Expected DS of the nodelist
 # self.nodes = [{
@@ -478,14 +478,13 @@ class Continuous(AgentSchedulingComponent):
             find_lfs = min(requested_lfs - alloced_lfs, lfs_per_node)
 
             # under the constraints so derived, check what we find on this node
-            cores, gpus, lfs = self._find_resources(node,
-                                                    find_cores,
-                                                    find_gpus,
-                                                    find_lfs,
+            cores, gpus, lfs = self._find_resources(node=node,
+                                                    requested_cores=find_cores,
+                                                    requested_gpus=find_gpus,
+                                                    requested_lfs=find_lfs,
                                                     chunk=threads_per_proc,
                                                     partial=partial
                                                     )
-            # TODO: make the arguments of _find_resources positional?
 
             # and check the result.
             if not cores and not gpus and not lfs:
@@ -518,7 +517,7 @@ class Continuous(AgentSchedulingComponent):
 
             alloced_cores += len(cores)
             alloced_gpus += len(gpus)
-            alloced_lfs += len(lfs)
+            alloced_lfs += lfs
             is_first = False
 
             # or maybe don't continue the search if we have in fact enough!
