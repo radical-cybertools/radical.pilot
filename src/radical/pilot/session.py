@@ -51,6 +51,9 @@ class Session(rs.Session):
     instances.
     """
 
+    # the reporter is an applicataion-level singleton
+    _reporter = None
+
     # We keep a static typemap for component startup. If we ever want to
     # become reeeealy fancy, we can derive that typemap from rp module
     # inspection.
@@ -170,7 +173,6 @@ class Session(rs.Session):
 
         if not self._cfg.get('session_id'): self._cfg['session_id'] = self._uid 
         if not self._cfg.get('owner')     : self._cfg['owner']      = self._uid 
-        if not self._cfg.get('debug')     : self._cfg['debug']      = 'DEBUG' 
         if not self._cfg.get('logdir')    : self._cfg['logdir']     = '%s/%s' \
                                                      % (os.getcwd(), self._uid)
 
@@ -623,22 +625,10 @@ class Session(rs.Session):
         log files end up in a separate directory with the name of `session.uid`.
         """
 
-        log = ru.Logger(name, ns='radical.pilot', level=level, path=self._logdir)
+        log = ru.Logger(name=name, ns='radical.pilot', targets=['.'], 
+                        path=self._logdir, level=level)
 
         return log
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_profiler(self, name):
-        """
-        This is a thin wrapper around `ru.Profiler()` which makes sure that
-        log files end up in a separate directory with the name of `session.uid`.
-        """
-
-        prof = ru.Profiler(name, ns='radical.pilot', path=self._logdir)
-
-        return prof
 
 
     # --------------------------------------------------------------------------
@@ -649,9 +639,23 @@ class Session(rs.Session):
         log files end up in a separate directory with the name of `session.uid`.
         """
 
-        rep = ru.Reporter(name, ns='radical.pilot', path=self._logdir)
+        if not self._reporter:
+            self._reporter = ru.Reporter(name=name, ns='radical.pilot',
+                                         targets=['stdout'], path=self._logdir)
+        return self._reporter
 
-        return rep
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_profiler(self, name):
+        """
+        This is a thin wrapper around `ru.Profiler()` which makes sure that
+        log files end up in a separate directory with the name of `session.uid`.
+        """
+
+        prof = ru.Profiler(name=name, ns='radical.pilot', path=self._logdir)
+
+        return prof
 
 
     # --------------------------------------------------------------------------

@@ -301,7 +301,7 @@ class Component(ru.Process):
             raise ValueError('Component needs a uid (%s)' % type(self))
 
         # state we carry over the fork
-        self._debug      = cfg.get('debug', 'DEBUG')
+        self._debug      = cfg.get('debug')
         self._owner      = cfg.get('owner', self.uid)
         self._ctype      = "%s.%s" % (self.__class__.__module__,
                                       self.__class__.__name__)

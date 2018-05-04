@@ -4,17 +4,15 @@
 # a chance to kick in before the logging module is pulled by any other 3rd party
 # module, and also to monkeypatch `os.fork()` for the `atfork` functionality.
 # we also get the version string at this point.
-import radical.utils as _ru
+#
 import os
+import radical.utils as _ru
 
-_pwd   = os.path.dirname (__file__)
-_root  = "%s/.." % _pwd
+_root = "%s/.." % os.path.dirname(__file__)
 
 version_short, version_detail, version_base, version_branch, \
-        sdist_name, sdist_path = _ru.get_version([_root, _pwd])
-version  =  version_short
-logger   = _ru.Logger('radical.pilot')
-reporter = _ru.Reporter('radical.pilot')
+        sdist_name, sdist_path = _ru.get_version(_root)
+version = version_short
 
 
 # ------------------------------------------------------------------------------

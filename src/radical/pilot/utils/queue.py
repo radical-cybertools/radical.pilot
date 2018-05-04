@@ -131,13 +131,10 @@ class Queue(ru.Process):
 
         assert(self._role in QUEUE_ROLES), 'invalid role %s' % self._role
 
-        # FIXME
-        self._cfg['log_level'] = 'debug'
-
         self._uid = "%s.%s" % (self._qname.replace('_', '.'), self._role)
         self._uid = ru.generate_id(self._uid)
         self._log = self._session._get_logger(name=self._uid, 
-                         level=self._cfg.get('log_level', 'debug'))
+                         level=self._cfg.get('log_level'))
 
         super(Queue, self).__init__(name=self._uid, log=self._log)
 
@@ -261,7 +258,7 @@ class Queue(ru.Process):
 
         self._uid = self._uid + '.child'
         self._log = self._session._get_logger(name=self._uid, 
-                         level=self._cfg.get('log_level', 'debug'))
+                         level=self._cfg.get('log_level'))
 
         spt.setproctitle('rp.%s' % self._uid)
         self._log.info('start bridge %s on %s', self._uid, self._addr)

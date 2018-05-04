@@ -512,7 +512,12 @@ class PilotManager(rpu.Component):
             if self._session._rec:
                 ru.write_json(pd.as_dict(), "%s/%s.batch.%03d.json" \
                         % (self._session._rec, pilot.uid, self._rec_id))
-            self._rep.progress()
+
+            if 'resource' in pd and 'cores' in pd:
+                self._rep.plain('[%s:%s]\n\t' % (pd['resource'], pd['cores']))
+            elif 'resource' in pd:
+                self._rep.plain('[%s]\n\t' % pd['resource'])
+
 
         # initial state advance to 'NEW'
         # FIXME: we should use update_pilot(), but that will not trigger an

@@ -66,7 +66,6 @@ class Agent_0(rpu.Worker):
 
         # sanity check on config settings
         if not 'cores'               in cfg: raise ValueError('Missing number of cores')
-        if not 'debug'               in cfg: raise ValueError('Missing DEBUG level')
         if not 'lrms'                in cfg: raise ValueError('Missing LRMS')
         if not 'dburl'               in cfg: raise ValueError('Missing DBURL')
         if not 'pilot_id'            in cfg: raise ValueError('Missing pilot id')
