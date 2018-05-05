@@ -4,9 +4,7 @@ __license__   = "MIT"
 
 
 import os
-import copy
 import time
-import pprint
 import threading
 
 import radical.utils as ru
@@ -26,19 +24,19 @@ from .umgr import scheduler as rpus
 class UnitManager(rpu.Component):
     """
     A UnitManager manages :class:`radical.pilot.ComputeUnit` instances which
-    represent the **executable** workload in RADICAL-Pilot. A UnitManager connects
-    the ComputeUnits with one or more :class:`Pilot` instances (which represent
-    the workload **executors** in RADICAL-Pilot) and a **scheduler** which
-    determines which :class:`ComputeUnit` gets executed on which
+    represent the **executable** workload in RADICAL-Pilot. A UnitManager
+    connects the ComputeUnits with one or more :class:`Pilot` instances (which
+    represent the workload **executors** in RADICAL-Pilot) and a **scheduler**
+    which determines which :class:`ComputeUnit` gets executed on which
     :class:`Pilot`.
 
     **Example**::
 
-        s = radical.pilot.Session(database_url=DBURL)
+        s = rp.Session(database_url=DBURL)
 
-        pm = radical.pilot.PilotManager(session=s)
+        pm = rp.PilotManager(session=s)
 
-        pd = radical.pilot.ComputePilotDescription()
+        pd = rp.ComputePilotDescription()
         pd.resource = "futuregrid.alamo"
         pd.cores = 16
 
@@ -48,15 +46,15 @@ class UnitManager(rpu.Component):
         # Create a workload of 128 '/bin/sleep' compute units
         compute_units = []
         for unit_count in range(0, 128):
-            cu = radical.pilot.ComputeUnitDescription()
+            cu = rp.ComputeUnitDescription()
             cu.executable = "/bin/sleep"
             cu.arguments = ['60']
             compute_units.append(cu)
 
         # Combine the two pilots, the workload and a scheduler via
         # a UnitManager.
-        um = radical.pilot.UnitManager(session=session,
-                                       scheduler=radical.pilot.SCHEDULER_ROUND_ROBIN)
+        um = rp.UnitManager(session=session,
+                            scheduler=rp.SCHEDULER_ROUND_ROBIN)
         um.add_pilot(p1)
         um.submit_units(compute_units)
 
@@ -312,27 +310,25 @@ class UnitManager(rpu.Component):
             #        units.
             uids = [unit['uid'] for unit in units]
 
-            self._session._dbs._c.update(
-                            {'type'  : 'unit',
-                                        'uid'   : {'$in'     : uids}},
-                            {'$set'  : {'control' : 'umgr'}},
-                            multi = True)
-
+            self._session._dbs._c.update({'type'  : 'unit',
+                                          'uid'   : {'$in'     : uids}},
+                                         {'$set'  : {'control' : 'umgr'}},
+                                         multi=True)
             to_restart = list()
 
             for unit in units:
+
                 unit['state'] = rps.FAILED
-                if unit['description'].get('restartable'):
-                    self._log.debug('unit %s is  restartable', unit['uid'])
-                    unit['restarted'] = True
-                    ud = rpcud.ComputeUnitDescription(unit['description'])
-                    to_restart.append(ud)
-                    # FIXME: should we increment some restart counter in the
-                    #        description?
-                    # FIXME: we could submit the units individually, and then
-                    #        reference the resulting new uid in the old unit.
-                else:
+                if not unit['description'].get('restartable'):
                     self._log.debug('unit %s not restartable', unit['uid'])
+                    continue
+
+                self._log.debug('unit %s is  restartable', unit['uid'])
+                unit['restarted'] = True
+                ud = rpcud.ComputeUnitDescription(unit['description'])
+                to_restart.append(ud)
+                # FIXME: increment some restart counter in the description?
+                # FIXME: reference the resulting new uid in the old unit.
 
             if to_restart and not self._closed:
                 self._log.debug('restart %s units', len(to_restart))
@@ -346,7 +342,7 @@ class UnitManager(rpu.Component):
             return True
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def _state_pull_cb(self):
 
@@ -368,7 +364,7 @@ class UnitManager(rpu.Component):
         return True
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def _unit_pull_cb(self):
 
@@ -383,10 +379,9 @@ class UnitManager(rpu.Component):
         #        again, we update the 'control' field *before* running the next
         #        find -- so we do it right here.
         tgt_states  = rps.FINAL + [rps.UMGR_STAGING_OUTPUT_PENDING]
-        unit_cursor = self.session._dbs._c.find({
-            'type'    : 'unit',
-            'umgr'    : self.uid,
-            'control' : 'umgr_pending'})
+        unit_cursor = self.session._dbs._c.find({'type'    : 'unit',
+                                                 'umgr'    : self.uid,
+                                                 'control' : 'umgr_pending'})
 
         if not unit_cursor.count():
             # no units whatsoever...
@@ -397,13 +392,12 @@ class UnitManager(rpu.Component):
         units = list(unit_cursor)
         uids  = [unit['uid'] for unit in units]
 
-        self._session._dbs._c.update(
-                        {'type'  : 'unit',
-                                    'uid'   : {'$in'     : uids}},
-                        {'$set'  : {'control' : 'umgr'}},
-                        multi = True)
+        self._session._dbs._c.update({'type'  : 'unit',
+                                      'uid'   : {'$in'     : uids}},
+                                     {'$set'  : {'control' : 'umgr'}},
+                                     multi=True)
 
-        self._log.info("units pulled: %4d %s", len(units), [u['uid'] for u in units])
+        self._log.info("units pulled: %4d", len(units))
         self._prof.prof('get', msg="bulk size: %d" % len(units), uid=self.uid)
         for unit in units:
 
@@ -448,7 +442,7 @@ class UnitManager(rpu.Component):
         for thing in things:
 
             if thing.get('type') == 'unit':
-        
+
                 self._log.debug('umgr state cb for unit: %s', thing['uid'])
 
                 # we got the state update from the state callback - don't
@@ -506,12 +500,13 @@ class UnitManager(rpu.Component):
 
         with self._cb_lock:
             for cb_name, cb_val in self._callbacks[rpt.UNIT_STATE].iteritems():
-            
-                self._log.debug('%s calls state cb %s for %s', self.uid, cb_name, unit_obj.uid)
+
+                self._log.debug('%s calls state cb %s for %s', 
+                                self.uid, cb_name, unit_obj.uid)
 
                 cb      = cb_val['cb']
                 cb_data = cb_val['cb_data']
-                
+
                 if cb_data: cb(unit_obj, state, cb_data)
                 else      : cb(unit_obj, state)
 
@@ -737,7 +732,7 @@ class UnitManager(rpu.Component):
                 self._units[unit.uid] = unit
 
             if self._session._rec:
-                ru.write_json(ud.as_dict(), "%s/%s.batch.%03d.json" \
+                ru.write_json(ud.as_dict(), "%s/%s.batch.%03d.json"
                         % (self._session._rec, unit.uid, self._rec_id))
 
             self._log.report.progress()
@@ -746,12 +741,13 @@ class UnitManager(rpu.Component):
             self._rec_id += 1
 
         # insert units into the database, as a bulk.
-        unit_docs = [unit.as_dict() for unit in units]
+        unit_docs = [u.as_dict() for u in units]
         self._session._dbs.insert_units(unit_docs)
 
         # Only after the insert can we hand the units over to the next
         # components (ie. advance state).
-        self.advance(unit_docs, rps.UMGR_SCHEDULING_PENDING, publish=True, push=True)
+        self.advance(unit_docs, rps.UMGR_SCHEDULING_PENDING, 
+                     publish=True, push=True)
         self._log.report.ok('>>ok\n')
 
         if ret_list: return units
@@ -770,14 +766,13 @@ class UnitManager(rpu.Component):
         **Returns:**
               * A list of :class:`radical.pilot.ComputeUnit` objects.
         """
-        
+
         self.is_valid()
 
         if not uids:
             with self._units_lock:
                 ret = self._units.values()
             return ret
-
 
         ret_list = True
         if (not isinstance(uids, list)) and (uids is not None):
@@ -1024,7 +1019,7 @@ class UnitManager(rpu.Component):
         # FIXME: the signature should be (self, metrics, cb, cb_data)
 
         if  metric not in rpt.UMGR_METRICS :
-            raise ValueError ("Metric '%s' is not available on the unit manager" % metric)
+            raise ValueError ("Metric '%s' not available on the umgr" % metric)
 
         with self._cb_lock:
             cb_name = cb.__name__
@@ -1038,7 +1033,7 @@ class UnitManager(rpu.Component):
 
 
         if metric and metric not in rpt.UMGR_METRICS :
-            raise ValueError ("Metric '%s' is not available on the unit manager" % metric)
+            raise ValueError ("Metric '%s' not available on the umgr" % metric)
 
         if not metric:
             metrics = rpt.UMGR_METRICS
@@ -1059,7 +1054,7 @@ class UnitManager(rpu.Component):
                 for cb_name in to_delete:
 
                     if cb_name not in self._callbacks[metric]:
-                        raise ValueError("Callback '%s' is not registered" % cb_name)
+                        raise ValueError("Callback %s not registered" % cb_name)
 
                     del(self._callbacks[metric][cb_name])
 
