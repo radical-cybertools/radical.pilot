@@ -315,7 +315,6 @@ class UnitManager(rpu.Component):
                                          {'$set'  : {'control' : 'umgr'}},
                                          multi=True)
             to_restart = list()
-
             for unit in units:
 
                 unit['state'] = rps.FAILED
@@ -378,11 +377,9 @@ class UnitManager(rpu.Component):
         #        to use 'find'.  To avoid finding the same units over and over 
         #        again, we update the 'control' field *before* running the next
         #        find -- so we do it right here.
-        tgt_states  = rps.FINAL + [rps.UMGR_STAGING_OUTPUT_PENDING]
         unit_cursor = self.session._dbs._c.find({'type'    : 'unit',
                                                  'umgr'    : self.uid,
                                                  'control' : 'umgr_pending'})
-
         if not unit_cursor.count():
             # no units whatsoever...
             self._log.info("units pulled:    0")
