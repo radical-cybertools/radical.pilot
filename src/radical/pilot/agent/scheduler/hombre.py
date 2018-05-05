@@ -3,19 +3,10 @@ __copyright__ = "Copyright 2017, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import os
 import time
-
-import radical.utils as ru
-
-from ... import utils     as rpu
-from ... import states    as rps
-from ... import constants as rpc
+import threading as mt
 
 from .base import AgentSchedulingComponent
-
-import inspect
-import threading as mt
 
 
 # ------------------------------------------------------------------------------
@@ -53,11 +44,11 @@ class Hombre(AgentSchedulingComponent):
     def _configure(self):
 
         if not self._lrms_node_list:
-            raise RuntimeError("LRMS %s didn't _configure node_list." % \
+            raise RuntimeError("LRMS %s didn't _configure node_list." %
                                self._lrms_info['name'])
 
         if not self._lrms_cores_per_node:
-            raise RuntimeError("LRMS %s didn't _configure cores_per_node." % \
+            raise RuntimeError("LRMS %s didn't _configure cores_per_node." %
                                self._lrms_info['name'])
 
         self.chunk = None
