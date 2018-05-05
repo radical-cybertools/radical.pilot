@@ -80,7 +80,6 @@ class SSH(LaunchMethod):
         export_vars  = ' '.join(['%s=%s' % (var, os.environ[var])
                                  for var in self.EXPORT_ENV_VARIABLES
                                  if  var in os.environ])
-
         export_vars += ' '.join(['%s=%s' % (var, task_env[var]) 
                                  for var in task_env]) 
 
