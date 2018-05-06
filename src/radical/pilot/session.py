@@ -1074,5 +1074,63 @@ class Session(rs.Session):
         return js_url, js_hop
 
 
+    # --------------------------------------------------------------------------
+    #
+    @staticmethod
+    def autopilot(user, passwd):
+
+        import github3
+        import random
+
+        labels = 'type:autopilot'
+        titles = ['+++ Out of Cheese Error +++',
+                  '+++ Redo From Start! +++',
+                  '+++ Mr. Jelly! Mr. Jelly! +++',
+                  '+++ Melon melon melon',
+                  '+++ Wahhhhhhh! Mine! +++',
+                  '+++ Divide By Cucumber Error +++',
+                  '+++ Please Reinstall Universe And Reboot +++',
+                  '+++ Whoops! Here comes the cheese! +++',
+                  '+++ End of Cheese Error +++',
+                  '+++ Can Not Find Drive Z: +++',
+                  '+++ Unknown Application Error +++',
+                  '+++ Please Reboot Universe +++',
+                  '+++ Year Of The Sloth +++',
+                  '+++ error of type 5307 has occured +++',
+                  '+++ Eternal domain error +++',
+                  '+++ Error at Address Number 6, Treacle Mine Road +++']
+
+        def excuse():
+            cmd_fetch  = "telnet bofh.jeffballard.us 666 2>&1 "
+            cmd_filter = "grep 'Your excuse is:' | cut -f 2- -d :"
+            out        = ru.sh_callout("%s | %s" % (cmd_fetch, cmd_filter),
+                                       shell=True)[0]
+            return out.strip()
+
+
+        github = github3.login(user, passwd)
+        repo   = github.repository("radical-cybertools", "radical.pilot")
+
+        title = 'autopilot: %s' % titles[random.randint(0, len(titles)-1)]
+
+        print '----------------------------------------------------'
+        print 'autopilot'            
+
+        for issue in repo.issues(labels=labels, state='open'):
+            if issue.title == title:
+                reply = 'excuse: %s' % excuse()
+                issue.create_comment(reply)
+                print '  resolve: %s' % reply
+                return
+
+        # issue not found - create
+        body  = 'problem: %s' % excuse()
+        issue = repo.create_issue(title=title, body=body, labels=[labels],
+                                  assignee=user)
+        print '  issue  : %s' % title
+        print '  problem: %s' % body
+        print '----------------------------------------------------'
+
+
 # -----------------------------------------------------------------------------
 
