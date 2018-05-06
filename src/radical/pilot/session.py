@@ -1114,7 +1114,7 @@ class Session(rs.Session):
         title = 'autopilot: %s' % titles[random.randint(0, len(titles)-1)]
 
         print '----------------------------------------------------'
-        print 'autopilot'            
+        print 'autopilot'
 
         for issue in repo.issues(labels=labels, state='open'):
             if issue.title == title:
