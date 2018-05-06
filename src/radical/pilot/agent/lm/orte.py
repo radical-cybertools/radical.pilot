@@ -213,10 +213,10 @@ class ORTE(LaunchMethod):
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_env     = cud.get('environment', dict())
-        task_args    = cud.get('arguments',   list())
         task_mpi     = bool('mpi' in cud.get('cpu_process_type', '').lower())
         task_cores   = cud.get('cpu_processes', 0) + cud.get('gpu_processes', 0)
+        task_env     = cud.get('environment') or dict()
+        task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
      #  import pprint

@@ -4,6 +4,11 @@
   - For a list of open issues and known problems, see
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
+0.47.5 Release                                                        2018-04-12
+--------------------------------------------------------------------------------
+
+  - make sure a dict object exists even on empty env settings (#1590)
+
 
 0.47.4 Release                                                        2018-03-20
 --------------------------------------------------------------------------------

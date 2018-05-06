@@ -32,6 +32,8 @@ fi
 # This script launches a radical.pilot compute pilot.  If needed, it creates and
 # populates a virtualenv on the fly, into $VIRTENV.
 #
+# https://xkcd.com/1987/
+#
 # A created virtualenv will contain all dependencies for the RADICAL stack (see
 # $VIRTENV_RADICAL_DEPS).  The RADICAL stack itself (or at least parts of it,
 # see $VIRTENV_RADICAL_MODS) will be installed into $VIRTENV/radical/, and
