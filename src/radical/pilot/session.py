@@ -15,6 +15,7 @@ __license__   = "MIT"
 
 
 import os
+import sys
 import copy
 import time
 import glob
@@ -178,8 +179,8 @@ class Session(rs.Session):
         self._log    = self._get_logger(self._cfg['owner'], self._cfg.get('debug'))
 
         if _connect:
+
             # we need a dburl to connect to.
-        
             if not dburl:
                 dburl = os.environ.get("RADICAL_PILOT_DBURL")
 
@@ -269,6 +270,19 @@ class Session(rs.Session):
         self._bridges    = ruc.start_bridges   (self._cfg, self, self._log)
         self._components = ruc.start_components(self._cfg, self, self._log)
         self.is_valid()
+
+        # at this point we have a DB connection, logger, etc, and can record
+        # some metadata
+        self._log.info('radical.pilot version: %s' % rp_version_detail)
+        self._log.info('radical.saga  version: %s' % rs.version_detail)
+        self._log.info('radical.utils version: %s' % ru.version_detail)
+
+        py_version_detail = sys.version.replace("\n", " ")
+        self.inject_metadata({'radical_stack' : {'rp': rp_version_detail,
+                                                 'rs': rs.version_detail,
+                                                 'ru': ru.version_detail,
+                                                 'py': py_version_detail}})
+
 
         # FIXME: make sure the above code results in a usable session on
         #        reconnect
@@ -635,7 +649,6 @@ class Session(rs.Session):
         if not level: level = os.environ.get('RADICAL_VERBOSE', 'REPORT')
 
         log = ru.get_logger(name, target='.', level=level, path=self._logdir)
-        log.info('radical.pilot        version: %s' % rp_version_detail)
 
         return log
 
@@ -653,14 +666,9 @@ class Session(rs.Session):
         if not isinstance(metadata, dict):
             raise Exception("Session metadata should be a dict!")
 
-        # Always record the radical software stack
-        metadata['radical_stack'] = {'rp': rp_version_detail,
-                                     'rs': rs.version_detail,
-                                     'ru': ru.version_detail}
-
-        result = self._dbs._c.update({'type' : 'session', 
-                                      "uid"  : self.uid},
-                                     {"$set" : {"metadata": metadata}})
+        self._dbs._c.update({'type'  : 'session', 
+                             "uid"   : self.uid},
+                            {"$push" : {"metadata": metadata}})
 
 
     # --------------------------------------------------------------------------
