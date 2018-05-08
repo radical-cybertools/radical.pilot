@@ -3,10 +3,14 @@
     "bw_aprun": {
         "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system (https://bluewaters.ncsa.illinois.edu/)",
         "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
-        "schemas"                     : ["gsissh"],
+        "schemas"                     : ["gsissh", "local"],
         "gsissh"                      : {
             "job_manager_endpoint"    : "torque+gsissh://bw.ncsa.illinois.edu",
             "filesystem_endpoint"     : "gsisftp://bw.ncsa.illinois.edu/"
+        },
+        "local"                       : {
+            "job_manager_endpoint"    : "torque://localhost",
+            "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
