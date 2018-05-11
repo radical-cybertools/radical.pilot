@@ -61,14 +61,6 @@ class MPIExec(LaunchMethod):
                 for var in env_list:
                     env_string += '-x "%s" ' % var
 
-            else:
-                # this is a crude version of env transplanting where we prep the
-                # shell command line.  We likely won't survive any complicated
-                # vars (multiline, quotes, etc)
-                env_string = ' '
-                for var in task_env:
-                    env_string += '%s="$%s" ' % (var, var)
-
         if 'nodes' not in slots:
             raise RuntimeError('insufficient information to launch via %s: %s'
                               % (self.name, slots))

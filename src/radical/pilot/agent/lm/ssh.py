@@ -71,20 +71,23 @@ class SSH(LaunchMethod):
             raise RuntimeError('insufficient information to launch via %s: %s'
                               % (self.name, slots))
 
-        if len(slots['nodes'] > 1):
+        if len(slots['nodes']) > 1:
             raise RuntimeError('rsh cannot run multinode units')
 
         host = slots['nodes'][0][0]
 
-        # Pass configured and available environment variables to the remote shell
-        export_vars  = ' '.join(['%s=%s' % (var, os.environ[var])
-                                 for var in self.EXPORT_ENV_VARIABLES
-                                 if  var in os.environ])
-        export_vars += ' '.join(['%s=%s' % (var, task_env[var]) 
-                                 for var in task_env]) 
+        # Pass configured and available environment variables.
+        # This is a crude version of env transplanting where we prep the
+        # shell command line.  We likely won't survive any complicated vars
+        # (multiline, quotes, etc)
+        env_string  = ' '.join(['%s=%s' % (var, os.environ[var])
+                                for var in self.EXPORT_ENV_VARIABLES
+                                if  var in os.environ])
+        env_string += ' '.join(['%s=%s' % (var, task_env[var]) 
+                                for var in task_env]) 
 
-        ssh_hop_cmd = "%s %s %s %s" % (self.launch_command, host, export_vars,
-                launch_script_hop)
+        ssh_hop_cmd = "%s %s %s %s" % (self.launch_command, host, env_string,
+                                       launch_script_hop)
 
         return task_command, ssh_hop_cmd
 
