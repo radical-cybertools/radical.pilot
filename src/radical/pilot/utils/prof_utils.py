@@ -98,7 +98,6 @@ def get_session_profile(sid, src=None):
 # ------------------------------------------------------------------------------
 # 
 def get_session_description(sid, src=None, dburl=None):
-    1
     """
     This will return a description which is usable for radical.analytics
     evaluation.  It informs about
