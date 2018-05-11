@@ -174,7 +174,6 @@ class Session(rs.Session):
         if not self._cfg.get('debug')     : self._cfg['debug']      = 'DEBUG' 
         if not self._cfg.get('logdir')    : self._cfg['logdir']     = '%s/%s' \
                                                      % (os.getcwd(), self._uid)
-
         self._logdir = self._cfg['logdir']
         self._log    = self._get_logger(self._cfg['owner'], self._cfg.get('debug'))
 
@@ -666,9 +665,10 @@ class Session(rs.Session):
         if not isinstance(metadata, dict):
             raise Exception("Session metadata should be a dict!")
 
-        self._dbs._c.update({'type'  : 'session', 
-                             "uid"   : self.uid},
-                            {"$push" : {"metadata": metadata}})
+        if self._dbs and self._dbs._c:
+            self._dbs._c.update({'type'  : 'session',
+                                 "uid"   : self.uid},
+                                {"$push" : {"metadata": metadata}})
 
 
     # --------------------------------------------------------------------------
