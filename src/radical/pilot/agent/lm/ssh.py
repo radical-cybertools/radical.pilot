@@ -71,7 +71,7 @@ class SSH(LaunchMethod):
             raise RuntimeError('insufficient information to launch via %s: %s'
                               % (self.name, slots))
 
-        if len(slots['nodes'] > 1):
+        if len(slots['nodes']) > 1:
             raise RuntimeError('rsh cannot run multinode units')
 
         host = slots['nodes'][0][0]
