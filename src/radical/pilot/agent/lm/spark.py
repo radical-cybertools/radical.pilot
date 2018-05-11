@@ -108,7 +108,7 @@ class Spark(LaunchMethod):
         #load in the spark enviroment of master and slaves the
         #configurations of the machine
         if master_ip!='localhost':
-            for config in cfg['resource_cfg']['pre_bootstrap_1']:
+            for config in cfg['resource_cfg']['pre_bootstrap_0']:
                 spark_env_file.write(config + '\n')
 
         spark_env_file.write('export SPARK_MASTER_HOST=' + master_ip + "\n")

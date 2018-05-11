@@ -46,7 +46,6 @@ JOB_CHECK_MAX_MISSES  =   3  # number of times to find a job missing before
 
 LOCAL_SCHEME   = 'file'
 BOOTSTRAPPER_0 = "bootstrap_0.sh"
-BOOTSTRAPPER_1 = "bootstrap_1.sh"
 
 # ==============================================================================
 #
@@ -773,8 +772,8 @@ class Default(PMGRLaunchingComponent):
         forward_tunnel_endpoint = rcfg.get('forward_tunnel_endpoint')
         lrms                    = rcfg.get('lrms')
         mpi_launch_method       = rcfg.get('mpi_launch_method', '')
+        pre_bootstrap_0         = rcfg.get('pre_bootstrap_0', [])
         pre_bootstrap_1         = rcfg.get('pre_bootstrap_1', [])
-        pre_bootstrap_2         = rcfg.get('pre_bootstrap_2', [])
         python_interpreter      = rcfg.get('python_interpreter')
         task_launch_method      = rcfg.get('task_launch_method')
         rp_version              = rcfg.get('rp_version',          DEFAULT_RP_VERSION)
@@ -864,7 +863,7 @@ class Default(PMGRLaunchingComponent):
         if 'global_virtenv' in rcfg:
             raise RuntimeError("'global_virtenv' is deprecated (%s)" % resource)
 
-        # Create a host:port string for use by the bootstrap_1.
+        # Create a host:port string for use by the bootstrap_0.
         db_url = rs.Url(agent_dburl)
         if db_url.port:
             db_hostport = "%s:%d" % (db_url.host, db_url.port)
@@ -1016,9 +1015,9 @@ class Default(PMGRLaunchingComponent):
         if tunnel_bind_device:      bootstrap_args += " -t '%s'" % tunnel_bind_device
         if cleanup:                 bootstrap_args += " -x '%s'" % cleanup
 
-        for arg in pre_bootstrap_1:
+        for arg in pre_bootstrap_0:
             bootstrap_args += " -e '%s'" % arg
-        for arg in pre_bootstrap_2:
+        for arg in pre_bootstrap_1:
             bootstrap_args += " -w '%s'" % arg
 
         agent_cfg['owner']              = 'agent_0'
@@ -1138,8 +1137,8 @@ class Default(PMGRLaunchingComponent):
         jd.arguments             = ['-l %s' % bootstrap_tgt, bootstrap_args]
         jd.working_directory     = pilot_sandbox
         jd.project               = project
-        jd.output                = "bootstrap_1.out"
-        jd.error                 = "bootstrap_1.err"
+        jd.output                = "bootstrap_0.out"
+        jd.error                 = "bootstrap_0.err"
         jd.total_cpu_count       = number_cores
         jd.total_gpu_count       = number_gpus
         jd.processes_per_host    = cores_per_node

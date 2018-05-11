@@ -27,7 +27,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "pre_bootstrap_1"             : ["module purge",
+        "pre_bootstrap_0"             : ["module purge",
                                          "module load TACC",
                                          "module load intel/15.0.2",
                                          "module load python/2.7.12",
@@ -76,7 +76,7 @@
         "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",
-        "pre_bootstrap_1"             : ["module purge",
+        "pre_bootstrap_0"             : ["module purge",
             "module load TACC",
             "module load intel/15.0.2",
             "module load python/2.7.12",
@@ -88,7 +88,7 @@
             "module load openmpi/2017_04_20_539f71d",
             "export OMPI_MCA_plm=^slurm"
         ],
-        "pre_bootstrap_2"             : ["export PATH=$PATH",
+        "pre_bootstrap_1"             : ["export PATH=$PATH",
             "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
         ],
         "default_remote_workdir"      : "$WORK",
@@ -127,7 +127,7 @@
         "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE_LIB",
         "mpi_launch_method"           : "ORTE_LIB",
-        "pre_bootstrap_1"             : ["module purge",
+        "pre_bootstrap_0"             : ["module purge",
             "module load TACC",
             "module load intel/15.0.2",
             "module load python/2.7.12",
@@ -139,7 +139,7 @@
             "module load openmpi/2017_04_20_539f71d",
             "export OMPI_MCA_plm=^slurm"
         ],
-        "pre_bootstrap_2"             : ["export PATH=$PATH",
+        "pre_bootstrap_1"             : ["export PATH=$PATH",
             "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
         ],
         "default_remote_workdir"      : "$WORK",
@@ -177,7 +177,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "YARN",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "pre_bootstrap_1"             : ["module purge",
+        "pre_bootstrap_0"             : ["module purge",
                                          "module load TACC",
                                          "module load intel/15.0.2",
                                          "module load python/2.7.12",
@@ -222,7 +222,7 @@
         "agent_launch_method"         : "FORK",
         "task_launch_method"          : "SPARK",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "pre_bootstrap_1"             : ["module purge",
+        "pre_bootstrap_0"             : ["module purge",
                                          "module load TACC",
                                          "module load intel/15.0.2",
                                          "module load python/2.7.12",
@@ -232,7 +232,7 @@
                                          "source ~train00/ssi_sourceme",
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
-        "pre_bootstrap_2"             : ["export PATH=$PATH",
+        "pre_bootstrap_1"             : ["export PATH=$PATH",
                                          "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
                                         ],
         "default_remote_workdir"      : "$WORK",
@@ -271,11 +271,11 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "pre_bootstrap_1"             : [
+        "pre_bootstrap_0"             : [
                                        # "module load python",
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
-        "pre_bootstrap_2"             : ["export PATH=$PATH",
+        "pre_bootstrap_1"             : ["export PATH=$PATH",
                                          "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
                                         ],
         "default_remote_workdir"      : "$WORK",
@@ -313,10 +313,10 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "YARN",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "pre_bootstrap_1"             : ["module load python",
+        "pre_bootstrap_0"             : ["module load python",
                                          "export TACC_DELETE_FILES=TRUE"
                                         ],
-        "pre_bootstrap_2"             : ["export PATH=$PATH",
+        "pre_bootstrap_1"             : ["export PATH=$PATH",
                                          "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
                                         ],
         "default_remote_workdir"      : "$WORK",
@@ -355,12 +355,12 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SPARK",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "pre_bootstrap_1"             : [ 
+        "pre_bootstrap_0"             : [ 
                                         "module load python" ,
                                         "export TACC_DELETE_FILES=TRUE",
                                         "module load jdk64/1.8.0"
                                         ],
-        "pre_bootstrap_2"             : ["export PATH=$PATH",
+        "pre_bootstrap_1"             : ["export PATH=$PATH",
                                          "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
                                         ],
         "default_remote_workdir"      : "$WORK",
@@ -393,7 +393,7 @@
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "IBRUN",
         "spmd_variation"              : "24way",
-        "pre_bootstrap_1"             : ["module purge",
+        "pre_bootstrap_0"             : ["module purge",
                                          "module load TACC",
                                          "module load cluster",
                                          "module load mvapich2",
@@ -428,7 +428,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "IBRUN",
-        "pre_bootstrap_1"             :["module load TACC",
+        "pre_bootstrap_0"             :["module load TACC",
                                          "module load intel/17.0.4",
                                          "module load python/2.7.13"
                                         ],
@@ -464,7 +464,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "pre_bootstrap_1"             : ["module purge", 
+        "pre_bootstrap_0"             : ["module purge", 
                                          "module load python pgi mvapich2_ib gnubase"],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
@@ -493,7 +493,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "pre_bootstrap_1"             : ["module purge", 
+        "pre_bootstrap_0"             : ["module purge", 
                                          "module load python intel mvapich2_ib gnubase"],
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
@@ -523,7 +523,7 @@
         "agent_launch_method"         : "DPLACE",
         "task_launch_method"          : "DPLACE",
         "mpi_launch_method"           : "MPIRUN_DPLACE",
-        "pre_bootstrap_1"             : ["source /usr/share/modules/init/bash",
+        "pre_bootstrap_0"             : ["source /usr/share/modules/init/bash",
                                          "module load python",
                                          "unset PYTHONPATH"
                                         ],
@@ -557,7 +557,7 @@
         "agent_launch_method"         : "FORK",
         "task_launch_method"          : "FORK",
         "mpi_launch_method"           : "MPIEXEC",
-        "pre_bootstrap_1"             : ["source /usr/share/Modules/init/bash",
+        "pre_bootstrap_0"             : ["source /usr/share/Modules/init/bash",
                                          "module load python",
                                          "unset PYTHONPATH"
                                         ],
@@ -591,7 +591,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "IBRUN",
-        "pre_bootstrap_1"             : ["module load python"],
+        "pre_bootstrap_0"             : ["module load python"],
        #"default_remote_workdir"      : "/oasis/scratch/comet/$USER/temp_project",
        #"valid_roots"                 : ["/oasis/scratch/comet"],
         "valid_roots"                 : ["/home"],
@@ -625,7 +625,7 @@
         "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",
-        "pre_bootstrap_1"             : ["module use --append /home/amerzky/ompi/modules",
+        "pre_bootstrap_0"             : ["module use --append /home/amerzky/ompi/modules",
                                          "module load python",
                                          "module load openmpi/2017_02_17_6da4dbb"
         ],
@@ -659,7 +659,7 @@
         "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE_LIB",
         "mpi_launch_method"           : "ORTE_LIB",
-        "pre_bootstrap_1"             : ["module use --append /home/amerzky/ompi/modules",
+        "pre_bootstrap_0"             : ["module use --append /home/amerzky/ompi/modules",
                                          "module load python",
                                          "module load openmpi/2017_02_17_6da4dbb"
         ],
@@ -693,8 +693,8 @@
         "agent_launch_method"         : "FORK",
         "task_launch_method"          : "SPARK",
         "mpi_launch_method"           : "MPIRUN_RSH",
-        "pre_bootstrap_1"             : ["module load python"],
-        "pre_bootstrap_2"             : [
+        "pre_bootstrap_0"             : ["module load python"],
+        "pre_bootstrap_1"             : [
             "export PATH=$PATH",
             "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
         ],
@@ -726,7 +726,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIEXEC",
-        "pre_bootstrap_1"             : ["module load python/2.7.7-anaconda"],
+        "pre_bootstrap_0"             : ["module load python/2.7.7-anaconda"],
         "default_remote_workdir"      : "/work/$USER",
         "valid_roots"                 : ["/work"],
         "rp_version"                  : "local",
@@ -754,12 +754,12 @@
         "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",
-        "pre_bootstrap_1"             : [
+        "pre_bootstrap_0"             : [
             "module load python/2.7.7-anaconda",
             "module use -a /worka/work/amerzky/radical.pilot.sandbox/openmpi/modules/",
             "module load openmpi/2017_03_13_6da4dbb"
         ],
-        "pre_bootstrap_2"             : ["export PATH=$PATH",
+        "pre_bootstrap_1"             : ["export PATH=$PATH",
             "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
         ],
         "default_remote_workdir"      : "/work/$USER",
@@ -789,12 +789,12 @@
         "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE_LIB",
         "mpi_launch_method"           : "ORTE_LIB",
-        "pre_bootstrap_1"             : [
+        "pre_bootstrap_0"             : [
             "module load python/2.7.7-anaconda",
             "module use -a /worka/work/amerzky/radical.pilot.sandbox/openmpi/modules/",
             "module load openmpi/2017_03_13_6da4dbb"
         ],
-        "pre_bootstrap_2"             : ["export PATH=$PATH",
+        "pre_bootstrap_1"             : ["export PATH=$PATH",
             "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
         ],
         "default_remote_workdir"      : "/work/$USER",
@@ -831,7 +831,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
-        "pre_bootstrap_1"             : ["module purge",
+        "pre_bootstrap_0"             : ["module purge",
                                          "module load gcc",
                                          "module load mpi/gcc_openmpi",
                                          "module load slurm",
@@ -866,7 +866,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SPARK",
         "mpi_launch_method"           : "MPIEXEC",
-        "pre_bootstrap_1"             : ["module load python"],
+        "pre_bootstrap_0"             : ["module load python"],
         "default_remote_workdir"      : "/work/$USER",
         "valid_roots"                 : ["/work"],
         "rp_version"                  : "local",
