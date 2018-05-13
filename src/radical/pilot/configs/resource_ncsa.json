@@ -3,10 +3,14 @@
     "bw_aprun": {
         "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system (https://bluewaters.ncsa.illinois.edu/)",
         "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
-        "schemas"                     : ["gsissh"],
+        "schemas"                     : ["gsissh", "local"],
         "gsissh"                      : {
             "job_manager_endpoint"    : "torque+gsissh://bw.ncsa.illinois.edu",
             "filesystem_endpoint"     : "gsisftp://bw.ncsa.illinois.edu/"
+        },
+        "local"                       : {
+            "job_manager_endpoint"    : "torque://localhost",
+            "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
@@ -66,10 +70,14 @@
     "bw_orte": {
         "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system (https://bluewaters.ncsa.illinois.edu/)",
         "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
-        "schemas"                     : ["gsissh"],
+        "schemas"                     : ["gsissh", "local"],
         "gsissh"                      : {
             "job_manager_endpoint"    : "torque+gsissh://bw.ncsa.illinois.edu",
             "filesystem_endpoint"     : "gsisftp://bw.ncsa.illinois.edu/"
+        },
+        "local"                      : {
+            "job_manager_endpoint"    : "torque://localhost",
+            "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
@@ -93,42 +101,6 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
-        "python_dist"                 : "default",
-        "gpus_per_node"               : 1
-    },
-
-    "bw_local_orte": {
-        "description"                 : "The NCSA Blue Waters Cray XE6/XK7 system (https://bluewaters.ncsa.illinois.edu/)",
-        "notes"                       : "Running 'touch .hushlogin' on the login node will reduce the likelihood of prompt detection issues.",
-        "schemas"                     : ["local"],
-        "local"                       : {
-            "job_manager_endpoint"    : "torque://localhost",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
-        "default_queue"               : "normal",
-        "lrms"                        : "TORQUE",
-        "agent_type"                  : "multicore",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
-        "agent_config"                : "cray",
-        "agent_launch_method"         : "ORTE",
-        "task_launch_method"          : "ORTE",
-        "mpi_launch_method"           : "ORTE",
-        "tunnel_bind_device"          : "ipogif0",
-        "forward_tunnel_endpoint"     : "BIND_ADDRESS",
-        "pre_bootstrap_1"             : [
-            "module switch PrgEnv-cray PrgEnv-gnu",
-            "module load bwpy",
-            "module use --append /projects/sciteam/gk4/openmpi/modules",
-            "module load openmpi"
-        ],
-        "pre_bootstrap_2"             : ["export HOME=$HOME"],
-        "default_remote_workdir"      : "/scratch/training/$USER",
-        "valid_roots"                 : ["/scratch/training"],
-        "rp_version"                  : "installed",
-        "virtenv"                     : "/scratch/training/instr004/radical.pilot.sandbox/ve_bw",
-        "virtenv_mode"                : "use",
-        "stage_cacerts"               : "True",
         "python_dist"                 : "default",
         "gpus_per_node"               : 1
     },

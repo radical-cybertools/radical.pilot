@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.47.11 Release                                                       2018-05-08
+--------------------------------------------------------------------------------
+
+  - fix schemas on BW (local orte, local aprun)
+
+
 0.47.10 Release                                                       2018-04-19
 --------------------------------------------------------------------------------
 
