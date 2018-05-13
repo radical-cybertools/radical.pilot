@@ -23,6 +23,10 @@ CLEANUP           = 'cleanup'
 EXIT_ON_ERROR     = 'exit_on_error'
 _CONFIG           = '_config'
 
+CORES             = 'cores'
+GPUS              = 'gpus'
+MEMORY            = 'memory'
+
 
 # ------------------------------------------------------------------------------
 #
@@ -174,7 +178,7 @@ class ComputePilotDescription(attributes.Attributes):
         logger.report.ok('>>ok\n')
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def __deepcopy__ (self, memo):
 
