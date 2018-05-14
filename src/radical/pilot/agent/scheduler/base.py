@@ -205,32 +205,6 @@ class AgentSchedulingComponent(rpu.Component):
     # where the above is suitable, it should be used for code consistency.
     #
 
-
-    # --------------------------------------------------------------------------
-    # Proposal
-    # the deriving schedulers should in general have the following structure in
-    # self.resources:
-    #
-    #   self.resources = {'cores':['+-----+---','+-----+--+','++++--+---',...],
-    #                     'gpus' :['++','--','+-'],
-    #                     'lfs'  :['/tmp+18','/tmp+32','/tmp+16'],
-    #                     'nodes':['node1','node2','node3']
-    #                     }
-    #
-    # The scheduler needs to be able to quickly access all the information from
-    # all nodes. Based on the groups discussion on how the Data Structures with
-    # the availability should be we propose the above scheme. We use a dictionary
-    # where each key contains the available (maximum or current) resources in the
-    # same order. The scheduler decides based on the order of resources, which then
-    # maps to actual node names. This way, the data structure can be extended without
-    # the need to change its parsing, we just add a new key with all the values.
-    # In addition, the scheduler can pull only the information that it needs.
-    #
-    # The free/busy markers are defined in rp.constants.py, and are `-` and `#`,
-    # respectively.  Some schedulers may need a more elaborate structures - but
-    # where the above is suitable, it should be used for code consistency.
-    #
-    
     def __init__(self, cfg, session):
 
         self.nodes = None
@@ -284,8 +258,6 @@ class AgentSchedulingComponent(rpu.Component):
         self._lrms_node_list      = self._cfg['lrms_info']['node_list']
         self._lrms_cores_per_node = self._cfg['lrms_info']['cores_per_node']
         self._lrms_gpus_per_node  = self._cfg['lrms_info']['gpus_per_node']
-        # lrms_lfs_per_node needs to in MB, we will assume lfs req is in MB 
-        # always
         self._lrms_lfs_per_node   = self._cfg['lrms_info']['lfs_per_node']
 
         # create and initialize the wait pool
@@ -295,6 +267,10 @@ class AgentSchedulingComponent(rpu.Component):
 
         # initialize the node list to be used by the scheduler.  A scheduler
         # instance may decide to overwrite or extend this structure.
+
+        #-----------------------------------------------------------------------
+        # Change required if the DS changes.
+
         self.nodes = []
         for node, node_uid in self._lrms_node_list:
             self.nodes.append({
@@ -302,7 +278,7 @@ class AgentSchedulingComponent(rpu.Component):
                 'uid'  : node_uid,
                 'cores': [rpc.FREE] * self._lrms_cores_per_node,
                 'gpus' : [rpc.FREE] * self._lrms_gpus_per_node,
-                'lfs'  : [rpc.FREE] * self._lrms_lfs_per_node
+                'lfs'  : self._lrms_lfs_per_node
             })
 
         # configure the scheduler instance
@@ -362,6 +338,7 @@ class AgentSchedulingComponent(rpu.Component):
         have been allocated or deallocated.  For details on the data structure,
         see top of `base.py`.
         '''
+        # This method needs to change if the DS changes. 
 
         # for node_name, node_uid, cores, gpus in slots['nodes']:
         for nodes in slots['nodes']:
@@ -390,9 +367,9 @@ class AgentSchedulingComponent(rpu.Component):
                     node['gpus'][gpu] = new_state
 
             if new_state == rpc.BUSY:
-                node['lfs'] -= nodes['lfs']
+                node['lfs']['size'] -= nodes['lfs']['size']
             else:
-                node['lfs'] += nodes['lfs']
+                node['lfs']['size'] += nodes['lfs']['size']
 
 
     # --------------------------------------------------------------------------
@@ -404,6 +381,8 @@ class AgentSchedulingComponent(rpu.Component):
         Returns a multi-line string corresponding to the status of the node list
         '''
 
+        # This method should change if the DS changes.
+        
         ret = "|"
         for node in self.nodes:
             for core in node['cores']:
