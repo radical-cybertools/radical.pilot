@@ -5,6 +5,13 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.47.12 Release                                                       2018-05-19
+--------------------------------------------------------------------------------
+
+  - ensure that units are started in their own process group, to ensure clean
+    cancellation semantics.
+
+
 0.47.11 Release                                                       2018-05-08
 --------------------------------------------------------------------------------
 

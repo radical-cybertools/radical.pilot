@@ -207,7 +207,9 @@ profile_event()
 # expires: the timeout() function expects *exactly* two processes to run in the
 # background.  Whichever finishes with will cause a SIGUSR1 signal, which is
 # then trapped to kill both processes.  Since the first one is dead, only the
-# second will actually get the kill, and the subsequent wait will thus 
+# second will actually get the kill, and the subsequent wait will thus succeed.
+# The second process is, of course, a `sleep $TIMEOUT`, so that the actual
+# workload process will get killed after that timeout...
 #
 timeout()
 {
@@ -216,6 +218,8 @@ timeout()
 
     RET="./timetrap.$$.ret"
 
+    # note that this insane construct uses `$PID_1` and `$PID_2` which will
+    # only be set later on.  In fact, those may or may not be set at all...
     timetrap()
     {
         kill $PID_1 2>&1 > /dev/null
@@ -231,7 +235,6 @@ timeout()
 
     ret=`cat $RET || echo 2`
     rm -f $RET
-    echo "------------------"
     return $ret
 }
 
@@ -1816,7 +1819,7 @@ AGENT_PID=$!
 while true
 do
     sleep 3
-    if kill -0 $AGENT_PID
+    if kill -0 $AGENT_PID 2>/dev/null
     then 
         if test -e "./killme.signal"
         then
