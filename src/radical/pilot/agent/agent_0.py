@@ -451,7 +451,6 @@ class Agent_0(rpu.Worker):
                 return False  # we are done
 
             elif cmd == 'cancel_units':
-
                 self._log.info('cancel_units cmd')
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_units',
                                                   'arg' : arg})
