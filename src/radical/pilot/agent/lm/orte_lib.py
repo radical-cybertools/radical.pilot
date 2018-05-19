@@ -217,8 +217,8 @@ class ORTELib(LaunchMethod):
         task_exec    = cud['executable']
         task_cores   = cud['cores']
         task_mpi     = cud.get('mpi', False)
-        task_env     = cud.get('environment', dict())
-        task_args    = cud.get('arguments',   list())
+        task_env     = cud.get('environment') or dict()
+        task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
         if 'task_slots' not in opaque_slots:
@@ -266,7 +266,7 @@ class ORTELib(LaunchMethod):
         env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
         if env_list:
             env_string = ''
-            for var in env_list:
+            for var in task_env:
                 env_string += '-x "%s" ' % var
 
 
