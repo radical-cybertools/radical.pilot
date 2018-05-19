@@ -103,11 +103,11 @@ class Popen(AgentExecutingComponent) :
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'cancel_unit':
+        if cmd == 'cancel_units':
 
-            self._log.info("cancel unit command (%s)" % arg)
+            self._log.info("cancel_units command (%s)" % arg)
             with self._cancel_lock:
-                self._cus_to_cancel.append(arg)
+                self._cus_to_cancel.extend(arg['uids'])
 
         return True
 
@@ -302,8 +302,8 @@ prof(){
 
             launch_script.write("\n# The command to run\n")
             launch_script.write('prof cu_exec_start\n')
-            launch_script.write("%s\n" % launch_command)
-            launch_script.write("RETVAL=$?\n")
+            launch_script.write('%s\n' % launch_command)
+            launch_script.write('RETVAL=$?\n')
             launch_script.write('prof cu_exec_stop\n')
 
             # After the universe dies the infrared death, there will be nothing
@@ -344,7 +344,7 @@ prof(){
                                       stdin              = None,
                                       stdout             = _stdout_file_h,
                                       stderr             = _stderr_file_h,
-                                      preexec_fn         = None,
+                                      preexec_fn         = os.setsid,
                                       close_fds          = True,
                                       shell              = True,
                                       cwd                = sandbox,
@@ -362,11 +362,9 @@ prof(){
     def _watch(self):
 
         try:
-
             while not self._terminate.is_set():
 
                 cus = list()
-
                 try:
                     # we don't want to only wait for one CU -- then we would
                     # pull CU state too frequently.  OTOH, we also don't want to
@@ -404,12 +402,10 @@ prof(){
     def _check_running(self):
 
         action = 0
-
         for cu in self._cus_to_watch:
 
             # poll subprocess object
             exit_code = cu['proc'].poll()
-            now       = time.time()
 
             if exit_code is None:
                 # Process is still running
@@ -425,7 +421,7 @@ prof(){
                     # We got a request to cancel this cu
                     action += 1
                     cu['proc'].kill()
-                    cu['proc'].wait() # make sure proc is collected
+                    cu['proc'].wait()  # make sure proc is collected
 
                     with self._cancel_lock:
                         self._cus_to_cancel.remove(cu['uid'])
@@ -471,4 +467,6 @@ prof(){
 
         return action
 
+
+# ------------------------------------------------------------------------------
 
