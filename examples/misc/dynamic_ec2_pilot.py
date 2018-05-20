@@ -19,7 +19,7 @@
 import os
 import sys
 import time
-import pprint
+import copy
 
 import saga          as rs
 import radical.utils as ru
@@ -197,7 +197,8 @@ def start_pilot(cr=None):
     cfg = session.get_resource_config('local.localhost')
 
     # create a new config based on the local one, and add it back
-    new_cfg = rp.ResourceConfig('ec2.vm', cfg)
+    new_cfg = copy,deepcopy(cfg)
+    new_cfg.label   = ['ec2.vm']
     new_cfg.schemas = ['ssh']
     new_cfg['ssh']['job_manager_endpoint'] = cr.access
     new_cfg['ssh']['filesystem_endpoint']  = cr.access
@@ -205,7 +206,7 @@ def start_pilot(cr=None):
     # the new config needs to make sure we can bootstrap on the VM
     new_cfg['pre_bootstrap_0'] = ['sudo apt-get update', 
                                   'sudo apt-get install -y python-virtualenv python-dev dnsutils bc']
-    session.add_resource_config(new_cfg)
+    session._resource_configs['ec2.vm'] = new_cfg
 
     # use the *same* ssh key for ssh access to the VM
     ssh_ctx = rs.Context('SSH')

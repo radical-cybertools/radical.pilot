@@ -34,7 +34,6 @@ from . import types         as rpt
 
 from .unit_manager    import UnitManager
 from .pilot_manager   import PilotManager
-from .resource_config import ResourceConfig
 from .db              import DBSession
 
 from .utils import version_detail as rp_version_detail
@@ -388,14 +387,14 @@ class Session(rs.Session):
 
             try:
                 self._log.info("Load resource configurations from %s" % config_file)
-                rcs = ResourceConfig.from_file(config_file)
+                rcs = self._read_resource_configs(config_file)
             except Exception as e:
                 self._log.exception("skip config file %s: %s" % (config_file, e))
                 raise RuntimeError('config error (%s) - abort' % e)
 
             for rc in rcs:
                 self._log.info("Load resource configurations for %s" % rc)
-                self._resource_configs[rc] = rcs[rc].as_dict() 
+                self._resource_configs[rc] = rcs[rc]
                 self._log.debug('read rcfg for %s (%s)', 
                         rc, self._resource_configs[rc].get('cores_per_node'))
 
@@ -406,7 +405,7 @@ class Session(rs.Session):
         for config_file in config_files:
 
             try:
-                rcs = ResourceConfig.from_file(config_file)
+                rcs = self._read_resource_configs(config_file)
             except Exception as e:
                 self._log.exception("skip config file %s: %s" % (config_file, e))
                 raise RuntimeError('config error (%s) - abort' % e)
@@ -417,11 +416,11 @@ class Session(rs.Session):
                 if rc in self._resource_configs:
                     # config exists -- merge user config into it
                     ru.dict_merge(self._resource_configs[rc],
-                                  rcs[rc].as_dict(),
+                                  rcs[rc],
                                   policy='overwrite')
                 else:
                     # new config -- add as is
-                    self._resource_configs[rc] = rcs[rc].as_dict() 
+                    self._resource_configs[rc] = rcs[rc]
 
                 self._log.debug('fix  rcfg for %s (%s)', 
                         rc, self._resource_configs[rc].get('cores_per_node'))
@@ -437,6 +436,24 @@ class Session(rs.Session):
                           policy='overwrite')
 
         self._prof.prof('config_parser_stop', uid=self._uid)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _read_resource_configs(self, cfg):
+
+        ret  = dict()
+        base = os.path.basename(cfg)
+
+        if base.startswith('resource_'): base = base[ 9:]
+        if base.endswith('.json')      : base = base[:-5]
+
+        for k,v in ru.read_json(cfg).iteritems():
+            label = '%s.%s' % (base, k)
+            ret[label] = v
+            print label
+
+        return ret
 
 
     # --------------------------------------------------------------------------
@@ -789,51 +806,6 @@ class Session(rs.Session):
 
         return sorted(self._resource_configs.keys())
 
-
-    # -------------------------------------------------------------------------
-    #
-    def add_resource_config(self, resource_config):
-        """Adds a new :class:`radical.pilot.ResourceConfig` to the PilotManager's 
-           dictionary of known resources, or accept a string which points to
-           a configuration file.
-
-           For example::
-
-                  rc = radical.pilot.ResourceConfig(label="mycluster")
-                  rc.job_manager_endpoint = "ssh+pbs://mycluster
-                  rc.filesystem_endpoint  = "sftp://mycluster
-                  rc.default_queue        = "private"
-                  rc.bootstrapper         = "default_bootstrapper.sh"
-
-                  pm = radical.pilot.PilotManager(session=s)
-                  pm.add_resource_config(rc)
-
-                  pd = radical.pilot.ComputePilotDescription()
-                  pd.resource = "mycluster"
-                  pd.cores    = 16
-                  pd.runtime  = 5 # minutes
-
-                  pilot = pm.submit_pilots(pd)
-        """
-
-        self.is_valid()
-
-        if isinstance(resource_config, basestring):
-
-            # let exceptions fall through
-            rcs = ResourceConfig.from_file(resource_config)
-
-            for rc in rcs:
-                self._log.info("Loaded resource configurations for %s" % rc)
-                self._resource_configs[rc] = rcs[rc].as_dict() 
-                self._log.debug('add  rcfg for %s (%s)', 
-                        rc, self._resource_configs[rc].get('cores_per_node'))
-
-        else:
-            self._resource_configs[resource_config.label] = resource_config.as_dict()
-            self._log.debug('Add  rcfg for %s (%s)', 
-                    resource_config.label, 
-                    self._resource_configs[resource_config.label].get('cores_per_node'))
 
     # -------------------------------------------------------------------------
     #
