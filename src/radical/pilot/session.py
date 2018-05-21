@@ -451,7 +451,6 @@ class Session(rs.Session):
         for k,v in ru.read_json(cfg).iteritems():
             label = '%s.%s' % (base, k)
             ret[label] = v
-            print label
 
         return ret
 
