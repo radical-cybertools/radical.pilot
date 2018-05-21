@@ -177,7 +177,7 @@ class Continuous(AgentSchedulingComponent):
     #
     def _find_resources(self, node, requested_cores, requested_gpus,
                         requested_lfs, chunk=1, partial=False, lfs_chunk=1):
-        """
+        '''
         Find up to the requested number of free cores and gpus in the node.
         This call will return two lists, for each matched set.  If the core
         does not have sufficient free resources to fulfill *both* requests, two
@@ -197,7 +197,7 @@ class Continuous(AgentSchedulingComponent):
         When `partial` is set to `True`, this method is allowed to return
         a *partial* match, so to find less cores, gpus, and local_fs then
         requested (but the call will never return more than requested).
-        """
+        '''
 
         # list of core and gpu ids available in this node.
         cores = list()
@@ -316,7 +316,7 @@ class Continuous(AgentSchedulingComponent):
         # make sure that the requested allocation fits on a single node
         if requested_cores > self._lrms_cores_per_node or \
                 requested_gpus > self._lrms_gpus_per_node or \
-                requested_lfs > self._lrms_lfs_per_node:
+                requested_lfs['size'] > self._lrms_lfs_per_node['size']:  # GC: added size
             raise ValueError('Non-mpi unit does not fit onto single node')
 
         # ok, we can go ahead and try to find a matching node
@@ -334,7 +334,7 @@ class Continuous(AgentSchedulingComponent):
                                                     requested_cores,
                                                     requested_gpus,
                                                     requested_lfs,
-                                                    partial=False,
+                                                    partial=False
                                                     )
             if len(cores) == requested_cores and \
                     len(gpus) == requested_gpus:
@@ -424,7 +424,8 @@ class Continuous(AgentSchedulingComponent):
 
         cores_per_node = self._lrms_cores_per_node
         gpus_per_node = self._lrms_gpus_per_node
-        lfs_per_node = self._lrms_lfs_per_node
+        lfs_per_node = self._lrms_lfs_per_node   # this is a dictionary
+        # which have two key,s size (MB) and path
 
         if requested_cores > cores_per_node and \
                 cores_per_node % threads_per_proc and \
@@ -435,7 +436,7 @@ class Continuous(AgentSchedulingComponent):
         if threads_per_proc > cores_per_node:
             raise ValueError('too many threads requested')
 
-        if requested_lfs > lfs_per_node:
+        if requested_lfs > lfs_per_node['size']:
             raise ValueError('Not enough LFS for the MPI-process')
 
             # set conditions to find the first matching node
@@ -463,7 +464,7 @@ class Continuous(AgentSchedulingComponent):
             # that this can also be the first node, for small units.
             if requested_cores - alloced_cores <= cores_per_node and \
                     requested_gpus - alloced_gpus <= gpus_per_node and \
-                    requested_lfs - alloced_lfs <= lfs_per_node:
+                    requested_lfs - alloced_lfs <= lfs_per_node['size']:
                 is_last = True
 
             # we allow partial nodes on the first and last node, and on any
@@ -477,7 +478,7 @@ class Continuous(AgentSchedulingComponent):
             # we only search up to node-size on this node.  Duh!
             find_cores = min(requested_cores - alloced_cores, cores_per_node)
             find_gpus = min(requested_gpus - alloced_gpus,  gpus_per_node)
-            find_lfs = min(requested_lfs - alloced_lfs, lfs_per_node)
+            find_lfs = min(requested_lfs - alloced_lfs, lfs_per_node['size'])
 
             # under the constraints so derived, check what we find on this node
             cores, gpus, lfs = self._find_resources(node=node,
