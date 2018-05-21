@@ -55,7 +55,7 @@ def setUp():
 
 def mpi():
     cud = dict()
-    cud['cpu_process_type'] = None
+    cud['cpu_process_type'] = 'MPI'
     cud['gpu_process_type'] = None
     cud['cpu_processes'] = 4
     cud['cpu_threads'] = 1
