@@ -120,11 +120,33 @@ def test_nonmpi_unit_with_continuous_scheduler(
                     'lm_info': 'INFO', 
                     'gpus_per_node': 1}
 
-    # print component.nodes
-    import sys
-    sys.exit(1)
+    # Assert resulting node list values after first CUD
+    assert component.nodes == [ {   'lfs': {'size': 4096, 'path': 'abc'},
+                                    'cores': [1, 0], 
+                                    'name': 'a', 
+                                    'gpus': [0], 
+                                    'uid': 1}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'b', 
+                                    'gpus': [0], 
+                                    'uid': 2}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'c', 
+                                    'gpus': [0], 
+                                    'uid': 3}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'd', 
+                                    'gpus': [0], 
+                                    'uid': 4}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'e', 
+                                    'gpus': [0], 
+                                    'uid': 5}]
 
-    '''
     # Allocate second CUD -- should land on first node
     cud = nompi()
     slot =  component._allocate_slot(cud)    
@@ -223,27 +245,27 @@ def test_nonmpi_unit_with_continuous_scheduler(
 
     # Deallocate slot
     component._release_slot(slot)
-    assert component.nodes == [ {   'lfs': 3072, 
+    assert component.nodes == [ {   'lfs': {'size': 3072, 'path': 'abc'},
                                     'cores': [1, 1], 
                                     'name': 'a', 
                                     'gpus': [0], 
                                     'uid': 1}, 
-                                {   'lfs': 0, 
+                                {   'lfs': {'size': 0, 'path': 'abc'},
                                     'cores': [1, 1], 
                                     'name': 'b', 
                                     'gpus': [0], 
                                     'uid': 2}, 
-                                {   'lfs': 0, 
+                                {   'lfs': {'size': 0, 'path': 'abc'},
                                     'cores': [1, 0], 
                                     'name': 'c', 
                                     'gpus': [0], 
                                     'uid': 3}, 
-                                {   'lfs': 0, 
+                                {   'lfs': {'size': 0, 'path': 'abc'},
                                     'cores': [1, 0], 
                                     'name': 'd', 
                                     'gpus': [0], 
                                     'uid': 4}, 
-                                {   'lfs': 0, 
+                                {   'lfs': {'size': 0, 'path': 'abc'},
                                     'cores': [1, 0], 
                                     'name': 'e', 
                                     'gpus': [0], 
@@ -255,7 +277,6 @@ def test_nonmpi_unit_with_continuous_scheduler(
     cud['lfs'] = 5120
     slot =  component._allocate_slot(cud)
     assert slot == None
-    '''
 
     tearDown()
 #-----------------------------------------------------------------------------------------------------------------------

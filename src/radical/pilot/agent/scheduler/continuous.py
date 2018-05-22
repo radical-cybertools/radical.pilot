@@ -209,7 +209,7 @@ class Continuous(AgentSchedulingComponent):
         # This is way quicker than actually finding the core IDs.
         free_cores = node['cores'].count(rpc.FREE)
         free_gpus = node['gpus'].count(rpc.FREE)
-        free_lfs = node['lfs']
+        free_lfs = node['lfs']['size']
 
         if partial:
             # For partial requests the check simplifies: we just check if we

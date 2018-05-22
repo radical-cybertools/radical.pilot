@@ -352,27 +352,27 @@ class AgentSchedulingComponent(rpu.Component):
             #       that we would read, and keep a dictionary that maps the uid
             #       of the node to the location on the list?
 
-            # node = (n for n in self.nodes if n['uid'] == nodes['uid']).next()
-            for n in self.nodes:
-                if n['uid'] == nodes['uid']:
-                    node = n
-                    break
-            assert(node)
+            node = (n for n in self.nodes if n['uid'] == nodes['uid']).next()
+            # for n in self.nodes:
+            #     if n['uid'] == nodes['uid']:
+            #         node = n
+            #         break
+            # assert(node)
 
             # iterate over cores/gpus in the slot, and update state
-            # cores = nodes['core_map']
-            # for cslot in cores:
-            #     for core in cslot:
-            #         node['cores'][core] = new_state
+            cores = nodes['core_map']
+            for cslot in cores:
+                for core in cslot:
+                    node['cores'][core] = new_state
 
-            # gpus = nodes['gpu_map']
-            # for gslot in gpus:
-            #     for gpu in gslot:
-            #         node['gpus'][gpu] = new_state
+            gpus = nodes['gpu_map']
+            for gslot in gpus:
+                for gpu in gslot:
+                    node['gpus'][gpu] = new_state
 
-            print 'pre slot nodes: ', nodes
-            print 'pre self: ',self.nodes
-            print 'pre selected node: ',node
+            # print 'pre slot nodes: ', nodes
+            # print 'pre self: ',self.nodes
+            # print 'pre selected node: ',node
 
             if new_state == rpc.BUSY:
                 print node['uid']
@@ -381,9 +381,9 @@ class AgentSchedulingComponent(rpu.Component):
                 print node['uid']
                 node['lfs']['size'] += nodes['lfs']
 
-            print 'post slot nodes: ', nodes
-            print 'post self: ',self.nodes
-            print 'post selected node: ',node
+            # print 'post slot nodes: ', nodes
+            # print 'post self: ',self.nodes
+            # print 'post selected node: ',node
     # --------------------------------------------------------------------------
     #
     # NOTE: any scheduler implementation which uses a different nodelist
