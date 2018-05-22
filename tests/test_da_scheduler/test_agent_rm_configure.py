@@ -388,7 +388,16 @@ class TestComponentSlurmResourceManager(unittest.TestCase):
 
             return
 
+
 if __name__ == "__main__":
 
-    suite_slurm = unittest.TestLoader().loadTestsFromTestCase(TestComponentSlurmResourceManager)
-    unittest.TextTestRunner(verbosity=2).run(suite_slurm)
+    test_classes = [TestComponentSlurmResourceManager]
+
+    suites = list()
+    for test_class in test_classes:
+        suite = unittest.TestLoader().loadTestsFromTestCase(test_class)
+        suites.append(suite)
+
+    big_suite = unittest.TestSuite(suites)
+
+    unittest.TextTestRunner(verbosity=2).run(big_suite)
