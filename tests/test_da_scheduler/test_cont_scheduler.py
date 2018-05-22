@@ -48,7 +48,7 @@ def setUp():
     cfg['lrms_info']['node_list'] = [['a',1],['b',2],['c',3],['d',4],['e',5]]
     cfg['lrms_info']['cores_per_node'] = 2
     cfg['lrms_info']['gpus_per_node'] = 1
-    cfg['lrms_info']['lfs_per_node'] = 5120
+    cfg['lrms_info']['lfs_per_node'] = {'size': 5120, 'path': 'abc'}
 
     return cfg, session
 #-----------------------------------------------------------------------------------------------------------------------
@@ -119,6 +119,11 @@ def test_nonmpi_unit_with_continuous_scheduler(
                     'lm_info': 'INFO', 
                     'gpus_per_node': 1}
 
+    # print component.nodes
+    import sys
+    sys.exit(1)
+
+    '''
     # Allocate second CUD -- should land on first node
     cud = nompi()
     slot =  component._allocate_slot(cud)    
@@ -249,6 +254,7 @@ def test_nonmpi_unit_with_continuous_scheduler(
     cud['lfs'] = 5120
     slot =  component._allocate_slot(cud)
     assert slot == None
+    '''
 
     tearDown()
 #-----------------------------------------------------------------------------------------------------------------------
