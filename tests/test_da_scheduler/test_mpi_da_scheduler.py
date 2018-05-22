@@ -48,7 +48,9 @@ def setUp():
     cfg['lrms_info']['node_list'] = [['a',1],['b',2],['c',3],['d',4],['e',5]]
     cfg['lrms_info']['cores_per_node'] = 2
     cfg['lrms_info']['gpus_per_node'] = 1
-    cfg['lrms_info']['lfs_per_node'] = 5120
+    cfg['lrms_info']['lfs_per_node'] = dict()
+    cfg['lrms_info']['lfs_per_node']['size'] = 5120
+    cfg['lrms_info']['lfs_per_node']['path'] = os.getcwd()#path to the local ssd
 
     return cfg, session
 #-----------------------------------------------------------------------------------------------------------------------
