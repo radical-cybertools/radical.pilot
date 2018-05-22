@@ -757,7 +757,7 @@
             "filesystem_endpoint"     : "sftp://supermic.cct-lsu.xsede.org/"
         },
         "default_queue"               : "workq",
-        "cores_per_node"              : "20",
+        "cores_per_node"              : 20,
         "lfs_path_per_node"           : "/var/scratch/",
         "lfs_size_per_node"           : 200496,
         "lrms"                        : "TORQUE",
@@ -794,7 +794,7 @@
             "filesystem_endpoint"     : "sftp://supermic.cct-lsu.xsede.org/"
         },
         "default_queue"               : "workq",
-        "cores_per_node"              : "20",
+        "cores_per_node"              : 20,
         "lfs_path_per_node"           : "/var/scratch/",
         "lfs_size_per_node"           : 200496,
         "lrms"                        : "TORQUE",
