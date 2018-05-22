@@ -20,18 +20,25 @@ class TestComponentSlurmResourceManager(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
+
         # Directory of sample config files
-        self.sample_resource_directory = os.path.realpath(__file__)
+        self.sample_resource_dir = os.path.dirname(os.path.realpath(__file__))
 
-        # Import ncsa resource configuration
-        self.sample_resource_path = os.path.join(os.path.dirname(self.sample_resource_directory), "sample_resources.json")
+        # Load sample resource test config
+        self.cfg_sample = ru.read_json(os.path.join(self.sample_resource_dir, "sample_resources.json"))
+        self.cfg_sample_1 = self.cfg_sample['sample_resource_1']
+        self.cfg_sample_2 = self.cfg_sample['sample_resource_2']
+        self.cfg_sample_3 = self.cfg_sample['sample_resource_3']
 
-        # Load test configurations
-        with open(self.sample_resource_path) as fp:
-            self.cfg_samples = json.load(fp)
-            self.cfg_1 = self.cfg_samples['sample_resource_1']
-            self.cfg_2 = self.cfg_samples['sample_resource_2']
-            self.cfg_3 = self.cfg_samples['sample_resource_3']
+        # Directory of pilot resource config files
+        self.pilot_resource_dir = '../../src/radical/pilot/configs'
+
+        # Load xsede pilot resource config
+        self.cfg_xsede = ru.read_json(os.path.join(self.pilot_resource_dir, 'resource_xsede.json'))
+        self.cfg_xsede_supermic_ssh     = self.cfg_xsede['supermic_ssh']  
+        self.cfg_xsede_supermic_orte    = self.cfg_xsede['supermic_orte']     
+        self.cfg_xsede_supermic_ortelib = self.cfg_xsede['supermic_ortelib']
+        self.cfg_xsede_supermic_spark   = self.cfg_xsede['supermic_spark'] 
         
         return
 
@@ -89,7 +96,7 @@ class TestComponentSlurmResourceManager(unittest.TestCase):
         os.environ['SLURM_CPUS_ON_NODE']    = '24'
 
         # Run component with desired configuration
-        self.component._cfg = self.cfg_1
+        self.component._cfg = self.cfg_sample_1
         self.component._configure()
         
         # Verify configured correctly
@@ -114,7 +121,7 @@ class TestComponentSlurmResourceManager(unittest.TestCase):
         os.environ['SLURM_CPUS_ON_NODE']    = '24'
 
         # Run component with desired configuration
-        self.component._cfg = self.cfg_2
+        self.component._cfg = self.cfg_sample_2
         self.component._configure()
         
         # Verify configured correctly
@@ -139,7 +146,7 @@ class TestComponentSlurmResourceManager(unittest.TestCase):
         os.environ['SLURM_CPUS_ON_NODE']    = '24'
 
         # Run component with desired configuration
-        self.component._cfg = self.cfg_3
+        self.component._cfg = self.cfg_sample_3
         self.component._configure()
 
         # Verify configured correctly
@@ -151,6 +158,105 @@ class TestComponentSlurmResourceManager(unittest.TestCase):
 
         return
 
+
+    def test_slurm_xsede_supermic_ssh(self):
+        """
+        Test Slurm with Sample Resource 3
+        """
+
+        # Set environment variables
+        os.environ['SLURM_NODELIST']        = 'nodes[1-2]'
+        os.environ['SLURM_NPROCS']          = '24'       
+        os.environ['SLURM_NNODES']          = '2'
+        os.environ['SLURM_CPUS_ON_NODE']    = '24'
+
+        # Run component with desired configuration
+        self.component._cfg = self.cfg_xsede_supermic_ssh
+        self.component._configure()
+
+        # Verify configured correctly
+        self.assertEqual(self.component.cores_per_node, 20)
+        self.assertEqual(self.component.gpus_per_node , 0)
+        self.assertEqual(self.component.lfs_per_node['path'], "/var/scratch/")
+        self.assertEqual(self.component.lfs_per_node['size'], 200496)
+        self.assertEqual(self.component.lm_info['cores_per_node'], 20)
+
+        return
+
+
+    def test_slurm_xsede_supermic_orte(self):
+        """
+        Test Slurm with Sample Resource 3
+        """
+
+        # Set environment variables
+        os.environ['SLURM_NODELIST']        = 'nodes[1-2]'
+        os.environ['SLURM_NPROCS']          = '24'       
+        os.environ['SLURM_NNODES']          = '2'
+        os.environ['SLURM_CPUS_ON_NODE']    = '24'
+
+        # Run component with desired configuration
+        self.component._cfg = self.cfg_xsede_supermic_orte
+        self.component._configure()
+
+        # Verify configured correctly
+        self.assertEqual(self.component.cores_per_node, 20)
+        self.assertEqual(self.component.gpus_per_node , 0)
+        self.assertEqual(self.component.lfs_per_node['path'], "/var/scratch/")
+        self.assertEqual(self.component.lfs_per_node['size'], 200496)
+        self.assertEqual(self.component.lm_info['cores_per_node'], 20)
+
+        return
+
+
+    def test_slurm_xsede_supermic_ortelib(self):
+        """
+        Test Slurm with Sample Resource 3
+        """
+
+        # Set environment variables
+        os.environ['SLURM_NODELIST']        = 'nodes[1-2]'
+        os.environ['SLURM_NPROCS']          = '24'       
+        os.environ['SLURM_NNODES']          = '2'
+        os.environ['SLURM_CPUS_ON_NODE']    = '24'
+
+        # Run component with desired configuration
+        self.component._cfg = self.cfg_xsede_supermic_ortelib
+        self.component._configure()
+
+        # Verify configured correctly
+        self.assertEqual(self.component.cores_per_node, 20)
+        self.assertEqual(self.component.gpus_per_node , 0)
+        self.assertEqual(self.component.lfs_per_node['path'], "/var/scratch/")
+        self.assertEqual(self.component.lfs_per_node['size'], 200496)
+        self.assertEqual(self.component.lm_info['cores_per_node'], 20)
+
+        return
+
+
+        def test_slurm_xsede_supermic_spark(self):
+            """
+            Test Slurm with Sample Resource 3
+            """
+
+            # Set environment variables
+            os.environ['SLURM_NODELIST']        = 'nodes[1-2]'
+            os.environ['SLURM_NPROCS']          = '24'       
+            os.environ['SLURM_NNODES']          = '2'
+            os.environ['SLURM_CPUS_ON_NODE']    = '24'
+
+            # Run component with desired configuration
+            self.component._cfg = self.cfg_xsede_supermic_spark
+            self.component._configure()
+
+            # Verify configured correctly
+            self.assertEqual(self.component.cores_per_node, 20)
+            self.assertEqual(self.component.gpus_per_node , 0)
+            self.assertEqual(self.component.lfs_per_node['path'], "/var/scratch/")
+            self.assertEqual(self.component.lfs_per_node['size'], 200496)
+            self.assertEqual(self.component.lm_info['cores_per_node'], 20)
+
+            return
 
 if __name__ == "__main__":
 
