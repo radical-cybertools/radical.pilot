@@ -97,14 +97,15 @@ def test_nonmpi_unit_with_continuous_scheduler(
     component._lrms_lfs_per_node   = cfg['lrms_info']['lfs_per_node']
 
     component.nodes = []
+    import copy
     for node, node_uid in component._lrms_node_list:
-        component.nodes.append({
+        component.nodes.append(copy.deepcopy({
                 'name' : node,
                 'uid'  : node_uid,
                 'cores': [rpc.FREE] * component._lrms_cores_per_node,
                 'gpus' : [rpc.FREE] * component._lrms_gpus_per_node,
                 'lfs'  : component._lrms_lfs_per_node
-            })
+            }))
 
 
     # Allocate first CUD -- should land on first node
