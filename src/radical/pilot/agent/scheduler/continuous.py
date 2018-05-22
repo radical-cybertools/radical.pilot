@@ -176,7 +176,8 @@ class Continuous(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     #
     def _find_resources(self, node, requested_cores, requested_gpus,
-                        requested_lfs, chunk=1, partial=False, lfs_chunk=1):
+                        requested_lfs, core_chunk=1, partial=False, 
+                        lfs_chunk=1):
         '''
         Find up to the requested number of free cores and gpus in the node.
         This call will return two lists, for each matched set.  If the core
@@ -208,7 +209,7 @@ class Continuous(AgentSchedulingComponent):
         # This is way quicker than actually finding the core IDs.
         free_cores = node['cores'].count(rpc.FREE)
         free_gpus = node['gpus'].count(rpc.FREE)
-        free_lfs = node['lfs']
+        free_lfs = node['lfs']['size']
 
         if partial:
             # For partial requests the check simplifies: we just check if we
@@ -229,9 +230,9 @@ class Continuous(AgentSchedulingComponent):
 
         # We can serve the partial or full request - alloc the chunks we need
         # FIXME: chunk gpus, too?
-        alloc_cores = min(requested_cores, free_cores) / chunk * chunk
+        alloc_cores = min(requested_cores, free_cores) / core_chunk * core_chunk
         alloc_gpus = min(requested_gpus, free_gpus)
-        lfs = min(requested_lfs, free_lfs) / lfs_chunk
+        lfs = min(requested_lfs, free_lfs) / lfs_chunk * lfs_chunk
 
         # now dig out the core and gpu IDs.
         for idx, state in enumerate(node['cores']):
@@ -314,9 +315,11 @@ class Continuous(AgentSchedulingComponent):
         requested_cores = requested_procs * threads_per_proc
 
         # make sure that the requested allocation fits on a single node
-        if requested_cores > self._lrms_cores_per_node or \
-                requested_gpus > self._lrms_gpus_per_node or \
-                requested_lfs['size'] > self._lrms_lfs_per_node['size']:  # GC: added size
+        if  requested_cores > self._lrms_cores_per_node or \
+            requested_gpus > self._lrms_gpus_per_node or \
+            requested_lfs > self._lrms_lfs_per_node['size']:  
+            
+            print 'req:', requested_lfs, 'avail:', self._lrms_lfs_per_node
             raise ValueError('Non-mpi unit does not fit onto single node')
 
         # ok, we can go ahead and try to find a matching node

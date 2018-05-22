@@ -48,7 +48,7 @@ def setUp():
     cfg['lrms_info']['node_list'] = [['a',1],['b',2],['c',3],['d',4],['e',5]]
     cfg['lrms_info']['cores_per_node'] = 2
     cfg['lrms_info']['gpus_per_node'] = 1
-    cfg['lrms_info']['lfs_per_node'] = 5120
+    cfg['lrms_info']['lfs_per_node'] = {'size': 5120, 'path': 'abc'}
 
     return cfg, session
 #-----------------------------------------------------------------------------------------------------------------------
@@ -97,14 +97,15 @@ def test_nonmpi_unit_with_continuous_scheduler(
     component._lrms_lfs_per_node   = cfg['lrms_info']['lfs_per_node']
 
     component.nodes = []
+    import copy
     for node, node_uid in component._lrms_node_list:
-        component.nodes.append({
+        component.nodes.append(copy.deepcopy({
                 'name' : node,
                 'uid'  : node_uid,
                 'cores': [rpc.FREE] * component._lrms_cores_per_node,
                 'gpus' : [rpc.FREE] * component._lrms_gpus_per_node,
                 'lfs'  : component._lrms_lfs_per_node
-            })
+            }))
 
 
     # Allocate first CUD -- should land on first node
@@ -118,6 +119,33 @@ def test_nonmpi_unit_with_continuous_scheduler(
                                 'uid': 1}], 
                     'lm_info': 'INFO', 
                     'gpus_per_node': 1}
+
+    # Assert resulting node list values after first CUD
+    assert component.nodes == [ {   'lfs': {'size': 4096, 'path': 'abc'},
+                                    'cores': [1, 0], 
+                                    'name': 'a', 
+                                    'gpus': [0], 
+                                    'uid': 1}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'b', 
+                                    'gpus': [0], 
+                                    'uid': 2}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'c', 
+                                    'gpus': [0], 
+                                    'uid': 3}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'd', 
+                                    'gpus': [0], 
+                                    'uid': 4}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'e', 
+                                    'gpus': [0], 
+                                    'uid': 5}]
 
     # Allocate second CUD -- should land on first node
     cud = nompi()
@@ -217,27 +245,27 @@ def test_nonmpi_unit_with_continuous_scheduler(
 
     # Deallocate slot
     component._release_slot(slot)
-    assert component.nodes == [ {   'lfs': 3072, 
+    assert component.nodes == [ {   'lfs': {'size': 3072, 'path': 'abc'},
                                     'cores': [1, 1], 
                                     'name': 'a', 
                                     'gpus': [0], 
                                     'uid': 1}, 
-                                {   'lfs': 0, 
+                                {   'lfs': {'size': 0, 'path': 'abc'},
                                     'cores': [1, 1], 
                                     'name': 'b', 
                                     'gpus': [0], 
                                     'uid': 2}, 
-                                {   'lfs': 0, 
+                                {   'lfs': {'size': 0, 'path': 'abc'},
                                     'cores': [1, 0], 
                                     'name': 'c', 
                                     'gpus': [0], 
                                     'uid': 3}, 
-                                {   'lfs': 0, 
+                                {   'lfs': {'size': 0, 'path': 'abc'},
                                     'cores': [1, 0], 
                                     'name': 'd', 
                                     'gpus': [0], 
                                     'uid': 4}, 
-                                {   'lfs': 0, 
+                                {   'lfs': {'size': 0, 'path': 'abc'},
                                     'cores': [1, 0], 
                                     'name': 'e', 
                                     'gpus': [0], 
