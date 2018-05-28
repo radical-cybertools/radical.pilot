@@ -176,7 +176,7 @@ class Continuous(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     #
     def _find_resources(self, node, requested_cores, requested_gpus,
-                        requested_lfs, core_chunk=1, partial=False, 
+                        requested_lfs, core_chunk=1, partial=False,
                         lfs_chunk=1):
         '''
         Find up to the requested number of free cores and gpus in the node.
@@ -315,10 +315,10 @@ class Continuous(AgentSchedulingComponent):
         requested_cores = requested_procs * threads_per_proc
 
         # make sure that the requested allocation fits on a single node
-        if  requested_cores > self._lrms_cores_per_node or \
-            requested_gpus > self._lrms_gpus_per_node or \
-            requested_lfs > self._lrms_lfs_per_node['size']:  
-            
+        if requested_cores > self._lrms_cores_per_node or \
+                requested_gpus > self._lrms_gpus_per_node or \
+                requested_lfs > self._lrms_lfs_per_node['size']:
+
             print 'req:', requested_lfs, 'avail:', self._lrms_lfs_per_node
             raise ValueError('Non-mpi unit does not fit onto single node')
 
@@ -488,7 +488,7 @@ class Continuous(AgentSchedulingComponent):
                                                     requested_cores=find_cores,
                                                     requested_gpus=find_gpus,
                                                     requested_lfs=find_lfs,
-                                                    chunk=threads_per_proc,
+                                                    core_chunk=threads_per_proc,
                                                     partial=partial,
                                                     lfs_chunk=requested_procs)
 
