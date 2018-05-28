@@ -510,8 +510,8 @@ class Continuous(AgentSchedulingComponent):
 
             # we found something - add to the existing allocation, switch gears
             # (not first anymore), and try to find more if needed
-            self._log.debug('found %s cores, %s gpus and %s lfs', cores, gpus,
-                            lfs)
+            # self._log.debug('found %s cores, %s gpus and %s lfs', cores, gpus,
+            #                lfs)
             core_map, gpu_map = self._get_node_maps(cores, gpus,
                                                     threads_per_proc)
 
