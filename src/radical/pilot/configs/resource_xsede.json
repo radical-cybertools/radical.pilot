@@ -22,10 +22,6 @@
         },
         "default_queue"               : "normal",
         "lrms"                        : "SLURM",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap_0"             : ["module purge",
                                          "module load TACC",
@@ -49,34 +45,35 @@
     },
 
     "stampede_orte": {
-        "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["ssh", "gsissh", "go"],
-        "mandatory_args"              : ["project"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://stampede.tacc.utexas.edu/"
+        "description"    : "https://www.tacc.utexas.edu/stampede/",
+        "notes"          : "The  `project` attribute is required.",
+        "mandatory_args" : ["project"],
+        "schemas" : {
+            "ssh"                      :
+            {
+                "job_manager_endpoint" : "slurm+ssh://stampede.tacc.utexas.edu/",
+                "filesystem_endpoint"  : "sftp://stampede.tacc.utexas.edu/"
+            },
+            "gsissh"                   :
+            {
+                "job_manager_endpoint" : "slurm+gsissh://stampede.tacc.utexas.edu:2222/",
+                "filesystem_endpoint"  : "gsisftp://stampede.tacc.utexas.edu:2222/"
+            },
+            "go":
+            {
+                "job_manager_endpoint" : "slurm+ssh://stampede.tacc.utexas.edu/",
+                "filesystem_endpoint"  : "go://xsede#stampede/"
+            }
         },
-        "gsissh"                      :
-        {
-            "job_manager_endpoint"    : "slurm+gsissh://stampede.tacc.utexas.edu:2222/",
-            "filesystem_endpoint"     : "gsisftp://stampede.tacc.utexas.edu:2222/"
-        },
-        "go":
-        {
-            "job_manager_endpoint"    : "slurm+ssh://stampede.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "go://xsede#stampede/"
-        },
-        "default_queue"               : "normal",
-        "lrms"                        : "SLURM",
-        "agent_type"                  : "multicore",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "ORTE",
-        "task_launch_method"          : "ORTE",
-        "mpi_launch_method"           : "ORTE",
-        "pre_bootstrap_0"             : ["module purge",
+        "default_queue"          : "normal",
+        "lrms"                   : "SLURM",
+        "agent_type"             : "multicore",
+        "agent_scheduler"        : "CONTINUOUS",
+        "agent_spawner"          : "POPEN",
+        "agent_launch_method"    : "ORTE",
+        "task_launch_method"     : "ORTE",
+        "mpi_launch_method"      : "ORTE",
+        "pre_bootstrap_0"        : ["module purge",
             "module load TACC",
             "module load intel/15.0.2",
             "module load python/2.7.12",
@@ -88,18 +85,19 @@
             "module load openmpi/2017_04_20_539f71d",
             "export OMPI_MCA_plm=^slurm"
         ],
-        "pre_bootstrap_1"             : ["export PATH=$PATH",
+        "pre_bootstrap_1"        : ["export PATH=$PATH",
             "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
         ],
-        "default_remote_workdir"      : "$WORK",
-        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
-        "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
-        "python_dist"                 : "default",
-        "gpus_per_node"               : 1
+        "default_remote_workdir" : "$WORK",
+        "valid_roots"            : ["/scratch", "$SCRATCH", "/work", "$WORK"],
+        "rp_version"             : "local",
+        "virtenv_mode"           : "create",
+        "python_dist"            : "default",
+        "gpus_per_node"          : 1
     },
 
     "stampede_ortelib": {
+        # FIXME: obsolete
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail. To create a virtualenv for the first time, one needs to run towards the development queue.",
         "schemas"                     : ["ssh", "gsissh", "go"],
@@ -151,6 +149,7 @@
     },
 
     "stampede_yarn": {
+        # FIXME: obsolete
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["gsissh", "ssh", "go"],
@@ -195,6 +194,7 @@
     },
 
     "stampede_spark": {
+        # FIXME: obsolete
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["gsissh", "ssh", "go"],
@@ -243,34 +243,28 @@
         "gpus_per_node"               : 1
     },
 
-    "wrangler_ssh": {
+    "wrangler": {
         "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["gsissh", "ssh", "go"],
         "mandatory_args"              : ["project"],
-        "gsissh"                      :
-        {
-            "job_manager_endpoint"    : "slurm+gsissh://wrangler.tacc.utexas.edu:2222/",
-            "filesystem_endpoint"     : "gsisftp://wrangler.tacc.utexas.edu:2222/"
-        },
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://wrangler.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://wrangler.tacc.utexas.edu/"
-        },
-        "go":
-        {
-            "job_manager_endpoint"    : "slurm+ssh://wrangler.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "go://xsede#wrangler/"
+        "schemas"                     : {
+            "gsissh": {
+                "job_manager_endpoint": "slurm+gsissh://wrangler.tacc.utexas.edu:2222/",
+                "filesystem_endpoint" : "gsisftp://wrangler.tacc.utexas.edu:2222/"
+            },
+            "ssh": {
+                "job_manager_endpoint": "slurm+ssh://wrangler.tacc.utexas.edu/",
+                "filesystem_endpoint" : "sftp://wrangler.tacc.utexas.edu/"
+            },
+            "go": {
+                "job_manager_endpoint": "slurm+ssh://wrangler.tacc.utexas.edu/",
+                "filesystem_endpoint" : "go://xsede#wrangler/"
+            }
         },
         "default_queue"               : "normal",
         "lrms"                        : "SLURM",
-        "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "MPIRUN_RSH",
         "pre_bootstrap_0"             : [
                                        # "module load python",
                                          "export TACC_DELETE_FILES=TRUE"
@@ -286,6 +280,7 @@
     },
 
     "wrangler_yarn": {
+        # FIXME: obsolete
         "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["gsissh", "ssh", "go"],
@@ -328,6 +323,7 @@
 
 
     "wrangler_spark": {
+        # FIXME: obsolete
         "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["gsissh", "ssh", "go"],
@@ -372,27 +368,23 @@
 
 
     "lonestar_ssh": {
-        "description"                 : "The XSEDE 'Lonestar' cluster at TACC (https://www.tacc.utexas.edu/resources/hpc/lonestar).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["ssh", "gsissh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "sge+ssh://lonestar.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://lonestar.tacc.utexas.edu/"
-        },
-        "gsissh"                      :
-        {
-            "job_manager_endpoint"    : "sge+gsissh://lonestar.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "gsisftp://lonestar.tacc.utexas.edu/"
+        "description"                 : "https://www.tacc.utexas.edu/resources/hpc/lonestar",
+        "notes"                       : "The `project`` attribute is required",
+        "schemas"                     : {
+            "default"                 : "ssh", 
+            "ssh"                     : {
+                "job_manager_endpoint": "sge+ssh://lonestar.tacc.utexas.edu/",
+                "filesystem_endpoint" : "sftp://lonestar.tacc.utexas.edu/"
+            },
+            "gsissh"                  : {
+                "job_manager_endpoint": "sge+gsissh://lonestar.tacc.utexas.edu/",
+                "filesystem_endpoint" : "gsisftp://lonestar.tacc.utexas.edu/"
+            }
         },
         "default_queue"               : "normal",
         "lrms"                        : "SGE",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "IBRUN",
         "spmd_variation"              : "24way",
+        "agent_launch_method"         : "SSH",
         "pre_bootstrap_0"             : ["module purge",
                                          "module load TACC",
                                          "module load cluster",
@@ -405,30 +397,27 @@
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     },
+
     "stampede2_ssh": {
-        "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["gsissh", "ssh"],
+        "description"                 : "https://www.tacc.utexas.edu/stampede2",
+        "notes"                       : ""
         "mandatory_args"              : ["project"],
-        "gsissh"                      :
-        {
-            "job_manager_endpoint"    : "slurm+gsissh://stampede2.tacc.utexas.edu:2222/",
-            "filesystem_endpoint"     : "gsisftp://stampede2.tacc.utexas.edu:2222/"
-        },
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://stampede2.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://stampede2.tacc.utexas.edu/"
+        "schemas"                     : {
+            "default"                 : "ssh", 
+            "gsissh"                  : {
+                "job_manager_endpoint": "slurm+gsissh://stampede2.tacc.utexas.edu:2222/",
+                "filesystem_endpoint" : "gsisftp://stampede2.tacc.utexas.edu:2222/"
+            },
+            "ssh"                     : {
+                "job_manager_endpoint": "slurm+ssh://stampede2.tacc.utexas.edu/",
+                "filesystem_endpoint" : "sftp://stampede2.tacc.utexas.edu/"
+            }
         },
         "default_queue"               : "normal",
         "lrms"                        : "SLURM",
         "cores_per_node"              : 68,
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "IBRUN",
-        "pre_bootstrap_0"             :["module load TACC",
+        "pre_bootstrap_0"             : ["module load TACC",
                                          "module load intel/17.0.4",
                                          "module load python/2.7.13"
                                         ],
