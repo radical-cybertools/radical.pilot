@@ -364,29 +364,29 @@ class TestComponentSlurmResourceManager(unittest.TestCase):
         return
 
 
-        def test_slurm_xsede_supermic_spark(self):
-            """
-            Test Slurm with xsede_supermic_spark
-            """
+    def test_slurm_xsede_supermic_spark(self):
+        """
+        Test Slurm with xsede_supermic_spark
+        """
 
-            # Set environment variables
-            os.environ['SLURM_NODELIST']        = 'nodes[1-2]'
-            os.environ['SLURM_NPROCS']          = '24'       
-            os.environ['SLURM_NNODES']          = '2'
-            os.environ['SLURM_CPUS_ON_NODE']    = '24'
+        # Set environment variables
+        os.environ['SLURM_NODELIST']        = 'nodes[1-2]'
+        os.environ['SLURM_NPROCS']          = '24'       
+        os.environ['SLURM_NNODES']          = '2'
+        os.environ['SLURM_CPUS_ON_NODE']    = '24'
 
-            # Run component with desired configuration
-            self.component._cfg = self.cfg_xsede_supermic_spark
-            self.component._configure()
+        # Run component with desired configuration
+        self.component._cfg = self.cfg_xsede_supermic_spark
+        self.component._configure()
 
-            # Verify configured correctly
-            self.assertEqual(self.component.cores_per_node, 20)
-            self.assertEqual(self.component.gpus_per_node , 0)
-            self.assertEqual(self.component.lfs_per_node['path'], "/var/scratch/")
-            self.assertEqual(self.component.lfs_per_node['size'], 200496)
-            self.assertEqual(self.component.lm_info['cores_per_node'], 20)
+        # Verify configured correctly
+        self.assertEqual(self.component.cores_per_node, 20)
+        self.assertEqual(self.component.gpus_per_node , 0)
+        self.assertEqual(self.component.lfs_per_node['path'], "/var/scratch/")
+        self.assertEqual(self.component.lfs_per_node['size'], 200496)
+        self.assertEqual(self.component.lm_info['cores_per_node'], 20)
 
-            return
+        return
 
 
 if __name__ == "__main__":
