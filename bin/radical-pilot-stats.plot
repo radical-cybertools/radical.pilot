@@ -1,3 +1,4 @@
+#!/usr/bin/env gnuplot
 
 # '#FF9944'
 # '#AA6666'
