@@ -27,8 +27,10 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
     if not log and session:
         log = session._log
+        rep = session._rep
     elif not log:
-        log = ru.get_logger('radical.pilot.utils')
+        log = ru.Logger('radical.pilot.utils')
+        rep = ru.Reporter('radical.pilot.utils')
 
     ret = list()
 
@@ -159,7 +161,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
                     log.warn('could not extract tarball %s [%s]', ftgt.path, e)
 
                 # If extract succeeded, no need to fetch individual profiles
-                log.report.ok("+ %s (profiles)\n" % pilot['uid'])
+                rep.ok("+ %s (profiles)\n" % pilot['uid'])
                 continue
 
             # If we dont have a tarball (for whichever reason), fetch individual profiles
@@ -177,10 +179,10 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
                     prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
                     prof_file.close()
 
-            log.report.ok("+ %s (profiles)\n" % pilot['uid'])
+            rep.ok("+ %s (profiles)\n" % pilot['uid'])
 
         except Exception as e:
-            log.report.error("- %s (profiles)\n" % pilot['uid'])
+            rep.error("- %s (profiles)\n" % pilot['uid'])
             log.exception('failed to fet profile for %s', pilot['uid'])
 
     return ret
@@ -200,8 +202,10 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
 
     if not log and session:
         log = session._log
+        rep = session._rep
     elif not log:
-        log = ru.get_logger('radical.pilot.utils')
+        log = ru.Logger('radical.pilot.utils')
+        rep = ru.Reporter('radical.pilot.utils')
 
     ret = list()
 
@@ -324,7 +328,7 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
                     log.warn('could not extract tarball %s [%s]', ftgt.path, e)
 
                 # If extract succeeded, no need to fetch individual logfiles
-                log.report.ok("+ %s (logfiles)\n" % pilot['uid'])
+                rep.ok("+ %s (logfiles)\n" % pilot['uid'])
                 continue
 
             # If we dont have a tarball (for whichever reason), fetch individual logfiles
@@ -344,10 +348,10 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
                 log_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
                 log_file.close()
 
-            log.report.ok("+ %s (logfiles)\n" % pilot['uid'])
+            rep.ok("+ %s (logfiles)\n" % pilot['uid'])
 
         except Exception as e:
-            log.report.error("- %s (logfiles)\n" % pilot['uid'])
+            rep.error("- %s (logfiles)\n" % pilot['uid'])
 
     return ret
 
@@ -363,8 +367,10 @@ def fetch_json(sid, dburl=None, tgt=None, skip_existing=False, session=None,
 
     if not log and session:
         log = session._log
+        rep = session._rep
     elif not log:
-        log = ru.get_logger('radical.pilot.utils')
+        log = ru.Logger('radical.pilot.utils')
+        rep = ru.Reporter('radical.pilot.utils')
 
     if not tgt:
         tgt = '.'
@@ -403,7 +409,7 @@ def fetch_json(sid, dburl=None, tgt=None, skip_existing=False, session=None,
 
         mongo.close()
 
-    log.report.ok("+ %s (json)\n" % sid)
+    rep.ok("+ %s (json)\n" % sid)
     return dst
 
 
