@@ -30,7 +30,7 @@ if __name__ == "__main__":
     CU_CORES = 1 # The cores each CU will take.
     QUEUE = None
     # we use a reporter class for nicer output
-    report = ru.LogReporter(name='radical.pilot')
+    report = ru.Reporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # Create a new session. No need to try/except this: if session creation
