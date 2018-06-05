@@ -34,10 +34,8 @@ if __name__ == '__main__':
 
     # use the resource specified as argument, fall back to localhost
     if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
-    elif len(sys.argv) == 2: 
-        resource = sys.argv[1]
-    else: 
-        resource = 'local.localhost'
+    elif len(sys.argv) == 2: resource = sys.argv[1]
+    else                   : resource = 'local.localhost'
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
