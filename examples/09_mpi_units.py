@@ -36,10 +36,8 @@ if __name__ == '__main__':
     if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
     elif len(sys.argv) == 2: 
         resource = sys.argv[1]
-        cu_arg = ['09_mpi_units.sh']
     else: 
         resource = 'local.localhost'
-        cu_arg = ['%s/09_mpi_units.sh' % PWD]
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -97,7 +95,7 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.executable     = '/bin/sh'
-            cud.arguments      = cu_arg
+            cud.arguments      = ['09_mpi_units.sh']
             cud.input_staging  = ['%s/09_mpi_units.sh' % PWD]
             cud.cores          = 3
             cud.mpi            = True
