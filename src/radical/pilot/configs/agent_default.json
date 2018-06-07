@@ -11,7 +11,7 @@
     # `spawner`            : method to spawn compute unit processes
     # `task_launch_method` : method to reach compute nodes (for non-mpi tasks)
     # `mpi_launch_method`  : method to reach compute nodes (for mpi tasks)
-    "mode" {
+    "config" {
         "default"                  : "ssh", 
         "ssh" : {
             "scheduler"            : "CONTINUOUS",
@@ -60,7 +60,7 @@
     # The `UpdateWorker` component must live in agent_0, as only that agent is
     # known to have connectivity toward the DB.
     # All bridges must live in agent_0.
-    "config" : {
+    "layout" : {
         "default" : "beowulf", 
         "beowulf" : {
             "agent_0" : {
@@ -121,7 +121,7 @@
                         "AgentExecutingComponent"     : {"count" : 1},
                         "AgentStagingOutputComponent" : {"count" : 1}
                     }
-                }
+                },
                 "bridges" : {
                     "agent_staging_input_queue"   : {"log_level" : "debug",
                                                      "stall_hwm" : 1,

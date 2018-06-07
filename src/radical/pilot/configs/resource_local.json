@@ -14,7 +14,7 @@
             "job_manager_endpoint"    : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
-        "default_remote_workdir"      : "$HOME",
+        "default_sandbox_base"        : "$HOME",
         "lrms"                        : "FORK",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
@@ -42,7 +42,7 @@
             "job_manager_endpoint"    : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
-        "default_remote_workdir"      : "$HOME",
+        "default_sandbox_base"        : "$HOME",
         "lrms"                        : "FORK",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
@@ -70,7 +70,7 @@
             "job_manager_endpoint"    : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
-        "default_remote_workdir"      : "$HOME",
+        "default_sandbox_base"        : "$HOME",
         "lrms"                        : "YARN",
         "agent_scheduler"             : "YARN",
         "agent_spawner"               : "ABDS",
@@ -96,7 +96,7 @@
             "job_manager_endpoint"    : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
-        "default_remote_workdir"      : "$HOME",
+        "default_sandbox_base"        : "$HOME",
         "lrms"                        : "FORK",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
@@ -122,7 +122,7 @@
             "job_manager_endpoint"    : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
-        "default_remote_workdir"      : "$HOME",
+        "default_sandbox_base"        : "$HOME",
         "lrms"                        : "FORK",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
@@ -149,7 +149,7 @@
             "job_manager_endpoint"    : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
-        "default_remote_workdir"      : "$HOME",
+        "default_sandbox_base"        : "$HOME",
         "lrms"                        : "FORK",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
@@ -176,7 +176,7 @@
             "job_manager_endpoint"    : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
-        "default_remote_workdir"      : "$HOME",
+        "default_sandbox_base"        : "$HOME",
         "lrms"                        : "FORK",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
@@ -207,7 +207,7 @@
            "job_manager_endpoint"    : "fork://localhost/",
            "filesystem_endpoint"     : "file://localhost/"
         },
-        "default_remote_workdir"      : "$HOME",
+        "default_sandbox_base"        : "$HOME",
         "lrms"                        : "FORK",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",

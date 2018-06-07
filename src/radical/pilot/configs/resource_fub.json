@@ -16,7 +16,7 @@
         "task_launch_method"    : "RSH",
         "mpi_launch_method"     : "MPIEXEC",
         "pre_bootstrap_0"       : [],
-        "default_remote_workdir": "$HOME/NO_BACKUP",
+        "default_sandbox_base"  : "$HOME/NO_BACKUP",
         "valid_roots"           : ["$HOME",
                                    "/data/scratch"],
         "rp_version"            : "local",

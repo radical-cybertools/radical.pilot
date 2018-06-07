@@ -917,7 +917,7 @@ class Session(rs.Session):
                 # Get the sandbox from either the pilot_desc or resource conf
                 sandbox_raw = pilot['description'].get('sandbox')
                 if not sandbox_raw:
-                    sandbox_raw = rcfg.get('default_remote_workdir', "$PWD")
+                    sandbox_raw = rcfg.get('default_sandbox_base', "$PWD")
         
                 # If the sandbox contains expandables, we need to resolve those remotely.
                 # NOTE: Note that this will only work for (gsi)ssh or shell based access mechanisms
