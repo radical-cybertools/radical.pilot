@@ -15,6 +15,8 @@ from . import states    as rps
 from . import constants as rpc
 from . import types     as rpt
 
+from . import compute_unit_description as cud
+
 from .staging_directives import expand_description
 from .staging_directives import TRANSFER, COPY, LINK, MOVE, STAGING_AREA
 
@@ -54,6 +56,11 @@ class ComputeUnit(object):
     # --------------------------------------------------------------------------
     #
     def __init__(self, umgr, descr):
+
+        # FIXME GPU: we allow `mpi` for backward compatibility - but need to
+        #       convert the bool into a decent value for `cpu_process_type`
+        if  descr[cud.CPU_PROCESS_TYPE] in [True, 'True']:
+            descr[cud.CPU_PROCESS_TYPE] = cud.MPI
 
         # 'static' members
         self._descr = descr.as_dict()

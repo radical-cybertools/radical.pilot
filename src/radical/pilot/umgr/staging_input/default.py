@@ -368,6 +368,7 @@ class Default(UMGRStagingInputComponent):
 
                 self._prof.prof('staging_in_tar_stop',  uid=uid, msg=did)
 
+
         # make sure tarball is flushed to disk
         if tar_file:
             tar_file.close()
@@ -382,6 +383,9 @@ class Default(UMGRStagingInputComponent):
             tgt    = sd['target']
 
             if action == rpc.TRANSFER:
+
+                src = complete_url(src, src_context, self._log)
+                tgt = complete_url(tgt, tgt_context, self._log)
 
                 # Check if the src is a folder, if true
                 # add recursive flag if not already specified

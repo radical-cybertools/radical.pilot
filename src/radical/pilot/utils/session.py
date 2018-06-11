@@ -408,14 +408,4 @@ def fetch_json(sid, dburl=None, tgt=None, skip_existing=False, session=None,
 
 
 # ------------------------------------------------------------------------------
-#
-def inject_metadata(session, metadata):
-
-    if not session:
-        raise ValueError("No session specified.")
-
-    session.inject_metadata(metadata)
-
-
-# ------------------------------------------------------------------------------
 
