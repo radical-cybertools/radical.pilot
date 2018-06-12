@@ -350,11 +350,7 @@ class AgentSchedulingComponent(rpu.Component):
             #       of the node to the location on the list?
 
             node = (n for n in self.nodes if n['uid'] == nodes['uid']).next()
-            # for n in self.nodes:
-            #     if n['uid'] == nodes['uid']:
-            #         node = n
-            #         break
-            # assert(node)
+            assert(node)
 
             # iterate over cores/gpus in the slot, and update state
             cores = nodes['core_map']
