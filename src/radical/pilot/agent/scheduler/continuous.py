@@ -305,7 +305,7 @@ class Continuous(AgentSchedulingComponent):
         requested_procs = cud['cpu_processes']
         threads_per_proc = cud['cpu_threads']
         requested_gpus = cud['gpu_processes']
-        requested_lfs = cud['lfs']
+        requested_lfs = cud['lfs_per_process']
 
         # make sure that processes are at least single-threaded
         if not threads_per_proc:
@@ -391,7 +391,7 @@ class Continuous(AgentSchedulingComponent):
         requested_procs = cud['cpu_processes']
         threads_per_proc = cud['cpu_threads']
         requested_gpus = cud['gpu_processes']
-        requested_lfs_per_process = cud['lfs']
+        requested_lfs_per_process = cud['lfs_per_process']
 
         # make sure that processes are at least single-threaded
         if not threads_per_proc:
