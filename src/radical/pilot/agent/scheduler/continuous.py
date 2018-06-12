@@ -176,7 +176,7 @@ class Continuous(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     #
     def _find_resources(self, node, requested_cores, requested_gpus,
-                        requested_lfs, core_chunk=1, partial=False, 
+                        requested_lfs, core_chunk=1, partial=False,
                         lfs_chunk=1):
         '''
         Find up to the requested number of free cores and gpus in the node.
@@ -251,9 +251,9 @@ class Continuous(AgentSchedulingComponent):
 
         cores_for_allocatable_lfs = ceil(float(self._lrms_cores_per_node)/self._lrms_lfs_per_node['size']*allocatable_lfs)
 
-        print 'lfs: ', requested_lfs, free_lfs, lfs_chunk, allocatable_lfs
-        print 'cores: ', allocatable_cores
-        print 'cores for alloc lfs: ', cores_for_allocatable_lfs, self._lrms_cores_per_node, self._lrms_lfs_per_node['size']
+        # print 'lfs: ', requested_lfs, free_lfs, lfs_chunk, allocatable_lfs
+        # print 'cores: ', allocatable_cores
+        # print 'cores for alloc lfs: ', cores_for_allocatable_lfs, self._lrms_cores_per_node, self._lrms_lfs_per_node['size']
         # # print 'procs: ', (allocatable_cores/core_chunk)
 
         # # If not enough cores, return
@@ -346,8 +346,8 @@ class Continuous(AgentSchedulingComponent):
         requested_procs = cud['cpu_processes']
         threads_per_proc = cud['cpu_threads']
         requested_gpus = cud['gpu_processes']
-        requested_lfs = cud['lfs']
-        lfs_chunk = cud['lfs'] if cud['lfs'] > 0 else 1
+        requested_lfs = cud['lfs_per_process']
+        lfs_chunk = cud['lfs_per_process'] if cud['lfs'] > 0 else 1
 
         # make sure that processes are at least single-threaded
         if not threads_per_proc:
@@ -360,6 +360,8 @@ class Continuous(AgentSchedulingComponent):
         if  requested_cores > self._lrms_cores_per_node or \
             requested_gpus > self._lrms_gpus_per_node or \
             requested_lfs > self._lrms_lfs_per_node['size']:  
+
+            # print 'req:', requested_lfs, 'avail:', self._lrms_lfs_per_node
             raise ValueError('Non-mpi unit does not fit onto single node')
 
         # ok, we can go ahead and try to find a matching node
@@ -432,7 +434,7 @@ class Continuous(AgentSchedulingComponent):
         requested_procs = cud['cpu_processes']
         threads_per_proc = cud['cpu_threads']
         requested_gpus = cud['gpu_processes']
-        requested_lfs_per_process = cud['lfs']
+        requested_lfs_per_process = cud['lfs_per_process']
 
         # make sure that processes are at least single-threaded
         if not threads_per_proc:
@@ -553,8 +555,8 @@ class Continuous(AgentSchedulingComponent):
 
             # we found something - add to the existing allocation, switch gears
             # (not first anymore), and try to find more if needed
-            self._log.debug('found %s cores, %s gpus and %s lfs', cores, gpus,
-                            lfs)
+            # self._log.debug('found %s cores, %s gpus and %s lfs', cores, gpus,
+            #                lfs)
             core_map, gpu_map = self._get_node_maps(cores, gpus,
                                                     threads_per_proc)
 

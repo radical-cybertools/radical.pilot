@@ -268,9 +268,6 @@ class AgentSchedulingComponent(rpu.Component):
         # initialize the node list to be used by the scheduler.  A scheduler
         # instance may decide to overwrite or extend this structure.
 
-        #-----------------------------------------------------------------------
-        # Change required if the DS changes.
-
         self.nodes = []
         for node, node_uid in self._lrms_node_list:
             self.nodes.append({
@@ -353,11 +350,7 @@ class AgentSchedulingComponent(rpu.Component):
             #       of the node to the location on the list?
 
             node = (n for n in self.nodes if n['uid'] == nodes['uid']).next()
-            # for n in self.nodes:
-            #     if n['uid'] == nodes['uid']:
-            #         node = n
-            #         break
-            # assert(node)
+            assert(node)
 
             # iterate over cores/gpus in the slot, and update state
             cores = nodes['core_map']
@@ -390,8 +383,6 @@ class AgentSchedulingComponent(rpu.Component):
         '''
         Returns a multi-line string corresponding to the status of the node list
         '''
-
-        # This method should change if the DS changes.
         
         ret = "|"
         for node in self.nodes:

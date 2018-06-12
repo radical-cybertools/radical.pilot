@@ -423,7 +423,6 @@
         "default_queue"               : "normal",
         "lrms"                        : "SLURM",
         "cores_per_node"              : 68,
-        "lfs_per_node"                : "/tmp",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -758,7 +757,7 @@
             "filesystem_endpoint"     : "sftp://supermic.cct-lsu.xsede.org/"
         },
         "default_queue"               : "workq",
-        "cores_per_node"              : "20",
+        "cores_per_node"              : 20,
         "lfs_path_per_node"           : "/var/scratch/",
         "lfs_size_per_node"           : 200496,
         "lrms"                        : "TORQUE",
@@ -795,7 +794,7 @@
             "filesystem_endpoint"     : "sftp://supermic.cct-lsu.xsede.org/"
         },
         "default_queue"               : "workq",
-        "cores_per_node"              : "20",
+        "cores_per_node"              : 20,
         "lfs_path_per_node"           : "/var/scratch/",
         "lfs_size_per_node"           : 200496,
         "lrms"                        : "TORQUE",
@@ -860,7 +859,8 @@
         "virtenv_mode"                : "create",
         "python_dist"                 : "default", 
         "export_to_cu"                : [], 
-        "cu_pre_exec"                 : []
+        "cu_pre_exec"                 : [],
+        "gpus_per_node"               : 2
     },
 
     "supermic_spark": {
