@@ -375,10 +375,8 @@ class AgentSchedulingComponent(rpu.Component):
             # print 'pre selected node: ',node
 
             if new_state == rpc.BUSY:
-                print node['uid']
                 node['lfs']['size'] -= nodes['lfs']
             else:
-                print node['uid']
                 node['lfs']['size'] += nodes['lfs']
 
             # print 'post slot nodes: ', nodes
