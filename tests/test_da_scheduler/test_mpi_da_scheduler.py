@@ -7,7 +7,7 @@ import glob
 import os
 import shutil
 import copy
-
+from pprint import pprint
 
 try:
     import mock
@@ -61,7 +61,7 @@ def mpi():
     cud['cpu_processes'] = 1
     cud['cpu_threads'] = 1
     cud['gpu_processes'] = 0
-    cud['lfs'] = 1024
+    cud['lfs_per_process'] = 1024
 
     return cud
 
@@ -109,10 +109,11 @@ def test_mpi_unit_with_continuous_scheduler(
 
 
     # Allocate first CUD -- should land on first node
+    print '--------------------------------------------------------'
     cud = mpi()
     cud['cpu_processes'] = 2
     cud['cpu_threads'] = 1
-    cud['lfs'] = 1024
+    cud['lfs_per_process'] = 1024
     slot =  component._allocate_slot(cud)
     assert slot == {'cores_per_node': component._lrms_cores_per_node, 
                     'lfs_per_node': component._lrms_lfs_per_node,
@@ -153,10 +154,11 @@ def test_mpi_unit_with_continuous_scheduler(
 
 
     # Allocate second CUD -- should land on first node
+    print '--------------------------------------------------------'
     cud = mpi()
     cud['cpu_processes'] = 1
     cud['cpu_threads'] = 2
-    cud['lfs'] = 1024
+    cud['lfs_per_process'] = 1024
     slot =  component._allocate_slot(cud)
     assert slot == {'cores_per_node': component._lrms_cores_per_node, 
                     'lfs_per_node': component._lrms_lfs_per_node,
@@ -199,11 +201,13 @@ def test_mpi_unit_with_continuous_scheduler(
 
     # Allocate third CUD -- should land on second node since no cores are
     # available on the first
+    print '--------------------------------------------------------'
     cud = mpi()
     cud['cpu_processes'] = 1
     cud['cpu_threads'] = 1
-    cud['lfs'] = 1024
+    cud['lfs_per_process'] = 1024
     slot =  component._allocate_slot(cud)
+    # pprint(slot)
     assert slot == {'cores_per_node': component._lrms_cores_per_node, 
                     'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{ 'lfs': 1024, 
@@ -244,12 +248,13 @@ def test_mpi_unit_with_continuous_scheduler(
 
 
     # Allocate fourth CUD -- should land on second and third nodes
+    print '--------------------------------------------------------'
     cud = mpi()
     cud['cpu_processes'] = 2
     cud['cpu_threads'] = 2
-    cud['lfs'] = 1024
+    cud['lfs_per_process'] = 1024
     slot =  component._allocate_slot(cud)
-    print slot
+    # print slot
     assert slot == {'cores_per_node': component._lrms_cores_per_node, 
                     'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{ 'lfs': 1024, 
@@ -265,62 +270,61 @@ def test_mpi_unit_with_continuous_scheduler(
                     'lm_info': 'INFO', 
                     'gpus_per_node': component._lrms_gpus_per_node}
 
+    # Assert resulting node list values after fourth CUD
+    assert component.nodes == [ {   'lfs': {'size': 2048, 'path': 'abc'},
+                                    'cores': [1, 1, 1, 1], 
+                                    'name': 'a', 
+                                    'gpus': [0], 
+                                    'uid': 1}, 
+                                {   'lfs': {'size': 3072, 'path': 'abc'},
+                                    'cores': [1, 1, 1, 0], 
+                                    'name': 'b', 
+                                    'gpus': [0], 
+                                    'uid': 2}, 
+                                {   'lfs': {'size': 4096, 'path': 'abc'},
+                                    'cores': [1, 1, 0, 0], 
+                                    'name': 'c', 
+                                    'gpus': [0], 
+                                    'uid': 3}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0, 0, 0], 
+                                    'name': 'd', 
+                                    'gpus': [0], 
+                                    'uid': 4}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0, 0, 0], 
+                                    'name': 'e', 
+                                    'gpus': [0], 
+                                    'uid': 5}]
 
-    # # Allocate second CUD -- should land on third and fourth nodes
-    # cud = mpi()
-    # slot =  component._allocate_slot(cud)    
-    # assert slot == {'cores_per_node': 2, 
-    #                 'nodes': [{ 'lfs': 1024, 
-    #                             'core_map': [[0]], 
-    #                             'name': 'c', 
-    #                             'gpu_map': [], 
-    #                             'uid': 2},
-    #                           { 'lfs': 1024,
-    #                             'core_map': [[0]],
-    #                             'name': 'd',
-    #                             'gpu_map': [],
-    #                             'uid': 2}], 
-    #                 'lm_info': 'INFO', 
-    #                 'gpus_per_node': 1}
 
-    # # Fail with ValueError if  lfs required by cud is more than available
-    # with pytest.raises(ValueError):
-
-    #     cud = mpi()
-    #     cud['lfs'] = 20000
-    #     slot =  component._allocate_slot(cud)    
-    
-
-
-
-
-    # # Deallocate slot
-    # component._release_slot(slot)
-    # assert component.nodes == [ {   'lfs': 3072, 
-    #                                 'cores': [1, 1], 
-    #                                 'name': 'a', 
-    #                                 'gpus': [0], 
-    #                                 'uid': 1}, 
-    #                             {   'lfs': 0, 
-    #                                 'cores': [1, 1], 
-    #                                 'name': 'b', 
-    #                                 'gpus': [0], 
-    #                                 'uid': 2}, 
-    #                             {   'lfs': 0, 
-    #                                 'cores': [1, 0], 
-    #                                 'name': 'c', 
-    #                                 'gpus': [0], 
-    #                                 'uid': 3}, 
-    #                             {   'lfs': 0, 
-    #                                 'cores': [1, 0], 
-    #                                 'name': 'd', 
-    #                                 'gpus': [0], 
-    #                                 'uid': 4}, 
-    #                             {   'lfs': 0, 
-    #                                 'cores': [1, 0], 
-    #                                 'name': 'e', 
-    #                                 'gpus': [0], 
-    #                                 'uid': 5}]
+    # Deallocate slot
+    component._release_slot(slot)
+    assert component.nodes == [ {   'lfs': {'size': 2048, 'path': 'abc'},
+                                    'cores': [1, 1, 1, 1], 
+                                    'name': 'a', 
+                                    'gpus': [0], 
+                                    'uid': 1}, 
+                                {   'lfs': {'size': 4096, 'path': 'abc'},
+                                    'cores': [1, 0, 0, 0], 
+                                    'name': 'b', 
+                                    'gpus': [0], 
+                                    'uid': 2}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0, 0, 0], 
+                                    'name': 'c', 
+                                    'gpus': [0], 
+                                    'uid': 3}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0, 0, 0], 
+                                    'name': 'd', 
+                                    'gpus': [0], 
+                                    'uid': 4}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0, 0, 0], 
+                                    'name': 'e', 
+                                    'gpus': [0], 
+                                    'uid': 5}]
 
 
 

@@ -60,7 +60,7 @@ def nompi():
     cud['cpu_processes'] = 1
     cud['cpu_threads'] = 1
     cud['gpu_processes'] = 0
-    cud['lfs'] = 1024
+    cud['lfs_per_process'] = 1024
 
     return cud
 
@@ -174,7 +174,7 @@ def test_nonmpi_unit_with_continuous_scheduler(
 
     # Allocate four CUD -- should land on third node
     cud = nompi()
-    cud['lfs'] = 5120
+    cud['lfs_per_process'] = 5120
     slot =  component._allocate_slot(cud)    
     assert slot == {'cores_per_node': 2, 
                     'nodes': [{ 'lfs': 5120, 
@@ -189,14 +189,14 @@ def test_nonmpi_unit_with_continuous_scheduler(
     with pytest.raises(ValueError):
 
         cud = nompi()
-        cud['lfs'] = 6000
+        cud['lfs_per_process'] = 6000
         slot =  component._allocate_slot(cud)    
     
 
     # Max out available resources
     # Allocate two CUDs -- should land on fourth and fifth node
     cud = nompi()
-    cud['lfs'] = 5120
+    cud['lfs_per_process'] = 5120
     slot =  component._allocate_slot(cud)    
     assert slot == {'cores_per_node': 2, 
                     'nodes': [{ 'lfs': 5120, 
@@ -219,7 +219,7 @@ def test_nonmpi_unit_with_continuous_scheduler(
 
     # Allocate CUD with to land on second node
     cud = nompi()
-    cud['lfs'] = 4096
+    cud['lfs_per_process'] = 4096
     slot =  component._allocate_slot(cud)    
     assert slot == {'cores_per_node': 2, 
                     'nodes': [{ 'lfs': 4096, 
@@ -232,7 +232,7 @@ def test_nonmpi_unit_with_continuous_scheduler(
 
     # Allocate CUD with no lfs requirement
     cud = nompi()
-    cud['lfs'] = 0
+    cud['lfs_per_process'] = 0
     slot =  component._allocate_slot(cud)    
     assert slot == {'cores_per_node': 2, 
                     'nodes': [{ 'lfs': 0, 
@@ -274,7 +274,7 @@ def test_nonmpi_unit_with_continuous_scheduler(
 
     # Allocate CUD which cannot fit on available resources
     cud = nompi()
-    cud['lfs'] = 5120
+    cud['lfs_per_process'] = 5120
     slot =  component._allocate_slot(cud)
     assert slot == None
 
