@@ -80,6 +80,7 @@ class Continuous(AgentSchedulingComponent):
     def __init__(self, cfg, session):
 
         self.nodes = None
+        self._tag_history = dict()
 
         AgentSchedulingComponent.__init__(self, cfg, session)
 
@@ -339,6 +340,8 @@ class Continuous(AgentSchedulingComponent):
         requested_gpus = cud['gpu_processes']
         requested_lfs = cud['lfs_per_process']
         lfs_chunk = requested_lfs if requested_lfs > 0 else 1
+        tag = cud.get('tag')
+        uid = cud.get('uid')
 
         # make sure that processes are at least single-threaded
         if not threads_per_proc:
@@ -364,6 +367,15 @@ class Continuous(AgentSchedulingComponent):
 
         for node in self.nodes:  # FIXME optimization: iteration start
 
+            # If unit has a tag, check if the tag is in the tag_history dict,
+            # else it is a invalid tag, continue as if the unit does not have
+            # a tag
+            # If the unit has a valid tag, find the node that matches the
+            # tag from tag_history dict
+            if tag and (tag in self._tag_history.keys()):
+                if node['uid'] not in self._tag_history[tag]:
+                    continue
+
             # attempt to find the required number of cores and gpus on this
             # node - do not allow partial matches.
             cores, gpus, lfs = self._find_resources(node=node,
@@ -384,6 +396,9 @@ class Continuous(AgentSchedulingComponent):
         if not cores and not gpus and not lfs:
             return None
 
+        # Store the selected node uid in the tag history
+        self._tag_history[uid] = [node['uid']]
+
         # We have to communicate to the launcher where exactly processes are to
         # be placed, and what cores are reserved for application threads.  See
         # the top level comment of `base.py` for details on the data structure
@@ -398,8 +413,10 @@ class Continuous(AgentSchedulingComponent):
                             'lfs': lfs}],
                  'cores_per_node': self._lrms_cores_per_node,
                  'gpus_per_node': self._lrms_gpus_per_node,
+                 'lfs_per_node': self._lrms_lfs_per_node,
                  'lm_info': self._lrms_lm_info
                  }
+
         return slots
 
     # --------------------------------------------------------------------------
@@ -426,6 +443,8 @@ class Continuous(AgentSchedulingComponent):
         threads_per_proc = cud['cpu_threads']
         requested_gpus = cud['gpu_processes']
         requested_lfs_per_process = cud['lfs_per_process']
+        tag = cud.get('tag')
+        uid = cud.get('uid')
 
         # make sure that processes are at least single-threaded
         if not threads_per_proc:
@@ -496,6 +515,10 @@ class Continuous(AgentSchedulingComponent):
             node_uid = node['uid']
             node_name = node['name']
 
+            if tag and (tag in self._tag_history.keys()):
+                if node['uid'] not in self._tag_history[tag]:
+                    continue
+
             # if only a small set of cores/gpus remains unallocated (ie. less
             # than node size), we are in fact looking for the last node.  Note
             # that this can also be the first node, for small units.
@@ -516,8 +539,6 @@ class Continuous(AgentSchedulingComponent):
             find_cores = min(requested_cores - alloced_cores, cores_per_node)
             find_gpus = min(requested_gpus - alloced_gpus,  gpus_per_node)
             find_lfs = min(requested_lfs - alloced_lfs, lfs_per_node['size'])
-
-            print 'find gpus: ', find_gpus, requested_gpus, alloced_gpus
 
             # under the constraints so derived, check what we find on this node
             cores, gpus, lfs = self._find_resources(node=node,
@@ -546,10 +567,16 @@ class Continuous(AgentSchedulingComponent):
                 # try next node
                 continue
 
+            # Store the selected node uid in the tag history
+            if uid not in self._tag_history.keys():
+                self._tag_history[uid] = [node['uid']]
+            else:
+                self._tag_history[uid].append(node['uid'])
+
             # we found something - add to the existing allocation, switch gears
             # (not first anymore), and try to find more if needed
-            # self._log.debug('found %s cores, %s gpus and %s lfs', cores, gpus,
-            #                lfs)
+            self._log.debug('found %s cores, %s gpus and %s lfs', cores, gpus,
+                           lfs)
             core_map, gpu_map = self._get_node_maps(cores, gpus,
                                                     threads_per_proc)
 

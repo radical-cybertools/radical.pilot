@@ -1,6 +1,6 @@
 import radical.utils as ru
 import radical.pilot as rp
-from radical.pilot.agent.scheduler.tagging import Tagging
+from radical.pilot.agent.scheduler.tagging import Continuous
 import pytest
 import radical.pilot.constants as rpc
 import glob
@@ -63,10 +63,21 @@ def nompi():
     cud['lfs_per_process'] = 1024
 
     return cud
+#-----------------------------------------------------------------------------------------------------------------------
 
+def mpi():
+    cud = dict()
+    cud['cpu_process_type'] = 'MPI'
+    cud['gpu_process_type'] = None
+    cud['cpu_processes'] = 1
+    cud['cpu_threads'] = 1
+    cud['gpu_processes'] = 0
+    cud['lfs_per_process'] = 1024
+
+    return cud
+#-----------------------------------------------------------------------------------------------------------------------
 # Cleanup any folders and files to leave the system state
 # as prior to the test
-#-----------------------------------------------------------------------------------------------------------------------
 def tearDown():
     rp = glob.glob('%s/rp.session.*'%os.getcwd())
     for fold in rp:
@@ -76,11 +87,11 @@ def tearDown():
 
 # Test umgr input staging of a single file
 #-----------------------------------------------------------------------------------------------------------------------
-@mock.patch.object(Tagging, '__init__', return_value=None)
-@mock.patch.object(Tagging, 'advance')
+@mock.patch.object(Continuous, '__init__', return_value=None)
+@mock.patch.object(Continuous, 'advance')
 @mock.patch.object(ru.Profiler, 'prof')
 @mock.patch('radical.utils.raise_on')
-def test_nonmpi_unit_with_tagging_scheduler(
+def test_nonmpi_unit_with_tagging(
         mocked_init,
         mocked_method,
         mocked_profiler,
@@ -88,7 +99,7 @@ def test_nonmpi_unit_with_tagging_scheduler(
 
     cfg, session = setUp() 
 
-    component = Tagging(cfg=dict(), session=session)
+    component = Continuous(cfg=dict(), session=session)
     component._lrms_info           = cfg['lrms_info']
     component._lrms_lm_info        = cfg['lrms_info']['lm_info']
     component._lrms_node_list      = cfg['lrms_info']['node_list']
@@ -96,6 +107,7 @@ def test_nonmpi_unit_with_tagging_scheduler(
     component._lrms_gpus_per_node  = cfg['lrms_info']['gpus_per_node']
     component._lrms_lfs_per_node   = cfg['lrms_info']['lfs_per_node']
     component._tag_history = dict()
+    component._log = ru.get_logger('test.component')
 
     component.nodes = []    
     for node, node_uid in component._lrms_node_list:
@@ -114,6 +126,7 @@ def test_nonmpi_unit_with_tagging_scheduler(
     slot1 =  component._allocate_slot(cud)
     assert component._tag_history == {'unit.000000': [1]}
     assert slot1 == {'cores_per_node': 2, 
+                    'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{ 'lfs': 1024, 
                                 'core_map': [[0]], 
                                 'name': 'a', 
@@ -158,6 +171,7 @@ def test_nonmpi_unit_with_tagging_scheduler(
     assert component._tag_history == {  'unit.000000': [1],
                                         'unit.000001': [1]}
     assert slot2 == {'cores_per_node': 2, 
+                     'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{ 'lfs': 1024, 
                                 'core_map': [[1]], 
                                 'name': 'a', 
@@ -244,6 +258,7 @@ def test_nonmpi_unit_with_tagging_scheduler(
 
     slot4 =  component._allocate_slot(cud)
     assert slot4 == {'cores_per_node': 2, 
+                    'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{ 'lfs': 1024, 
                                 'core_map': [[1]], 
                                 'name': 'a', 
@@ -281,3 +296,284 @@ def test_nonmpi_unit_with_tagging_scheduler(
                                     'name': 'e', 
                                     'gpus': [0], 
                                     'uid': 5}]
+
+
+#-----------------------------------------------------------------------------------------------------------------------
+@mock.patch.object(Continuous, '__init__', return_value=None)
+@mock.patch.object(Continuous, 'advance')
+@mock.patch.object(ru.Profiler, 'prof')
+@mock.patch('radical.utils.raise_on')
+def test_mpi_unit_with_tagging(
+        mocked_init,
+        mocked_method,
+        mocked_profiler,
+        mocked_raise_on):
+
+    cfg, session = setUp() 
+
+    component = Continuous(cfg=dict(), session=session)
+    component._lrms_info           = cfg['lrms_info']
+    component._lrms_lm_info        = cfg['lrms_info']['lm_info']
+    component._lrms_node_list      = cfg['lrms_info']['node_list']
+    component._lrms_cores_per_node = cfg['lrms_info']['cores_per_node']
+    component._lrms_gpus_per_node  = cfg['lrms_info']['gpus_per_node']
+    component._lrms_lfs_per_node   = cfg['lrms_info']['lfs_per_node']
+    component._tag_history = dict()
+    component._scattered = True
+    component._log = ru.get_logger('test.component')
+
+    component.nodes = []    
+    for node, node_uid in component._lrms_node_list:
+        component.nodes.append(copy.deepcopy({
+                'name' : node,
+                'uid'  : node_uid,
+                'cores': [rpc.FREE] * component._lrms_cores_per_node,
+                'gpus' : [rpc.FREE] * component._lrms_gpus_per_node,
+                'lfs'  : component._lrms_lfs_per_node
+            }))
+
+
+    # Allocate first CUD -- should land on first node
+    cud = mpi()
+    cud['uid'] = 'unit.000000'
+    cud['cpu_processes'] = 2
+    cud['cpu_threads'] = 1
+    cud['lfs_per_process'] = 1024
+    slot1 =  component._allocate_slot(cud)
+    assert component._tag_history == {'unit.000000': [1]}
+    assert slot1 == {'cores_per_node': 2, 
+                    'lfs_per_node': component._lrms_lfs_per_node,
+                    'nodes': [{ 'lfs': 2048, 
+                                'core_map': [[0],[1]], 
+                                'name': 'a', 
+                                'gpu_map': [], 
+                                'uid': 1}], 
+                    'lm_info': 'INFO', 
+                    'gpus_per_node': 1}
+
+    # Assert resulting node list values after first CUD
+    assert component.nodes == [ {   'lfs': {'size': 3072, 'path': 'abc'},
+                                    'cores': [1, 1], 
+                                    'name': 'a', 
+                                    'gpus': [0], 
+                                    'uid': 1}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'b', 
+                                    'gpus': [0], 
+                                    'uid': 2}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'c', 
+                                    'gpus': [0], 
+                                    'uid': 3}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'd', 
+                                    'gpus': [0], 
+                                    'uid': 4}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'e', 
+                                    'gpus': [0], 
+                                    'uid': 5}]
+
+
+    # Allocate second CUD -- should return None as the first node is 
+    # not yet released
+    cud = mpi()
+    cud['uid'] = 'unit.000001'
+    cud['tag'] = 'unit.000000'
+    slot2 =  component._allocate_slot(cud)
+    assert slot2 == None
+    assert component._tag_history == {  'unit.000000': [1]}
+    
+
+    # Allocate third CUD -- should land on second and third node
+    cud = mpi()
+    cud['cpu_processes'] = 2
+    cud['cpu_threads'] = 2
+    cud['uid'] = 'unit.000002'
+    slot3 =  component._allocate_slot(cud)
+    assert slot3 == {'cores_per_node': 2, 
+                    'lfs_per_node': component._lrms_lfs_per_node,
+                    'nodes': [{ 'lfs': 1024, 
+                                'core_map': [[0,1]], 
+                                'name': 'b', 
+                                'gpu_map': [], 
+                                'uid': 2},
+                              { 'lfs': 1024, 
+                                'core_map': [[0,1]], 
+                                'name': 'c', 
+                                'gpu_map': [], 
+                                'uid': 3}], 
+                    'lm_info': 'INFO', 
+                    'gpus_per_node': 1}
+    assert component._tag_history == {  'unit.000000': [1],
+                                        'unit.000002': [2,3]}
+
+
+    # Assert resulting node list values after second CUDslot release
+    assert component.nodes == [ {   'lfs': {'size': 3072, 'path': 'abc'},
+                                    'cores': [1, 1], 
+                                    'name': 'a', 
+                                    'gpus': [0], 
+                                    'uid': 1}, 
+                                {   'lfs': {'size': 4096, 'path': 'abc'},
+                                    'cores': [1, 1], 
+                                    'name': 'b', 
+                                    'gpus': [0], 
+                                    'uid': 2}, 
+                                {   'lfs': {'size': 4096, 'path': 'abc'},
+                                    'cores': [1, 1], 
+                                    'name': 'c', 
+                                    'gpus': [0], 
+                                    'uid': 3}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'd', 
+                                    'gpus': [0], 
+                                    'uid': 4}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'e', 
+                                    'gpus': [0], 
+                                    'uid': 5}]
+
+
+    # Allocate fourth CUD -- should return None as the second node is not 
+    # yet released
+    cud = mpi()
+    cud['cpu_threads'] = 2
+    cud['uid'] = 'unit.000003'
+    cud['tag'] = 'unit.000002'
+    slot4 =  component._allocate_slot(cud)
+    assert slot4 == None
+    assert component._tag_history == {  'unit.000000': [1],
+                                        'unit.000002': [2,3]}
+
+
+    # Release first node and allocate second CUD again
+    component._release_slot(slot1)
+
+    assert component.nodes == [ {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'a', 
+                                    'gpus': [0], 
+                                    'uid': 1}, 
+                                {   'lfs': {'size': 4096, 'path': 'abc'},
+                                    'cores': [1, 1], 
+                                    'name': 'b', 
+                                    'gpus': [0], 
+                                    'uid': 2}, 
+                                {   'lfs': {'size': 4096, 'path': 'abc'},
+                                    'cores': [1, 1], 
+                                    'name': 'c', 
+                                    'gpus': [0], 
+                                    'uid': 3}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'd', 
+                                    'gpus': [0], 
+                                    'uid': 4}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'e', 
+                                    'gpus': [0], 
+                                    'uid': 5}]
+
+    cud = mpi()
+    cud['uid'] = 'unit.000001'
+    cud['tag'] = 'unit.000000'
+    slot2 =  component._allocate_slot(cud)
+    assert slot2 == {'cores_per_node': 2, 
+                    'lfs_per_node': component._lrms_lfs_per_node,
+                    'nodes': [{ 'lfs': 1024, 
+                                'core_map': [[0]], 
+                                'name': 'a', 
+                                'gpu_map': [], 
+                                'uid': 1}], 
+                    'lm_info': 'INFO', 
+                    'gpus_per_node': 1}
+    assert component._tag_history == {  'unit.000000': [1],
+                                        'unit.000001': [1],
+                                        'unit.000002': [2,3]}
+
+
+    # Release second and third nodes and allocate fourth CUD again
+    component._release_slot(slot3)
+
+    assert component.nodes == [ {   'lfs': {'size': 4096, 'path': 'abc'},
+                                    'cores': [1, 0], 
+                                    'name': 'a', 
+                                    'gpus': [0], 
+                                    'uid': 1}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'b', 
+                                    'gpus': [0], 
+                                    'uid': 2}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'c', 
+                                    'gpus': [0], 
+                                    'uid': 3}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'd', 
+                                    'gpus': [0], 
+                                    'uid': 4}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'e', 
+                                    'gpus': [0], 
+                                    'uid': 5}]
+
+    cud = mpi()
+    cud['cpu_threads'] = 2
+    cud['uid'] = 'unit.000003'
+    cud['tag'] = 'unit.000002'
+    slot4 =  component._allocate_slot(cud)
+    assert slot4 == {'cores_per_node': 2, 
+                    'lfs_per_node': component._lrms_lfs_per_node,
+                    'nodes': [{ 'lfs': 1024, 
+                                'core_map': [[0,1]], 
+                                'name': 'b', 
+                                'gpu_map': [], 
+                                'uid': 2}], 
+                    'lm_info': 'INFO', 
+                    'gpus_per_node': 1}
+    print component._tag_history
+    assert component._tag_history == {  'unit.000000': [1],
+                                        'unit.000001': [1],
+                                        'unit.000002': [2,3],
+                                        'unit.000003': [2]}
+
+
+    assert component.nodes == [ {   'lfs': {'size': 4096, 'path': 'abc'},
+                                    'cores': [1, 0], 
+                                    'name': 'a', 
+                                    'gpus': [0], 
+                                    'uid': 1}, 
+                                {   'lfs': {'size': 4096, 'path': 'abc'},
+                                    'cores': [1, 1], 
+                                    'name': 'b', 
+                                    'gpus': [0], 
+                                    'uid': 2}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'c', 
+                                    'gpus': [0], 
+                                    'uid': 3}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'd', 
+                                    'gpus': [0], 
+                                    'uid': 4}, 
+                                {   'lfs': {'size': 5120, 'path': 'abc'},
+                                    'cores': [0, 0], 
+                                    'name': 'e', 
+                                    'gpus': [0], 
+                                    'uid': 5}]
+
+    tearDown()

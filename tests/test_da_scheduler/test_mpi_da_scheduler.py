@@ -77,12 +77,12 @@ def tearDown():
 
 # Test umgr input staging of a single file
 #-----------------------------------------------------------------------------------------------------------------------
-# @mock.patch.object(Continuous, '__init__', return_value=None)
+@mock.patch.object(Continuous, '__init__', return_value=None)
 @mock.patch.object(Continuous, 'advance')
 @mock.patch.object(ru.Profiler, 'prof')
 @mock.patch('radical.utils.raise_on')
 def test_mpi_unit_with_continuous_scheduler(
-        # mocked_init,
+        mocked_init,
         mocked_method,
         mocked_profiler,
         mocked_raise_on):
@@ -96,6 +96,9 @@ def test_mpi_unit_with_continuous_scheduler(
     component._lrms_cores_per_node = cfg['lrms_info']['cores_per_node']
     component._lrms_gpus_per_node  = cfg['lrms_info']['gpus_per_node']
     component._lrms_lfs_per_node   = cfg['lrms_info']['lfs_per_node']
+    component._tag_history         = dict()
+    component._log = ru.get_logger('test.component')
+
 
     component.nodes = []
     for node, node_uid in component._lrms_node_list:

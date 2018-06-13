@@ -95,6 +95,7 @@ def test_nonmpi_unit_with_continuous_scheduler(
     component._lrms_cores_per_node = cfg['lrms_info']['cores_per_node']
     component._lrms_gpus_per_node  = cfg['lrms_info']['gpus_per_node']
     component._lrms_lfs_per_node   = cfg['lrms_info']['lfs_per_node']
+    component._tag_history         = dict()
 
     component.nodes = []
     import copy
@@ -112,6 +113,7 @@ def test_nonmpi_unit_with_continuous_scheduler(
     cud = nompi()
     slot =  component._allocate_slot(cud)
     assert slot == {'cores_per_node': 2, 
+                    'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{ 'lfs': 1024, 
                                 'core_map': [[0]], 
                                 'name': 'a', 
@@ -151,6 +153,7 @@ def test_nonmpi_unit_with_continuous_scheduler(
     cud = nompi()
     slot =  component._allocate_slot(cud)    
     assert slot == {'cores_per_node': 2, 
+                    'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{ 'lfs': 1024, 
                                 'core_map': [[1]], 
                                 'name': 'a', 
@@ -164,6 +167,7 @@ def test_nonmpi_unit_with_continuous_scheduler(
     cud = nompi()
     slot =  component._allocate_slot(cud)    
     assert slot == {'cores_per_node': 2, 
+                    'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{ 'lfs': 1024, 
                                 'core_map': [[0]], 
                                 'name': 'b', 
@@ -177,6 +181,7 @@ def test_nonmpi_unit_with_continuous_scheduler(
     cud['lfs_per_process'] = 5120
     slot =  component._allocate_slot(cud)    
     assert slot == {'cores_per_node': 2, 
+                    'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{ 'lfs': 5120, 
                                 'core_map': [[0]], 
                                 'name': 'c', 
@@ -199,6 +204,7 @@ def test_nonmpi_unit_with_continuous_scheduler(
     cud['lfs_per_process'] = 5120
     slot =  component._allocate_slot(cud)    
     assert slot == {'cores_per_node': 2, 
+                    'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{ 'lfs': 5120, 
                                 'core_map': [[0]], 
                                 'name': 'd', 
@@ -209,6 +215,7 @@ def test_nonmpi_unit_with_continuous_scheduler(
 
     slot =  component._allocate_slot(cud)    
     assert slot == {'cores_per_node': 2, 
+                    'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{ 'lfs': 5120, 
                                 'core_map': [[0]], 
                                 'name': 'e', 
@@ -222,6 +229,7 @@ def test_nonmpi_unit_with_continuous_scheduler(
     cud['lfs_per_process'] = 4096
     slot =  component._allocate_slot(cud)    
     assert slot == {'cores_per_node': 2, 
+                    'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{ 'lfs': 4096, 
                                 'core_map': [[1]], 
                                 'name': 'b', 
@@ -235,6 +243,7 @@ def test_nonmpi_unit_with_continuous_scheduler(
     cud['lfs_per_process'] = 0
     slot =  component._allocate_slot(cud)    
     assert slot == {'cores_per_node': 2, 
+                    'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{ 'lfs': 0, 
                                 'core_map': [[1]], 
                                 'name': 'c', 
