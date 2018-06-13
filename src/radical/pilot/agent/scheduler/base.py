@@ -25,6 +25,7 @@ SCHEDULER_NAME_SCATTERED       = "SCATTERED"
 SCHEDULER_NAME_SPARK           = "SPARK"
 SCHEDULER_NAME_TORUS           = "TORUS"
 SCHEDULER_NAME_YARN            = "YARN"
+SCHEDULER_NAME_TAGGING         = "TAGGING"
 
 
 # ------------------------------------------------------------------------------
