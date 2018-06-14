@@ -52,6 +52,9 @@ class Session(rs.Session):
     instances.
     """
 
+    # the reporter is an applicataion-level singleton
+    _reporter = None
+
     # We keep a static typemap for component startup. If we ever want to
     # become reeeealy fancy, we can derive that typemap from rp module
     # inspection.
@@ -171,12 +174,14 @@ class Session(rs.Session):
 
         if not self._cfg.get('session_id'): self._cfg['session_id'] = self._uid 
         if not self._cfg.get('owner')     : self._cfg['owner']      = self._uid 
-        if not self._cfg.get('debug')     : self._cfg['debug']      = 'DEBUG' 
         if not self._cfg.get('logdir')    : self._cfg['logdir']     = '%s/%s' \
                                                      % (os.getcwd(), self._uid)
 
         self._logdir = self._cfg['logdir']
-        self._log    = self._get_logger(self._cfg['owner'], self._cfg.get('debug'))
+        self._prof   = self._get_profiler(name=self._cfg['owner'])
+        self._rep    = self._get_reporter(name=self._cfg['owner'])
+        self._log    = self._get_logger  (name=self._cfg['owner'],
+                                          level=self._cfg.get('debug'))
 
         if _connect:
 
@@ -217,15 +222,12 @@ class Session(rs.Session):
                     # really really need a db connection...
                     raise ValueError("incomplete DBURL '%s' no db name!" % self._dburl)
 
-        # initialize profiling, but make sure profile ends up in our logdir
-        self._prof = ru.Profiler(self._cfg['owner'], path=self._logdir)
-
         if not self._reconnected:
             self._prof.prof('session_start', uid=self._uid)
-            self._log.report.info ('<<new session: ')
-            self._log.report.plain('[%s]' % self._uid)
-            self._log.report.info ('<<database   : ')
-            self._log.report.plain('[%s]' % self._dburl)
+            self._rep.info ('<<new session: ')
+            self._rep.plain('[%s]' % self._uid)
+            self._rep.info ('<<database   : ')
+            self._rep.plain('[%s]' % self._dburl)
 
         self._load_resource_configs()
 
@@ -257,7 +259,7 @@ class Session(rs.Session):
             self._log.info("New Session created: %s." % self.uid)
 
         except Exception, ex:
-            self._log.report.error(">>err\n")
+            self._rep.error(">>err\n")
             self._log.exception('session create failed')
             raise RuntimeError("Couldn't create new session (database URL '%s' incorrect?): %s" \
                             % (dburl, ex))  
@@ -286,7 +288,7 @@ class Session(rs.Session):
 
         # FIXME: make sure the above code results in a usable session on
         #        reconnect
-        self._log.report.ok('>>ok\n')
+        self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
@@ -530,8 +532,8 @@ class Session(rs.Session):
 
             self._prof.prof("session_fetch_stop", uid=self._uid)
 
-        self._log.report.info('<<session lifetime: %.1fs' % (self.closed - self.created))
-        self._log.report.ok('>>ok\n')
+        self._rep.info('<<session lifetime: %.1fs' % (self.closed - self.created))
+        self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
@@ -639,18 +641,39 @@ class Session(rs.Session):
     #
     def _get_logger(self, name, level=None):
         """
-        This is a thin wrapper around `ru.get_logger()` which makes sure that
+        This is a thin wrapper around `ru.Logger()` which makes sure that
         log files end up in a separate directory with the name of `session.uid`.
         """
 
-        # FIXME: this is only needed because components may use a different
-        #        logger namespace - which they should not I guess?
-        if not level: level = os.environ.get('RADICAL_PILOT_VERBOSE')
-        if not level: level = os.environ.get('RADICAL_VERBOSE', 'REPORT')
+        return ru.Logger(name=name, ns='radical.pilot', targets=['.'], 
+                         path=self._logdir, level=level)
 
-        log = ru.get_logger(name, target='.', level=level, path=self._logdir)
 
-        return log
+    # --------------------------------------------------------------------------
+    #
+    def _get_reporter(self, name):
+        """
+        This is a thin wrapper around `ru.Reporter()` which makes sure that
+        log files end up in a separate directory with the name of `session.uid`.
+        """
+
+        if not self._reporter:
+            self._reporter = ru.Reporter(name=name, ns='radical.pilot',
+                                         targets=['stdout'], path=self._logdir)
+        return self._reporter
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_profiler(self, name):
+        """
+        This is a thin wrapper around `ru.Profiler()` which makes sure that
+        log files end up in a separate directory with the name of `session.uid`.
+        """
+
+        prof = ru.Profiler(name=name, ns='radical.pilot', path=self._logdir)
+
+        return prof
 
 
     # --------------------------------------------------------------------------
