@@ -657,6 +657,31 @@ class Session(rs.Session):
         log files end up in a separate directory with the name of `session.uid`.
         """
 
+        return ru.Reporter(name=name, ns='radical.pilot', targets=['stdout'],
+                           path=self._logdir)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_profiler(self, name):
+        """
+        This is a thin wrapper around `ru.Profiler()` which makes sure that
+        log files end up in a separate directory with the name of `session.uid`.
+        """
+
+        prof = ru.Profiler(name=name, ns='radical.pilot', path=self._logdir)
+
+        return prof
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_reporter(self, name):
+        """
+        This is a thin wrapper around `ru.Reporter()` which makes sure that
+        log files end up in a separate directory with the name of `session.uid`.
+        """
+
         if not self._reporter:
             self._reporter = ru.Reporter(name=name, ns='radical.pilot',
                                          targets=['stdout'], path=self._logdir)
