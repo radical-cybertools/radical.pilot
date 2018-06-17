@@ -463,7 +463,7 @@ class Session(rs.Session):
         if self._closed:
             return
 
-        self._log.report.info('closing session %s' % self._uid)
+        self._rep.info('closing session %s' % self._uid)
         self._log.debug("session %s closing", self._uid)
         self._prof.prof("session_close", uid=self._uid)
 
