@@ -100,14 +100,15 @@ target resources also create log files (those should only be useful for
 debugging purposes).
 
 
-Where can I find the logfiles?
-==============================
+What about logging and profiling?
+=================================
 
-RP supports logging to the terminal and to files.  You can set the following
-variables:
+RP supports logging to the terminal and to files.  Also, profiles can be written
+during runtime. You can set the following variables:
 
     RADICAL_PILOT_VERBOSE=DEBUG
     RADICAL_PILOT_LOG_TGT=/tmp/rp.log
+    RADICAL_PILOT_PROFILE=True
 
 The defined verbosity levels are the same as defined by Python's logging module
 

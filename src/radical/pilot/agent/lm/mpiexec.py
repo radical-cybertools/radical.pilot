@@ -61,7 +61,6 @@ class MPIExec(LaunchMethod):
                 for var in env_list:
                     env_string += '-x "%s" ' % var
 
-
         if 'nodes' not in slots:
             raise RuntimeError('insufficient information to launch via %s: %s'
                               % (self.name, slots))

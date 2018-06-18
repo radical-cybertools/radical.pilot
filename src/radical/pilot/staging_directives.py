@@ -6,6 +6,7 @@ import radical.utils as ru
 
 from .constants import *
 
+
 # ------------------------------------------------------------------------------
 #
 def expand_description(descr):
@@ -30,8 +31,8 @@ def expand_description(descr):
     method to be called only once during unit construction.
     """
 
-    if None == descr.get('input_staging') : descr['input_staging']  = list()
-    if None == descr.get('output_staging'): descr['output_staging'] = list()
+    if descr.get('input_staging')  is None: descr['input_staging']  = list()
+    if descr.get('output_staging') is None: descr['output_staging'] = list()
 
     descr['input_staging' ] = expand_staging_directives(descr['input_staging' ])
     descr['output_staging'] = expand_staging_directives(descr['output_staging'])
@@ -43,8 +44,6 @@ def expand_staging_directives(sds):
     """
     Take an abbreviated or compressed staging directive and expand it.
     """
-
-    log = ru.get_logger('radical.pilot.utils')
 
     if not sds:
         return []
@@ -60,7 +59,6 @@ def expand_staging_directives(sds):
             # differs depending of redirection characters being present in the
             # string.
 
-            append = False
             if   '>>' in sd: src, tgt = sd.split('>>', 2)
             elif '>'  in sd: src, tgt = sd.split('>' , 2)
             elif '<<' in sd: tgt, src = sd.split('<<', 2)
@@ -159,7 +157,7 @@ def complete_url(path, context, log=None):
     '''
 
     # FIXME: consider evaluation of env vars
-    
+
     purl = ru.Url(path)
 
     log.debug('<- %s (%s)', path, type(path))
@@ -184,7 +182,7 @@ def complete_url(path, context, log=None):
     if schema == 'client': 
         # 'client' is 'pwd' in client context.  
         # We don't check context though.
-       schema = 'pwd'  
+        schema = 'pwd'  
 
     log.debug('   %s', schema)
     if schema in context.keys():
@@ -214,6 +212,7 @@ def complete_url(path, context, log=None):
 
     log.debug('-> %s', purl)
     return purl
+
 
 # ------------------------------------------------------------------------------
 

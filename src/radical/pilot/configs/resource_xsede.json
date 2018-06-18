@@ -837,13 +837,14 @@
                                          "module load slurm",
                                          "module load python2"
                                         ],
-        "default_remote_workdir"      : "$HOME",
-        "valid_roots"                 : ["/home", "/pylon1", "/pylon2"],
+        "default_remote_workdir"      : "$SCRATCH",
+        "valid_roots"                 : ["/home", "/pylon1", "/pylon5"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default", 
         "export_to_cu"                : [], 
-        "cu_pre_exec"                 : []
+        "cu_pre_exec"                 : [],
+        "gpus_per_node"               : 2
     },
 
     "supermic_spark": {

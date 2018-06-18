@@ -66,7 +66,6 @@ class Agent_0(rpu.Worker):
 
         # sanity check on config settings
         if not 'cores'               in cfg: raise ValueError('Missing number of cores')
-        if not 'debug'               in cfg: raise ValueError('Missing DEBUG level')
         if not 'lrms'                in cfg: raise ValueError('Missing LRMS')
         if not 'dburl'               in cfg: raise ValueError('Missing DBURL')
         if not 'pilot_id'            in cfg: raise ValueError('Missing pilot id')
@@ -456,9 +455,9 @@ class Agent_0(rpu.Worker):
                 self._final_cause = 'cancel'
                 return False  # we are done
 
-            elif cmd == 'cancel_unit':
-                self._log.info('cancel unit cmd')
-                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_unit',
+            elif cmd == 'cancel_units':
+                self._log.info('cancel_units cmd')
+                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_units',
                                                   'arg' : arg})
             else:
                 self._log.error('could not interpret cmd "%s" - ignore', cmd)
