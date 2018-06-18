@@ -257,7 +257,8 @@ class AgentSchedulingComponent(rpu.Component):
         self._lrms_node_list = self._cfg['lrms_info']['node_list']
         self._lrms_cores_per_node = self._cfg['lrms_info']['cores_per_node']
         self._lrms_gpus_per_node = self._cfg['lrms_info']['gpus_per_node']
-        self._lrms_lfs_per_node = self._cfg['lrms_info']['lfs_per_node']
+        # Dict containing the size and path
+        self._lrms_lfs_per_node = self._cfg['lrms_info']['lfs_per_node']   
 
         # create and initialize the wait pool
         self._wait_pool = list()             # pool of waiting units
@@ -361,18 +362,11 @@ class AgentSchedulingComponent(rpu.Component):
                 for gpu in gslot:
                     node['gpus'][gpu] = new_state
 
-            # print 'pre slot nodes: ', nodes
-            # print 'pre self: ',self.nodes
-            # print 'pre selected node: ',node
-
             if new_state == rpc.BUSY:
                 node['lfs']['size'] -= nodes['lfs']
             else:
                 node['lfs']['size'] += nodes['lfs']
 
-            # print 'post slot nodes: ', nodes
-            # print 'post self: ',self.nodes
-            # print 'post selected node: ',node
     # --------------------------------------------------------------------------
     #
     # NOTE: any scheduler implementation which uses a different nodelist

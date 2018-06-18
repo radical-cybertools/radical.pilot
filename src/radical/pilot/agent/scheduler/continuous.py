@@ -355,7 +355,6 @@ class Continuous(AgentSchedulingComponent):
                 requested_gpus > self._lrms_gpus_per_node or \
                 requested_lfs > self._lrms_lfs_per_node['size']:
 
-            # print 'req:', requested_lfs, 'avail:', self._lrms_lfs_per_node
             raise ValueError('Non-mpi unit does not fit onto single node')
 
         # ok, we can go ahead and try to find a matching node
@@ -404,6 +403,12 @@ class Continuous(AgentSchedulingComponent):
         # the top level comment of `base.py` for details on the data structure
         # used to specify process and thread to core mapping.
         core_map, gpu_map = self._get_node_maps(cores, gpus, threads_per_proc)
+
+        # We need to specify the node lfs path that the unit needs to use.
+        # We set it as an environment variable that gets loaded with cud
+        # executable.
+        # Assumption enforced: The LFS path is the same across all nodes.
+        cud['environment']['NODE_LFS_PATH'] = self._lrms_lfs_per_node['path']
 
         # all the information for placing the unit is acquired - return them
         slots = {'nodes': [{'name': node_name,
@@ -480,8 +485,7 @@ class Continuous(AgentSchedulingComponent):
 
         cores_per_node = self._lrms_cores_per_node
         gpus_per_node = self._lrms_gpus_per_node
-        lfs_per_node = self._lrms_lfs_per_node   # this is a dictionary
-        # which have two key,s size (MB) and path
+        lfs_per_node = self._lrms_lfs_per_node   
 
         if requested_cores > cores_per_node and \
                 cores_per_node % threads_per_proc and \
@@ -495,12 +499,12 @@ class Continuous(AgentSchedulingComponent):
         if requested_lfs_per_process > lfs_per_node['size']:
             raise ValueError('Not enough LFS for the MPI-process')
 
-            # set conditions to find the first matching node
+        # set conditions to find the first matching node
         is_first = True
         is_last = False
         alloced_cores = 0
         alloced_gpus = 0
-        alloced_lfs = 0   # LFS is in MBs
+        alloced_lfs = 0
 
         slots = {'nodes': list(),
                  'cores_per_node': cores_per_node,
@@ -515,6 +519,11 @@ class Continuous(AgentSchedulingComponent):
             node_uid = node['uid']
             node_name = node['name']
 
+            # If unit has a tag, check if the tag is in the tag_history dict,
+            # else it is a invalid tag, continue as if the unit does not have
+            # a tag
+            # If the unit has a valid tag, find the node that matches the
+            # tag from tag_history dict
             if tag and (tag in self._tag_history.keys()):
                 if node['uid'] not in self._tag_history[tag]:
                     continue
@@ -549,6 +558,7 @@ class Continuous(AgentSchedulingComponent):
                                                     partial=partial,
                                                     lfs_chunk=requested_lfs_per_process)
 
+            # Skip nodes that provide only lfs and no cores
             if not cores and lfs:
                 continue
 
@@ -580,21 +590,18 @@ class Continuous(AgentSchedulingComponent):
             core_map, gpu_map = self._get_node_maps(cores, gpus,
                                                     threads_per_proc)
 
+            # We need to specify the node lfs path that the unit needs to use.
+            # We set it as an environment variable that gets loaded with cud
+            # executable.
+            # Assumption enforced: The LFS path is the same across all nodes.
+            if 'NODE_LFS_PATH' not in cud['environment'].keys():
+                cud['environment']['NODE_LFS_PATH'] = self._lrms_lfs_per_node['path']
+
             slots['nodes'].append({'name': node_name,
                                    'uid': node_uid,
                                    'core_map': core_map,
                                    'gpu_map': gpu_map,
                                    'lfs': lfs})
-
-            # Keys in a slot
-            # 'nodes': [{'name': node_name,
-            #                 'uid': node_uid,
-            #                 'core_map': core_map,
-            #                 'gpu_map': gpu_map,
-            #                 'lfs': lfs}],
-            #      'cores_per_node': self._lrms_cores_per_node,
-            #      'gpus_per_node': self._lrms_gpus_per_node,
-            #      'lm_info': self._lrms_lm_info
 
             alloced_cores += len(cores)
             alloced_gpus += len(gpus)
