@@ -5,6 +5,18 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.47.14 Release                                                       2018-06-13
+--------------------------------------------------------------------------------
+
+  - fix recursive output staging
+
+
+0.47.13 Release                                                       2018-06-02
+--------------------------------------------------------------------------------
+
+  - catch up with RU log, rep and prof settings
+
+
 0.47.12 Release                                                       2018-05-19
 --------------------------------------------------------------------------------
 
