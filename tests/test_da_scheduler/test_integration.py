@@ -52,9 +52,9 @@ if __name__ == '__main__':
         # Here we don't use dict initialization.
         cud = rp.ComputeUnitDescription()
         cud.executable       = '/bin/hostname'
-        cud.cpu_processes    = 2
-        cud.cpu_threads      = 2
-        cud.cpu_process_type = rp.MPI
+        cud.cpu_processes    = 1
+        cud.cpu_threads      = 1
+        # cud.cpu_process_type = rp.MPI
         cud.lfs_per_process  = 10   # MB
         cuds.append(cud)
 
