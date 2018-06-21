@@ -79,6 +79,13 @@
         "cores"    : 64
     },
 
+    "ncsa.bw_aprun" : {
+        "project"  : "gk4",
+        "queue"    : "debug",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
     "ncsa.bw_lib" : {
         "project"  : "gk4",
         "queue"    : "debug",
