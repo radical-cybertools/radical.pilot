@@ -156,15 +156,15 @@ then
     # whatever...
     for p in python python2 python2.7 python2.7-exe
     do
-        if ! test -h $p
-        then
-            echo "patch $p"
-            mv $p $p_rp_exe
-            echo "#!/bin/sh" > $p
-            echo "exec bwpy-environ -- $cwd/$p_rp_exe \"\$@\"" >> $p
-            chmod 0755  $p
+        if   ! test -e $p; then echo "miss   $p"
+        elif   test -h $p; then echo "skip   $p"
+        elif ! test -x $p; then echo "ignore $p"
         else
-            echo "skip  $p"
+            echo "patch  $p"
+            mv   $p $p.rp
+            echo "#!/bin/sh" > $p
+            echo "exec bwpy-environ -- $cwd/$p.rp \"\$@\"" >> $p
+            chmod 0755  $p
         fi
     done
 fi
@@ -174,7 +174,7 @@ echo
 echo "---------------------------------------------------------------------"
 echo
 echo "PYTHONPATH: $PYTHONPATH"
-echo "python: `which python` (`python --version`)"
+echo "python: `which python` (`python -V`)"
 echo
 echo "---------------------------------------------------------------------"
 echo
