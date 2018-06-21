@@ -154,7 +154,7 @@ then
 
     # find binary - fucking virtualenv seems to pick the bin name randomly or
     # whatever...
-    for p in python python2 python2.7 python2.7-exe
+    for p in python*
     do
         if   ! test -e $p; then echo "miss   $p"
         elif ! test -x $p; then echo "ignore $p"
