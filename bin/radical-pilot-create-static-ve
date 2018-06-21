@@ -154,14 +154,14 @@ then
 
     # find binary - fucking virtualenv seems to pick the bin name randomly or
     # whatever...
-    for p in python python2 python2.7
+    for p in python python2 python2.7 python2.7-exe
     do
         if ! test -h $p
         then
             echo "patch $p"
-            mv $p $p-exe
+            mv $p $p_rp_exe
             echo "#!/bin/sh" > $p
-            echo "exec bwpy-environ -- $cwd/$p-exe \"\$@\"" >> $p
+            echo "exec bwpy-environ -- $cwd/$p_rp_exe \"\$@\"" >> $p
             chmod 0755  $p
         else
             echo "skip  $p"
