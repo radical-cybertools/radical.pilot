@@ -362,10 +362,11 @@ class AgentSchedulingComponent(rpu.Component):
                 for gpu in gslot:
                     node['gpus'][gpu] = new_state
 
-            if new_state == rpc.BUSY:
-                node['lfs']['size'] -= nodes['lfs']
-            else:
-                node['lfs']['size'] += nodes['lfs']
+            if node['lfs']['path'] not None:
+                if new_state == rpc.BUSY:
+                    node['lfs']['size'] -= nodes['lfs']['size']
+                else:
+                    node['lfs']['size'] += nodes['lfs']['size']
 
     # --------------------------------------------------------------------------
     #
