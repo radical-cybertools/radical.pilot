@@ -121,7 +121,7 @@ class UnitManager(rpu.Component):
         self._log.info('started umgr %s', self._uid)
 
         # only now we have a logger... :/
-        self._log.report.info('<<create unit manager')
+        self._rep.info('<<create unit manager')
 
         # The output queue is used to forward submitted units to the
         # scheduling component.
@@ -150,7 +150,7 @@ class UnitManager(rpu.Component):
         self._session._register_umgr(self)
 
         self._prof.prof('setup_done', uid=self._uid)
-        self._log.report.ok('>>ok\n')
+        self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
@@ -202,7 +202,7 @@ class UnitManager(rpu.Component):
         self._terminate.set()
         self.stop()
 
-        self._log.report.info('<<close unit manager')
+        self._rep.info('<<close unit manager')
 
         # we don't want any callback invokations during shutdown
         # FIXME: really?
@@ -214,7 +214,7 @@ class UnitManager(rpu.Component):
         self._log.info("Closed UnitManager %s." % self._uid)
 
         self._closed = True
-        self._log.report.ok('>>ok\n')
+        self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
@@ -569,7 +569,7 @@ class UnitManager(rpu.Component):
         if len(pilots) == 0:
             raise ValueError('cannot add no pilots')
 
-        self._log.report.info('<<add %d pilot(s)' % len(pilots))
+        self._rep.info('<<add %d pilot(s)' % len(pilots))
 
         with self._pilots_lock:
 
@@ -589,7 +589,7 @@ class UnitManager(rpu.Component):
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'add_pilots',
                                           'arg' : {'pilots': pilot_docs,
                                                    'umgr'  : self.uid}})
-        self._log.report.ok('>>ok\n')
+        self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
@@ -656,7 +656,7 @@ class UnitManager(rpu.Component):
         if len(pilot_ids) == 0:
             raise ValueError('cannot remove no pilots')
 
-        self._log.report.info('<<add %d pilot(s)' % len(pilot_ids))
+        self._rep.info('<<add %d pilot(s)' % len(pilot_ids))
 
         with self._pilots_lock:
 
@@ -670,7 +670,7 @@ class UnitManager(rpu.Component):
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'remove_pilots',
                                           'arg' : {'pids'  : pilot_ids, 
                                                    'umgr'  : self.uid}})
-        self._log.report.ok('>>ok\n')
+        self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
@@ -718,7 +718,7 @@ class UnitManager(rpu.Component):
         if len(descriptions) == 0:
             raise ValueError('cannot submit no unit descriptions')
 
-        self._log.report.info('<<submit %d unit(s)\n\t' % len(descriptions))
+        self._rep.info('<<submit %d unit(s)\n\t' % len(descriptions))
 
         # we return a list of compute units
         units = list()
@@ -738,7 +738,7 @@ class UnitManager(rpu.Component):
                 ru.write_json(ud.as_dict(), "%s/%s.batch.%03d.json" \
                         % (self._session._rec, unit.uid, self._rec_id))
 
-            self._log.report.progress()
+            self._rep.progress()
 
         if self._session._rec:
             self._rec_id += 1
@@ -750,7 +750,7 @@ class UnitManager(rpu.Component):
         # Only after the insert can we hand the units over to the next
         # components (ie. advance state).
         self.advance(unit_docs, rps.UMGR_SCHEDULING_PENDING, publish=True, push=True)
-        self._log.report.ok('>>ok\n')
+        self._rep.ok('>>ok\n')
 
         if ret_list: return units
         else       : return units[0]
@@ -859,7 +859,7 @@ class UnitManager(rpu.Component):
             ret_list = False
             uids = [uids]
 
-        self._log.report.info('<<wait for %d unit(s)\n\t' % len(uids))
+        self._rep.info('<<wait for %d unit(s)\n\t' % len(uids))
 
         start    = time.time()
         to_check = None
@@ -871,7 +871,7 @@ class UnitManager(rpu.Component):
         # duplicate checks on units which were found in matching states.  So we
         # create a list from which we drop the units as we find them in
         # a matching state
-        self._log.report.idle(mode='start')
+        self._rep.idle(mode='start')
         while to_check and not self._terminate.is_set():
 
             # check timeout
@@ -882,7 +882,7 @@ class UnitManager(rpu.Component):
             time.sleep (0.1)
 
             # FIXME: print percentage...
-            self._log.report.idle()
+            self._rep.idle()
           # print 'wait units: %s' % [[u.uid, u.state] for u in to_check]
 
             check_again = list()
@@ -891,8 +891,7 @@ class UnitManager(rpu.Component):
                 # we actually don't check if a unit is in a specific (set of)
                 # state(s), but rather check if it ever *has been* in any of
                 # those states
-                match = False
-                if  unit.state not in rps.FINAL and \
+                if unit.state not in rps.FINAL and \
                     rps._unit_state_values[unit.state] <= check_state_val:
                     # this unit does not match the wait criteria
                     check_again.append(unit)
@@ -900,20 +899,20 @@ class UnitManager(rpu.Component):
                 else:
                     # stop watching this unit
                     if unit.state in [rps.FAILED]:
-                        self._log.report.idle(color='error', c='-')
+                        self._rep.idle(color='error', c='-')
                     elif unit.state in [rps.CANCELED]:
-                        self._log.report.idle(color='warn', c='*')
+                        self._rep.idle(color='warn', c='*')
                     else:
-                        self._log.report.idle(color='ok', c='+')
+                        self._rep.idle(color='ok', c='+')
 
             to_check = check_again
 
             self.is_valid()
 
-        self._log.report.idle(mode='stop')
+        self._rep.idle(mode='stop')
 
-        if to_check: self._log.report.warn('>>timeout\n')
-        else       : self._log.report.ok(  '>>ok\n')
+        if to_check: self._rep.warn('>>timeout\n')
+        else       : self._rep.ok(  '>>ok\n')
 
         # grab the current states to return
         state = None

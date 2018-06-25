@@ -19,7 +19,7 @@
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "FORK",
-        "task_launch_method"          : "SSH",
+        "task_launch_method"          : "FORK",
         "mpi_launch_method"           : "MPIRUN",
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
