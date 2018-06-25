@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import pprint
 
 import radical.utils as ru
 
@@ -165,6 +166,7 @@ class Hombre(AgentSchedulingComponent):
                                      self.gpn / (gpus_needed               ))
 
             assert(units_per_node), 'Non-mpi unit does not fit onto single node'
+          # print 'upn: %d' % units_per_node
 
             for node in self.nodes:
 
@@ -183,6 +185,7 @@ class Hombre(AgentSchedulingComponent):
                     for _ in range(cud['cpu_processes']):
                         tmp = list()
                         for _ in range(cud['cpu_threads']):
+                          # print 'cpu %d' % core_idx,
                             tmp.append(core_idx)
                             core_idx += 1
                         core_map.append(tmp)
@@ -194,6 +197,7 @@ class Hombre(AgentSchedulingComponent):
                     for _ in range(cud['gpu_processes']):
                         tmp = list()
                         for _ in range(cud['gpu_threads']):
+                          # print 'gpu %d' % gpu_idx
                             tmp.append(gpu_idx)
                             gpu_idx += 1
                         gpu_map.append(tmp)
@@ -204,10 +208,16 @@ class Hombre(AgentSchedulingComponent):
                              'lm_info'       : self._lrms_lm_info
                              }
                     self.free.append(slots)
+                  # print '-->'
+                  # pprint.pprint(slots)
+                  # print
 
                 assert(core_idx <= self.cpn), 'inconsistent scheduler state'
                 assert(gpu_idx  <= self.gpn), 'inconsistent scheduler state'
 
+          # print 
+          # print 'free:'
+          # pprint.pprint(self.free)
 
 
         # ----------------------------------------------------------------------
@@ -223,7 +233,7 @@ class Hombre(AgentSchedulingComponent):
             core_map = list()
             gpu_map  = list()
 
-            for node in self._nodes:
+            for node in self.nodes:
 
                 node_uid  = node['uid']
                 node_name = node['name']
@@ -231,13 +241,15 @@ class Hombre(AgentSchedulingComponent):
                 core_idx  = 0
                 gpu_idx   = 0
 
+                print 'reset idxs'
+
                 # allocate chunks for as long as possible
                 while True:
 
                     # do we still need cores?
                     while len(core_map) < cud['cpu_processes']:
                         # do we still have cores on this node:
-                        if core_idx + cud['cpu_threads'] < self._cpn:
+                        if core_idx + cud['cpu_threads'] < self.cpn:
                             # use them
                             tmp = list()
                             for _ in range(cud['cpu_threads']):
@@ -245,25 +257,17 @@ class Hombre(AgentSchedulingComponent):
                                 core_idx += 1 
                             core_map.append(tmp)
                         else:
-                            # nothing more to get on this node
-                            next_node = True
                             break
 
                     # do we still need gpu_map?
                     while len(gpu_map) < cud['gpu_processes']:
                         # do we still have gpu_map on this node:
-                        if gpu_idx + 1 < self._cpn:
+                        if gpu_idx + 1 < self.gpn:
                             # use them
                             gpu_map.append([gpu_idx])
                             gpu_idx += 1 
                         else:
-                            # nothing more to get on this node
-                            next_node = True
                             break
-
-                    # could not complete the request
-                    if next_node:
-                        break
 
                     # is a chunk filled?
                     if  len(core_map) == cud['cpu_processes'] and \
@@ -275,10 +279,19 @@ class Hombre(AgentSchedulingComponent):
                                  'lm_info'       : self._lrms_lm_info
                                  }
                         self.free.append(slots)
+                        print 'got ', slots
 
                         core_map = list()
                         gpu_map  = list()
 
+                    else:
+                        print 'enough'
+                        # no more slots on this node - go to next
+                        break
+
+        print 
+        print 'free:'
+        pprint.pprint(self.free)
 
         self._configured = True
 
@@ -326,19 +339,8 @@ class Hombre(AgentSchedulingComponent):
         with self.lock:
             if self.free:
                 return self.free.pop()
-
-        # no used free chunk - generate a new chunk from the node list
-        if (self.index + cores_requested) > len(self.slots):
-            # out of resources
-            return None, None
-
-        slots  = list()
-        offset = self.slots[self.index][1]  # offset of first core
-        for i in range(cores_requested):
-            slots.append(self.slots[self.index][0])
-            self.index += 1
-
-        return slots, offset
+            else:
+                return None
 
 
 # ------------------------------------------------------------------------------
