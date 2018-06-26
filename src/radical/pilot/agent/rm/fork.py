@@ -4,7 +4,6 @@ __license__   = "MIT"
 
 import math
 import multiprocessing
-import pprint
 
 from .base import LRMS
 
