@@ -105,7 +105,9 @@
         "mpi_launch_method"           : "MPIEXEC",
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "anaconda"
+        "python_dist"                 : "anaconda",
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1
     },
 
     "localhost_spark": {
