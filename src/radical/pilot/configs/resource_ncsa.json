@@ -31,6 +31,7 @@
         "virtenv_mode"                : "create",
         "stage_cacerts"               : "True",
         "python_dist"                 : "default",
+        "python_interpreter"          : "python2.7",
         "gpus_per_node"               : 1
     },
 
@@ -68,6 +69,7 @@
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
         "python_dist"                 : "default",
+        "python_interpreter"          : "python2.7",
         "gpus_per_node"               : 1
     },
 
@@ -108,6 +110,7 @@
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
         "python_dist"                 : "default",
+        "python_interpreter"          : "python2.7",
         "gpus_per_node"               : 1
     },
 
@@ -143,6 +146,7 @@
         "virtenv_mode"                : "create",
         "stage_cacerts"               : "True",
         "python_dist"                 : "default",
+        "python_interpreter"          : "python2.7",
         "gpus_per_node"               : 1
     }
 }
