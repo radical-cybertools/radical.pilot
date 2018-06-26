@@ -262,10 +262,10 @@
     },
 
     "ornl.titan" : {
-        "project"  : "CSC230",
+        "project"  : "CHM163",
         "queue"    : "debug",
         "schema"   : "local",
-        "cores"    : 64
+        "cores"    : 160
     },
 
     "ornl.titan_ortelib" : {
