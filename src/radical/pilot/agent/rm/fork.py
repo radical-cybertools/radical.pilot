@@ -24,9 +24,6 @@ class Fork(LRMS):
     def _configure(self):
 
         self._log.info("Using fork on localhost.")
-        print 'Inside configure'
-        pprint.pprint (self._cfg)
-        print self._cfg
 
         # For the fork LRMS (ie. on localhost), we fake an infinite number of
         # cores, so don't perform any sanity checks.
