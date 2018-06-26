@@ -80,10 +80,10 @@
     },
 
     "ncsa.bw_aprun" : {
-        "project"  : "gk4",
-        "queue"    : "debug",
+        "project"  : "PRAC_bamm",
+        "queue"    : "high",
         "schema"   : "gsissh",
-        "cores"    : 64
+        "cores"    : 320
     },
 
     "ncsa.bw_lib" : {
