@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 import math
 import multiprocessing
+import pprint
 
 from .base import LRMS
 
@@ -23,6 +24,9 @@ class Fork(LRMS):
     def _configure(self):
 
         self._log.info("Using fork on localhost.")
+        print 'Inside configure'
+        pprint.pprint (self._cfg)
+        print self._cfg
 
         # For the fork LRMS (ie. on localhost), we fake an infinite number of
         # cores, so don't perform any sanity checks.
@@ -37,8 +41,8 @@ class Fork(LRMS):
         # to preserve the previous behavior (1 node).
         self.cores_per_node = self._cfg.get('cores_per_node', self.requested_cores)
         self.gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
-        self.lfs_per_node   = {'path' : self._cfg.get('lfs_path_per_node', None),
-                               'size' : self._cfg.get('lfs_size_per_node', 0)
+        self.lfs_per_node   = {'path' : self._cfg['resource_cfg'].get('lfs_path_per_node', None),
+                               'size' : self._cfg['resource_cfg'].get('lfs_size_per_node', 0)
                               }
 
         self.node_list  = list()
@@ -48,8 +52,8 @@ class Fork(LRMS):
             # enumerate the node list entries for a unique uis
             self.node_list.append(["localhost", 'localhost_%d' % i])
 
-        self._log.debug('configure localhost as %s nodes (%s cores, %s gpus).',
-                len(self.node_list), self.cores_per_node, self.gpus_per_node)
+        self._log.debug('configure localhost as %s nodes (%s cores, %s gpus, %s lfs).',
+                len(self.node_list), self.cores_per_node, self.gpus_per_node, self.lfs_per_node)
 
 # ------------------------------------------------------------------------------
 
