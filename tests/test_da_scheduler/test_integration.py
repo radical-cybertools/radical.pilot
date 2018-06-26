@@ -19,11 +19,16 @@ if __name__ == '__main__':
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
     pmgr = rp.PilotManager(session=session)
 
-    cfg = session.get_resource_config('local.localhost')
-    new_cfg = rp.ResourceConfig('local.localhost', cfg)
-    new_cfg.lfs_path_per_node = '/tmp'
-    new_cfg.lfs_size_per_node = 1024 # MB
-    session.add_resource_config(new_cfg)
+    # cfg = session.get_resource_config('local.localhost')
+    # new_cfg = rp.ResourceConfig('local.localhost', cfg)
+    # new_cfg.lfs_path_per_node = '/tmp'
+    # new_cfg.lfs_size_per_node = 1024 # MB
+    # session.add_resource_config(new_cfg)
+    # cfg = session.get_resource_config('local.localhost')
+    # assert 'lfs_path_per_node' in cfg.keys()
+    # assert 'lfs_size_per_node' in cfg.keys()
+    # assert cfg['lfs_path_per_node'] == '/tmp'
+    # assert cfg['lfs_size_per_node'] == 1024
 
     # Define an [n]-core local pilot that runs for [x] minutes
     # Here we use a dict to initialize the description object
@@ -66,6 +71,6 @@ if __name__ == '__main__':
 
     umgr.wait_units()
 
-    session.close(download=True)
+    session.close()
 # ------------------------------------------------------------------------------
 
