@@ -269,10 +269,10 @@
     },
 
     "ornl.titan_orte"   : {
-        "project"  : "CSC230",
+        "project"  : "CHM160",
         "queue"    : "debug",
         "schema"   : "local",
-        "cores"    : 64
+        "cores"    : 160
     },
 
     "ornl.titan_aprun"   : {
