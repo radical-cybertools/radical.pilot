@@ -7,9 +7,9 @@ import time
 import radical.pilot as rp
 import radical.utils as ru
 
-# def test_da_scheduler_local_integration():
+def test_da_scheduler_local_integration():
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
 
 
     # Create a new session. No need to try/except this: if session creation
@@ -19,11 +19,20 @@ if __name__ == '__main__':
     # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
     pmgr = rp.PilotManager(session=session)
 
+    # Update localhost lfs path and size
     cfg = session.get_resource_config('local.localhost')
     new_cfg = rp.ResourceConfig('local.localhost', cfg)
     new_cfg.lfs_path_per_node = '/tmp'
     new_cfg.lfs_size_per_node = 1024 # MB
     session.add_resource_config(new_cfg)
+    cfg = session.get_resource_config('local.localhost')
+
+
+    # Check that the updated config is read by the session
+    assert 'lfs_path_per_node' in cfg.keys()
+    assert 'lfs_size_per_node' in cfg.keys()
+    assert cfg['lfs_path_per_node'] == '/tmp'
+    assert cfg['lfs_size_per_node'] == 1024
 
     # Define an [n]-core local pilot that runs for [x] minutes
     # Here we use a dict to initialize the description object
@@ -40,11 +49,8 @@ if __name__ == '__main__':
     umgr = rp.UnitManager(session=session)
     umgr.add_pilots(pilot)
 
-    # Create a workload of ComputeUnits.
-    # Each compute unit runs '/bin/date'.
-
-    n = 16  # number of units to run
-
+    # Run 16 tasks that each require 1 core and 10MB of LFS
+    n = 16  
     cuds = list()
     for i in range(0, n):
 
@@ -62,10 +68,18 @@ if __name__ == '__main__':
     # Submit the previously created ComputeUnit descriptions to the
     # PilotManager. This will trigger the selected scheduler to start
     # assigning ComputeUnits to the ComputePilots.
-    umgr.submit_units(cuds)
+    cus = umgr.submit_units(cuds)
 
+    # Wait for all units to finish
     umgr.wait_units()
 
-    session.close(download=True)
+    # Check that all units succeeded
+    for cu in cus:
+        assert cu.exit_code == 0
+        assert cu.state == rp.DONE
+
+    session.close() 
+
+
 # ------------------------------------------------------------------------------
 

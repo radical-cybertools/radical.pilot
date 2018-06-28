@@ -79,6 +79,13 @@
         "cores"    : 320
     },
 
+    "ncsa.bw_aprun" : {
+        "project"  : "PRAC_bamm",
+        "queue"    : "high",
+        "schema"   : "gsissh",
+        "cores"    : 320
+    },
+
     "ncsa.bw_lib" : {
         "project"  : "gk4",
         "queue"    : "debug",
@@ -255,7 +262,7 @@
     },
 
     "ornl.titan" : {
-        "project"  : "CHM160",
+        "project"  : "CHM163",
         "queue"    : "debug",
         "schema"   : "local",
         "cores"    : 160

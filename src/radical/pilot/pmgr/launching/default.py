@@ -782,6 +782,8 @@ class Default(PMGRLaunchingComponent):
         virtenv                 = rcfg.get('virtenv',             default_virtenv)
         cores_per_node          = rcfg.get('cores_per_node', 0)
         gpus_per_node           = rcfg.get('gpus_per_node',  0)
+        lfs_path_per_node       = rcfg.get('lfs_path_per_node', None)
+        lfs_size_per_node       = rcfg.get('lfs_size_per_node',  0)
         health_check            = rcfg.get('health_check', True)
         python_dist             = rcfg.get('python_dist')
         virtenv_dist            = rcfg.get('virtenv_dist',        DEFAULT_VIRTENV_DIST)
@@ -1040,6 +1042,8 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['mpi_launch_method']  = mpi_launch_method
         agent_cfg['cores_per_node']     = cores_per_node
         agent_cfg['gpus_per_node']      = gpus_per_node
+        agent_cfg['lfs_path_per_node']  = lfs_path_per_node
+        agent_cfg['lfs_size_per_node']  = lfs_size_per_node
         agent_cfg['cu_tmp']             = cu_tmp
         agent_cfg['export_to_cu']       = export_to_cu
         agent_cfg['cu_pre_exec']        = cu_pre_exec

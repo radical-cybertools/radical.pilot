@@ -351,11 +351,19 @@ class Continuous(AgentSchedulingComponent):
         requested_cores = requested_procs * threads_per_proc
 
         # make sure that the requested allocation fits on a single node
-        if  requested_cores > self._lrms_cores_per_node or \
+        if requested_cores > self._lrms_cores_per_node or \
                 requested_gpus > self._lrms_gpus_per_node or \
                 requested_lfs > self._lrms_lfs_per_node['size']:
 
-            raise ValueError('Non-mpi unit does not fit onto single node')
+            txt = 'Non-mpi unit does not fit onto single node. \n'
+            txt += 'requested cores=%s; available cores=%s \n' % (
+                requested_cores, self._lrms_cores_per_node)
+            txt += 'requested gpus=%s; available gpus=%s \n' % (
+                requested_gpus, self._lrms_gpus_per_node)
+            txt += 'requested lfs=%s; available lfs=%s' % (
+                requested_lfs, self._lrms_lfs_per_node['size'])
+
+            raise ValueError(txt)
 
         # ok, we can go ahead and try to find a matching node
         cores = list()
@@ -415,7 +423,7 @@ class Continuous(AgentSchedulingComponent):
                             'uid': node_uid,
                             'core_map': core_map,
                             'gpu_map': gpu_map,
-                            'lfs': lfs}],
+                            'lfs': {'size': lfs, 'path': self._lrms_lfs_per_node['path']}}],
                  'cores_per_node': self._lrms_cores_per_node,
                  'gpus_per_node': self._lrms_gpus_per_node,
                  'lfs_per_node': self._lrms_lfs_per_node,
@@ -485,7 +493,7 @@ class Continuous(AgentSchedulingComponent):
 
         cores_per_node = self._lrms_cores_per_node
         gpus_per_node = self._lrms_gpus_per_node
-        lfs_per_node = self._lrms_lfs_per_node   
+        lfs_per_node = self._lrms_lfs_per_node
 
         if requested_cores > cores_per_node and \
                 cores_per_node % threads_per_proc and \
@@ -531,7 +539,7 @@ class Continuous(AgentSchedulingComponent):
             # if only a small set of cores/gpus remains unallocated (ie. less
             # than node size), we are in fact looking for the last node.  Note
             # that this can also be the first node, for small units.
-            if  requested_cores - alloced_cores <= cores_per_node and \
+            if requested_cores - alloced_cores <= cores_per_node and \
                     requested_gpus - alloced_gpus <= gpus_per_node and \
                     requested_lfs - alloced_lfs <= lfs_per_node['size']:
                 is_last = True
@@ -601,7 +609,7 @@ class Continuous(AgentSchedulingComponent):
                                    'uid': node_uid,
                                    'core_map': core_map,
                                    'gpu_map': gpu_map,
-                                   'lfs': lfs})
+                                   'lfs': {'size': lfs, 'path': self._lrms_lfs_per_node['path']}})
 
             alloced_cores += len(cores)
             alloced_gpus += len(gpus)
@@ -609,14 +617,14 @@ class Continuous(AgentSchedulingComponent):
             is_first = False
 
             # or maybe don't continue the search if we have in fact enough!
-            if  alloced_cores == requested_cores and \
+            if alloced_cores == requested_cores and \
                     alloced_gpus == requested_gpus and \
                     alloced_lfs == requested_lfs:
                 # we are done
                 break
 
         # if we did not find enough, there is not much we can do at this point
-        if  alloced_cores < requested_cores or \
+        if alloced_cores < requested_cores or \
                 alloced_gpus < requested_gpus or \
                 alloced_lfs < requested_lfs:
             return None  # signal failure

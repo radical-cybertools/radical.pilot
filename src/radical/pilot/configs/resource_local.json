@@ -25,7 +25,9 @@
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
         "cores_per_node"              : 8,
-        "gpus_per_node"               : 1
+        "gpus_per_node"               : 1,
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 1024
     },
 
     "localhost_aprun": {
@@ -105,7 +107,11 @@
         "mpi_launch_method"           : "MPIEXEC",
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "anaconda"
+        "python_dist"                 : "anaconda",
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 1024,
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1
     },
 
     "localhost_spark": {

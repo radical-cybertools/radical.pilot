@@ -63,7 +63,7 @@ class LRMS(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg, session):        
 
         self.name            = type(self).__name__
         self._cfg            = cfg
