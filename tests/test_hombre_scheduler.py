@@ -184,10 +184,10 @@ def test_nonmpi_unit_withhombre_scheduler(mocked_init,
 @mock.patch.object(Hombre, 'advance')
 @mock.patch.object(ru.Profiler, 'prof')
 @mock.patch('radical.utils.raise_on')
-def test_nonmpi_unit_withhombre_scheduler(mocked_init,
-                                          mocked_method,
-                                          mocked_profiler,
-                                          mocked_raise_on):
+def test_mpi_unit_withhombre_scheduler(mocked_init,
+                                       mocked_method,
+                                       mocked_profiler,
+                                       mocked_raise_on):
     cfg, session = setUp()
 
     component = Hombre(cfg=dict(), session=session)
