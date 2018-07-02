@@ -742,17 +742,24 @@ class Default(PMGRLaunchingComponent):
         # example is `%(pd.project)s`, where the pilot description's `PROJECT`
         # value needs to be filled in (here in lowercase).
         expand = dict()
-        for k,v in pilot.description:
+        for k,v in pilot['description'].iteritems():
+            if v is None:
+                v = ''
             expand['pd.%s' % k] = v
-            expand['pd.%s' % k.upper()] = v.upper()
-            expand['pd.%s' % k.lower()] = v.lower()
+            if isinstance(v, basestring):
+                expand['pd.%s' % k.upper()] = v.upper()
+                expand['pd.%s' % k.lower()] = v.lower()
+            else:
+                expand['pd.%s' % k.upper()] = v
+                expand['pd.%s' % k.lower()] = v
 
         for k in rcfg:
-            orig     = rcfg[k]
-            rcfg[k]  = rcfg[k] % expand
-            expanded = rcfg[k]
-            if orig != expanded:
-                self._log.debug('RCFG:\n%s\n%s', orig, expanded)
+            if isinstance(rcfg[k], basestring):
+                orig     = rcfg[k]
+                rcfg[k]  = rcfg[k] % expand
+                expanded = rcfg[k]
+                if orig != expanded:
+                    self._log.debug('RCFG:\n%s\n%s', orig, expanded)
 
         # ----------------------------------------------------------------------
         # Database connection parameters
