@@ -55,7 +55,7 @@ fail() (echo "$*"; exit 1)
 test -z "$OMP_NUM"  && fail 'OMP_NUM_THREADS / ALPS_APP_DEPTH not set'
 test -z "$MPI_RANK" && fail 'PMI_RANK / PMIX_RANK / ALPS_APP_PE not set'
 
-for idx in $(seq $OMP_NUM); do (echo "$NODE:$MPI_RANK:$idx/$OMP_NUM @ $CPU_ID/$CPU_NUM : $GPU_ID/$GPU_NUM")& done
+for idx in $(seq $OMP_NUM); do (echo "$NODE $MPI_RANK:$idx/$OMP_NUM @ $CPU_ID/$CPU_NUM : $GPU_ID/$GPU_NUM")& done
 for idx in $(seq $OMP_NUM); do wait; done
 
 # sleep 1
