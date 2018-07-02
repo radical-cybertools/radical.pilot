@@ -15,7 +15,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
-        "pre_bootstrap_1"             : [
+        "pre_bootstrap_0"             : [
             ". /etc/bashrc",
             ". /etc/profile.d/modules.sh",
             "module load openmpi/gcc/64"

@@ -8,7 +8,6 @@ import sys
 import copy
 import stat
 import time
-import types
 import pprint
 import subprocess         as sp
 
@@ -65,16 +64,15 @@ class Agent_0(rpu.Worker):
         cfg['workdir']    = os.getcwd()
 
         # sanity check on config settings
-        if not 'cores'               in cfg: raise ValueError('Missing number of cores')
-        if not 'debug'               in cfg: raise ValueError('Missing DEBUG level')
-        if not 'lrms'                in cfg: raise ValueError('Missing LRMS')
-        if not 'dburl'               in cfg: raise ValueError('Missing DBURL')
-        if not 'pilot_id'            in cfg: raise ValueError('Missing pilot id')
-        if not 'runtime'             in cfg: raise ValueError('Missing or zero agent runtime')
-        if not 'scheduler'           in cfg: raise ValueError('Missing agent scheduler')
-        if not 'session_id'          in cfg: raise ValueError('Missing session id')
-        if not 'spawner'             in cfg: raise ValueError('Missing agent spawner')
-        if not 'task_launch_method'  in cfg: raise ValueError('Missing unit launch method')
+        if 'cores'               not in cfg: raise ValueError('Missing number of cores')
+        if 'lrms'                not in cfg: raise ValueError('Missing LRMS')
+        if 'dburl'               not in cfg: raise ValueError('Missing DBURL')
+        if 'pilot_id'            not in cfg: raise ValueError('Missing pilot id')
+        if 'runtime'             not in cfg: raise ValueError('Missing or zero agent runtime')
+        if 'scheduler'           not in cfg: raise ValueError('Missing agent scheduler')
+        if 'session_id'          not in cfg: raise ValueError('Missing session id')
+        if 'spawner'             not in cfg: raise ValueError('Missing agent spawner')
+        if 'task_launch_method'  not in cfg: raise ValueError('Missing unit launch method')
 
         # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold
         # the address of the tunnelized DB endpoint. If it exists, we
@@ -189,6 +187,7 @@ class Agent_0(rpu.Worker):
 
       # # we don't rely on the existence / viability of the update worker at
       # # that point.
+      # FIXME:
       # self._log.debug('update db state: %s: %s', state, self._final_cause)
       # self._update_db(state, self._final_cause)
 
@@ -223,7 +222,6 @@ class Agent_0(rpu.Worker):
         if state == rps.FAILED:
             self._log.info(ru.get_trace())
 
-        now = time.time()
         out = None
         err = None
         log = None
@@ -320,23 +318,30 @@ class Agent_0(rpu.Worker):
                 #        the 'agent_node' string as 'agent_string:0' and
                 #        obtain a well format slot...
                 # FIXME: it is actually tricky to translate the agent_node
-                #        into a viable 'opaque_slots' structure, as that is
+                #        into a viable 'slots' structure, as that is
                 #        usually done by the schedulers.  So we leave that
                 #        out for the moment, which will make this unable to
                 #        work with a number of launch methods.  Can the
                 #        offset computation be moved to the LRMS?
-                ls_name = '%s/%s.sh' % (os.getcwd(), sa)
-                opaque_slots = {
-                        'task_slots'   : ['%s:0' % node],
-                        'task_offsets' : [],
-                        'lm_info'      : self._cfg['lrms_info']['lm_info']}
+                ls_name = "%s/%s.sh" % (os.getcwd(), sa)
+                slots = {
+                  'cpu_processes' : 1,
+                  'cpu_threads'   : 1,
+                  'gpu_processes' : 0,
+                  'gpu_threads'   : 0,
+                  'nodes'         : [[node[0], node[1], [[0]], []]],
+                  'cores_per_node': self._cfg['lrms_info']['cores_per_node'],
+                  'gpus_per_node' : self._cfg['lrms_info']['gpus_per_node'],
+                  'lm_info'       : self._cfg['lrms_info']['lm_info']
+                }
                 agent_cmd = {
-                        'opaque_slots' : opaque_slots,
+                        'uid'          : sa,
+                        'slots'        : slots,
                         'description'  : {
-                            'cores'      : 1,
-                            'executable' : '/bin/sh',
-                            'mpi'        : False,
-                            'arguments'  : ['%s/bootstrap_2.sh' % os.getcwd(), sa]
+                            'cpu_processes' : 1,
+                            'executable'    : "/bin/sh",
+                            'mpi'           : False,
+                            'arguments'     : ["%s/bootstrap_2.sh" % os.getcwd(), sa]
                             }
                         }
                 cmd, hop = agent_lm.construct_command(agent_cmd,
@@ -427,15 +432,14 @@ class Agent_0(rpu.Worker):
             cmd = spec['cmd']
             arg = spec['arg']
 
-            self._prof.prof('cmd', msg='%s : %s' % (cmd, arg), uid=self._pid)
+            self._prof.prof('cmd', msg="%s : %s" % (cmd, arg), uid=self._pid)
 
             if cmd == 'heartbeat':
                 self._log.info('heartbeat_in')
 
+
             elif cmd == 'cancel_pilot':
                 self._log.info('cancel pilot cmd')
-              # ru.attach_pudb(logger=self._log)
-              #
                 self._log.info('publish "terminate" cmd')
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
                                                   'arg' : None})
@@ -450,9 +454,10 @@ class Agent_0(rpu.Worker):
                 self._final_cause = 'cancel'
                 return False  # we are done
 
-            elif cmd == 'cancel_unit':
-                self._log.info('cancel unit cmd')
-                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_unit',
+            elif cmd == 'cancel_units':
+
+                self._log.info('cancel_units cmd')
+                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_units',
                                                   'arg' : arg})
             else:
                 self._log.error('could not interpret cmd "%s" - ignore', cmd)
@@ -496,7 +501,7 @@ class Agent_0(rpu.Worker):
         #        find -- so we do it right here.
         #        This also blocks us from using multiple ingest threads, or from
         #        doing late binding by unit pull :/
-        unit_cursor = self._session._dbs._c.find(spec = {'type'    : 'unit',
+        unit_cursor = self._session._dbs._c.find({'type'    : 'unit',
                                                          'pilot'   : self._pid,
                                                          'control' : 'agent_pending'})
         if not unit_cursor.count():
@@ -510,12 +515,13 @@ class Agent_0(rpu.Worker):
 
         self._log.info('units PULLED: %4d', len(unit_list))
 
-        self._session._dbs._c.update(multi    = True,
-                        spec     = {'type'  : 'unit',
+        self._session._dbs._c.update(
+                        {'type'  : 'unit',
                                     'uid'   : {'$in'     : unit_uids}},
-                        document = {'$set'  : {'control' : 'agent'}})
+                        {'$set'  : {'control' : 'agent'}},
+                        multi = True)
 
-        self._log.info('units pulled: %4d', len(unit_list))
+        self._log.info("units pulled: %4d", len(unit_list))
         self._prof.prof('get', msg='bulk size: %d' % len(unit_list),
                         uid=self._pid)
 

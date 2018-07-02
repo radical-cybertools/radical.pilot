@@ -20,10 +20,40 @@
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "FORK",
         "task_launch_method"          : "FORK",
-        "mpi_launch_method"           : "MPIEXEC",
+        "mpi_launch_method"           : "MPIRUN",
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "default"
+        "python_dist"                 : "default",
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1
+    },
+
+    "localhost_aprun": {
+        "description"                 : "Your local machine.",
+        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
+        "schemas"                     : ["local", "ssh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "ssh://localhost/",
+            "filesystem_endpoint"     : "sftp://localhost/"
+        },
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_remote_workdir"      : "$HOME",
+        "lrms"                        : "FORK",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "FORK",
+        "task_launch_method"          : "FORK",
+        "mpi_launch_method"           : "APRUN",
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default",
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1
     },
 
     "localhost_yarn": {
@@ -75,7 +105,9 @@
         "mpi_launch_method"           : "MPIEXEC",
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "anaconda"
+        "python_dist"                 : "anaconda",
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1
     },
 
     "localhost_spark": {
@@ -157,7 +189,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "pre_bootstrap_1"             : ["export OMPI=/home/merzky/radical/ompi/installed/2017_09_18_539f71d",
+        "pre_bootstrap_0"             : ["export OMPI=/home/merzky/radical/ompi/installed/2017_09_18_539f71d",
                                          "export PATH=$OMPI/bin/:$PATH",
                                          "export LD_LIBRARY_PATH=$OMPI/lib/:$LD_LIBRARY_PATH",
                                          "export PKG_CONFIG_PATH=$OMPI/share/pkgconfig/:$PKG_CONFIG_PATH"]
@@ -188,7 +220,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "pre_bootstrap_1"             : ["export OMPI=/home/merzky/radical/ompi/installed/2017_09_18_539f71d",
+        "pre_bootstrap_0"             : ["export OMPI=/home/merzky/radical/ompi/installed/2017_09_18_539f71d",
                                          "export PATH=$OMPI/bin/:$PATH",
                                          "export LD_LIBRARY_PATH=$OMPI/lib/:$LD_LIBRARY_PATH",
                                          "export PKG_CONFIG_PATH=$OMPI/share/pkgconfig/:$PKG_CONFIG_PATH"]

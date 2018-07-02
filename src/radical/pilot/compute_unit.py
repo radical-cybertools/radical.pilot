@@ -15,6 +15,8 @@ from . import states    as rps
 from . import constants as rpc
 from . import types     as rpt
 
+from . import compute_unit_description as cud
+
 from .staging_directives import expand_description
 from .staging_directives import TRANSFER, COPY, LINK, MOVE, STAGING_AREA
 
@@ -35,7 +37,6 @@ class ComputeUnit(object):
 
                       ud = radical.pilot.ComputeUnitDescription()
                       ud.executable = "/bin/date"
-                      ud.cores      = 1
 
                       unit = umgr.submit_units(ud)
     """
@@ -55,6 +56,11 @@ class ComputeUnit(object):
     # --------------------------------------------------------------------------
     #
     def __init__(self, umgr, descr):
+
+        # FIXME GPU: we allow `mpi` for backward compatibility - but need to
+        #       convert the bool into a decent value for `cpu_process_type`
+        if  descr[cud.CPU_PROCESS_TYPE] in [True, 'True']:
+            descr[cud.CPU_PROCESS_TYPE] = cud.MPI
 
         # 'static' members
         self._descr = descr.as_dict()
@@ -83,11 +89,6 @@ class ComputeUnit(object):
         self._callbacks[rpt.UNIT_STATE][self._default_state_cb.__name__] = {
                 'cb'      : self._default_state_cb, 
                 'cb_data' : None}
-
-        # sanity checks on description
-        for check in ['cores']:
-            if not self._descr.get(check):
-                raise ValueError("ComputeUnitDescription needs '%s'" % check)
 
         if  not self._descr.get('executable') and \
             not self._descr.get('kernel')     :

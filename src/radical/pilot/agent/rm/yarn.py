@@ -72,10 +72,13 @@ class Yarn(LRMS):
         hostname = os.environ.get('HOSTNAME')
 
         if hostname == None:
-            self.node_list = ['localhost']
+            self.node_list = ['localhost', 'localhost']
         else:
-            self.node_list = [hostname]
+            self.node_list = [hostname, hostname]
+
         self.cores_per_node = selected_cpus
+        self.gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
 
 
+# ------------------------------------------------------------------------------
 
