@@ -977,10 +977,13 @@ class UnitManager(rpu.Component):
             unit_docs = [unit.as_dict()   for unit in units]
             self.advance(unit_docs, state=rps.CANCELED, publish=True, push=True)
 
-        # we *always* issue the cancellation command!
+        # we *always* issue the cancellation command to the local components
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_units', 
                                           'arg' : {'uids' : uids,
                                                    'umgr' : self.uid}})
+
+        # we also inform all pilots about the cancelation request
+        self._session._dbs.pilot_command(cmd='cancel_units', arg={'uids':uids})
 
         # In the default case of calling 'advance' above, we just set the state,
         # so we *know* units are canceled.  But we nevertheless wait until that
