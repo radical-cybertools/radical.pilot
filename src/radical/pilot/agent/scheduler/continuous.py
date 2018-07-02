@@ -273,7 +273,9 @@ class Continuous(AgentSchedulingComponent):
         # make sure that the requested allocation fits on a single node
         if  requested_cores > self._lrms_cores_per_node or \
             requested_gpus  > self._lrms_gpus_per_node     :
-            raise ValueError('Non-mpi unit does not fit onto single node')
+            raise ValueError('Non-mpi unit does not fit onto single node (%3d/%3d : %3d/%3d XXX)',
+                    requested_cores, self._lrms_cores_per_node, 
+                    requested_gpus,  self._lrms_gpus_per_node)
 
         # ok, we can go ahead and try to find a matching node
         cores     = list()

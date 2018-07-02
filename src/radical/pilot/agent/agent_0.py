@@ -185,6 +185,7 @@ class Agent_0(rpu.Worker):
         elif self._final_cause == 'sys.exit' : state = rps.CANCELED
         else                                 : state = rps.FAILED
 
+        self._log.debug('final state: %s (%s)', state, self._final_cause)
       # # we don't rely on the existence / viability of the update worker at
       # # that point.
       # FIXME:
@@ -360,6 +361,8 @@ class Agent_0(rpu.Worker):
 
             # spawn the sub-agent
             self._log.info ('create sub-agent %s: %s' % (sa, cmdline))
+
+            # ------------------------------------------------------------------
             class _SA(ru.Process):
                 def __init__(self, sa, cmd, log):
                     self._sa   = sa
@@ -378,10 +381,10 @@ class Agent_0(rpu.Worker):
 
                 def work_cb(self):
                     time.sleep(0.1)
-                    if self._proc.poll() == None:
-                        return True  # all is well
+                    if self._proc.poll() is None:
+                        return True   # all is well
                     else:
-                        return False # proc is gone - terminate
+                        return False  # proc is gone - terminate
 
                 def ru_finalize_child(self):
                     if self._proc:
@@ -390,6 +393,7 @@ class Agent_0(rpu.Worker):
                         except Exception as e:
                             # we are likely racing on termination...
                             self._log.warn('%s term failed: %s', self._sa, e)
+            # ------------------------------------------------------------------
 
             # the agent is up - let the watcher manage it from here
             self.register_watchable(_SA(sa, cmdline, log=self._log))
@@ -419,13 +423,12 @@ class Agent_0(rpu.Worker):
         # FIXME: commands go to pmgr, umgr, session docs
         # FIXME: this is disabled right now
         retdoc = self._session._dbs._c.find_and_modify(
-                    query  = {'uid'  : self._pid},
-                    update = {'$set' : {'cmd': []}}, # Wipe content of array
-                    fields = ['cmd']
-                    )
+                    query ={'uid'  : self._pid},
+                    update={'$set' : {'cmd': []}},  # Wipe content of array
+                    fields=['cmd'])
 
         if not retdoc:
-            return True # this is not an error
+            return True  # this is not an error
 
         for spec in retdoc.get('cmd', []):
 
@@ -502,8 +505,8 @@ class Agent_0(rpu.Worker):
         #        This also blocks us from using multiple ingest threads, or from
         #        doing late binding by unit pull :/
         unit_cursor = self._session._dbs._c.find({'type'    : 'unit',
-                                                         'pilot'   : self._pid,
-                                                         'control' : 'agent_pending'})
+                                                  'pilot'   : self._pid,
+                                                  'control' : 'agent_pending'})
         if not unit_cursor.count():
             # no units whatsoever...
             self._log.info('units pulled:    0')
@@ -515,11 +518,10 @@ class Agent_0(rpu.Worker):
 
         self._log.info('units PULLED: %4d', len(unit_list))
 
-        self._session._dbs._c.update(
-                        {'type'  : 'unit',
-                                    'uid'   : {'$in'     : unit_uids}},
-                        {'$set'  : {'control' : 'agent'}},
-                        multi = True)
+        self._session._dbs._c.update({'type'  : 'unit',
+                                      'uid'   : {'$in'     : unit_uids}},
+                                     {'$set'  : {'control' : 'agent'}},
+                                     multi=True)
 
         self._log.info("units pulled: %4d", len(unit_list))
         self._prof.prof('get', msg='bulk size: %d' % len(unit_list),

@@ -3,16 +3,14 @@ __copyright__ = "Copyright 2017, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+
 import os
 import pprint
+import threading as mt
 
 import radical.utils as ru
 
-from ...   import constants as rpc
 from .base import AgentSchedulingComponent
-
-import inspect
-import threading as mt
 
 
 # ------------------------------------------------------------------------------
@@ -32,6 +30,7 @@ def cprof_it(func):
 
 
 def dec_all_methods(dec):
+    import inspect
     def dectheclass(cls):
         if ru.is_main_thread():
             cprof_env   = os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "")
@@ -89,15 +88,15 @@ class Hombre(AgentSchedulingComponent):
     def _configure(self):
 
         if not self._lrms_node_list:
-            raise RuntimeError("LRMS %s didn't _configure node_list." % \
+            raise RuntimeError("LRMS %s didn't _configure node_list." %
                                self._lrms_info['name'])
 
         if not self._lrms_cores_per_node:
-            raise RuntimeError("LRMS %s didn't _configure cores_per_node." % \
+            raise RuntimeError("LRMS %s didn't _configure cores_per_node." %
                                self._lrms_info['name'])
 
         if not self._lrms_gpus_per_node:
-            raise RuntimeError("LRMS %s didn't _configure gpus_per_node." % \
+            raise RuntimeError("LRMS %s didn't _configure gpus_per_node." %
                                self._lrms_info['name'])
 
         # * oversubscribe:

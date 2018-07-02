@@ -56,7 +56,7 @@
         "default_queue"               : "batch",
         "lrms"                        : "TORQUE",
         "agent_type"                  : "multicore",
-        "agent_config"                : "cray_aprun",
+        "agent_config"                : "rhea",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "APRUN",
@@ -103,6 +103,7 @@
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",
         "cores_per_node"              : "16",
+        "gpus_per_node"               : 1,
         "pre_bootstrap_0"             : [
             "module swap PrgEnv-pgi PrgEnv-gnu",
             "module load python",
@@ -139,6 +140,7 @@
         "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE_LIB",
         "mpi_launch_method"           : "ORTE_LIB",
+        "gpus_per_node"               : 1,
         "pre_bootstrap_0"             : [
             "module swap PrgEnv-pgi PrgEnv-gnu",
             "module load python",
@@ -176,6 +178,7 @@
         },
         "default_queue"               : "batch",
         "cores_per_node"              : "16",
+        "gpus_per_node"               : 1,
         "lrms"                        : "TORQUE",
         #"agent_type"                  : "multicore",
         #"agent_config"                : "mpirun",
