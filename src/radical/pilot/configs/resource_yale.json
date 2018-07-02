@@ -16,10 +16,10 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
-        "pre_bootstrap_1"             : [
+        "pre_bootstrap_0"             : [
             "module load Langs/Python/2.7.6",
             "module load MPI/OpenMPI"],
-        "pre_bootstrap_2"             : [],
+        "pre_bootstrap_1"             : [],
         "valid_roots"                 : ["/"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",

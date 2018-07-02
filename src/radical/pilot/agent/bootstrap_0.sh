@@ -7,10 +7,10 @@ unset PROMPT_COMMAND
 unset -f cd ls uname pwd date bc cat echo
 
 # interleave stdout and stderr, to get a coherent set of log messages
-if test -z "$RP_BOOTSTRAP_1_REDIR"
+if test -z "$RP_BOOTSTRAP_0_REDIR"
 then
-    echo "bootstrap_1 stderr redirected to stdout"
-    export RP_BOOTSTRAP_1_REDIR=True
+    echo "bootstrap_0 stderr redirected to stdout"
+    export RP_BOOTSTRAP_0_REDIR=True
     exec 2>&1
 fi
 
@@ -41,10 +41,10 @@ fi
 # use a different RADICAL stack if needed, by rerouting the PYTHONPATH, w/o the
 # need to create a new virtualenv from scratch.
 #
-# Arguments passed to bootstrap_1 should be required by bootstrap_1 itself,
+# Arguments passed to bootstrap_0 should be required by bootstrap_0 itself,
 # and *not* be passed down to the agent.  Configuration used by the agent should
 # go in the agent config file, and *not( be passed as an argument to
-# bootstrap_1.  Only parameters used by both should be passed to the bootstrap_1
+# bootstrap_0.  Only parameters used by both should be passed to the bootstrap_0
 # and  consecutively passed to the agent. It is rarely justified to duplicate
 # information as parameters and agent config entries.  Exceptions would be:
 # 1) the shell scripts can't (easily) read from MongoDB, so they need to
@@ -169,7 +169,7 @@ EOT
 #
 profile_event()
 {
-    PROFILE="bootstrap_1.prof"
+    PROFILE="bootstrap_0.prof"
 
     if test -z "$RADICAL_PILOT_PROFILE"
     then
@@ -196,7 +196,7 @@ profile_event()
     # MSG    = 6  # message describing the event                optional
     # ENTITY = 7  # type of entity involved                     optional
     printf "%.4f,%s,%s,%s,%s,%s,%s\n" \
-        "$NOW" "$event" "bootstrap_1" "MainThread" "$PILOT_ID" "PMGR_ACTIVE_PENDING" "$msg" \
+        "$NOW" "$event" "bootstrap_0" "MainThread" "$PILOT_ID" "PMGR_ACTIVE_PENDING" "$msg" \
         | tee -a "$PROFILE"
 }
 
@@ -560,7 +560,7 @@ run_cmd()
 #   'recreate': delete if it exists, otherwise create, then use
 #
 # create and update ops will be locked and thus protected against concurrent
-# bootstrap_1 invokations.
+# bootstrap_0 invokations.
 #
 # (private + location in pilot sandbox == old behavior)
 #
@@ -1376,15 +1376,15 @@ find_available_port()
 
 # -------------------------------------------------------------------------------
 #
-# run a pre_bootstrap_1 command -- and exit if it happens to fail
+# run a pre_bootstrap_0 command -- and exit if it happens to fail
 #
-# pre_bootstrap_1 commands are executed right in arg parser loop because -e can be
+# pre_bootstrap_0 commands are executed right in arg parser loop because -e can be
 # passed multiple times
 #
-pre_bootstrap_1()
+pre_bootstrap_0()
 {
     cmd="$@"
-    run_cmd "Running pre_bootstrap_1 command" "$cmd"
+    run_cmd "Running pre_bootstrap_0 command" "$cmd"
 
     if test $? -ne 0
     then
@@ -1413,9 +1413,9 @@ $cmd"
 # Report where we are, as this is not always what you expect ;-)
 # Print environment, useful for debugging
 echo "---------------------------------------------------------------------"
-echo "bootstrap_1 running on host: `hostname -f`."
-echo "bootstrap_1 started as     : '$0 $@'"
-echo "Environment of bootstrap_1 process:"
+echo "bootstrap_0 running on host: `hostname -f`."
+echo "bootstrap_0 started as     : '$0 $@'"
+echo "Environment of bootstrap_0 process:"
 
 # print the sorted env for logging, but also keep a copy so that we can dig
 # original env settings for any CUs, if so specified in the resource config.
@@ -1450,7 +1450,7 @@ while getopts "a:b:cd:e:f:g:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
         b)  PYTHON_DIST="$OPTARG"  ;;
         c)  CCM='TRUE'  ;;
         d)  SDISTS="$OPTARG"  ;;
-        e)  pre_bootstrap_1 "$OPTARG"  ;;
+        e)  pre_bootstrap_0 "$OPTARG"  ;;
         f)  FORWARD_TUNNEL_ENDPOINT="$OPTARG"  ;;
         g)  VIRTENV_DIST="$OPTARG"  ;;
         h)  HOSTPORT="$OPTARG"  ;;
@@ -1500,7 +1500,7 @@ touch "$LOGFILES_TARBALL"
 touch "$PROFILES_TARBALL"
 
 
-# At this point, all pre_bootstrap_1 commands have been executed.  We copy the
+# At this point, all pre_bootstrap_0 commands have been executed.  We copy the
 # resulting PATH and LD_LIBRARY_PATH, and apply that in bootstrap_2.sh, so that
 # the sub-agents start off with the same env (or at least the relevant parts of
 # it).
@@ -1508,7 +1508,7 @@ touch "$PROFILES_TARBALL"
 # This assumes that the env is actually transferrable.  If that assumption
 # breaks at some point, we'll have to either only transfer the incremental env
 # changes, or reconsider the approach to pre_bootstrap_x commands altogether --
-# see comment in the pre_bootstrap_1 function.
+# see comment in the pre_bootstrap_0 function.
 PB1_PATH="$PATH"
 PB1_LDLB="$LD_LIBRARY_PATH"
 
@@ -1521,7 +1521,7 @@ then
     echo 'create gtod'
     create_gtod
 fi
-profile_event 'bootstrap_1_start'
+profile_event 'bootstrap_0_start'
 
 # NOTE: if the virtenv path contains a symbolic link element, then distutil will
 #       report the absolute representation of it, and thus report a different
@@ -1582,7 +1582,7 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
     fi
     ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$HOSTPORT -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST &
 
-    # Kill ssh process when bootstrap_1 dies, to prevent lingering ssh's
+    # Kill ssh process when bootstrap_0 dies, to prevent lingering ssh's
     trap 'jobs -p | grep ssh | xargs kill' EXIT
 
     # and export to agent
@@ -1634,7 +1634,7 @@ echo "# Launching radical-pilot-agent "
 echo "# CMDLINE: $AGENT_CMD"
 
 # At this point we expand the variables in $PREBOOTSTRAP2 to pick up the
-# changes made by the environment by pre_bootstrap_1.
+# changes made by the environment by pre_bootstrap_0.
 OLD_IFS=$IFS
 IFS=$'\n'
 for entry in $PREBOOTSTRAP2
@@ -1660,7 +1660,7 @@ ping -c 1 "$RADICAL_PILOT_NTPHOST"
 # Before we start the (sub-)agent proper, we'll create a bootstrap_2.sh script
 # to do so.  For a single agent this is not needed -- but in the case where
 # we spawn out additional agent instances later, that script can be reused to
-# get proper # env settings etc, w/o running through bootstrap_1 again.
+# get proper # env settings etc, w/o running through bootstrap_0 again.
 # That includes pre_exec commands, virtualenv settings and sourcing (again),
 # and startup command).
 # We don't include any error checking right now, assuming that if the commands
@@ -1689,7 +1689,7 @@ export PYTHONNOUSERSITE=True
 # make sure we use the correct sandbox
 cd $PILOT_SANDBOX
 
-# apply some env settings as stored after running pre_bootstrap_1 commands
+# apply some env settings as stored after running pre_bootstrap_0 commands
 export PATH="$PB1_PATH"
 export LD_LIBRARY_PATH="$PB1_LDLB"
 
@@ -1802,10 +1802,9 @@ profile_event 'sync_rel' 'agent_0 start'
 # echo "stop  packing profiles / logfiles [\$(date)]"
 # EOT
 # chmod 0755 packer.sh
-# ./packer.sh 2>&1 >> bootstrap_1.out &
+# ./packer.sh 2>&1 >> bootstrap_0.out &
 # PACKER_ID=$!
 
-# TODO: Can this be generalized with our new split-agent now?
 if test -z "$CCM"; then
     ./bootstrap_2.sh 'agent_0'    \
                    1> agent_0.bootstrap_2.out \
@@ -1880,7 +1879,7 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Mark final profiling entry ..."
-    profile_event 'bootstrap_1_stop'
+    profile_event 'bootstrap_0_stop'
     profile_event 'END'
     echo "#"
     echo "# -------------------------------------------------------------------"
