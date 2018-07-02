@@ -73,7 +73,7 @@ class TestIssue114(unittest.TestCase):
 
         um = rp.UnitManager(
             session=session,
-            scheduler=rp.SCHED_DIRECT_SUBMISSION
+            scheduler=rp.SCHEDULER_DIRECT_SUBMISSION
         )
         um.add_pilots(pilot)
 
@@ -119,7 +119,7 @@ class TestIssue114(unittest.TestCase):
 
         um = rp.UnitManager(
             session=session,
-            scheduler=rp.SCHED_DIRECT_SUBMISSION
+            scheduler=rp.SCHEDULER_DIRECT_SUBMISSION
         )
         um.add_pilots(pilot)
 
@@ -168,7 +168,7 @@ class TestIssue114(unittest.TestCase):
 
         um = rp.UnitManager(
             session   = session,
-            scheduler = rp.SCHED_DIRECT_SUBMISSION
+            scheduler = rp.SCHEDULER_DIRECT_SUBMISSION
         )
         um.add_pilots(pilot)
 

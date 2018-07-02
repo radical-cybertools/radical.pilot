@@ -54,7 +54,7 @@ class PilotManager(rpu.Component):
         # Combine the two pilots, the workload and a scheduler via
         # a UnitManager.
         um = radical.pilot.UnitManager(session=session,
-                                       scheduler=radical.pilot.SCHED_ROUND_ROBIN)
+                                       scheduler=radical.pilot.SCHEDULER_ROUND_ROBIN)
         um.add_pilot(p1)
         um.submit_units(compute_units)
 

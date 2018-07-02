@@ -56,7 +56,7 @@ try:
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
-        umgr = rp.UnitManager(session=session, scheduler=rp.SCHED_DIRECT)
+        umgr = rp.UnitManager(session=session, scheduler=rp.SCHEDULER_DIRECT)
 
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager

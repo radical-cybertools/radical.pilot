@@ -15,7 +15,7 @@ RUNTIME  =    10
 SLEEP    =     1
 CORES    =    16
 UNITS    =    16
-SCHED    = rp.SCHED_DIRECT_SUBMISSION
+SCHED    = rp.SCHEDULER_DIRECT_SUBMISSION
 
 #------------------------------------------------------------------------------
 #
