@@ -5,6 +5,179 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.47.14 Release                                                       2018-06-13
+--------------------------------------------------------------------------------
+
+  - fix recursive output staging
+
+
+0.47.13 Release                                                       2018-06-02
+--------------------------------------------------------------------------------
+
+  - catch up with RU log, rep and prof settings
+
+
+0.47.12 Release                                                       2018-05-19
+--------------------------------------------------------------------------------
+
+  - ensure that units are started in their own process group, to ensure clean
+    cancellation semantics.
+
+
+0.47.11 Release                                                       2018-05-08
+--------------------------------------------------------------------------------
+
+  - fix schemas on BW (local orte, local aprun)
+
+
+0.47.10 Release                                                       2018-04-19
+--------------------------------------------------------------------------------
+
+  - fix #1602
+
+
+0.47.9 Release                                                        2018-04-18
+--------------------------------------------------------------------------------
+
+  - fix default scheduler for localhost
+
+
+0.47.8 Release                                                        2018-04-16
+--------------------------------------------------------------------------------
+
+  - hotfix to catch up with pypi upgrade
+
+
+0.47.7 Release                                                        2018-04-15
+--------------------------------------------------------------------------------
+
+  - bugfix related to radical.entk #255
+
+
+0.47.6 Release                                                        2018-04-12
+--------------------------------------------------------------------------------
+
+  - bugfix related to #1590
+
+
+0.47.5 Release                                                        2018-04-12
+--------------------------------------------------------------------------------
+
+  - make sure a dict object exists even on empty env settings (#1590)
+
+
+0.47.4 Release                                                        2018-03-20
+--------------------------------------------------------------------------------
+
+  - fifo agent scheduler (#1537) 
+  - hombre agent scheduler (#1536) 
+  - Fix/issue 1466 (#1544) 
+  - Fix/issue 1501 (#1541) 
+  - switch to new OMPI deployment on titan (#1529) 
+  - add agent configuration doc (#1540) 
+
+
+0.47.3 Release                                                        2018-03-20
+--------------------------------------------------------------------------------
+
+  - add resource limit test 
+  - add tmp cheyenne config 
+  - api rendering proposal for partitions 
+  - fix bootstrap sequence (BW)
+  - tighten bootstrap process, add documentation 
+
+
+0.47.2 Release                                                        2018-02-28
+--------------------------------------------------------------------------------
+
+  - fix issue 1538
+  - fix issue 1554
+  - expose profiler to LM hooks (#1522) 
+  - fix bin names (#1549) 
+  - fix event docs, add an event for symmetry (#1527) 
+  - name attribute has been changed to uid, fixes issue #1518
+  - make use of flags consistent between RP and RS (#1547) 
+  - add support for recursive data staging (#1513. #1514)  (JD, VB, GC)
+  - change staging flags to integers (inherited from RS)
+  - add support for bulk data transfer (#1512) (IP, SM)
+
+
+0.47 Release                                                          2017-11-19
+--------------------------------------------------------------------------------
+
+  - Correctly added 'lm_info.cores_per_node' SLURM 
+  - Torque RM now respects config settings for cpn 
+  - Update events.md 
+  - add SIGUSR2 for clean termination on SGE 
+  - add information about partial event orders 
+  - add issue demonstrators 
+  - add some notes on cpython issue demonstrators 
+  - add xsede.supermic_orte configuration
+  - add xsede.supermic_ortelib configuration 
+  - apply RU's managed process to termination stress test 
+  - attempt to localize aprun units 
+  - better hops for titan 
+  - better integration of CU script and app profs 
+  - catch up with config changes for local testing 
+  - centralize URL derivation for pilot job service endpoints, hops, and sandboxes 
+  - clarify use of namespace vs. full qualified URL in the context of RP file staging 
+  - clean up config management, inheritance 
+  - don't fetch json twice 
+  - ensure that profiles are flushed and packed correctly 
+  - fail missing pilots on termination 
+  - fix AGENT_ACTIVE profile timing
+  - fix close-session purge mode 
+  - fix cray agent config, avoid termination race
+  - fix duplicated transition events 
+  - fix osg config 
+  - fix #1283 
+  - fixing error from bootstrapper + aprun parsing error 
+  - force profile flush earlier
+  - get cpn for ibrun 
+  - implement session.list_resources() per #1419 
+  - make sure a canceled pilot stays canceled 
+  - make cb return codes consistent
+  - make sure profs are flushed on termination 
+  - make sure the umgr only pulls units its interested in 
+  - profile mkdir 
+  - publish resource_details (incl. lm_info) again 
+  - re-add a profile flag to advance() 
+  - remove old controllers 
+  - remove old files 
+  - remove uid clashes for sub-agent components and components in general 
+  - setup number of cores per node on stampede2 
+  - smaller default pilot size for supermic 
+  - switch to ibrun for comet_ssh 
+  - track unit drops 
+  - use js hop for untar 
+  - using new process class 
+  - GPU/CPU pinning test is now complete, needs some env settings in the launchers 
+
+
+0.46.2 Release                                                        2017-09-02
+--------------------------------------------------------------------------------
+
+  - hotfix for #1426 - thanks Iannis!
+
+
+0.46.1 Release                                                        2017-08-23
+--------------------------------------------------------------------------------
+
+  - hotfix for #1415
+
+
+Version 0.46                                                          2017-08-11
+--------------------------------------------------------------------------------
+
+  - TODO
+
+
+0.45.3 Release                                                        2017-05-09
+--------------------------------------------------------------------------------
+
+  - Documentation update for the BW tutorial
+
+
 0.45.1 Release                                                        2017-03-05
 --------------------------------------------------------------------------------
 

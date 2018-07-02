@@ -40,7 +40,8 @@ class UMGRSchedulingComponent(rpu.Component):
     #
     def __init__(self, cfg, session):
 
-        self._uid = ru.generate_id('umgr.scheduling.%(counter)s', ru.ID_CUSTOM)
+        self._uid = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
+                                   ru.ID_CUSTOM)
 
         rpu.Component.__init__(self, cfg, session)
 
@@ -53,7 +54,9 @@ class UMGRSchedulingComponent(rpu.Component):
 
         self._early       = dict()            # early-bound units, sorted by pid
         self._pilots      = dict()            # dict of pilots to schedule over
-        self._pilots_lock = threading.RLock() # lock on the above set
+        self._pilots_lock = threading.RLock() # lock on the above dict
+        self._units       = dict()            # dict of scheduled unit IDs
+        self._units_lock  = threading.RLock() # lock on the above dict
 
         # configure the scheduler instance
         self._configure()
@@ -80,7 +83,7 @@ class UMGRSchedulingComponent(rpu.Component):
     #
     def finalize_child(self):
 
-        self._log.info(' ====finalize_child')
+        self._log.info('finalize_child')
 
         self.unregister_subscriber(rpc.CONTROL_PUBSUB, self._base_command_cb)
         self.unregister_subscriber(rpc.STATE_PUBSUB,   self._base_state_cb)
@@ -89,7 +92,7 @@ class UMGRSchedulingComponent(rpu.Component):
                                rpc.UMGR_SCHEDULING_QUEUE, self.work)
 
 
-        self._log.info(' ====finalize_child done')
+        self._log.info('finalize_child done')
 
 
     # --------------------------------------------------------------------------
@@ -134,18 +137,18 @@ class UMGRSchedulingComponent(rpu.Component):
         arg = msg.get('arg')
 
         self._log.info('scheduler state_cb: %s', cmd)
-      # self._log.debug(' === base state cb: %s' % cmd)
+      # self._log.debug('base state cb: %s', cmd)
 
         # FIXME: get cmd string consistent throughout the code
         if cmd not in ['update', 'state_update']:
-          # self._log.debug(' === base state cb: ignore %s' % cmd)
+          # self._log.debug('base state cb: ignore %s', cmd)
             self._log.debug('ignore cmd %s', cmd)
             return True
 
         if not isinstance(arg, list): things = [arg]
         else                        : things =  arg
 
-      # self._log.debug(' === base state cb: things %s' % things)
+      # self._log.debug('base state cb: things %s', things)
 
         pilots = [t for t in things if t['type'] == 'pilot']
         units  = [t for t in things if t['type'] == 'unit' ]
@@ -165,7 +168,7 @@ class UMGRSchedulingComponent(rpu.Component):
 
         self._log.debug('update pilot states for %s', [p['uid'] for p in pilots])
 
-      # self._log.debug(' === update pilot states for %s' % ([p['uid'] for p in pilots]))
+      # self._log.debug('update pilot states for %s', [p['uid'] for p in pilots])
 
         if not pilots:
             return
@@ -192,15 +195,15 @@ class UMGRSchedulingComponent(rpu.Component):
                 target, passed = rps._pilot_state_progress(pid, current, target) 
 
                 if current != target:
-                  # self._log.debug(' === %s: %s -> %s' % (pid,  current, target))
+                  # self._log.debug('%s: %s -> %s', pid,  current, target)
                     to_update.append(pid)
                     self._pilots[pid]['state'] = target
                     self._log.debug('update pilot state: %s -> %s', current, passed)
 
-      # self._log.debug(' === to update: %s' % to_update)
+      # self._log.debug('to update: %s', to_update)
         if to_update:
             self.update_pilots(to_update)
-      # self._log.debug(' === updated  : %s' % to_update)
+      # self._log.debug('updated  : %s', to_update)
 
 
     # --------------------------------------------------------------------------
@@ -221,7 +224,7 @@ class UMGRSchedulingComponent(rpu.Component):
 
         cmd = msg['cmd']
 
-        if cmd not in ['add_pilots', 'remove_pilots']:
+        if cmd not in ['add_pilots', 'remove_pilots', 'cancel_units']:
             return True
 
         arg   = msg['arg']
@@ -229,7 +232,7 @@ class UMGRSchedulingComponent(rpu.Component):
 
         self._log.info('scheduler command: %s: %s' % (cmd, arg))
 
-        if umgr != self._umgr:
+        if umgr and umgr != self._umgr:
             # this is not the command we are looking for
             return True
 
@@ -294,10 +297,32 @@ class UMGRSchedulingComponent(rpu.Component):
                         raise ValueError('pilot not added (%s)' % pid)
 
                     self._pilots[pid]['role'] = REMOVED
-                    self._log.debug('removed pilot: %s' % self._pilots[pid])
+                    self._log.debug('removed pilot: %s', self._pilots[pid])
 
             # let the scheduler know
             self.remove_pilots(pids)
+
+
+        elif cmd == 'cancel_units':
+
+            uids = arg['uids']
+
+            # find the pilots handling these units and forward the caancellation
+            # request
+            to_cancel = dict()
+
+            with self._units_lock:
+                for pid in self._units:
+                    for uid in uids:
+                        if uid in self._units[pid]:
+                            if pid not in to_cancel:
+                                to_cancel[pid] = list()
+                            to_cancel[pid].append(uid)
+
+            for pid in to_cancel:
+                self._session._dbs.pilot_command(cmd='cancel_units',
+                                                 arg={'uids' : to_cancel[pid]},
+                                                 pids=pid)
 
         return True
 
@@ -316,11 +341,19 @@ class UMGRSchedulingComponent(rpu.Component):
         This is also a good opportunity to determine the unit sandbox(es).
         '''
 
-        unit['pilot'           ] = pilot['uid']
+        pid = pilot['uid']
+        uid = unit['uid']
+
+        unit['pilot'           ] = pid
         unit['client_sandbox'  ] = str(self._session._get_client_sandbox())
         unit['resource_sandbox'] = str(self._session._get_resource_sandbox(pilot))
         unit['pilot_sandbox'   ] = str(self._session._get_pilot_sandbox(pilot))
         unit['unit_sandbox'    ] = str(self._session._get_unit_sandbox(unit, pilot))
+
+        with self._units_lock:
+            if pid not in self._units:
+                self._units[pid] = list()
+            self._units[pid].append(uid)
 
 
     # --------------------------------------------------------------------------

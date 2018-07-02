@@ -227,7 +227,7 @@ class DBSession(object):
 
     #--------------------------------------------------------------------------
     #
-    def pilot_command(self, cmd, arg, pids):
+    def pilot_command(self, cmd, arg, pids=None):
         """
         send a command and arg to a set of pilots
         """
@@ -239,16 +239,23 @@ class DBSession(object):
         if not self._c:
             raise Exception('session is disconnected ')
 
-        if not isinstance(pids, list):
+        if pids and not isinstance(pids, list):
             pids = [pids]
 
         try:
-            cmd_spec = {'cmd' : cmd, 'arg' : arg}
+            cmd_spec = {'cmd' : cmd,
+                        'arg' : arg}
+
             # FIXME: evaluate res
-            res = self._c.update({'type'  : 'pilot',
-                                  'uid'   : {'$in' : pids}},
-                                 {'$push' : {'cmd' : cmd_spec}},
-                                 multi = True)
+            if pids:
+                res = self._c.update({'type'  : 'pilot',
+                                      'uid'   : {'$in' : pids}},
+                                     {'$push' : {'cmd' : cmd_spec}},
+                                     multi = True)
+            else:
+                res = self._c.update({'type'  : 'pilot'},
+                                     {'$push' : {'cmd' : cmd_spec}},
+                                     multi = True)
 
         except pymongo.errors.OperationFailure as e:
             self._log.exception('pymongo error: %s' % e.details)
@@ -287,6 +294,7 @@ class DBSession(object):
         # model, ie. is the largest of any state the pilot progressed through
         for doc in docs:
             doc['state'] = rps._pilot_state_collapse(doc['states'])
+
         return docs
 
 
@@ -302,14 +310,20 @@ class DBSession(object):
             return None
           # raise Exception("No active session.")
 
+        # we only pull units which are not yet owned by the umgr
+
         if not unit_ids:
-            cursor = self._c.find({'type' : 'unit', 
-                                   'umgr' : umgr_uid})
+            cursor = self._c.find({'type'   : 'unit',
+                                   'umgr'   : umgr_uid,
+                                   'control': {'$ne' : 'umgr'},
+                                   })
 
         else:
-            cursor = self._c.find({'type' : 'unit', 
-                                   'uid'  : {'$in': unit_ids},
-                                   'umgr' : umgr_uid})
+            cursor = self._c.find({'type'   : 'unit',
+                                   'umgr'   : umgr_uid,
+                                   'uid'    : {'$in' : unit_ids},
+                                   'control': {'$ne' : 'umgr'  },
+                                   })
 
         # make sure we return every unit doc only once
         # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents

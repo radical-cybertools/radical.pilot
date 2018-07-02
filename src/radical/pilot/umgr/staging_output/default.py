@@ -4,19 +4,13 @@ __license__   = "MIT"
 
 
 import os
-import shutil
+import saga as rs
 
-import saga          as rs
-import radical.utils as ru
-
-from .... import pilot     as rp
-from ...  import utils     as rpu
-from ...  import states    as rps
-from ...  import constants as rpc
+from ...   import states             as rps
+from ...   import constants          as rpc
+from ...   import staging_directives as rpsd
 
 from .base import UMGRStagingOutputComponent
-
-from ...staging_directives import complete_url
 
 
 # ==============================================================================
@@ -59,7 +53,7 @@ class Default(UMGRStagingOutputComponent):
                 self._cache[key].close()
         except:
             pass
-            
+
 
     # --------------------------------------------------------------------------
     #
@@ -73,7 +67,7 @@ class Default(UMGRStagingOutputComponent):
         # we first filter out any units which don't need any output staging, and
         # advance them again as a bulk.  We work over the others one by one, and
         # advance them individually, to avoid stalling from slow staging ops.
-        
+
         no_staging_units = list()
         staging_units    = list()
 
@@ -139,7 +133,6 @@ class Default(UMGRStagingOutputComponent):
         # Loop over all transfer directives and execute them.
         for sd in actionables:
 
-            tr
             action = sd['action']
             flags  = sd['flags']
             did    = sd['uid']
@@ -151,18 +144,21 @@ class Default(UMGRStagingOutputComponent):
             self._log.debug('src: %s', src)
             self._log.debug('tgt: %s', tgt)
 
-            src = complete_url(src, src_context, self._log)
-            tgt = complete_url(tgt, tgt_context, self._log)
+            src = rpsd.complete_url(src, src_context, self._log)
+            tgt = rpsd.complete_url(tgt, tgt_context, self._log)
 
             self._log.debug('src: %s', src)
             self._log.debug('tgt: %s', tgt)
 
-            if rpc.CREATE_PARENTS in flags:
-                copy_flags = rs.filesystem.CREATE_PARENTS
-            else:
-                copy_flags = 0
+            # Check if the src is a folder, if true
+            # add recursive flag if not already specified
+            if saga_dir.is_dir(src.path):
+                flags |= rs.filesystem.RECURSIVE
 
-            saga_dir.copy(src, tgt, flags=copy_flags)
+            # Always set CREATE_PARENTS
+            flags |= rs.filesystem.CREATE_PARENTS
+
+            saga_dir.copy(src, tgt, flags=flags)
             self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
         # all staging is done -- at this point the unit is final

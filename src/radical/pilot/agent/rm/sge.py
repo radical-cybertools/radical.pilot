@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import signal
 
 from base import LRMS
 
@@ -28,6 +29,20 @@ class SGE(LRMS):
             msg = "$PE_HOSTFILE not set!"
             self._log.error(msg)
             raise RuntimeError(msg)
+
+        def _sigusr2_handler():
+
+            self._log.warn('caught sigusr2')
+            # self.stop()
+
+            # doing stuff in the signal handler is usually not a great idea.
+            # Doing complex stuff like termination even less so.  So for now we
+            # hook into the ru.Process class and signal termination gracefully.
+            # TODO: provide cleaner hook in RU
+            term = getattr(self, '_ru_term')
+            if term is not None and not term.is_set():
+                term.set()
+        signal.signal(signal.SIGUSR1, _sigusr2_handler)
 
         # SGE core configuration might be different than what multiprocessing
         # announces

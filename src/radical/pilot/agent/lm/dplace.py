@@ -22,6 +22,7 @@ class DPlace(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
+
         # dplace: job launcher for SGI systems (e.g. on Blacklight)
         self.launch_command = ru.which('dplace')
 

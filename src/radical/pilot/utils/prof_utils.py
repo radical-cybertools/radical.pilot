@@ -1,10 +1,6 @@
 
 import os
-import csv
-import copy
 import glob
-import time
-import threading
 
 import radical.utils               as ru
 from   radical.pilot import states as rps
@@ -22,7 +18,7 @@ def get_hostmap(profile):
     # FIXME: This should be replaced by proper hostname logging
     #        in `pilot.resource_details`.
 
-    hostmap = dict() # map pilot IDs to host names
+    hostmap = dict()  # map pilot IDs to host names
     for entry in profile:
         if  entry[ru.EVENT] == 'hostname':
             hostmap[entry[ru.UID]] = entry[ru.MSG]
@@ -38,7 +34,7 @@ def get_hostmap_deprecated(profiles):
     this point it only returns the hostmap
     '''
 
-    hostmap = dict() # map pilot IDs to host names
+    hostmap = dict()  # map pilot IDs to host names
     for pname, prof in profiles.iteritems():
 
         if not len(prof):
@@ -63,85 +59,8 @@ def get_hostmap_deprecated(profiles):
 
 # ------------------------------------------------------------------------------
 # 
-def clean_profile(profile, sid):
-    """
-    This method will prepare a profile for consumption in radical.analytics.  It
-    performs the following actions:
-
-      - makes sure all events have a `ename` entry
-      - remove all state transitions to `CANCELLED` if a different final state 
-        is encountered for the same uid
-      - assignes the session uid to all events without uid
-      - makes sure that state transitions have an `ename` set to `state`
-    """
-
-    entities = dict()  # things which have a uid
-
-    for event in profile:
-
-        uid   = event[ru.UID]
-        state = event[ru.STATE]
-        time  = event[ru.TIME]
-        name  = event[ru.EVENT]
-
-        if uid not in entities:
-            entities[uid] = dict()
-            entities[uid]['states'] = dict()
-            entities[uid]['events'] = list()
-
-        if name == 'advance':
-
-            # this is a state progression
-            assert(state), 'cannot advance w/o state'
-            assert(uid),   'cannot advance w/o uid'
-
-            skip = False
-            if state in rps.FINAL:
-
-                # a final state will cancel any previoud CANCELED state
-                if rps.CANCELED in entities[uid]['states']:
-                    del (entities[uid]['states'][rps.CANCELED])
-
-                # vice-versa, we will not add CANCELED if a final
-                # state already exists:
-                if state == rps.CANCELED:
-                    if any([s in entities[uid]['states'] 
-                              for s in rps.FINAL]):
-                        skip = True
-                        continue
-
-            if state in entities[uid]['states']:
-                # ignore duplicated recordings of state transitions
-                skip = True
-                continue
-              # raise ValueError('double state (%s) for %s' % (state, uid))
-
-            if not skip:
-                entities[uid]['states'][state] = event
-
-        else:
-            entities[uid]['events'].append(event)
-
-
-    # we have evaluated, cleaned and sorted all events -- now we recreate
-    # a clean profile out of them
-    ret = list()
-    for uid,entity in entities.iteritems():
-
-        ret += entity['events']
-        for state,event in entity['states'].iteritems():
-            ret.append(event)
-
-    # sort by time and return
-    ret = sorted(ret[:], key=lambda k: k[ru.TIME]) 
-
-    return ret
-
-
-# ------------------------------------------------------------------------------
-#
 def get_session_profile(sid, src=None):
-    
+
     if not src:
         src = "%s/%s" % (os.getcwd(), sid)
 
@@ -162,15 +81,12 @@ def get_session_profile(sid, src=None):
 
     profiles          = ru.read_profiles(profiles, sid, efilter=efilter)
     profile, accuracy = ru.combine_profiles(profiles)
-    profile           = clean_profile(profile, sid)
+    profile           = ru.clean_profile(profile, sid, rps.FINAL, rps.CANCELED)
+    hostmap           = get_hostmap(profile)
 
-    hostmap = get_hostmap(profiles)
     if not hostmap:
         # FIXME: legacy host notation - deprecated
         hostmap = get_hostmap_deprecated(profiles)
-
-  # import pprint
-  # pprint.pprint(hostmap)
 
     return profile, accuracy, hostmap
 
@@ -178,7 +94,6 @@ def get_session_profile(sid, src=None):
 # ------------------------------------------------------------------------------
 # 
 def get_session_description(sid, src=None, dburl=None):
-    1
     """
     This will return a description which is usable for radical.analytics
     evaluation.  It informs about
@@ -200,8 +115,32 @@ def get_session_description(sid, src=None, dburl=None):
     if not src:
         src = "%s/%s" % (os.getcwd(), sid)
 
-    ftmp = fetch_json(sid=sid, dburl=dburl, tgt=src, skip_existing=True)
-    json = ru.read_json(ftmp)
+    if os.path.isfile('%s/%s.json' % (src, sid)):
+        json = ru.read_json('%s/%s.json' % (src, sid))
+    else:
+        ftmp = fetch_json(sid=sid, dburl=dburl, tgt=src, skip_existing=True)
+        json = ru.read_json(ftmp)
+
+    # make sure we have uids
+    # FIXME v0.47: deprecate
+    def fix_json(json):
+        def fix_uids(json):
+            if isinstance(json, list):
+                for elem in json:
+                    fix_uids(elem)
+            elif isinstance(json, dict):
+                if 'unitmanager' in json and 'umgr' not in json:
+                    json['umgr'] = json['unitmanager']
+                if 'pilotmanager' in json and 'pmgr' not in json:
+                    json['pmgr'] = json['pilotmanager']
+                if '_id' in json and 'uid' not in json:
+                    json['uid'] = json['_id']
+                    if 'cfg' not in json:
+                        json['cfg'] = dict()
+                for k,v in json.iteritems():
+                    fix_uids(v)
+        fix_uids(json)
+    fix_json(json)
 
     assert(sid == json['session']['uid']), 'sid inconsistent'
 
@@ -259,33 +198,27 @@ def get_session_description(sid, src=None, dburl=None):
         tree[umgr]['children'].append(uid)
         tree[uid] = {'uid'         : uid,
                      'etype'       : 'unit',
-                     'cfg'         : unit['description'],
+                     'cfg'         : unit,
                      'description' : unit['description'],
                      'has'         : list(),
                      'children'    : list()
                     }
+        # remove duplicate
+        del(tree[uid]['cfg']['description'])
 
     ret['tree'] = tree
 
-    ret['entities']['pilot'] = {
-            'state_model'  : rps._pilot_state_values,
-            'state_values' : rps._pilot_state_inv_full,
-            'event_model'  : dict(),
-            }
+    ret['entities']['pilot']   = {'state_model'  : rps._pilot_state_values,
+                                  'state_values' : rps._pilot_state_inv_full,
+                                  'event_model'  : dict()}
+    ret['entities']['unit']    = {'state_model'  : rps._unit_state_values,
+                                  'state_values' : rps._unit_state_inv_full,
+                                  'event_model'  : dict()}
+    ret['entities']['session'] = {'state_model'  : None,  # has no states
+                                  'state_values' : None,
+                                  'event_model'  : dict()}
 
-    ret['entities']['unit'] = {
-            'state_model'  : rps._unit_state_values,
-            'state_values' : rps._unit_state_inv_full,
-            'event_model'  : dict(),
-            }
-
-    ret['entities']['session'] = {
-            'state_model'  : None, # session has no states, only events
-            'state_values' : None,
-            'event_model'  : dict(),
-            }
-
-    ret['config'] = dict() # magic to get session config goes here
+    ret['config'] = dict()  # session config goes here
 
     return ret
 

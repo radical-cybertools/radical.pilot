@@ -22,8 +22,12 @@ class POE(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
+
         # poe: LSF specific wrapper for MPI (e.g. yellowstone)
         self.launch_command = ru.which('poe')
+
+        if not self.launch_command:
+            raise RuntimeError("rsh not found!")
 
 
     # --------------------------------------------------------------------------
@@ -33,40 +37,30 @@ class POE(LaunchMethod):
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_args    = cud.get('arguments') or []
+      # task_env     = cud.get('environment') or dict()
+        task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
-        if not 'task_slots' in slots:
-            raise RuntimeError('insufficient information to launch via %s: %s' \
+        if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
+        else          : task_command = task_exec
+
+        if 'nodes' not in slots:
+            raise RuntimeError('insufficient information to launch via %s: %s'
                     % (self.name, slots))
 
-        task_slots = slots['task_slots']
-
         # Count slots per host in provided slots description.
-        hosts = {}
-        for slot in task_slots:
-            host = slot.split(':')[0]
-            if host not in hosts:
-                hosts[host] = 1
-            else:
-                hosts[host] += 1
-
-        # Create string with format: "hostX N host
+        # Create string with format: "host_1 N  host_2 M  ..."
         hosts_string = ''
-        for host in hosts:
-            hosts_string += '%s %d ' % (host, hosts[host])
-
-        if task_argstr:
-            task_command = "%s %s" % (task_exec, task_argstr)
-        else:
-            task_command = task_exec
+        for node in slots['nodes']:
+                                     # nodename, n cores      + n gpus
+            hosts_string += '%s %d ' % (node[0], len(node[2]) + len(node[3]))
 
         # Override the LSB_MCPU_HOSTS env variable as this is set by
         # default to the size of the whole pilot.
-        poe_command = 'LSB_MCPU_HOSTS="%s" %s %s' % (
-            hosts_string, self.launch_command, task_command)
+        command = 'LSB_MCPU_HOSTS="%s" %s %s' \
+                % (hosts_string, self.launch_command, task_command)
 
-        return poe_command, None
+        return command, None
 
 
 # ------------------------------------------------------------------------------

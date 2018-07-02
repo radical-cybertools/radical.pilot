@@ -31,16 +31,18 @@ class Spark(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, logger):
+    def lrms_config_hook(cls, name, cfg, lrms, logger, profile):
         
         import radical.utils as ru
 
         if not os.environ.get('SPARK_HOME'):
             logger.info("Downloading Apache Spark..")
-            try:    
+            try:
+
                 VERSION = "2.0.2"
                 subprocess.check_call("wget http://d3kbcqa49mib13.cloudfront.net/spark-2.0.2-bin-hadoop2.7.tgz".split())
                 subprocess.check_call('tar -xzf spark-2.0.2-bin-hadoop2.7.tgz'.split())
+                subprocess.check_call("rm spark-2.0.2-bin-hadoop2.7.tgz ".split())
                 subprocess.check_call(("mv spark-2.0.2-bin-hadoop2.7 spark-" + VERSION).split())
             except  Exception as e:
                 raise RuntimeError("Spark wasn't installed properly. Please try again. %s " % e )
@@ -106,10 +108,10 @@ class Spark(LaunchMethod):
         #load in the spark enviroment of master and slaves the
         #configurations of the machine
         if master_ip!='localhost':
-            for config in cfg['resource_cfg']['pre_bootstrap_1']:
+            for config in cfg['resource_cfg']['pre_bootstrap_0']:
                 spark_env_file.write(config + '\n')
 
-        spark_env_file.write('export SPARK_MASTER_IP=' + master_ip + "\n")
+        spark_env_file.write('export SPARK_MASTER_HOST=' + master_ip + "\n")
         spark_env_file.write('export JAVA_HOME=' + java_home + "\n")
         spark_env_file.write('export SPARK_LOG_DIR='+os.getcwd()+'/spark-logs'+'\n')
         #spark_env_file.write('export PYSPARK_PYTHON=`which python` \n')
@@ -143,7 +145,7 @@ class Spark(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger, profile):
         if 'name' not in lm_info:
             raise RuntimeError('name not in lm_info for %s' % name)
 

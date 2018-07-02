@@ -68,7 +68,7 @@ def setup_local_1(request):
         print "pm id local_1: {0}".format(pmgr1.uid)
 
         umgr1 = rp.UnitManager (session=session1,
-                               scheduler=rp.SCHED_DIRECT_SUBMISSION)
+                               scheduler=rp.SCHEDULER_DIRECT_SUBMISSION)
 
         pdesc1 = rp.ComputePilotDescription()
         pdesc1.resource = "local.localhost"
@@ -114,7 +114,7 @@ def setup_local_2(request):
         print "pm id local_2: {0}".format(pmgr1.uid)
 
         umgr1 = rp.UnitManager (session=session1,
-                               scheduler=rp.SCHED_DIRECT_SUBMISSION)
+                               scheduler=rp.SCHEDULER_DIRECT_SUBMISSION)
 
         pdesc1 = rp.ComputePilotDescription()
         pdesc1.resource = "local.localhost"
@@ -165,7 +165,7 @@ def setup_gordon(request):
         print "pm id gordon: {0}".format(pmgr1.uid)
 
         umgr1 = rp.UnitManager (session=session1,
-                               scheduler=rp.SCHED_DIRECT_SUBMISSION)
+                               scheduler=rp.SCHEDULER_DIRECT_SUBMISSION)
 
         pdesc1 = rp.ComputePilotDescription()
         pdesc1.resource = "xsede.gordon"
@@ -216,7 +216,7 @@ def setup_comet(request):
         print "pm id gordon: {0}".format(pmgr2.uid)
 
         umgr2 = rp.UnitManager (session=session2,
-                               scheduler=rp.SCHED_DIRECT_SUBMISSION)
+                               scheduler=rp.SCHEDULER_DIRECT_SUBMISSION)
 
         pdesc2 = rp.ComputePilotDescription()
         pdesc2.resource = "xsede.comet"
@@ -266,7 +266,7 @@ def setup_stampede(request):
         print "pm id stampede: {0}".format(pmgr3.uid)
 
         umgr3 = rp.UnitManager (session=session3,
-                               scheduler=rp.SCHED_DIRECT_SUBMISSION)
+                               scheduler=rp.SCHEDULER_DIRECT_SUBMISSION)
 
         pdesc3 = rp.ComputePilotDescription()
         pdesc3.resource = "xsede.stampede"
@@ -316,7 +316,7 @@ def setup_stampede_two(request):
         print "pm id stampede: {0}".format(pmgr3.uid)
 
         umgr3 = rp.UnitManager (session=session3,
-                               scheduler=rp.SCHED_DIRECT_SUBMISSION)
+                               scheduler=rp.SCHEDULER_DIRECT_SUBMISSION)
 
         pdesc3 = rp.ComputePilotDescription()
         pdesc3.resource = "xsede.stampede"
@@ -592,7 +592,7 @@ def test_pass_issue_359():
         umgr_list = []
         for cores in core_configs:
 
-            umgr = rp.UnitManager(session=session, scheduler=rp.SCHED_DIRECT_SUBMISSION)
+            umgr = rp.UnitManager(session=session, scheduler=rp.SCHEDULER_DIRECT_SUBMISSION)
 
             umgr.register_callback(unit_state_cb)
 
@@ -694,7 +694,7 @@ def test_pass_issue_57():
         
             pmgr = rp.PilotManager(session=session)
             umgr = rp.UnitManager(session=session, 
-                                  scheduler=rp.SCHED_ROUND_ROBIN) 
+                                  scheduler=rp.SCHEDULER_ROUND_ROBIN) 
         
             pdesc = rp.ComputePilotDescription()
             pdesc.resource = "xsede.stampede"

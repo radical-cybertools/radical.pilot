@@ -15,6 +15,8 @@ from . import states    as rps
 from . import constants as rpc
 from . import types     as rpt
 
+from . import compute_unit_description as cud
+
 from .staging_directives import expand_description
 from .staging_directives import TRANSFER, COPY, LINK, MOVE, STAGING_AREA
 
@@ -54,6 +56,11 @@ class ComputeUnit(object):
     # --------------------------------------------------------------------------
     #
     def __init__(self, umgr, descr):
+
+        # FIXME GPU: we allow `mpi` for backward compatibility - but need to
+        #       convert the bool into a decent value for `cpu_process_type`
+        if  descr[cud.CPU_PROCESS_TYPE] in [True, 'True']:
+            descr[cud.CPU_PROCESS_TYPE] = cud.MPI
 
         # 'static' members
         self._descr = descr.as_dict()
@@ -145,8 +152,13 @@ class ComputeUnit(object):
         target  = unit_dict['state']
 
         if target not in [rps.FAILED, rps.CANCELED]:
-            assert(rps._unit_state_value(target) - rps._unit_state_value(current) == 1), \
+            try:
+                assert(rps._unit_state_value(target) - rps._unit_state_value(current) == 1), \
                             'invalid state transition'
+            except:
+                self._log.error('%s: invalid state transition %s -> %s',
+                                self.uid, current, target)
+                raise
 
         self._state = target
 
@@ -166,6 +178,8 @@ class ComputeUnit(object):
 
             cb      = cb_val['cb']
             cb_data = cb_val['cb_data']
+
+            self._log.debug('%s calls state cb %s', self.uid, cb)
 
             if cb_data: cb(self, self.state, cb_data)
             else      : cb(self, self.state)

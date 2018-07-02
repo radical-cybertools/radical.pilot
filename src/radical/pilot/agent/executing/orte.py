@@ -112,11 +112,11 @@ class ORTE(AgentExecutingComponent):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'cancel_unit':
+        if cmd == 'cancel_units':
 
-            self._log.info("cancel unit command (%s)" % arg)
+            self._log.info("cancel_units command (%s)" % arg)
             with self._cancel_lock:
-                self._cus_to_cancel.append(arg)
+                self._cus_to_cancel.extend(arg['uids'])
 
         return True
 
@@ -236,7 +236,7 @@ class ORTE(AgentExecutingComponent):
 
             # unit launch failed
             self._prof.prof('exec_fail', uid=uid)
-            self._log.error("unit %s startup failed: %s", uid, status))
+            self._log.error("unit %s startup failed: %s", uid, status)
             self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             cu['target_state'] = rps.FAILED
@@ -245,7 +245,7 @@ class ORTE(AgentExecutingComponent):
 
         else:
             cu['started'] = time.time()
-            self._log.debug("unit %s startup ok", uid))
+            self._log.debug("unit %s startup ok", uid)
             self.advance(cu, rps.AGENT_EXECUTING, publish=True, push=False)
 
 
@@ -259,7 +259,7 @@ class ORTE(AgentExecutingComponent):
             cu = self.task_map[task]
             del self.task_map[task]
 
-        self._prof.prof('exec_stop', uid=uid)
+        self._prof.prof('exec_stop', uid=cu['uid'])
         self._log.info("unit %s finished [%s]", cu['uid'], exit_code)
 
         cu['exit_code'] = exit_code
@@ -344,12 +344,12 @@ class ORTE(AgentExecutingComponent):
         #     # Note: extra spaces below are for visual alignment
         #     launch_script.write("# Pre-exec commands\n")
         #     if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #         launch_script.write("echo pre  start `%s` >> %s/PROF\n"\
-        #                           % (cu['gtod'], cu_tmpdir))
+        #         launch_script.write("echo cu_pre_start `%s` >> %s/%s.prof\n"\
+        #                           % (cu['gtod'], cu_tmpdir, cu['uid']))
         #     launch_script.write(pre)
         #     if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #         launch_script.write("echo pre  stop `%s` >> %s/PROF\n" \
-        #                           % (cu['gtod'], cu_tmpdir))
+        #         launch_script.write("echo cu_pre_stop `%s` >> %s/%s.prof\n" \
+        #                           % (cu['gtod'], cu_tmpdir, cu['uid']))
 
         # TODO: post_exec
         # # After the universe dies the infrared death, there will be nothing
@@ -360,12 +360,12 @@ class ORTE(AgentExecutingComponent):
         #         post += "%s || %s\n" % (elem, fail)
         #     launch_script.write("# Post-exec commands\n")
         #     if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #         launch_script.write("echo post start `%s` >> %s/PROF\n" \
-        #                           % (cu['gtod'], cu_tmpdir))
+        #         launch_script.write("echo cu_post_start `%s` >> %s/%s.prof\n" \
+        #                           % (cu['gtod'], cu_tmpdir, cu['uid']))
         #     launch_script.write('%s\n' % post)
         #     if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #         launch_script.write("echo post stop  `%s` >> %s/PROF\n" \
-        #                           % (cu['gtod'], cu_tmpdir))
+        #         launch_script.write("echo cu_post_stop  `%s` >> %s/%s.prof\n" \
+        #                           % (cu['gtod'], cu_tmpdir, cu['uid']))
 
 
         # The actual command line, constructed per launch-method
@@ -422,13 +422,15 @@ class ORTE(AgentExecutingComponent):
         arg_list.append(ffi.new("char[]", "sh"))
         arg_list.append(ffi.new("char[]", "-c"))
         if 'RADICAL_PILOT_PROFILE' in os.environ:
-            task_command = "echo script start_script `%s` >> %s/PROF; " \
-                         % (self.gtod, cu_tmpdir) \
-                         + "echo script after_cd `%s` >> %s/PROF; " \
-                         % (self.gtod, cu_tmpdir) \
+            task_command = "echo script cu_start `%s` >> %s/%s.prof; " \
+                         % (self.gtod, cu_tmpdir, cu['uid']) \
+                         + "echo script cu_cd_done `%s` >> %s/%s.prof; " \
+                         % (self.gtod, cu_tmpdir, cu['uid']) \
+                         + "echo script cu_exec_start `%s` >> %s/%s.prof; " \
+                         % (self.gtod, cu_tmpdir, cu['uid']) \
                          + task_command \
-                         + "; echo script after_exec `%s` >> %s/PROF" \
-                         % (self.gtod, cu_tmpdir)
+                         + "; echo script cu_exec_stop `%s` >> %s/%s.prof" \
+                         % (self.gtod, cu_tmpdir, cu['uid'])
         arg_list.append(ffi.new("char[]", str("%s; exit $RETVAL" \
                                             % str(task_command))))
 
@@ -464,7 +466,7 @@ class ORTE(AgentExecutingComponent):
             self.task_map[index[0]] = cu      # map ORTE index to CU
             self._prof.prof('exec_ok', uid=cu['uid'])
 
-        self._log.debug("Task %d submitted!", task)
+        self._log.debug("Task %d submitted!", cu['uid'])
 
 
 # ------------------------------------------------------------------------------

@@ -35,10 +35,12 @@ STDOUT                 = 'stdout'
 STDERR                 = 'stderr'
 RESTARTABLE            = 'restartable'
 
-# process / thread types
-POSIX                  = 'POSIX'
+# process / thread types (for both, CPU and GPU processes/threads)
+POSIX                  = 'POSIX'   # native threads / application threads
 MPI                    = 'MPI'
 OpenMP                 = 'OpenMP'
+CUDA                   = 'CUDA'
+
 
 # ------------------------------------------------------------------------------
 #
@@ -65,58 +67,37 @@ class ComputeUnitDescription(attributes.Attributes):
        default: `None`
 
 
-    .. data:: cores 
+    .. data:: cpu_processes    
+       number of application processes to start on CPU cores
+       default: 0
 
-       The number of cores required by the executable. (int).  RP will not
-       control how the executable makes use of the assigned cores, it only
-       ensures that those are available to the executable (but see `mpi` below).
+    .. data:: cpu_threads      
+       number of threads each process will start on CPU cores
+       default: 1
 
-       default: `1`
+    .. data:: cpu_process_type 
+       process type, determines startup method (POSIX, MPI) 
+       default: POSIX
 
+    .. data:: cpu_thread_type  
+       thread type, influences startup and environment (POSIX, OpenMP)
+       default: POSIX
 
-    .. data:: threads_per_process 
+    .. data:: gpu_processes    
+       number of application processes to start on GPU cores
+       default: 0
 
-       The number of threads which the application is expected to create per
-       process.  RP will reserve the respective number of cores for each
-       process, but leaves the thread creation and management completely to the
-       application.  Note that this is also the case for MPI applications (see
-       `mpi` flag below): RP will only spawn the given number of MPI processes,
-       but the application can utilize the additional cores by creating threads.
+    .. data:: gpu_threads      
+       number of threads each process will start on GPU cores
+       default: 1
 
-       The count defaults to `1`, meaning that the spawned process will only
-       consist of a single thread, and no additional cores are reserved.
+    .. data:: gpu_process_type 
+       process type, determines startup method (POSIX, MPI) 
+       default: POSIX
 
-       NOTE: we interpret the given `core` count as number of processes.  This
-             is semantically not correct, as gpus are also used by processes.
-             RP does not yet allow to specify threads for gpus - that might
-             change in a later version, and will likely require changes in
-             property names for the compute unit descriptions.
-
-       default: `1`
-
-
-    .. data:: mpi
-
-       A flag (bool) which can be set to indicate that each processes to be
-       started are MPI processes.
-
-       default: `False`.
-
-
-    .. data:: open_mp
-
-       A flag (bool) which can be set to indicate that the CPU processes will
-       spawn OpenMP threads
-
-       default: `False`.
-
-
-    .. data:: cuda
-
-       A flag (bool) which can be set to indicate that the GPU processes will
-       spawn CUDA threads
-
-       default: `False`.
+    .. data:: gpu_thread_type  
+       thread type, influences startup and environment (POSIX, OpenMP, CUDA)
+       default: POSIX
 
 
     .. data:: name 
@@ -169,7 +150,7 @@ class ComputeUnitDescription(attributes.Attributes):
 
        The files that need to be staged after execution (`list` of `staging
        directives`, see below).
-       
+
        default: `{}`
 
 
@@ -181,11 +162,11 @@ class ComputeUnitDescription(attributes.Attributes):
        not expected to consume any significant amount of CPU time or other
        resources!  Deviating from that rule will likely result in reduced
        overall throughput.
-       
+
        No assumption should be made as to where these commands are executed
        (although RP attempts to perform them in the unit's execution
        environment).  
-       
+
        No assumption should be made on the specific shell environment the
        commands are executed in.
 
@@ -221,7 +202,7 @@ class ComputeUnitDescription(attributes.Attributes):
        If the unit starts to execute on a pilot, but cannot finish because the
        pilot fails or is canceled, can the unit be restarted on a different
        pilot / resource? 
-       
+
        default: `False`
 
 
@@ -248,7 +229,7 @@ class ComputeUnitDescription(attributes.Attributes):
     ==================
 
     The Staging Directives are specified using a dict in the following form:
-    
+
         staging_directive = {
             'source'  : None, # see 'Location' below
             'target'  : None, # see 'Location' below
@@ -256,46 +237,46 @@ class ComputeUnitDescription(attributes.Attributes):
             'flags'   : None, # See 'Flags' below
             'priority': 0     # Control ordering of actions (unused)
         }
-    
-    
+
+
     Locations
     ---------
-    
+
       `source` and `target` locations can be given as strings or `ru.URL`
       instances.  Strings containing `://` are converted into URLs immediately.
       Otherwise they are considered absolute or relative paths and are then
       interpreted in the context of the client's working directory.
-    
+
       RP accepts the following special URL schemas:
-    
+
         * `client://`  : relative to the client's working directory
         * `resource://`: relative to the RP    sandbox on the target resource
         * `pilot://`   : relative to the pilot sandbox on the target resource
         * `unit://`    : relative to the unit  sandbox on the target resource
-    
+
       In all these cases, the `hostname` element of the URL is expected to be
       empty, and the path is *always* considered relative to the locations
       specified above (even though URLs usually don't have a notion of relative
       paths).
-    
-    
+
+
     Action operators
     ----------------
-    
+
       RP accepts the following action operators:
 
         * rp.TRANSFER: remote file transfer from `source` URL to `target` URL.
         * rp.COPY    : local file copy, ie. not crossing host boundaries
         * rp.MOVE    : local file move
         * rp.LINK    : local file symlink
-      
-    
+
+
     Flags
     -----
-    
+
       rp.CREATE_PARENTS: create the directory hierarchy for targets on the fly
       rp.RECURSIVE     : if `source` is a directory, handle it recursively
-    
+
     """
 
     # --------------------------------------------------------------------------
@@ -350,14 +331,14 @@ class ComputeUnitDescription(attributes.Attributes):
         self.set_attribute (KERNEL,           None)
         self.set_attribute (NAME,             None)
         self.set_attribute (EXECUTABLE,       None)
-        self.set_attribute (ARGUMENTS,        None)
-        self.set_attribute (ENVIRONMENT,      None)
-        self.set_attribute (PRE_EXEC,         None)
-        self.set_attribute (POST_EXEC,        None)
+        self.set_attribute (ARGUMENTS,        [  ])
+        self.set_attribute (ENVIRONMENT,      {  })
+        self.set_attribute (PRE_EXEC,         [  ])
+        self.set_attribute (POST_EXEC,        [  ])
         self.set_attribute (STDOUT,           None)
         self.set_attribute (STDERR,           None)
-        self.set_attribute (INPUT_STAGING,    None)
-        self.set_attribute (OUTPUT_STAGING,   None)
+        self.set_attribute (INPUT_STAGING,    [  ])
+        self.set_attribute (OUTPUT_STAGING,   [  ])
 
         self.set_attribute (CPU_PROCESSES,       1)
         self.set_attribute (CPU_PROCESS_TYPE, None)
@@ -373,13 +354,14 @@ class ComputeUnitDescription(attributes.Attributes):
         self.set_attribute (PILOT,            None)
 
         self._attributes_register_deprecated(CORES, CPU_PROCESSES)
+        self._attributes_register_deprecated(MPI,   CPU_PROCESS_TYPE)
 
         # apply initialization dict
         if from_dict:
             self.from_dict(from_dict)
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def __deepcopy__ (self, memo):
 
