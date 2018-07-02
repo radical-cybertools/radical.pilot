@@ -257,6 +257,9 @@ class Popen(AgentExecutingComponent) :
             else:
                 env_string += 'unset  RP_PROF\n'
 
+            if 'RP_APP_TUNNEL' in os.environ:
+                env_string += 'export RP_APP_TUNNEL="%s"\n' % os.environ['RP_APP_TUNNEL']
+
             env_string += '''
 prof(){
     if test -z "$RP_PROF"
