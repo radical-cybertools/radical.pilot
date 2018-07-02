@@ -62,7 +62,7 @@ scheduler.
 
 .. code-block:: python
     umgr = rp.UnitManager (session=session,
-                           scheduler=rp.SCHED_ROUND_ROBIN)
+                           scheduler=rp.SCHEDULER_ROUND_ROBIN)
 
 
 ------------

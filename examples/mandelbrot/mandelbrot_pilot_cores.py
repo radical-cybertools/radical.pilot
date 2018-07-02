@@ -128,7 +128,7 @@ if __name__ == "__main__":
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
         print "Initializing Unit Manager"
-        umgr = rp.UnitManager(session=session, scheduler=rp.SCHED_DIRECT_SUBMISSION)
+        umgr = rp.UnitManager(session=session, scheduler=rp.SCHEDULER_DIRECT_SUBMISSION)
 
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager

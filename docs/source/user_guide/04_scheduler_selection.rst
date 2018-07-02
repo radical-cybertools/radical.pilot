@@ -10,10 +10,10 @@ matches submitted units to pilots for execution.  On constructing the unit
 manager, it can be configured to use a specific scheduling policy for that.  The
 following policies are implemented:
 
- * `rp.SCHED_ROUND_ROBIN`: alternate units between all available pilot.  This
+ * `rp.SCHEDULER_ROUND_ROBIN`: alternate units between all available pilot.  This
    policy leads to a static and fair, but not necessarily load-balanced unit
    assignment.  
- * `rp.SCHED_BACKFILLING`: dynamic unit scheduling based on pilot capacity and
+ * `rp.SCHEDULER_BACKFILLING`: dynamic unit scheduling based on pilot capacity and
    availability.  This is the most intelligent scheduler with good load
    balancing, but it comes with a certain scheduling overhead.
 

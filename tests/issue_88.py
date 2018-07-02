@@ -69,7 +69,7 @@ try:
     # Combine the ComputePilot, the ComputeUnits and a scheduler via
     # a UnitManager object.
     umgr = rp.UnitManager (session=session,
-                           scheduler=rp.SCHED_DIRECT_SUBMISSION)
+                           scheduler=rp.SCHEDULER_DIRECT_SUBMISSION)
 
     # Add the previsouly created ComputePilot to the UnitManager.
     umgr.add_pilots(pilot)
