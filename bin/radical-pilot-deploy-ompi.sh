@@ -16,8 +16,9 @@
 # Thanks to Mark Santcroos to provide the input for this installation
 # procedure!
 
-export OMPI_DIR=$HOME/ompi/                          # target location for install
+export OMPI_DIR=$HOME/radical/ompi/                  # target location for install
 export OMPI_COMMIT=539f71d                           # OpenMPI commit to install
+export OMPI_COMMIT=a3ac67be0d
 export OMPI_LABEL=$(date '+%Y_%m_%d'_${OMPI_COMMIT}) # module flag for installed version
 export MAKEFLAGS=-j16                                # speed up build on multicore machines
 
@@ -46,7 +47,7 @@ mkdir -p $OMPI_SOURCE
 
 cd $OMPI_DOWNLOAD
 wget http://ftp.nluug.nl/gnu/autoconf/autoconf-2.69.tar.gz
-wget http://ftp.nluug.nl/gnu/automake/automake-1.13.3.tar.gz
+wget http://ftp.nluug.nl/gnu/automake/automake-1.13.4.tar.gz
 wget http://nl.mirror.babylon.network/gnu/libtool/libtool-2.4.2.tar.gz
 wget https://ftp.gnu.org/gnu/m4/m4-1.4.16.tar.gz
 
@@ -65,8 +66,8 @@ make
 make install
 
 cd $OMPI_SOURCE
-tar -xvzf $OMPI_DOWNLOAD/automake-1.13.3.tar.gz
-cd automake-1.13.3
+tar -xvzf $OMPI_DOWNLOAD/automake-1.13.4.tar.gz
+cd automake-1.13.4
 ./configure --prefix=$OMPI_TOOLS_PREFIX
 make
 make install

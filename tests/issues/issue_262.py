@@ -46,7 +46,7 @@ class TestIssue262(unittest.TestCase):
 
         umgr = rp.UnitManager(
             session=session,
-            scheduler=rp.SCHED_DIRECT_SUBMISSION)
+            scheduler=rp.SCHEDULER_DIRECT_SUBMISSION)
         umgr.add_pilots(pilot)
 
         cud = rp.ComputeUnitDescription()

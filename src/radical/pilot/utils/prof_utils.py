@@ -1,10 +1,6 @@
 
 import os
-import csv
-import copy
 import glob
-import time
-import threading
 
 import radical.utils               as ru
 from   radical.pilot import states as rps
@@ -22,7 +18,7 @@ def get_hostmap(profile):
     # FIXME: This should be replaced by proper hostname logging
     #        in `pilot.resource_details`.
 
-    hostmap = dict() # map pilot IDs to host names
+    hostmap = dict()  # map pilot IDs to host names
     for entry in profile:
         if  entry[ru.EVENT] == 'hostname':
             hostmap[entry[ru.UID]] = entry[ru.MSG]
@@ -38,7 +34,7 @@ def get_hostmap_deprecated(profiles):
     this point it only returns the hostmap
     '''
 
-    hostmap = dict() # map pilot IDs to host names
+    hostmap = dict()  # map pilot IDs to host names
     for pname, prof in profiles.iteritems():
 
         if not len(prof):
@@ -64,7 +60,7 @@ def get_hostmap_deprecated(profiles):
 # ------------------------------------------------------------------------------
 # 
 def get_session_profile(sid, src=None):
-    
+
     if not src:
         src = "%s/%s" % (os.getcwd(), sid)
 
@@ -92,16 +88,12 @@ def get_session_profile(sid, src=None):
         # FIXME: legacy host notation - deprecated
         hostmap = get_hostmap_deprecated(profiles)
 
-  # import pprint
-  # pprint.pprint(hostmap)
-
     return profile, accuracy, hostmap
 
 
 # ------------------------------------------------------------------------------
 # 
 def get_session_description(sid, src=None, dburl=None):
-    1
     """
     This will return a description which is usable for radical.analytics
     evaluation.  It informs about
@@ -216,25 +208,17 @@ def get_session_description(sid, src=None, dburl=None):
 
     ret['tree'] = tree
 
-    ret['entities']['pilot'] = {
-            'state_model'  : rps._pilot_state_values,
-            'state_values' : rps._pilot_state_inv_full,
-            'event_model'  : dict(),
-            }
+    ret['entities']['pilot']   = {'state_model'  : rps._pilot_state_values,
+                                  'state_values' : rps._pilot_state_inv_full,
+                                  'event_model'  : dict()}
+    ret['entities']['unit']    = {'state_model'  : rps._unit_state_values,
+                                  'state_values' : rps._unit_state_inv_full,
+                                  'event_model'  : dict()}
+    ret['entities']['session'] = {'state_model'  : None,  # has no states
+                                  'state_values' : None,
+                                  'event_model'  : dict()}
 
-    ret['entities']['unit'] = {
-            'state_model'  : rps._unit_state_values,
-            'state_values' : rps._unit_state_inv_full,
-            'event_model'  : dict(),
-            }
-
-    ret['entities']['session'] = {
-            'state_model'  : None, # session has no states, only events
-            'state_values' : None,
-            'event_model'  : dict(),
-            }
-
-    ret['config'] = dict() # magic to get session config goes here
+    ret['config'] = dict()  # session config goes here
 
     return ret
 

@@ -227,7 +227,7 @@ class DBSession(object):
 
     #--------------------------------------------------------------------------
     #
-    def pilot_command(self, cmd, arg, pids):
+    def pilot_command(self, cmd, arg, pids=None):
         """
         send a command and arg to a set of pilots
         """
@@ -239,16 +239,23 @@ class DBSession(object):
         if not self._c:
             raise Exception('session is disconnected ')
 
-        if not isinstance(pids, list):
+        if pids and not isinstance(pids, list):
             pids = [pids]
 
         try:
-            cmd_spec = {'cmd' : cmd, 'arg' : arg}
+            cmd_spec = {'cmd' : cmd,
+                        'arg' : arg}
+
             # FIXME: evaluate res
-            res = self._c.update({'type'  : 'pilot',
-                                  'uid'   : {'$in' : pids}},
-                                 {'$push' : {'cmd' : cmd_spec}},
-                                 multi = True)
+            if pids:
+                res = self._c.update({'type'  : 'pilot',
+                                      'uid'   : {'$in' : pids}},
+                                     {'$push' : {'cmd' : cmd_spec}},
+                                     multi = True)
+            else:
+                res = self._c.update({'type'  : 'pilot'},
+                                     {'$push' : {'cmd' : cmd_spec}},
+                                     multi = True)
 
         except pymongo.errors.OperationFailure as e:
             self._log.exception('pymongo error: %s' % e.details)

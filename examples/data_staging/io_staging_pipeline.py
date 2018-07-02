@@ -92,7 +92,7 @@ if __name__ == "__main__":
         # a UnitManager object.
         umgr = rp.UnitManager(
             session=session,
-            scheduler=rp.SCHED_DIRECT_SUBMISSION)
+            scheduler=rp.SCHEDULER_DIRECT_SUBMISSION)
         umgr.register_callback(unit_state_cb, rp.UNIT_STATE)
 
         # Add the previously created ComputePilot to the UnitManager.

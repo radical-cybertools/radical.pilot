@@ -298,9 +298,9 @@ setup_args = {
                             'setproctitle',
                             'ntplib',
                             'msgpack-python',
-                            'pyzmq'
-                           ],
-    'tests_require'      : [],
+                            'pyzmq'], 
+    'extras_require'     : {'autopilot' : ['github3.py']},
+    'tests_require'      : ['mock==2.0.0', 'pytest'],
     'test_suite'         : '%s.tests' % name,
     'zip_safe'           : False,
   # 'build_sphinx'       : {

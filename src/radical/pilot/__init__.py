@@ -26,6 +26,7 @@ from .context                   import Context
 from .unit_manager              import UnitManager
 from .compute_unit              import ComputeUnit
 from .compute_unit_description  import ComputeUnitDescription
+from .compute_unit_description  import POSIX, MPI, OpenMP
 
 from .pilot_manager             import PilotManager
 from .compute_pilot             import ComputePilot
@@ -38,7 +39,6 @@ from .staging_directives        import SKIP_FAILED, CREATE_PARENTS
 from .utils                     import version, version_short
 from .utils                     import version_detail, version_branch
 from .utils                     import sdist_name, sdist_path
-from .utils                     import logger
 
 
 # ------------------------------------------------------------------------------
