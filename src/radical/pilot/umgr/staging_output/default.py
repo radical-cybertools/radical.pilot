@@ -4,19 +4,13 @@ __license__   = "MIT"
 
 
 import os
-import shutil
+import saga as rs
 
-import saga          as rs
-import radical.utils as ru
-
-from .... import pilot     as rp
-from ...  import utils     as rpu
-from ...  import states    as rps
-from ...  import constants as rpc
+from ...   import states             as rps
+from ...   import constants          as rpc
+from ...   import staging_directives as rpsd
 
 from .base import UMGRStagingOutputComponent
-
-from ...staging_directives import complete_url
 
 
 # ==============================================================================
@@ -59,7 +53,7 @@ class Default(UMGRStagingOutputComponent):
                 self._cache[key].close()
         except:
             pass
-            
+
 
     # --------------------------------------------------------------------------
     #
@@ -73,7 +67,7 @@ class Default(UMGRStagingOutputComponent):
         # we first filter out any units which don't need any output staging, and
         # advance them again as a bulk.  We work over the others one by one, and
         # advance them individually, to avoid stalling from slow staging ops.
-        
+
         no_staging_units = list()
         staging_units    = list()
 
@@ -150,15 +144,15 @@ class Default(UMGRStagingOutputComponent):
             self._log.debug('src: %s', src)
             self._log.debug('tgt: %s', tgt)
 
-            src = complete_url(src, src_context, self._log)
-            tgt = complete_url(tgt, tgt_context, self._log)
+            src = rpsd.complete_url(src, src_context, self._log)
+            tgt = rpsd.complete_url(tgt, tgt_context, self._log)
 
             self._log.debug('src: %s', src)
             self._log.debug('tgt: %s', tgt)
 
             # Check if the src is a folder, if true
             # add recursive flag if not already specified
-            if os.path.isdir(src.path):
+            if saga_dir.is_dir(src.path):
                 flags |= rs.filesystem.RECURSIVE
 
             # Always set CREATE_PARENTS

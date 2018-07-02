@@ -8,7 +8,6 @@ import sys
 import copy
 import stat
 import time
-import types
 import pprint
 import subprocess         as sp
 
@@ -65,16 +64,15 @@ class Agent_0(rpu.Worker):
         cfg['workdir']    = os.getcwd()
 
         # sanity check on config settings
-        if not 'cores'               in cfg: raise ValueError('Missing number of cores')
-        if not 'debug'               in cfg: raise ValueError('Missing DEBUG level')
-        if not 'lrms'                in cfg: raise ValueError('Missing LRMS')
-        if not 'dburl'               in cfg: raise ValueError('Missing DBURL')
-        if not 'pilot_id'            in cfg: raise ValueError('Missing pilot id')
-        if not 'runtime'             in cfg: raise ValueError('Missing or zero agent runtime')
-        if not 'scheduler'           in cfg: raise ValueError('Missing agent scheduler')
-        if not 'session_id'          in cfg: raise ValueError('Missing session id')
-        if not 'spawner'             in cfg: raise ValueError('Missing agent spawner')
-        if not 'task_launch_method'  in cfg: raise ValueError('Missing unit launch method')
+        if 'cores'               not in cfg: raise ValueError('Missing number of cores')
+        if 'lrms'                not in cfg: raise ValueError('Missing LRMS')
+        if 'dburl'               not in cfg: raise ValueError('Missing DBURL')
+        if 'pilot_id'            not in cfg: raise ValueError('Missing pilot id')
+        if 'runtime'             not in cfg: raise ValueError('Missing or zero agent runtime')
+        if 'scheduler'           not in cfg: raise ValueError('Missing agent scheduler')
+        if 'session_id'          not in cfg: raise ValueError('Missing session id')
+        if 'spawner'             not in cfg: raise ValueError('Missing agent spawner')
+        if 'task_launch_method'  not in cfg: raise ValueError('Missing unit launch method')
 
         # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold
         # the address of the tunnelized DB endpoint. If it exists, we
@@ -189,6 +187,7 @@ class Agent_0(rpu.Worker):
 
       # # we don't rely on the existence / viability of the update worker at
       # # that point.
+      # FIXME:
       # self._log.debug('update db state: %s: %s', state, self._final_cause)
       # self._update_db(state, self._final_cause)
 
@@ -223,7 +222,6 @@ class Agent_0(rpu.Worker):
         if state == rps.FAILED:
             self._log.info(ru.get_trace())
 
-        now = time.time()
         out = None
         err = None
         log = None
@@ -457,6 +455,7 @@ class Agent_0(rpu.Worker):
                 return False  # we are done
 
             elif cmd == 'cancel_units':
+
                 self._log.info('cancel_units cmd')
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_units',
                                                   'arg' : arg})
@@ -502,7 +501,7 @@ class Agent_0(rpu.Worker):
         #        find -- so we do it right here.
         #        This also blocks us from using multiple ingest threads, or from
         #        doing late binding by unit pull :/
-        unit_cursor = self._session._dbs._c.find(spec = {'type'    : 'unit',
+        unit_cursor = self._session._dbs._c.find({'type'    : 'unit',
                                                          'pilot'   : self._pid,
                                                          'control' : 'agent_pending'})
         if not unit_cursor.count():
@@ -516,10 +515,11 @@ class Agent_0(rpu.Worker):
 
         self._log.info('units PULLED: %4d', len(unit_list))
 
-        self._session._dbs._c.update(multi    = True,
-                        spec     = {'type'  : 'unit',
+        self._session._dbs._c.update(
+                        {'type'  : 'unit',
                                     'uid'   : {'$in'     : unit_uids}},
-                        document = {'$set'  : {'control' : 'agent'}})
+                        {'$set'  : {'control' : 'agent'}},
+                        multi = True)
 
         self._log.info("units pulled: %4d", len(unit_list))
         self._prof.prof('get', msg='bulk size: %d' % len(unit_list),

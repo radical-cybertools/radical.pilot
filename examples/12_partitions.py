@@ -24,7 +24,7 @@ dh = ru.DebugHelper()
 if __name__ == '__main__':
 
     # we use a reporter class for nicer output
-    report = ru.LogReporter(name='radical.pilot')
+    report = ru.Reporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # This example will start a pilot with two partitions, where each partition

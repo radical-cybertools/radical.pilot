@@ -99,7 +99,7 @@ class Shell(AgentExecutingComponent):
                     os.environ.pop(e, None)
 
         # if we need to transplant any original env into the CU, we dig the
-        # respective keys from the dump made by bootstrap_1.sh
+        # respective keys from the dump made by bootstrap_0.sh
         self._env_cu_export = dict()
         if self._cfg.get('export_to_cu'):
             with open('env.orig', 'r') as f:
