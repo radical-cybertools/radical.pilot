@@ -29,7 +29,7 @@ helloworld_mpi_path = '%s/%s' % (PWD, helloworld_mpi_bin)
 if __name__ == '__main__':
 
     # we use a reporter class for nicer output
-    report = ru.LogReporter(name='radical.pilot', level=verbose)
+    report = ru.Reporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
@@ -93,7 +93,7 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.executable     = '/bin/sh'
-            cud.arguments      = ['%s/09_mpi_units.sh' % PWD]
+            cud.arguments      = ['09_mpi_units.sh']
             cud.input_staging  = ['%s/09_mpi_units.sh' % PWD]
             cud.cores          = 3
             cud.mpi            = True

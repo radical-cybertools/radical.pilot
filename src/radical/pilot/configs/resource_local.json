@@ -19,7 +19,7 @@
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "FORK",
-        "task_launch_method"          : "SSH",
+        "task_launch_method"          : "FORK",
         "mpi_launch_method"           : "MPIRUN",
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
@@ -105,7 +105,9 @@
         "mpi_launch_method"           : "MPIEXEC",
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "anaconda"
+        "python_dist"                 : "anaconda",
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1
     },
 
     "localhost_spark": {

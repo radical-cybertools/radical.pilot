@@ -4,8 +4,6 @@ __license__   = "MIT"
 
 import saga.attributes as attributes
 
-from .utils import logger
-
 
 # ------------------------------------------------------------------------------
 # Attribute description keys
@@ -127,8 +125,6 @@ class ComputePilotDescription(attributes.Attributes):
     #
     def __init__(self, from_dict=None):
 
-        logger.report.info('<<create pilot description')
-
         # initialize attributes
         attributes.Attributes.__init__(self)
 
@@ -171,11 +167,11 @@ class ComputePilotDescription(attributes.Attributes):
         if from_dict:
             self.from_dict(from_dict)
 
-            logger.report.plain('[%s:%s:%s]' % (from_dict.get(RESOURCE, ''), 
-                                                from_dict.get(CORES,     1), 
-                                                from_dict.get(GPUS,      0)))
-
-        logger.report.ok('>>ok\n')
+      # FIXME
+      #     logger.report.plain('[%s:%s:%s]' % (from_dict.get(RESOURCE, ''), 
+      #                                         from_dict.get(CORES,     1), 
+      #                                         from_dict.get(GPUS,      0)))
+      # logger.report.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------

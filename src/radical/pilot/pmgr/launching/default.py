@@ -1044,13 +1044,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['cu_pre_exec']        = cu_pre_exec
         agent_cfg['cu_post_exec']       = cu_post_exec
         agent_cfg['resource_cfg']       = copy.deepcopy(rcfg)
-
-        debug = os.environ.get('RADICAL_PILOT_AGENT_VERBOSE', 
-                               self._log.getEffectiveLevel())
-        if isinstance(debug, basestring):
-            agent_cfg['debug'] = debug.upper()
-        else:
-            agent_cfg['debug'] = debug
+        agent_cfg['debug']              = self._log.getEffectiveLevel()
 
         # we'll also push the agent config into MongoDB
         pilot['cfg'] = agent_cfg
