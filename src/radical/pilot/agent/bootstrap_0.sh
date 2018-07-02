@@ -7,10 +7,10 @@ unset PROMPT_COMMAND
 unset -f cd ls uname pwd date bc cat echo
 
 # interleave stdout and stderr, to get a coherent set of log messages
-if test -z "$RP_BOOTSTRAP_1_REDIR"
+if test -z "$RP_BOOTSTRAP_0_REDIR"
 then
-    echo "bootstrap_1 stderr redirected to stdout"
-    export RP_BOOTSTRAP_1_REDIR=True
+    echo "bootstrap_0 stderr redirected to stdout"
+    export RP_BOOTSTRAP_0_REDIR=True
     exec 2>&1
 fi
 
@@ -32,6 +32,8 @@ fi
 # This script launches a radical.pilot compute pilot.  If needed, it creates and
 # populates a virtualenv on the fly, into $VIRTENV.
 #
+# https://xkcd.com/1987/
+#
 # A created virtualenv will contain all dependencies for the RADICAL stack (see
 # $VIRTENV_RADICAL_DEPS).  The RADICAL stack itself (or at least parts of it,
 # see $VIRTENV_RADICAL_MODS) will be installed into $VIRTENV/radical/, and
@@ -39,10 +41,10 @@ fi
 # use a different RADICAL stack if needed, by rerouting the PYTHONPATH, w/o the
 # need to create a new virtualenv from scratch.
 #
-# Arguments passed to bootstrap_1 should be required by bootstrap_1 itself,
+# Arguments passed to bootstrap_0 should be required by bootstrap_0 itself,
 # and *not* be passed down to the agent.  Configuration used by the agent should
 # go in the agent config file, and *not( be passed as an argument to
-# bootstrap_1.  Only parameters used by both should be passed to the bootstrap_1
+# bootstrap_0.  Only parameters used by both should be passed to the bootstrap_0
 # and  consecutively passed to the agent. It is rarely justified to duplicate
 # information as parameters and agent config entries.  Exceptions would be:
 # 1) the shell scripts can't (easily) read from MongoDB, so they need to
@@ -167,7 +169,7 @@ EOT
 #
 profile_event()
 {
-    PROFILE="bootstrap_1.prof"
+    PROFILE="bootstrap_0.prof"
 
     if test -z "$RADICAL_PILOT_PROFILE"
     then
@@ -194,7 +196,7 @@ profile_event()
     # MSG    = 6  # message describing the event                optional
     # ENTITY = 7  # type of entity involved                     optional
     printf "%.4f,%s,%s,%s,%s,%s,%s\n" \
-        "$NOW" "$event" "bootstrap_1" "MainThread" "$PILOT_ID" "PMGR_ACTIVE_PENDING" "$msg" \
+        "$NOW" "$event" "bootstrap_0" "MainThread" "$PILOT_ID" "PMGR_ACTIVE_PENDING" "$msg" \
         | tee -a "$PROFILE"
 }
 
@@ -205,7 +207,9 @@ profile_event()
 # expires: the timeout() function expects *exactly* two processes to run in the
 # background.  Whichever finishes with will cause a SIGUSR1 signal, which is
 # then trapped to kill both processes.  Since the first one is dead, only the
-# second will actually get the kill, and the subsequent wait will thus 
+# second will actually get the kill, and the subsequent wait will thus succeed.
+# The second process is, of course, a `sleep $TIMEOUT`, so that the actual
+# workload process will get killed after that timeout...
 #
 timeout()
 {
@@ -214,6 +218,8 @@ timeout()
 
     RET="./timetrap.$$.ret"
 
+    # note that this insane construct uses `$PID_1` and `$PID_2` which will
+    # only be set later on.  In fact, those may or may not be set at all...
     timetrap()
     {
         kill $PID_1 2>&1 > /dev/null
@@ -229,7 +235,6 @@ timeout()
 
     ret=`cat $RET || echo 2`
     rm -f $RET
-    echo "------------------"
     return $ret
 }
 
@@ -555,7 +560,7 @@ run_cmd()
 #   'recreate': delete if it exists, otherwise create, then use
 #
 # create and update ops will be locked and thus protected against concurrent
-# bootstrap_1 invokations.
+# bootstrap_0 invokations.
 #
 # (private + location in pilot sandbox == old behavior)
 #
@@ -919,7 +924,7 @@ virtenv_create()
         if test "$virtenv_dist" = "1.9"
         then
             run_cmd "Download virtualenv tgz" \
-                    "curl -k -O '$VIRTENV_TGZ_URL'"
+                    "curl -k -L -O '$VIRTENV_TGZ_URL'"
 
             if ! test "$?" = 0
             then
@@ -1371,15 +1376,15 @@ find_available_port()
 
 # -------------------------------------------------------------------------------
 #
-# run a pre_bootstrap_1 command -- and exit if it happens to fail
+# run a pre_bootstrap_0 command -- and exit if it happens to fail
 #
-# pre_bootstrap_1 commands are executed right in arg parser loop because -e can be
+# pre_bootstrap_0 commands are executed right in arg parser loop because -e can be
 # passed multiple times
 #
-pre_bootstrap_1()
+pre_bootstrap_0()
 {
     cmd="$@"
-    run_cmd "Running pre_bootstrap_1 command" "$cmd"
+    run_cmd "Running pre_bootstrap_0 command" "$cmd"
 
     if test $? -ne 0
     then
@@ -1408,9 +1413,9 @@ $cmd"
 # Report where we are, as this is not always what you expect ;-)
 # Print environment, useful for debugging
 echo "---------------------------------------------------------------------"
-echo "bootstrap_1 running on host: `hostname -f`."
-echo "bootstrap_1 started as     : '$0 $@'"
-echo "Environment of bootstrap_1 process:"
+echo "bootstrap_0 running on host: `hostname -f`."
+echo "bootstrap_0 started as     : '$0 $@'"
+echo "Environment of bootstrap_0 process:"
 
 # print the sorted env for logging, but also keep a copy so that we can dig
 # original env settings for any CUs, if so specified in the resource config.
@@ -1445,7 +1450,7 @@ while getopts "a:b:cd:e:f:g:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
         b)  PYTHON_DIST="$OPTARG"  ;;
         c)  CCM='TRUE'  ;;
         d)  SDISTS="$OPTARG"  ;;
-        e)  pre_bootstrap_1 "$OPTARG"  ;;
+        e)  pre_bootstrap_0 "$OPTARG"  ;;
         f)  FORWARD_TUNNEL_ENDPOINT="$OPTARG"  ;;
         g)  VIRTENV_DIST="$OPTARG"  ;;
         h)  HOSTPORT="$OPTARG"  ;;
@@ -1495,7 +1500,7 @@ touch "$LOGFILES_TARBALL"
 touch "$PROFILES_TARBALL"
 
 
-# At this point, all pre_bootstrap_1 commands have been executed.  We copy the
+# At this point, all pre_bootstrap_0 commands have been executed.  We copy the
 # resulting PATH and LD_LIBRARY_PATH, and apply that in bootstrap_2.sh, so that
 # the sub-agents start off with the same env (or at least the relevant parts of
 # it).
@@ -1503,7 +1508,7 @@ touch "$PROFILES_TARBALL"
 # This assumes that the env is actually transferrable.  If that assumption
 # breaks at some point, we'll have to either only transfer the incremental env
 # changes, or reconsider the approach to pre_bootstrap_x commands altogether --
-# see comment in the pre_bootstrap_1 function.
+# see comment in the pre_bootstrap_0 function.
 PB1_PATH="$PATH"
 PB1_LDLB="$LD_LIBRARY_PATH"
 
@@ -1516,7 +1521,7 @@ then
     echo 'create gtod'
     create_gtod
 fi
-profile_event 'bootstrap_1_start'
+profile_event 'bootstrap_0_start'
 
 # NOTE: if the virtenv path contains a symbolic link element, then distutil will
 #       report the absolute representation of it, and thus report a different
@@ -1541,17 +1546,35 @@ RUNTIME=$((RUNTIME * 60))
 # down on its own
 RUNTIME=$((RUNTIME + 60))
 
+# ------------------------------------------------------------------------------
 # If the host that will run the agent is not capable of communication
 # with the outside world directly, we will setup a tunnel.
-if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
+get_tunnel(){
+
+    addr=$1
 
     profile_event 'tunnel_setup_start'
 
     echo "# -------------------------------------------------------------------"
-    echo "# Setting up forward tunnel for MongoDB to $FORWARD_TUNNEL_ENDPOINT."
+    echo "# Setting up forward tunnel to $addr."
 
     # Bind to localhost
-    BIND_ADDRESS=`/sbin/ifconfig $TUNNEL_BIND_DEVICE|grep "inet addr"|cut -f2 -d:|cut -f1 -d" "`
+    BIND_ADDRESS=$(/sbin/ifconfig $TUNNEL_BIND_DEVICE|grep "inet addr"|cut -f2 -d:|cut -f1 -d" ")
+
+    if test -z "$BIND_ADDRESS"
+    then
+        BIND_ADDRESS=$(/sbin/ifconfig lo | grep 'inet' | xargs echo | cut -f 2 -d ' ')
+    fi
+
+    if test -z "$BIND_ADDRESS"
+    then
+        BIND_ADDRESS=$(ip addr 
+                     | grep 'state UP' -A2 
+                     | grep 'inet' 
+                     | awk '{print $2}' 
+                     | cut -f1 -d'/')
+      # BIND_ADDRESS="127.0.0.1"
+    fi
 
     # Look for an available port to bind to.
     # This might be necessary if multiple agents run on one host.
@@ -1568,24 +1591,50 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
     # Set up tunnel
     # TODO: Extract port and host
     FORWARD_TUNNEL_ENDPOINT_PORT=22
-    if test "$FORWARD_TUNNEL_ENDPOINT" = "BIND_ADDRESS"; then
+
+    if test -z "$FORWARD_TUNNEL_ENDPOINT"
+    then
+        FORWARD_TUNNEL_ENDPOINT_HOST=$BIND_ADDRESS
+
+    elif test "$FORWARD_TUNNEL_ENDPOINT" = "BIND_ADDRESS"; then
         # On some systems, e.g. Hopper, sshd on the mom node is not bound to 127.0.0.1
         # In those situations, and if configured, bind to the just obtained bind address.
         FORWARD_TUNNEL_ENDPOINT_HOST=$BIND_ADDRESS
+
     else
+        # FIXME: ensur FT_EP is set
         FORWARD_TUNNEL_ENDPOINT_HOST=$FORWARD_TUNNEL_ENDPOINT
     fi
-    ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$HOSTPORT -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST &
 
-    # Kill ssh process when bootstrap_1 dies, to prevent lingering ssh's
+    # FIXME: check if tunnel stays up
+    echo ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$addr -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST
+    ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$addr -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST &
+
+    # Kill ssh process when bootstrap_0 dies, to prevent lingering ssh's
     trap 'jobs -p | grep ssh | xargs kill' EXIT
 
     # and export to agent
-    export RADICAL_PILOT_DB_HOSTPORT=$BIND_ADDRESS:$DBPORT
+    export RP_BS_TUNNEL="$BIND_ADDRESS:$DBPORT"
 
     profile_event 'tunnel_setup_stop'
+}
 
+if ! test -z "$FORWARD_TUNNEL_ENDPOINT"
+then
+    get_tunnel "$HOSTPORT"
+    export RADICAL_PILOT_DB_HOSTPORT="$RP_BS_TUNNEL"
 fi
+
+# we also set up a tunnel for the application to use, if a respective endpoint
+# is requested in the environment
+if ! test -z "$RP_APP_TUNNEL_ADDR"
+then
+    echo "app tunnel addr : $RP_APP_TUNNEL_ADDR"
+    get_tunnel "$RP_APP_TUNNEL_ADDR"
+    export RP_APP_TUNNEL="$RP_BS_TUNNEL"
+    echo "app tunnel setup: $RP_APP_TUNNEL"
+fi
+
 
 rehash "$PYTHON"
 
@@ -1629,7 +1678,7 @@ echo "# Launching radical-pilot-agent "
 echo "# CMDLINE: $AGENT_CMD"
 
 # At this point we expand the variables in $PREBOOTSTRAP2 to pick up the
-# changes made by the environment by pre_bootstrap_1.
+# changes made by the environment by pre_bootstrap_0.
 OLD_IFS=$IFS
 IFS=$'\n'
 for entry in $PREBOOTSTRAP2
@@ -1655,7 +1704,7 @@ ping -c 1 "$RADICAL_PILOT_NTPHOST"
 # Before we start the (sub-)agent proper, we'll create a bootstrap_2.sh script
 # to do so.  For a single agent this is not needed -- but in the case where
 # we spawn out additional agent instances later, that script can be reused to
-# get proper # env settings etc, w/o running through bootstrap_1 again.
+# get proper # env settings etc, w/o running through bootstrap_0 again.
 # That includes pre_exec commands, virtualenv settings and sourcing (again),
 # and startup command).
 # We don't include any error checking right now, assuming that if the commands
@@ -1684,7 +1733,7 @@ export PYTHONNOUSERSITE=True
 # make sure we use the correct sandbox
 cd $PILOT_SANDBOX
 
-# apply some env settings as stored after running pre_bootstrap_1 commands
+# apply some env settings as stored after running pre_bootstrap_0 commands
 export PATH="$PB1_PATH"
 export LD_LIBRARY_PATH="$PB1_LDLB"
 
@@ -1797,10 +1846,9 @@ profile_event 'sync_rel' 'agent_0 start'
 # echo "stop  packing profiles / logfiles [\$(date)]"
 # EOT
 # chmod 0755 packer.sh
-# ./packer.sh 2>&1 >> bootstrap_1.out &
+# ./packer.sh 2>&1 >> bootstrap_0.out &
 # PACKER_ID=$!
 
-# TODO: Can this be generalized with our new split-agent now?
 if test -z "$CCM"; then
     ./bootstrap_2.sh 'agent_0'    \
                    1> agent_0.bootstrap_2.out \
@@ -1815,7 +1863,7 @@ AGENT_PID=$!
 while true
 do
     sleep 3
-    if kill -0 $AGENT_PID
+    if kill -0 $AGENT_PID 2>/dev/null
     then 
         if test -e "./killme.signal"
         then
@@ -1875,7 +1923,7 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Mark final profiling entry ..."
-    profile_event 'bootstrap_1_stop'
+    profile_event 'bootstrap_0_stop'
     profile_event 'END'
     echo "#"
     echo "# -------------------------------------------------------------------"

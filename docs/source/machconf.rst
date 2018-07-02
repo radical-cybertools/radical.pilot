@@ -133,7 +133,7 @@ A configuration file has to be valid JSON. The structure is as follows:
             "mpi_launch_method"           : "MPIEXEC",
             "forward_tunnel_endpoint"     : "login03",
             "global_virtenv"              : "/home/hpc/pr87be/di29sut/pilotve",
-            "pre_bootstrap_1"             : ["source /etc/profile",
+            "pre_bootstrap_0"             : ["source /etc/profile",
                                              "source /etc/profile.d/modules.sh",
                                              "module load python/2.7.6",
                                              "module unload mpi.ibm", "module load mpi.intel",
@@ -170,8 +170,8 @@ All fields are mandatory, unless indicated otherwise below.
 * ``mpi_launch_method``: type of MPI support, required for MPI units. Valid values are: ``MPIRUN``, ``MPIEXEC``, ``APRUN``, ``IBRUN`` or ``POE``.
 * ``python_interpreter``: path to python (optional).
 * ``python_dist``: `anaconda` or `default`, ie. not `anaconda` (mandatory).
-* ``pre_bootstrap_1``: list of commands to execute for initialization of main agent (optional).
-* ``pre_bootstrap_2``: list of commands to execute for initialization of sub-agent (optional).
+* ``pre_bootstrap_0``: list of commands to execute for initialization of main agent (optional).
+* ``pre_bootstrap_1``: list of commands to execute for initialization of sub-agent (optional).
 * ``valid_roots``: list of shared file system roots (optional). Note: pilot sandboxes must lie under these roots.
 * ``pilot_agent``: type of pilot agent to use. Currently: ``radical-pilot-agent-multicore.py``.
 * ``forward_tunnel_endpoint``: name of the host which can be used to create ssh tunnels from the compute nodes to the outside world (optional).

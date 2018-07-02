@@ -4,6 +4,22 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
+        "cores"    : 32,
+        "gpus"     : 2
+    },
+
+    "local.localhost_aprun" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 32,
+        "gpus"     : 2
+    },
+
+    "local.localhost_orte" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
         "cores"    : 2
     },
 
@@ -63,6 +79,13 @@
         "cores"    : 64
     },
 
+    "ncsa.bw_aprun" : {
+        "project"  : "PRAC_bamm",
+        "queue"    : "high",
+        "schema"   : "gsissh",
+        "cores"    : 320
+    },
+
     "ncsa.bw_lib" : {
         "project"  : "gk4",
         "queue"    : "debug",
@@ -92,7 +115,7 @@
     },
 
     "epsrc.archer" : {
-        "project"  : "e290",
+        "project"  : "d137",
         "queue"    : "short",
         "schema"   : null,
         "cores"    : 64
@@ -238,11 +261,11 @@
         "cores"    : 64
     },
 
-    "ornl.titan_aprun" : {
-        "project"  : "CSC230",
+    "ornl.titan" : {
+        "project"  : "CHM163",
         "queue"    : "debug",
         "schema"   : "local",
-        "cores"    : 64
+        "cores"    : 160
     },
 
     "ornl.titan_ortelib" : {
@@ -260,8 +283,16 @@
     },
 
     "ornl.titan_aprun"   : {
-        "project"  : "CSC230",
+        "project"  : "BIP149",
         "queue"    : "debug",
+        "schema"   : "local",
+        "cores"    : 64,
+        "gpus"     : 4
+    },
+
+    "ornl.rhea_aprun"   : {
+        "project"  : "CSC230",
+        "queue"    : "batch",
         "schema"   : "local",
         "cores"    : 64
     },
@@ -295,12 +326,20 @@
         "cores"    : 64
     }, 
 
+    "fub.allegro"   : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 36,
+        "gpus"     : 12
+    },
+
     "lumc.shark"   : {
         "project"  : null,
         "queue"    : null,
         "schema"   : "ssh",
         "cores"    : 16
-    },
+    }, 
 
     "lumc.gb-ui"   : {
         "project"  : null,

@@ -8,9 +8,11 @@ import radical.utils as ru
 from .base import LaunchMethod
 
 
+
 # ==============================================================================
 #
 # dplace: job launcher for SGI systems (e.g. on Blacklight)
+# https://www.nas.nasa.gov/hecc/support/kb/Using-SGIs-dplace-Tool-for-Pinning_284.html
 #
 class MPIRunDPlace(LaunchMethod):
 
@@ -25,86 +27,81 @@ class MPIRunDPlace(LaunchMethod):
     #
     def _configure(self):
 
-        self.launch_command = self._find_executable([
+        self.launch_command = ru.which([
             'mpirun',            # General case
             'mpirun_rsh',        # Gordon @ SDSC
             'mpirun-mpich-mp',   # Mac OSX MacPorts
             'mpirun-openmpi-mp'  # Mac OSX MacPorts
         ])
 
-        self.dplace_command = self._find_executable([
+        self.dplace_command = ru.which([
             'dplace',            # General case
         ])
 
         if not self.dplace_command:
             raise RuntimeError("mpirun not found!")
 
-        # alas, the way to transplant env variables to the target node differs
-        # per mpi(run) version...
-        out, err, ret = ru.sh_callout('%s -v' % self.launch_command)
-
-        if ret != 0:
-            out, err, ret = ru.sh_callout('%s -info' % self.launch_command)
-
-        self.launch_version = ''
-        for line in out.splitlines():
-            if 'HYDRA build details:' in line:
-                self.launch_version += 'hydra-'
-            if 'version:' in line.lower():
-                self.launch_version += line.split(':')[1].strip().lower()
-                break
-
-        if not self.launch_version:
-            self.launch_version = 'unknown'
+        self.mpi_version, self.mpi_flavor = self._get_mpi_info(self.launch_command)
 
 
     # --------------------------------------------------------------------------
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cores']
-        task_env     = cud.get('environment', dict())
-        task_args    = cud.get('arguments',   list())
+        task_threads = cud['cpu_thread']
+        task_env     = cud.get('environment') or dict()
+        task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
-        if not 'task_offsets' in opaque_slots:
-            raise RuntimeError('insufficient information to launch via %s: %s' \
-                    % (self.name, opaque_slots))
+        if task_threads > 1:
+            # dplace pinning would disallow threads to map to other cores
+            raise ValueError('dplace can not place threads [%d]' % task_threads)
 
-        dplace_offset = opaque_slots['task_offsets']
-
-        if task_argstr:
-            task_command = "%s %s" % (task_exec, task_argstr)
-        else:
-            task_command = task_exec
-
+        if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
+        else          : task_command = task_exec
 
         env_string = ''
         env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
         if env_list:
-            if 'hydra' in self.launch_version:
+
+            if self.mpi_flavor == self.MPI_FLAVOR_HYDRA:
                 env_string = '-envlist "%s"' % ','.join(env_list)
 
-            elif 'openmpi' in self.launch_version:
-                env_string = ''
+            elif self.mpi_flavor == self.MPI_FLAVOR_OMPI:
                 for var in env_list:
                     env_string += '-x "%s" ' % var
 
+        if 'nodes' not in slots:
+            raise RuntimeError('insufficient information to launch via %s: %s'
+                              % (self.name, slots))
+
+        host_list = list()
+        core_list = list()
+        for node in slots['nodes']:
+            tmp_list = list()
+            for cpu_proc in node[2]:
+                tmp_list.append(cpu_proc[0])
+                host_list.append(node[0])
+            for gpu_proc in node[3]:
+                tmp_list.append(cpu_proc[0])
+                host_list.append(node[0])
+            if core_list:
+                if sorted(core_list) != sorted(tmp_list):
+                    raise ValueError('dplace expects heterogeneous layouts')
             else:
-                # this is a crude version of env transplanting where we prep the
-                # shell command line.  We likely won't survive any complicated vars
-                # (multiline, quotes, etc)
-                env_string = ' '
-                for var in env_string:
-                    env_string += '%s="$%s" ' % (var, var)
+                core_list = tmp_list
+
+        np          = len(host_list) + len(core_list)
+        host_string = ",".join(host_list)  # FIXME: differs for mpich/hydra
+        core_string = ','.join(core_list)
 
 
-        command = "%s -np %d %s -c %d-%d %s %s" % \
-                  (self.dplace_command, task_cores, self.launch_command,
-                   dplace_offset, dplace_offset+task_cores-1, 
+        command = "%s -h %s -np %d %s -c %s %s %s" % \
+                  (self.launch_command, host_string, np,
+                   self.dplace_command, core_string,
                    env_string, task_command)
 
         return command, None

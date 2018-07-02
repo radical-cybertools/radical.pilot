@@ -51,8 +51,8 @@ class MPIRunRSH(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
-        task_env     = cud.get('environment', dict())
-        task_args    = cud.get('arguments',   list())
+        task_env     = cud.get('environment') or dict()
+        task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
         if not 'task_slots' in opaque_slots:
@@ -92,7 +92,7 @@ class MPIRunRSH(LaunchMethod):
 
             elif 'openmpi' in self.launch_version:
                 env_string = ''
-                for var in env_list:
+                for var in task_env:
                     env_string += '-x "%s" ' % var
 
             else:

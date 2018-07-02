@@ -8,6 +8,7 @@ import copy
 import stat
 import time
 import Queue
+import signal
 import tempfile
 import threading
 import traceback
@@ -81,7 +82,7 @@ class Popen(AgentExecutingComponent) :
         self.tmpdir = tempfile.gettempdir()
 
         # if we need to transplant any original env into the CU, we dig the
-        # respective keys from the dump made by bootstrap_1.sh
+        # respective keys from the dump made by bootstrap_0.sh
         self._env_cu_export = dict()
         if self._cfg.get('export_to_cu'):
             with open('env.orig', 'r') as f:
@@ -103,11 +104,11 @@ class Popen(AgentExecutingComponent) :
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'cancel_unit':
+        if cmd == 'cancel_units':
 
-            self._log.info("cancel unit command (%s)" % arg)
+            self._log.info("cancel_units command (%s)" % arg)
             with self._cancel_lock:
-                self._cus_to_cancel.append(arg)
+                self._cus_to_cancel.extend(arg['uids'])
 
         return True
 
@@ -174,20 +175,28 @@ class Popen(AgentExecutingComponent) :
     def _handle_unit(self, cu):
 
         ru.raise_on('work unit')
+      # import pprint
+      # self._log.info('handle cu: %s', pprint.pformat(cu))
 
         try:
-            if cu['description']['mpi']:
-                launcher = self._mpi_launcher
-            else :
-                launcher = self._task_launcher
+            # prep stdout/err so that we can append w/o checking for None
+            cu['stdout'] = ''
+            cu['stderr'] = ''
+
+            cpt = cu['description']['cpu_process_type']
+            gpt = cu['description']['gpu_process_type']  # FIXME: use
+
+            # FIXME: this switch is insufficient for mixed units (MPI/OpenMP)
+            if cpt == 'MPI': launcher = self._mpi_launcher
+            else           : launcher = self._task_launcher
 
             if not launcher:
-                raise RuntimeError("no launcher (mpi=%s)" % cu['description']['mpi'])
+                raise RuntimeError("no launcher (process type = %s)" % cpt)
 
-            self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
+            self._log.debug("Launching unit with %s (%s).",
+                            launcher.name, launcher.launch_command)
 
-            assert(cu['opaque_slots']) # FIXME: no assert, but check
-            self._prof.prof('exec', msg='unit launch', uid=cu['uid'])
+            assert(cu['slots'])
 
             # Start a new subprocess to launch the unit
             self.spawn(launcher=launcher, cu=cu)
@@ -204,7 +213,7 @@ class Popen(AgentExecutingComponent) :
                             % (str(e), traceback.format_exc())
 
             # Free the Slots, Flee the Flots, Ree the Frots!
-            if cu['opaque_slots']:
+            if cu.get('slots'):
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
@@ -216,6 +225,7 @@ class Popen(AgentExecutingComponent) :
 
         # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
         #       class definition.
+        descr   = cu['description']
         sandbox = '%s/%s' % (self._pwd, cu['uid'])
 
         # make sure the sandbox exists
@@ -223,6 +233,8 @@ class Popen(AgentExecutingComponent) :
         rpu.rec_makedir(sandbox)
         self._prof.prof('exec_mkdir_done', uid=cu['uid'])
         launch_script_name = '%s/%s.sh' % (sandbox, cu['uid'])
+
+        self._log.debug("Created launch_script: %s", launch_script_name)
 
         # prep stdout/err so that we can append w/o checking for None
         cu['stdout'] = ''
@@ -242,6 +254,11 @@ class Popen(AgentExecutingComponent) :
             env_string += 'export RP_TMP="%s"\n'          % self._cu_tmp
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
+            else:
+                env_string += 'unset  RP_PROF\n'
+
+            if 'RP_APP_TUNNEL' in os.environ:
+                env_string += 'export RP_APP_TUNNEL="%s"\n' % os.environ['RP_APP_TUNNEL']
 
             env_string += '''
 prof(){
@@ -255,11 +272,12 @@ prof(){
 }
 '''
 
+            # FIXME: this should be set by an LM filter or something (GPU)
+            env_string += 'export OMP_NUM_THREADS="%s"\n' % descr['cpu_threads']
+
             # also add any env vars requested for export by the resource config
             for k,v in self._env_cu_export.iteritems():
                 env_string += "export %s=%s\n" % (k,v)
-
-            descr = cu['description']
 
             # also add any env vars requested in the unit description
             if descr['environment']:
@@ -267,7 +285,6 @@ prof(){
                     env_string += 'export "%s=%s"\n' % (key, val)
 
             launch_script.write('\n# Environment variables\n%s\n' % env_string)
-            launch_script.write('\ntouch $RP_PROF\n')
             launch_script.write('prof cu_start\n')
             launch_script.write('\n# Change to unit sandbox\ncd %s\n' % sandbox)
             launch_script.write('prof cu_cd_done\n')
@@ -302,8 +319,8 @@ prof(){
 
             launch_script.write("\n# The command to run\n")
             launch_script.write('prof cu_exec_start\n')
-            launch_script.write("%s\n" % launch_command)
-            launch_script.write("RETVAL=$?\n")
+            launch_script.write('%s\n' % launch_command)
+            launch_script.write('RETVAL=$?\n')
             launch_script.write('prof cu_exec_stop\n')
 
             # After the universe dies the infrared death, there will be nothing
@@ -338,20 +355,15 @@ prof(){
         self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, sandbox)
 
         self._prof.prof('exec_start', uid=cu['uid'])
-        cu['proc'] = subprocess.Popen(args               = cmdline,
-                                      bufsize            = 0,
-                                      executable         = None,
-                                      stdin              = None,
-                                      stdout             = _stdout_file_h,
-                                      stderr             = _stderr_file_h,
-                                      preexec_fn         = None,
-                                      close_fds          = True,
-                                      shell              = True,
-                                      cwd                = sandbox,
-                                    # env                = self._cu_environment,
-                                      universal_newlines = False,
-                                      startupinfo        = None,
-                                      creationflags      = 0)
+        cu['proc'] = subprocess.Popen(args       = cmdline,
+                                      executable = None,
+                                      stdin      = None,
+                                      stdout     = _stdout_file_h,
+                                      stderr     = _stderr_file_h,
+                                      preexec_fn = os.setsid,
+                                      close_fds  = True,
+                                      shell      = True,
+                                      cwd        = sandbox)
         self._prof.prof('exec_ok', uid=cu['uid'])
 
         self._watch_queue.put(cu)
@@ -362,11 +374,9 @@ prof(){
     def _watch(self):
 
         try:
-
             while not self._terminate.is_set():
 
                 cus = list()
-
                 try:
                     # we don't want to only wait for one CU -- then we would
                     # pull CU state too frequently.  OTOH, we also don't want to
@@ -404,12 +414,11 @@ prof(){
     def _check_running(self):
 
         action = 0
-
         for cu in self._cus_to_watch:
 
             # poll subprocess object
             exit_code = cu['proc'].poll()
-            now       = time.time()
+            uid       = cu['uid']
 
             if exit_code is None:
                 # Process is still running
@@ -420,17 +429,24 @@ prof(){
                     # above and the kill command below.  We probably should pull
                     # state after kill again?
 
-                    self._prof.prof('exec_cancel_start', uid=cu['uid'])
+                    self._prof.prof('exec_cancel_start', uid=uid)
 
-                    # We got a request to cancel this cu
+                    # We got a request to cancel this cu - send SIGTERM to the
+                    # process group (which should include the actual launch
+                    # method)
+                  # cu['proc'].kill()
                     action += 1
-                    cu['proc'].kill()
-                    cu['proc'].wait() # make sure proc is collected
+                    try:
+                        os.killpg(cu['proc'].pid, signal.SIGTERM)
+                    except OSError:
+                        # unit is already gone, we ignore this
+                        pass
+                    cu['proc'].wait()  # make sure proc is collected
 
                     with self._cancel_lock:
-                        self._cus_to_cancel.remove(cu['uid'])
+                        self._cus_to_cancel.remove(uid)
 
-                    self._prof.prof('exec_cancel_stop', uid=cu['uid'])
+                    self._prof.prof('exec_cancel_stop', uid=uid)
 
                     del(cu['proc'])  # proc is not json serializable
                     self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
@@ -441,14 +457,14 @@ prof(){
 
             else:
 
-                self._prof.prof('exec_stop', uid=cu['uid'])
+                self._prof.prof('exec_stop', uid=uid)
 
                 # make sure proc is collected
                 cu['proc'].wait()
 
                 # we have a valid return code -- unit is final
                 action += 1
-                self._log.info("Unit %s has return code %s.", cu['uid'], exit_code)
+                self._log.info("Unit %s has return code %s.", uid, exit_code)
 
                 cu['exit_code'] = exit_code
 
@@ -471,4 +487,6 @@ prof(){
 
         return action
 
+
+# ------------------------------------------------------------------------------
 

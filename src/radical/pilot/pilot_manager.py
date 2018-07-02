@@ -38,10 +38,10 @@ class PilotManager(rpu.Component):
 
         pd = radical.pilot.ComputePilotDescription()
         pd.resource = "futuregrid.alamo"
-        pd.cores = 16
+        pd.cpus = 16
 
-        p1 = pm.submit_pilots(pd) # create first pilot with 16 cores
-        p2 = pm.submit_pilots(pd) # create second pilot with 16 cores
+        p1 = pm.submit_pilots(pd)  # create first  pilot with 16 cores
+        p2 = pm.submit_pilots(pd)  # create second pilot with 16 cores
 
         # Create a workload of 128 '/bin/sleep' compute units
         compute_units = []
@@ -54,7 +54,7 @@ class PilotManager(rpu.Component):
         # Combine the two pilots, the workload and a scheduler via
         # a UnitManager.
         um = radical.pilot.UnitManager(session=session,
-                                       scheduler=radical.pilot.SCHED_ROUND_ROBIN)
+                                       scheduler=radical.pilot.SCHEDULER_ROUND_ROBIN)
         um.add_pilot(p1)
         um.submit_units(compute_units)
 
@@ -106,7 +106,7 @@ class PilotManager(rpu.Component):
         self.start(spawn=False)
 
         # only now we have a logger... :/
-        self._log.report.info('<<create pilot manager')
+        self._rep.info('<<create pilot manager')
 
         # The output queue is used to forward submitted pilots to the
         # launching component.
@@ -132,7 +132,7 @@ class PilotManager(rpu.Component):
         self._session._register_pmgr(self)
 
         self._prof.prof('setup_done', uid=self._uid)
-        self._log.report.ok('>>ok\n')
+        self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
@@ -183,7 +183,7 @@ class PilotManager(rpu.Component):
             return
         self._terminate.set()
 
-        self._log.report.info('<<close pilot manager')
+        self._rep.info('<<close pilot manager')
 
         # we don't want any callback invokations during shutdown
         # FIXME: really?
@@ -203,7 +203,7 @@ class PilotManager(rpu.Component):
         self._log.info("Closed PilotManager %s." % self._uid)
 
         self._closed = True
-        self._log.report.ok('>>ok\n')
+        self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
@@ -481,7 +481,7 @@ class PilotManager(rpu.Component):
             raise ValueError('cannot submit no pilot descriptions')
 
 
-        self._log.report.info('<<submit %d pilot(s)\n\t' % len(descriptions))
+        self._rep.info('<<submit %d pilot(s)\n\t' % len(descriptions))
 
         # create the pilot instance
         pilots     = list()
@@ -495,7 +495,7 @@ class PilotManager(rpu.Component):
                 raise ValueError('pilot runtime must be positive')
 
             if not pd.cores:
-                raise ValueError('pilot core size must be defined')
+                raise ValueError('pilot size must be defined')
 
             if not pd.resource:
                 raise ValueError('pilot target resource must be defined')
@@ -512,7 +512,12 @@ class PilotManager(rpu.Component):
             if self._session._rec:
                 ru.write_json(pd.as_dict(), "%s/%s.batch.%03d.json" \
                         % (self._session._rec, pilot.uid, self._rec_id))
-            self._log.report.progress()
+
+            if 'resource' in pd and 'cores' in pd:
+                self._rep.plain('[%s:%s]\n\t' % (pd['resource'], pd['cores']))
+            elif 'resource' in pd:
+                self._rep.plain('[%s]\n\t' % pd['resource'])
+
 
         # initial state advance to 'NEW'
         # FIXME: we should use update_pilot(), but that will not trigger an
@@ -534,7 +539,7 @@ class PilotManager(rpu.Component):
             self._update_pilot(pd, advance=False)
         self.advance(pilot_docs, publish=True, push=True)
 
-        self._log.report.ok('>>ok\n')
+        self._rep.ok('>>ok\n')
 
         if ret_list: return pilots
         else       : return pilots[0]
@@ -636,7 +641,7 @@ class PilotManager(rpu.Component):
             ret_list = False
             uids     = [uids]
 
-        self._log.report.info('<<wait for %d pilot(s)\n\t' % len(uids))
+        self._rep.info('<<wait for %d pilot(s)\n\t' % len(uids))
 
         start    = time.time()
         to_check = None
@@ -653,10 +658,10 @@ class PilotManager(rpu.Component):
         # duplicate checks on pilots which were found in matching states.  So we
         # create a list from which we drop the pilots as we find them in
         # a matching state
-        self._log.report.idle(mode='start')
+        self._rep.idle(mode='start')
         while to_check and not self._terminate.is_set():
 
-            self._log.report.idle()
+            self._rep.idle()
 
             to_check = [pilot for pilot in to_check \
                                if pilot.state not in states and \
@@ -671,10 +676,10 @@ class PilotManager(rpu.Component):
                 time.sleep (0.1)
 
 
-        self._log.report.idle(mode='stop')
+        self._rep.idle(mode='stop')
 
-        if to_check: self._log.report.warn('>>timeout\n')
-        else       : self._log.report.ok(  '>>ok\n')
+        if to_check: self._rep.warn('>>timeout\n')
+        else       : self._rep.ok(  '>>ok\n')
 
         # grab the current states to return
         state = None
