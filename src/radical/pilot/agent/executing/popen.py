@@ -253,6 +253,8 @@ class Popen(AgentExecutingComponent) :
             env_string += 'export RP_TMP="%s"\n'          % self._cu_tmp
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
+            else:
+                env_string += 'unset  RP_PROF"\n'
 
             env_string += '''
 prof(){
@@ -279,7 +281,6 @@ prof(){
                     env_string += 'export "%s=%s"\n' % (key, val)
 
             launch_script.write('\n# Environment variables\n%s\n' % env_string)
-            launch_script.write('\ntouch $RP_PROF\n')
             launch_script.write('prof cu_start\n')
             launch_script.write('\n# Change to unit sandbox\ncd %s\n' % sandbox)
             launch_script.write('prof cu_cd_done\n')
