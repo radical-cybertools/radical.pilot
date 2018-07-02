@@ -22,7 +22,7 @@
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIEXEC",
         "forward_tunnel_endpoint"     : "login03",
-        "pre_bootstrap_1"             : ["source /etc/profile",
+        "pre_bootstrap_0"             : ["source /etc/profile",
                                          "source /etc/profile.d/modules.sh",
                                          "module load python/2.7.6",
                                          "module unload mpi.ibm", "module load mpi.intel"

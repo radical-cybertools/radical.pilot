@@ -65,7 +65,6 @@ class Agent_0(rpu.Worker):
 
         # sanity check on config settings
         if 'cores'               not in cfg: raise ValueError('Missing number of cores')
-        if 'debug'               not in cfg: raise ValueError('Missing DEBUG level')
         if 'lrms'                not in cfg: raise ValueError('Missing LRMS')
         if 'dburl'               not in cfg: raise ValueError('Missing DBURL')
         if 'pilot_id'            not in cfg: raise ValueError('Missing pilot id')
@@ -189,6 +188,7 @@ class Agent_0(rpu.Worker):
         self._log.debug('final state: %s (%s)', state, self._final_cause)
       # # we don't rely on the existence / viability of the update worker at
       # # that point.
+      # FIXME:
       # self._log.debug('update db state: %s: %s', state, self._final_cause)
       # self._update_db(state, self._final_cause)
 
@@ -458,6 +458,7 @@ class Agent_0(rpu.Worker):
                 return False  # we are done
 
             elif cmd == 'cancel_units':
+
                 self._log.info('cancel_units cmd')
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_units',
                                                   'arg' : arg})

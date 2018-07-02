@@ -53,7 +53,7 @@ def rp_setup(request):
     try:
         pmgr = rp.PilotManager(session=session)
         umgr = rp.UnitManager (session=session,
-                               scheduler=rp.SCHED_DIRECT_SUBMISSION)
+                               scheduler=rp.SCHEDULER_DIRECT_SUBMISSION)
 
         pdesc = rp.ComputePilotDescription()
         pdesc.resource = "local.localhost"
@@ -90,7 +90,7 @@ def rp_setup_short(request):
     try:
         pmgr = rp.PilotManager(session=session)
         umgr = rp.UnitManager (session=session,
-                               scheduler=rp.SCHED_DIRECT_SUBMISSION)
+                               scheduler=rp.SCHEDULER_DIRECT_SUBMISSION)
 
         pdesc = rp.ComputePilotDescription()
         pdesc.resource = "local.localhost"
@@ -128,7 +128,7 @@ def rp_setup_state(request):
     try:
         pmgr = rp.PilotManager(session=session)
         umgr = rp.UnitManager (session=session,
-                               scheduler=rp.SCHED_DIRECT_SUBMISSION,
+                               scheduler=rp.SCHEDULER_DIRECT_SUBMISSION,
                                output_transfer_workers=4,
                                input_transfer_workers=4)
 

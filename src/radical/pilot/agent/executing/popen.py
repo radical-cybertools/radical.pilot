@@ -8,6 +8,7 @@ import copy
 import stat
 import time
 import Queue
+import signal
 import tempfile
 import threading
 import traceback
@@ -81,7 +82,7 @@ class Popen(AgentExecutingComponent) :
         self.tmpdir = tempfile.gettempdir()
 
         # if we need to transplant any original env into the CU, we dig the
-        # respective keys from the dump made by bootstrap_1.sh
+        # respective keys from the dump made by bootstrap_0.sh
         self._env_cu_export = dict()
         if self._cfg.get('export_to_cu'):
             with open('env.orig', 'r') as f:
@@ -253,6 +254,8 @@ class Popen(AgentExecutingComponent) :
             env_string += 'export RP_TMP="%s"\n'          % self._cu_tmp
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
+            else:
+                env_string += 'unset  RP_PROF\n'
 
             env_string += '''
 prof(){
@@ -279,7 +282,6 @@ prof(){
                     env_string += 'export "%s=%s"\n' % (key, val)
 
             launch_script.write('\n# Environment variables\n%s\n' % env_string)
-            launch_script.write('\ntouch $RP_PROF\n')
             launch_script.write('prof cu_start\n')
             launch_script.write('\n# Change to unit sandbox\ncd %s\n' % sandbox)
             launch_script.write('prof cu_cd_done\n')
@@ -413,6 +415,7 @@ prof(){
 
             # poll subprocess object
             exit_code = cu['proc'].poll()
+            uid       = cu['uid']
 
             if exit_code is None:
                 # Process is still running
@@ -423,17 +426,24 @@ prof(){
                     # above and the kill command below.  We probably should pull
                     # state after kill again?
 
-                    self._prof.prof('exec_cancel_start', uid=cu['uid'])
+                    self._prof.prof('exec_cancel_start', uid=uid)
 
-                    # We got a request to cancel this cu
+                    # We got a request to cancel this cu - send SIGTERM to the
+                    # process group (which should include the actual launch
+                    # method)
+                  # cu['proc'].kill()
                     action += 1
-                    cu['proc'].kill()
+                    try:
+                        os.killpg(cu['proc'].pid, signal.SIGTERM)
+                    except OSError:
+                        # unit is already gone, we ignore this
+                        pass
                     cu['proc'].wait()  # make sure proc is collected
 
                     with self._cancel_lock:
-                        self._cus_to_cancel.remove(cu['uid'])
+                        self._cus_to_cancel.remove(uid)
 
-                    self._prof.prof('exec_cancel_stop', uid=cu['uid'])
+                    self._prof.prof('exec_cancel_stop', uid=uid)
 
                     del(cu['proc'])  # proc is not json serializable
                     self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
@@ -444,14 +454,14 @@ prof(){
 
             else:
 
-                self._prof.prof('exec_stop', uid=cu['uid'])
+                self._prof.prof('exec_stop', uid=uid)
 
                 # make sure proc is collected
                 cu['proc'].wait()
 
                 # we have a valid return code -- unit is final
                 action += 1
-                self._log.info("Unit %s has return code %s.", cu['uid'], exit_code)
+                self._log.info("Unit %s has return code %s.", uid, exit_code)
 
                 cu['exit_code'] = exit_code
 

@@ -46,7 +46,7 @@ for i in [8, 16]:
         session.add_context(c)
     
         pmgr = rp.PilotManager (session=session)
-        umgr = rp.UnitManager  (session=session, scheduler=rp.SCHED_ROUND_ROBIN) 
+        umgr = rp.UnitManager  (session=session, scheduler=rp.SCHEDULER_ROUND_ROBIN) 
     
         pilot = []
     

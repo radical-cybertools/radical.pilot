@@ -23,7 +23,7 @@ class CCMRun(LaunchMethod):
     #
     def _configure(self):
         # ccmrun: Cluster Compatibility Mode (CCM) job launcher for Cray systems
-        self.launch_command= ru.which('ccmrun')
+        self.launch_command = ru.which('ccmrun')
 
 
     # --------------------------------------------------------------------------
