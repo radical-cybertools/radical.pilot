@@ -25,7 +25,7 @@ import radical.utils as ru
 if __name__ == '__main__':
 
     # we use a reporter class for nicer output
-    report = ru.LogReporter(name='radical.pilot', level=verbose)
+    report = ru.Reporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
@@ -79,18 +79,22 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 128  # number of units to run
-        report.info('create %d unit description(s)\n\t' % n)
+        report.info('create %d unit description(s)\n\t' % 2)
 
         cuds = list()
-        for i in range(0, n):
 
-            # create a new CU description, and fill it.
-            # Here we don't use dict initialization.
-            cud = rp.ComputeUnitDescription()
-            cud.executable = '/bin/date'
-            cuds.append(cud)
-            report.progress()
+        cud = rp.ComputeUnitDescription()
+        cud.executable = '/usr/bin/mongo'
+        cud.arguments  = 'mongodb://$RP_APP_TUNNEL/ --eval db.stats()'.split()
+        cuds.append(cud)
+        report.progress()
+
+        cud = rp.ComputeUnitDescription()
+        cud.executable = 'echo'
+        cud.arguments  = '$RP_APP_TUNNEL'
+        cuds.append(cud)
+        report.progress()
+
         report.ok('>>ok\n')
 
         # Submit the previously created ComputeUnit descriptions to the
@@ -106,13 +110,21 @@ if __name__ == '__main__':
         for unit in units:
             report.plain('  * %s: %s, exit: %3s, out: %s\n' \
                     % (unit.uid, unit.state[:4],
-                        unit.exit_code, unit.stdout.strip()[:35]))
+                        unit.exit_code, unit.stderr[:35]))
 
         # get some more details for one unit:
         unit_dict = units[0].as_dict()
         report.plain("unit workdir : %s\n" % unit_dict['unit_sandbox'])
         report.plain("pilot id     : %s\n" % unit_dict['pilot'])
         report.plain("exit code    : %s\n" % unit_dict['exit_code'])
+        report.plain("exit stdout  : %s\n" % unit_dict['stdout'])
+    
+        # get some more details for one unit:
+        unit_dict = units[1].as_dict()
+        report.plain("unit workdir : %s\n" % unit_dict['unit_sandbox'])
+        report.plain("pilot id     : %s\n" % unit_dict['pilot'])
+        report.plain("exit code    : %s\n" % unit_dict['exit_code'])
+        report.plain("exit stdout  : %s\n" % unit_dict['stdout'])
     
 
     except Exception as e:

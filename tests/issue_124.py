@@ -52,7 +52,7 @@ try:
 
     pilot_object = pmgr.submit_pilots(pd)
     
-    umgr = rp.UnitManager(session=session, scheduler=rp.SCHED_ROUND_ROBIN)
+    umgr = rp.UnitManager(session=session, scheduler=rp.SCHEDULER_ROUND_ROBIN)
 
     umgr.add_pilots(pilot_object)
 

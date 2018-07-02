@@ -7,12 +7,10 @@
         "schemas"            : ["ssh", "gsissh"],
         "mandatory_args"     : ["project"],
         "ssh"                : {
-            "job_manager_hop"     : "ssh://xd-login.opensciencegrid.org",
             "job_manager_endpoint": "condor+ssh://xd-login.opensciencegrid.org",
             "filesystem_endpoint" : "sftp://xd-login.opensciencegrid.org/"
         },
         "gsissh"             : {
-            "job_manager_hop"     : "gsissh://xd-login.opensciencegrid.org",
             "job_manager_endpoint": "condor+gsissh://xd-login.opensciencegrid.org",
             "filesystem_endpoint" : "gsisftp://xd-login.opensciencegrid.org/"
         },
@@ -25,7 +23,7 @@
         "agent_config"       : "osg",
         "agent_launch_method": "FORK",
         "task_launch_method" : "FORK",
-        "pre_bootstrap_1"    : [
+        "pre_bootstrap_0"    : [
             # Allow to load modules
             "source /cvmfs/oasis.opensciencegrid.org/osg/modules/lmod/current/init/bash",
 
@@ -45,7 +43,7 @@
             "module load python/2.7",
             "module load gcc"
         ],
-        "pre_bootstrap_2"    : [
+        "pre_bootstrap_1"    : [
             "export HOME=$HOME",
             "export PATH=$PB2PATH",
             "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
@@ -63,12 +61,10 @@
         "schemas"            : ["ssh", "gsissh"],
         "mandatory_args"     : ["project"],
         "ssh"                : {
-            "job_manager_hop"     : "ssh://login.osgconnect.net",
             "job_manager_endpoint": "condor+ssh://login.osgconnect.net",
             "filesystem_endpoint" : "sftp://login.osgconnect.net/"
         },
         "gsissh"             : {
-            "job_manager_hop"     : "gsissh://login.osgconnect.net",
             "job_manager_endpoint": "condor+gsissh://login.osgconnect.net",
             "filesystem_endpoint" : "gsisftp://login.osgconnect.net/"
         },
@@ -81,7 +77,7 @@
         "agent_config"       : "osg",
         "agent_launch_method": "FORK",
         "task_launch_method" : "FORK",
-        "pre_bootstrap_1"    : [
+        "pre_bootstrap_0"    : [
             "source /cvmfs/oasis.opensciencegrid.org/osg/modules/lmod/current/init/bash",
             "module load python/2.7"
         ],
