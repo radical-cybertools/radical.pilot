@@ -4,19 +4,13 @@ __license__   = "MIT"
 
 
 import os
-import shutil
+import saga as rs
 
-import saga          as rs
-import radical.utils as ru
-
-from .... import pilot     as rp
-from ...  import utils     as rpu
-from ...  import states    as rps
-from ...  import constants as rpc
+from ...   import states             as rps
+from ...   import constants          as rpc
+from ...   import staging_directives as rpsd
 
 from .base import UMGRStagingOutputComponent
-
-from ...staging_directives import complete_url
 
 
 # ==============================================================================
@@ -59,7 +53,7 @@ class Default(UMGRStagingOutputComponent):
                 self._cache[key].close()
         except:
             pass
-            
+
 
     # --------------------------------------------------------------------------
     #
@@ -73,7 +67,7 @@ class Default(UMGRStagingOutputComponent):
         # we first filter out any units which don't need any output staging, and
         # advance them again as a bulk.  We work over the others one by one, and
         # advance them individually, to avoid stalling from slow staging ops.
-        
+
         no_staging_units = list()
         staging_units    = list()
 
@@ -125,18 +119,15 @@ class Default(UMGRStagingOutputComponent):
                        'pilot'    : unit['pilot_sandbox'], 
                        'resource' : unit['resource_sandbox']}
 
-        sandbox = rs.Url(unit["unit_sandbox"])
-        tmp     = rs.Url(unit["unit_sandbox"])
-
         # url used for cache (sandbox url w/o path)
+        tmp      = rs.Url(unit["unit_sandbox"])
         tmp.path = '/'
-        key = str(tmp)
+        key      = str(tmp)
 
         if key not in self._cache:
             self._cache[key] = rs.filesystem.Directory(tmp, 
                     session=self._session)
         saga_dir = self._cache[key]
-
 
 
         # Loop over all transfer directives and execute them.
@@ -148,29 +139,27 @@ class Default(UMGRStagingOutputComponent):
             src    = sd['source']
             tgt    = sd['target']
 
-            self._prof.prof('staging_begin', uid=uid, msg=did)
+            self._prof.prof('staging_out_start', uid=uid, msg=did)
 
             self._log.debug('src: %s', src)
             self._log.debug('tgt: %s', tgt)
 
-            src = complete_url(src, src_context, self._log)
-            tgt = complete_url(tgt, tgt_context, self._log)
+            src = rpsd.complete_url(src, src_context, self._log)
+            tgt = rpsd.complete_url(tgt, tgt_context, self._log)
 
             self._log.debug('src: %s', src)
             self._log.debug('tgt: %s', tgt)
 
-            if rpc.CREATE_PARENTS in flags:
-                copy_flags = rs.filesystem.CREATE_PARENTS
-            else:
-                copy_flags = 0
+            # Check if the src is a folder, if true
+            # add recursive flag if not already specified
+            if saga_dir.is_dir(src.path):
+                flags |= rs.filesystem.RECURSIVE
 
-            # FIXME: this should be a proper test for absoluteness of URL
-            if not tgt.path.startswith('/'):
-                tgt.path = '%s/%s' % (sandbox.path, tgt.path)
+            # Always set CREATE_PARENTS
+            flags |= rs.filesystem.CREATE_PARENTS
 
-            saga_dir.copy(src, tgt, flags=copy_flags)
-
-            self._prof.prof('staging_end', uid=uid, msg=did)
+            saga_dir.copy(src, tgt, flags=flags)
+            self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
         # all staging is done -- at this point the unit is final
         unit['state'] = unit['target_state']

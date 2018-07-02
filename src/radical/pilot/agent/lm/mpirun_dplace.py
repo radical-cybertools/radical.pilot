@@ -3,15 +3,15 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import radical.utils as ru
-
 from .base import LaunchMethod
 
 
 # ==============================================================================
 #
+# dplace: job launcher for SGI systems (e.g. on Blacklight)
+# https://www.nas.nasa.gov/hecc/support/kb/Using-SGIs-dplace-Tool-for-Pinning_284.html
+#
 class MPIRunDPlace(LaunchMethod):
-    # TODO: This needs both mpirun and dplace
 
     # --------------------------------------------------------------------------
     #
@@ -23,40 +23,86 @@ class MPIRunDPlace(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        # dplace: job launcher for SGI systems (e.g. on Blacklight)
-        self.launch_command = ru.which('dplace')
-        self.mpirun_command = ru.which('mpirun')
+
+        self.launch_command = ru.which([
+            'mpirun',            # General case
+            'mpirun_rsh',        # Gordon @ SDSC
+            'mpirun-mpich-mp',   # Mac OSX MacPorts
+            'mpirun-openmpi-mp'  # Mac OSX MacPorts
+        ])
+
+        self.dplace_command = ru.which([
+            'dplace',            # General case
+        ])
+
+        if not self.dplace_command:
+            raise RuntimeError("mpirun not found!")
+
+        self.mpi_version, self.mpi_flavor = self._get_mpi_info(self.launch_command)
 
 
     # --------------------------------------------------------------------------
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cores']
-        task_args    = cud.get('arguments') or []
+        task_threads = cud['cpu_thread']
+        task_env     = cud.get('environment') or dict()
+        task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
-        if not 'task_offsets' in opaque_slots:
-            raise RuntimeError('insufficient information to launch via %s: %s' \
-                    % (self.name, opaque_slots))
+        if task_threads > 1:
+            # dplace pinning would disallow threads to map to other cores
+            raise ValueError('dplace can not place threads [%d]' % task_threads)
 
-        task_offsets = opaque_slots['task_offsets']
+        if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
+        else          : task_command = task_exec
 
-        if task_argstr:
-            task_command = "%s %s" % (task_exec, task_argstr)
-        else:
-            task_command = task_exec
+        env_string = ''
+        env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
+        if env_list:
 
-        dplace_offset = task_offsets
+            if self.mpi_flavor == self.MPI_FLAVOR_HYDRA:
+                env_string = '-envlist "%s"' % ','.join(env_list)
 
-        mpirun_dplace_command = "%s -np %d %s -c %d-%d %s" % \
-            (self.mpirun_command, task_cores, self.launch_command,
-             dplace_offset, dplace_offset+task_cores-1, task_command)
+            elif self.mpi_flavor == self.MPI_FLAVOR_OMPI:
+                for var in env_list:
+                    env_string += '-x "%s" ' % var
 
-        return mpirun_dplace_command, None
+
+        if 'nodes' not in slots:
+            raise RuntimeError('insufficient information to launch via %s: %s'
+                              % (self.name, slots))
+
+        host_list = list()
+        core_list = list()
+        for node in slots['nodes']:
+            tmp_list = list()
+            for cpu_proc in node[2]:
+                tmp_list.append(cpu_proc[0])
+                host_list.add(node[0])
+            for gpu_proc in node[3]:
+                tmp_list.append(cpu_proc[0])
+                host_list.add(node[0])
+            if core_list:
+                if sorted(core_list) != sorted(tmp_list):
+                    raise ValueError('dplace expects heterogeneous layouts')
+            else:
+                core_list = tmp_list
+
+        np          = len(host_list) + len(core_list)
+        host_string = ",".join(host_list)  # FIXME: differs for mpich/hydra
+        core_string = ','.join(core_list)
+
+
+        command = "%s -h %s -np %d %s -c %s %s %s" % \
+                  (self.launch_command, host_string, np,
+                   self.dplace_command, core_string,
+                   env_string, task_command)
+
+        return command, None
 
 
 # ------------------------------------------------------------------------------

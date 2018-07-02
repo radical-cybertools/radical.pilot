@@ -13,7 +13,7 @@ session = rp.Session()
 
 try:
     umgr    = rp.UnitManager  (session      = session, 
-                               scheduler    = rp.SCHED_DIRECT_SUBMISSION)
+                               scheduler    = rp.SCHEDULER_DIRECT_SUBMISSION)
     pmgr    = rp.PilotManager (session      = session)
     
     pilot_descr = rp.ComputePilotDescription ()

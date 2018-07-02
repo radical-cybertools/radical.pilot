@@ -37,13 +37,18 @@ LM_NAME_SPARK         = 'SPARK'
 class LaunchMethod(object):
 
     # List of environment variables that designated Launch Methods should export
+    # FIXME: we should find out what env vars are changed or added by 
+    #        cud.pre_exec, and then should also export those.  That would make
+    #        our launch script ore complicated though...
     EXPORT_ENV_VARIABLES = [
-      # 'LD_LIBRARY_PATH',
-      # 'PATH',
-      # 'PYTHONPATH',
-      # 'PYTHON_DIR',
-      # 'RADICAL_PILOT_PROFILE'
+        'LD_LIBRARY_PATH',
+        'PATH',
+        'PYTHONPATH',
     ]
+
+    MPI_FLAVOR_OMPI    = 'OMPI'
+    MPI_FLAVOR_HYDRA   = 'HYDRA'
+    MPI_FLAVOR_UNKNOWN = 'unknown'
 
     # --------------------------------------------------------------------------
     #
@@ -53,18 +58,21 @@ class LaunchMethod(object):
         self._cfg     = cfg
         self._session = session
         self._log     = self._session._log
+        self._log.debug('create LM: %s', type(self))
 
         # A per-launch_method list of environment to remove from the CU environment
         self.env_removables = []
 
         self.launch_command = None
+        
         self._configure()
+
         # TODO: This doesn't make too much sense for LM's that use multiple
         #       commands, perhaps this needs to move to per LM __init__.
         if self.launch_command is None:
             raise RuntimeError("Launch command not found for LaunchMethod '%s'" % self.name)
 
-        self._log.info("Discovered launch command: '%s'.", self.launch_command)
+        self._log.debug('launch_command: %s', self.launch_command)
 
 
     # --------------------------------------------------------------------------
@@ -134,7 +142,7 @@ class LaunchMethod(object):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, logger):
+    def lrms_config_hook(cls, name, cfg, lrms, logger, profiler):
         """
         This hook will allow the LRMS to perform launch methods specific
         configuration steps.  The LRMS layer MUST ensure that this hook is
@@ -163,13 +171,13 @@ class LaunchMethod(object):
             return None
 
         logger.info('call LRMS config hook for LaunchMethod %s: %s' % (name, impl))
-        return impl.lrms_config_hook(name, cfg, lrms, logger)
+        return impl.lrms_config_hook(name, cfg, lrms, logger, profiler)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger, profiler):
         """
         This hook is symmetric to the config hook above, and is called during
         shutdown sequence, for the sake of freeing allocated resources.
@@ -194,7 +202,7 @@ class LaunchMethod(object):
             return None
 
         logger.info('call LRMS shutdown hook for LaunchMethod %s: %s' % (name, impl))
-        return impl.lrms_shutdown_hook(name, cfg, lrms, lm_info, logger)
+        return impl.lrms_shutdown_hook(name, cfg, lrms, lm_info, logger, profiler)
 
 
     # --------------------------------------------------------------------------
@@ -207,27 +215,6 @@ class LaunchMethod(object):
     #
     def construct_command(self, cu, launch_script_hop):
         raise NotImplementedError("construct_command() not implemented for LaunchMethod: %s." % self.name)
-
-
-    # --------------------------------------------------------------------------
-    #
-    @classmethod
-    def _find_executable(cls, names):
-        """
-        Takes a (list of) name(s) and looks for an executable in the path.  It
-        will return the first match found, or `None` if none of the given names
-        is found.
-        """
-
-        if not isinstance(names, list):
-            names = [names]
-
-        for name in names:
-            ret = ru.which(name)
-            if ret:
-                return ret
-
-        return None
 
 
     # --------------------------------------------------------------------------
@@ -323,6 +310,57 @@ class LaunchMethod(object):
                     arg_string += '"%s" ' % arg  # Otherwise return between double quotes.
 
         return arg_string
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_mpi_info(self, exe):
+        '''
+        returns version and flavor of MPI version.
+        '''
+
+        version = None
+        flavor  = self.MPI_FLAVOR_UNKNOWN
+
+        out, err, ret = ru.sh_callout('%s -v' % exe)
+
+        if ret:
+            out, err, ret = ru.sh_callout('%s --version' % exe)
+
+        if ret:
+            out, err, ret = ru.sh_callout('%s -info' % exe)
+
+        if not ret:
+            for line in out.splitlines():
+                if 'hydra build details:' in line.lower():
+                    version = line.split(':', 1)[1].strip()
+                    flavor  = self.MPI_FLAVOR_HYDRA
+                    break
+
+                if 'mvapich2' in line.lower():
+                    version = line
+                    flavor  = self.MPI_FLAVOR_HYDRA
+                    break
+
+                if 'version:' in line.lower():
+                    version = line.split(':', 1)[1].strip()
+                    flavor  = self.MPI_FLAVOR_OMPI
+                    break
+
+                if '(open mpi):' in line.lower():
+                    version = line.split(')', 1)[1].strip()
+                    flavor  = self.MPI_FLAVOR_OMPI
+                    break
+
+        if not flavor:
+            raise RuntimeError('cannot identify MPI flavor [%s]' % exe)
+
+        self._log.debug('mpi version: %s [%s]', version, flavor)
+
+        return version, flavor
+
+
+
 
 # ------------------------------------------------------------------------------
 

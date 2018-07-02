@@ -4,14 +4,10 @@ __license__   = "MIT"
 
 
 import os
-import time
 
 import radical.utils as ru
 
-from ... import utils     as rpu
-from ... import states    as rps
-from ... import constants as rpc
-
+from ...   import constants as rpc
 from .base import AgentSchedulingComponent
 
 import inspect
@@ -20,9 +16,12 @@ import threading as mt
 
 # ------------------------------------------------------------------------------
 #
-# FIXME: make runtime switch depending on cprofile availability
+# FIXME: make this a runtime switch depending on cprofile availability
+# FIXME: move this to utils (implies another parameter to `dec_all_methods()`)
+#
 import cProfile
 cprof = cProfile.Profile()
+
 
 def cprof_it(func):
     def wrapper(*args, **kwargs):
@@ -30,13 +29,15 @@ def cprof_it(func):
         return retval
     return wrapper
 
+
 def dec_all_methods(dec):
     def dectheclass(cls):
-        self_thread = mt.current_thread()
-        if self_thread.name == 'MainThread' and \
-                "CONTINUOUS" in os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "").split():
-            for name, m in inspect.getmembers(cls, inspect.ismethod):
-                setattr(cls, name, dec(m))
+        if ru.is_main_thread():
+            cprof_env   = os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "")
+            cprof_elems = cprof_env.split()
+            if "CONTINUOUS" in cprof_elems:
+                for name, m in inspect.getmembers(cls, inspect.ismethod):
+                    setattr(cls, name, dec(m))
         return cls
     return dectheclass
 
@@ -45,21 +46,28 @@ def dec_all_methods(dec):
 #
 @dec_all_methods(cprof_it)
 class Continuous(AgentSchedulingComponent):
+    '''
+    The Continuous scheduler attempts to place threads and processes of
+    a compute units onto consecutive cores, gpus and nodes in the cluster.
+    '''
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, session):
 
-        self.slots = None
+        self.nodes = None
 
         AgentSchedulingComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
+    # FIXME: this should not be overloaded here, but in the base class
+    #
     def finalize_child(self):
 
-        if "CONTINUOUS" in os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "").split():
+        cprof_env = os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "")
+        if "CONTINUOUS" in cprof_env.split():
             self_thread = mt.current_thread()
             cprof.dump_stats("python-%s.profile" % self_thread.name)
 
@@ -70,6 +78,7 @@ class Continuous(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
+
         if not self._lrms_node_list:
             raise RuntimeError("LRMS %s didn't _configure node_list." % \
                                self._lrms_info['name'])
@@ -78,250 +87,376 @@ class Continuous(AgentSchedulingComponent):
             raise RuntimeError("LRMS %s didn't _configure cores_per_node." % \
                                self._lrms_info['name'])
 
-        # Slots represents the internal process management structure.
-        # The structure is as follows:
-        # [
-        #    {'node': 'node1', 'cores': [p_1, p_2, p_3, ... , p_cores_per_node]},
-        #    {'node': 'node2', 'cores': [p_1, p_2, p_3. ... , p_cores_per_node]
-        # ]
+        if not self._lrms_gpus_per_node:
+            raise RuntimeError("LRMS %s didn't _configure gpus_per_node." % \
+                               self._lrms_info['name'])
+
+        # * oversubscribe:
+        #   Cray's aprun for example does not allow us to oversubscribe CPU
+        #   cores on a node, so we can't, say, run n CPU processes on an n-core
+        #   node, and than add one additional process for a GPU application.  If
+        #   `oversubscribe` is set to False (which is the default for now),
+        #   we'll prevent that behavior by allocating one additional CPU core
+        #   for each set of requested GPU processes.
+        #   FIXME: I think our scheme finds the wrong core IDs for GPU process
+        #          startup - i.e. not the reserved ones.
+        self._oversubscribe = self._cfg.get('oversubscribe', False)
+
+        # * scattered:
+        #   This is the continuous scheduler, because it attempts to allocate
+        #   a *continuous* set of cores/nodes for a unit.  It does, hoewver,
+        #   also allow to scatter the allocation over discontinuous nodes if
+        #   this option is set.  This implementation is not optimized for the
+        #   scattered mode!  The default is 'False'.
         #
-        # We put it in a list because we care about (and make use of) the order.
-        #
-        self.slots = []
-        for node in self._lrms_node_list:
-            self.slots.append({
-                'node': node,
-                # TODO: Maybe use the real core numbers in the case of
-                # non-exclusive host reservations?
-                'cores': [rpc.FREE for _ in range(0, self._lrms_cores_per_node)]
-            })
+        self._scattered     = self._cfg.get('scattered',     False)
+
+        # NOTE:  for non-oversubscribing mode, we reserve a number of cores
+        #        for the GPU processes - even if those GPUs are not used by
+        #        a specific workload.  In this case we rewrite the node list and
+        #        substract the respective number of available cores per node.
+        if not self._oversubscribe:
+
+            if self._lrms_cores_per_node <= self._lrms_gpus_per_node:
+                raise RuntimeError('oversubscription mode requires more cores')
+
+            self._lrms_cores_per_node -= self._lrms_gpus_per_node
+
+            # since we just changed this fundamental setting, we need to
+            # recreate the nodelist.
+            self.nodes = []
+            for node, node_uid in self._lrms_node_list:
+                self.nodes.append({
+                    'name' : node,
+                    'uid'  : node_uid,
+                    'cores': [rpc.FREE] * self._lrms_cores_per_node,
+                    'gpus' : [rpc.FREE] * self._lrms_gpus_per_node
+                })
 
 
     # --------------------------------------------------------------------------
     #
-    def slot_status(self):
-        """Returns a multi-line string corresponding to slot status.
-        """
+    def _allocate_slot(self, cud):
+        '''
+        This is the main method of this implementation, and is triggered when
+        a unit needs to be mapped to a set of cores / gpus.  We make
+        a distinction between MPI and non-MPI units (non-MPI processes MUST be
+        on the same node).
+        '''
 
-        slot_matrix = ""
-        for slot in self.slots:
-            slot_matrix += "|"
-            for core in slot['cores']:
-                if core == rpc.FREE:
-                    slot_matrix += "-"
-                else:
-                    slot_matrix += "+"
-        slot_matrix += "|"
-        return {'timestamp' : time.time(),
-                'slotstate' : slot_matrix}
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _allocate_slot(self, cores_requested):
-
-        # TODO: single_node should be enforced for e.g. non-message passing
-        #       tasks, but we don't have that info here.
-        if cores_requested <= self._lrms_cores_per_node:
-            single_node = True
+        # single_node allocation is enforced for non-message passing tasks
+        if  cud['cpu_process_type'] == 'MPI' or \
+            cud['gpu_process_type'] == 'MPI' :
+            slots = self._alloc_mpi(cud)
         else:
-            single_node = False
+            slots = self._alloc_nompi(cud)
 
-        # Given that we are the continuous scheduler, this is fixed.
-        # TODO: Argument can be removed altogether?
-        continuous = True
+        if slots:
+            # the unit was placed, we need to reflect the allocation in the
+            # nodelist state (BUSY)
+            self._change_slot_states(slots, rpc.BUSY)
 
-        # Switch between searching for continuous or scattered slots
-        # Switch between searching for single or multi-node
-        if single_node:
-            if continuous:
-                task_slots = self._find_slots_single_cont(cores_requested)
-            else:
-                raise NotImplementedError('No scattered single node scheduler implemented yet.')
+        return slots
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _release_slot(self, slots):
+        '''
+        This method is called when previously aquired resources are not needed
+        anymore.  `slots` are the resource slots as previously returned by
+        `_allocate_slots()`.
+        '''
+
+        # reflect the request in the nodelist state (set to `FREE`)
+        self._change_slot_states(slots, rpc.FREE)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _find_resources(self, node, requested_cores, requested_gpus, 
+                        chunk=1, partial=False):
+        '''
+        Find up to the requested number of free cores and gpus in the node.
+        This call will return two lists, for each matched set.  If the core does
+        not have sufficient free resources to fulfill *both* requests, two
+        empty lists are returned.  The call will *not* change the allocation
+        status of the node, atomicity must be guaranteed by the caller.
+
+        We don't care about continuity within a single node - cores `[1,5]` are
+        assumed to be as close together as cores `[1,2]`.
+
+        When `chunk` is set, only sets of exactly that size (or multiples
+        thereof) are considered valid allocations.  The use case is OpenMP
+        support, where each process is expected to create a certain number of
+        threads, which thus must have slots on the same node available.
+
+        NOTE: chunking is only applied to cores at this point.
+
+        When `partial` is set to `True`, this method is allowed to return
+        a *partial* match, so to find less cores and gpus then requested (but
+        the call will never return more than requested).
+        '''
+
+        # list of core and gpu ids available in this node.
+        cores = list()
+        gpus  = list()
+
+        # first count the number of free cores and gpus. This is
+        # way quicker than actually finding the core IDs.
+        free_cores = node['cores'].count(rpc.FREE)
+        free_gpus  = node['gpus' ].count(rpc.FREE)
+
+        if partial:
+            # For partial requests the check simpliefies: we just check if we
+            # have either, some cores *or* gpus, to serve the request
+            if  (requested_cores and not free_cores) and \
+                (requested_gpus  and not free_gpus )     :
+                return [], []
+
         else:
-            if continuous:
-                task_slots = self._find_slots_multi_cont(cores_requested)
-            else:
-                raise NotImplementedError('No scattered multi node scheduler implemented yet.')
-
-        if not task_slots:
-            # allocation failed
-            return {}
-
-        self._change_slot_states(task_slots, rpc.BUSY)
-        task_offsets = self.slots2offset(task_slots)
-
-        return {'task_slots'   : task_slots,
-                'task_offsets' : task_offsets,
-                'lm_info'      : self._lrms_lm_info}
+            # For non-partial requests (ie. full requests): its a no-match if
+            # either the cpu or gpu request cannot be served.
+            if  requested_cores > free_cores or \
+                requested_gpus  > free_gpus     :
+                return [], []
 
 
-    # --------------------------------------------------------------------------
-    #
-    # Convert a set of slots into an index into the global slots list
-    #
-    def slots2offset(self, task_slots):
-        # TODO: This assumes all hosts have the same number of cores
+        # We can serve the partial or full request - alloc the chunks we need
+        # FIXME: chunk gpus, too?
+        alloc_cores = min(requested_cores, free_cores) / chunk * chunk
+        alloc_gpus  = min(requested_gpus , free_gpus )
 
-        first_slot = task_slots[0]
-        # Get the host and the core part
-        [first_slot_host, first_slot_core] = first_slot.split(':')
-        # Find the entry in the the all_slots list based on the host
-        slot_entry = (slot for slot in self.slots if slot["node"] == first_slot_host).next()
-        # Transform it into an index in to the all_slots list
-        all_slots_slot_index = self.slots.index(slot_entry)
+        # now dig out the core and gpu IDs.
+        for idx,state in enumerate(node['cores']):
 
-        return all_slots_slot_index * self._lrms_cores_per_node + int(first_slot_core)
+            # break if we have enough cores, else continue to pick FREE ones
+            if alloc_cores == len(cores):
+                break
+            if state == rpc.FREE:
+                cores.append(idx)
+
+        for idx,state in enumerate(node['gpus']):
+
+            # break if we have enough gpus, else continue to pick FREE ones
+            if alloc_gpus == len(gpus):
+                break
+            if state == rpc.FREE:
+                gpus.append(idx)
+
+        return cores, gpus
 
 
     # --------------------------------------------------------------------------
     #
-    def _release_slot(self, opaque_slots):
+    def _alloc_nompi(self, cud):
+        '''
+        Find a suitable set of cores and gpus *within a single node*.
 
-        if not 'task_slots' in opaque_slots:
-            raise RuntimeError('insufficient information to release slots via %s: %s' \
-                    % (self.uid, opaque_slots))
+        Input:
+        cud: Compute Unit description. Needs to specify at least one CPU
+        process and one thread per CPU process, or one GPU process.
+        '''
 
-        self._change_slot_states(opaque_slots['task_slots'], rpc.FREE)
+        # dig out the allocation request details
+        requested_procs  = cud['cpu_processes']
+        threads_per_proc = cud['cpu_threads']
+        requested_gpus   = cud['gpu_processes']
 
+        # make sure that processes are at least single-threaded
+        if not threads_per_proc:
+            threads_per_proc = 1
 
-    # --------------------------------------------------------------------------
-    #
-    # Find a needle (continuous sub-list) in a haystack (list)
-    #
-    def _find_sublist(self, haystack, needle):
-        n = len(needle)
-        # Find all matches (returns list of False and True for every position)
-        hits = [(needle == haystack[i:i+n]) for i in xrange(len(haystack)-n+1)]
-        try:
-            # Grab the first occurrence
-            index = hits.index(True)
-        except ValueError:
-            index = None
+        # cores needed for all threads and processes
+        requested_cores = requested_procs * threads_per_proc
 
-        return index
+        # make sure that the requested allocation fits on a single node
+        if  requested_cores > self._lrms_cores_per_node or \
+            requested_gpus  > self._lrms_gpus_per_node     :
+            raise ValueError('Non-mpi unit does not fit onto single node')
 
+        # ok, we can go ahead and try to find a matching node
+        cores     = list()
+        gpus      = list()
+        node_name = None
+        node_uid  = None
 
-    # --------------------------------------------------------------------------
-    #
-    # Transform the number of cores into a continuous list of "status"es,
-    # and use that to find a sub-list.
-    #
-    def _find_cores_cont(self, slot_cores, cores_requested, status):
-        return self._find_sublist(slot_cores, [status for _ in range(cores_requested)])
+        for node in self.nodes:  # FIXME optimization: iteration start
 
+            # attempt to find the required number of cores and gpus on this
+            # node - do not allow partial matches.
+            cores, gpus = self._find_resources(node, requested_cores, requested_gpus,
+                                               partial=False)
 
-    # --------------------------------------------------------------------------
-    #
-    # Find an available continuous slot within node boundaries.
-    #
-    def _find_slots_single_cont(self, cores_requested):
+            if  len(cores) == requested_cores and \
+                len(gpus)  == requested_gpus      :
+                # we found the needed resources - break out of search loop
+                node_uid  = node['uid']
+                node_name = node['name']
+                break
 
-        for slot in self.slots:
-            slot_node = slot['node']
-            slot_cores = slot['cores']
-
-            slot_cores_offset = self._find_cores_cont(slot_cores,
-                    cores_requested, rpc.FREE)
-
-            if slot_cores_offset is not None:
-              # self._log.info('Node %s satisfies %d cores at offset %d',
-              #               slot_node, cores_requested, slot_cores_offset)
-                return ['%s:%d' % (slot_node, core) for core in
-                        range(slot_cores_offset, slot_cores_offset + cores_requested)]
-
-        return None
-
-
-    # --------------------------------------------------------------------------
-    #
-    # Find an available continuous slot across node boundaries.
-    #
-    def _find_slots_multi_cont(self, cores_requested):
-
-        # Convenience aliases
-        cores_per_node = self._lrms_cores_per_node
-        all_slots = self.slots
-
-        # Glue all slot core lists together
-        all_slot_cores = [core for node in [node['cores'] for node in all_slots] for core in node]
-        # self._log.debug("all_slot_cores: %s", all_slot_cores)
-
-        # Find the start of the first available region
-        all_slots_first_core_offset = self._find_cores_cont(all_slot_cores, 
-                cores_requested, rpc.FREE)
-        self._log.debug("all_slots_first_core_offset: %s", all_slots_first_core_offset)
-        if all_slots_first_core_offset is None:
+        # If we did not find any node to host this request, return `None`
+        if not cores and not gpus:
             return None
 
-        # Determine the first slot in the slot list
-        first_slot_index = all_slots_first_core_offset / cores_per_node
-        self._log.debug("first_slot_index: %s", first_slot_index)
-        # And the core offset within that node
-        first_slot_core_offset = all_slots_first_core_offset % cores_per_node
-        self._log.debug("first_slot_core_offset: %s", first_slot_core_offset)
+        # We have to communicate to the launcher where exactly processes are to
+        # be placed, and what cores are reserved for application threads.  See
+        # the top level comment of `base.py` for details on the data structure
+        # used to specify process and thread to core mapping.
+        core_map, gpu_map = self._get_node_maps(cores, gpus, threads_per_proc)
 
-        # Note: We subtract one here, because counting starts at zero;
-        #       Imagine a zero offset and a count of 1, the only core used
-        #       would be core 0.
-        #       TODO: Verify this claim :-)
-        all_slots_last_core_offset = (first_slot_index * cores_per_node) +\
-                                     first_slot_core_offset + cores_requested - 1
-        self._log.debug("all_slots_last_core_offset: %s", all_slots_last_core_offset)
-        last_slot_index = (all_slots_last_core_offset) / cores_per_node
-        self._log.debug("last_slot_index: %s", last_slot_index)
-        last_slot_core_offset = all_slots_last_core_offset % cores_per_node
-        self._log.debug("last_slot_core_offset: %s", last_slot_core_offset)
-
-        # Convenience aliases
-        last_slot = self.slots[last_slot_index]
-        self._log.debug("last_slot: %s", last_slot)
-        last_node = last_slot['node']
-        self._log.debug("last_node: %s", last_node)
-        first_slot = self.slots[first_slot_index]
-        self._log.debug("first_slot: %s", first_slot)
-        first_node = first_slot['node']
-        self._log.debug("first_node: %s", first_node)
-
-        # Collect all node:core slots here
-        task_slots = []
-
-        # Add cores from first slot for this unit
-        # As this is a multi-node search, we can safely assume that we go
-        # from the offset all the way to the last core.
-        task_slots.extend(['%s:%d' % (first_node, core) for core in
-                           range(first_slot_core_offset, cores_per_node)])
-
-        # Add all cores from "middle" slots
-        for slot_index in range(first_slot_index+1, last_slot_index):
-            slot_node = all_slots[slot_index]['node']
-            task_slots.extend(['%s:%d' % (slot_node, core) for core in range(0, cores_per_node)])
-
-        # Add the cores of the last slot
-        task_slots.extend(['%s:%d' % (last_node, core) for core in range(0, last_slot_core_offset+1)])
-
-        return task_slots
+        # all the information for placing the unit is acquired - return them
+        slots = {'nodes'         : [[node_name, node_uid, core_map, gpu_map]],
+                 'cores_per_node': self._lrms_cores_per_node,
+                 'gpus_per_node' : self._lrms_gpus_per_node,
+                 'lm_info'       : self._lrms_lm_info
+                 }
+        return slots
 
 
     # --------------------------------------------------------------------------
     #
-    # Change the reserved state of slots (rpc.FREE or rpc.BUSY)
     #
-    def _change_slot_states(self, task_slots, new_state):
+    def _alloc_mpi(self, cud):
+        ''''
+        Find an available set of slots, potentially across node boundaries.  By
+        default, we only allow for partial allocations on the first and last
+        node - but all intermediate nodes MUST be completely used (this is the
+        'CONTINUOUS' scheduler after all).
 
-        # Convenience alias
-        all_slots = self.slots
+        If the scheduler is configured with `scattered=True`, then that
+        constraint is relaxed, and any set of slots (be it continuous across
+        nodes or not) is accepted as valid allocation.
 
-        # self._log.debug("change_slot_states: unit slots: %s", task_slots)
+        No matter the mode, we always make sure that we allocate in chunks of
+        'threads_per_proc', as otherwise the application would not be able to
+        spawn the requested number of threads on the respective node.
+        '''
 
-        for slot in task_slots:
-            # self._log.debug("change_slot_states: slot content: %s", slot)
-            # Get the node and the core part
-            [slot_node, slot_core] = slot.split(':')
-            # Find the entry in the the all_slots list
-            slot_entry = (slot for slot in all_slots if slot["node"] == slot_node).next()
-            # Change the state of the slot
-            slot_entry['cores'][int(slot_core)] = new_state
+        # dig out the allocation request details
+        requested_procs  = cud['cpu_processes']
+        threads_per_proc = cud['cpu_threads']
+        requested_gpus   = cud['gpu_processes']
+
+        # make sure that processes are at least single-threaded
+        if not threads_per_proc:
+            threads_per_proc = 1
+
+        # cores needed for all threads and processes
+        requested_cores = requested_procs * threads_per_proc
+
+        # First and last nodes can be a partial allocation - all other nodes can
+        # only be partial when `scattered` is set.
+        #
+        # Iterate over all nodes until we find something. Check if it fits the
+        # allocation mode and sequence.  If not, start over with the next node.
+        # If it matches, add the slots found and continue to next node.
+        #
+        # FIXME: persistent node index
+        #
+        # Things are complicated by chunking: we only accept chunks of
+        # 'threads_per_proc', as otherwise threads would need to be distributed
+        # over nodes, which is not possible for the multi-system-image clusters
+        # this scheduler assumes.
+        #
+        #   - requested_cores > cores_per_node
+        #   - cores_per_node  % threads_per_proc != 0
+        #   - scattered is False
+        #
+        # but it can fail for less cores, too, if the partial first and last
+        # allocation are not favorable.  We thus raise an exception for
+        # requested_cores > cores_per_node on impossible full-node-chunking
+
+        cores_per_node = self._lrms_cores_per_node
+        gpus_per_node  = self._lrms_gpus_per_node
+
+        if  requested_cores  > cores_per_node   and \
+            cores_per_node   % threads_per_proc and \
+            self._scattered is False:
+            raise ValueError('cannot allocate under given constrains')
+
+        # we always fail when too many threads are requested
+        if threads_per_proc > cores_per_node:
+            raise ValueError('too many threads requested')
+
+        # set conditions to find the first matching node
+        is_first      = True
+        is_last       = False
+        alloced_cores = 0
+        alloced_gpus  = 0
+        slots         = {'nodes'         : list(),
+                         'cores_per_node': cores_per_node,
+                         'gpus_per_node' : gpus_per_node,
+                         'lm_info'       : self._lrms_lm_info
+                         }
+
+        # start the search
+        for node in self.nodes:
+
+            node_uid  = node['uid']
+            node_name = node['name']
+
+            # if only a small set of cores/gpus remains unallocated (ie. less
+            # than node size), we are in fact looking for the last node.  Note
+            # that this can also be the first node, for small units.
+            if  requested_cores - alloced_cores <= cores_per_node and \
+                requested_gpus  - alloced_gpus  <= gpus_per_node      :
+                is_last = True
+
+            # we allow partial nodes on the first and last node, and on any
+            # node if a 'scattered' allocation is requested.
+            if is_first or self._scattered or is_last: partial = True
+            else                                     : partial = False
+
+            # now we know how many cores/gpus we still need at this point - but
+            # we only search up to node-size on this node.  Duh!
+            find_cores  = min(requested_cores - alloced_cores, cores_per_node)
+            find_gpus   = min(requested_gpus  - alloced_gpus,  gpus_per_node )
+
+            # under the constraints so derived, check what we find on this node
+            cores, gpus = self._find_resources(node, find_cores, find_gpus,
+                                               chunk=threads_per_proc,
+                                               partial=partial)
+
+
+            # and check the result.
+            if not cores and not gpus:
+
+                # this was not a match. If we are in  'scattered' mode, we just
+                # ignore this node.  Otherwise we have to restart the search.
+                if not self._scattered:
+                    is_first       = True
+                    is_last        = False
+                    alloced_cores  = 0
+                    alloced_gpus   = 0
+                    slots['nodes'] = list()
+
+                # try next node
+                continue
+
+            # we found something - add to the existing allocation, switch gears
+            # (not first anymore), and try to find more if needed
+            self._log.debug('found %s cores, %s gpus', cores, gpus)
+            core_map, gpu_map = self._get_node_maps(cores, gpus, threads_per_proc)
+            slots['nodes'].append([node_name, node_uid, core_map, gpu_map])
+
+            alloced_cores += len(cores)
+            alloced_gpus  += len(gpus)
+            is_first       = False
+
+            # or maybe don't continue the search if we have in fact enough!
+            if  alloced_cores == requested_cores and \
+                alloced_gpus  == requested_gpus      :
+                # we are done
+                break
+
+        # if we did not find enough, there is not much we can do at this point
+        if  alloced_cores < requested_cores or \
+            alloced_gpus  < requested_gpus     :
+            return None # signal failure
+
+        # this should be nicely filled out now - return
+        return slots
 
 
 # ------------------------------------------------------------------------------

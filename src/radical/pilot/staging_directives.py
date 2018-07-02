@@ -6,6 +6,7 @@ import radical.utils as ru
 
 from .constants import *
 
+
 # ------------------------------------------------------------------------------
 #
 def expand_description(descr):
@@ -30,8 +31,8 @@ def expand_description(descr):
     method to be called only once during unit construction.
     """
 
-    if None == descr.get('input_staging') : descr['input_staging']  = list()
-    if None == descr.get('output_staging'): descr['output_staging'] = list()
+    if descr.get('input_staging')  is None: descr['input_staging']  = list()
+    if descr.get('output_staging') is None: descr['output_staging'] = list()
 
     descr['input_staging' ] = expand_staging_directives(descr['input_staging' ])
     descr['output_staging'] = expand_staging_directives(descr['output_staging'])
@@ -43,8 +44,6 @@ def expand_staging_directives(sds):
     """
     Take an abbreviated or compressed staging directive and expand it.
     """
-
-    log = ru.get_logger('radical.pilot.utils')
 
     if not sds:
         return []
@@ -60,7 +59,6 @@ def expand_staging_directives(sds):
             # differs depending of redirection characters being present in the
             # string.
 
-            append = False
             if   '>>' in sd: src, tgt = sd.split('>>', 2)
             elif '>'  in sd: src, tgt = sd.split('>' , 2)
             elif '<<' in sd: tgt, src = sd.split('<<', 2)
@@ -90,6 +88,21 @@ def expand_staging_directives(sds):
 
             if not source:
                 raise Exception("Staging directive dict has no source member!")
+
+            # RCT flags should always be rendered as OR'ed integers - but old
+            # versions of the RP API rendered them as list of strings.  We
+            # convert to the integer version for backward compatibility - but we
+            # complain loudly if we find actual strings.
+            if isinstance(flags, list):
+                int_flags = 0
+                for flag in flags:
+                    if isinstance(flags, basestring):
+                        raise ValueError('"%s" is no valid RP constant' % flag)
+                    int_flags != flag
+                flags = int_flags
+
+            elif isinstance(flags, basestring):
+                raise ValueError('use RP constants for staging flags!')
 
             expanded = {'uid':      ru.generate_id('sd'),
                         'source':   source,
@@ -130,6 +143,9 @@ def complete_url(path, context, log=None):
         * `pilot://`   : the pilot sandbox on the target resource
         * `unit://`    : the unit  sandbox on the target resource
 
+    For the above schemas, we interpret `schema://` the same as `schema:///`,
+    ie. we treat this as a namespace, not as location qualified by a hostname.
+
     The `context` parameter is expected to be a dict which provides a set of
     URLs to be used to expand the path.
 
@@ -141,7 +157,7 @@ def complete_url(path, context, log=None):
     '''
 
     # FIXME: consider evaluation of env vars
-    
+
     purl = ru.Url(path)
 
     log.debug('<- %s (%s)', path, type(path))
@@ -166,21 +182,28 @@ def complete_url(path, context, log=None):
     if schema == 'client': 
         # 'client' is 'pwd' in client context.  
         # We don't check context though.
-       schema = 'pwd'  
+        schema = 'pwd'  
 
     log.debug('   %s', schema)
-    if schema in ['resource', 'pilot', 'unit', 'pwd']:
+    if schema in context.keys():
+
+        # we interpret any hostname as part of the path element
+        if   purl.host and purl.path: ppath = '%s/%s' % (purl.host, purl.path)
+        elif purl.host              : ppath =    '%s' % (           purl.host)
+        elif purl.path              : ppath =    '%s' % (           purl.path)
+        else                        : ppath =     '.'
+
         if schema not in context:
             raise ValueError('cannot expand schema (%s) for staging' % schema)
 
         log.debug('   expand with %s', context[schema])
-        ret       = ru.Url(context[schema])
+        ret = ru.Url(context[schema])
 
         if schema in ['resource', 'pilot']:
             # use a dedicated staging area dir
             ret.path += '/staging_area'
 
-        ret.path += '/%s' % purl.path
+        ret.path += '/%s' % ppath
         purl      = ret
 
     # if not schema is set, assume file:// on localhost
@@ -189,6 +212,7 @@ def complete_url(path, context, log=None):
 
     log.debug('-> %s', purl)
     return purl
+
 
 # ------------------------------------------------------------------------------
 

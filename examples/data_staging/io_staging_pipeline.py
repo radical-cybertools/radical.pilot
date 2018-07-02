@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
-    session = rp.Session(name=session_name)
+    session = rp.Session(uid=session_name)
     print "session id: %s" % session.uid
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
@@ -92,7 +92,7 @@ if __name__ == "__main__":
         # a UnitManager object.
         umgr = rp.UnitManager(
             session=session,
-            scheduler=rp.SCHED_DIRECT_SUBMISSION)
+            scheduler=rp.SCHEDULER_DIRECT_SUBMISSION)
         umgr.register_callback(unit_state_cb, rp.UNIT_STATE)
 
         # Add the previously created ComputePilot to the UnitManager.

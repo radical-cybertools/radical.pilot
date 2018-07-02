@@ -27,8 +27,10 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
     if not log and session:
         log = session._log
+        rep = session._rep
     elif not log:
-        log = ru.get_logger('radical.pilot.utils')
+        log = ru.Logger('radical.pilot.utils')
+        rep = ru.Reporter('radical.pilot.utils')
 
     ret = list()
 
@@ -111,9 +113,10 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
             PROFILES_TARBALL = '%s.prof.tgz' % pilot['uid']
             tarball_available = False
             try:
-                if sandbox.is_file(PROFILES_TARBALL):
-                    log.warn("Profiles tarball exists")
+                if  sandbox.is_file(PROFILES_TARBALL) and \
+                    sandbox.get_size(PROFILES_TARBALL):
 
+                    log.info("profiles tarball exists")
                     ftgt = saga.Url('%s/%s' % (tgt_url, PROFILES_TARBALL))
 
                     if skip_existing and os.path.isfile(ftgt.path) \
@@ -158,15 +161,15 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
                     log.warn('could not extract tarball %s [%s]', ftgt.path, e)
 
                 # If extract succeeded, no need to fetch individual profiles
-                log.report.ok("+ %s (profiles)\n" % pilot['uid'])
+                rep.ok("+ %s (profiles)\n" % pilot['uid'])
                 continue
 
             # If we dont have a tarball (for whichever reason), fetch individual profiles
             profiles = sandbox.list('*.prof')
             for prof in profiles:
 
-                ret.append("%s" % ftgt.path)
                 ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['uid'], prof))
+                ret.append("%s" % ftgt.path)
 
                 if skip_existing and os.path.isfile(ftgt.path) \
                                  and os.stat(ftgt.path).st_size > 0:
@@ -176,10 +179,10 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
                     prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
                     prof_file.close()
 
-            log.report.ok("+ %s (profiles)\n" % pilot['uid'])
+            rep.ok("+ %s (profiles)\n" % pilot['uid'])
 
         except Exception as e:
-            log.report.error("- %s (profiles)\n" % pilot['uid'])
+            rep.error("- %s (profiles)\n" % pilot['uid'])
             log.exception('failed to fet profile for %s', pilot['uid'])
 
     return ret
@@ -199,8 +202,10 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
 
     if not log and session:
         log = session._log
+        rep = session._rep
     elif not log:
-        log = ru.get_logger('radical.pilot.utils')
+        log = ru.Logger('radical.pilot.utils')
+        rep = ru.Reporter('radical.pilot.utils')
 
     ret = list()
 
@@ -270,25 +275,26 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
             sandbox  = saga.filesystem.Directory (sandbox_url, session=session)
 
             # Try to fetch a tarball of logfiles, so that we can get them all in one (SAGA) go!
-            LOGILES_TARBALL   = '%s.log.tgz' % pilot['uid']
+            LOGFILES_TARBALL  = '%s.log.tgz' % pilot['uid']
             tarball_available = False
             try:
-                if sandbox.is_file(LOGILES_TARBALL):
+                if  sandbox.is_file(LOGFILES_TARBALL) and \
+                    sandbox.get_size(LOGFILES_TARBALL):
 
                     log.info("logfiles tarball exists")
-                    ftgt = saga.Url('%s/%s' % (tgt_url, LOGILES_TARBALL))
+                    ftgt = saga.Url('%s/%s' % (tgt_url, LOGFILES_TARBALL))
 
                     if skip_existing and os.path.isfile(ftgt.path) \
                             and os.stat(ftgt.path).st_size > 0:
 
                         log.info("Skip fetching of '%s/%s' to '%s'.", 
-                                 sandbox_url, LOGILES_TARBALL, tgt_url)
+                                 sandbox_url, LOGFILES_TARBALL, tgt_url)
                         tarball_available = True
                     else:
 
                         log.info("Fetching '%s%s' to '%s'.", 
-                                sandbox_url, LOGILES_TARBALL, tgt_url)
-                        log_file = saga.filesystem.File("%s%s" % (sandbox_url, LOGILES_TARBALL), session=session)
+                                sandbox_url, LOGFILES_TARBALL, tgt_url)
+                        log_file = saga.filesystem.File("%s%s" % (sandbox_url, LOGFILES_TARBALL), session=session)
                         log_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
                         log_file.close()
 
@@ -322,15 +328,15 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
                     log.warn('could not extract tarball %s [%s]', ftgt.path, e)
 
                 # If extract succeeded, no need to fetch individual logfiles
-                log.report.ok("+ %s (logfiles)\n" % pilot['uid'])
+                rep.ok("+ %s (logfiles)\n" % pilot['uid'])
                 continue
 
             # If we dont have a tarball (for whichever reason), fetch individual logfiles
             logfiles = sandbox.list('*.log')
 
-            for log in logfiles:
+            for logfile in logfiles:
 
-                ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['uid'], log))
+                ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['uid'], logfile))
                 ret.append("%s" % ftgt.path)
 
                 if skip_existing and os.path.isfile(ftgt.path) \
@@ -338,14 +344,14 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
 
                     continue
 
-                log_file = saga.filesystem.File("%s%s" % (sandbox_url, log), session=session)
+                log_file = saga.filesystem.File("%s%s" % (sandbox_url, logfile), session=session)
                 log_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
                 log_file.close()
 
-            log.report.ok("+ %s (logfiles)\n" % pilot['uid'])
+            rep.ok("+ %s (logfiles)\n" % pilot['uid'])
 
         except Exception as e:
-            log.report.error("- %s (logfiles)\n" % pilot['uid'])
+            rep.error("- %s (logfiles)\n" % pilot['uid'])
 
     return ret
 
@@ -361,8 +367,10 @@ def fetch_json(sid, dburl=None, tgt=None, skip_existing=False, session=None,
 
     if not log and session:
         log = session._log
+        rep = session._rep
     elif not log:
-        log = ru.get_logger('radical.pilot.utils')
+        log = ru.Logger('radical.pilot.utils')
+        rep = ru.Reporter('radical.pilot.utils')
 
     if not tgt:
         tgt = '.'
@@ -401,18 +409,8 @@ def fetch_json(sid, dburl=None, tgt=None, skip_existing=False, session=None,
 
         mongo.close()
 
-    log.report.ok("+ %s (json)\n" % sid)
+    rep.ok("+ %s (json)\n" % sid)
     return dst
-
-
-# ------------------------------------------------------------------------------
-#
-def inject_metadata(session, metadata):
-
-    if not session:
-        raise ValueError("No session specified.")
-
-    session.inject_metadata(metadata)
 
 
 # ------------------------------------------------------------------------------

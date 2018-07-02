@@ -86,8 +86,8 @@ class Pubsub(ru.Process):
 
         self._uid = "%s.%s" % (self._channel.replace('_', '.'), self._role)
         self._uid = ru.generate_id(self._uid)
-        self._log = self._session._get_logger(self._uid, 
-                         level=self._cfg.get('log_level', 'debug'))
+        self._log = self._session._get_logger(name=self._uid, 
+                         level=self._cfg.get('log_level'))
 
         # avoid superfluous logging calls in critical code sections
         if self._log.getEffectiveLevel() == 10: # logging.DEBUG:
@@ -206,8 +206,8 @@ class Pubsub(ru.Process):
         assert(self._role == PUBSUB_BRIDGE), 'only bridges can be started'
 
         self._uid = self._uid + '.child'
-        self._log = self._session._get_logger(self._uid, 
-                         level=self._cfg.get('log_level', 'debug'))
+        self._log = self._session._get_logger(name=self._uid, 
+                         level=self._cfg.get('log_level'))
 
         spt.setproctitle('rp.%s' % self._uid)
         self._log.info('start bridge %s on %s', self._uid, self._addr)
@@ -306,7 +306,7 @@ class Pubsub(ru.Process):
         assert(self._role == PUBSUB_PUB), 'incorrect role on put'
         assert(isinstance(msg,dict)),     'invalide message type'
 
-      # self._log.debug("?> %s" % pprint.pformat(msg))
+      # self._log.debug("?> %s", pprint.pformat(msg)
 
         topic = topic.replace(' ', '_')
         data  = msgpack.packb(msg) 

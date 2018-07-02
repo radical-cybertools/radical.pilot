@@ -81,7 +81,7 @@ class Popen(AgentExecutingComponent) :
         self.tmpdir = tempfile.gettempdir()
 
         # if we need to transplant any original env into the CU, we dig the
-        # respective keys from the dump made by bootstrap_1.sh
+        # respective keys from the dump made by bootstrap_0.sh
         self._env_cu_export = dict()
         if self._cfg.get('export_to_cu'):
             with open('env.orig', 'r') as f:
@@ -103,11 +103,11 @@ class Popen(AgentExecutingComponent) :
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'cancel_unit':
+        if cmd == 'cancel_units':
 
-            self._log.info("cancel unit command (%s)" % arg)
+            self._log.info("cancel_units command (%s)" % arg)
             with self._cancel_lock:
-                self._cus_to_cancel.append(arg)
+                self._cus_to_cancel.extend(arg['uids'])
 
         return True
 
@@ -174,20 +174,28 @@ class Popen(AgentExecutingComponent) :
     def _handle_unit(self, cu):
 
         ru.raise_on('work unit')
+      # import pprint
+      # self._log.info('handle cu: %s', pprint.pformat(cu))
 
         try:
-            if cu['description']['mpi']:
-                launcher = self._mpi_launcher
-            else :
-                launcher = self._task_launcher
+            # prep stdout/err so that we can append w/o checking for None
+            cu['stdout'] = ''
+            cu['stderr'] = ''
+
+            cpt = cu['description']['cpu_process_type']
+            gpt = cu['description']['gpu_process_type']  # FIXME: use
+
+            # FIXME: this switch is insufficient for mixed units (MPI/OpenMP)
+            if cpt == 'MPI': launcher = self._mpi_launcher
+            else           : launcher = self._task_launcher
 
             if not launcher:
-                raise RuntimeError("no launcher (mpi=%s)" % cu['description']['mpi'])
+                raise RuntimeError("no launcher (process type = %s)" % cpt)
 
-            self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
+            self._log.debug("Launching unit with %s (%s).",
+                            launcher.name, launcher.launch_command)
 
-            assert(cu['opaque_slots']) # FIXME: no assert, but check
-            self._prof.prof('exec', msg='unit launch', uid=cu['uid'])
+            assert(cu['slots'])
 
             # Start a new subprocess to launch the unit
             self.spawn(launcher=launcher, cu=cu)
@@ -198,11 +206,13 @@ class Popen(AgentExecutingComponent) :
             # by the unit), but it seems the most intuitive way to
             # communicate that error to the application/user.
             self._log.exception("error running CU")
+            if cu.get('stderr') is None:
+                cu['stderr'] = ''
             cu['stderr'] += "\nPilot cannot start compute unit:\n%s\n%s" \
                             % (str(e), traceback.format_exc())
 
             # Free the Slots, Flee the Flots, Ree the Frots!
-            if cu['opaque_slots']:
+            if cu.get('slots'):
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
@@ -212,41 +222,58 @@ class Popen(AgentExecutingComponent) :
     #
     def spawn(self, launcher, cu):
 
-        self._prof.prof('spawn', msg='unit spawn', uid=cu['uid'])
-
         # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
         #       class definition.
+        descr   = cu['description']
         sandbox = '%s/%s' % (self._pwd, cu['uid'])
 
         # make sure the sandbox exists
+        self._prof.prof('exec_mkdir', uid=cu['uid'])
         rpu.rec_makedir(sandbox)
-        launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % sandbox
+        self._prof.prof('exec_mkdir_done', uid=cu['uid'])
+        launch_script_name = '%s/%s.sh' % (sandbox, cu['uid'])
+
+        self._log.debug("Created launch_script: %s", launch_script_name)
 
         # prep stdout/err so that we can append w/o checking for None
         cu['stdout'] = ''
         cu['stderr'] = ''
-
-        self._log.debug("Created launch_script: %s", launch_script_name)
 
         with open(launch_script_name, "w") as launch_script:
             launch_script.write('#!/bin/sh\n\n')
 
             # Create string for environment variable setting
             env_string = ''
-            env_string += 'export RP_SESSION_ID="%s"\n' % self._cfg['session_id']
-            env_string += 'export RP_PILOT_ID="%s"\n'   % self._cfg['pilot_id']
-            env_string += 'export RP_AGENT_ID="%s"\n'   % self._cfg['agent_name']
-            env_string += 'export RP_SPAWNER_ID="%s"\n' % self.uid
-            env_string += 'export RP_UNIT_ID="%s"\n'    % cu['uid']
-            env_string += 'export RP_GTOD="%s"\n'       % self.gtod
-            env_string += 'export RP_PROF="%s/PROF"\n'  % sandbox
-            env_string += 'export RP_TMP="%s"\n'        % self._cu_tmp
+            env_string += 'export RP_SESSION_ID="%s"\n'   % self._cfg['session_id']
+            env_string += 'export RP_PILOT_ID="%s"\n'     % self._cfg['pilot_id']
+            env_string += 'export RP_AGENT_ID="%s"\n'     % self._cfg['agent_name']
+            env_string += 'export RP_SPAWNER_ID="%s"\n'   % self.uid
+            env_string += 'export RP_UNIT_ID="%s"\n'      % cu['uid']
+            env_string += 'export RP_GTOD="%s"\n'         % self.gtod
+            env_string += 'export RP_TMP="%s"\n'          % self._cu_tmp
+            if 'RADICAL_PILOT_PROFILE' in os.environ:
+                env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
+            else:
+                env_string += 'unset  RP_PROF"\n'
+
+            env_string += '''
+prof(){
+    if test -z "$RP_PROF"
+    then
+        return
+    fi
+    event=$1
+    now=$($RP_GTOD)
+    echo "$now,$event,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING," >> $RP_PROF
+}
+'''
+
+            # FIXME: this should be set by an LM filter or something (GPU)
+            env_string += 'export OMP_NUM_THREADS="%s"\n' % descr['cpu_threads']
 
             # also add any env vars requested for export by the resource config
             for k,v in self._env_cu_export.iteritems():
                 env_string += "export %s=%s\n" % (k,v)
-
-            descr = cu['description']
 
             # also add any env vars requested in the unit description
             if descr['environment']:
@@ -254,16 +281,9 @@ class Popen(AgentExecutingComponent) :
                     env_string += 'export "%s=%s"\n' % (key, val)
 
             launch_script.write('\n# Environment variables\n%s\n' % env_string)
-            launch_script.write('\ntouch $RP_PROF\n')
-
-            if 'RADICAL_PILOT_PROFILE' in os.environ:
-                launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,start_script," >> $RP_PROF\n' %  \
-                                    (cu['uid'], rps.AGENT_EXECUTING))
-
+            launch_script.write('prof cu_start\n')
             launch_script.write('\n# Change to unit sandbox\ncd %s\n' % sandbox)
-            if 'RADICAL_PILOT_PROFILE' in os.environ:
-                launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,after_cd," >> $RP_PROF\n' %  \
-                                    (cu['uid'], rps.AGENT_EXECUTING))
+            launch_script.write('prof cu_cd_done\n')
 
             # Before the Big Bang there was nothing
             if self._cfg.get('cu_pre_exec'):
@@ -277,13 +297,9 @@ class Popen(AgentExecutingComponent) :
                     pre += "%s || %s\n" % (elem, fail)
                 # Note: extra spaces below are for visual alignment
                 launch_script.write("\n# Pre-exec commands\n")
-                if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,pre_start," >> $RP_PROF\n' %  \
-                                        (cu['uid'], rps.AGENT_EXECUTING))
+                launch_script.write('prof cu_pre_start\n')
                 launch_script.write(pre)
-                if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,pre_stop," >> $RP_PROF\n' %  \
-                                        (cu['uid'], rps.AGENT_EXECUTING))
+                launch_script.write('prof cu_pre_stop\n')
 
             # The actual command line, constructed per launch-method
             try:
@@ -298,11 +314,10 @@ class Popen(AgentExecutingComponent) :
                 raise RuntimeError(msg)
 
             launch_script.write("\n# The command to run\n")
-            launch_script.write("%s\n" % launch_command)
-            launch_script.write("RETVAL=$?\n")
-            if 'RADICAL_PILOT_PROFILE' in os.environ:
-                launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,after_exec," >> $RP_PROF\n' %  \
-                                    (cu['uid'], rps.AGENT_EXECUTING))
+            launch_script.write('prof cu_exec_start\n')
+            launch_script.write('%s\n' % launch_command)
+            launch_script.write('RETVAL=$?\n')
+            launch_script.write('prof cu_exec_stop\n')
 
             # After the universe dies the infrared death, there will be nothing
             if descr['post_exec']:
@@ -311,21 +326,17 @@ class Popen(AgentExecutingComponent) :
                 for elem in descr['post_exec']:
                     post += "%s || %s\n" % (elem, fail)
                 launch_script.write("\n# Post-exec commands\n")
-                if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,post_start," >> $RP_PROF\n' %  \
-                                        (cu['uid'], rps.AGENT_EXECUTING))
+                launch_script.write('prof cu_post_start\n')
                 launch_script.write('%s\n' % post)
-                if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write('echo "`$RP_GTOD`,unit_script,%s,%s,post_stop," >> $RP_PROF\n' %  \
-                                        (cu['uid'], rps.AGENT_EXECUTING))
+                launch_script.write('prof cu_post_stop\n')
 
             launch_script.write("\n# Exit the script with the return code from the command\n")
+            launch_script.write("prof cu_stop\n")
             launch_script.write("exit $RETVAL\n")
 
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
-        self._prof.prof('command', msg='launch script constructed', uid=cu['uid'])
 
         # prepare stdout/stderr
         stdout_file = descr.get('stdout') or 'STDOUT'
@@ -336,26 +347,21 @@ class Popen(AgentExecutingComponent) :
 
         _stdout_file_h = open(cu['stdout_file'], "w")
         _stderr_file_h = open(cu['stderr_file'], "w")
-        self._prof.prof('command', msg='stdout and stderr files created', uid=cu['uid'])
 
         self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, sandbox)
 
-        cu['proc'] = subprocess.Popen(args               = cmdline,
-                                      bufsize            = 0,
-                                      executable         = None,
-                                      stdin              = None,
-                                      stdout             = _stdout_file_h,
-                                      stderr             = _stderr_file_h,
-                                      preexec_fn         = None,
-                                      close_fds          = True,
-                                      shell              = True,
-                                      cwd                = sandbox,
-                                    # env                = self._cu_environment,
-                                      universal_newlines = False,
-                                      startupinfo        = None,
-                                      creationflags      = 0)
+        self._prof.prof('exec_start', uid=cu['uid'])
+        cu['proc'] = subprocess.Popen(args       = cmdline,
+                                      executable = None,
+                                      stdin      = None,
+                                      stdout     = _stdout_file_h,
+                                      stderr     = _stderr_file_h,
+                                      preexec_fn = os.setsid,
+                                      close_fds  = True,
+                                      shell      = True,
+                                      cwd        = sandbox)
+        self._prof.prof('exec_ok', uid=cu['uid'])
 
-        self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['uid'])
         self._watch_queue.put(cu)
 
 
@@ -364,18 +370,15 @@ class Popen(AgentExecutingComponent) :
     def _watch(self):
 
         try:
-
             while not self._terminate.is_set():
 
                 cus = list()
-
                 try:
                     # we don't want to only wait for one CU -- then we would
                     # pull CU state too frequently.  OTOH, we also don't want to
                     # learn about CUs until all slots are filled, because then
                     # we may not be able to catch finishing CUs in time -- so
                     # there is a fine balance here.  Balance means 100 (FIXME).
-                  # self._prof.prof('ExecWorker popen watcher pull cu from queue')
                     MAX_QUEUE_BULKSIZE = 100
                     while len(cus) < MAX_QUEUE_BULKSIZE :
                         cus.append (self._watch_queue.get_nowait())
@@ -386,7 +389,6 @@ class Popen(AgentExecutingComponent) :
 
                 # add all cus we found to the watchlist
                 for cu in cus :
-                    self._prof.prof('passed', msg="ExecWatcher picked up unit", uid=cu['uid'])
                     self._cus_to_watch.append (cu)
 
                 # check on the known cus.
@@ -394,7 +396,8 @@ class Popen(AgentExecutingComponent) :
 
                 if not action and not cus :
                     # nothing happened at all!  Zzz for a bit.
-                    time.sleep(self._cfg['db_poll_sleeptime'])
+                    # FIXME: make configurable
+                    time.sleep(0.1)
 
         except Exception as e:
             self._log.exception("Error in ExecWorker watch loop (%s)" % e)
@@ -407,12 +410,10 @@ class Popen(AgentExecutingComponent) :
     def _check_running(self):
 
         action = 0
-
         for cu in self._cus_to_watch:
 
             # poll subprocess object
             exit_code = cu['proc'].poll()
-            now       = time.time()
 
             if exit_code is None:
                 # Process is still running
@@ -423,15 +424,17 @@ class Popen(AgentExecutingComponent) :
                     # above and the kill command below.  We probably should pull
                     # state after kill again?
 
+                    self._prof.prof('exec_cancel_start', uid=cu['uid'])
+
                     # We got a request to cancel this cu
                     action += 1
                     cu['proc'].kill()
-                    cu['proc'].wait() # make sure proc is collected
+                    cu['proc'].wait()  # make sure proc is collected
 
                     with self._cancel_lock:
                         self._cus_to_cancel.remove(cu['uid'])
 
-                    self._prof.prof('final', msg="execution canceled", uid=cu['uid'])
+                    self._prof.prof('exec_cancel_stop', uid=cu['uid'])
 
                     del(cu['proc'])  # proc is not json serializable
                     self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
@@ -441,7 +444,8 @@ class Popen(AgentExecutingComponent) :
                     self._cus_to_watch.remove(cu)
 
             else:
-                self._prof.prof('exec', msg='execution complete', uid=cu['uid'])
+
+                self._prof.prof('exec_stop', uid=cu['uid'])
 
                 # make sure proc is collected
                 cu['proc'].wait()
@@ -459,18 +463,18 @@ class Popen(AgentExecutingComponent) :
 
                 if exit_code != 0:
                     # The unit failed - fail after staging output
-                    self._prof.prof('final', msg="execution failed", uid=cu['uid'])
                     cu['target_state'] = rps.FAILED
 
                 else:
                     # The unit finished cleanly, see if we need to deal with
                     # output data.  We always move to stageout, even if there are no
                     # directives -- at the very least, we'll upload stdout/stderr
-                    self._prof.prof('final', msg="execution succeeded", uid=cu['uid'])
                     cu['target_state'] = rps.DONE
 
                 self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
 
         return action
 
+
+# ------------------------------------------------------------------------------
 
