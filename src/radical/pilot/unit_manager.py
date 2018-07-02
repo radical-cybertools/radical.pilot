@@ -290,7 +290,7 @@ class UnitManager(rpu.Component):
 
             self._log.debug('pilot %s is final - pull units', pilot.uid)
 
-            unit_cursor = self.session._dbs._c.find(spec={
+            unit_cursor = self.session._dbs._c.find({
                 'type'    : 'unit',
                 'pilot'   : pilot.uid,
                 'umgr'    : self.uid,
@@ -312,10 +312,11 @@ class UnitManager(rpu.Component):
             #        units.
             uids = [unit['uid'] for unit in units]
 
-            self._session._dbs._c.update(multi    = True,
-                            spec     = {'type'  : 'unit',
+            self._session._dbs._c.update(
+                            {'type'  : 'unit',
                                         'uid'   : {'$in'     : uids}},
-                            document = {'$set'  : {'control' : 'umgr'}})
+                            {'$set'  : {'control' : 'umgr'}},
+                            multi = True)
 
             to_restart = list()
 
@@ -382,7 +383,7 @@ class UnitManager(rpu.Component):
         #        again, we update the 'control' field *before* running the next
         #        find -- so we do it right here.
         tgt_states  = rps.FINAL + [rps.UMGR_STAGING_OUTPUT_PENDING]
-        unit_cursor = self.session._dbs._c.find(spec={
+        unit_cursor = self.session._dbs._c.find({
             'type'    : 'unit',
             'umgr'    : self.uid,
             'control' : 'umgr_pending'})
@@ -396,10 +397,11 @@ class UnitManager(rpu.Component):
         units = list(unit_cursor)
         uids  = [unit['uid'] for unit in units]
 
-        self._session._dbs._c.update(multi    = True,
-                        spec     = {'type'  : 'unit',
+        self._session._dbs._c.update(
+                        {'type'  : 'unit',
                                     'uid'   : {'$in'     : uids}},
-                        document = {'$set'  : {'control' : 'umgr'}})
+                        {'$set'  : {'control' : 'umgr'}},
+                        multi = True)
 
         self._log.info("units pulled: %4d %s", len(units), [u['uid'] for u in units])
         self._prof.prof('get', msg="bulk size: %d" % len(units), uid=self.uid)
