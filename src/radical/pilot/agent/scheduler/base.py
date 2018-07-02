@@ -462,7 +462,7 @@ class AgentSchedulingComponent(rpu.Component):
         if self._log.isEnabledFor(logging.DEBUG):
             self._log.debug("after  allocate   %s: %s", unit['uid'],
                             self.slot_status())
-            self._log.debug("%s [%s/%s] : %s [%s]", unit['uid'],
+            self._log.debug("%s [%s/%s] : %s", unit['uid'],
                             unit['description']['cpu_processes'],
                             unit['description']['gpu_processes'],
                             pprint.pformat(unit['slots']))
