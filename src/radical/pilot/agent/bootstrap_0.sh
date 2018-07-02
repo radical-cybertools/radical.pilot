@@ -1627,13 +1627,12 @@ fi
 
 # we also set up a tunnel for the application to use, if a respective endpoint
 # is requested in the environment
-echo "=== app tunnel addr $RP_APP_TUNNEL_ADDR"
 if ! test -z "$RP_APP_TUNNEL_ADDR"
 then
-    echo '=== setup app tunnel'
+    echo "app tunnel addr : $RP_APP_TUNNEL_ADDR"
     get_tunnel "$RP_APP_TUNNEL_ADDR"
     export RP_APP_TUNNEL="$RP_BS_TUNNEL"
-    echo "=== setup app tunnel $RP_APP_TUNNEL"
+    echo "app tunnel setup: $RP_APP_TUNNEL"
 fi
 
 
