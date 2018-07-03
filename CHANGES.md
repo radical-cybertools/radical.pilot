@@ -5,6 +5,13 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.50.0  Release                                                       2018-07-03
+--------------------------------------------------------------------------------
+
+  - GPU support
+  - many bug fixes
+
+
 0.47.14 Release                                                       2018-06-13
 --------------------------------------------------------------------------------
 
