@@ -587,7 +587,9 @@ class Default(PMGRLaunchingComponent):
             assert(schema == pilot['description'].get('access_schema')), \
                     'inconsistent scheme on launch / staging'
 
+        # get and expand sandboxes
         session_sandbox = self._session._get_session_sandbox(pilots[0]).path
+        session_sandbox = session_sandbox % expand
 
 
         # we will create the session sandbox before we untar, so we can use that
@@ -598,7 +600,7 @@ class Default(PMGRLaunchingComponent):
         ft_list = list()  # files to stage
         jd_list = list()  # jobs  to submit
         for pilot in pilots:
-            info = self._prepare_pilot(resource, rcfg, pilot)
+            info = self._prepare_pilot(resource, rcfg, pilot, expand)
             ft_list += info['ft']
             jd_list.append(info['jd'])
             self._prof.prof('staging_in_start', uid=pilot['uid'])
@@ -759,7 +761,7 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _prepare_pilot(self, resource, rcfg, pilot):
+    def _prepare_pilot(self, resource, rcfg, pilot, expand):
 
         pid = pilot["uid"]
         ret = {'ft' : list(),
@@ -829,13 +831,20 @@ class Default(PMGRLaunchingComponent):
                                  % (ma, resource))
 
         # get pilot and global sandbox
-        resource_sandbox = self._session._get_resource_sandbox (pilot).path
-        session_sandbox  = self._session._get_session_sandbox(pilot).path
-        pilot_sandbox    = self._session._get_pilot_sandbox  (pilot).path
+        resource_sandbox = self._session._get_resource_sandbox(pilot)
+        session_sandbox  = self._session._get_session_sandbox (pilot)
+        pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
+        client_sandbox   = self._session._get_client_sandbox  ()
 
-        pilot['resource_sandbox'] = str(self._session._get_resource_sandbox(pilot))
-        pilot['pilot_sandbox']    = str(self._session._get_pilot_sandbox(pilot))
-        pilot['client_sandbox']   = str(self._session._get_client_sandbox())
+        pilot['resource_sandbox'] = str(resource_sandbox) % expand
+        pilot['session_sandbox']  = str(session_sandbox)  % expand
+        pilot['pilot_sandbox']    = str(pilot_sandbox)    % expand
+        pilot['client_sandbox']   = str(client_sandbox)
+
+        resource_sandbox = resource_sandbox.path % expand
+        session_sandbox  = session_sandbox .path % expand
+        pilot_sandbox    = pilot_sandbox   .path % expand
+        client_sandbox   = client_sandbox  # not expanded
 
         # Agent configuration that is not part of the public API.
         # The agent config can either be a config dict, or

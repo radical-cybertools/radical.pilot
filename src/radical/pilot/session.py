@@ -17,10 +17,7 @@ __license__   = "MIT"
 import os
 import sys
 import copy
-import time
 import glob
-import copy
-import pprint
 import threading
 
 import radical.utils        as ru
@@ -28,12 +25,7 @@ import saga                 as rs
 import saga.utils.pty_shell as rsup
 
 from . import utils         as rpu
-from . import states        as rps
-from . import constants     as rpc
-from . import types         as rpt
 
-from .unit_manager    import UnitManager
-from .pilot_manager   import PilotManager
 from .resource_config import ResourceConfig
 from .db              import DBSession
 
@@ -153,7 +145,7 @@ class Session(rs.Session):
             self._cfg = copy.deepcopy(cfg)
         else:
             # otherwise we need a config
-            self._cfg = ru.read_json("%s/configs/session_%s.json" \
+            self._cfg = ru.read_json("%s/configs/session_%s.json"
                     % (os.path.dirname(__file__),
                        os.environ.get('RADICAL_PILOT_SESSION_CFG', 'default')))
 
@@ -257,11 +249,10 @@ class Session(rs.Session):
             # from here on we should be able to close the session again
             self._log.info("New Session created: %s." % self.uid)
 
-        except Exception, ex:
+        except Exception:
             self._rep.error(">>err\n")
-            self._log.exception('session create failed')
-            raise RuntimeError("Couldn't create new session (database URL '%s' incorrect?): %s" \
-                            % (dburl, ex))  
+            self._log.exception('session create failed [%s]', self._dburl)
+            raise RuntimeError("session create failed")
 
         # the session must not carry bridge and component handles across forks
         ru.atfork(self._atfork_prepare, self._atfork_parent, self._atfork_child)
@@ -305,7 +296,7 @@ class Session(rs.Session):
         self._to_stop    = list()
         self._to_destroy = list()
 
-    
+
     # --------------------------------------------------------------------------
     # Allow Session to function as a context manager in a `with` clause
     def __enter__(self):
@@ -467,8 +458,8 @@ class Session(rs.Session):
         self._prof.prof("session_close", uid=self._uid)
 
         # set defaults
-        if cleanup   == None: cleanup   = True
-        if terminate == None: terminate = True
+        if cleanup   is None: cleanup   = True
+        if terminate is None: terminate = True
 
         if  cleanup:
             # cleanup implies terminate
@@ -593,7 +584,6 @@ class Session(rs.Session):
         else        : return None
 
 
-    
     # --------------------------------------------------------------------------
     #
     @property
@@ -674,33 +664,6 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def _get_reporter(self, name):
-        """
-        This is a thin wrapper around `ru.Reporter()` which makes sure that
-        log files end up in a separate directory with the name of `session.uid`.
-        """
-
-        if not self._reporter:
-            self._reporter = ru.Reporter(name=name, ns='radical.pilot',
-                                         targets=['stdout'], path=self._logdir)
-        return self._reporter
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_profiler(self, name):
-        """
-        This is a thin wrapper around `ru.Profiler()` which makes sure that
-        log files end up in a separate directory with the name of `session.uid`.
-        """
-
-        prof = ru.Profiler(name=name, ns='radical.pilot', path=self._logdir)
-
-        return prof
-
-
-    # --------------------------------------------------------------------------
-    #
     def inject_metadata(self, metadata):
         """
         Insert (experiment) metadata into an active session
@@ -736,7 +699,8 @@ class Session(rs.Session):
         instances associated with this session.
 
         **Returns:**
-            * A list of :class:`radical.pilot.PilotManager` uids (`list` of `strings`).
+            * A list of :class:`radical.pilot.PilotManager` uids 
+              (`list` of `strings`).
         """
 
         self.is_valid()
@@ -871,16 +835,12 @@ class Session(rs.Session):
             rcs = ResourceConfig.from_file(resource_config)
 
             for rc in rcs:
-                self._log.info("Loaded resource configurations for %s" % rc)
+                self._log.info("load resource configurations for %s" % rc)
                 self._resource_configs[rc] = rcs[rc].as_dict() 
-                self._log.debug('add  rcfg for %s (%s)', 
-                        rc, self._resource_configs[rc].get('cores_per_node'))
 
         else:
+            self._log.debug('add  rcfg for %s', resource_config.label)
             self._resource_configs[resource_config.label] = resource_config.as_dict()
-            self._log.debug('Add  rcfg for %s (%s)', 
-                    resource_config.label, 
-                    self._resource_configs[resource_config.label].get('cores_per_node'))
 
     # -------------------------------------------------------------------------
     #
@@ -892,7 +852,7 @@ class Session(rs.Session):
         self.is_valid()
 
         if  resource in self._resource_aliases:
-            self._log.warning("using alias '%s' for deprecated resource key '%s'" \
+            self._log.warning("using alias '%s' for deprecated resource '%s'"
                               % (self._resource_aliases[resource], resource))
             resource = self._resource_aliases[resource]
 
@@ -907,7 +867,7 @@ class Session(rs.Session):
 
         if  schema:
             if  schema not in resource_cfg:
-                raise RuntimeError("schema %s unknown for resource %s" \
+                raise RuntimeError("schema %s unknown for resource %s"
                                   % (schema, resource))
 
             for key in resource_cfg[schema]:
@@ -991,42 +951,40 @@ class Session(rs.Session):
                 sandbox_raw = pilot['description'].get('sandbox')
                 if not sandbox_raw:
                     sandbox_raw = rcfg.get('default_remote_workdir', "$PWD")
-        
-                # If the sandbox contains expandables, we need to resolve those remotely.
-                # NOTE: Note that this will only work for (gsi)ssh or shell based access mechanisms
+
+                # If the sandbox contains expandables, we need to resolve those
+                # remotely.  
+                #
+                # NOTE: Note that this will only work for (gsi)ssh or shell
+                #       based access mechanisms
                 if '$' not in sandbox_raw and '`' not in sandbox_raw:
                     # no need to expand further
                     sandbox_base = sandbox_raw
 
                 else:
                     js_url = rs.Url(rcfg['job_manager_endpoint'])
-        
-                    if 'ssh' in js_url.schema.split('+'):
-                        js_url.schema = 'ssh'
-                    elif 'gsissh' in js_url.schema.split('+'):
-                        js_url.schema = 'gsissh'
-                    elif 'fork' in js_url.schema.split('+'):
-                        js_url.schema = 'fork'
-                    elif '+' not in js_url.schema:
-                        # For local access to queueing systems use fork
-                        js_url.schema = 'fork'
-                    else:
-                        raise Exception("unsupported access schema: %s" % js_url.schema)
-        
+                    elems  = js_url.schema.split('+')
+
+                    if   'ssh'    in elems: js_url.schema = 'ssh'
+                    elif 'gsissh' in elems: js_url.schema = 'gsissh'
+                    elif 'fork'   in elems: js_url.schema = 'fork'
+                    elif len(elems) == 1  : js_url.schema = 'fork'
+                    else: raise Exception("invalid schema: %s" % js_url.schema)
+
                     self._log.debug("rsup.PTYShell('%s')", js_url)
                     shell = rsup.PTYShell(js_url, self)
-        
+
                     ret, out, err = shell.run_sync(' echo "WORKDIR: %s"' % sandbox_raw)
                     if ret == 0 and 'WORKDIR:' in out:
                         sandbox_base = out.split(":")[1].strip()
                         self._log.debug("sandbox base %s: '%s'", js_url, sandbox_base)
                     else:
                         raise RuntimeError("Couldn't get remote working directory.")
-        
+
                 # at this point we have determined the remote 'pwd' - the global sandbox
                 # is relative to it.
                 fs_url.path = "%s/radical.pilot.sandbox" % sandbox_base
-        
+
                 # before returning, keep the URL string in cache
                 self._cache['resource_sandbox'][resource] = fs_url
 
@@ -1166,7 +1124,7 @@ class Session(rs.Session):
         github = github3.login(user, passwd)
         repo   = github.repository("radical-cybertools", "radical.pilot")
 
-        title = 'autopilot: %s' % titles[random.randint(0, len(titles)-1)]
+        title = 'autopilot: %s' % titles[random.randint(0, len(titles) - 1)]
 
         print '----------------------------------------------------'
         print 'autopilot'
@@ -1187,5 +1145,5 @@ class Session(rs.Session):
         print '----------------------------------------------------'
 
 
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
