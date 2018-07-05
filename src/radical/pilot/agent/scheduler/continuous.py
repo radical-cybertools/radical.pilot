@@ -74,6 +74,10 @@ def dec_all_methods(dec):
 #
 @dec_all_methods(cprof_it)
 class Continuous(AgentSchedulingComponent):
+    '''
+    The Continuous scheduler attempts to place threads and processes of
+    a compute units onto consecutive cores, gpus and nodes in the cluster.
+    '''
 
     # --------------------------------------------------------------------------
     #
@@ -102,28 +106,47 @@ class Continuous(AgentSchedulingComponent):
     #
     def _configure(self):
 
-        # TODO: use real core/gpu numbers for non-exclusive reservations
-        #
+        if not self._lrms_node_list:
+            raise RuntimeError("LRMS %s didn't _configure node_list." % \
+                               self._lrms_info['name'])
+
+        if not self._lrms_cores_per_node:
+            raise RuntimeError("LRMS %s didn't _configure cores_per_node." % \
+                               self._lrms_info['name'])
+
+        if not self._lrms_gpus_per_node:
+            raise RuntimeError("LRMS %s didn't _configure gpus_per_node." % \
+                               self._lrms_info['name'])
+
         # * oversubscribe:
         #   Cray's aprun for example does not allow us to oversubscribe CPU
         #   cores on a node, so we can't, say, run n CPU processes on an n-core
         #   node, and than add one additional process for a GPU application.
         # If oversubscribe` is set to False (which is the default for now),
         #   we'll prevent that behavior by allocating one additional CPU core
-        #   for each requested GPU process.
-        #
+        #   for each set of requested GPU processes.
+        #   FIXME: I think our scheme finds the wrong core IDs for GPU process
+        #          startup - i.e. not the reserved ones.
+        self._oversubscribe = self._cfg.get('oversubscribe', False)
+
         # * scattered:
         #   This is the continuous scheduler, because it attempts to allocate
         #   a *continuous* set of cores/nodes for a unit.  It does, hoewver,
         #   also allow to scatter the allocation over discontinuous nodes if
-        #   this option is set.  the default is 'False'.
-        self._oversubscribe = self._cfg.get('oversubscribe', False)
-        self._scattered = self._cfg.get('scattered',     False)
+        #   this option is set.  This implementation is not optimized for the
+        #   scattered mode!  The default is 'False'.
+        #
+        self._scattered     = self._cfg.get('scattered',     False)
 
-        # NOTE: for non-oversubscribing mode, we reserve a number of cores
-        #       for the GPU processes - even if those GPUs are not used by
-        #       a specific workload.
+        # NOTE:  for non-oversubscribing mode, we reserve a number of cores
+        #        for the GPU processes - even if those GPUs are not used by
+        #        a specific workload.  In this case we rewrite the node list and
+        #        substract the respective number of available cores per node.
         if not self._oversubscribe:
+
+            if self._lrms_cores_per_node <= self._lrms_gpus_per_node:
+                raise RuntimeError('oversubscription mode requires more cores')
+
             self._lrms_cores_per_node -= self._lrms_gpus_per_node
 
             # since we just changed this fundamental setting, we need to
@@ -394,6 +417,7 @@ class Continuous(AgentSchedulingComponent):
                                                     )
             if len(cores) == requested_cores and \
                     len(gpus) == requested_gpus:
+
                 # we found the needed resources - break out of search loop
                 node_uid = node['uid']
                 node_name = node['name']

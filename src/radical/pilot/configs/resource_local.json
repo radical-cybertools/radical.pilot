@@ -14,6 +14,10 @@
             "job_manager_endpoint"    : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
+        "pre_bootstrap_1"             : [
+            "export RP_APP_TUNNEL_ADDR=144.76.72.175:27017",
+            "echo  $RP_APP_TUNNEL_ADDR"
+        ],
         "default_remote_workdir"      : "$HOME",
         "lrms"                        : "FORK",
         "agent_scheduler"             : "CONTINUOUS",
@@ -193,7 +197,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "pre_bootstrap_1"             : ["export OMPI=/home/merzky/radical/ompi/installed/2017_09_18_539f71d",
+        "pre_bootstrap_0"             : ["export OMPI=/home/merzky/radical/ompi/installed/2017_09_18_539f71d",
                                          "export PATH=$OMPI/bin/:$PATH",
                                          "export LD_LIBRARY_PATH=$OMPI/lib/:$LD_LIBRARY_PATH",
                                          "export PKG_CONFIG_PATH=$OMPI/share/pkgconfig/:$PKG_CONFIG_PATH"]
@@ -224,7 +228,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "pre_bootstrap_1"             : ["export OMPI=/home/merzky/radical/ompi/installed/2017_09_18_539f71d",
+        "pre_bootstrap_0"             : ["export OMPI=/home/merzky/radical/ompi/installed/2017_09_18_539f71d",
                                          "export PATH=$OMPI/bin/:$PATH",
                                          "export LD_LIBRARY_PATH=$OMPI/lib/:$LD_LIBRARY_PATH",
                                          "export PKG_CONFIG_PATH=$OMPI/share/pkgconfig/:$PKG_CONFIG_PATH"]

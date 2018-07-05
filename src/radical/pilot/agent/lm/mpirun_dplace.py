@@ -3,7 +3,10 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import radical.utils as ru
+
 from .base import LaunchMethod
+
 
 
 # ==============================================================================
@@ -71,7 +74,6 @@ class MPIRunDPlace(LaunchMethod):
                 for var in env_list:
                     env_string += '-x "%s" ' % var
 
-
         if 'nodes' not in slots:
             raise RuntimeError('insufficient information to launch via %s: %s'
                               % (self.name, slots))
@@ -82,10 +84,11 @@ class MPIRunDPlace(LaunchMethod):
             tmp_list = list()
             for cpu_proc in node['cpu_map']:
                 tmp_list.append(cpu_proc[0])
-                host_list.add(node['name'])
+                host_list.append(node['name'])
             for gpu_proc in node['gpu_map']:
                 tmp_list.append(gpu_proc[0])
-                host_list.add(node['name'])
+                host_list.append(node['name'])
+
             if core_list:
                 if sorted(core_list) != sorted(tmp_list):
                     raise ValueError('dplace expects heterogeneous layouts')

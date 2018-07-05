@@ -291,7 +291,7 @@ class ORTE(LaunchMethod):
         else       : np_flag = '-np 1'
 
         command = '%s %s --hnp "%s" %s %s -host %s %s %s' % (
-                  self.launch_command, debug_string, dvm_uri, np_flag, 
+                  self.launch_command, debug_string, dvm_uri, np_flag,
                   map_flag, hosts_string, env_string, task_command)
 
         return command, None
