@@ -76,7 +76,7 @@
             "stall_hwm" : 1,
             "bulk_size" : 0
         },
-        "agent_reschedule_pubsub" : {
+        "agent_schedule_pubsub" : {
             "log_level" : "error",
             "stall_hwm" : 1,
             "bulk_size" : 0

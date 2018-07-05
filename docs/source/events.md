@@ -95,9 +95,9 @@ indication on event ordering *within each individual component*.
     * per file          : staging_in_start, staging_in_stop
 
 
-### bootstrap_1.sh
+### bootstrap_0.sh
 
-    bootstrap_1_start   : pilot bootstrapper 1 starts                (uid: pid)
+    bootstrap_0_start   : pilot bootstrapper 1 starts                (uid: pid)
     tunnel_setup_start  : setting up tunnel    starts                (uid: pid)
     tunnel_setup_stop   : setting up tunnel    stops                 (uid: pid, [CFG-R])
     ve_setup_start      : pilot ve setup       starts                (uid: pid)
@@ -117,7 +117,7 @@ indication on event ordering *within each individual component*.
     sync_rel            : time sync event                            (uid: pid, msg: 'agent_0 start')
     cleanup_start       : sandbox deletion     starts                (uid: pid)
     cleanup_stop        : sandbox deletion     stops                 (uid: pid)
-    bootstrap_1_stop    : pilot bootstrapper 1 stops                 (uid: pid)
+    bootstrap_0_stop    : pilot bootstrapper 1 stops                 (uid: pid)
 
     partial orders
     * as above
@@ -258,5 +258,4 @@ indication on event ordering *within each individual component*.
     - [APP]           - only for applications writing compatible profiles
     - [RUNTIME]       - only on  certain runtime decisions and system configuration
     - [INTERNAL]      - only for certain internal states
-
 

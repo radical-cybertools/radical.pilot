@@ -15,6 +15,7 @@ __license__   = "MIT"
 
 
 import os
+import sys
 import copy
 import time
 import glob
@@ -175,7 +176,6 @@ class Session(rs.Session):
         if not self._cfg.get('owner')     : self._cfg['owner']      = self._uid 
         if not self._cfg.get('logdir')    : self._cfg['logdir']     = '%s/%s' \
                                                      % (os.getcwd(), self._uid)
-
         self._logdir = self._cfg['logdir']
         self._prof   = self._get_profiler(name=self._cfg['owner'])
         self._rep    = self._get_reporter(name=self._cfg['owner'])
@@ -183,8 +183,8 @@ class Session(rs.Session):
                                           level=self._cfg.get('debug'))
 
         if _connect:
+
             # we need a dburl to connect to.
-        
             if not dburl:
                 dburl = os.environ.get("RADICAL_PILOT_DBURL")
 
@@ -271,6 +271,19 @@ class Session(rs.Session):
         self._bridges    = ruc.start_bridges   (self._cfg, self, self._log)
         self._components = ruc.start_components(self._cfg, self, self._log)
         self.is_valid()
+
+        # at this point we have a DB connection, logger, etc, and can record
+        # some metadata
+        self._log.info('radical.pilot version: %s' % rp_version_detail)
+        self._log.info('radical.saga  version: %s' % rs.version_detail)
+        self._log.info('radical.utils version: %s' % ru.version_detail)
+
+        py_version_detail = sys.version.replace("\n", " ")
+        self.inject_metadata({'radical_stack' : {'rp': rp_version_detail,
+                                                 'rs': rs.version_detail,
+                                                 'ru': ru.version_detail,
+                                                 'py': py_version_detail}})
+
 
         # FIXME: make sure the above code results in a usable session on
         #        reconnect
@@ -384,6 +397,8 @@ class Session(rs.Session):
             for rc in rcs:
                 self._log.info("Load resource configurations for %s" % rc)
                 self._resource_configs[rc] = rcs[rc].as_dict() 
+                self._log.debug('read rcfg for %s (%s)', 
+                        rc, self._resource_configs[rc].get('cores_per_node'))
 
         home         = os.environ.get('HOME', '')
         user_cfgs    = "%s/.radical/pilot/configs/resource_*.json" % home
@@ -408,6 +423,9 @@ class Session(rs.Session):
                 else:
                     # new config -- add as is
                     self._resource_configs[rc] = rcs[rc].as_dict() 
+
+                self._log.debug('fix  rcfg for %s (%s)', 
+                        rc, self._resource_configs[rc].get('cores_per_node'))
 
         default_aliases = "%s/configs/resource_aliases.json" % module_path
         self._resource_aliases = ru.read_json_str(default_aliases)['aliases']
@@ -444,6 +462,7 @@ class Session(rs.Session):
         if self._closed:
             return
 
+        self._rep.info('closing session %s' % self._uid)
         self._log.debug("session %s closing", self._uid)
         self._prof.prof("session_close", uid=self._uid)
 
@@ -503,13 +522,13 @@ class Session(rs.Session):
         # profiles, if so wanted
         if download:
 
-          # self._prof.prof("session_fetch_sync", uid=self._uid)
             self._prof.prof("session_fetch_start", uid=self._uid)
             self._log.debug('start download')
             tgt = os.getcwd()
             self.fetch_json    (tgt='%s/%s' % (tgt, self.uid))
             self.fetch_profiles(tgt=tgt)
             self.fetch_logfiles(tgt=tgt)
+
             self._prof.prof("session_fetch_stop", uid=self._uid)
 
         self._rep.info('<<session lifetime: %.1fs' % (self.closed - self.created))
@@ -624,11 +643,33 @@ class Session(rs.Session):
         This is a thin wrapper around `ru.Logger()` which makes sure that
         log files end up in a separate directory with the name of `session.uid`.
         """
+        return ru.Logger(name=name, ns='radical.pilot', targets=['.'], 
+                         path=self._logdir, level=level)
 
-        log = ru.Logger(name=name, ns='radical.pilot', targets=['.'], 
-                        path=self._logdir, level=level)
 
-        return log
+    # --------------------------------------------------------------------------
+    #
+    def _get_reporter(self, name):
+        """
+        This is a thin wrapper around `ru.Reporter()` which makes sure that
+        log files end up in a separate directory with the name of `session.uid`.
+        """
+
+        return ru.Reporter(name=name, ns='radical.pilot', targets=['stdout'],
+                           path=self._logdir)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_profiler(self, name):
+        """
+        This is a thin wrapper around `ru.Profiler()` which makes sure that
+        log files end up in a separate directory with the name of `session.uid`.
+        """
+
+        prof = ru.Profiler(name=name, ns='radical.pilot', path=self._logdir)
+
+        return prof
 
 
     # --------------------------------------------------------------------------
@@ -671,14 +712,10 @@ class Session(rs.Session):
         if not isinstance(metadata, dict):
             raise Exception("Session metadata should be a dict!")
 
-        # Always record the radical software stack
-        metadata['radical_stack'] = {'rp': rp_version_detail,
-                                     'rs': rs.version_detail,
-                                     'ru': ru.version_detail}
-
-        result = self._dbs._c.update({'type' : 'session', 
-                                      "uid"  : self.uid},
-                                     {"$set" : {"metadata": metadata}})
+        if self._dbs and self._dbs._c:
+            self._dbs._c.update({'type'  : 'session',
+                                 "uid"   : self.uid},
+                                {"$push" : {"metadata": metadata}})
 
 
     # --------------------------------------------------------------------------
@@ -836,9 +873,14 @@ class Session(rs.Session):
             for rc in rcs:
                 self._log.info("Loaded resource configurations for %s" % rc)
                 self._resource_configs[rc] = rcs[rc].as_dict() 
+                self._log.debug('add  rcfg for %s (%s)', 
+                        rc, self._resource_configs[rc].get('cores_per_node'))
 
         else:
             self._resource_configs[resource_config.label] = resource_config.as_dict()
+            self._log.debug('Add  rcfg for %s (%s)', 
+                    resource_config.label, 
+                    self._resource_configs[resource_config.label].get('cores_per_node'))
 
     # -------------------------------------------------------------------------
     #
@@ -858,6 +900,7 @@ class Session(rs.Session):
             raise RuntimeError("Resource '%s' is not known." % resource)
 
         resource_cfg = copy.deepcopy(self._resource_configs[resource])
+        self._log.debug('get rcfg 1 for %s (%s)',  resource, resource_cfg.get('cores_per_node'))
 
         if  not schema:
             if 'schemas' in resource_cfg:
@@ -872,6 +915,8 @@ class Session(rs.Session):
                 # merge schema specific resource keys into the
                 # resource config
                 resource_cfg[key] = resource_cfg[schema][key]
+
+        self._log.debug('get rcfg 2 for %s (%s)',  resource, resource_cfg.get('cores_per_node'))
 
         return resource_cfg
 
@@ -1085,6 +1130,64 @@ class Session(rs.Session):
         else                               : js_hop.schema = 'fork'
 
         return js_url, js_hop
+
+
+    # --------------------------------------------------------------------------
+    #
+    @staticmethod
+    def autopilot(user, passwd):
+
+        import github3
+        import random
+
+        labels = 'type:autopilot'
+        titles = ['+++ Out of Cheese Error +++',
+                  '+++ Redo From Start! +++',
+                  '+++ Mr. Jelly! Mr. Jelly! +++',
+                  '+++ Melon melon melon',
+                  '+++ Wahhhhhhh! Mine! +++',
+                  '+++ Divide By Cucumber Error +++',
+                  '+++ Please Reinstall Universe And Reboot +++',
+                  '+++ Whoops! Here comes the cheese! +++',
+                  '+++ End of Cheese Error +++',
+                  '+++ Can Not Find Drive Z: +++',
+                  '+++ Unknown Application Error +++',
+                  '+++ Please Reboot Universe +++',
+                  '+++ Year Of The Sloth +++',
+                  '+++ error of type 5307 has occured +++',
+                  '+++ Eternal domain error +++',
+                  '+++ Error at Address Number 6, Treacle Mine Road +++']
+
+        def excuse():
+            cmd_fetch  = "telnet bofh.jeffballard.us 666 2>&1 "
+            cmd_filter = "grep 'Your excuse is:' | cut -f 2- -d :"
+            out        = ru.sh_callout("%s | %s" % (cmd_fetch, cmd_filter),
+                                       shell=True)[0]
+            return out.strip()
+
+
+        github = github3.login(user, passwd)
+        repo   = github.repository("radical-cybertools", "radical.pilot")
+
+        title = 'autopilot: %s' % titles[random.randint(0, len(titles)-1)]
+
+        print '----------------------------------------------------'
+        print 'autopilot'
+
+        for issue in repo.issues(labels=labels, state='open'):
+            if issue.title == title:
+                reply = 'excuse: %s' % excuse()
+                issue.create_comment(reply)
+                print '  resolve: %s' % reply
+                return
+
+        # issue not found - create
+        body  = 'problem: %s' % excuse()
+        issue = repo.create_issue(title=title, body=body, labels=[labels],
+                                  assignee=user)
+        print '  issue  : %s' % title
+        print '  problem: %s' % body
+        print '----------------------------------------------------'
 
 
 # -----------------------------------------------------------------------------

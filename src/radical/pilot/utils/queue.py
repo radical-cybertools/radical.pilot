@@ -350,7 +350,8 @@ class Queue(ru.Process):
                 msgs += msg
             else: 
                 msgs.append(msg)
-          # self._log.debug('stall %s/%s', len(msgs), hwm)
+            self._log.debug('stall %s/%s', len(msgs), hwm)
+        self._log.debug('hwm   %s/%s', len(msgs), hwm)
 
         # if 'bulk' is '0', we send all messages as
         # a single bulk.  Otherwise, we chop them up

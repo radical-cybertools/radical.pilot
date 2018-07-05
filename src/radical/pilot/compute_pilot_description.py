@@ -7,20 +7,23 @@ import saga.attributes as attributes
 
 # ------------------------------------------------------------------------------
 # Attribute description keys
+#
 RESOURCE          = 'resource'
 ACCESS_SCHEMA     = 'access_schema'
 QUEUE             = 'queue'
-CORES             = 'cores'
-MEMORY            = 'memory'
+PROJECT           = 'project'
+CANDIDATE_HOSTS   = 'candidate_hosts'
 SANDBOX           = 'sandbox'
 OUTPUT            = 'output'
 ERROR             = 'error'
 RUNTIME           = 'runtime'
 CLEANUP           = 'cleanup'
-PROJECT           = 'project'
-CANDIDATE_HOSTS   = 'candidate_hosts'
 EXIT_ON_ERROR     = 'exit_on_error'
 _CONFIG           = '_config'
+
+CORES             = 'cores'
+GPUS              = 'gpus'
+MEMORY            = 'memory'
 
 
 # ------------------------------------------------------------------------------
@@ -134,6 +137,7 @@ class ComputePilotDescription(attributes.Attributes):
         self._attributes_register    (RUNTIME,          None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (SANDBOX,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (CORES,            None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (GPUS,             None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (MEMORY,           None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (QUEUE,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (PROJECT,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
@@ -149,7 +153,8 @@ class ComputePilotDescription(attributes.Attributes):
         self.set_attribute (ACCESS_SCHEMA,    None)
         self.set_attribute (RUNTIME,          None)
         self.set_attribute (SANDBOX,          None)
-        self.set_attribute (CORES,            None)
+        self.set_attribute (CORES,               0)
+        self.set_attribute (GPUS,                0)
         self.set_attribute (MEMORY,           None)
         self.set_attribute (QUEUE,            None)
         self.set_attribute (PROJECT,          None)
@@ -162,8 +167,14 @@ class ComputePilotDescription(attributes.Attributes):
         if from_dict:
             self.from_dict(from_dict)
 
+      # FIXME
+      #     logger.report.plain('[%s:%s:%s]' % (from_dict.get(RESOURCE, ''), 
+      #                                         from_dict.get(CORES,     1), 
+      #                                         from_dict.get(GPUS,      0)))
+      # logger.report.ok('>>ok\n')
 
-    #---------------------------------------------------------------------------
+
+    # --------------------------------------------------------------------------
     #
     def __deepcopy__ (self, memo):
 
