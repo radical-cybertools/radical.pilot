@@ -537,6 +537,35 @@ class Default(PMGRLaunchingComponent):
         rcfg = self._session.get_resource_config(resource, schema)
         sid  = self._session.uid
 
+        # ----------------------------------------------------------------------
+        # the rcfg can contain keys with string expansion placeholders where
+        # values from the pilot description need filling in.  A prominent
+        # example is `%(pd.project)s`, where the pilot description's `PROJECT`
+        # value needs to be filled in (here in lowercase).
+        #
+        # FIXME: right now we assume all pilot descriptions to contain similar
+        #        entries, so that the expansion is only done on the first PD.
+        expand = dict()
+        pd     = pilots[0]['description']
+        for k,v in pd.iteritems():
+            if v is None:
+                v = ''
+            expand['pd.%s' % k] = v
+            if isinstance(v, basestring):
+                expand['pd.%s' % k.upper()] = v.upper()
+                expand['pd.%s' % k.lower()] = v.lower()
+            else:
+                expand['pd.%s' % k.upper()] = v
+                expand['pd.%s' % k.lower()] = v
+
+        for k in rcfg:
+            if isinstance(rcfg[k], basestring):
+                orig     = rcfg[k]
+                rcfg[k]  = rcfg[k] % expand
+                expanded = rcfg[k]
+                if orig != expanded:
+                    self._log.debug('RCFG:\n%s\n%s', orig, expanded)
+
         # we create a fake session_sandbox with all pilot_sandboxes in /tmp, and
         # then tar it up.  Once we untar that tarball on the target machine, we
         # should have all sandboxes and all files required to bootstrap the
@@ -553,7 +582,7 @@ class Default(PMGRLaunchingComponent):
         # that the bulk is consistent wrt. to the schema.
         # FIXME: if it is not, it needs to be splitted into schema-specific
         # sub-bulks
-        schema = pilots[0]['description'].get('access_schema')
+        schema = pd.get('access_schema')
         for pilot in pilots[1:]:
             assert(schema == pilot['description'].get('access_schema')), \
                     'inconsistent scheme on launch / staging'
@@ -735,31 +764,6 @@ class Default(PMGRLaunchingComponent):
         pid = pilot["uid"]
         ret = {'ft' : list(),
                'jd' : None  }
-
-        # ----------------------------------------------------------------------
-        # the rcfg can contain keys with string expansion placeholders where
-        # values from the pilot description need filling in.  A prominent
-        # example is `%(pd.project)s`, where the pilot description's `PROJECT`
-        # value needs to be filled in (here in lowercase).
-        expand = dict()
-        for k,v in pilot['description'].iteritems():
-            if v is None:
-                v = ''
-            expand['pd.%s' % k] = v
-            if isinstance(v, basestring):
-                expand['pd.%s' % k.upper()] = v.upper()
-                expand['pd.%s' % k.lower()] = v.lower()
-            else:
-                expand['pd.%s' % k.upper()] = v
-                expand['pd.%s' % k.lower()] = v
-
-        for k in rcfg:
-            if isinstance(rcfg[k], basestring):
-                orig     = rcfg[k]
-                rcfg[k]  = rcfg[k] % expand
-                expanded = rcfg[k]
-                if orig != expanded:
-                    self._log.debug('RCFG:\n%s\n%s', orig, expanded)
 
         # ----------------------------------------------------------------------
         # Database connection parameters

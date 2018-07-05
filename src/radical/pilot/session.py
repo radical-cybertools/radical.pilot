@@ -900,7 +900,6 @@ class Session(rs.Session):
             raise RuntimeError("Resource '%s' is not known." % resource)
 
         resource_cfg = copy.deepcopy(self._resource_configs[resource])
-        self._log.debug('get rcfg 1 for %s (%s)',  resource, resource_cfg.get('cores_per_node'))
 
         if  not schema:
             if 'schemas' in resource_cfg:
@@ -915,8 +914,6 @@ class Session(rs.Session):
                 # merge schema specific resource keys into the
                 # resource config
                 resource_cfg[key] = resource_cfg[schema][key]
-
-        self._log.debug('get rcfg 2 for %s (%s)',  resource, resource_cfg.get('cores_per_node'))
 
         return resource_cfg
 
