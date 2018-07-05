@@ -50,7 +50,7 @@ def test_integration():
     # Here we use a dict to initialize the description object
     pd_init = {
         'resource': resource,
-        'runtime': 15,  # pilot runtime (min)
+        'runtime': 15,   # pilot runtime (min)
         'exit_on_error': True,
         'project': config[resource]['project'],
         'queue': config[resource]['queue'],
