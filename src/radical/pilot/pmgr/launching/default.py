@@ -1042,7 +1042,6 @@ class Default(PMGRLaunchingComponent):
         for arg in pre_bootstrap_1:
             bootstrap_args += " -w '%s'" % arg
 
-<<<<<<< HEAD
         agent_cfg['owner']              = 'agent_0'
         agent_cfg['cores']              = number_cores
         agent_cfg['gpus']               = number_gpus
@@ -1070,33 +1069,6 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['cu_post_exec']       = cu_post_exec
         agent_cfg['resource_cfg']       = copy.deepcopy(rcfg)
         agent_cfg['debug']              = self._log.getEffectiveLevel()
-=======
-        agent_cfg['owner']               = 'agent_0'
-        agent_cfg['cores']               = number_cores
-        agent_cfg['gpus']                = number_gpus
-        agent_cfg['lrms']                = lrms
-        agent_cfg['spawner']             = agent_spawner
-        agent_cfg['scheduler']           = agent_scheduler
-        agent_cfg['runtime']             = runtime
-        agent_cfg['dburl']               = str(database_url)
-        agent_cfg['session_id']          = sid
-        agent_cfg['pilot_id']            = pid
-        agent_cfg['logdir']              = '.'
-        agent_cfg['pilot_sandbox']       = pilot_sandbox
-        agent_cfg['session_sandbox']     = session_sandbox
-        agent_cfg['resource_sandbox']    = resource_sandbox
-        agent_cfg['agent_launch_method'] = agent_launch_method
-        agent_cfg['task_launch_method']  = task_launch_method
-        agent_cfg['mpi_launch_method']   = mpi_launch_method
-        agent_cfg['cores_per_node']      = cores_per_node
-        agent_cfg['gpus_per_node']       = gpus_per_node
-        agent_cfg['cu_tmp']              = cu_tmp
-        agent_cfg['export_to_cu']        = export_to_cu
-        agent_cfg['cu_pre_exec']         = cu_pre_exec
-        agent_cfg['cu_post_exec']        = cu_post_exec
-        agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
-        agent_cfg['debug']               = self._log.getEffectiveLevel()
->>>>>>> devel
 
         # we'll also push the agent config into MongoDB
         pilot['cfg'] = agent_cfg
