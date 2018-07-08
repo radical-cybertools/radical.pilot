@@ -186,7 +186,7 @@ class Popen(AgentExecutingComponent) :
             cpt = cu['description']['cpu_process_type']
             gpt = cu['description']['gpu_process_type']  # FIXME: use
 
-            self._log.debug('Giannis CU slots : %s',cu['slots'])
+            self._log.debug('CU slots : %s',cu['slots'])
             self._log.debug('CU environment: %s',cu['description']['environment'])
 
             # FIXME: this switch is insufficient for mixed units (MPI/OpenMP)
