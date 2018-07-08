@@ -714,9 +714,10 @@ class Session(rs.Session):
         if not isinstance(metadata, dict):
             raise Exception("Session metadata should be a dict!")
 
-        self._dbs._c.update({'type'  : 'session', 
-                             "uid"   : self.uid},
-                            {"$push" : {"metadata": metadata}})
+        if self._dbs and self._dbs._c:
+            self._dbs._c.update({'type'  : 'session', 
+                                 "uid"   : self.uid},
+                                {"$push" : {"metadata": metadata}})
 
 
     # --------------------------------------------------------------------------
