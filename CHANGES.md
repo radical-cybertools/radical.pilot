@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.50.2  Release                                                       2018-07-08
+--------------------------------------------------------------------------------
+
+  - fix relative tarball unpack paths
+
+
 0.50.1  Release                                                       2018-07-05
 --------------------------------------------------------------------------------
 
