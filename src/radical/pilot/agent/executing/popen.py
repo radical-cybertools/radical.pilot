@@ -186,15 +186,14 @@ class Popen(AgentExecutingComponent) :
             cpt = cu['description']['cpu_process_type']
             gpt = cu['description']['gpu_process_type']  # FIXME: use
 
-            self._log.debug('CU slots : %s',cu['slots'])
-            self._log.debug('CU environment: %s',cu['description']['environment'])
-
             # FIXME: this switch is insufficient for mixed units (MPI/OpenMP)
             if cpt == 'MPI': launcher = self._mpi_launcher
             else           : launcher = self._task_launcher
 
-            if gpt == 'CUDA': cu['description']['environment'].append('CUDA_VISIBLE_DEVICES=%s'%'1')
-
+            if gpt == 'CUDA':
+                gpu_device = cu['slots']['nodes'][0][3][0][0]
+                cu['description']['environment']['CUDA_VISIBLE_DEVICES'] = gpu_device
+            
             if not launcher:
                 raise RuntimeError("no launcher (process type = %s)" % cpt)
 
