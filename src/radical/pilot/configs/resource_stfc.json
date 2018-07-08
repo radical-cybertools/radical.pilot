@@ -15,7 +15,7 @@
         "agent_launch_method"         : "RUNJOB",
         "task_launch_method"          : "RUNJOB",
         "mpi_launch_method"           : "RUNJOB",
-        "pre_bootstrap_1"             : [
+        "pre_bootstrap_0"             : [
             "llq -l $LOADL_JOB_NAME",
             "source /etc/profile.d/modules.sh",
             "export MODULEPATH=/gpfs/packages/Modules/modulefiles/production:/gpfs/packages/Modules/modulefiles/packages:/gpfs/packages/Modules/modulefiles/other",

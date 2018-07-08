@@ -176,7 +176,6 @@ class Session(rs.Session):
         if not self._cfg.get('owner')     : self._cfg['owner']      = self._uid 
         if not self._cfg.get('logdir')    : self._cfg['logdir']     = '%s/%s' \
                                                      % (os.getcwd(), self._uid)
-
         self._logdir = self._cfg['logdir']
         self._prof   = self._get_profiler(name=self._cfg['owner'])
         self._rep    = self._get_reporter(name=self._cfg['owner'])
@@ -644,7 +643,6 @@ class Session(rs.Session):
         This is a thin wrapper around `ru.Logger()` which makes sure that
         log files end up in a separate directory with the name of `session.uid`.
         """
-
         return ru.Logger(name=name, ns='radical.pilot', targets=['.'], 
                          path=self._logdir, level=level)
 
@@ -715,7 +713,7 @@ class Session(rs.Session):
             raise Exception("Session metadata should be a dict!")
 
         if self._dbs and self._dbs._c:
-            self._dbs._c.update({'type'  : 'session', 
+            self._dbs._c.update({'type'  : 'session',
                                  "uid"   : self.uid},
                                 {"$push" : {"metadata": metadata}})
 
@@ -1123,10 +1121,13 @@ class Session(rs.Session):
         js_hop  = rs.Url(rcfg.get('job_manager_hop', js_url))
 
         # make sure the js_hop url points to an interactive access
-        if '+gsissh' in js_hop.schema or \
-           'gsissh+' in js_hop.schema    : js_hop.schema = 'gsissh'
-        if '+ssh'    in js_hop.schema or \
-           'ssh+'    in js_hop.schema    : js_hop.schema = 'ssh'
+        # TODO: this is an unreliable heuristics - we should require the js_hop
+        #       URL to be specified in the resource configs.
+        if   '+gsissh' in js_hop.schema or \
+             'gsissh+' in js_hop.schema    : js_hop.schema = 'gsissh'
+        elif '+ssh'    in js_hop.schema or \
+             'ssh+'    in js_hop.schema    : js_hop.schema = 'ssh'
+        else                               : js_hop.schema = 'fork'
 
         return js_url, js_hop
 

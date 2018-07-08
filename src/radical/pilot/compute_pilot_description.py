@@ -7,21 +7,23 @@ import saga.attributes as attributes
 
 # ------------------------------------------------------------------------------
 # Attribute description keys
+#
 RESOURCE          = 'resource'
 ACCESS_SCHEMA     = 'access_schema'
 QUEUE             = 'queue'
-CORES             = 'cores'
-GPUS              = 'gpus'
-MEMORY            = 'memory'
+PROJECT           = 'project'
+CANDIDATE_HOSTS   = 'candidate_hosts'
 SANDBOX           = 'sandbox'
 OUTPUT            = 'output'
 ERROR             = 'error'
 RUNTIME           = 'runtime'
 CLEANUP           = 'cleanup'
-PROJECT           = 'project'
-CANDIDATE_HOSTS   = 'candidate_hosts'
 EXIT_ON_ERROR     = 'exit_on_error'
 _CONFIG           = '_config'
+
+CORES             = 'cores'
+GPUS              = 'gpus'
+MEMORY            = 'memory'
 
 
 # ------------------------------------------------------------------------------
@@ -172,7 +174,7 @@ class ComputePilotDescription(attributes.Attributes):
       # logger.report.ok('>>ok\n')
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def __deepcopy__ (self, memo):
 

@@ -46,6 +46,10 @@ def dec_all_methods(dec):
 #
 @dec_all_methods(cprof_it)
 class Continuous(AgentSchedulingComponent):
+    '''
+    The Continuous scheduler attempts to place threads and processes of
+    a compute units onto consecutive cores, gpus and nodes in the cluster.
+    '''
 
     # --------------------------------------------------------------------------
     #
@@ -75,28 +79,47 @@ class Continuous(AgentSchedulingComponent):
     #
     def _configure(self):
 
-        # TODO: use real core/gpu numbers for non-exclusive reservations
-        #
+        if not self._lrms_node_list:
+            raise RuntimeError("LRMS %s didn't _configure node_list." % \
+                               self._lrms_info['name'])
+
+        if not self._lrms_cores_per_node:
+            raise RuntimeError("LRMS %s didn't _configure cores_per_node." % \
+                               self._lrms_info['name'])
+
+        if not self._lrms_gpus_per_node:
+            raise RuntimeError("LRMS %s didn't _configure gpus_per_node." % \
+                               self._lrms_info['name'])
+
         # * oversubscribe:
         #   Cray's aprun for example does not allow us to oversubscribe CPU
         #   cores on a node, so we can't, say, run n CPU processes on an n-core
         #   node, and than add one additional process for a GPU application.  If
         #   `oversubscribe` is set to False (which is the default for now),
         #   we'll prevent that behavior by allocating one additional CPU core
-        #   for each requested GPU process.
-        #
+        #   for each set of requested GPU processes.
+        #   FIXME: I think our scheme finds the wrong core IDs for GPU process
+        #          startup - i.e. not the reserved ones.
+        self._oversubscribe = self._cfg.get('oversubscribe', False)
+
         # * scattered:
         #   This is the continuous scheduler, because it attempts to allocate
         #   a *continuous* set of cores/nodes for a unit.  It does, hoewver,
         #   also allow to scatter the allocation over discontinuous nodes if
-        #   this option is set.  the default is 'False'.
-        self._oversubscribe = self._cfg.get('oversubscribe', False)
+        #   this option is set.  This implementation is not optimized for the
+        #   scattered mode!  The default is 'False'.
+        #
         self._scattered     = self._cfg.get('scattered',     False)
 
-        # NOTE: for non-oversubscribing mode, we reserve a number of cores
-        #       for the GPU processes - even if those GPUs are not used by
-        #       a specific workload.
+        # NOTE:  for non-oversubscribing mode, we reserve a number of cores
+        #        for the GPU processes - even if those GPUs are not used by
+        #        a specific workload.  In this case we rewrite the node list and
+        #        substract the respective number of available cores per node.
         if not self._oversubscribe:
+
+            if self._lrms_cores_per_node <= self._lrms_gpus_per_node:
+                raise RuntimeError('oversubscription mode requires more cores')
+
             self._lrms_cores_per_node -= self._lrms_gpus_per_node
 
             # since we just changed this fundamental setting, we need to
@@ -226,44 +249,6 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _get_node_maps(self, cores, gpus, threads_per_proc):
-        '''
-        For a given set of cores and gpus, chunk them into sub-sets so that each
-        sub-set can host one application process and all threads of that
-        process.  Note that we currently consider all GPU applications to be
-        single-threaded.
-        For more details, see top level comment of `base.py`.
-        '''
-
-        core_map = list()
-        gpu_map  = list()
-
-        # make sure the core sets can host the requested number of threads
-        assert(not len(cores) % threads_per_proc)
-        n_procs =  len(cores) / threads_per_proc
-
-        idx = 0
-        for p in range(n_procs):
-            p_map = list()
-            for t in range(threads_per_proc):
-                p_map.append(cores[idx])
-                idx += 1
-            core_map.append(p_map)
-
-        if idx != len(cores):
-            self._log.debug('%s -- %s -- %s -- %s',
-                            idx, len(cores), cores, n_procs)
-        assert(idx == len(cores))
-
-        # gpu procs are considered single threaded right now (FIXME)
-        for g in gpus:
-            gpu_map.append([g])
-
-        return core_map, gpu_map
-
-
-    # --------------------------------------------------------------------------
-    #
     def _alloc_nompi(self, cud):
         '''
         Find a suitable set of cores and gpus *within a single node*.
@@ -288,7 +273,9 @@ class Continuous(AgentSchedulingComponent):
         # make sure that the requested allocation fits on a single node
         if  requested_cores > self._lrms_cores_per_node or \
             requested_gpus  > self._lrms_gpus_per_node     :
-            raise ValueError('Non-mpi unit does not fit onto single node')
+            raise ValueError('Non-mpi unit does not fit onto single node (%3d/%3d : %3d/%3d XXX)',
+                    requested_cores, self._lrms_cores_per_node, 
+                    requested_gpus,  self._lrms_gpus_per_node)
 
         # ok, we can go ahead and try to find a matching node
         cores     = list()
@@ -301,7 +288,7 @@ class Continuous(AgentSchedulingComponent):
             # attempt to find the required number of cores and gpus on this
             # node - do not allow partial matches.
             cores, gpus = self._find_resources(node, requested_cores, requested_gpus,
-                                           partial=False)
+                                               partial=False)
 
             if  len(cores) == requested_cores and \
                 len(gpus)  == requested_gpus      :
@@ -430,8 +417,8 @@ class Continuous(AgentSchedulingComponent):
 
             # under the constraints so derived, check what we find on this node
             cores, gpus = self._find_resources(node, find_cores, find_gpus,
-                                           chunk=threads_per_proc,
-                                           partial=partial)
+                                               chunk=threads_per_proc,
+                                               partial=partial)
 
 
             # and check the result.

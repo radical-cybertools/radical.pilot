@@ -8,7 +8,6 @@ import sys
 import copy
 import stat
 import time
-import types
 import pprint
 import subprocess         as sp
 
@@ -65,15 +64,15 @@ class Agent_0(rpu.Worker):
         cfg['workdir']    = os.getcwd()
 
         # sanity check on config settings
-        if not 'cores'               in cfg: raise ValueError('Missing number of cores')
-        if not 'lrms'                in cfg: raise ValueError('Missing LRMS')
-        if not 'dburl'               in cfg: raise ValueError('Missing DBURL')
-        if not 'pilot_id'            in cfg: raise ValueError('Missing pilot id')
-        if not 'runtime'             in cfg: raise ValueError('Missing or zero agent runtime')
-        if not 'scheduler'           in cfg: raise ValueError('Missing agent scheduler')
-        if not 'session_id'          in cfg: raise ValueError('Missing session id')
-        if not 'spawner'             in cfg: raise ValueError('Missing agent spawner')
-        if not 'task_launch_method'  in cfg: raise ValueError('Missing unit launch method')
+        if 'cores'               not in cfg: raise ValueError('Missing number of cores')
+        if 'lrms'                not in cfg: raise ValueError('Missing LRMS')
+        if 'dburl'               not in cfg: raise ValueError('Missing DBURL')
+        if 'pilot_id'            not in cfg: raise ValueError('Missing pilot id')
+        if 'runtime'             not in cfg: raise ValueError('Missing or zero agent runtime')
+        if 'scheduler'           not in cfg: raise ValueError('Missing agent scheduler')
+        if 'session_id'          not in cfg: raise ValueError('Missing session id')
+        if 'spawner'             not in cfg: raise ValueError('Missing agent spawner')
+        if 'task_launch_method'  not in cfg: raise ValueError('Missing unit launch method')
 
         # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold
         # the address of the tunnelized DB endpoint. If it exists, we
@@ -186,8 +185,10 @@ class Agent_0(rpu.Worker):
         elif self._final_cause == 'sys.exit' : state = rps.CANCELED
         else                                 : state = rps.FAILED
 
+        self._log.debug('final state: %s (%s)', state, self._final_cause)
       # # we don't rely on the existence / viability of the update worker at
       # # that point.
+      # FIXME:
       # self._log.debug('update db state: %s: %s', state, self._final_cause)
       # self._update_db(state, self._final_cause)
 
@@ -222,7 +223,6 @@ class Agent_0(rpu.Worker):
         if state == rps.FAILED:
             self._log.info(ru.get_trace())
 
-        now = time.time()
         out = None
         err = None
         log = None
@@ -361,6 +361,8 @@ class Agent_0(rpu.Worker):
 
             # spawn the sub-agent
             self._log.info ('create sub-agent %s: %s' % (sa, cmdline))
+
+            # ------------------------------------------------------------------
             class _SA(ru.Process):
                 def __init__(self, sa, cmd, log):
                     self._sa   = sa
@@ -379,10 +381,10 @@ class Agent_0(rpu.Worker):
 
                 def work_cb(self):
                     time.sleep(0.1)
-                    if self._proc.poll() == None:
-                        return True  # all is well
+                    if self._proc.poll() is None:
+                        return True   # all is well
                     else:
-                        return False # proc is gone - terminate
+                        return False  # proc is gone - terminate
 
                 def ru_finalize_child(self):
                     if self._proc:
@@ -391,6 +393,7 @@ class Agent_0(rpu.Worker):
                         except Exception as e:
                             # we are likely racing on termination...
                             self._log.warn('%s term failed: %s', self._sa, e)
+            # ------------------------------------------------------------------
 
             # the agent is up - let the watcher manage it from here
             self.register_watchable(_SA(sa, cmdline, log=self._log))
@@ -420,13 +423,12 @@ class Agent_0(rpu.Worker):
         # FIXME: commands go to pmgr, umgr, session docs
         # FIXME: this is disabled right now
         retdoc = self._session._dbs._c.find_and_modify(
-                    query  = {'uid'  : self._pid},
-                    update = {'$set' : {'cmd': []}}, # Wipe content of array
-                    fields = ['cmd']
-                    )
+                    query ={'uid'  : self._pid},
+                    update={'$set' : {'cmd': []}},  # Wipe content of array
+                    fields=['cmd'])
 
         if not retdoc:
-            return True # this is not an error
+            return True  # this is not an error
 
         for spec in retdoc.get('cmd', []):
 
@@ -456,6 +458,7 @@ class Agent_0(rpu.Worker):
                 return False  # we are done
 
             elif cmd == 'cancel_units':
+
                 self._log.info('cancel_units cmd')
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_units',
                                                   'arg' : arg})
@@ -501,9 +504,9 @@ class Agent_0(rpu.Worker):
         #        find -- so we do it right here.
         #        This also blocks us from using multiple ingest threads, or from
         #        doing late binding by unit pull :/
-        unit_cursor = self._session._dbs._c.find(spec = {'type'    : 'unit',
-                                                         'pilot'   : self._pid,
-                                                         'control' : 'agent_pending'})
+        unit_cursor = self._session._dbs._c.find({'type'    : 'unit',
+                                                  'pilot'   : self._pid,
+                                                  'control' : 'agent_pending'})
         if not unit_cursor.count():
             # no units whatsoever...
             self._log.info('units pulled:    0')
@@ -515,10 +518,10 @@ class Agent_0(rpu.Worker):
 
         self._log.info('units PULLED: %4d', len(unit_list))
 
-        self._session._dbs._c.update(multi    = True,
-                        spec     = {'type'  : 'unit',
-                                    'uid'   : {'$in'     : unit_uids}},
-                        document = {'$set'  : {'control' : 'agent'}})
+        self._session._dbs._c.update({'type'  : 'unit',
+                                      'uid'   : {'$in'     : unit_uids}},
+                                     {'$set'  : {'control' : 'agent'}},
+                                     multi=True)
 
         self._log.info("units pulled: %4d", len(unit_list))
         self._prof.prof('get', msg='bulk size: %d' % len(unit_list),
