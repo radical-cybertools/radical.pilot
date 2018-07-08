@@ -844,6 +844,7 @@
         "python_dist"                 : "default", 
         "export_to_cu"                : [], 
         "cu_pre_exec"                 : [],
+        "saga_jd_supplement"          : {"cpu_architecture" : ["p100"]},
         "gpus_per_node"               : 2
     },
 
