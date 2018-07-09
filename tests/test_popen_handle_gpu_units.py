@@ -49,12 +49,12 @@ class TestStagingInputComponent(unittest.TestCase):
                                         "stderr": None,
                                         "stdout": None
                                        }
-        self.unit_gpu['slots'] = "slots": {"cores_per_node": 7, 
-                                           "gpus_per_node": 1, 
-                                           "lm_info": {"version_info": {"FORK": {"version": "0.42", 
-                                                                                 "version_detail": "There is no spoon"}}}, 
-                                           "nodes": [["localhost", "localhost_0", [[0]], [0]]]
-                                          }
+        self.unit_gpu['slots'] = {"cores_per_node": 7, 
+                                  "gpus_per_node": 1, 
+                                  "lm_info": {"version_info": {"FORK": {"version": "0.42", 
+                                                                        "version_detail": "There is no spoon"}}}, 
+                                  "nodes": [["localhost", "localhost_0", [[0]], [0]]]
+                                 }
 
         self.unit_cpu = dict()
         self.unit_cpu['description'] = {"arguments": [],
@@ -80,12 +80,12 @@ class TestStagingInputComponent(unittest.TestCase):
                                         "stderr": None,
                                         "stdout": None
                                        }
-        self.unit_cpu['slots'] = "slots": {"cores_per_node": 7, 
-                                           "gpus_per_node": 1, 
-                                           "lm_info": {"version_info": {"FORK": {"version": "0.42", 
-                                                                                 "version_detail": "There is no spoon"}}}, 
-                                           "nodes": [["localhost", "localhost_0", [[0]], []]]
-                                          }
+        self.unit_cpu['slots'] = {"cores_per_node": 7, 
+                                  "gpus_per_node": 1, 
+                                  "lm_info": {"version_info": {"FORK": {"version": "0.42", 
+                                                                        "version_detail": "There is no spoon"}}}, 
+                                  "nodes": [["localhost", "localhost_0", [[0]], []]]
+                                  }
 
         
     def tearDown(self):
