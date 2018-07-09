@@ -191,6 +191,8 @@ class Popen(AgentExecutingComponent) :
             else           : launcher = self._task_launcher
 
             if gpt == 'CUDA':
+                # This assumes single GPU device per unit. FIXME: generalize for 
+                # mulitple GPU devices
                 gpu_device = cu['slots']['nodes'][0][3][0][0]
                 cu['description']['environment']['CUDA_VISIBLE_DEVICES'] = gpu_device
             
