@@ -23,7 +23,7 @@ class TestStagingInputComponent(unittest.TestCase):
 
 
     def setUp(self):
-
+        self._session = rp.Session()
         # Unit configuration
         self.unit_gpu = dict()
         self.unit_gpu['description'] = {"arguments": [],
@@ -53,7 +53,7 @@ class TestStagingInputComponent(unittest.TestCase):
                                   "gpus_per_node": 1, 
                                   "lm_info": {"version_info": {"FORK": {"version": "0.42", 
                                                                         "version_detail": "There is no spoon"}}}, 
-                                  "nodes": [["localhost", "localhost_0", [[0]], [0]]]
+                                  "nodes": [["localhost", "localhost_0", [[0]], [[0]]]]
                                  }
 
         self.unit_cpu = dict()
@@ -90,7 +90,7 @@ class TestStagingInputComponent(unittest.TestCase):
         
     def tearDown(self):
         
-        pass
+        self._session.close()
 
 
     @mock.patch.object(Popen, '__init__', return_value=None)
@@ -101,19 +101,24 @@ class TestStagingInputComponent(unittest.TestCase):
     @mock.patch('radical.utils.raise_on')
     def test_gpu_unit(self, mocked_init, mocked_advance, mocked_spawn, mocked_publish, mocked_profiler, mocked_raise_on):
 
-        component       = Poper(cfg={'Testing'}, session=session_id)
+        component       = Popen(cfg={'Testing'}, session=self._session)
         component._prof = mocked_profiler
         component._log  = ru.get_logger('dummy')
-        component._mpi_launcher = 'mpirun'
-        component._task_launcher = 'ssh'
-
+        component._mpi_launcher = rp.agent.LM.create(
+                name    = 'SSH',
+                cfg     = {},
+                session = self._session)
+        component._task_launcher = rp.agent.LM.create(
+                name    = 'SSH',
+                cfg     = {},
+                session = self._session)
 
         # Call the component's '_handle_unit' function
         # Should perform all of the actionables 
         component._handle_unit(self.unit_gpu)
 
         # Verify the actionables were done...
-        self.assertTrue(self.unit_gpu['environment'].get('CUDA_VISIBLE_DEVICES',None),0)
+        self.assertTrue(self.unit_gpu['description']['environment'].get('CUDA_VISIBLE_DEVICES',None) == 0)
 
     @mock.patch.object(Popen, '__init__', return_value=None)
     @mock.patch.object(Popen, 'advance')
@@ -123,11 +128,17 @@ class TestStagingInputComponent(unittest.TestCase):
     @mock.patch('radical.utils.raise_on')
     def test_cpu_unit(self, mocked_init, mocked_advance, mocked_spawn, mocked_publish, mocked_profiler, mocked_raise_on):
 
-        component       = Poper(cfg={'Testing'}, session=session_id)
+        component       = Popen(cfg={'Testing'}, session=self._session)
         component._prof = mocked_profiler
         component._log  = ru.get_logger('dummy')
-        component._mpi_launcher = 'mpirun'
-        component._task_launcher = 'ssh'
+        component._mpi_launcher = rp.agent.LM.create(
+                name    = 'SSH',
+                cfg     = {},
+                session = self._session)
+        component._task_launcher = rp.agent.LM.create(
+                name    = 'SSH',
+                cfg     = {},
+                session = self._session)
 
 
         # Call the component's '_handle_unit' function
@@ -135,7 +146,7 @@ class TestStagingInputComponent(unittest.TestCase):
         component._handle_unit(self.unit_cpu)
 
         # Verify the actionables were done...
-        self.assertTrue(self.unit_gpu['environment'].get('CUDA_VISIBLE_DEVICES',None),None)
+        self.assertTrue(self.unit_cpu['description']['environment'].get('CUDA_VISIBLE_DEVICES',None) == None)
                                                      
 
 # ------------------------------------------------------------------------------
