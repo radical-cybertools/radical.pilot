@@ -82,7 +82,7 @@ class MPIRunDPlace(LaunchMethod):
         core_list = list()
         for node in slots['nodes']:
             tmp_list = list()
-            for cpu_proc in node['cpu_map']:
+            for cpu_proc in node['core_map']:
                 tmp_list.append(cpu_proc[0])
                 host_list.append(node['name'])
             for gpu_proc in node['gpu_map']:

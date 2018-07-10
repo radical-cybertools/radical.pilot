@@ -139,7 +139,7 @@ class APRun(LaunchMethod):
                                   'gpu' : list()}
 
             # add all cpu and gpu process slots to the node list.
-            for cpu_slot in node['cpu_map']: nodes[node_id]['cpu'].append(cpu_slot)
+            for cpu_slot in node['core_map']: nodes[node_id]['cpu'].append(cpu_slot)
             for gpu_slot in node['gpu_map']: nodes[node_id]['gpu'].append(gpu_slot)
 
 

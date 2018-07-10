@@ -73,7 +73,7 @@ class MPIExec(LaunchMethod):
             node_name = node['name']
             if node_name not in host_slots:
                 host_slots[node_name] = 0
-            host_slots[node_name] += len(node['cpu_map']) + len(node['gpu_map'])  # cpu + gpu
+            host_slots[node_name] += len(node['core_map']) + len(node['gpu_map'])  # cpu + gpu
 
         # If we have a CU with many cores, and the compression didn't work
         # out, we will create a hostfile and pass that as an argument
