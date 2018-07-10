@@ -75,7 +75,6 @@ class ComputePilot(object):
         self._cb_lock       = threading.RLock()
         self._exit_on_error = self._descr.get('exit_on_error')
 
-
         for m in rpt.PMGR_METRICS:
             self._callbacks[m] = dict()
 
@@ -84,26 +83,40 @@ class ComputePilot(object):
                 'cb'      : self._default_state_cb, 
                 'cb_data' : None}
 
-        # `as_dict()` needs `pilot_dict` and other attributes.  Those should all
-        # be available at this point (apart from the sandboxes), so we now
-        # query for those sandboxes.
-        self._pilot_jsurl      = ru.Url()
-        self._pilot_jshop      = ru.Url()
-        self._resource_sandbox = ru.Url()
-        self._pilot_sandbox    = ru.Url()
-        self._client_sandbox   = ru.Url()
-
-        self._log.debug(' ===== 1: %s [%s]', self._pilot_sandbox, type(self._pilot_sandbox))
+        # `as_dict()` needs several attributes.  Those should all be available
+        # at this point -- apart from the sandboxes, so we add dummy sandboxes
+        # before querying for the real ones.
+        self._pilot_jsurl      = ''
+        self._pilot_jshop      = ''
+        self._resource_sandbox = ''
+        self._pilot_sandbox    = ''
+        self._client_sandbox   = ''
 
         pilot = self.as_dict()
-        self._log.debug(' ===== 2: %s [%s]', pilot['pilot_sandbox'], type(pilot['pilot_sandbox']))
 
         self._pilot_jsurl, self._pilot_jshop \
                                = self._session._get_jsurl           (pilot)
         self._resource_sandbox = self._session._get_resource_sandbox(pilot)
         self._pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
         self._client_sandbox   = self._session._get_client_sandbox()
-        self._log.debug(' ===== 3: %s [%s]', self._pilot_sandbox, type(self._pilot_sandbox))
+
+        # we need to expand plaaceholders in the sandboxes
+        # FIXME: this code is a duplication from the pilot launcher code
+        expand = dict()
+        for k,v in pilot['description'].iteritems():
+            if v is None:
+                v = ''
+            expand['pd.%s' % k] = v
+            if isinstance(v, basestring):
+                expand['pd.%s' % k.upper()] = v.upper()
+                expand['pd.%s' % k.lower()] = v.lower()
+            else:
+                expand['pd.%s' % k.upper()] = v
+                expand['pd.%s' % k.lower()] = v
+
+        self.resource_sandbox.path  = self.resource_sandbox.path % expand
+        self.session_sandbox .path  = self.session_sandbox .path % expand
+        self.pilot_sandbox   .path  = self.pilot_sandbox   .path % expand
 
 
     # --------------------------------------------------------------------------
