@@ -73,14 +73,14 @@
     },
 
     "ncsa.bw" : {
-        "project"  : "PRAC_bamm",
+        "project"  : "bamm",
         "queue"    : "high",
         "schema"   : "gsissh",
         "cores"    : 320
     },
 
     "ncsa.bw_aprun" : {
-        "project"  : "PRAC_bamm",
+        "project"  : "bamm",
         "queue"    : "high",
         "schema"   : "gsissh",
         "cores"    : 320
