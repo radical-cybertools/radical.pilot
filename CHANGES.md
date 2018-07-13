@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.50.4  Release                                                       2018-07-13
+--------------------------------------------------------------------------------
+
+  - set oversubscribe default to True
+
+
 0.50.3  Release                                                       2018-07-11
 --------------------------------------------------------------------------------
 
