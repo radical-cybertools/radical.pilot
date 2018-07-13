@@ -106,7 +106,7 @@ class Hombre(AgentSchedulingComponent):
         #   `oversubscribe` is set to False (which is the default for now),
         #   we'll prevent that behavior by allocating one additional CPU core
         #   for each set of requested GPU processes.
-        self._oversubscribe = self._cfg.get('oversubscribe', False)
+        self._oversubscribe = self._cfg.get('oversubscribe', True)
 
         # NOTE: We delay the actual configuration until we received the first
         #       unit to schedule - at that point we can slice and dice the
