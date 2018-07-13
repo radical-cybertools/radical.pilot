@@ -100,7 +100,7 @@ class Continuous(AgentSchedulingComponent):
         #   for each set of requested GPU processes.
         #   FIXME: I think our scheme finds the wrong core IDs for GPU process
         #          startup - i.e. not the reserved ones.
-        self._oversubscribe = self._cfg.get('oversubscribe', False)
+        self._oversubscribe = self._cfg.get('oversubscribe', True)
 
         # * scattered:
         #   This is the continuous scheduler, because it attempts to allocate
