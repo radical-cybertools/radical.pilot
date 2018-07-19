@@ -313,17 +313,14 @@ class Continuous(AgentSchedulingComponent):
         if requested_lfs:
             alloc_lfs = min(requested_lfs, free_lfs)
             num_procs.append(alloc_lfs / lfs_chunk)
-        # print 'After lfs, Procs: ', num_procs
         if requested_cores:
             alloc_cores = min(requested_cores, free_cores)
             num_procs.append(alloc_cores / core_chunk)
-        # print 'After cores, Procs: ', num_procs, requested_cores, core_chunk
         if requested_gpus:
             alloc_gpus = min(requested_gpus, free_gpus)
             num_procs.append(alloc_gpus / gpu_chunk)
 
         # Find min number of procs determined across lfs, cores, gpus
-        # print 'After gpus, Procs: ', num_procs
         num_procs = min(num_procs)
 
         # Find normalized lfs, cores and gpus
@@ -333,9 +330,6 @@ class Continuous(AgentSchedulingComponent):
             alloc_cores = num_procs * core_chunk
         if requested_gpus:
             alloc_gpus = num_procs * gpu_chunk
-        # alloc_gpus = min(requested_gpus, free_gpus)
-
-        # print 'lfs: ', alloc_lfs, ' cores: ', alloc_cores, ' gpus: ', alloc_gpus
 
         # now dig out the core and gpu IDs.
         for idx, state in enumerate(node['cores']):

@@ -7,7 +7,6 @@ import glob
 import os
 import shutil
 import copy
-from pprint import pprint
 
 try:
     import mock
@@ -114,7 +113,6 @@ def test_mpi_unit_with_continuous_scheduler(
         }))
 
     # Allocate first CUD -- should land on first node
-    print '--------------------------------------------------------'
     cud = mpi()
     cud['cpu_processes'] = 2
     cud['cpu_threads'] = 1
@@ -158,7 +156,6 @@ def test_mpi_unit_with_continuous_scheduler(
                                 'uid': 5}]
 
     # Allocate second CUD -- should land on first node
-    print '--------------------------------------------------------'
     cud = mpi()
     cud['cpu_processes'] = 1
     cud['cpu_threads'] = 2
@@ -203,13 +200,11 @@ def test_mpi_unit_with_continuous_scheduler(
 
     # Allocate third CUD -- should land on second node since no cores are
     # available on the first
-    print '--------------------------------------------------------'
     cud = mpi()
     cud['cpu_processes'] = 1
     cud['cpu_threads'] = 1
     cud['lfs_per_process'] = 1024
     slot = component._allocate_slot(cud)
-    # pprint(slot)
     assert slot == {'cores_per_node': component._lrms_cores_per_node,
                     'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{'lfs': {'size': 1024, 'path': 'abc'},
@@ -248,13 +243,11 @@ def test_mpi_unit_with_continuous_scheduler(
                                 'uid': 5}]
 
     # Allocate fourth CUD -- should land on second and third nodes
-    print '--------------------------------------------------------'
     cud = mpi()
     cud['cpu_processes'] = 2
     cud['cpu_threads'] = 2
     cud['lfs_per_process'] = 1024
     slot = component._allocate_slot(cud)
-    # print slot
     assert slot == {'cores_per_node': component._lrms_cores_per_node,
                     'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{'lfs': {'size': 1024, 'path': 'abc'},

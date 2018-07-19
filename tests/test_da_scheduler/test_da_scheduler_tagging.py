@@ -231,14 +231,6 @@ def test_nonmpi_unit_with_tagging(
 
     component._try_allocation(cu)
     slot3 = cu['slots']
-    from pprint import pprint
-    print 'slot:'
-    pprint(slot3)
-    print 'nodes:'
-    pprint(component.nodes)
-    print 'tag_history:'
-    pprint(component._tag_history)
-
     assert slot3 == None
     assert component._tag_history == {'unit.000000': [1],
                                       'unit.000001': [1]}

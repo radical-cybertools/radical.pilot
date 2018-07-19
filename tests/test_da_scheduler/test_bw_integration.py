@@ -3,6 +3,7 @@
 import os
 import sys
 import time
+from glob import glob
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -101,6 +102,9 @@ def test_bw_integration():
 
     session.close() 
 
+    txts = glob('%s/*.txt' % os.getcwd())
+    for f in txts:
+        os.remove(f)
 
 # ------------------------------------------------------------------------------
 
