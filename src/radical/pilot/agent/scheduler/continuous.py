@@ -13,7 +13,8 @@ from .base import AgentSchedulingComponent
 import inspect
 import threading as mt
 from math import ceil
-
+import logging
+import pprint
 # ------------------------------------------------------------------------------
 #
 # ------------------------------------------------------------------------------
@@ -161,6 +162,49 @@ class Continuous(AgentSchedulingComponent):
                     'lfs': self._lrms_lfs_per_node
                 })
 
+
+    def _try_allocation(self, unit):
+        """
+        attempt to allocate cores/gpus for a specific unit.
+        """
+
+        # needs to be locked as we try to acquire slots here, but slots are
+        # freed in a different thread.  But we keep the lock duration short...
+        with self._slot_lock:
+
+            self._prof.prof('schedule_try', uid=unit['uid'])
+            unit['slots'] = self._allocate_slot(unit['description'])
+
+        if unit['slots']:
+            
+            unit_uid = unit['uid']
+            node_uids = []
+            for node in unit['slots']['nodes']:
+                node_uids.append(node['uid'])
+
+            self._tag_history[unit_uid] = node_uids
+            
+        # the lock is freed here
+        if not unit['slots']:
+
+            # signal the unit remains unhandled (Fales signals that failure)
+            self._prof.prof('schedule_fail', uid=unit['uid'])
+            return False
+
+        # got an allocation, we can go off and launch the process
+        self._prof.prof('schedule_ok', uid=unit['uid'])
+
+        if self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug("after  allocate   %s: %s", unit['uid'],
+                            self.slot_status())
+            self._log.debug("%s [%s/%s] : %s", unit['uid'],
+                            unit['description']['cpu_processes'],
+                            unit['description']['gpu_processes'],
+                            pprint.pformat(unit['slots']))
+
+        # True signals success
+        return True
+
     # --------------------------------------------------------------------------
     #
     def _allocate_slot(self, cud):
@@ -269,16 +313,17 @@ class Continuous(AgentSchedulingComponent):
         if requested_lfs:
             alloc_lfs = min(requested_lfs, free_lfs)
             num_procs.append(alloc_lfs / lfs_chunk)
-
+        # print 'After lfs, Procs: ', num_procs
         if requested_cores:
-            alloc_cores = min(requested_cores, free_cores) / core_chunk * core_chunk
+            alloc_cores = min(requested_cores, free_cores)
             num_procs.append(alloc_cores / core_chunk)
-
+        # print 'After cores, Procs: ', num_procs, requested_cores, core_chunk
         if requested_gpus:
-            alloc_gpus = min(requested_gpus, free_gpus) / gpu_chunk * gpu_chunk
+            alloc_gpus = min(requested_gpus, free_gpus)
             num_procs.append(alloc_gpus / gpu_chunk)
 
         # Find min number of procs determined across lfs, cores, gpus
+        # print 'After gpus, Procs: ', num_procs
         num_procs = min(num_procs)
 
         # Find normalized lfs, cores and gpus
@@ -289,6 +334,8 @@ class Continuous(AgentSchedulingComponent):
         if requested_gpus:
             alloc_gpus = num_procs * gpu_chunk
         # alloc_gpus = min(requested_gpus, free_gpus)
+
+        # print 'lfs: ', alloc_lfs, ' cores: ', alloc_cores, ' gpus: ', alloc_gpus
 
         # now dig out the core and gpu IDs.
         for idx, state in enumerate(node['cores']):
@@ -413,7 +460,8 @@ class Continuous(AgentSchedulingComponent):
                                                     requested_gpus=requested_gpus,
                                                     requested_lfs=requested_lfs,
                                                     partial=False,
-                                                    lfs_chunk=lfs_chunk
+                                                    lfs_chunk=lfs_chunk,
+                                                    core_chunk = threads_per_proc
                                                     )
             if len(cores) == requested_cores and \
                     len(gpus) == requested_gpus:
@@ -425,10 +473,7 @@ class Continuous(AgentSchedulingComponent):
 
         # If we did not find any node to host this request, return `None`
         if not cores and not gpus and not lfs:
-            return None
-
-        # Store the selected node uid in the tag history
-        self._tag_history[uid] = [node['uid']]
+            return None        
 
         # We have to communicate to the launcher where exactly processes are to
         # be placed, and what cores are reserved for application threads.  See
@@ -607,13 +652,7 @@ class Continuous(AgentSchedulingComponent):
                     slots['nodes'] = list()
 
                 # try next node
-                continue
-
-            # Store the selected node uid in the tag history
-            if uid not in self._tag_history.keys():
-                self._tag_history[uid] = [node['uid']]
-            else:
-                self._tag_history[uid].append(node['uid'])
+                continue          
 
             # we found something - add to the existing allocation, switch gears
             # (not first anymore), and try to find more if needed
