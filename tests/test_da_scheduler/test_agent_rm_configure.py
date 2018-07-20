@@ -177,7 +177,7 @@ class TestComponentSlurmResourceManager(unittest.TestCase):
 
         # Verify configured correctly
         self.assertEqual(self.component.cores_per_node, 24)
-        self.assertEqual(self.component.gpus_per_node, 0)
+        self.assertEqual(self.component.gpus_per_node, 2)
         self.assertEqual(self.component.lfs_per_node['path'], "$LOCAL")
         self.assertEqual(self.component.lfs_per_node['size'], 3713368)
         self.assertEqual(self.component.lm_info['cores_per_node'], 24)
