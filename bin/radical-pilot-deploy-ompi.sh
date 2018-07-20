@@ -46,10 +46,10 @@ mkdir -p $OMPI_DOWNLOAD
 mkdir -p $OMPI_SOURCE
 
 cd $OMPI_DOWNLOAD
-wget http://ftp.nluug.nl/gnu/autoconf/autoconf-2.69.tar.gz
-wget http://ftp.nluug.nl/gnu/automake/automake-1.13.4.tar.gz
-wget http://nl.mirror.babylon.network/gnu/libtool/libtool-2.4.2.tar.gz
-wget https://ftp.gnu.org/gnu/m4/m4-1.4.16.tar.gz
+wget http://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.gz
+wget http://ftp.gnu.org/gnu/automake/automake-1.13.4.tar.gz
+wget http://ftp.gnu.org/gnu/libtool/libtool-2.4.2.tar.gz
+wget http://ftp.gnu.org/gnu/m4/m4-1.4.16.tar.gz
 
 cd $OMPI_SOURCE
 tar -xvzf $OMPI_DOWNLOAD/m4-1.4.16.tar.gz

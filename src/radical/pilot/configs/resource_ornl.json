@@ -114,7 +114,8 @@
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
         ],
-        "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
+     #  "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
+        "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "use",

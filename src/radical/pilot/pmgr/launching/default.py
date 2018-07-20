@@ -736,30 +736,30 @@ class Default(PMGRLaunchingComponent):
         ret = {'ft' : list(),
                'jd' : None  }
 
-        # ----------------------------------------------------------------------
-        # the rcfg can contain keys with string expansion placeholders where
-        # values from the pilot description need filling in.  A prominent
-        # example is `%(pd.project)s`, where the pilot description's `PROJECT`
-        # value needs to be filled in (here in lowercase).
-        expand = dict()
-        for k,v in pilot['description'].iteritems():
-            if v is None:
-                v = ''
-            expand['pd.%s' % k] = v
-            if isinstance(v, basestring):
-                expand['pd.%s' % k.upper()] = v.upper()
-                expand['pd.%s' % k.lower()] = v.lower()
-            else:
-                expand['pd.%s' % k.upper()] = v
-                expand['pd.%s' % k.lower()] = v
-
-        for k in rcfg:
-            if isinstance(rcfg[k], basestring):
-                orig     = rcfg[k]
-                rcfg[k]  = rcfg[k] % expand
-                expanded = rcfg[k]
-                if orig != expanded:
-                    self._log.debug('RCFG:\n%s\n%s', orig, expanded)
+      # # ----------------------------------------------------------------------
+      # # the rcfg can contain keys with string expansion placeholders where
+      # # values from the pilot description need filling in.  A prominent
+      # # example is `%(pd.project)s`, where the pilot description's `PROJECT`
+      # # value needs to be filled in (here in lowercase).
+      # expand = dict()
+      # for k,v in pilot['description'].iteritems():
+      #     if v is None:
+      #         v = ''
+      #     expand['pd.%s' % k] = v
+      #     if isinstance(v, basestring):
+      #         expand['pd.%s' % k.upper()] = v.upper()
+      #         expand['pd.%s' % k.lower()] = v.lower()
+      #     else:
+      #         expand['pd.%s' % k.upper()] = v
+      #         expand['pd.%s' % k.lower()] = v
+      #
+      # for k in rcfg:
+      #     if isinstance(rcfg[k], basestring):
+      #         orig     = rcfg[k]
+      #         rcfg[k]  = rcfg[k] % expand
+      #         expanded = rcfg[k]
+      #         if orig != expanded:
+      #             self._log.debug('RCFG:\n%s\n%s', orig, expanded)
 
         # ----------------------------------------------------------------------
         # Database connection parameters
