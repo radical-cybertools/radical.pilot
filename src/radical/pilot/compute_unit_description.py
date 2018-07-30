@@ -341,13 +341,13 @@ class ComputeUnitDescription(attributes.Attributes):
         self.set_attribute (OUTPUT_STAGING,   [  ])
 
         self.set_attribute (CPU_PROCESSES,       1)
-        self.set_attribute (CPU_PROCESS_TYPE, None)
+        self.set_attribute (CPU_PROCESS_TYPE,   '')
         self.set_attribute (CPU_THREADS,         1)
-        self.set_attribute (CPU_THREAD_TYPE,  None)
+        self.set_attribute (CPU_THREAD_TYPE,    '')
         self.set_attribute (GPU_PROCESSES,       0)
-        self.set_attribute (GPU_PROCESS_TYPE, None)
+        self.set_attribute (GPU_PROCESS_TYPE,   '')
         self.set_attribute (GPU_THREADS,         1)
-        self.set_attribute (GPU_THREAD_TYPE,  None)
+        self.set_attribute (GPU_THREAD_TYPE,    '')
 
         self.set_attribute (RESTARTABLE,     False)
         self.set_attribute (CLEANUP,         False)
