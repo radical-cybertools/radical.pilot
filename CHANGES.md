@@ -5,6 +5,15 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.50.5  Release                                                       2018-07-30
+--------------------------------------------------------------------------------
+
+  - fix default values for process and thread types (#1681) 
+  - fix outdated links in ompi deploy script 
+  - fix/issue 1671 (#1680) 
+  - fix scheduler config checks (#1677) 
+
+
 0.50.4  Release                                                       2018-07-13
 --------------------------------------------------------------------------------
 

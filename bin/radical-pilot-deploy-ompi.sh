@@ -17,8 +17,9 @@
 # procedure!
 
 export OMPI_DIR=$HOME/radical/ompi/                  # target location for install
-export OMPI_COMMIT=539f71d                           # OpenMPI commit to install
+export OMPI_DIR=/lustre/atlas2/csc230/world-shared/openmpi/
 export OMPI_COMMIT=a3ac67be0d
+export OMPI_COMMIT=539f71d                           # OpenMPI commit to install
 export OMPI_LABEL=$(date '+%Y_%m_%d'_${OMPI_COMMIT}) # module flag for installed version
 export MAKEFLAGS=-j16                                # speed up build on multicore machines
 
@@ -75,6 +76,7 @@ make install
 cd $OMPI_SOURCE
 tar -xvzf $OMPI_DOWNLOAD/libtool-2.4.2.tar.gz
 cd libtool-2.4.2
+./bootstrap
 ./configure --prefix=$OMPI_TOOLS_PREFIX
 make
 make install

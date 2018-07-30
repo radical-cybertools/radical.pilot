@@ -107,18 +107,6 @@ class Continuous(AgentSchedulingComponent):
     #
     def _configure(self):
 
-        if not self._lrms_node_list:
-            raise RuntimeError("LRMS %s didn't _configure node_list." % \
-                               self._lrms_info['name'])
-
-        if not self._lrms_cores_per_node:
-            raise RuntimeError("LRMS %s didn't _configure cores_per_node." % \
-                               self._lrms_info['name'])
-
-        if not self._lrms_gpus_per_node:
-            raise RuntimeError("LRMS %s didn't _configure gpus_per_node." % \
-                               self._lrms_info['name'])
-
         # * oversubscribe:
         #   Cray's aprun for example does not allow us to oversubscribe CPU
         #   cores on a node, so we can't, say, run n CPU processes on an n-core
