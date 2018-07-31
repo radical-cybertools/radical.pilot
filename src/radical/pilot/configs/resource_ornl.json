@@ -56,7 +56,7 @@
         "default_queue"               : "batch",
         "lrms"                        : "TORQUE",
         "agent_type"                  : "multicore",
-        "agent_config"                : "cray_aprun",
+        "agent_config"                : "rhea",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "APRUN",
@@ -103,15 +103,17 @@
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",
         "cores_per_node"              : "16",
+        "gpus_per_node"               : 1,
         "pre_bootstrap_0"             : [
             "module swap PrgEnv-pgi PrgEnv-gnu",
             "module load python",
             "module use --append /lustre/atlas/world-shared/csc230/openmpi/modules/",
-            "module load openmpi/2018_01_16_539f71d",
+            "module load openmpi/2018_07_26_539f71d",
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
         ],
         "default_sandbox_base"        : "$MEMBERWORK/`groups | cut -d' ' -f2`",
+     #  "default_sandbox_base"        : "$MEMBERWORK/%(pd.project)s",
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "use",
@@ -139,11 +141,12 @@
         "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE_LIB",
         "mpi_launch_method"           : "ORTE_LIB",
+        "gpus_per_node"               : 1,
         "pre_bootstrap_0"             : [
             "module swap PrgEnv-pgi PrgEnv-gnu",
             "module load python",
             "module use --append /lustre/atlas/world-shared/csc230/openmpi/modules/",
-            "module load openmpi/2018_01_16_539f71d",
+            "module load openmpi/2018_07_26_539f71d",
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
         ],
@@ -176,6 +179,7 @@
         },
         "default_queue"               : "batch",
         "cores_per_node"              : "16",
+        "gpus_per_node"               : 1,
         "lrms"                        : "TORQUE",
         #"agent_type"                  : "multicore",
         #"agent_config"                : "mpirun",

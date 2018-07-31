@@ -56,7 +56,7 @@ try:
         pdescs.append (pdesc)
 
     pilots = pmgr.submit_pilots(pdescs)
-    umgr = rp.UnitManager(session=session, scheduler=rp.SCHED_BACKFILLING)
+    umgr = rp.UnitManager(session=session, scheduler=rp.SCHEDULER_BACKFILLING)
     umgr.register_callback(unit_state_cb)
     umgr.add_pilots(pilots)
 

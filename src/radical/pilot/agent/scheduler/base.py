@@ -258,6 +258,18 @@ class AgentSchedulingComponent(rpu.Component):
         self._lrms_cores_per_node = self._cfg['lrms_info']['cores_per_node']
         self._lrms_gpus_per_node  = self._cfg['lrms_info']['gpus_per_node']
 
+        if not self._lrms_node_list:
+            raise RuntimeError("LRMS %s didn't _configure node_list."
+                              % self._lrms_info['name'])
+
+        if self._lrms_cores_per_node is None:
+            raise RuntimeError("LRMS %s didn't _configure cores_per_node."
+                              % self._lrms_info['name'])
+
+        if self._lrms_gpus_per_node is None:
+            raise RuntimeError("LRMS %s didn't _configure gpus_per_node."
+                              % self._lrms_info['name'])
+
         # create and initialize the wait pool
         self._wait_pool = list()             # pool of waiting units
         self._wait_lock = threading.RLock()  # look on the above pool
@@ -462,13 +474,58 @@ class AgentSchedulingComponent(rpu.Component):
         if self._log.isEnabledFor(logging.DEBUG):
             self._log.debug("after  allocate   %s: %s", unit['uid'],
                             self.slot_status())
-            self._log.debug("%s [%s/%s] : %s [%s]", unit['uid'],
+            self._log.debug("%s [%s/%s] : %s", unit['uid'],
                             unit['description']['cpu_processes'],
                             unit['description']['gpu_processes'],
                             pprint.pformat(unit['slots']))
 
         # True signals success
         return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_node_maps(self, cores, gpus, threads_per_proc):
+        '''
+        For a given set of cores and gpus, chunk them into sub-sets so that each
+        sub-set can host one application process and all threads of that
+        process.  Note that we currently consider all GPU applications to be
+        single-threaded.
+
+        example:
+            cores  : [1, 2, 3, 4, 5, 6, 7, 8]
+            gpus   : [1, 2]
+            tpp    : 4
+            result : [[1, 2, 3, 4], [5, 6, 7, 8]], [[1], [2]]
+
+        For more details, see top level comment of `base.py`.
+        '''
+
+        core_map = list()
+        gpu_map  = list()
+
+        # make sure the core sets can host the requested number of threads
+        assert(not len(cores) % threads_per_proc)
+        n_procs =  len(cores) / threads_per_proc
+
+        idx = 0
+        for p in range(n_procs):
+            p_map = list()
+            for t in range(threads_per_proc):
+                p_map.append(cores[idx])
+                idx += 1
+            core_map.append(p_map)
+
+        if idx != len(cores):
+            self._log.debug('%s -- %s -- %s -- %s',
+                            idx, len(cores), cores, n_procs)
+        assert(idx == len(cores))
+
+        # gpu procs are considered single threaded right now (FIXME)
+        for g in gpus:
+            gpu_map.append([g])
+
+        return core_map, gpu_map
 
 
     # --------------------------------------------------------------------------

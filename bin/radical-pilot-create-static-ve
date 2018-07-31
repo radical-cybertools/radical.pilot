@@ -100,18 +100,26 @@ elif test "$arg" = "bwpy"
 then
     # this is where we end up after the `exec` call in the branch above
     echo "create bwpy ve [$prefix]"
-
+    PYTHON=python2.7
 else
     # this is not BW.
     echo "create rct ve [$prefix]"
-
+    PYTHON=python
 fi
 
 # create the ve, install bare necessities
 mkdir -p "$prefix"
+cd $prefix
+
+echo -n "install virtualenv "
+VIRTENV_TGZ="virtualenv-1.9.tar.gz"
+VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/$VIRTENV_TGZ"
+curl -k -L -O "$VIRTENV_TGZ_URL" 2>&1 | progress
+tar zxmf "$VIRTENV_TGZ"
+VIRTENV_CMD="$PYTHON virtualenv-1.9/virtualenv.py"
 
 echo -n "create  virtualenv "
-stdbuf -oL virtualenv "$prefix" | progress
+stdbuf -oL $VIRTENV_CMD "$prefix" | progress
 .          "$prefix"/bin/activate
 
 echo -n "update  setuptools "
@@ -128,8 +136,8 @@ done
 # install the radical stack (utils, saga, pilot) into a separate tree
 # ($prefix/rp_install(, so that any local install can use the ve *w/o* 
 # the radical stack, by re-routing PYTHONPATH
-python_version=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
-ve_mod_prefix=` python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
+python_version=`$PYTHON -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
+ve_mod_prefix=` $PYTHON -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
 rp_mod_prefix=`echo $ve_mod_prefix | sed -e "s|$prefix|$prefix/rp_install/|"`
 
 # BW doesn't like us anymore: after loading the bwpy module, we also need to
@@ -146,17 +154,24 @@ then
 
     # find binary - fucking virtualenv seems to pick the bin name randomly or
     # whatever...
-    for p in python python2 python2.7
+    for p in python*
     do
-        if ! test -h $p
+        if   ! test -e $p; then echo "miss   $p"
+        elif ! test -x $p; then echo "ignore $p"
+        elif   test -h $p
         then
-            echo "patch $p"
-            mv $p $p-exe
+            echo "wrap   $p"
+            tgt=$(readlink $p)
+            rm -f $p
             echo "#!/bin/sh" > $p
-            echo "exec bwpy-environ -- $cwd/$p-exe \"\$@\"" >> $p
+            echo "exec bwpy-environ -- $tgt \"\$@\"" >> $p
             chmod 0755  $p
         else
-            echo "skip  $p"
+            echo "patch  $p"
+            mv   $p $p.rp
+            echo "#!/bin/sh" > $p
+            echo "exec bwpy-environ -- $cwd/$p.rp \"\$@\"" >> $p
+            chmod 0755  $p
         fi
     done
 fi
@@ -166,7 +181,7 @@ echo
 echo "---------------------------------------------------------------------"
 echo
 echo "PYTHONPATH: $PYTHONPATH"
-echo "python: `which python` (`python --version`)"
+echo "python: `which python` (`python -V`)"
 echo
 echo "---------------------------------------------------------------------"
 echo

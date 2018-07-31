@@ -56,7 +56,7 @@ try:
     # a UnitManager object.
     umgr = rp.UnitManager(
         session=session,
-        scheduler=rp.SCHED_DIRECT_SUBMISSION,
+        scheduler=rp.SCHEDULER_DIRECT_SUBMISSION,
         output_transfer_workers=4,
         input_transfer_workers=4)
 

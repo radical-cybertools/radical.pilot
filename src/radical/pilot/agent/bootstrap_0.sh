@@ -1546,17 +1546,35 @@ RUNTIME=$((RUNTIME * 60))
 # down on its own
 RUNTIME=$((RUNTIME + 60))
 
+# ------------------------------------------------------------------------------
 # If the host that will run the agent is not capable of communication
 # with the outside world directly, we will setup a tunnel.
-if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
+get_tunnel(){
+
+    addr=$1
 
     profile_event 'tunnel_setup_start'
 
     echo "# -------------------------------------------------------------------"
-    echo "# Setting up forward tunnel for MongoDB to $FORWARD_TUNNEL_ENDPOINT."
+    echo "# Setting up forward tunnel to $addr."
 
     # Bind to localhost
-    BIND_ADDRESS=`/sbin/ifconfig $TUNNEL_BIND_DEVICE|grep "inet addr"|cut -f2 -d:|cut -f1 -d" "`
+    BIND_ADDRESS=$(/sbin/ifconfig $TUNNEL_BIND_DEVICE|grep "inet addr"|cut -f2 -d:|cut -f1 -d" ")
+
+    if test -z "$BIND_ADDRESS"
+    then
+        BIND_ADDRESS=$(/sbin/ifconfig lo | grep 'inet' | xargs echo | cut -f 2 -d ' ')
+    fi
+
+    if test -z "$BIND_ADDRESS"
+    then
+        BIND_ADDRESS=$(ip addr 
+                     | grep 'state UP' -A2 
+                     | grep 'inet' 
+                     | awk '{print $2}' 
+                     | cut -f1 -d'/')
+      # BIND_ADDRESS="127.0.0.1"
+    fi
 
     # Look for an available port to bind to.
     # This might be necessary if multiple agents run on one host.
@@ -1573,24 +1591,50 @@ if [[ $FORWARD_TUNNEL_ENDPOINT ]]; then
     # Set up tunnel
     # TODO: Extract port and host
     FORWARD_TUNNEL_ENDPOINT_PORT=22
-    if test "$FORWARD_TUNNEL_ENDPOINT" = "BIND_ADDRESS"; then
+
+    if test -z "$FORWARD_TUNNEL_ENDPOINT"
+    then
+        FORWARD_TUNNEL_ENDPOINT_HOST=$BIND_ADDRESS
+
+    elif test "$FORWARD_TUNNEL_ENDPOINT" = "BIND_ADDRESS"; then
         # On some systems, e.g. Hopper, sshd on the mom node is not bound to 127.0.0.1
         # In those situations, and if configured, bind to the just obtained bind address.
         FORWARD_TUNNEL_ENDPOINT_HOST=$BIND_ADDRESS
+
     else
+        # FIXME: ensur FT_EP is set
         FORWARD_TUNNEL_ENDPOINT_HOST=$FORWARD_TUNNEL_ENDPOINT
     fi
-    ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$HOSTPORT -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST &
+
+    # FIXME: check if tunnel stays up
+    echo ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$addr -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST
+         ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$addr -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST &
 
     # Kill ssh process when bootstrap_0 dies, to prevent lingering ssh's
     trap 'jobs -p | grep ssh | xargs kill' EXIT
 
     # and export to agent
-    export RADICAL_PILOT_DB_HOSTPORT=$BIND_ADDRESS:$DBPORT
+    export RP_BS_TUNNEL="$BIND_ADDRESS:$DBPORT"
 
     profile_event 'tunnel_setup_stop'
+}
 
+if ! test -z "$FORWARD_TUNNEL_ENDPOINT"
+then
+    get_tunnel "$HOSTPORT"
+    export RADICAL_PILOT_DB_HOSTPORT="$RP_BS_TUNNEL"
 fi
+
+# we also set up a tunnel for the application to use, if a respective endpoint
+# is requested in the environment
+if ! test -z "$RP_APP_TUNNEL_ADDR"
+then
+    echo "app tunnel addr : $RP_APP_TUNNEL_ADDR"
+    get_tunnel "$RP_APP_TUNNEL_ADDR"
+    export RP_APP_TUNNEL="$RP_BS_TUNNEL"
+    echo "app tunnel setup: $RP_APP_TUNNEL"
+fi
+
 
 rehash "$PYTHON"
 
