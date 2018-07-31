@@ -16,7 +16,7 @@
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
         "default_queue"               : "batch",
-        "pre_bootstrap_1"             : ["module purge", "module load python", "module load openmpi/1.4.3-gnu"],
+        "pre_bootstrap_0"             : ["module purge", "module load python", "module load openmpi/1.4.3-gnu"],
         "valid_roots"                 : ["/N"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "update",
@@ -38,7 +38,7 @@
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
         "default_queue"               : "bravo",
-        "pre_bootstrap_1"             : [
+        "pre_bootstrap_0"             : [
             "module load python/2.7",
             "module load openmpi/1.4.3-gnu"
         ],
@@ -127,7 +127,7 @@
         "agent_launch_method"         : "CCMRUN",
         "task_launch_method"          : "CCMRUN",
         "mpi_launch_method"           : "APRUN",
-        "pre_bootstrap_1"             : ["module load ccm"],
+        "pre_bootstrap_0"             : ["module load ccm"],
         "default_queue"               : "ccm_queue",
         "default_remote_workdir"      : "/scratch/$USER",
         "valid_roots"                 : ["/scratch", "/home/users"],

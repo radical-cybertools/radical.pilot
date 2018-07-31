@@ -5,8 +5,8 @@ __license__   = "MIT"
 
 import os
 import time
-import subprocess as sp
-
+import threading
+import subprocess    as mp
 import radical.utils as ru
 
 from .base import LaunchMethod
@@ -62,6 +62,8 @@ class ORTE(LaunchMethod):
         out, _, _ = ru.sh_callout('orte-info | grep "Open RTE"', shell=True)
 
         for line in out.splitlines():
+
+            line = line.strip()
             if not line:
                 continue
 
@@ -72,6 +74,7 @@ class ORTE(LaunchMethod):
             if   key == 'Open RTE'              : info['version']        = val
             elif key == 'Open RTE repo revision': info['version_detail'] = val
 
+        assert(info.get('version'))
         logger.info("Found Open RTE: %s [%s]",
                     info['version'], info['version_detail'])
 
@@ -80,18 +83,29 @@ class ORTE(LaunchMethod):
         # without waiting for orte-dvm to complete.
         # The command seems to be generally available on our Cray's,
         # if not, we can code some home-coooked pty stuff.
-        stdbuf_cmd  = cls._find_executable(['stdbuf', 'gstdbuf'])
-        stdbuf_args = ["-oL"]
+        stdbuf_cmd =  ru.which(['stdbuf', 'gstdbuf'])
+        stdbuf_arg = "-oL"
+
         if not stdbuf_cmd:
             raise Exception("Couldn't find (g)stdbuf")
 
-        command = [stdbuf_cmd] + stdbuf_args + [dvm_cmd] + dvm_args
+        # Additional (debug) arguments to orte-dvm
+        if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
+            debug_strings = [
+                             '--debug-devel',
+                             '--mca odls_base_verbose 100',
+                             '--mca rml_base_verbose 100'
+                            ]
+        else:
+            debug_strings = []
+
+        command = [stdbuf_cmd] + [stdbuf_args] + [dvm_cmd] + debug_strings
         vm_size = len(lrms.node_list)
         dvm_uri = None
 
-        profiler.prof(event='orte_dvm_start', uid=cfg['pilot_id'])
         logger.info("Starting ORTE DVM on %d nodes with '%s'", vm_size, command)
-        dvm_process = sp.Popen(command, stdout=sp.PIPE, stderr=sp.STDOUT)
+        profiler.prof(event='orte_dvm_start', uid=cfg['pilot_id'])
+        dvm_process = mp.Popen(command, stdout=mp.PIPE, stderr=mp.STDOUT)
 
         while True:
 
@@ -114,7 +128,7 @@ class ORTE(LaunchMethod):
             else:
                 # Check if the process is still around,
                 # and log output in debug mode.
-                if None == dvm_process.poll():
+                if dvm_process.poll() is None:
                     logger.debug("ORTE: %s", line)
                 else:
                     # Process is gone: fatal!
@@ -156,7 +170,7 @@ class ORTE(LaunchMethod):
 
         # we need to inform the actual LM instance about the DVM URI.  So we
         # pass it back to the LRMS which will keep it in an 'lm_info', which
-        # will then be passed as part of the opaque_slots via the scheduler
+        # will then be passed as part of the slots via the scheduler
         return lm_info
 
 
@@ -184,7 +198,7 @@ class ORTE(LaunchMethod):
             except Exception as e:
                 # use the same event name as for runtime failures - those are
                 # not distinguishable at the moment from termination failures
-                profiler.prof(event='orte_dvm_fail', uid=cfg['pilot_id'])
+                profiler.prof(event='orte_dvm_fail', uid=cfg['pilot_id'], msg=e)
                 logger.exception('dvm termination failed')
 
 
@@ -199,39 +213,42 @@ class ORTE(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cores']
-        task_mpi     = cud.get('mpi')       or False
-        task_args    = cud.get('arguments') or []
+        task_mpi     = bool('mpi' in cud.get('cpu_process_type', '').lower())
+        task_cores   = cud.get('cpu_processes', 0) + cud.get('gpu_processes', 0)
+        task_env     = cud.get('environment') or dict()
+        task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
-        if 'task_slots' not in opaque_slots:
-            raise RuntimeError('No task_slots to launch via %s: %s'
-                               % (self.name, opaque_slots))
+     #  import pprint
+     #  self._log.debug('prep %s', pprint.pformat(cu))
+        self._log.debug('prep %s', cu['uid'])
 
-        if 'lm_info' not in opaque_slots:
+        if 'lm_info' not in slots:
             raise RuntimeError('No lm_info to launch via %s: %s'
-                    % (self.name, opaque_slots))
+                               % (self.name, slots))
 
-        if not opaque_slots['lm_info']:
+        if not slots['lm_info']:
             raise RuntimeError('lm_info missing for %s: %s'
-                               % (self.name, opaque_slots))
+                               % (self.name, slots))
 
-        if 'dvm_uri' not in opaque_slots['lm_info']:
+        if 'dvm_uri' not in slots['lm_info']:
             raise RuntimeError('dvm_uri not in lm_info for %s: %s'
-                    % (self.name, opaque_slots))
+                               % (self.name, slots))
 
-        task_slots = opaque_slots['task_slots']
-        dvm_uri    = opaque_slots['lm_info']['dvm_uri']
+        dvm_uri = slots['lm_info']['dvm_uri']
 
-        if task_argstr:
-            task_command = "%s %s" % (task_exec, task_argstr)
-        else:
-            task_command = task_exec
+        if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
+        else          : task_command = task_exec
 
-        # Construct the hosts_string, env vars
+        env_string = ''
+        env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
+        if env_list:
+            for var in env_list:
+                env_string += '-x "%s" ' % var
+
         # On some Crays, like on ARCHER, the hostname is "archer_N".
         # In that case we strip off the part upto and including the underscore.
         #
@@ -240,23 +257,42 @@ class ORTE(LaunchMethod):
         #       we need to turn this into a system specific regexp or so.
         #
         hosts_string = ",".join([slot.split(':')[0].rsplit('_', 1)[-1]
-                                             for slot in task_slots])
-        export_vars  = ' '.join(['-x ' + var for var  in self.EXPORT_ENV_VARIABLES
-                                             if  var  in os.environ])
+                                             for slot in slots])
+    #   depths       = set()
+    #   for node in slots['nodes']:
+    #       node_id = node[1].rsplit('_', 1)[-1] 
+    #       for cpu_slot in node[2]: hosts_string += '%s,' % node_id
+    #       for gpu_slot in node[3]: hosts_string += '%s,' % node_id
+    #       for cpu_slot in node[2]: depths.add(len(cpu_slot))
+    #
+    #   assert(len(depths) == 1), depths
+    #   depth = list(depths)[0]
+    #
+    #   # FIXME: is this binding correct?
+    # # if depth > 1: map_flag = '--bind-to none --map-by ppr:%d:core' % depth
+    # # else        : map_flag = '--bind-to none'
+        map_flag = '--bind-to none'
+
 
         # Additional (debug) arguments to orterun
         debug_strings = []
         if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
-            debug_strings = ['--debug-devel',
+            debug_strings = ['-display-devel-map', 
+                             '-display-allocation', 
+                             '--debug-devel',
                              '--mca oob_base_verbose 100',
-                             '--mca rml_base_verbose 100']
+                             '--mca rml_base_verbose 100'
+                            ]
+        else:
+            debug_strings = []
+        debug_string = ' '.join(debug_strings)
 
         if task_mpi: np_flag = '-np %s' % task_cores
         else       : np_flag = '-np 1'
 
-        command = '%s %s --hnp "%s" %s --bind-to none %s -host %s %s' % \
-                  (self.launch_command, ' '.join(debug_strings), dvm_uri,
-                   export_vars, np_flag, hosts_string, task_command)
+        command = '%s %s --hnp "%s" %s %s -host %s %s %s' % \
+                  (self.launch_command, debug_string,  dvm_uri, np_flag,
+                   map_flag, hosts_string, env_string, task_command)
 
         return command, None
 

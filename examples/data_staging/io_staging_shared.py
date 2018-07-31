@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
-        umgr = rp.UnitManager(session, rp.SCHED_BACKFILLING)
+        umgr = rp.UnitManager(session, rp.SCHEDULER_BACKFILLING)
 
         # Add the previously created ComputePilot to the UnitManager.
         umgr.add_pilots(pilot)

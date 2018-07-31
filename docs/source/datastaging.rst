@@ -70,7 +70,7 @@ dict of the following structure:
     staging_directive = {
         'source':   source,   # radical.pilot.Url() or string (MANDATORY).
         'target':   target,   # radical.pilot.Url() or string (OPTIONAL).
-        'action':   action,   # One of COPY, LINK, MOVE or TRANSFER (OPTIONAL).
+        'action':   action,   # One of COPY, LINK, MOVE, TRANSFER or TARBALL (OPTIONAL).
         'flags':    flags,    # Zero or more of CREATE_PARENTS or SKIP_FAILED (OPTIONAL).
         'priority': priority  # A number to instruct ordering (OPTIONAL).
     }
@@ -95,7 +95,8 @@ The semantics of the keys from the dict are as follows:
     Depending on the relative location of the working directory of the
     ``source`` to the ``target`` location, the action can be ``COPY``
     (local resource), ``LINK`` (same file system),
-    ``MOVE`` (local resource), or ``TRANSFER`` (to a remote resource).
+    ``MOVE`` (local resource), ``TRANSFER`` (to a remote resource), or 
+    ``TARBALL`` (transfer to a remote resource after tarring files).
 
 - ``flags`` (default: [CREATE_PARENTS, SKIP_FAILED]):
     By passing certain flags we can influence the behavior of the action.

@@ -16,7 +16,7 @@ CORES           =   16
 SIM_INSTANCES   =   16
 ANA_INSTANCES   =   1           # DO NOT CHANGE !
 CYCLES          =   2
-SCHED       = radical.pilot.SCHED_DIRECT_SUBMISSION
+SCHED       = radical.pilot.SCHEDULER_DIRECT_SUBMISSION
 
 MY_STAGING_AREA = 'staging:///'
 

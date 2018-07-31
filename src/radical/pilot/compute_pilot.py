@@ -127,7 +127,7 @@ class ComputePilot(object):
         self._log.info("[Callback]: pilot %s state: %s.", self.uid, self.state)
 
         if self.state == rps.FAILED and self._exit_on_error:
-            self._log.error(" === [Callback]: pilot '%s' failed (exit on error)", self.uid)
+            self._log.error("[Callback]: pilot '%s' failed (exit on error)", self.uid)
             # FIXME: how to tell main?  Where are we in the first place?
           # ru.cancel_main_thread('int')
             raise RuntimeError('pilot %s failed - fatal!' % self.uid)
@@ -160,7 +160,7 @@ class ComputePilot(object):
                 assert(rps._pilot_state_value(target) - rps._pilot_state_value(current)), \
                             'invalid state transition'
             except:
-                self._log.error(' === %s: invalid state transition %s -> %s', 
+                self._log.error('%s: invalid state transition %s -> %s', 
                         self.uid, current, target)
                 raise
 
@@ -172,6 +172,7 @@ class ComputePilot(object):
         self._pilot_dict = copy.deepcopy(pilot_dict)
 
         # invoke pilot specific callbacks
+        # FIXME: this iteration needs to be thread-locked!
         for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
 
             cb      = cb_val['cb']
@@ -553,7 +554,6 @@ class ComputePilot(object):
 
         # send the staging request to the pmg launcher
         self._pmgr._pilot_staging_input(self.as_dict(), directives)
-        return
 
 
 # ------------------------------------------------------------------------------

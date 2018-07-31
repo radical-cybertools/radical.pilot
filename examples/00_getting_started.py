@@ -24,7 +24,7 @@ dh = ru.DebugHelper()
 if __name__ == '__main__':
 
     # we use a reporter class for nicer output
-    report = ru.LogReporter(name='radical.pilot')
+    report = ru.Reporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
@@ -85,7 +85,12 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable = '/bin/date'
+            cud.executable       = '/bin/date'
+            cud.gpu_processes    = 0
+            cud.cpu_processes    = 2
+            cud.cpu_threads      = 2
+            cud.cpu_process_type = rp.MPI
+            cud.cpu_thread_type  = rp.OpenMP
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -98,14 +103,14 @@ if __name__ == '__main__':
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
-    
+
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
         report.error('caught Exception: %s\n' % e)
         ru.print_exception_trace()
         raise
-   
+
     except (KeyboardInterrupt, SystemExit) as e:
         # the callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
@@ -113,7 +118,7 @@ if __name__ == '__main__':
         # reason).
         ru.print_exception_trace()
         report.warn('exit requested\n')
- 
+
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.
@@ -123,5 +128,5 @@ if __name__ == '__main__':
     report.header()
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 

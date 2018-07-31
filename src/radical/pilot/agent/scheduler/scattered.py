@@ -23,35 +23,22 @@ class Scattered(AgentSchedulingComponent):
     #
     def __init__(self, cfg, session):
 
-        self.slots = None
+        self.nodes = None
         AgentSchedulingComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        if not self._lrms_node_list:
-            raise RuntimeError("LRMS %s didn't _configure node_list." % \
-                               self._lrms_info['name'])
 
-        if not self._lrms_cores_per_node:
-            raise RuntimeError("LRMS %s didn't _configure cores_per_node." % \
-                               self._lrms_info['name'])
+        # TODO: use real core/gpu numbers for non-exclusive reservations
 
-        # Slots represents the internal process management structure.
-        # The structure is as follows:
-        # [
-        #    {'node': 'node1:0', 'state': rpc.FREE | rpc.BUSY},
-        #    {'node': 'node2:0', 'state': rpc.FREE | rpc.BUSY},
-        #     ....
-        #    {'node': 'nodeN:0', 'state': rpc.FREE | rpc.BUSY}
-        # ]
-        #
-        self.slots = []
+        self.nodes = []
         for node in self._lrms_node_list:
-            self.slots.append({
-                'node': '%s:0' % node,
-                'state': rpc.FREE
+            self.nodes.append({
+                'name' : '%s:0' % node,
+                'cores': rpc.FREE * self._lrms_cores_per_node,
+                'gpus' : rpc.FREE * self._lrms_gpus_per_node
             })
 
 
@@ -63,31 +50,42 @@ class Scattered(AgentSchedulingComponent):
         """Returns a multi-line string corresponding to slot status.
         """
 
-        slot_matrix = ""
-        for slot in self.slots:
-            slot_matrix += "|"
-            if slot['state'] == rpc.FREE:
-                slot_matrix += "-"
-            else:
-                slot_matrix += "+"
-        slot_matrix += "|"
-        return {'timestamp' : time.time(),
-                'slotstate' : slot_matrix}
+        ret = "|"
+        for node in self.nodes:
+            for core in node['cores']:
+                if core == rpc.FREE  : ret += '-'
+                else                 : ret += '#'
+            ret += ':'
+            for gpu in node['gpus']  :
+                if gpu == rpc.FREE   : ret += '-'
+                else                 : ret += '#'
+            ret += '|'
+
+        return ret
 
 
     # --------------------------------------------------------------------------
     #
     # Find cores and allocate them if available
     #
-    def _allocate_slot(self, cores_requested):
+    def _allocate_slot(self, cud):
 
-        offsets = self._find_slots_scattered(cores_requested)
+        cores_requested = cud['cpu_processes'] * cud['cpu_threads']
+        gpus_requested  = cud['gpus']
 
-        if not offsets:
-            # allocation failed
-            return {}
+        offsets = []
+        for offset, node in enumerate(self.nodes):
 
-        task_slots = [self.slots[x]['node'] for x in offsets]
+            if node['state'] == rpc.FREE:
+                offsets.append(offset)
+
+            elif len(offsets) == cores_requested:
+                break
+
+        if len(offsets) < cores_requested:
+            return {}   # allocation failed
+
+        task_slots = [self.nodes[x]['name'] for x in offsets]
 
         self._change_slot_states(offsets, rpc.BUSY)
 
@@ -106,31 +104,13 @@ class Scattered(AgentSchedulingComponent):
     #
     # Release cores associated to this slot
     #
-    def _release_slot(self, opaque_slots):
+    def _release_slot(self, slots):
 
-        if not 'task_offsets' in opaque_slots:
+        if not 'task_offsets' in slots:
             raise RuntimeError('insufficient information to release slots via %s: %s' \
-                    % (self.name, opaque_slots))
+                    % (self.name, slots))
 
-        self._change_slot_states(opaque_slots['task_offsets'], rpc.FREE)
-
-
-    # --------------------------------------------------------------------------
-    #
-    # Find available cores
-    #
-    def _find_slots_scattered(self, cores_requested):
-
-        offsets = []
-        for offset, slot in enumerate(self.slots):
-
-            if slot['state'] == rpc.FREE:
-                offsets.append(offset)
-
-            if len(offsets) == cores_requested:
-                return offsets
-
-        return None
+        self._change_slot_states(slots['task_offsets'], rpc.FREE)
 
 
     # --------------------------------------------------------------------------
@@ -140,7 +120,7 @@ class Scattered(AgentSchedulingComponent):
     def _change_slot_states(self, offsets, new_state):
 
         for offset in offsets:
-            self.slots[offset]['state'] = new_state
+            self.nodes[offset]['state'] = new_state
 
 # ------------------------------------------------------------------------------
 

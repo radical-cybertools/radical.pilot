@@ -17,11 +17,36 @@
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "POE",
         "forward_tunnel_endpoint"     : "yslogin6",
-        "pre_bootstrap_1"             : ["module purge", "module load ncarenv", "module load ncarbinlibs", "module load python"],
+        "pre_bootstrap_0"             : ["module purge", "module load ncarenv", "module load ncarbinlibs", "module load python"],
         "valid_roots"                 : ["/glade/u", "/glade/p", "/glade/scratch"],
         "rp_version"                  : "installed",
         "virtenv"                     : "/glade/u/home/marksant/pilotve",
         "virtenv_mode"                : "use",
+        "python_dist"                 : "default"
+    },
+
+    "cheyenne_mpirun": {
+        "description"                 : "Cheyenne",
+        "notes"                       : "",
+        "schemas"                     : ["fork"],
+        "fork"                        :
+        {
+            "job_manager_endpoint"    : "pbs+ssh://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_queue"               : "regular",
+        "lrms"                        : "PBS",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN",
+        "forward_tunnel_endpoint"     : "cheyenne2",
+        "pre_bootstrap_0"             : ["module load openmpi", "module load python"],
+        "valid_roots"                 : ["/glade/u", "/glade/p", "/glade/scratch"],
+        "rp_version"                  : "installed",
+     #  "virtenv"                     : "/glade/u/home/marksant/pilotve",
+        "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     }
 }

@@ -48,8 +48,7 @@ class Spark(AgentSchedulingComponent):
         self._num_of_cores  = metrics['clusterMetrics']['allocatedVirtualCores']
         self._mem_size      = metrics['clusterMetrics']['allocatedMB']
 
-        self.avail_app   = {'apps'     : max_num_app - num_app,
-                            'timestamp': sample_time}
+        self.avail_app   = max_num_app         - num_app
         self.avail_cores = self._mnum_of_cores - self._num_of_cores
         self.avail_mem   = self._mmem_size     - self._mem_size
 
@@ -101,7 +100,8 @@ class Spark(AgentSchedulingComponent):
         # accept. It needs to go either from the configuration file or find a
         # way to take this value for the YARN scheduler config.
 
-        cores_requested = cu['description']['cores']
+        cores_requested = cu['description']['cpu_processes'] \
+                        * cu['description']['threads']
         mem_requested   = 2048
         slots           = None
 

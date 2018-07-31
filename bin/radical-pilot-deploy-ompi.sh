@@ -16,8 +16,9 @@
 # Thanks to Mark Santcroos to provide the input for this installation
 # procedure!
 
-# export OMPI_DIR=$HOME/ompi/                          # target location for install
-export OMPI_DIR=/lustre/atlas2/csc230/world-shared/openmpi
+export OMPI_DIR=$HOME/radical/ompi/                  # target location for install
+export OMPI_DIR=/lustre/atlas2/csc230/world-shared/openmpi/
+export OMPI_COMMIT=a3ac67be0d
 export OMPI_COMMIT=539f71d                           # OpenMPI commit to install
 export OMPI_COMMIT=master
 export OMPI_COMMIT=64e838c1ac
@@ -88,39 +89,40 @@ fi
 mkdir -p $OMPI_DOWNLOAD
 mkdir -p $OMPI_SOURCE
 
-# wget http://ftp.nluug.nl/gnu/autoconf/autoconf-2.69.tar.gz
-# wget http://ftp.nluug.nl/gnu/automake/automake-1.13.4.tar.gz
-# wget http://nl.mirror.babylon.network/gnu/libtool/libtool-2.4.2.tar.gz
-#    wget https://ftp.gnu.org/gnu/m4/m4-1.4.18.tar.gz
-# wget ftp://ftp.gromacs.org/pub/gromacs/gromacs-5.1.4.tar.gz
-# 
-# cd $OMPI_SOURCE
-# tar -xvzf $OMPI_DOWNLOAD/m4-1.4.18.tar.gz
-# cd m4-1.4.18
-# ./configure --prefix=$OMPI_TOOLS_PREFIX
-# make
-# make install
-# 
-# cd $OMPI_SOURCE
-# tar -xvzf $OMPI_DOWNLOAD/autoconf-2.69.tar.gz
-# cd autoconf-2.69
-# ./configure --prefix=$OMPI_TOOLS_PREFIX
-# make
-# make install
-# 
-# cd $OMPI_SOURCE
-# tar -xvzf $OMPI_DOWNLOAD/automake-1.13.4.tar.gz
-# cd automake-1.13.4
-# ./configure --prefix=$OMPI_TOOLS_PREFIX
-# make
-# make install
-# 
-# cd $OMPI_SOURCE
-# tar -xvzf $OMPI_DOWNLOAD/libtool-2.4.2.tar.gz
-# cd libtool-2.4.2
-# ./configure --prefix=$OMPI_TOOLS_PREFIX
-# make
-# make install
+cd $OMPI_DOWNLOAD
+wget http://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.gz
+wget http://ftp.gnu.org/gnu/automake/automake-1.13.4.tar.gz
+wget http://ftp.gnu.org/gnu/libtool/libtool-2.4.2.tar.gz
+wget http://ftp.gnu.org/gnu/m4/m4-1.4.16.tar.gz
+
+cd $OMPI_SOURCE
+tar -xvzf $OMPI_DOWNLOAD/m4-1.4.16.tar.gz
+cd m4-1.4.16
+./configure --prefix=$OMPI_TOOLS_PREFIX
+make
+make install
+
+cd $OMPI_SOURCE
+tar -xvzf $OMPI_DOWNLOAD/autoconf-2.69.tar.gz
+cd autoconf-2.69
+./configure --prefix=$OMPI_TOOLS_PREFIX
+make
+make install
+
+cd $OMPI_SOURCE
+tar -xvzf $OMPI_DOWNLOAD/automake-1.13.4.tar.gz
+cd automake-1.13.4
+./configure --prefix=$OMPI_TOOLS_PREFIX
+make
+make install
+
+cd $OMPI_SOURCE
+tar -xvzf $OMPI_DOWNLOAD/libtool-2.4.2.tar.gz
+cd libtool-2.4.2
+./bootstrap
+./configure --prefix=$OMPI_TOOLS_PREFIX
+make
+make install
 
 cd $OMPI_SOURCE
 ## git clone https://github.com/open-mpi/ompi.git
