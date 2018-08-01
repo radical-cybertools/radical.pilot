@@ -134,7 +134,7 @@ if __name__ == "__main__":
         # is Round Robin. Direct Submittion does not.
         print "Initializing Unit Manager ..."
         umgr = rp.UnitManager (session=session,
-                               scheduler=rp.SCHED_ROUND_ROBIN)
+                               scheduler=rp.SCHEDULER_ROUND_ROBIN)
 
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager

@@ -72,24 +72,24 @@
         "cores"    : 64
     },
 
-    "ncsa.bw" : {
+    "ncsa.bw_orte" : {
         "project"  : "gk4",
         "queue"    : "debug",
-        "schema"   : "gsissh",
+        "schema"   : "local",
         "cores"    : 64
     },
 
     "ncsa.bw_aprun" : {
         "project"  : "gk4",
         "queue"    : "debug",
-        "schema"   : "gsissh",
+        "schema"   : "local",
         "cores"    : 64
     },
 
     "ncsa.bw_lib" : {
         "project"  : "gk4",
         "queue"    : "debug",
-        "schema"   : "gsissh",
+        "schema"   : "local",
         "cores"    : 64
     },
 
@@ -103,7 +103,7 @@
     "ncsa.bw_ccm" : {
         "project"  : "gk4",
         "queue"    : "debug",
-        "schema"   : "gsissh",
+        "schema"   : "local",
         "cores"    : 64
     },
 
@@ -262,21 +262,21 @@
     },
 
     "ornl.titan" : {
-        "project"  : "CSC230",
+        "project"  : "BIP149",
         "queue"    : "debug",
         "schema"   : "local",
-        "cores"    : 64
+        "cores"    : 160
     },
 
     "ornl.titan_ortelib" : {
-        "project"  : "CSC230",
+        "project"  : "BIP149",
         "queue"    : "debug",
         "schema"   : "local",
         "cores"    : 64
     },
 
     "ornl.titan_orte"   : {
-        "project"  : "CSC230",
+        "project"  : "BIP149",
         "queue"    : "debug",
         "schema"   : "local",
         "cores"    : 64
@@ -291,7 +291,7 @@
     },
 
     "ornl.rhea_aprun"   : {
-        "project"  : "CSC230",
+        "project"  : "BIP149",
         "queue"    : "batch",
         "schema"   : "local",
         "cores"    : 64

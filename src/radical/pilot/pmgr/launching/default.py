@@ -13,15 +13,12 @@ import tempfile
 import threading
 
 import subprocess           as sp
-import threading            as mt
 
 import saga                 as rs
 import saga.filesystem      as rsfs
-import saga.utils.pty_shell as rsup
 import radical.utils        as ru
 
 from .... import pilot      as rp
-from ...  import utils      as rpu
 from ...  import states     as rps
 from ...  import constants  as rpc
 
@@ -46,7 +43,7 @@ JOB_CHECK_MAX_MISSES  =   3  # number of times to find a job missing before
 
 LOCAL_SCHEME   = 'file'
 BOOTSTRAPPER_0 = "bootstrap_0.sh"
-BOOTSTRAPPER_1 = "bootstrap_1.sh"
+
 
 # ==============================================================================
 #
@@ -256,7 +253,7 @@ class Default(PMGRLaunchingComponent):
         # lock other members when they are manipulated.
 
         ru.raise_on('pilot_watcher_cb')
-        
+
         tc = rs.job.Container()
         with self._pilots_lock, self._check_lock:
 
@@ -304,7 +301,6 @@ class Default(PMGRLaunchingComponent):
         # pilot is scheduled for cancellation and is overdue, and kill it
         # forcefully.
         to_cancel  = list()
-        to_advance = list()
         with self._pilots_lock:
 
             for pid in self._pilots:
@@ -449,7 +445,7 @@ class Default(PMGRLaunchingComponent):
             # set canceled state
             self.advance(to_advance, state=rps.CANCELED, push=False, publish=True)
 
-        except Exception as e:
+        except Exception:
             self._log.exception('pilot kill failed')
 
         return True
@@ -485,13 +481,12 @@ class Default(PMGRLaunchingComponent):
                     pilots = buckets[resource][schema]
                     pids   = [p['uid'] for p in pilots]
                     self._log.info("Launching pilots on %s: %s", resource, pids)
-                                   
+
                     self._start_pilot_bulk(resource, schema, pilots)
-        
+
                     self.advance(pilots, rps.PMGR_ACTIVE_PENDING, push=False, publish=True)
 
-
-                except Exception as e:
+                except Exception:
                     self._log.exception('bulk launch failed')
                     self.advance(pilots, rps.FAILED, push=False, publish=True)
 
@@ -514,7 +509,7 @@ class Default(PMGRLaunchingComponent):
                 }, 
                 ... ]
             }
-        
+
         When transfering data, we'll ensure that each src is only transferred
         once (in fact, we put all src files into a tarball and unpack that on
         the target side).
@@ -582,7 +577,7 @@ class Default(PMGRLaunchingComponent):
         for ft in ft_list:
             src     = os.path.abspath(ft['src'])
             tgt     = os.path.relpath(os.path.normpath(ft['tgt']), session_sandbox)
-            src_dir = os.path.dirname(src)
+          # src_dir = os.path.dirname(src)
             tgt_dir = os.path.dirname(tgt)
 
             if tgt_dir.startswith('..'):
@@ -603,7 +598,7 @@ class Default(PMGRLaunchingComponent):
         self._log.debug('cmd: %s', cmd)
         try:
             out = sp.check_output(["/bin/sh", "-c", cmd], stderr=sp.STDOUT)
-        except Exception as e:
+        except Exception:
             self._log.exception('callout failed: %s', out)
             raise
         else:
@@ -741,7 +736,32 @@ class Default(PMGRLaunchingComponent):
         ret = {'ft' : list(),
                'jd' : None  }
 
-        # ------------------------------------------------------------------
+      # # ----------------------------------------------------------------------
+      # # the rcfg can contain keys with string expansion placeholders where
+      # # values from the pilot description need filling in.  A prominent
+      # # example is `%(pd.project)s`, where the pilot description's `PROJECT`
+      # # value needs to be filled in (here in lowercase).
+      # expand = dict()
+      # for k,v in pilot['description'].iteritems():
+      #     if v is None:
+      #         v = ''
+      #     expand['pd.%s' % k] = v
+      #     if isinstance(v, basestring):
+      #         expand['pd.%s' % k.upper()] = v.upper()
+      #         expand['pd.%s' % k.lower()] = v.lower()
+      #     else:
+      #         expand['pd.%s' % k.upper()] = v
+      #         expand['pd.%s' % k.lower()] = v
+      #
+      # for k in rcfg:
+      #     if isinstance(rcfg[k], basestring):
+      #         orig     = rcfg[k]
+      #         rcfg[k]  = rcfg[k] % expand
+      #         expanded = rcfg[k]
+      #         if orig != expanded:
+      #             self._log.debug('RCFG:\n%s\n%s', orig, expanded)
+
+        # ----------------------------------------------------------------------
         # Database connection parameters
         sid           = self._session.uid
         database_url  = self._session.dburl
@@ -750,7 +770,7 @@ class Default(PMGRLaunchingComponent):
         default_virtenv = '%%(resource_sandbox)s/ve.%s.%s' % \
                           (resource, self._rp_version)
 
-        # ------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         # pilot description and resource configuration
         number_cores    = pilot['description']['cores']
         number_gpus     = pilot['description']['gpus']
@@ -761,7 +781,7 @@ class Default(PMGRLaunchingComponent):
         memory          = pilot['description']['memory']
         candidate_hosts = pilot['description']['candidate_hosts']
 
-        # ------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
         agent_launch_method     = rcfg.get('agent_launch_method')
         agent_dburl             = rcfg.get('agent_mongodb_endpoint', database_url)
@@ -773,8 +793,8 @@ class Default(PMGRLaunchingComponent):
         forward_tunnel_endpoint = rcfg.get('forward_tunnel_endpoint')
         lrms                    = rcfg.get('lrms')
         mpi_launch_method       = rcfg.get('mpi_launch_method', '')
+        pre_bootstrap_0         = rcfg.get('pre_bootstrap_0', [])
         pre_bootstrap_1         = rcfg.get('pre_bootstrap_1', [])
-        pre_bootstrap_2         = rcfg.get('pre_bootstrap_2', [])
         python_interpreter      = rcfg.get('python_interpreter')
         task_launch_method      = rcfg.get('task_launch_method')
         rp_version              = rcfg.get('rp_version',          DEFAULT_RP_VERSION)
@@ -782,7 +802,6 @@ class Default(PMGRLaunchingComponent):
         virtenv                 = rcfg.get('virtenv',             default_virtenv)
         cores_per_node          = rcfg.get('cores_per_node', 0)
         gpus_per_node           = rcfg.get('gpus_per_node',  0)
-        health_check            = rcfg.get('health_check', True)
         python_dist             = rcfg.get('python_dist')
         virtenv_dist            = rcfg.get('virtenv_dist',        DEFAULT_VIRTENV_DIST)
         cu_tmp                  = rcfg.get('cu_tmp')
@@ -802,7 +821,7 @@ class Default(PMGRLaunchingComponent):
         # make sure that mandatory args are known
         for ma in mandatory_args:
             if pilot['description'].get(ma) is None:
-                raise  ValueError('attribute "%s" is required for "%s"' \
+                raise  ValueError('attribute "%s" is required for "%s"'
                                  % (ma, resource))
 
         # get pilot and global sandbox
@@ -864,14 +883,14 @@ class Default(PMGRLaunchingComponent):
         if 'global_virtenv' in rcfg:
             raise RuntimeError("'global_virtenv' is deprecated (%s)" % resource)
 
-        # Create a host:port string for use by the bootstrap_1.
+        # Create a host:port string for use by the bootstrap_0.
         db_url = rs.Url(agent_dburl)
         if db_url.port:
             db_hostport = "%s:%d" % (db_url.host, db_url.port)
         else:
-            db_hostport = "%s:%d" % (db_url.host, 27017) # mongodb default
+            db_hostport = "%s:%d" % (db_url.host, 27017)  # mongodb default
 
-        # ------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         # the version of the agent is derived from
         # rp_version, which has the following format
         # and interpretation:
@@ -941,7 +960,7 @@ class Default(PMGRLaunchingComponent):
             rp_version  = rp_version[1:]  # strip '@'
 
 
-        # ------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         # sanity checks
         if not python_dist        : raise RuntimeError("missing python distribution")
         if not virtenv_dist       : raise RuntimeError("missing virtualenv distribution")
@@ -987,14 +1006,14 @@ class Default(PMGRLaunchingComponent):
         if cores_per_node:
             cores_per_node = int(cores_per_node)
             number_cores   = int(cores_per_node
-                           * math.ceil(float(number_cores)/cores_per_node))
+                           * math.ceil(float(number_cores) / cores_per_node))
 
         # if gpus_per_node is set (!= None), then we need to
         # allocation full nodes, and thus round up
         if gpus_per_node:
             gpus_per_node = int(gpus_per_node)
             number_gpus   = int(gpus_per_node
-                           * math.ceil(float(number_gpus)/gpus_per_node))
+                           * math.ceil(float(number_gpus) / gpus_per_node))
 
         # set mandatory args
         bootstrap_args  = ""
@@ -1016,41 +1035,41 @@ class Default(PMGRLaunchingComponent):
         if tunnel_bind_device:      bootstrap_args += " -t '%s'" % tunnel_bind_device
         if cleanup:                 bootstrap_args += " -x '%s'" % cleanup
 
-        for arg in pre_bootstrap_1:
+        for arg in pre_bootstrap_0:
             bootstrap_args += " -e '%s'" % arg
-        for arg in pre_bootstrap_2:
+        for arg in pre_bootstrap_1:
             bootstrap_args += " -w '%s'" % arg
 
-        agent_cfg['owner']              = 'agent_0'
-        agent_cfg['cores']              = number_cores
-        agent_cfg['gpus']               = number_gpus
-        agent_cfg['lrms']               = lrms
-        agent_cfg['spawner']            = agent_spawner
-        agent_cfg['scheduler']          = agent_scheduler
-        agent_cfg['runtime']            = runtime
-        agent_cfg['dburl']              = str(database_url)
-        agent_cfg['session_id']         = sid
-        agent_cfg['pilot_id']           = pid
-        agent_cfg['logdir']             = '.'
-        agent_cfg['pilot_sandbox']      = pilot_sandbox
-        agent_cfg['session_sandbox']    = session_sandbox
-        agent_cfg['resource_sandbox']   = resource_sandbox
-        agent_cfg['agent_launch_method']= agent_launch_method
-        agent_cfg['task_launch_method'] = task_launch_method
-        agent_cfg['mpi_launch_method']  = mpi_launch_method
-        agent_cfg['cores_per_node']     = cores_per_node
-        agent_cfg['gpus_per_node']      = gpus_per_node
-        agent_cfg['cu_tmp']             = cu_tmp
-        agent_cfg['export_to_cu']       = export_to_cu
-        agent_cfg['cu_pre_exec']        = cu_pre_exec
-        agent_cfg['cu_post_exec']       = cu_post_exec
-        agent_cfg['resource_cfg']       = copy.deepcopy(rcfg)
-        agent_cfg['debug']              = self._log.getEffectiveLevel()
+        agent_cfg['owner']               = 'agent_0'
+        agent_cfg['cores']               = number_cores
+        agent_cfg['gpus']                = number_gpus
+        agent_cfg['lrms']                = lrms
+        agent_cfg['spawner']             = agent_spawner
+        agent_cfg['scheduler']           = agent_scheduler
+        agent_cfg['runtime']             = runtime
+        agent_cfg['dburl']               = str(database_url)
+        agent_cfg['session_id']          = sid
+        agent_cfg['pilot_id']            = pid
+        agent_cfg['logdir']              = '.'
+        agent_cfg['pilot_sandbox']       = pilot_sandbox
+        agent_cfg['session_sandbox']     = session_sandbox
+        agent_cfg['resource_sandbox']    = resource_sandbox
+        agent_cfg['agent_launch_method'] = agent_launch_method
+        agent_cfg['task_launch_method']  = task_launch_method
+        agent_cfg['mpi_launch_method']   = mpi_launch_method
+        agent_cfg['cores_per_node']      = cores_per_node
+        agent_cfg['gpus_per_node']       = gpus_per_node
+        agent_cfg['cu_tmp']              = cu_tmp
+        agent_cfg['export_to_cu']        = export_to_cu
+        agent_cfg['cu_pre_exec']         = cu_pre_exec
+        agent_cfg['cu_post_exec']        = cu_post_exec
+        agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
+        agent_cfg['debug']               = self._log.getEffectiveLevel()
 
         # we'll also push the agent config into MongoDB
         pilot['cfg'] = agent_cfg
 
-        # ------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         # Write agent config dict to a json file in pilot sandbox.
 
         agent_cfg_name = 'agent_0.cfg'
@@ -1084,7 +1103,7 @@ class Default(PMGRLaunchingComponent):
         # NOTE: this will race when multiple pilot launcher instances are used!
         with self._cache_lock:
 
-            if not resource in self._sandboxes:
+            if resource not in self._sandboxes:
 
                 for sdist in sdist_paths:
                     base = os.path.basename(sdist)
@@ -1093,8 +1112,8 @@ class Default(PMGRLaunchingComponent):
                                       'rem' : False})
 
                 # Copy the bootstrap shell script.
-                bootstrapper_path = os.path.abspath("%s/agent/%s" \
-                        % (self._root_dir, BOOTSTRAPPER_0))
+                bootstrapper_path = os.path.abspath("%s/agent/%s"
+                                  % (self._root_dir, BOOTSTRAPPER_0))
                 self._log.debug("use bootstrapper %s", bootstrapper_path)
 
                 ret['ft'].append({'src' : bootstrapper_path, 
@@ -1117,7 +1136,7 @@ class Default(PMGRLaunchingComponent):
                 self._sandboxes[resource] = True
 
 
-        # ------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         # Create SAGA Job description and submit the pilot job
 
         jd = rs.job.Description()
@@ -1132,8 +1151,8 @@ class Default(PMGRLaunchingComponent):
         jd.arguments             = ['-l %s' % bootstrap_tgt, bootstrap_args]
         jd.working_directory     = pilot_sandbox
         jd.project               = project
-        jd.output                = "bootstrap_1.out"
-        jd.error                 = "bootstrap_1.err"
+        jd.output                = "bootstrap_0.out"
+        jd.error                 = "bootstrap_0.err"
         jd.total_cpu_count       = number_cores
         jd.total_gpu_count       = number_gpus
         jd.processes_per_host    = cores_per_node
