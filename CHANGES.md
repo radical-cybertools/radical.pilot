@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.50.6  Release                                                       2018-07-31
+--------------------------------------------------------------------------------
+
+  - fix curl tssl negotiation problem (#1683)
+
+
 0.50.5  Release                                                       2018-07-30
 --------------------------------------------------------------------------------
 
