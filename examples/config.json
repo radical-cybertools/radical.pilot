@@ -72,10 +72,10 @@
         "cores"    : 64
     },
 
-    "ncsa.bw" : {
+    "ncsa.bw_orte" : {
         "project"  : "gk4",
         "queue"    : "debug",
-        "schema"   : "gsissh",
+        "schema"   : "local",
         "cores"    : 64
     },
 
