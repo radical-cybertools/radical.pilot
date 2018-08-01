@@ -72,24 +72,24 @@
         "cores"    : 64
     },
 
-    "ncsa.bw" : {
+    "ncsa.bw_orte" : {
         "project"  : "gk4",
         "queue"    : "debug",
-        "schema"   : "gsissh",
+        "schema"   : "local",
         "cores"    : 64
     },
 
     "ncsa.bw_aprun" : {
-        "project"  : "PRAC_bamm",
-        "queue"    : "high",
-        "schema"   : "gsissh",
-        "cores"    : 320
+        "project"  : "gk4",
+        "queue"    : "debug",
+        "schema"   : "local",
+        "cores"    : 64
     },
 
     "ncsa.bw_lib" : {
         "project"  : "gk4",
         "queue"    : "debug",
-        "schema"   : "gsissh",
+        "schema"   : "local",
         "cores"    : 64
     },
 
@@ -103,7 +103,7 @@
     "ncsa.bw_ccm" : {
         "project"  : "gk4",
         "queue"    : "debug",
-        "schema"   : "gsissh",
+        "schema"   : "local",
         "cores"    : 64
     },
 
