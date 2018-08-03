@@ -251,9 +251,9 @@ class UnitManager(rpu.Component):
         return str(self.as_dict())
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    def _pilot_state_cb(self, pilot, state):
+    def _pilot_state_cb(self, pilots):
 
         if self._terminate.is_set():
             return False
@@ -279,66 +279,71 @@ class UnitManager(rpu.Component):
         # FIXME: should is_valid be used?  Either way, `self._closed` is not an
         #        `mt.Event`!
         if self._closed:
-            self._log.debug('umgr closed, ignore pilot state (%s: %s)', 
-                            pilot.uid, pilot.state)
+            self._log.debug('umgr closed, ignore pilot cb %s', 
+                            ['%s:%s' % (p.uid, p.state) for p in pilots])
             return True
 
 
-        if state in rps.FINAL:
+        for pilot in pilots:
+            state = pilot.state
 
-            self._log.debug('pilot %s is final - pull units', pilot.uid)
+            if state in rps.FINAL:
 
-            unit_cursor = self.session._dbs._c.find({
-                'type'    : 'unit',
-                'pilot'   : pilot.uid,
-                'umgr'    : self.uid,
-                'control' : {'$in' : ['agent_pending', 'agent']}})
+                self._log.debug('pilot %s is final - pull units', pilot.uid)
 
-            if not unit_cursor.count():
-                units = list()
-            else:
-                units = list(unit_cursor)
+                unit_cursor = self.session._dbs._c.find({
+                    'type'    : 'unit',
+                    'pilot'   : pilot.uid,
+                    'umgr'    : self.uid,
+                    'control' : {'$in' : ['agent_pending', 'agent']}})
 
-            self._log.debug("units pulled: %3d (pilot dead)", len(units))
+                if not unit_cursor.count():
+                    units = list()
+                else:
+                    units = list(unit_cursor)
 
-            if not units:
-                return True
+                self._log.debug("units pulled: %3d (pilot dead)", len(units))
 
-            # update the units to avoid pulling them again next time.
-            # NOTE:  this needs not locking with the unit pulling in the
-            #        _unit_pull_cb, as that will only pull umgr_pending 
-            #        units.
-            uids = [unit['uid'] for unit in units]
-
-            self._session._dbs._c.update({'type'  : 'unit',
-                                          'uid'   : {'$in'     : uids}},
-                                         {'$set'  : {'control' : 'umgr'}},
-                                         multi=True)
-            to_restart = list()
-            for unit in units:
-
-                unit['state'] = rps.FAILED
-                if not unit['description'].get('restartable'):
-                    self._log.debug('unit %s not restartable', unit['uid'])
+                if not units:
                     continue
 
-                self._log.debug('unit %s is  restartable', unit['uid'])
-                unit['restarted'] = True
-                ud = rpcud.ComputeUnitDescription(unit['description'])
-                to_restart.append(ud)
-                # FIXME: increment some restart counter in the description?
-                # FIXME: reference the resulting new uid in the old unit.
+                # update the units to avoid pulling them again next time.
+                # NOTE:  this needs not locking with the unit pulling in the
+                #        _unit_pull_cb, as that will only pull umgr_pending 
+                #        units.
+                uids = [unit['uid'] for unit in units]
 
-            if to_restart and not self._closed:
-                self._log.debug('restart %s units', len(to_restart))
-                restarted = self.submit_units(to_restart)
-                for u in restarted:
-                    self._log.debug('restart unit %s', u.uid)
+                self._session._dbs._c.update({'type'  : 'unit',
+                                              'uid'   : {'$in'     : uids}},
+                                             {'$set'  : {'control' : 'umgr'}},
+                                             multi=True)
+                to_restart = list()
+                for unit in units:
 
-            # final units are not pushed
-            self.advance(units, publish=True, push=False)
+                    unit['state'] = rps.FAILED
+                    if not unit['description'].get('restartable'):
+                        self._log.debug('unit %s not restartable', unit['uid'])
+                        continue
 
-            return True
+                    self._log.debug('unit %s is  restartable', unit['uid'])
+                    unit['restarted'] = True
+                    ud = rpcud.ComputeUnitDescription(unit['description'])
+                    to_restart.append(ud)
+                    # FIXME: increment some restart counter in the description?
+                    # FIXME: reference the resulting new uid in the old unit.
+
+                if to_restart and not self._closed:
+                    self._log.debug('restart %s units', len(to_restart))
+                    restarted = self.submit_units(to_restart)
+                    for u in restarted:
+                        self._log.debug('restart unit %s', u.uid)
+
+                # final units are not pushed
+                self.advance(units, publish=True, push=False)
+
+
+        # keep cb registered
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -494,27 +499,28 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _call_unit_callbacks(self, unit_obj, state):
+    def _call_unit_callbacks(self, units):
 
         with self._cb_lock:
+
             for cb_name, cb_val in self._callbacks[rpt.UNIT_STATE].iteritems():
 
                 self._log.debug('%s calls state cb %s for %s', 
-                                self.uid, cb_name, unit_obj.uid)
+                                self.uid, cb_name, [unit.uid for unit in units])
 
                 cb      = cb_val['cb']
                 cb_data = cb_val['cb_data']
 
-                if cb_data: cb(unit_obj, state, cb_data)
-                else      : cb(unit_obj, state)
+                if cb_data: cb(units, cb_data)
+                else      : cb(units)
 
 
     # --------------------------------------------------------------------------
     #
     # FIXME: this needs to go to the scheduler
     def _default_wait_queue_size_cb(self, umgr, wait_queue_size):
-        # FIXME: this needs to come from the scheduler?
 
+        # FIXME: this needs to come from the scheduler?
         if self._terminate.is_set():
             return False
 
@@ -989,7 +995,7 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def register_callback(self, cb, metric=rpt.UNIT_STATE, cb_data=None):
+    def register_callback(self, metric, cb, cb_data=None):
         """
         Registers a new callback function with the UnitManager.  Manager-level
         callbacks get called if the specified metric changes.  The default
@@ -1030,22 +1036,21 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def unregister_callback(self, cb=None, metric=None):
+    def unregister_callback(self, cb=None, metrics=None):
 
-
-        if metric and metric not in rpt.UMGR_METRICS :
-            raise ValueError ("Metric '%s' not available on the umgr" % metric)
-
-        if not metric:
+        if not metrics:
             metrics = rpt.UMGR_METRICS
-        elif isinstance(metric, list):
-            metrics = metric
-        else:
-            metrics = [metric]
+
+
+        if not isinstance(metrics, list):
+            metrics = [metrics]
 
         with self._cb_lock:
 
             for metric in metrics:
+
+                if metric and metric not in rpt.UMGR_METRICS :
+                    raise ValueError ("cb metric '%s' unknown" % metric)
 
                 if cb:
                     to_delete = [cb.__name__]
