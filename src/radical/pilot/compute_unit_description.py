@@ -341,14 +341,14 @@ class ComputeUnitDescription(attributes.Attributes):
         self.set_attribute (KERNEL,           None)
         self.set_attribute (NAME,             None)
         self.set_attribute (EXECUTABLE,       None)
-        self.set_attribute (ARGUMENTS,        [  ])
-        self.set_attribute (ENVIRONMENT,      {  })
-        self.set_attribute (PRE_EXEC,         [  ])
-        self.set_attribute (POST_EXEC,        [  ])
+        self.set_attribute (ARGUMENTS,      list())
+        self.set_attribute (ENVIRONMENT,    dict())
+        self.set_attribute (PRE_EXEC,       list())
+        self.set_attribute (POST_EXEC,      list())
         self.set_attribute (STDOUT,           None)
         self.set_attribute (STDERR,           None)
-        self.set_attribute (INPUT_STAGING,    [  ])
-        self.set_attribute (OUTPUT_STAGING,   [  ])
+        self.set_attribute (INPUT_STAGING,  list())
+        self.set_attribute (OUTPUT_STAGING, list())
 
         self.set_attribute (CPU_PROCESSES,       1)
         self.set_attribute (CPU_PROCESS_TYPE,   '')
@@ -365,7 +365,7 @@ class ComputeUnitDescription(attributes.Attributes):
 
         self.set_attribute (RESTARTABLE,     False)
         self.set_attribute (CLEANUP,         False)
-        self.set_attribute (PILOT,            None)
+        self.set_attribute (PILOT,              '')
 
         self._attributes_register_deprecated(CORES, CPU_PROCESSES)
         self._attributes_register_deprecated(MPI,   CPU_PROCESS_TYPE)
@@ -393,6 +393,41 @@ class ComputeUnitDescription(attributes.Attributes):
         """Returns a string representation of the object.
         """
         return str(self.as_dict())
+
+
+    # --------------------------------------------------------------------------
+    #
+    def verify(self):
+        '''
+        Verify that the description is syntactically and semantically correct.
+        This method encapsulates checks beyond the SAGA attribute level checks.
+        '''
+
+        # replace 'None' values for strng types with '', for int types with '0'. 
+        if self.get(KERNEL          ) is None: self[KERNEL          ] = ''
+        if self.get(NAME            ) is None: self[NAME            ] = ''
+        if self.get(EXECUTABLE      ) is None: self[EXECUTABLE      ] = ''
+        if self.get(ARGUMENTS       ) is None: self[ARGUMENTS       ] = ''
+        if self.get(ENVIRONMENT     ) is None: self[ENVIRONMENT     ] = ''
+        if self.get(PRE_EXEC        ) is None: self[PRE_EXEC        ] = ''
+        if self.get(POST_EXEC       ) is None: self[POST_EXEC       ] = ''
+        if self.get(PILOT           ) is None: self[PILOT           ] = ''
+        if self.get(STDOUT          ) is None: self[STDOUT          ] = ''
+        if self.get(STDERR          ) is None: self[STDERR          ] = ''
+        if self.get(CPU_PROCESS_TYPE) is None: self[CPU_PROCESS_TYPE] = ''
+        if self.get(CPU_THREAD_TYPE ) is None: self[CPU_THREAD_TYPE ] = ''
+        if self.get(GPU_PROCESS_TYPE) is None: self[GPU_PROCESS_TYPE] = ''
+        if self.get(GPU_THREAD_TYPE ) is None: self[GPU_THREAD_TYPE ] = ''
+
+        if self.get(CPU_PROCESSES   ) is None: self[CPU_PROCESSES   ] = 0
+        if self.get(CPU_THREADS     ) is None: self[CPU_THREADS     ] = 0
+        if self.get(GPU_PROCESSES   ) is None: self[GPU_PROCESSES   ] = 0
+        if self.get(GPU_THREADS     ) is None: self[GPU_THREADS     ] = 0
+
+        if  not self.get('executable') and \
+            not self.get('kernel')     :
+            raise ValueError("CU description needs 'executable' or 'kernel'")
+
 
 
 # ------------------------------------------------------------------------------
