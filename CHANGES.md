@@ -5,6 +5,13 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.50.8  Release                                                       2018-08-03
+--------------------------------------------------------------------------------
+
+  - make sure that CUD values are not None (#1688)
+  - don't limit pymongo version anymore (#1687) 
+
+
 0.50.7  Release                                                       2018-08-01
 --------------------------------------------------------------------------------
 
