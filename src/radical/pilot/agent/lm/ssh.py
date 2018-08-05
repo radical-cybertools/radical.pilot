@@ -74,7 +74,7 @@ class SSH(LaunchMethod):
         if len(slots['nodes']) > 1:
             raise RuntimeError('ssh cannot run multinode units')
 
-        host = slots['nodes']['name'][0]
+        host = slots['nodes'][0]['name']
 
         # Pass configured and available environment variables.
         # This is a crude version of env transplanting where we prep the
