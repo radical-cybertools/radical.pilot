@@ -26,7 +26,7 @@ class TestSSHlaunchMethod(unittest.TestCase):
 
         self._cu['description'] = {"arguments": [],
                                    "cleanup": False,
-                                   "cpu_process_type": None,
+                                   "cpu_process_type": '',
                                    "cpu_processes": 1,
                                    "cpu_thread_type": "OpenMP",
                                    "cpu_threads": 1,
@@ -47,6 +47,7 @@ class TestSSHlaunchMethod(unittest.TestCase):
                                    "stderr": None,
                                    "stdout": None
                                   }
+        self._cu['uid'] = 'unit.000000'
         self._cu['slots'] = {'nodes': [{'name': 'node1',
                                         'uid': 1,
                                         'core_map': [[0]],
@@ -72,7 +73,7 @@ class TestSSHlaunchMethod(unittest.TestCase):
 
         task_command, ssh_cmd = launch_method.construct_command(self._cu, launch_script_hop=1)
         env_string  = ' '.join(['%s=%s' % (var, os.environ[var])
-                                for var in ['LD_LIBRARY_PATH','PATH','PYTHONPATH',]
+                                for var in ['LD_LIBRARY_PATH','PATH','PYTHONPATH']
                                 if  var in os.environ])
 
         self.assertTrue(task_command == 'test_exe')

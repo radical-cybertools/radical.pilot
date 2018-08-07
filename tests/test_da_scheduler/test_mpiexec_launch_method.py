@@ -47,6 +47,7 @@ class TestMPIEXEClaunchMethod(unittest.TestCase):
                                    "stderr": None,
                                    "stdout": None
                                   }
+        self._cu['uid'] = 'unit.000000'
         self._cu['slots'] = {'nodes': [{'name': 'node1',
                                         'uid': 1,
                                         'core_map': [[0],[1]],
