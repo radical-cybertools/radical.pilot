@@ -49,7 +49,7 @@ class TestSSHlaunchMethod(unittest.TestCase):
                                   }
         self._cu['slots'] = {'nodes': [{'name': 'node1',
                                         'uid': 1,
-                                        'core_map': [0],
+                                        'core_map': [[0]],
                                         'gpu_map': [],
                                         'lfs': {'size': 10, 'path': '/tmp'}}],
                              'cores_per_node': 16,
