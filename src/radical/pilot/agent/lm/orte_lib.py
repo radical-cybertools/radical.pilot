@@ -220,10 +220,10 @@ class ORTELib(LaunchMethod):
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_env     = cud.get('environment', dict())
-        task_args    = cud.get('arguments',   list())
         task_mpi     = bool('mpi' in cud.get('cpu_process_type', '').lower())
         task_cores   = cud.get('cpu_processes', 0) + cud.get('gpu_processes', 0)
+        task_env     = cud.get('environment') or dict()
+        task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
      #  import pprint
@@ -276,8 +276,9 @@ class ORTELib(LaunchMethod):
         depth = list(depths)[0]
 
         # FIXME: is this binding correct?
-        if depth > 1: map_flag = '--bind-to none --map-by ppr:%d:core' % depth
-        else        : map_flag = '--bind-to none'
+      # if depth > 1: map_flag = '--bind-to none --map-by ppr:%d:core' % depth
+      # else        : map_flag = '--bind-to none'
+        map_flag = '--bind-to none'
 
         # remove trailing ','
         hosts_string = hosts_string.rstrip(',')

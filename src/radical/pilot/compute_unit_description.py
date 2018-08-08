@@ -157,7 +157,7 @@ class ComputeUnitDescription(attributes.Attributes):
 
        The files that need to be staged after execution (`list` of `staging
        directives`, see below).
-       
+
        default: `{}`
 
 
@@ -169,11 +169,11 @@ class ComputeUnitDescription(attributes.Attributes):
        not expected to consume any significant amount of CPU time or other
        resources!  Deviating from that rule will likely result in reduced
        overall throughput.
-       
+
        No assumption should be made as to where these commands are executed
        (although RP attempts to perform them in the unit's execution
        environment).  
-       
+
        No assumption should be made on the specific shell environment the
        commands are executed in.
 
@@ -209,7 +209,7 @@ class ComputeUnitDescription(attributes.Attributes):
        If the unit starts to execute on a pilot, but cannot finish because the
        pilot fails or is canceled, can the unit be restarted on a different
        pilot / resource? 
-       
+
        default: `False`
 
 
@@ -238,7 +238,7 @@ class ComputeUnitDescription(attributes.Attributes):
     ==================
 
     The Staging Directives are specified using a dict in the following form:
-    
+
         staging_directive = {
             'source'  : None, # see 'Location' below
             'target'  : None, # see 'Location' below
@@ -246,46 +246,46 @@ class ComputeUnitDescription(attributes.Attributes):
             'flags'   : None, # See 'Flags' below
             'priority': 0     # Control ordering of actions (unused)
         }
-    
-    
+
+
     Locations
     ---------
-    
+
       `source` and `target` locations can be given as strings or `ru.URL`
       instances.  Strings containing `://` are converted into URLs immediately.
       Otherwise they are considered absolute or relative paths and are then
       interpreted in the context of the client's working directory.
-    
+
       RP accepts the following special URL schemas:
-    
+
         * `client://`  : relative to the client's working directory
         * `resource://`: relative to the RP    sandbox on the target resource
         * `pilot://`   : relative to the pilot sandbox on the target resource
         * `unit://`    : relative to the unit  sandbox on the target resource
-    
+
       In all these cases, the `hostname` element of the URL is expected to be
       empty, and the path is *always* considered relative to the locations
       specified above (even though URLs usually don't have a notion of relative
       paths).
-    
-    
+
+
     Action operators
     ----------------
-    
+
       RP accepts the following action operators:
 
         * rp.TRANSFER: remote file transfer from `source` URL to `target` URL.
         * rp.COPY    : local file copy, ie. not crossing host boundaries
         * rp.MOVE    : local file move
         * rp.LINK    : local file symlink
-      
-    
+
+
     Flags
     -----
-    
+
       rp.CREATE_PARENTS: create the directory hierarchy for targets on the fly
       rp.RECURSIVE     : if `source` is a directory, handle it recursively
-    
+
     """
 
     # --------------------------------------------------------------------------
@@ -342,36 +342,37 @@ class ComputeUnitDescription(attributes.Attributes):
         self.set_attribute (NAME,             None)
         self.set_attribute (EXECUTABLE,       None)
         self.set_attribute (SANDBOX,          None)
-        self.set_attribute (ARGUMENTS,        [  ])
-        self.set_attribute (ENVIRONMENT,      {  })
-        self.set_attribute (PRE_EXEC,         [  ])
-        self.set_attribute (POST_EXEC,        [  ])
+        self.set_attribute (ARGUMENTS,      list())
+        self.set_attribute (ENVIRONMENT,    dict())
+        self.set_attribute (PRE_EXEC,       list())
+        self.set_attribute (POST_EXEC,      list())
         self.set_attribute (STDOUT,           None)
         self.set_attribute (STDERR,           None)
-        self.set_attribute (INPUT_STAGING,    [  ])
-        self.set_attribute (OUTPUT_STAGING,   [  ])
+        self.set_attribute (INPUT_STAGING,  list())
+        self.set_attribute (OUTPUT_STAGING, list())
 
         self.set_attribute (CPU_PROCESSES,       1)
-        self.set_attribute (CPU_PROCESS_TYPE, None)
+        self.set_attribute (CPU_PROCESS_TYPE,   '')
         self.set_attribute (CPU_THREADS,         1)
-        self.set_attribute (CPU_THREAD_TYPE,  None)
+        self.set_attribute (CPU_THREAD_TYPE,    '')
         self.set_attribute (GPU_PROCESSES,       0)
-        self.set_attribute (GPU_PROCESS_TYPE, None)
+        self.set_attribute (GPU_PROCESS_TYPE,   '')
         self.set_attribute (GPU_THREADS,         1)
-        self.set_attribute (GPU_THREAD_TYPE,  None)
+        self.set_attribute (GPU_THREAD_TYPE,    '')
 
         self.set_attribute (RESTARTABLE,     False)
         self.set_attribute (CLEANUP,         False)
-        self.set_attribute (PILOT,            None)
+        self.set_attribute (PILOT,              '')
 
         self._attributes_register_deprecated(CORES, CPU_PROCESSES)
+        self._attributes_register_deprecated(MPI,   CPU_PROCESS_TYPE)
 
         # apply initialization dict
         if from_dict:
             self.from_dict(from_dict)
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def __deepcopy__ (self, memo):
 
@@ -389,6 +390,41 @@ class ComputeUnitDescription(attributes.Attributes):
         """Returns a string representation of the object.
         """
         return str(self.as_dict())
+
+
+    # --------------------------------------------------------------------------
+    #
+    def verify(self):
+        '''
+        Verify that the description is syntactically and semantically correct.
+        This method encapsulates checks beyond the SAGA attribute level checks.
+        '''
+
+        # replace 'None' values for strng types with '', for int types with '0'. 
+        if self.get(KERNEL          ) is None: self[KERNEL          ] = ''
+        if self.get(NAME            ) is None: self[NAME            ] = ''
+        if self.get(EXECUTABLE      ) is None: self[EXECUTABLE      ] = ''
+        if self.get(ARGUMENTS       ) is None: self[ARGUMENTS       ] = ''
+        if self.get(ENVIRONMENT     ) is None: self[ENVIRONMENT     ] = ''
+        if self.get(PRE_EXEC        ) is None: self[PRE_EXEC        ] = ''
+        if self.get(POST_EXEC       ) is None: self[POST_EXEC       ] = ''
+        if self.get(PILOT           ) is None: self[PILOT           ] = ''
+        if self.get(STDOUT          ) is None: self[STDOUT          ] = ''
+        if self.get(STDERR          ) is None: self[STDERR          ] = ''
+        if self.get(CPU_PROCESS_TYPE) is None: self[CPU_PROCESS_TYPE] = ''
+        if self.get(CPU_THREAD_TYPE ) is None: self[CPU_THREAD_TYPE ] = ''
+        if self.get(GPU_PROCESS_TYPE) is None: self[GPU_PROCESS_TYPE] = ''
+        if self.get(GPU_THREAD_TYPE ) is None: self[GPU_THREAD_TYPE ] = ''
+
+        if self.get(CPU_PROCESSES   ) is None: self[CPU_PROCESSES   ] = 0
+        if self.get(CPU_THREADS     ) is None: self[CPU_THREADS     ] = 0
+        if self.get(GPU_PROCESSES   ) is None: self[GPU_PROCESSES   ] = 0
+        if self.get(GPU_THREADS     ) is None: self[GPU_THREADS     ] = 0
+
+        if  not self.get('executable') and \
+            not self.get('kernel')     :
+            raise ValueError("CU description needs 'executable' or 'kernel'")
+
 
 
 # ------------------------------------------------------------------------------

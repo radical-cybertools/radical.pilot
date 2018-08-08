@@ -54,7 +54,9 @@ class UMGRSchedulingComponent(rpu.Component):
 
         self._early       = dict()            # early-bound units, sorted by pid
         self._pilots      = dict()            # dict of pilots to schedule over
-        self._pilots_lock = threading.RLock() # lock on the above set
+        self._pilots_lock = threading.RLock() # lock on the above dict
+        self._units       = dict()            # dict of scheduled unit IDs
+        self._units_lock  = threading.RLock() # lock on the above dict
 
         # configure the scheduler instance
         self._configure()
@@ -222,7 +224,7 @@ class UMGRSchedulingComponent(rpu.Component):
 
         cmd = msg['cmd']
 
-        if cmd not in ['add_pilots', 'remove_pilots']:
+        if cmd not in ['add_pilots', 'remove_pilots', 'cancel_units']:
             return True
 
         arg   = msg['arg']
@@ -230,7 +232,7 @@ class UMGRSchedulingComponent(rpu.Component):
 
         self._log.info('scheduler command: %s: %s' % (cmd, arg))
 
-        if umgr != self._umgr:
+        if umgr and umgr != self._umgr:
             # this is not the command we are looking for
             return True
 
@@ -300,6 +302,28 @@ class UMGRSchedulingComponent(rpu.Component):
             # let the scheduler know
             self.remove_pilots(pids)
 
+
+        elif cmd == 'cancel_units':
+
+            uids = arg['uids']
+
+            # find the pilots handling these units and forward the caancellation
+            # request
+            to_cancel = dict()
+
+            with self._units_lock:
+                for pid in self._units:
+                    for uid in uids:
+                        if uid in self._units[pid]:
+                            if pid not in to_cancel:
+                                to_cancel[pid] = list()
+                            to_cancel[pid].append(uid)
+
+            for pid in to_cancel:
+                self._session._dbs.pilot_command(cmd='cancel_units',
+                                                 arg={'uids' : to_cancel[pid]},
+                                                 pids=pid)
+
         return True
 
 
@@ -317,11 +341,19 @@ class UMGRSchedulingComponent(rpu.Component):
         This is also a good opportunity to determine the unit sandbox(es).
         '''
 
-        unit['pilot'           ] = pilot['uid']
+        pid = pilot['uid']
+        uid = unit['uid']
+
+        unit['pilot'           ] = pid
         unit['client_sandbox'  ] = str(self._session._get_client_sandbox())
         unit['resource_sandbox'] = str(self._session._get_resource_sandbox(pilot))
         unit['pilot_sandbox'   ] = str(self._session._get_pilot_sandbox(pilot))
         unit['unit_sandbox'    ] = str(self._session._get_unit_sandbox(unit, pilot))
+
+        with self._units_lock:
+            if pid not in self._units:
+                self._units[pid] = list()
+            self._units[pid].append(uid)
 
 
     # --------------------------------------------------------------------------

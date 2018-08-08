@@ -15,6 +15,7 @@ __license__   = "MIT"
 
 
 import os
+import sys
 import copy
 import time
 import glob
@@ -50,6 +51,9 @@ class Session(rs.Session):
     :class:`radical.pilot.ComputePilot` and :class:`radical.pilot.ComputeUnit`
     instances.
     """
+
+    # the reporter is an applicataion-level singleton
+    _reporter = None
 
     # We keep a static typemap for component startup. If we ever want to
     # become reeeealy fancy, we can derive that typemap from rp module
@@ -170,16 +174,17 @@ class Session(rs.Session):
 
         if not self._cfg.get('session_id'): self._cfg['session_id'] = self._uid 
         if not self._cfg.get('owner')     : self._cfg['owner']      = self._uid 
-        if not self._cfg.get('debug')     : self._cfg['debug']      = 'DEBUG' 
         if not self._cfg.get('logdir')    : self._cfg['logdir']     = '%s/%s' \
                                                      % (os.getcwd(), self._uid)
-
         self._logdir = self._cfg['logdir']
-        self._log    = self._get_logger(self._cfg['owner'], self._cfg.get('debug'))
+        self._prof   = self._get_profiler(name=self._cfg['owner'])
+        self._rep    = self._get_reporter(name=self._cfg['owner'])
+        self._log    = self._get_logger  (name=self._cfg['owner'],
+                                          level=self._cfg.get('debug'))
 
         if _connect:
+
             # we need a dburl to connect to.
-        
             if not dburl:
                 dburl = os.environ.get("RADICAL_PILOT_DBURL")
 
@@ -216,15 +221,12 @@ class Session(rs.Session):
                     # really really need a db connection...
                     raise ValueError("incomplete DBURL '%s' no db name!" % self._dburl)
 
-        # initialize profiling, but make sure profile ends up in our logdir
-        self._prof = ru.Profiler(self._cfg['owner'], path=self._logdir)
-
         if not self._reconnected:
             self._prof.prof('session_start', uid=self._uid)
-            self._log.report.info ('<<new session: ')
-            self._log.report.plain('[%s]' % self._uid)
-            self._log.report.info ('<<database   : ')
-            self._log.report.plain('[%s]' % self._dburl)
+            self._rep.info ('<<new session: ')
+            self._rep.plain('[%s]' % self._uid)
+            self._rep.info ('<<database   : ')
+            self._rep.plain('[%s]' % self._dburl)
 
         self._load_resource_configs()
 
@@ -256,7 +258,7 @@ class Session(rs.Session):
             self._log.info("New Session created: %s." % self.uid)
 
         except Exception, ex:
-            self._log.report.error(">>err\n")
+            self._rep.error(">>err\n")
             self._log.exception('session create failed')
             raise RuntimeError("Couldn't create new session (database URL '%s' incorrect?): %s" \
                             % (dburl, ex))  
@@ -270,9 +272,22 @@ class Session(rs.Session):
         self._components = ruc.start_components(self._cfg, self, self._log)
         self.is_valid()
 
+        # at this point we have a DB connection, logger, etc, and can record
+        # some metadata
+        self._log.info('radical.pilot version: %s' % rp_version_detail)
+        self._log.info('radical.saga  version: %s' % rs.version_detail)
+        self._log.info('radical.utils version: %s' % ru.version_detail)
+
+        py_version_detail = sys.version.replace("\n", " ")
+        self.inject_metadata({'radical_stack' : {'rp': rp_version_detail,
+                                                 'rs': rs.version_detail,
+                                                 'ru': ru.version_detail,
+                                                 'py': py_version_detail}})
+
+
         # FIXME: make sure the above code results in a usable session on
         #        reconnect
-        self._log.report.ok('>>ok\n')
+        self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
@@ -447,7 +462,7 @@ class Session(rs.Session):
         if self._closed:
             return
 
-        self._log.report.info('closing session %s' % self._uid)
+        self._rep.info('closing session %s' % self._uid)
         self._log.debug("session %s closing", self._uid)
         self._prof.prof("session_close", uid=self._uid)
 
@@ -516,8 +531,8 @@ class Session(rs.Session):
 
             self._prof.prof("session_fetch_stop", uid=self._uid)
 
-        self._log.report.info('<<session lifetime: %.1fs' % (self.closed - self.created))
-        self._log.report.ok('>>ok\n')
+        self._rep.info('<<session lifetime: %.1fs' % (self.closed - self.created))
+        self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
@@ -625,19 +640,63 @@ class Session(rs.Session):
     #
     def _get_logger(self, name, level=None):
         """
-        This is a thin wrapper around `ru.get_logger()` which makes sure that
+        This is a thin wrapper around `ru.Logger()` which makes sure that
+        log files end up in a separate directory with the name of `session.uid`.
+        """
+        return ru.Logger(name=name, ns='radical.pilot', targets=['.'], 
+                         path=self._logdir, level=level)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_reporter(self, name):
+        """
+        This is a thin wrapper around `ru.Reporter()` which makes sure that
         log files end up in a separate directory with the name of `session.uid`.
         """
 
-        # FIXME: this is only needed because components may use a different
-        #        logger namespace - which they should not I guess?
-        if not level: level = os.environ.get('RADICAL_PILOT_VERBOSE')
-        if not level: level = os.environ.get('RADICAL_VERBOSE', 'REPORT')
+        return ru.Reporter(name=name, ns='radical.pilot', targets=['stdout'],
+                           path=self._logdir)
 
-        log = ru.get_logger(name, target='.', level=level, path=self._logdir)
-        log.info('radical.pilot        version: %s' % rp_version_detail)
 
-        return log
+    # --------------------------------------------------------------------------
+    #
+    def _get_profiler(self, name):
+        """
+        This is a thin wrapper around `ru.Profiler()` which makes sure that
+        log files end up in a separate directory with the name of `session.uid`.
+        """
+
+        prof = ru.Profiler(name=name, ns='radical.pilot', path=self._logdir)
+
+        return prof
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_reporter(self, name):
+        """
+        This is a thin wrapper around `ru.Reporter()` which makes sure that
+        log files end up in a separate directory with the name of `session.uid`.
+        """
+
+        if not self._reporter:
+            self._reporter = ru.Reporter(name=name, ns='radical.pilot',
+                                         targets=['stdout'], path=self._logdir)
+        return self._reporter
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_profiler(self, name):
+        """
+        This is a thin wrapper around `ru.Profiler()` which makes sure that
+        log files end up in a separate directory with the name of `session.uid`.
+        """
+
+        prof = ru.Profiler(name=name, ns='radical.pilot', path=self._logdir)
+
+        return prof
 
 
     # --------------------------------------------------------------------------
@@ -653,14 +712,10 @@ class Session(rs.Session):
         if not isinstance(metadata, dict):
             raise Exception("Session metadata should be a dict!")
 
-        # Always record the radical software stack
-        metadata['radical_stack'] = {'rp': rp_version_detail,
-                                     'rs': rs.version_detail,
-                                     'ru': ru.version_detail}
-
-        result = self._dbs._c.update({'type' : 'session', 
-                                      "uid"  : self.uid},
-                                     {"$set" : {"metadata": metadata}})
+        if self._dbs and self._dbs._c:
+            self._dbs._c.update({'type'  : 'session',
+                                 "uid"   : self.uid},
+                                {"$push" : {"metadata": metadata}})
 
 
     # --------------------------------------------------------------------------
@@ -1066,12 +1121,73 @@ class Session(rs.Session):
         js_hop  = rs.Url(rcfg.get('job_manager_hop', js_url))
 
         # make sure the js_hop url points to an interactive access
-        if '+gsissh' in js_hop.schema or \
-           'gsissh+' in js_hop.schema    : js_hop.schema = 'gsissh'
-        if '+ssh'    in js_hop.schema or \
-           'ssh+'    in js_hop.schema    : js_hop.schema = 'ssh'
+        # TODO: this is an unreliable heuristics - we should require the js_hop
+        #       URL to be specified in the resource configs.
+        if   '+gsissh' in js_hop.schema or \
+             'gsissh+' in js_hop.schema    : js_hop.schema = 'gsissh'
+        elif '+ssh'    in js_hop.schema or \
+             'ssh+'    in js_hop.schema    : js_hop.schema = 'ssh'
+        else                               : js_hop.schema = 'fork'
 
         return js_url, js_hop
+
+
+    # --------------------------------------------------------------------------
+    #
+    @staticmethod
+    def autopilot(user, passwd):
+
+        import github3
+        import random
+
+        labels = 'type:autopilot'
+        titles = ['+++ Out of Cheese Error +++',
+                  '+++ Redo From Start! +++',
+                  '+++ Mr. Jelly! Mr. Jelly! +++',
+                  '+++ Melon melon melon',
+                  '+++ Wahhhhhhh! Mine! +++',
+                  '+++ Divide By Cucumber Error +++',
+                  '+++ Please Reinstall Universe And Reboot +++',
+                  '+++ Whoops! Here comes the cheese! +++',
+                  '+++ End of Cheese Error +++',
+                  '+++ Can Not Find Drive Z: +++',
+                  '+++ Unknown Application Error +++',
+                  '+++ Please Reboot Universe +++',
+                  '+++ Year Of The Sloth +++',
+                  '+++ error of type 5307 has occured +++',
+                  '+++ Eternal domain error +++',
+                  '+++ Error at Address Number 6, Treacle Mine Road +++']
+
+        def excuse():
+            cmd_fetch  = "telnet bofh.jeffballard.us 666 2>&1 "
+            cmd_filter = "grep 'Your excuse is:' | cut -f 2- -d :"
+            out        = ru.sh_callout("%s | %s" % (cmd_fetch, cmd_filter),
+                                       shell=True)[0]
+            return out.strip()
+
+
+        github = github3.login(user, passwd)
+        repo   = github.repository("radical-cybertools", "radical.pilot")
+
+        title = 'autopilot: %s' % titles[random.randint(0, len(titles)-1)]
+
+        print '----------------------------------------------------'
+        print 'autopilot'
+
+        for issue in repo.issues(labels=labels, state='open'):
+            if issue.title == title:
+                reply = 'excuse: %s' % excuse()
+                issue.create_comment(reply)
+                print '  resolve: %s' % reply
+                return
+
+        # issue not found - create
+        body  = 'problem: %s' % excuse()
+        issue = repo.create_issue(title=title, body=body, labels=[labels],
+                                  assignee=user)
+        print '  issue  : %s' % title
+        print '  problem: %s' % body
+        print '----------------------------------------------------'
 
 
 # -----------------------------------------------------------------------------

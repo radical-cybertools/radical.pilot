@@ -95,9 +95,9 @@ indication on event ordering *within each individual component*.
     * per file          : staging_in_start, staging_in_stop
 
 
-### bootstrap_1.sh
+### bootstrap_0.sh
 
-    bootstrap_1_start   : pilot bootstrapper 1 starts                (uid: pid)
+    bootstrap_0_start   : pilot bootstrapper 1 starts                (uid: pid)
     tunnel_setup_start  : setting up tunnel    starts                (uid: pid)
     tunnel_setup_stop   : setting up tunnel    stops                 (uid: pid, [CFG-R])
     ve_setup_start      : pilot ve setup       starts                (uid: pid)
@@ -117,7 +117,7 @@ indication on event ordering *within each individual component*.
     sync_rel            : time sync event                            (uid: pid, msg: 'agent_0 start')
     cleanup_start       : sandbox deletion     starts                (uid: pid)
     cleanup_stop        : sandbox deletion     stops                 (uid: pid)
-    bootstrap_1_stop    : pilot bootstrapper 1 stops                 (uid: pid)
+    bootstrap_0_stop    : pilot bootstrapper 1 stops                 (uid: pid)
 
     partial orders
     * as above
@@ -169,8 +169,8 @@ indication on event ordering *within each individual component*.
     exec_fail           : exec layer refused task                    (uid: uid, [RUNTIME], optional)
     cu_start            : cu shell script: starts                    (uid: uid)
     cu_cd_done          : cu shell script: changed workdir           (uid: uid)
-    cu_post_start       : cu shell script: pre-exec starts           (uid: uid, [CU_PRE])
-    cu_post_stop        : cu shell script: pre_exec stopped          (uid: uid, [CU_PRE])
+    cu_pre_start        : cu shell script: pre-exec starts           (uid: uid, [CU_PRE])
+    cu_pre_stop         : cu shell script: pre_exec stopped          (uid: uid, [CU_PRE])
     cu_exec_start       : cu shell script: launch method starts      (uid: uid)
     app_start           : application executable started             (uid: uid, [APP])
     app_*               : application specific events                (uid: uid, [APP], optional)

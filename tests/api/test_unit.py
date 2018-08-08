@@ -67,7 +67,7 @@ class TestUnit(unittest.TestCase):
 
         um = radical.pilot.UnitManager(
             session=session,
-            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION
+            scheduler=radical.pilot.SCHEDULER_DIRECT_SUBMISSION
         )
         um.add_pilots(pilot)
 
@@ -112,7 +112,7 @@ class TestUnit(unittest.TestCase):
 
         um = radical.pilot.UnitManager(
             session=session,
-            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION
+            scheduler=radical.pilot.SCHEDULER_DIRECT_SUBMISSION
         )
         um.add_pilots(pilot)
 
@@ -163,7 +163,7 @@ class TestUnit(unittest.TestCase):
 
         um = radical.pilot.UnitManager(
             session=session,
-            scheduler=radical.pilot.SCHED_DIRECT_SUBMISSION
+            scheduler=radical.pilot.SCHEDULER_DIRECT_SUBMISSION
         )
         um.add_pilots(pilot)
 

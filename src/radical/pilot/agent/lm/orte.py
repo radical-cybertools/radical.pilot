@@ -213,10 +213,10 @@ class ORTE(LaunchMethod):
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_env     = cud.get('environment', dict())
-        task_args    = cud.get('arguments',   list())
         task_mpi     = bool('mpi' in cud.get('cpu_process_type', '').lower())
         task_cores   = cud.get('cpu_processes', 0) + cud.get('gpu_processes', 0)
+        task_env     = cud.get('environment') or dict()
+        task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
      #  import pprint
@@ -269,8 +269,9 @@ class ORTE(LaunchMethod):
         depth = list(depths)[0]
 
         # FIXME: is this binding correct?
-        if depth > 1: map_flag = '--bind-to none --map-by ppr:%d:core' % depth
-        else        : map_flag = '--bind-to none'
+      # if depth > 1: map_flag = '--bind-to none --map-by ppr:%d:core' % depth
+      # else        : map_flag = '--bind-to none'
+        map_flag = '--bind-to none'
 
         # remove trailing ','
         hosts_string = hosts_string.rstrip(',')
@@ -290,9 +291,9 @@ class ORTE(LaunchMethod):
         if task_mpi: np_flag = '-np %s' % task_cores
         else       : np_flag = '-np 1'
 
-        command = '%s %s --hnp "%s" %s %s -host %s %s %s' \
-                % (self.launch_command, debug_string, dvm_uri, 
-                   np_flag, map_flag, hosts_string, env_string, task_command)
+        command = '%s %s --hnp "%s" %s %s -host %s %s %s' % (
+                  self.launch_command, debug_string, dvm_uri, np_flag,
+                  map_flag, hosts_string, env_string, task_command)
 
         return command, None
 

@@ -179,11 +179,8 @@ class Default(UMGRStagingInputComponent):
                 units_by_pid[pid] = list()
             units_by_pid[pid].append(sbox)
 
-        # now trigger the bulk mkdiur for all filesystems which have more than
+        # now trigger the bulk mkdir for all filesystems which have more than
         # a certain units tohandle in this bulk:
-
-        self._log.debug(pprint.pformat(units_by_pid))
-
         for pid in units_by_pid:
 
             with self._pilots_lock:
@@ -358,8 +355,8 @@ class Default(UMGRStagingInputComponent):
                     tar_sd   = {'action' : rpc.TRANSFER, 
                                 'flags'  : rpc.DEFAULT_FLAGS,
                                 'uid'    : tar_did,
-                                'source' : tar_src,
-                                'target' : tar_tgt,
+                                'source' : str(tar_src),
+                                'target' : str(tar_tgt),
                                }
                     new_actionables.append(tar_sd)
 
@@ -367,6 +364,7 @@ class Default(UMGRStagingInputComponent):
                 tar_file.add(src.path, arcname=tgt.path)
 
                 self._prof.prof('staging_in_tar_stop',  uid=uid, msg=did)
+
 
         # make sure tarball is flushed to disk
         if tar_file:
@@ -382,6 +380,9 @@ class Default(UMGRStagingInputComponent):
             tgt    = sd['target']
 
             if action == rpc.TRANSFER:
+
+                src = complete_url(src, src_context, self._log)
+                tgt = complete_url(tgt, tgt_context, self._log)
 
                 # Check if the src is a folder, if true
                 # add recursive flag if not already specified

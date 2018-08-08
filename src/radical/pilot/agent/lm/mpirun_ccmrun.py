@@ -49,8 +49,8 @@ class MPIRunCCMRun(LaunchMethod):
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_env     = cud.get('environment', dict())
-        task_args    = cud.get('arguments',   list())
+        task_env     = cud.get('environment') or dict()
+        task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
         # Construct the executable and arguments
@@ -67,7 +67,6 @@ class MPIRunCCMRun(LaunchMethod):
             elif self.mpi_flavor == self.MPI_FLAVOR_OMPI:
                 for var in env_list:
                     env_string += '-x "%s" ' % var
-
 
         if 'nodes' not in slots:
             raise RuntimeError('insufficient information to launch via %s: %s'
