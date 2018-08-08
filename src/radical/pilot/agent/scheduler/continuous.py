@@ -79,18 +79,6 @@ class Continuous(AgentSchedulingComponent):
     #
     def _configure(self):
 
-        if not self._lrms_node_list:
-            raise RuntimeError("LRMS %s didn't _configure node_list."
-                              % self._lrms_info['name'])
-
-        if self._lrms_cores_per_node is None:
-            raise RuntimeError("LRMS %s didn't _configure cores_per_node."
-                              % self._lrms_info['name'])
-
-        if self._lrms_gpus_per_node is None:
-            raise RuntimeError("LRMS %s didn't _configure gpus_per_node."
-                              % self._lrms_info['name'])
-
         # * oversubscribe:
         #   Cray's aprun for example does not allow us to oversubscribe CPU
         #   cores on a node, so we can't, say, run n CPU processes on an n-core
@@ -100,7 +88,7 @@ class Continuous(AgentSchedulingComponent):
         #   for each set of requested GPU processes.
         #   FIXME: I think our scheme finds the wrong core IDs for GPU process
         #          startup - i.e. not the reserved ones.
-        self._oversubscribe = self._cfg.get('oversubscribe', False)
+        self._oversubscribe = self._cfg.get('oversubscribe', True)
 
         # * scattered:
         #   This is the continuous scheduler, because it attempts to allocate
