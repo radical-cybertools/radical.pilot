@@ -16,13 +16,20 @@
 # Thanks to Mark Santcroos to provide the input for this installation
 # procedure!
 
+
 export OMPI_DIR=$HOME/radical/ompi/                  # target location for install
 export OMPI_DIR=/lustre/atlas2/csc230/world-shared/openmpi/
 export OMPI_COMMIT=a3ac67be0d
 export OMPI_COMMIT=539f71d                           # OpenMPI commit to install
+export OMPI_COMMIT=e9f378e851
 export OMPI_LABEL=$(date '+%Y_%m_%d'_${OMPI_COMMIT}) # module flag for installed version
 export MAKEFLAGS=-j16                                # speed up build on multicore machines
 
+if ! test -z "$1"
+then
+    export OMPI_DIR="$1"
+fi
+echo "ompi dir: $OMPI_DIR"
 
 # The environments below are only important during build time
 # and can generally point anywhere on the filesystem.
@@ -92,6 +99,7 @@ mkdir -p $OMPI_BUILD
 cd $OMPI_BUILD
 export CFLAGS=-O3
 export CXXFLAGS=-O3
+export FCFLAGS="-ffree-line-length-none"
 $OMPI_SOURCE/ompi/configure \
     --enable-orterun-prefix-by-default \
     --with-devel-headers \
