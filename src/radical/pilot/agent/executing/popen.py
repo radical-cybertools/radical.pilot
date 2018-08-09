@@ -1,6 +1,6 @@
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__license__ = "MIT"
 
 
 import os
@@ -16,27 +16,26 @@ import subprocess
 
 import radical.utils as ru
 
-from .... import pilot     as rp
-from ...  import utils     as rpu
-from ...  import states    as rps
-from ...  import constants as rpc
+from .... import pilot as rp
+from ... import utils as rpu
+from ... import states as rps
+from ... import constants as rpc
 
 from .base import AgentExecutingComponent
 
 
 # ==============================================================================
 #
-class Popen(AgentExecutingComponent) :
+class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, session):
 
-        AgentExecutingComponent.__init__ (self, cfg, session)
+        AgentExecutingComponent.__init__(self, cfg, session)
 
-        self._watcher   = None
+        self._watcher = None
         self._terminate = threading.Event()
-
 
     # --------------------------------------------------------------------------
     #
@@ -50,13 +49,13 @@ class Popen(AgentExecutingComponent) :
         self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
                              rpc.AGENT_STAGING_OUTPUT_QUEUE)
 
-        self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
+        self.register_publisher(rpc.AGENT_UNSCHEDULE_PUBSUB)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
-        self._cancel_lock    = threading.RLock()
-        self._cus_to_cancel  = list()
-        self._cus_to_watch   = list()
-        self._watch_queue    = Queue.Queue ()
+        self._cancel_lock = threading.RLock()
+        self._cus_to_cancel = list()
+        self._cus_to_watch = list()
+        self._watch_queue = Queue.Queue()
 
         self._pilot_id = self._cfg['pilot_id']
 
@@ -67,18 +66,18 @@ class Popen(AgentExecutingComponent) :
         # The AgentExecutingComponent needs the LaunchMethods to construct
         # commands.
         self._task_launcher = rp.agent.LM.create(
-                name    = self._cfg.get('task_launch_method'),
-                cfg     = self._cfg,
-                session = self._session)
+            name=self._cfg.get('task_launch_method'),
+            cfg=self._cfg,
+            session=self._session)
 
         self._mpi_launcher = rp.agent.LM.create(
-                name    = self._cfg.get('mpi_launch_method'),
-                cfg     = self._cfg,
-                session = self._session)
+            name=self._cfg.get('mpi_launch_method'),
+            cfg=self._cfg,
+            session=self._session)
 
         self._cu_environment = self._populate_cu_environment()
 
-        self.gtod   = "%s/gtod" % self._pwd
+        self.gtod = "%s/gtod" % self._pwd
         self.tmpdir = tempfile.gettempdir()
 
         # if we need to transplant any original env into the CU, we dig the
@@ -88,12 +87,11 @@ class Popen(AgentExecutingComponent) :
             with open('env.orig', 'r') as f:
                 for line in f.readlines():
                     if '=' in line:
-                        k,v = line.split('=', 1)
+                        k, v = line.split('=', 1)
                         key = k.strip()
                         val = v.strip()
                         if key in self._cfg['export_to_cu']:
                             self._env_cu_export[key] = val
-
 
     # --------------------------------------------------------------------------
     #
@@ -111,7 +109,6 @@ class Popen(AgentExecutingComponent) :
                 self._cus_to_cancel.extend(arg['uids'])
 
         return True
-
 
     # --------------------------------------------------------------------------
     #
@@ -146,14 +143,15 @@ class Popen(AgentExecutingComponent) :
         # environment that we pass to Popen.
         for e in new_env.keys():
             env_removables = list()
-            if self._mpi_launcher : env_removables += self._mpi_launcher.env_removables
-            if self._task_launcher: env_removables += self._task_launcher.env_removables
-            for r in  env_removables:
+            if self._mpi_launcher:
+                env_removables += self._mpi_launcher.env_removables
+            if self._task_launcher:
+                env_removables += self._task_launcher.env_removables
+            for r in env_removables:
                 if e.startswith(r):
                     new_env.pop(e, None)
 
         return new_env
-
 
     # --------------------------------------------------------------------------
     #
@@ -168,7 +166,6 @@ class Popen(AgentExecutingComponent) :
 
         for unit in units:
             self._handle_unit(unit)
-
 
     # --------------------------------------------------------------------------
     #
@@ -187,15 +184,23 @@ class Popen(AgentExecutingComponent) :
             gpt = cu['description']['gpu_process_type']  # FIXME: use
 
             # FIXME: this switch is insufficient for mixed units (MPI/OpenMP)
-            if cpt == 'MPI': launcher = self._mpi_launcher
-            else           : launcher = self._task_launcher
+            if cpt == 'MPI':
+                launcher = self._mpi_launcher
+            else:
+                launcher = self._task_launcher
 
             if gpt == 'CUDA':
-                # This assumes single GPU device per unit. FIXME: generalize for 
+                # This assumes single GPU device per unit. FIXME: generalize for
                 # mulitple GPU devices
-                gpu_device = cu['slots']['nodes'][0][3][0][0]
-                cu['description']['environment']['CUDA_VISIBLE_DEVICES'] = gpu_device
-            
+                gpu_devices = []
+                for node in cu['slots']['nodes']:
+                    for gpu_slot in node[3]:
+                        if gpu_slot:
+                            gpu_devices.append(gpu_slot[0])
+
+                cu['description']['environment']['CUDA_VISIBLE_DEVICES'] = ','.join(
+                    str(gpu_dev) for gpu_dev in gpu_devices)
+
             if not launcher:
                 raise RuntimeError("no launcher (process type = %s)" % cpt)
 
@@ -224,14 +229,13 @@ class Popen(AgentExecutingComponent) :
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
 
-
     # --------------------------------------------------------------------------
     #
     def spawn(self, launcher, cu):
 
         # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
         #       class definition.
-        descr   = cu['description']
+        descr = cu['description']
         sandbox = '%s/%s' % (self._pwd, cu['uid'])
 
         # make sure the sandbox exists
@@ -251,20 +255,23 @@ class Popen(AgentExecutingComponent) :
 
             # Create string for environment variable setting
             env_string = ''
-            env_string += 'export RP_SESSION_ID="%s"\n'   % self._cfg['session_id']
-            env_string += 'export RP_PILOT_ID="%s"\n'     % self._cfg['pilot_id']
-            env_string += 'export RP_AGENT_ID="%s"\n'     % self._cfg['agent_name']
-            env_string += 'export RP_SPAWNER_ID="%s"\n'   % self.uid
-            env_string += 'export RP_UNIT_ID="%s"\n'      % cu['uid']
-            env_string += 'export RP_GTOD="%s"\n'         % self.gtod
-            env_string += 'export RP_TMP="%s"\n'          % self._cu_tmp
+            env_string += 'export RP_SESSION_ID="%s"\n' % self._cfg[
+                'session_id']
+            env_string += 'export RP_PILOT_ID="%s"\n' % self._cfg['pilot_id']
+            env_string += 'export RP_AGENT_ID="%s"\n' % self._cfg['agent_name']
+            env_string += 'export RP_SPAWNER_ID="%s"\n' % self.uid
+            env_string += 'export RP_UNIT_ID="%s"\n' % cu['uid']
+            env_string += 'export RP_GTOD="%s"\n' % self.gtod
+            env_string += 'export RP_TMP="%s"\n' % self._cu_tmp
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
+                env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu[
+                                                                 'uid'])
             else:
                 env_string += 'unset  RP_PROF\n'
 
             if 'RP_APP_TUNNEL' in os.environ:
-                env_string += 'export RP_APP_TUNNEL="%s"\n' % os.environ['RP_APP_TUNNEL']
+                env_string += 'export RP_APP_TUNNEL="%s"\n' % os.environ[
+                    'RP_APP_TUNNEL']
 
             env_string += '''
 prof(){
@@ -279,30 +286,32 @@ prof(){
 '''
 
             # FIXME: this should be set by an LM filter or something (GPU)
-            env_string += 'export OMP_NUM_THREADS="%s"\n' % descr['cpu_threads']
+            env_string += 'export OMP_NUM_THREADS="%s"\n' % descr[
+                'cpu_threads']
 
             # also add any env vars requested for export by the resource config
-            for k,v in self._env_cu_export.iteritems():
-                env_string += "export %s=%s\n" % (k,v)
+            for k, v in self._env_cu_export.iteritems():
+                env_string += "export %s=%s\n" % (k, v)
 
             # also add any env vars requested in the unit description
             if descr['environment']:
-                for key,val in descr['environment'].iteritems():
+                for key, val in descr['environment'].iteritems():
                     env_string += 'export "%s=%s"\n' % (key, val)
 
             launch_script.write('\n# Environment variables\n%s\n' % env_string)
             launch_script.write('prof cu_start\n')
-            launch_script.write('\n# Change to unit sandbox\ncd %s\n' % sandbox)
+            launch_script.write(
+                '\n# Change to unit sandbox\ncd %s\n' % sandbox)
             launch_script.write('prof cu_cd_done\n')
 
             # Before the Big Bang there was nothing
             if self._cfg.get('cu_pre_exec'):
                 for val in self._cfg['cu_pre_exec']:
-                    launch_script.write("%s\n"  % val)
+                    launch_script.write("%s\n" % val)
 
             if descr['pre_exec']:
                 fail = ' (echo "pre_exec failed"; false) || exit'
-                pre  = ''
+                pre = ''
                 for elem in descr['pre_exec']:
                     pre += "%s || %s\n" % (elem, fail)
                 # Note: extra spaces below are for visual alignment
@@ -313,10 +322,13 @@ prof(){
 
             # The actual command line, constructed per launch-method
             try:
-                launch_command, hop_cmd = launcher.construct_command(cu, launch_script_name)
+                launch_command, hop_cmd = launcher.construct_command(
+                    cu, launch_script_name)
 
-                if hop_cmd : cmdline = hop_cmd
-                else       : cmdline = launch_script_name
+                if hop_cmd:
+                    cmdline = hop_cmd
+                else:
+                    cmdline = launch_script_name
 
             except Exception as e:
                 msg = "Error in spawner (%s)" % e
@@ -340,7 +352,8 @@ prof(){
                 launch_script.write('%s\n' % post)
                 launch_script.write('prof cu_post_stop\n')
 
-            launch_script.write("\n# Exit the script with the return code from the command\n")
+            launch_script.write(
+                "\n# Exit the script with the return code from the command\n")
             launch_script.write("prof cu_stop\n")
             launch_script.write("exit $RETVAL\n")
 
@@ -358,22 +371,22 @@ prof(){
         _stdout_file_h = open(cu['stdout_file'], "w")
         _stderr_file_h = open(cu['stderr_file'], "w")
 
-        self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, sandbox)
+        self._log.info("Launching unit %s via %s in %s",
+                       cu['uid'], cmdline, sandbox)
 
         self._prof.prof('exec_start', uid=cu['uid'])
-        cu['proc'] = subprocess.Popen(args       = cmdline,
-                                      executable = None,
-                                      stdin      = None,
-                                      stdout     = _stdout_file_h,
-                                      stderr     = _stderr_file_h,
-                                      preexec_fn = os.setsid,
-                                      close_fds  = True,
-                                      shell      = True,
-                                      cwd        = sandbox)
+        cu['proc'] = subprocess.Popen(args=cmdline,
+                                      executable=None,
+                                      stdin=None,
+                                      stdout=_stdout_file_h,
+                                      stderr=_stderr_file_h,
+                                      preexec_fn=os.setsid,
+                                      close_fds=True,
+                                      shell=True,
+                                      cwd=sandbox)
         self._prof.prof('exec_ok', uid=cu['uid'])
 
         self._watch_queue.put(cu)
-
 
     # --------------------------------------------------------------------------
     #
@@ -390,21 +403,21 @@ prof(){
                     # we may not be able to catch finishing CUs in time -- so
                     # there is a fine balance here.  Balance means 100 (FIXME).
                     MAX_QUEUE_BULKSIZE = 100
-                    while len(cus) < MAX_QUEUE_BULKSIZE :
-                        cus.append (self._watch_queue.get_nowait())
+                    while len(cus) < MAX_QUEUE_BULKSIZE:
+                        cus.append(self._watch_queue.get_nowait())
 
                 except Queue.Empty:
                     # nothing found -- no problem, see if any CUs finished
                     pass
 
                 # add all cus we found to the watchlist
-                for cu in cus :
-                    self._cus_to_watch.append (cu)
+                for cu in cus:
+                    self._cus_to_watch.append(cu)
 
                 # check on the known cus.
                 action = self._check_running()
 
-                if not action and not cus :
+                if not action and not cus:
                     # nothing happened at all!  Zzz for a bit.
                     # FIXME: make configurable
                     time.sleep(0.1)
@@ -412,7 +425,6 @@ prof(){
         except Exception as e:
             self._log.exception("Error in ExecWorker watch loop (%s)" % e)
             # FIXME: this should signal the ExecWorker for shutdown...
-
 
     # --------------------------------------------------------------------------
     # Iterate over all running tasks, check their status, and decide on the
@@ -424,7 +436,7 @@ prof(){
 
             # poll subprocess object
             exit_code = cu['proc'].poll()
-            uid       = cu['uid']
+            uid = cu['uid']
 
             if exit_code is None:
                 # Process is still running
@@ -486,13 +498,14 @@ prof(){
                 else:
                     # The unit finished cleanly, see if we need to deal with
                     # output data.  We always move to stageout, even if there are no
-                    # directives -- at the very least, we'll upload stdout/stderr
+                    # directives -- at the very least, we'll upload
+                    # stdout/stderr
                     cu['target_state'] = rps.DONE
 
-                self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
+                self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING,
+                             publish=True, push=True)
 
         return action
 
 
 # ------------------------------------------------------------------------------
-
