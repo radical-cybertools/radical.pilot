@@ -464,9 +464,15 @@ class UnitManager(rpu.Component):
     #
     def _update_unit(self, unit_dict, publish=False, advance=False):
 
-        # FIXME: this is breaking the bulk!
-
         uid = unit_dict['uid']
+
+        # return information about needed callback and advance activities, so
+        # that we don't break bulks here.
+        # note however that individual unit callbacks are still being called on
+        # each unit (if any are registered), which can lead to arbitrary,
+        # application defined delays.
+        to_notify  = list()
+        to_advance = list()
 
         with self._units_lock:
 
@@ -488,11 +494,15 @@ class UnitManager(rpu.Component):
 
             for s in passed:
                 unit_dict['state'] = s
-                self._units[uid]._update(unit_dict)
+                if self._units[uid]._update(unit_dict):
+                    to_notify.add(self._units[uid])
 
-                if advance:
+            if advance and to_advance:
                     self.advance(unit_dict, s, publish=publish, push=False,
                                  prof=False)
+
+            if to_notify:
+                self._call_unit_callbacks(to_notify)
 
             return True
 
