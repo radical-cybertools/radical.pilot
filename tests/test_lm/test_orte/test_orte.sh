@@ -85,7 +85,7 @@ cus_wait(){
 #
 work(){
 
-    for wl in $(echo workloads/wl.*)
+    for wl in $(echo workload/wl.*)
     do
         echo $wl
         workload_start $wl

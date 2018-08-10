@@ -5,7 +5,7 @@ nfile=$1
 
 if test -z "$nfile"
 then
-    nfile=$base/nodes.local
+    nfile=$base/nodes
 fi
 
 tmp=$base/unit.tmp
