@@ -4,7 +4,7 @@
 PWD=$(shell pwd)
 
 deploy:
-	$(PWD)/../../../bin/radical-pilot-deploy-ompi.sh $(PWD)/ompi/
+	$(PWD)/../../../bin/radical-pilot-deploy-ompi.sh $(PWD)/ompi/ 2>&1 | tee deploy.log
 
 workload:
 	$(PWD)/mk_workload.sh nodes.$(TGT)
