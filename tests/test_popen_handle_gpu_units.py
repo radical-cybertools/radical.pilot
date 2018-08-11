@@ -10,15 +10,17 @@ import radical.pilot as rp
 from radical.pilot.agent.executing.popen import Popen
 
 
-try:
-    import mock
-except ImportError:
+try: 
+    import mock 
+except ImportError: 
     from unittest import mock
 
 session_id = 'rp.session.test.cuda'
 
 
-class TestGPUunitsComponent(unittest.TestCase):
+
+class TestStagingInputComponent(unittest.TestCase):
+
 
     def setUp(self):
         self._session = rp.Session()
@@ -30,7 +32,7 @@ class TestGPUunitsComponent(unittest.TestCase):
                                         "cpu_processes": 1,
                                         "cpu_thread_type": "OpenMP",
                                         "cpu_threads": 1,
-                                        "environment": {},
+                                        "environment": {}, 
                                         "executable": "/bin/date",
                                         "gpu_process_type": "CUDA",
                                         "gpu_processes": 1,
@@ -46,13 +48,13 @@ class TestGPUunitsComponent(unittest.TestCase):
                                         "restartable": False,
                                         "stderr": None,
                                         "stdout": None
-                                        }
-        self.unit_gpu['slots'] = {"cores_per_node": 7,
-                                  "gpus_per_node": 2,
-                                  "lm_info": {"version_info": {"FORK": {"version": "0.42",
-                                                                        "version_detail": "There is no spoon"}}},
+                                       }
+        self.unit_gpu['slots'] = {"cores_per_node": 7, 
+                                  "gpus_per_node": 1, 
+                                  "lm_info": {"version_info": {"FORK": {"version": "0.42", 
+                                                                        "version_detail": "There is no spoon"}}}, 
                                   "nodes": [["localhost", "localhost_0", [[0]], [[0]]]]
-                                  }
+                                 }
 
         self.unit_cpu = dict()
         self.unit_cpu['description'] = {"arguments": [],
@@ -61,7 +63,7 @@ class TestGPUunitsComponent(unittest.TestCase):
                                         "cpu_processes": 1,
                                         "cpu_thread_type": "OpenMP",
                                         "cpu_threads": 1,
-                                        "environment": {},
+                                        "environment": {}, 
                                         "executable": "/bin/date",
                                         "gpu_process_type": None,
                                         "gpu_processes": 0,
@@ -77,81 +79,79 @@ class TestGPUunitsComponent(unittest.TestCase):
                                         "restartable": False,
                                         "stderr": None,
                                         "stdout": None
-                                        }
-        self.unit_cpu['slots'] = {"cores_per_node": 7,
-                                  "gpus_per_node": 1,
-                                  "lm_info": {"version_info": {"FORK": {"version": "0.42",
-                                                                        "version_detail": "There is no spoon"}}},
+                                       }
+        self.unit_cpu['slots'] = {"cores_per_node": 7, 
+                                  "gpus_per_node": 1, 
+                                  "lm_info": {"version_info": {"FORK": {"version": "0.42", 
+                                                                        "version_detail": "There is no spoon"}}}, 
                                   "nodes": [["localhost", "localhost_0", [[0]], []]]
                                   }
 
+        
     def tearDown(self):
-
+        
         self._session.close()
 
+
     @mock.patch.object(Popen, '__init__', return_value=None)
     @mock.patch.object(Popen, 'advance')
     @mock.patch.object(Popen, 'spawn')
-    @mock.patch.object(Popen, 'publish')
+    @mock.patch.object(Popen,'publish')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    def test_gpu_unit(self, mocked_init, mocked_advance, mocked_spawn, 
-        mocked_publish, mocked_profiler, mocked_raise_on):
+    def test_gpu_unit(self, mocked_init, mocked_advance, mocked_spawn, mocked_publish, mocked_profiler, mocked_raise_on):
 
-        component = Popen(cfg={'Testing'}, session=self._session)
+        component       = Popen(cfg={'Testing'}, session=self._session)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log  = ru.get_logger('dummy')
         component._mpi_launcher = rp.agent.LM.create(
-            name='SSH',
-            cfg={},
-            session=self._session)
+                name    = 'SSH',
+                cfg     = {},
+                session = self._session)
         component._task_launcher = rp.agent.LM.create(
-            name='SSH',
-            cfg={},
-            session=self._session)
+                name    = 'SSH',
+                cfg     = {},
+                session = self._session)
 
         # Call the component's '_handle_unit' function
-        # Should perform all of the actionables
+        # Should perform all of the actionables 
         component._handle_unit(self.unit_gpu)
 
-        print self.unit_gpu['description']['environment']['CUDA_VISIBLE_DEVICES']
         # Verify the actionables were done...
-        self.assertTrue(self.unit_gpu['description'][
-                        'environment'].get('CUDA_VISIBLE_DEVICES') == '0')
+        self.assertTrue(self.unit_gpu['description']['environment'].get('CUDA_VISIBLE_DEVICES',None) == 0)
 
     @mock.patch.object(Popen, '__init__', return_value=None)
     @mock.patch.object(Popen, 'advance')
     @mock.patch.object(Popen, 'spawn')
-    @mock.patch.object(Popen, 'publish')
+    @mock.patch.object(Popen,'publish')
     @mock.patch.object(ru.Profiler, 'prof')
     @mock.patch('radical.utils.raise_on')
-    def test_cpu_unit(self, mocked_init, mocked_advance, mocked_spawn, 
-        mocked_publish, mocked_profiler, mocked_raise_on):
+    def test_cpu_unit(self, mocked_init, mocked_advance, mocked_spawn, mocked_publish, mocked_profiler, mocked_raise_on):
 
-        component = Popen(cfg={'Testing'}, session=self._session)
+        component       = Popen(cfg={'Testing'}, session=self._session)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log  = ru.get_logger('dummy')
         component._mpi_launcher = rp.agent.LM.create(
-            name='SSH',
-            cfg={},
-            session=self._session)
+                name    = 'SSH',
+                cfg     = {},
+                session = self._session)
         component._task_launcher = rp.agent.LM.create(
-            name='SSH',
-            cfg={},
-            session=self._session)
+                name    = 'SSH',
+                cfg     = {},
+                session = self._session)
+
 
         # Call the component's '_handle_unit' function
-        # Should perform all of the actionables
+        # Should perform all of the actionables 
         component._handle_unit(self.unit_cpu)
 
         # Verify the actionables were done...
-        self.assertTrue(self.unit_cpu['description']['environment'].get(
-            'CUDA_VISIBLE_DEVICES') == None)
-
+        self.assertTrue(self.unit_cpu['description']['environment'].get('CUDA_VISIBLE_DEVICES',None) == None)
+                                                     
 
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestGPUunitsComponent)
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestStagingInputComponent)
     unittest.TextTestRunner(verbosity=2).run(suite)
