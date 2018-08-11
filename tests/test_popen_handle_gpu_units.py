@@ -21,7 +21,7 @@ session_id = 'rp.session.test.cuda'
 class TestGPUunitsComponent(unittest.TestCase):
 
     def setUp(self):
-        self._session = rp.Session(uid=session_id)
+        self._session = rp.Session()
         # Unit configuration
         self.unit_gpu = dict()
         self.unit_gpu['description'] = {"arguments": [],
@@ -88,7 +88,6 @@ class TestGPUunitsComponent(unittest.TestCase):
     def tearDown(self):
 
         self._session.close()
-        shutil.rmtree(session_id)
 
     @mock.patch.object(Popen, '__init__', return_value=None)
     @mock.patch.object(Popen, 'advance')
@@ -115,6 +114,7 @@ class TestGPUunitsComponent(unittest.TestCase):
         # Should perform all of the actionables
         component._handle_unit(self.unit_gpu)
 
+        print self.unit_gpu['description']['environment']['CUDA_VISIBLE_DEVICES']
         # Verify the actionables were done...
         self.assertTrue(self.unit_gpu['description'][
                         'environment'].get('CUDA_VISIBLE_DEVICES') == '0')
