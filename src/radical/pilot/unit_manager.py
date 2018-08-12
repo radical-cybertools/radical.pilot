@@ -724,7 +724,7 @@ class UnitManager(rpu.Component):
             if not ud.executable:
                 raise ValueError('compute unit executable must be defined')
 
-            unit = ComputeUnit.create(umgr=self, descr=ud)
+            unit = ComputeUnit(umgr=self, descr=ud)
             units.append(unit)
 
             # keep units around

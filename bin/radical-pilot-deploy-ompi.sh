@@ -16,6 +16,7 @@
 # Thanks to Mark Santcroos to provide the input for this installation
 # procedure!
 
+
 export OMPI_DIR=$HOME/radical/ompi/                  # target location for install
 export OMPI_DIR=/lustre/atlas2/csc230/world-shared/openmpi/
 export OMPI_COMMIT=a3ac67be0d
@@ -30,9 +31,15 @@ export OMPI_COMMIT=e88767866e
 export OMPI_COMMIT=51f3fbdb3e  # Fix cmd line passing of DVM URI   Oct 6 2017
 export OMPI_COMMIT=04ec013da9  # 04.03.2018
 export OMPI_LABEL=test
+export OMPI_COMMIT=e9f378e851
 export OMPI_LABEL=$(date '+%Y_%m_%d'_${OMPI_COMMIT}) # module flag for installed version
 export MAKEFLAGS=-j32                                # speed up build on multicore machines
 
+if ! test -z "$1"
+then
+    export OMPI_DIR="$1"
+fi
+echo "ompi dir: $OMPI_DIR"
 
 # The environments below are only important during build time
 # and can generally point anywhere on the filesystem.
@@ -90,10 +97,18 @@ mkdir -p $OMPI_DOWNLOAD
 mkdir -p $OMPI_SOURCE
 
 cd $OMPI_DOWNLOAD
+wget http://ftp.gnu.org/gnu/help2man/help2man-1.47.6.tar.xz
 wget http://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.gz
 wget http://ftp.gnu.org/gnu/automake/automake-1.13.4.tar.gz
 wget http://ftp.gnu.org/gnu/libtool/libtool-2.4.2.tar.gz
 wget http://ftp.gnu.org/gnu/m4/m4-1.4.16.tar.gz
+
+cd $OMPI_SOURCE
+tar -xvJf $OMPI_DOWNLOAD/help2man-1.47.6.tar.xz
+cd help2man-1.47.6
+./configure --prefix=$OMPI_TOOLS_PREFIX
+make
+make install
 
 cd $OMPI_SOURCE
 tar -xvzf $OMPI_DOWNLOAD/m4-1.4.16.tar.gz
@@ -137,7 +152,7 @@ mkdir -p $OMPI_BUILD
 cd $OMPI_BUILD
 export CFLAGS=-O3
 export CXXFLAGS=-O3
-
+export FCFLAGS="-ffree-line-length-none"
 echo "========================================="
 echo "OMPI_DIR      : $OMPI_DIR"
 echo "OMPI_SOURCE   : $OMPI_SOURCE"
@@ -157,15 +172,16 @@ echo "========================================="
 #     --prefix=$OMPI_INSTALLED/$OMPI_LABEL
 $OMPI_SOURCE/ompi/configure               \
     --prefix=$OMPI_INSTALLED/$OMPI_LABEL  \
-    --enable-orterun-prefix-by-default    \
-    --with-devel-headers                  \
     --disable-debug                       \
+    --disable-pmix-dstore \
+    --enable-orterun-prefix-by-default    \
     --enable-static                       \
     --enable-heterogeneous                \
     --enable-timing                       \
     --enable-mpi-cxx                      \
     --enable-install-libpmix              \
     --enable-pmix-timing                  \
+    --with-devel-headers                  \
     --with-pmix=internal                  \
     --with-ugni                           \
     --with-pmi=/opt/cray/pmi/5.0.12/      \
@@ -254,4 +270,5 @@ make install
 # we try to end up where we started.
 cd $orig
 
+# ------------------------------------------------------------------------------
 

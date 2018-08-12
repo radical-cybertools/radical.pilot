@@ -1,0 +1,7 @@
+
+command : /bin/sleep #T#
+cores   : #C#
+slots   : #N#
+retval  : #R#
+debug   : #X#
+
