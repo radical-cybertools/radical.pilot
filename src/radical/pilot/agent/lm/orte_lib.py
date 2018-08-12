@@ -5,7 +5,7 @@ __license__   = "MIT"
 
 import os
 import time
-import threading
+import threading     as mt
 import subprocess    as mp
 import radical.utils as ru
 
@@ -43,15 +43,7 @@ class ORTELib(LaunchMethod):
                the DVM.
         """
 
-        dvm_cmd = ru.which('orte-dvm')
-        if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
-            dvm_args = ['--report-uri',            '-',
-                        '--mca odls_base_verbose', '100',
-                        '--mca rml_base_verbose',  '100',
-                        '--debug-devel',
-                       ]
-        else:
-            dvm_args = ['--report-uri', '-']
+        dvm_cmd = ru.which('orte-server')
 
         if not dvm_cmd:
             raise Exception("Couldn't find orte-dvm")
@@ -73,6 +65,7 @@ class ORTELib(LaunchMethod):
             if   key == 'Open RTE'              : info['version']        = val
             elif key == 'Open RTE repo revision': info['version_detail'] = val
 
+        assert(info.get('version'))
         logger.info("Found Open RTE: %s [%s]",
                     info['version'], info['version_detail'])
 
@@ -81,30 +74,33 @@ class ORTELib(LaunchMethod):
         # without waiting for orte-dvm to complete.
         # The command seems to be generally available on our Cray's,
         # if not, we can code some home-coooked pty stuff.
-        stdbuf_cmd  = cls._find_executable(['stdbuf', 'gstdbuf'])
-        stdbuf_args = "-oL"
+        stdbuf_cmd =  ru.which(['stdbuf', 'gstdbuf'])
+        stdbuf_arg = "-oL"
+
         if not stdbuf_cmd:
             raise Exception("Couldn't find (g)stdbuf")
 
+        dvm_args = [
+                    '--no-daemonize',
+                    '--report-uri', '-'
+                   ]
+
         # Additional (debug) arguments to orte-dvm
         if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
-            debug_strings = [
-                             '--debug-devel',
-                             '--mca odls_base_verbose 100',
-                             '--mca rml_base_verbose 100'
-                            ]
-        else:
-            debug_strings = []
+            dvm_args += [
+                         '--debug-devel',
+                         '--mca odls_base_verbose 100',
+                         '--mca rml_base_verbose  100'
+                        ]
 
+        command  = [stdbuf_cmd] + [stdbuf_arg] + [dvm_cmd] + dvm_args
+        vm_size  = len(lrms.node_list)
+        dvm_uri  = None
+        dvm_term = mt.Event()
 
-        command = [stdbuf_cmd] + [stdbuf_args] + [dvm_cmd] + debug_strings
-        vm_size = len(lrms.node_list)
-        dvm_uri = None
-
-        logger.info("Start DVM on %d nodes ['%s']", vm_size, command)
+        logger.info("Starting ORTE DVM on %d nodes with '%s'", vm_size, command)
         profiler.prof(event='orte_dvm_start', uid=cfg['pilot_id'])
-
-        dvm_process = mp.Popen(dvm_args, stdout=mp.PIPE, stderr=mp.STDOUT)
+        dvm_process = mp.Popen(command, stdout=mp.PIPE, stderr=mp.STDOUT)
 
         while True:
 
@@ -114,13 +110,8 @@ class ORTELib(LaunchMethod):
 
             if '://' in line:
                 dvm_uri = line
-                logger.info("ORTE DVM URI: %s" % dvm_uri)
-
-            elif line == 'DVM ready':
-                if not dvm_uri:
-                    raise Exception("VMURI not found!")
-
                 logger.info("ORTE DVM startup successful!")
+                logger.debug("ORTE DVM URI: %s" % dvm_uri)
                 profiler.prof(event='orte_dvm_ok', uid=cfg['pilot_id'])
                 break
 
@@ -141,19 +132,29 @@ class ORTELib(LaunchMethod):
             logger.info('starting DVM watcher')
 
             retval = dvm_process.poll()
-            while retval is None:
+            while not dvm_term.is_set() and retval is None:
                 line = dvm_process.stdout.readline().strip()
                 if line:
                     logger.debug('dvm output: %s', line)
                 else:
                     time.sleep(1.0)
 
-            if retval != 0:
-                # send a kill signal to the main thread.
+
+            if dvm_term.is_set():
+                # dvm is supposed to die (it its not already dead)
+                # shield against termination races
+                try:
+                    dvm_process.kill()
+                    logger.info('DVM killed (%d)' % dvm_process.returncode)
+                except:
+                    pass
+
+            elif retval != 0:
+                # dvm died in a bad way - inform the main thread.
                 # We know that Python and threading are likely not to play well
                 # with signals - but this is an exceptional case, and not part
                 # of the stadard termination sequence.  If the signal is
-                # swallowed, the next `orte-submit` call will trigger
+                # swallowed, the next `orterun` call will trigger
                 # termination anyway.
                 os.kill(os.getpid())
 
@@ -188,8 +189,8 @@ class ORTELib(LaunchMethod):
         if 'dvm_uri' in lm_info:
             try:
                 logger.info('terminating dvm')
-                orterun = ru.which('orterun')
                 dvm_uri = lm_info['dvm_uri']
+                orterun = ru.which('orterun')
 
                 if not orterun:
                     raise Exception("Couldn't find orterun")
@@ -208,7 +209,7 @@ class ORTELib(LaunchMethod):
     #
     def _configure(self):
 
-        self.launch_command = ru.which('prun')
+        self.launch_command = ru.which('orterun')
 
         # Request to create a background asynchronous event loop
         os.putenv("OMPI_MCA_ess_tool_async_progress", "enabled")
@@ -255,30 +256,29 @@ class ORTELib(LaunchMethod):
         # On some Crays, like on ARCHER, the hostname is "archer_N".
         # In that case we strip off the part upto and including the underscore.
         #
-        # TODO: If this ever becomes a problem, i.e. we encounter "real"
-        #       hostnames with underscores in it, or other hostname mangling,
-        #       we need to turn this into a system specific regexp or so.
-        #
-        hosts_string = ",".join([slot.split(':')[0].rsplit('_', 1)[-1]
-                                             for slot in slots])
+        # TODO:  If this ever becomes a problem, i.e. we encounter "real"
+        #        hostnames with underscores in it, or other hostname mangling,
+        #        we need to turn this into a system specific regexp or so.
+        depths = set()
+        hosts  = list()
+        for node in slots['nodes']:
+            for cpu_slot in node[2]: hosts.append(node[0])
+            for gpu_slot in node[3]: hosts.append(node[0])
+            for cpu_slot in node[2]: depths.add(len(cpu_slot))
 
-      # depths       = set()
-      # for node in slots['nodes']:
-      #
-      #     node_id = node[1].rsplit('_', 1)[-1] 
-      #     for cpu_slot in node[2]: hosts_string += '%s,' % node_id
-      #     for gpu_slot in node[3]: hosts_string += '%s,' % node_id
-      #     for cpu_slot in node[2]: depths.add(len(cpu_slot))
-      #
+        hosts_string = ','.join(hosts)
+
       # assert(len(depths) == 1), depths
       # depth = list(depths)[0]
 
-        # FIXME: is this binding correct?
+      # # FIXME: is this binding correct?
       # if depth > 1: map_flag = '--bind-to none --map-by ppr:%d:core' % depth
       # else        : map_flag = '--bind-to none'
         map_flag = '--bind-to none'
 
-        # Additional (debug) arguments to prun
+
+        # Additional (debug) arguments to orterun
+        debug_strings = []
         if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
             debug_strings = ['-display-devel-map', 
                              '-display-allocation', 
@@ -288,6 +288,7 @@ class ORTELib(LaunchMethod):
                             ]
         else:
             debug_strings = []
+        debug_string = ' '.join(debug_strings)
 
         if task_mpi: np_flag = '-np %s' % task_cores
         else       : np_flag = '-np 1'

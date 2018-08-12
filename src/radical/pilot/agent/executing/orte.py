@@ -8,7 +8,6 @@ import copy
 import time
 import errno
 import Queue
-import tempfile
 import threading
 import traceback
 
@@ -18,6 +17,7 @@ from ....  import pilot as rp
 from ...  import states    as rps
 from ...  import constants as rpc
 from .base import AgentExecutingComponent
+
 
 # ------------------------------------------------------------------------------
 #
@@ -290,15 +290,15 @@ class ORTE(AgentExecutingComponent):
         slots = cu['slots']
 
         if 'lm_info' not in slots:
-            raise RuntimeError('No lm_info to init via %s: %s' \
+            raise RuntimeError('No lm_info to init via %s: %s'
                                % (self.name, slots))
 
         if not slots['lm_info']:
-            raise RuntimeError('lm_info missing for %s: %s' \
+            raise RuntimeError('lm_info missing for %s: %s'
                                % (self.name, slots))
 
         if 'dvm_uri' not in slots['lm_info']:
-            raise RuntimeError('dvm_uri not in lm_info for %s: %s' \
+            raise RuntimeError('dvm_uri not in lm_info for %s: %s'
                                % (self.name, slots))
 
         dvm_uri = slots['lm_info']['dvm_uri']
@@ -307,9 +307,9 @@ class ORTE(AgentExecutingComponent):
         orte_lib.opal_set_using_threads(True)
 
         argv_keepalive = [
-            ffi.new("char[]", "RADICAL-Pilot"), # will be stripped off by lib
-            ffi.new("char[]", "--hnp"), ffi.new("char[]", str(dvm_uri)),
-            ffi.NULL, # required
+            ffi.new("char[]", "RADICAL-Pilot"),  # will be stripped off by lib
+            ffi.new("char[]", "--ompi-server"), ffi.new("char[]", str(dvm_uri)),
+            ffi.NULL,  # required
         ]
         argv = ffi.new("char *[]", argv_keepalive)
         ret = orte_lib.orte_submit_init(3, argv, ffi.NULL)
@@ -431,7 +431,7 @@ class ORTE(AgentExecutingComponent):
                          + task_command \
                          + "; echo script cu_exec_stop `%s` >> %s/%s.prof" \
                          % (self.gtod, cu_tmpdir, cu['uid'])
-        arg_list.append(ffi.new("char[]", str("%s; exit $RETVAL" \
+        arg_list.append(ffi.new("char[]", str("%s; exit $RETVAL"
                                             % str(task_command))))
 
         self._log.debug("Launching unit %s via %s %s", cu['uid'], 

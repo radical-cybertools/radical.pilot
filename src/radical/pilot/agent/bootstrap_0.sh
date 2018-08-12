@@ -92,7 +92,7 @@ LOCK_TIMEOUT=600 # 10 min
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
 VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
-VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces==0.10.4 setproctitle orte_cffi msgpack-python future"
+VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces==0.10.4 setproctitle orte_cffi msgpack-python future pudb"
 
 
 # ------------------------------------------------------------------------------
@@ -1037,10 +1037,12 @@ virtenv_create()
 
     # NOTE: On india/fg 'pip install saga-python' does not work as pip fails to
     #       install apache-libcloud (missing bz2 compression).  We thus install
-    #       that dependency via easy_install.
-    run_cmd "install apache-libcloud" \
-            "easy_install --upgrade apache-libcloud" \
-         || echo "Couldn't install/upgrade apache-libcloud! Lets see how far we get ..."
+    #       that dependency via easy_install.- but we fall back to pip in case
+    #       this goes wrong (like with a recent easy-install/setuptools
+    #       conflict)
+    run_cmd "install apache-libcloud" "easy_install apache-libcloud" || \
+    run_cmd "install apache-libcloud" "pip install  apache-libcloud" || \
+    echo "Couldn't install/upgrade apache-libcloud! Lets see how far we get ..."
 
 
     # now that the virtenv is set up, we install all dependencies
@@ -1048,10 +1050,9 @@ virtenv_create()
     for dep in $VIRTENV_RADICAL_DEPS
     do
         # NOTE: we have to make sure not to use wheels on titan
-        hostname | grep titan 2&>1 >/dev/null
-        if test "$?" = 1
+        
+        if hostname | grep titan >/dev/null
         then
-            # this is titan
           # wheeled="--no-use-wheel"
             wheeled="--no-binary :all:"
         else
