@@ -16,6 +16,18 @@
 # Thanks to Mark Santcroos to provide the input for this installation
 # procedure!
 
+LOG=`pwd`/ompi.log
+log(){
+    msg=$1
+    echo -n "$msg : "
+    while read in
+    do
+        echo $in >> $LOG
+        echo $in | sed -e 's/[^\n]//g' | sed -e 's/.*/./g' | xargs echo -n
+    done
+    echo
+}
+
 
 export OMPI_DIR=$HOME/radical/ompi/                  # target location for install
 export OMPI_DIR=/lustre/atlas2/csc230/world-shared/openmpi/
@@ -39,7 +51,10 @@ if ! test -z "$1"
 then
     export OMPI_DIR="$1"
 fi
+
+echo 
 echo "ompi dir: $OMPI_DIR"
+echo
 
 # The environments below are only important during build time
 # and can generally point anywhere on the filesystem.
@@ -96,107 +111,111 @@ fi
 mkdir -p $OMPI_DOWNLOAD
 mkdir -p $OMPI_SOURCE
 
-cd $OMPI_DOWNLOAD
-wget http://ftp.gnu.org/gnu/help2man/help2man-1.47.6.tar.xz
-wget http://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.gz
-wget http://ftp.gnu.org/gnu/automake/automake-1.13.4.tar.gz
-wget http://ftp.gnu.org/gnu/libtool/libtool-2.4.2.tar.gz
-wget http://ftp.gnu.org/gnu/m4/m4-1.4.16.tar.gz
 
-cd $OMPI_SOURCE
-tar -xvJf $OMPI_DOWNLOAD/help2man-1.47.6.tar.xz
-cd help2man-1.47.6
-./configure --prefix=$OMPI_TOOLS_PREFIX
-make
-make install
+# ------------------------------------------------------------------------------
+deps="help2man-1.43.3 autoconf-2.69 automake-1.13.4 libtool-2.4.2 m4-1.4.16"
+for dep in $deps
+do
+    echo "install $dep"
+    gnu='http://ftp.gnu.org/gnu'
+    dbase=$(echo $dep | cut -f 1 -d '-')
+    dsrc=$dep.tar.gz
+    cd $OMPI_DOWNLOAD
+    if ! test -f $dsrc
+    then
+        wget $gnu/$dbase/$dep.tar.gz            2>&1 | log 'wget' || exit
+    fi
+    cd $OMPI_SOURCE
+    if ! test -d $dep
+    then
+        tar xvf $OMPI_DOWNLOAD/$dep.tar.gz      2>&1 | log 'tar ' || exit
+        cd $dep
+        ./configure --prefix=$OMPI_TOOLS_PREFIX 2>&1 | log 'cfg ' || exit
+        make                                    2>&1 | log 'make' || exit
+        make install                            2>&1 | log 'inst' || exit
+    else
+        echo '  skipped'
+    fi
+    echo
+done
 
-cd $OMPI_SOURCE
-tar -xvzf $OMPI_DOWNLOAD/m4-1.4.16.tar.gz
-cd m4-1.4.16
-./configure --prefix=$OMPI_TOOLS_PREFIX
-make
-make install
-
-cd $OMPI_SOURCE
-tar -xvzf $OMPI_DOWNLOAD/autoconf-2.69.tar.gz
-cd autoconf-2.69
-./configure --prefix=$OMPI_TOOLS_PREFIX
-make
-make install
-
-cd $OMPI_SOURCE
-tar -xvzf $OMPI_DOWNLOAD/automake-1.13.4.tar.gz
-cd automake-1.13.4
-./configure --prefix=$OMPI_TOOLS_PREFIX
-make
-make install
-
-cd $OMPI_SOURCE
-tar -xvzf $OMPI_DOWNLOAD/libtool-2.4.2.tar.gz
-cd libtool-2.4.2
-./bootstrap
-./configure --prefix=$OMPI_TOOLS_PREFIX
-make
-make install
-
-cd $OMPI_SOURCE
-## git clone https://github.com/open-mpi/ompi.git
-cd ompi
-git checkout master
-git pull
-git checkout $OMPI_COMMIT
-./autogen.pl
-
-export OMPI_BUILD=$OMPI_DIR/build/$OMPI_LABEL
-mkdir -p $OMPI_BUILD
-cd $OMPI_BUILD
-export CFLAGS=-O3
-export CXXFLAGS=-O3
-export FCFLAGS="-ffree-line-length-none"
-echo "========================================="
-echo "OMPI_DIR      : $OMPI_DIR"
-echo "OMPI_SOURCE   : $OMPI_SOURCE"
-echo "OMPI_BUILD    : $OMPI_BUILD"
-echo "OMPI_INSTALLED: $OMPI_INSTALLED"
-echo "OMPI_LABEL    : $OMPI_LABEL"
-echo "modules       :"
-module list 2>&1 | sort
-echo "========================================="
-
-# $OMPI_SOURCE/ompi/configure \
-#     --enable-orterun-prefix-by-default \
-#     --with-devel-headers \
-#     --disable-debug \
-#     --enable-static \
-#     --disable-pmix-dstore \
-#     --prefix=$OMPI_INSTALLED/$OMPI_LABEL
-$OMPI_SOURCE/ompi/configure               \
-    --prefix=$OMPI_INSTALLED/$OMPI_LABEL  \
-    --disable-debug                       \
-    --disable-pmix-dstore \
-    --enable-orterun-prefix-by-default    \
-    --enable-static                       \
-    --enable-heterogeneous                \
-    --enable-timing                       \
-    --enable-mpi-cxx                      \
-    --enable-install-libpmix              \
-    --enable-pmix-timing                  \
-    --with-devel-headers                  \
-    --with-pmix=internal                  \
-    --with-ugni                           \
-    --with-pmi=/opt/cray/pmi/5.0.12/      \
-    --with-tm                             \
-    --with-alps=yes                       \
-
-  # --with-cray-pmi                       \
-make -j 32
-make install
-
+# ------------------------------------------------------------------------------
 # install libffi on systems which don't have it, so that the pilot ve can
 # install the `orte_cffi` python module.
 # libffi documentation needs texi2html which is not commonly available, so we
 # disable documentation.
 
+echo "install libffi"
+cd $OMPI_SOURCE
+if ! test -d libffi
+then
+    git clone https://github.com/libffi/libffi.git \
+                 2>&1 | log 'git ' || exit
+    cd libffi
+    git pull     2>&1 | log 'pull' || exit
+    ./autogen.sh 2>&1 | log 'agen' || exit
+    ./configure --prefix=$OMPI_TOOLS_PREFIX --disable-docs \
+                 2>&1 | log 'cfg ' || exit
+    make         2>&1 | log 'make' || exit
+    make install 2>&1 | log 'inst' || exit
+fi
+
+# # ------------------------------------------------------------------------------
+# echo "install ompi @$OMPI_COMMIT"
+# cd $OMPI_SOURCE
+# if ! test -d ompi
+# then
+#     git clone https://github.com/open-mpi/ompi.git 2>&1 | log 'git ' || exit
+# fi
+# 
+# cd ompi
+# git checkout master        
+# git pull                          2>&1 | log 'pull' || exit
+# git checkout $OMPI_COMMIT         2>&1 | log 'comm' || exit
+# make distclean                    2>&1 | log 'clr '
+# test -f configure || ./autogen.pl 2>&1 | log 'agen' || exit
+# 
+# export OMPI_BUILD=$OMPI_DIR/build/$OMPI_LABEL
+# mkdir -p $OMPI_BUILD
+# cd $OMPI_BUILD
+# export CFLAGS=-O3
+# export CXXFLAGS=-O3
+# export FCFLAGS="-ffree-line-length-none"
+# echo "========================================="
+# echo "OMPI_DIR      : $OMPI_DIR"
+# echo "OMPI_SOURCE   : $OMPI_SOURCE"
+# echo "OMPI_BUILD    : $OMPI_BUILD"
+# echo "OMPI_INSTALLED: $OMPI_INSTALLED"
+# echo "OMPI_LABEL    : $OMPI_LABEL"
+# # echo "modules       :"
+# #   module list 2>&1 | sort
+# echo "========================================="
+# 
+# # titan
+#   # --with-cray-pmi                       \
+#   # --with-pmix=internal                  \
+#   # --with-pmi=/opt/cray/pmi/5.0.12/      \
+#   # --with-tm                             \
+#   # --with-ugni                           \
+#   # --with-alps=yes                       \
+# $OMPI_SOURCE/ompi/configure               \
+#     --prefix=$OMPI_INSTALLED/$OMPI_LABEL  \
+#     --disable-debug                       \
+#     --disable-pmix-dstore \
+#     --enable-orterun-prefix-by-default    \
+#     --enable-static                       \
+#     --enable-heterogeneous                \
+#     --enable-timing                       \
+#     --enable-mpi-cxx                      \
+#     --enable-pmix-timing                  \
+#     --enable-install-libpmix              \
+#     --with-devel-headers                  \
+#               2>&1 | log 'cfg ' || exit
+# make -j 32    2>&1 | log 'make' || exit
+# make install  2>&1 | log 'inst' || exit
+
+# ------------------------------------------------------------------------------
+echo "create module file"
 mkdir -p $OMPI_MODULE
 cat <<EOT > $OMPI_MODULE/$OMPI_LABEL
 #%Module########################################################################
@@ -224,47 +243,57 @@ setenv          OMPI_MCA_timer_require_monotonic false
 
 EOT
 
+cat <<EOT > $OMPI_INSTALLED/$OMPI_LABEL/etc/ompi.sh
+export PATH=$PATH:$OMPI_INSTALLED/$OMPI_LABEL/bin
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$OMPI_INSTALLED/$OMPI_LABEL/lib
+export MANPATH=$MANPATH:$OMPI_INSTALLED/$OMPI_LABEL/share/man
+export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:$OMPI_INSTALLED/$OMPI_LABEL/share/pkgconfig
+export OMPI_MCA_timer_require_monotonic=false
+EOT
+echo
+
+
+# ------------------------------------------------------------------------------
+# activate settings for this scipt
+. $OMPI_INSTALLED/$OMPI_LABEL/etc/ompi.sh
+
+
+# ------------------------------------------------------------------------------
+echo
+gver=gromacs-2018.2
+gsrc=$gver.tar.gz
+echo "install gromacs $gver"
+
+cd $OMPI_DOWNLOAD
+if ! test -f $gsrc
+then
+    wget http://ftp.gromacs.org/pub/gromacs/$gsrc \
+            2>&1 | log 'wget' || exit
+fi
 
 cd $OMPI_SOURCE
-## git clone https://github.com/libffi/libffi.git
-cd libffi
-git pull
-./autogen.sh
-./configure --prefix=$OMPI_TOOLS_PREFIX --disable-docs
-make
-make install
-
-
-# we also install gromacs
-cd $OMPI_SOURCE
-rm -rf gromacs-5.1.4
-tar xf $OMPI_DOWNLOAD/gromacs-5.1.4.tar.gz
-cd gromacs-5.1.4
-
-echo '--------------------------------------'
-pwd -P
-echo module use --append $OMPI_MODULE_BASE
-echo module load openmpi/$OMPI_LABEL
-echo '--------------------------------------'
-
-module use --append $OMPI_MODULE_BASE
-module load openmpi/$OMPI_LABEL
-module list
-
-set -x
-cmake \
-  -DCMAKE_C_COMPILER=mpicc \
-  -DCMAKE_CXX_COMPILER=mpiCC \
-  -DGMX_MPI=on \
-  -DCMAKE_INSTALL_PREFIX=$OMPI_INSTALLED/$OMPI_LABEL \
-  -DBUILD_SHARED_LIBS=ON \
-  -DGMX_BUILD_OWN_FFTW=ON \
-  -DGMX_OPENMP=OFF \
-  -DGMX_SIMD=AVX_128_FMA
-set +x
-make
-make install
-
+if ! test -d $gfver
+then
+    tar xf $OMPI_DOWNLOAD/$gver.tar.gz 2>&1 | log 'wget' || exit
+    cd $gver
+    
+    # module use --append $OMPI_MODULE_BASE
+    # module load openmpi/$OMPI_LABEL
+    # module list
+    
+    cmake \
+      -DCMAKE_C_COMPILER=mpicc \
+      -DCMAKE_CXX_COMPILER=mpiCC \
+      -DGMX_MPI=on \
+      -DCMAKE_INSTALL_PREFIX=$OMPI_INSTALLED/$OMPI_LABEL \
+      -DBUILD_SHARED_LIBS=ON \
+      -DGMX_BUILD_OWN_FFTW=ON \
+      -DGMX_OPENMP=OFF \
+      -DGMX_SIMD=AVX_128_FMA \
+                 2>&1 | log 'cmak' || exit
+    make         2>&1 | log 'make' || exit
+    make install 2>&1 | log 'inst' || exit
+fi
 
 # this should not be needed - but just in case someone sources this script,
 # we try to end up where we started.
