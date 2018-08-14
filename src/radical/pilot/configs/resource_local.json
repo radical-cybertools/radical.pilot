@@ -20,7 +20,7 @@
         ],
         "default_remote_workdir"      : "$HOME",
         "lrms"                        : "FORK",
-        "agent_scheduler"             : "CONTINUOUS",
+        "agent_scheduler"             : "CONTINUOUS_FIFO",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "FORK",
         "task_launch_method"          : "FORK",
@@ -138,7 +138,9 @@
         "mpi_launch_method"           : "MPIEXEC",
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "default"
+        "python_dist"                 : "default",
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1
     },
 
     "localhost_spark_anaconda": {
@@ -165,7 +167,9 @@
         "mpi_launch_method"           : "MPIEXEC",
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "anaconda"
+        "python_dist"                 : "anaconda",
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1
     },
 
     "localhost_orte": {
@@ -196,7 +200,9 @@
         "pre_bootstrap_0"             : ["export OMPI=/home/merzky/radical/ompi/installed/2017_09_18_539f71d",
                                          "export PATH=$OMPI/bin/:$PATH",
                                          "export LD_LIBRARY_PATH=$OMPI/lib/:$LD_LIBRARY_PATH",
-                                         "export PKG_CONFIG_PATH=$OMPI/share/pkgconfig/:$PKG_CONFIG_PATH"]
+                                         "export PKG_CONFIG_PATH=$OMPI/share/pkgconfig/:$PKG_CONFIG_PATH"],
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1
     },
 
     "localhost_ortelib": {
@@ -227,7 +233,9 @@
         "pre_bootstrap_0"             : ["export OMPI=/home/merzky/radical/ompi/installed/2017_09_18_539f71d",
                                          "export PATH=$OMPI/bin/:$PATH",
                                          "export LD_LIBRARY_PATH=$OMPI/lib/:$LD_LIBRARY_PATH",
-                                         "export PKG_CONFIG_PATH=$OMPI/share/pkgconfig/:$PKG_CONFIG_PATH"]
+                                         "export PKG_CONFIG_PATH=$OMPI/share/pkgconfig/:$PKG_CONFIG_PATH"],
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1
   }
 }
 

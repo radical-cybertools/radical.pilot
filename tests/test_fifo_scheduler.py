@@ -95,6 +95,15 @@ def test_fifo_scheduler(mocked_init,
     component._prof                = mocked_profiler
     component._log                 = ru.Logger('x')
 
+    component.nodes = []
+    for node, node_uid in component._lrms_node_list:
+        component.nodes.append({
+            'name' : node,
+            'uid'  : node_uid,
+            'cores': [rpc.FREE] * component._lrms_cores_per_node,
+            'gpus' : [rpc.FREE] * component._lrms_gpus_per_node
+        })
+
     # populate component attributes
     component._configure()
     component._oversubscribe = True

@@ -87,10 +87,10 @@ if __name__ == '__main__':
             cud = rp.ComputeUnitDescription()
             cud.executable       = '/bin/date'
             cud.gpu_processes    = 0
-            cud.cpu_processes    = 2
-            cud.cpu_threads      = 2
-            cud.cpu_process_type = rp.MPI
-            cud.cpu_thread_type  = rp.OpenMP
+            cud.cpu_processes    = 1
+            cud.cpu_threads      = 1
+            cud.cpu_process_type = rp.POSIX
+            cud.cpu_thread_type  = rp.POSIX
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
