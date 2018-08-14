@@ -86,11 +86,10 @@ class ORTE(LaunchMethod):
                    ]
 
         # Additional (debug) arguments to orte-dvm
-        if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
+      # if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
+        if True:
             dvm_args += [
-                         '--debug-devel',
-                         '--mca odls_base_verbose 100',
-                         '--mca rml_base_verbose  100'
+                         '--debug'
                         ]
 
         command  = [stdbuf_cmd] + [stdbuf_arg] + [dvm_cmd] + dvm_args
@@ -135,9 +134,10 @@ class ORTE(LaunchMethod):
             while not dvm_term.is_set() and retval is None:
                 line = dvm_process.stdout.readline().strip()
                 if line:
-                    logger.debug('dvm output: %s', line)
+                    logger.debug('DVM: %s', line)
                 else:
                     time.sleep(1.0)
+                retval = dvm_process.poll()
 
 
             if dvm_term.is_set():
@@ -147,6 +147,7 @@ class ORTE(LaunchMethod):
                     dvm_process.kill()
                     logger.info('DVM killed (%d)' % dvm_process.returncode)
                 except:
+                    logger.info('DVM zombie (%d)' % dvm_process.returncode)
                     pass
 
             elif retval != 0:
@@ -156,6 +157,7 @@ class ORTE(LaunchMethod):
                 # of the stadard termination sequence.  If the signal is
                 # swallowed, the next `orterun` call will trigger
                 # termination anyway.
+                logger.info('DVM died (%d)' % retval)
                 os.kill(os.getpid())
 
             logger.info('DVM stopped (%d)' % dvm_process.returncode)
