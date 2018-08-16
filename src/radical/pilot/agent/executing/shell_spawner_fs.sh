@@ -59,22 +59,22 @@ error(){
     exit 1
 }
 
+
 # ------------------------------------------------------------------------------
 #
-# it is suprisingly difficult to get seconds since epoch in POSIX --
-# 'date +%%s' is a GNU extension...  Anyway, awk to the rescue!
-#
-TIMESTAMP=0
-timestamp () {
-  TIMESTAMP=`\awk 'BEGIN{srand(); print srand()}'`
+log(){
+    now=$(date "+%Y-%m-%d %H:%M:%S.%3N")
+    \printf "$now $*\n"
 }
 
 
+# ------------------------------------------------------------------------------
+#
 prof(){
+    test -z "$RP_GTOD" && return
     uid=$1
     evt=$2
-  # now=$($RP_GTOD)
-    now=$(timestamp)
+    now=$($RP_GTOD)
     \printf "$now,$evt,'shell_spawner,MainThread,$uid,AGENT_EXECUTING,\n" \
         >> "$BASE/$uid/$uid.prof"
 }
@@ -118,14 +118,14 @@ setup(){
         || (\printf "respawn failure: [$_RESPAWNED] [$UID]\n";
             exit)
 
-    \printf '\n\nstartup\n'
+    log 'startup'
 
-    PIPE_IN="$BASE/sh.$UID.pipe.in"
-    PIPE_OUT="$BASE/sh.$UID.pipe.out"
+    PIPE_CMD="$BASE/$UID.cmd.pipe"
+    PIPE_INF="$BASE/$UID.inf.pipe"
     MAP="$BASE/sh.$UID.pids"
 
-    test -e "$PIPE_IN"  || error "missing input  pipe $PIP_IN"
-    test -e "$PIPE_OUT" || error "missing output pipe $PIP_OUT"
+    test -e "$PIPE_CMD" || error "missing input  pipe $PIP_IN"
+    test -e "$PIPE_INF" || error "missing output pipe $PIP_OUT"
     test -f "$LOG"      || error "missing logfile $LOG"
 
     # create location to manage pid to unit.uid maps
@@ -144,7 +144,8 @@ setup(){
 \trap cleanup_handler TERM
 
 cleanup_handler(){
-    \printf "cleanup\n"
+
+    log INFO "cleanup"
 }
 
 
@@ -154,16 +155,25 @@ do_exec(){
 
     uid="$1"
     exe="$BASE/$uid/$uid.sh"
-    out="$BASE/$uid/$uid.out"
-    err="$BASE/$uid/$uid.err"
+    out="$BASE/$uid/STDOUT"
+    err="$BASE/$uid/STDERR"
+
+    log INFO "exec $uid"
 
     prof "$uid" 'pre_spawn'
-    /bin/sh "$exe" 1>"$out" 2>"$err" & pid=$!
-    prof "$uid" 'post_spawn'
+    (
+        (set -m
+            /bin/sh "$exe" 1>"$out" 2>"$err"
+        ) 1>/dev/null 2>/dev/null 3</dev/null &
 
-    \printf "$pid\n" > $MAP/$uid.pid
-    \printf "$uid\n" > $MAP/$pid.uid
-    prof "$uid" 'post_record'
+        pid=$!
+        prof "$uid" 'post_spawn'
+
+        \printf "$pid\n" > $MAP/$uid.pid
+        \printf "$uid\n" > $MAP/$pid.uid
+        prof "$uid" 'post_record'
+        exit
+    )
 }
 
 
@@ -172,6 +182,7 @@ do_exec(){
 do_kill(){
 
     uid="$1"
+    log INFO "kill $uid"
 
     prof "$uid" 'pre_kill'
     \kill -9 $(cat $BASE/pids/$uid.pid) || \true  # ignore failures
@@ -184,7 +195,7 @@ do_kill(){
 do_exit(){
 
     ret=$1; shift
-    \printf "exit requested [%s]\n" "$*"
+    log INFO "exit requested [$*]"
     exit $ret
 }
 
@@ -197,11 +208,14 @@ work(){
     do
         cmd=''
         id=''
-        read -r cmd id < $PIPE_IN || err='read failed'
-        test "$cmd" = "EXEC" && do_exec "$id" && continue
-        test "$cmd" = "KILL" && do_kill "$id" && continue
-        test "$cmd" = "EXIT" && do_exit 0 "$CMD"
-        do_exit 1 "cannot handle [$cmd] [$id]: [$err]"
+        read -r cmd id < $PIPE_CMD || do_exit 1 'read failed'
+
+        case "$cmd" in 
+            EXEC) do_exec   "$id";;
+            KILL) do_kill   "$id";;
+            EXIT) do_exit 0 "$id";;
+            *   ) log FAIL "cannot handle [$cmd] [$id]";;
+        esac
     done
 }
 
