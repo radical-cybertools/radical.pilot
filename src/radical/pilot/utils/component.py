@@ -4,11 +4,9 @@ import sys
 import copy
 import time
 import pprint
-import signal
 
 import setproctitle    as spt
 import threading       as mt
-import multiprocessing as mp
 import radical.utils   as ru
 
 from ..          import constants      as rpc
@@ -44,12 +42,12 @@ class Component(ru.Process):
     ownership over it, and that no other component will change the 'thing's
     state during that time.
 
-    The main event loop of the component -- work_cb() -- is executed as a separate
-    process.  Components inheriting this class should be fully self sufficient,
-    and should specifically attempt not to use shared resources.  That will
-    ensure that multiple instances of the component can coexist for higher
-    overall system throughput.  Should access to shared resources be necessary,
-    it will require some locking mechanism across process boundaries.
+    The main event loop of the component -- work_cb() -- is executed as
+    a separate process.  Components inheriting this class should be fully self
+    sufficient, and should specifically attempt not to use shared resources.
+    That will ensure that multiple instances of the component can coexist for
+    higher overall system throughput.  Should access to shared resources be
+    necessary, it will require some locking mechanism across process boundaries.
 
     This approach should ensure that
 
@@ -105,7 +103,7 @@ class Component(ru.Process):
 
     # FIXME:
     #  - make state transitions more formal
-   
+
 
     # --------------------------------------------------------------------------
     #
@@ -117,7 +115,7 @@ class Component(ru.Process):
         if those bridges have endpoints documented.  If so, we assume they are
         running, and that's fine.  If not, we start them and add the respective
         enspoint information to the config.  
-        
+
         This method will return a list of created bridge instances.  It is up to
         the callee to watch those bridges for health and to terminate them as
         needed.
@@ -144,7 +142,7 @@ class Component(ru.Process):
 
             # bridge needs starting
             log.info('create bridge %s', bname)
-            
+
             bcfg_clone = copy.deepcopy(bcfg)
 
             # The type of bridge (queue or pubsub) is derived from the name.
@@ -415,7 +413,7 @@ class Component(ru.Process):
         """
 
         self.is_valid()
-        
+
         # FIXME: We do not check for types of things to cancel - the UIDs are
         #        supposed to be unique.  That abstraction however breaks as we
         #        currently have no abstract 'cancel' command, but instead use
@@ -549,7 +547,7 @@ class Component(ru.Process):
                 self._components = Component.start_components(self._cfg, 
                                                               self._session, 
                                                               self._log)
-            
+
             elif self._ru_is_child:
                 self._components = Component.start_components(self._cfg, 
                                                               self._session, 
@@ -564,8 +562,8 @@ class Component(ru.Process):
             assert(self._cfg['bridges'][rpc.STATE_PUBSUB  ]['addr_in']), 'state pubsub invalid'
             assert(self._cfg['bridges'][rpc.CONTROL_PUBSUB]['addr_in']), 'control pubsub invalid'
 
-        except Exception as e:
-            self._log.exception('bridge / component startup incomplete:\n%s' \
+        except Exception:
+            self._log.exception('bridge / component startup incomplete:\n%s'
                     % pprint.pformat(self._cfg))
             raise
 
@@ -582,7 +580,7 @@ class Component(ru.Process):
     # --------------------------------------------------------------------------
     #
     def initialize_common(self):
-        pass # can be overloaded
+        pass  # can be overloaded
 
 
     # --------------------------------------------------------------------------
@@ -625,7 +623,7 @@ class Component(ru.Process):
         self._prof.prof('component_init')
 
     def initialize_child(self):
-        pass # can be overloaded
+        pass  # can be overloaded
 
 
     # --------------------------------------------------------------------------
@@ -684,7 +682,7 @@ class Component(ru.Process):
           # self._threads = dict()
 
     def finalize_common(self):
-        pass # can be overloaded
+        pass  # can be overloaded
 
 
     # --------------------------------------------------------------------------
@@ -695,7 +693,7 @@ class Component(ru.Process):
         self.finalize_parent()
 
     def finalize_parent(self):
-        pass # can be overloaded
+        pass  # can be overloaded
 
 
     # --------------------------------------------------------------------------
@@ -706,7 +704,7 @@ class Component(ru.Process):
         self.finalize_child()
 
     def finalize_child(self):
-        pass # can be overloaded
+        pass  # can be overloaded
 
 
     # --------------------------------------------------------------------------
@@ -776,7 +774,7 @@ class Component(ru.Process):
             self._log.debug('START: %s register input %s: %s', self.uid, state, name)
 
             if state in self._workers:
-                self._log.warn("%s replaces worker for %s (%s)" \
+                self._log.warn("%s replaces worker for %s (%s)"
                         % (self.uid, state, self._workers[state]))
             self._workers[state] = worker
 
@@ -842,7 +840,7 @@ class Component(ru.Process):
 
             # we want a *unique* output queue for each state.
             if state in self._outputs:
-                self._log.warn("%s replaces output for %s : %s -> %s" \
+                self._log.warn("%s replaces output for %s : %s -> %s"
                         % (self.uid, state, self._outputs[state], output))
 
             if not output:
@@ -857,7 +855,7 @@ class Component(ru.Process):
                 q = rpu_Queue(self._session, output, rpu_QUEUE_INPUT, self._cfg, addr=addr)
                 self._outputs[state] = q
 
-                self._log.debug('registered output    : %s : %s : %s' \
+                self._log.debug('registered output    : %s : %s : %s'
                      % (state, output, q.name))
 
 
@@ -882,7 +880,7 @@ class Component(ru.Process):
               # raise ValueError('input %s is not registered' % state)
                 continue
 
-            if not state in self._outputs:
+            if state not in self._outputs:
                 self._log.warn('state %s has no output registered',  state)
               # raise ValueError('state %s has no output registered' % state)
                 continue
@@ -910,7 +908,7 @@ class Component(ru.Process):
             if name in self._threads:
                 raise ValueError('cb %s already registered' % cb.__name__)
 
-            if timer == None: timer = 0.0  # NOTE: busy idle loop
+            if timer is None: timer = 0.0  # NOTE: busy idle loop
             else            : timer = float(timer)
 
             # create a separate thread per idle cb, and let it be watched by the
@@ -942,13 +940,14 @@ class Component(ru.Process):
                 # ------------------------------------------------------------------
                 def work_cb(self):
                     self.is_valid()
-                    if self._timeout and (time.time()-self._last) < self._timeout:
+                    if self._timeout and \
+                       (time.time() - self._last) < self._timeout:
                         # not yet
-                        time.sleep(0.1) # FIXME: make configurable
+                        time.sleep(0.1)  # FIXME: make configurable
                         return True
 
                     with self._cb_lock:
-                        if self._cb_data != None:
+                        if self._cb_data is not None:
                             ret = self._cb(cb_data=self._cb_data)
                         else:
                             ret = self._cb()
@@ -1007,7 +1006,7 @@ class Component(ru.Process):
             raise ValueError('publisher for %s already registered' % pubsub)
 
         # get address for pubsub
-        if not pubsub in self._cfg['bridges']:
+        if pubsub not in self._cfg['bridges']:
             self._log.error('no addr: %s' % pprint.pformat(self._cfg['bridges']))
             raise ValueError('no bridge known for pubsub channel %s' % pubsub)
 
@@ -1108,7 +1107,7 @@ class Component(ru.Process):
                 topic, msg = None, None
                 try:
                     topic, msg = self._q.get_nowait(500)  # timout in ms
-                except Exception as e:
+                except Exception:
                     if not self._ru_term.is_set():
                         # abort during termination
                         return False
@@ -1118,7 +1117,7 @@ class Component(ru.Process):
                         msg = [msg]
                     for m in msg:
                         with self._cb_lock:
-                            if self._cb_data != None:
+                            if self._cb_data is not None:
                                 ret = cb(topic=topic, msg=m, cb_data=self._cb_data)
                             else:
                                 ret = self._cb(topic=topic, msg=m)
@@ -1126,6 +1125,7 @@ class Component(ru.Process):
                         if not ret:
                             return False
                 return True
+
             def ru_finalize_common(self):
                 self._q.stop()
         # ----------------------------------------------------------------------
@@ -1436,7 +1436,6 @@ class Component(ru.Process):
             raise RuntimeError("no route for '%s' notification: %s" % (pubsub, msg))
 
         self._publishers[pubsub].put(pubsub, msg)
-
 
 
 # ==============================================================================

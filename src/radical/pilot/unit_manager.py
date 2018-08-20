@@ -345,6 +345,9 @@ class UnitManager(rpu.Component):
     #
     def _state_pull_cb(self):
 
+        # ##FIXME
+        return True
+
         if self._terminate.is_set():
             return False
 
@@ -354,7 +357,7 @@ class UnitManager(rpu.Component):
         # FIXME: we also pull for dead units.  That is not efficient...
         # FIXME: this needs to be converted into a tailed cursor in the update
         #        worker
-        units  = self._session._dbs.get_units(umgr_uid=self.uid)
+        units = self._session._dbs.get_units(umgr_uid=self.uid)
 
         for unit in units:
             if not self._update_unit(unit, publish=True, advance=False):
@@ -379,7 +382,8 @@ class UnitManager(rpu.Component):
         #        find -- so we do it right here.
         unit_cursor = self.session._dbs._c.find({'type'    : 'unit',
                                                  'umgr'    : self.uid,
-                                                 'control' : 'umgr_pending'})
+                                                 'control' : 'umgr_pending'}, 
+                                                limit=1024)
 
         if not unit_cursor.count():
             # no units whatsoever...
@@ -712,7 +716,7 @@ class UnitManager(rpu.Component):
             ret_list     = False
             descriptions = [descriptions]
 
-        if len(descriptions) == 0:
+        if not descriptions:
             raise ValueError('cannot submit no unit descriptions')
 
         self._rep.info('<<submit %d unit(s)\n\t' % len(descriptions))

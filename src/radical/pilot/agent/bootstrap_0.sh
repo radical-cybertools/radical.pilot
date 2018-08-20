@@ -171,7 +171,7 @@ profile_event()
 {
     PROFILE="bootstrap_0.prof"
 
-    if test -z "$RADICAL_PILOT_PROFILE"
+    if test -z "$RADICAL_PILOT_PROFILE$RADICAL_PROFILE"
     then
         return
     fi
