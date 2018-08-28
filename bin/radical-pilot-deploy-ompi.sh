@@ -29,10 +29,11 @@ log(){
 }
 
 
-export OMPI_DIR=$HOME/radical/ompi/                  # target location for install
-export OMPI_DIR=/lustre/atlas2/csc230/world-shared/openmpi/
+export OMPI_DIR=$HOME/radical/ompi/                          # target location for install
+export OMPI_DIR=/lustre/atlas2/csc230/world-shared/openmpi/  # titan
+export OMPI_DIR=/projects/sciteam/bamm/merzky/openmpi/       # bw
 export OMPI_COMMIT=a3ac67be0d
-export OMPI_COMMIT=539f71d                           # OpenMPI commit to install
+export OMPI_COMMIT=539f71d                                   # OpenMPI commit to install
 export OMPI_COMMIT=master
 export OMPI_COMMIT=64e838c1ac
 export OMPI_COMMIT=7839dc91a8
@@ -52,6 +53,7 @@ then
     export OMPI_DIR="$1"
 fi
 
+LOG="$OMPI_DIR/ompi.log"
 echo 
 echo "ompi dir: $OMPI_DIR"
 echo
@@ -113,7 +115,7 @@ mkdir -p $OMPI_SOURCE
 
 
 # ------------------------------------------------------------------------------
-deps="help2man-1.43.3 autoconf-2.69 automake-1.13.4 libtool-2.4.2 m4-1.4.16"
+deps="help2man-1.43.3 autoconf-2.69 automake-1.16 libtool-2.4.2 m4-1.4.16"
 for dep in $deps
 do
     echo "install $dep"
@@ -160,59 +162,76 @@ then
     make install 2>&1 | log 'inst' || exit
 fi
 
-# # ------------------------------------------------------------------------------
-# echo "install ompi @$OMPI_COMMIT"
-# cd $OMPI_SOURCE
-# if ! test -d ompi
-# then
-#     git clone https://github.com/open-mpi/ompi.git 2>&1 | log 'git ' || exit
-# fi
-# 
-# cd ompi
-# git checkout master        
-# git pull                          2>&1 | log 'pull' || exit
-# git checkout $OMPI_COMMIT         2>&1 | log 'comm' || exit
-# make distclean                    2>&1 | log 'clr '
-# test -f configure || ./autogen.pl 2>&1 | log 'agen' || exit
-# 
-# export OMPI_BUILD=$OMPI_DIR/build/$OMPI_LABEL
-# mkdir -p $OMPI_BUILD
-# cd $OMPI_BUILD
-# export CFLAGS=-O3
-# export CXXFLAGS=-O3
-# export FCFLAGS="-ffree-line-length-none"
-# echo "========================================="
-# echo "OMPI_DIR      : $OMPI_DIR"
-# echo "OMPI_SOURCE   : $OMPI_SOURCE"
-# echo "OMPI_BUILD    : $OMPI_BUILD"
-# echo "OMPI_INSTALLED: $OMPI_INSTALLED"
-# echo "OMPI_LABEL    : $OMPI_LABEL"
-# # echo "modules       :"
-# #   module list 2>&1 | sort
-# echo "========================================="
-# 
-# # titan
-#   # --with-cray-pmi                       \
-#   # --with-pmix=internal                  \
-#   # --with-pmi=/opt/cray/pmi/5.0.12/      \
-#   # --with-tm                             \
-#   # --with-ugni                           \
-#   # --with-alps=yes                       \
-# $OMPI_SOURCE/ompi/configure               \
-#     --prefix=$OMPI_INSTALLED/$OMPI_LABEL  \
-#     --disable-debug                       \
-#     --disable-pmix-dstore \
-#     --enable-orterun-prefix-by-default    \
-#     --enable-static                       \
-#     --enable-heterogeneous                \
-#     --enable-timing                       \
-#     --enable-mpi-cxx                      \
-#     --enable-pmix-timing                  \
-#     --enable-install-libpmix              \
-#     --with-devel-headers                  \
-#               2>&1 | log 'cfg ' || exit
-# make -j 32    2>&1 | log 'make' || exit
-# make install  2>&1 | log 'inst' || exit
+# ------------------------------------------------------------------------------
+echo "install ompi @$OMPI_COMMIT"
+cd $OMPI_SOURCE
+## if ! test -d ompi
+## then
+##     git clone https://github.com/open-mpi/ompi.git 2>&1 | log 'git ' || exit
+## fi
+cd ompi
+
+## git checkout master        
+## git pull                          2>&1 | log 'pull' || exit
+## git checkout $OMPI_COMMIT         2>&1 | log 'comm' || exit
+make distclean                    2>&1 | log 'clr '
+test -f configure || ./autogen.pl 2>&1 | log 'agen' || exit
+
+export OMPI_BUILD=$OMPI_DIR/build/$OMPI_LABEL
+set -x
+mkdir -p $OMPI_BUILD
+cd $OMPI_BUILD
+set +x
+export CFLAGS=-O3
+export CXXFLAGS=-O3
+export FCFLAGS="-ffree-line-length-none"
+echo "========================================="
+echo "OMPI_DIR      : $OMPI_DIR"
+echo "OMPI_SOURCE   : $OMPI_SOURCE"
+echo "OMPI_BUILD    : $OMPI_BUILD"
+echo "OMPI_INSTALLED: $OMPI_INSTALLED"
+echo "OMPI_LABEL    : $OMPI_LABEL"
+# echo "modules       :"
+#   module list 2>&1 | sort
+
+which aclocal
+aclocal --version
+echo $PATH
+echo "========================================="
+
+# titan
+dummy="
+     --with-ugni
+
+     --disable-debug
+     --with-cray-pmi
+     --enable-pmix-timing
+
+     --with-pmix=internal
+     --enable-install-libpmix
+
+     --with-alps=no
+     --with-tm
+
+     --with-cray-pmi
+     --with-pmi=/opt/cray/pmi/5.0.14/
+     --enable-mpi-cxx
+"
+export LDFLAGS="-lpmi -L/opt/cray/pmi/5.0.14/lib64"
+cfg="$OMPI_SOURCE/ompi/configure
+     --prefix=$OMPI_INSTALLED/$OMPI_LABEL
+     --enable-orterun-prefix-by-default
+     --enable-static
+     --enable-heterogeneous
+     --enable-timing
+     --with-devel-headers
+"
+
+$cfg          2>&1 | log 'cfg ' || exit
+make -j 32    2>&1 | log 'make' || exit
+make install  2>&1 | log 'inst' || exit
+echo "$cfg" > $OMPI_INSTALLED/$OMPI_LABEL/cfg.log
+env         > $OMPI_INSTALLED/$OMPI_LABEL/env.log
 
 # ------------------------------------------------------------------------------
 echo "create module file"
@@ -272,7 +291,7 @@ then
 fi
 
 cd $OMPI_SOURCE
-if ! test -d $gfver
+if ! test -d $gver
 then
     tar xf $OMPI_DOWNLOAD/$gver.tar.gz 2>&1 | log 'wget' || exit
     cd $gver
@@ -299,5 +318,6 @@ fi
 # we try to end up where we started.
 cd $orig
 
+echo "installed $OMPI_INSTALLED/$OMPI_LABEL"
 # ------------------------------------------------------------------------------
 

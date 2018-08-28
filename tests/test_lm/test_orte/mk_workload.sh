@@ -83,7 +83,7 @@ do
             continue
         fi
 
-        echo -n '.'
+        echo -n '+'
 
         n=$(echo $n | sed -e 's/^,//g')
 
