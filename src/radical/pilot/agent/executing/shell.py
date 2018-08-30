@@ -313,6 +313,7 @@ class Shell(AgentExecutingComponent):
         env  += "export RP_AGENT_ID=%s\n"       % self._cfg['agent_name']
         env  += "export RP_SPAWNER_ID=%s\n"     % self.uid
         env  += "export RP_UNIT_ID=%s\n"        % cu['uid']
+        env  += 'export RP_UNIT_NAME="%s"\n'    % cu['description'].get('name')
         env  += 'export RP_GTOD="%s"\n'         % cu['gtod']
         if 'RADICAL_PILOT_PROFILE' in os.environ:
             env += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
