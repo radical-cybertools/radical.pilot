@@ -97,7 +97,7 @@ class Continuous(AgentSchedulingComponent):
         #   this option is set.  This implementation is not optimized for the
         #   scattered mode!  The default is 'False'.
         #
-        self._scattered     = self._cfg.get('scattered',     False)
+        self._scattered = self._cfg.get('scattered',     False)
 
         # NOTE:  for non-oversubscribing mode, we reserve a number of cores
         #        for the GPU processes - even if those GPUs are not used by
@@ -261,7 +261,7 @@ class Continuous(AgentSchedulingComponent):
         # make sure that the requested allocation fits on a single node
         if  requested_cores > self._lrms_cores_per_node or \
             requested_gpus  > self._lrms_gpus_per_node     :
-            raise ValueError('Non-mpi unit does not fit onto single node (%3d/%3d : %3d/%3d XXX)',
+            raise ValueError('Non-mpi unit does not fit node (%3d/%3d : %3d/%3d)',
                     requested_cores, self._lrms_cores_per_node, 
                     requested_gpus,  self._lrms_gpus_per_node)
 
@@ -275,8 +275,8 @@ class Continuous(AgentSchedulingComponent):
 
             # attempt to find the required number of cores and gpus on this
             # node - do not allow partial matches.
-            cores, gpus = self._find_resources(node, requested_cores, requested_gpus,
-                                               partial=False)
+            cores, gpus = self._find_resources(node, requested_cores, 
+                                               requested_gpus, partial=False)
 
             if  len(cores) == requested_cores and \
                 len(gpus)  == requested_gpus      :

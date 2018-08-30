@@ -18,13 +18,14 @@ from ... import constants as rpc
 #
 # 'enum' for RPs's pilot scheduler types
 #
-SCHEDULER_NAME_CONTINUOUS      = "CONTINUOUS"
-SCHEDULER_NAME_CONTINUOUS_FIFO = "CONTINUOUS_FIFO"
-SCHEDULER_NAME_SCATTERED       = "SCATTERED"
-SCHEDULER_NAME_HOMBRE          = "HOMBRE"
-SCHEDULER_NAME_TORUS           = "TORUS"
-SCHEDULER_NAME_YARN            = "YARN"
-SCHEDULER_NAME_SPARK           = "SPARK"
+SCHEDULER_NAME_CONTINUOUS_ORDERED = "CONTINUOUS_ORDERED"
+SCHEDULER_NAME_CONTINUOUS_FIFO    = "CONTINUOUS_FIFO"
+SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
+SCHEDULER_NAME_SCATTERED          = "SCATTERED"
+SCHEDULER_NAME_HOMBRE             = "HOMBRE"
+SCHEDULER_NAME_TORUS              = "TORUS"
+SCHEDULER_NAME_YARN               = "YARN"
+SCHEDULER_NAME_SPARK              = "SPARK"
 
 
 # ------------------------------------------------------------------------------
@@ -288,6 +289,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # configure the scheduler instance
         self._configure()
+
         self._log.debug("slot status after  init      : %s", 
                         self.slot_status())
 
@@ -305,23 +307,25 @@ class AgentSchedulingComponent(rpu.Component):
 
         name = cfg['scheduler']
 
-        from .continuous_fifo import ContinuousFifo
-        from .continuous      import Continuous
-        from .scattered       import Scattered
-        from .hombre          import Hombre
-        from .torus           import Torus
-        from .yarn            import Yarn
-        from .spark           import Spark
+        from .continuous_ordered import ContinuousOrdered
+        from .continuous_fifo    import ContinuousFifo
+        from .continuous         import Continuous
+        from .scattered          import Scattered
+        from .hombre             import Hombre
+        from .torus              import Torus
+        from .yarn               import Yarn
+        from .spark              import Spark
 
         try:
             impl = {
-                SCHEDULER_NAME_CONTINUOUS_FIFO : ContinuousFifo,
-                SCHEDULER_NAME_CONTINUOUS      : Continuous,
-                SCHEDULER_NAME_SCATTERED       : Scattered,
-                SCHEDULER_NAME_HOMBRE          : Hombre,
-                SCHEDULER_NAME_TORUS           : Torus,
-                SCHEDULER_NAME_YARN            : Yarn,
-                SCHEDULER_NAME_SPARK           : Spark
+                SCHEDULER_NAME_CONTINUOUS_ORDERED : ContinuousOrdered,
+                SCHEDULER_NAME_CONTINUOUS_FIFO    : ContinuousFifo,
+                SCHEDULER_NAME_CONTINUOUS         : Continuous,
+                SCHEDULER_NAME_SCATTERED          : Scattered,
+                SCHEDULER_NAME_HOMBRE             : Hombre,
+                SCHEDULER_NAME_TORUS              : Torus,
+                SCHEDULER_NAME_YARN               : Yarn,
+                SCHEDULER_NAME_SPARK              : Spark
             }[name]
 
             impl = impl(cfg, session)

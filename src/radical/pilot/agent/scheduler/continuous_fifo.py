@@ -110,7 +110,7 @@ class ContinuousFifo(Continuous):
 
     # --------------------------------------------------------------------------
     #
-    def reschedule_cb(self, topic, msg):
+    def unschedule_cb(self, topic, msg):
         """
         overload the reschedule trigger callback from base.
         """
