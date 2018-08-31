@@ -85,8 +85,8 @@ class ContinuousOrdered(Continuous):
         self._ns_init    = {'current' : 0
                            }
         self._order_init = {'size'    : 0, 
-                            'done'    : list(),
-                            'uids'    : list()
+                            'uids'    : list(),
+                            'done'    : list()
                            }
 
 
@@ -99,7 +99,6 @@ class ContinuousOrdered(Continuous):
 
         self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
 
-        # add incoming units to the wait list, sort it again by unit ID
         with self._lock:
 
             # cache ID int to avoid repeated parsing
@@ -112,7 +111,7 @@ class ContinuousOrdered(Continuous):
                 # units w/o order info are handled as usual, and we don't keep
                 # any infos around
                 if not order_tag:
-                    self._log.debug('no tags for %s', uid)
+                  # self._log.debug('no tags for %s', uid)
                     self._unordered.append(unit)
                     continue
 
@@ -130,7 +129,7 @@ class ContinuousOrdered(Continuous):
                 order = int(elems[1])
                 size  = int(elems[2])
 
-                self._log.debug('tags %s: %s : %d : %d', uid, ns, order, size)
+              # self._log.debug('tags %s: %s : %d : %d', uid, ns, order, size)
                 # initiate ns if needed
                 if ns not in self._ns:
                     self._ns[ns] = copy.deepcopy(self._ns_init)
@@ -150,7 +149,6 @@ class ContinuousOrdered(Continuous):
         # try to schedule known units
         self._try_schedule()
 
-
         return True
 
 
@@ -165,7 +163,7 @@ class ContinuousOrdered(Continuous):
         because we run out of resources to place those units.
         '''
 
-        self._log.debug('try schedule')
+      # self._log.debug('try schedule')
         scheduled = list()  # list of scheduled units
 
         # FIXME: this lock is very aggressive, it should not be held over
@@ -209,7 +207,7 @@ class ContinuousOrdered(Continuous):
 
                     # is this order complete?  If so, advance and go to next
                     if order['size'] == len(order['done']):
-                        self._log.debug('order %s [%s] completed', ns, current)
+                      # self._log.debug('order %s [%s] completed', ns, current)
                         current += 1
                         order['current'] = current
                         continue
@@ -247,7 +245,7 @@ class ContinuousOrdered(Continuous):
             self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, 
                          publish=True, push=True)
 
-      # self._log.debug('=== dump')
+      # self._log.debug('dump')
       # self._log.debug(pprint.pformat(self._ns))
 
 
@@ -269,7 +267,7 @@ class ContinuousOrdered(Continuous):
     #
     def _state_cb(self, topic, msg):
         '''
-        get state updates, and trigger a new schedule attempt if any unit
+        Get state updates, and trigger a new schedule attempt if any unit
         previously scheduled by us reaches the trigger state.
         '''
 

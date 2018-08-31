@@ -18,9 +18,8 @@ if __name__ == '__main__':
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
-    if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
-    elif len(sys.argv) == 2: resource = sys.argv[1]
-    else                   : resource = 'local.localhost'
+    if   len(sys.argv) > 1: resource = sys.argv[1]
+    else                  : resource = 'local.localhost'
 
     session = rp.Session()
 
@@ -33,7 +32,7 @@ if __name__ == '__main__':
         report.header('submit pilots')
 
         pd_init = {'resource'      : resource,
-                   'runtime'       : 15,  # pilot runtime (min)
+                   'runtime'       : 60,  # pilot runtime (min)
                    'exit_on_error' : True,
                    'project'       : config[resource]['project'],
                    'queue'         : config[resource]['queue'],
@@ -49,41 +48,44 @@ if __name__ == '__main__':
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
+        if len(sys.argv) > 2: N = int(sys.argv[2])
+        else                : N = 8
 
-        N = 10          # number of units per pipeline stage
-        S = 4           # number of stages per pipeline
-        P = {'p.1': 2,  # runtime per unit per pipeline
-             'p.2': 5}
-
-        # the pipeline ID serves as ordering namespace
-        # the stage    ID serves as ordering sequencer
+        P = N
 
         cuds = list()
+        for p in range(P):
 
-        for p in P:
+            S = p + 1
 
             for s in range(S):
 
-                report.info('create %d unit for pipeline %s:%d\n\t' % (N, p, s))
-                for n in range(N):
+                U = S * 8
+                T = 10.0 / float(S)
+
+                report.info('create %d units for pipeline %s:%d\n\t' % (U, p, s))
+                for u in range(U):
 
                     cud = rp.ComputeUnitDescription()
                     cud.executable       = '/bin/sleep'
-                    cud.arguments        = [P[p]]
+                    cud.arguments        = [T]
                     cud.gpu_processes    = 0
                     cud.cpu_processes    = 1
                     cud.cpu_threads      = 1
                     cud.cpu_process_type = rp.POSIX
                     cud.cpu_thread_type  = rp.POSIX
-                    cud.tags             = {'order' : '%s %d %d' % (p, s, N)}
-                    cud.name             =  '%s %d %d' % (p, s, N)
+                    cud.tags             = {'order' : '%s %d %d' % (p, s, U)}
+                    cud.name             =  '%s %d %d' % (p, s, u)
                     cuds.append(cud)
                     report.progress()
-                report.ok('>>ok\n')
+                report.ok('>>ok %3.1f\n' % T)
 
         # the agent scheduler can handle units independent of submission order
-      # import random
-      # random.shuffle(cuds)
+        # sort by stage
+        cuds = sorted(cuds, key=lambda e: [int(x) for x in e.name.split()][1])
+
+        import random
+        random.shuffle(cuds)
 
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start

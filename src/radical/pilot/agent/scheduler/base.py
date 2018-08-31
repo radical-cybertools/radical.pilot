@@ -478,10 +478,10 @@ class AgentSchedulingComponent(rpu.Component):
         if self._log.isEnabledFor(logging.DEBUG):
             self._log.debug("after  allocate   %s: %s", unit['uid'],
                             self.slot_status())
-            self._log.debug("%s [%s/%s] : %s", unit['uid'],
-                            unit['description']['cpu_processes'],
-                            unit['description']['gpu_processes'],
-                            pprint.pformat(unit['slots']))
+          # self._log.debug("%s [%s/%s] : %s", unit['uid'],
+          #                 unit['description']['cpu_processes'],
+          #                 unit['description']['gpu_processes'],
+          #                 pprint.pformat(unit['slots']))
 
         # True signals success
         return True
@@ -521,7 +521,7 @@ class AgentSchedulingComponent(rpu.Component):
             core_map.append(p_map)
 
         if idx != len(cores):
-            self._log.debug('%s -- %s -- %s -- %s',
+            self._log.error('%s -- %s -- %s -- %s',
                             idx, len(cores), cores, n_procs)
         assert(idx == len(cores))
 
@@ -546,9 +546,9 @@ class AgentSchedulingComponent(rpu.Component):
             self._log.error("cannot unschedule: %s (no slots)" % unit)
             return True
 
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("before unschedule %s: %s", unit['uid'], 
-                            self.slot_status())
+      # if self._log.isEnabledFor(logging.DEBUG):
+      #     self._log.debug("before unschedule %s: %s", unit['uid'], 
+      #                     self.slot_status())
 
         # needs to be locked as we try to release slots, but slots are acquired
         # in a different thread....
@@ -561,9 +561,9 @@ class AgentSchedulingComponent(rpu.Component):
         # slots for units waiting in the wait pool.
         self.publish(rpc.AGENT_SCHEDULE_PUBSUB, unit)
 
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("after  unschedule %s: %s", unit['uid'], 
-                            self.slot_status())
+      # if self._log.isEnabledFor(logging.DEBUG):
+      #     self._log.debug("after  unschedule %s: %s", unit['uid'], 
+      #                     self.slot_status())
 
         # return True to keep the cb registered
         return True
@@ -585,9 +585,9 @@ class AgentSchedulingComponent(rpu.Component):
 
         unit = msg
 
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("before schedule   %s: %s", unit['uid'],
-                            self.slot_status())
+      # if self._log.isEnabledFor(logging.DEBUG):
+      #     self._log.debug("before schedule   %s: %s", unit['uid'],
+      #                     self.slot_status())
 
         # cycle through wait queue, and see if we get anything placed now.  We
         # cycle over a copy of the list, so that we can modify the list on the
