@@ -28,7 +28,7 @@ if __name__ == '__main__':
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
-    if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
+    if   len(sys.argv)  > 3: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
     elif len(sys.argv) == 2: resource = sys.argv[1]
     else                   : resource = 'local.localhost'
 
@@ -76,7 +76,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 32  # number of units to run
+        n = 10  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -85,12 +85,14 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable       = '/bin/date'
+            cud.executable       = 'df'
+            cud.argument         =  ['/tmp/','>','$hostname.txt']
             cud.gpu_processes    = 0
             cud.cpu_processes    = 1
-            cud.cpu_threads      = 1
-            #cud.cpu_process_type = rp.MPI
-            #cud.cpu_thread_type  = rp.OpenMP
+            cud.cpu_threads      = sys.argv[2]
+            # to ensure each CU lands on own node
+            # cud.cpu_process_type = rp.MPI
+            # cud.cpu_thread_type  = rp.OpenMP
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -129,4 +131,3 @@ if __name__ == '__main__':
 
 
 # ------------------------------------------------------------------------------
-

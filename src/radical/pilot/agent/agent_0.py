@@ -89,7 +89,7 @@ class Agent_0(rpu.Worker):
         # communication channels and components/workers specified in the
         # config -- we merge that information into our own config.
         # We don't want the session to start components though, so remove them
-        # from the config copy.
+        # from the config copy.        
         session_cfg = copy.deepcopy(cfg)
         session_cfg['components'] = dict()
         session = rp_Session(cfg=session_cfg, uid=self._sid)
@@ -330,7 +330,13 @@ class Agent_0(rpu.Worker):
                   'cpu_threads'   : 1,
                   'gpu_processes' : 0,
                   'gpu_threads'   : 0,
-                  'nodes'         : [[node[0], node[1], [[0]], []]],
+                # 'nodes'         : [[node[0], node[1], [[0]], []]],
+                  'nodes'         : [{'name'    : node[0], 
+                                     'uid'     : node[1],
+                                     'core_map': [[0]],
+                                     'gpu_map' : [],
+                                     'lfs'     : {'path': '/tmp', 'size': 0}
+                                    }],
                   'cores_per_node': self._cfg['lrms_info']['cores_per_node'],
                   'gpus_per_node' : self._cfg['lrms_info']['gpus_per_node'],
                   'lm_info'       : self._cfg['lrms_info']['lm_info']

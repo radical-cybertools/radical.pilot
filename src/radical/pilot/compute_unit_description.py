@@ -24,6 +24,9 @@ GPU_PROCESS_TYPE       = 'gpu_process_type'
 GPU_THREADS            = 'gpu_threads'
 GPU_THREAD_TYPE        = 'gpu_thread_type'
 
+LFS_PER_PROCESS        = 'lfs_per_process'
+TAG                    = 'tag'
+
 INPUT_STAGING          = 'input_staging'
 OUTPUT_STAGING         = 'output_staging'
 PRE_EXEC               = 'pre_exec'
@@ -99,6 +102,9 @@ class ComputeUnitDescription(attributes.Attributes):
        thread type, influences startup and environment (POSIX, OpenMP, CUDA)
        default: POSIX
 
+    .. data:: lfs (local file storage)
+       amount of data (MB) required on the local file system of the node 
+       default: 0
 
     .. data:: name 
 
@@ -319,6 +325,10 @@ class ComputeUnitDescription(attributes.Attributes):
         self._attributes_register(GPU_PROCESS_TYPE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(GPU_THREADS,      None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(GPU_THREAD_TYPE,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(LFS_PER_PROCESS,  None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+
+        # tag -- user level tag that can be used in scheduling
+        self._attributes_register(TAG,              None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
 
         # dependencies
       # self._attributes_register(RUN_AFTER,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
@@ -348,6 +358,10 @@ class ComputeUnitDescription(attributes.Attributes):
         self.set_attribute (GPU_PROCESS_TYPE,   '')
         self.set_attribute (GPU_THREADS,         1)
         self.set_attribute (GPU_THREAD_TYPE,    '')
+        self.set_attribute (GPU_THREAD_TYPE,    '')
+        self.set_attribute (LFS_PER_PROCESS,     0)
+
+        self.set_attribute (TAG,              None)
 
         self.set_attribute (RESTARTABLE,     False)
         self.set_attribute (CLEANUP,         False)

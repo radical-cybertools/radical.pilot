@@ -54,9 +54,22 @@ class APRun(LaunchMethod):
         #       'cpu_threads'      : 2,
         #       'gpu_processes     : 2,
         #       'slots':
-        #       {                 # [[nodename, [node_uid], [core indexes],   [gpu idx]]]
-        #         'nodes'         : [[node_1,   node_uid_1, [[0, 2], [4, 6]], [[0]    ]],
-        #                            [node_2,   node_uid_2, [[1, 3], [5, 7]], [[0]    ]]],
+        #       {   # 'nodes': [{'name': node_name,
+        #           #            'uid': node_uid,
+        #           #            'core_map': [core_map],
+        #           #            'gpu_map': [gpu_map],
+        #           #            'lfs': lfs}],
+        #         'nodes'         : [{  'name': node_1,
+        #                               'uid': node_uid_1,
+        #                               'core_map': [[0, 2], [4, 6]],
+        #                               'gpu_map': [[0]],
+        #                               'lfs': 1024},
+        #                            {  'name': node_2,
+        #                               'uid': node_uid_2,
+        #                               'core_map': [[1, 3], [5, 7]],
+        #                               'gpu_map': [[0]],
+        #                               'lfs': 1024}
+        #                            ],
         #         'cores_per_node': 8,
         #         'gpus_per_node' : 1,
         #         'lm_info'       : { ... }
@@ -119,15 +132,15 @@ class APRun(LaunchMethod):
         nodes = dict()
         for node in slots['nodes']:
 
-            node_id = node[1]
+            node_id = node['uid']
             if node_id not in nodes:
                 # keep all cpu and gpu slots, record depths
                 nodes[node_id] = {'cpu' : list(),
                                   'gpu' : list()}
 
             # add all cpu and gpu process slots to the node list.
-            for cpu_slot in node[2]: nodes[node_id]['cpu'].append(cpu_slot)
-            for gpu_slot in node[3]: nodes[node_id]['gpu'].append(gpu_slot)
+            for cpu_slot in node['core_map']: nodes[node_id]['cpu'].append(cpu_slot)
+            for gpu_slot in node['gpu_map']: nodes[node_id]['gpu'].append(gpu_slot)
 
 
         self._log.debug('aprun slots: %s', pprint.pformat(slots))
