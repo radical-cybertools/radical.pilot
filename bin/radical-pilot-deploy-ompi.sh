@@ -79,8 +79,7 @@ export OMPI_INSTALLED=$OMPI_DIR/installed
 
 echo $OMPI_DIR/$OMPI_LABEL
 
-TEST=$(hostname -f | grep titan)
-if ! test -z "$TEST"
+if $(hostname -f | grep titan)
 then
     module load   python
     module load   python_pip
@@ -108,7 +107,27 @@ then
     module load   rca
    ## ./config CRAY-XE-gnu --charm-base ../charm-openmpi/ --charm-arch mpi-linux-x86_64-omp-pthreads-smp-mpicxx --fftw-prefix /lustre/atlas2/csc230/world-shared/openmpi/applications/namd/namd-openmpi/../fftw-2.1.5/install --with-tcl
     # ./config CRAY-XE-gnu --charm-base ../charm-openmpi/ --charm-arch -linux-x86_64-mpicxx --fftw-prefix /lustre/atlas2/csc230/world-shared/openmpi/applications/namd/fftw-2.1.5/install --with-tcl
+    echo "configured for Titan"
+
+else
+# elif (hostname | grep h2o) 
+# then
+    if test -z "$BWPY_VERSION"
+    then
+        echo "bwpy module not loaded"
+        exit -1
+    fi
+    module unload cray-mpich  || true
+    module unload PrgEnv-cray || true
+    module load   PrgEnv-gnu  || true
+    module load   torque
+    module load   cmake
+    echo "configured for BW"
+# else
+    # echo 'unknown system'
+    # exit
 fi
+
 
 mkdir -p $OMPI_DOWNLOAD
 mkdir -p $OMPI_SOURCE
@@ -178,10 +197,8 @@ make distclean                    2>&1 | log 'clr '
 test -f configure || ./autogen.pl 2>&1 | log 'agen' || exit
 
 export OMPI_BUILD=$OMPI_DIR/build/$OMPI_LABEL
-set -x
 mkdir -p $OMPI_BUILD
 cd $OMPI_BUILD
-set +x
 export CFLAGS=-O3
 export CXXFLAGS=-O3
 export FCFLAGS="-ffree-line-length-none"
@@ -203,7 +220,6 @@ echo "========================================="
 dummy="
      --with-ugni
 
-     --disable-debug
      --with-cray-pmi
      --enable-pmix-timing
 
@@ -215,16 +231,18 @@ dummy="
 
      --with-cray-pmi
      --with-pmi=/opt/cray/pmi/5.0.14/
+
      --enable-mpi-cxx
+     --enable-timing
+     --enable-heterogeneous
 "
-export LDFLAGS="-lpmi -L/opt/cray/pmi/5.0.14/lib64"
+# export LDFLAGS="-lpmi -L/opt/cray/pmi/5.0.14/lib64"
 cfg="$OMPI_SOURCE/ompi/configure
      --prefix=$OMPI_INSTALLED/$OMPI_LABEL
-     --enable-orterun-prefix-by-default
-     --enable-static
-     --enable-heterogeneous
-     --enable-timing
      --with-devel-headers
+     --disable-debug
+     --enable-static
+     --enable-orterun-prefix-by-default
 "
 
 $cfg          2>&1 | log 'cfg ' || exit
