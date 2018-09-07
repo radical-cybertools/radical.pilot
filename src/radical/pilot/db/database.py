@@ -3,24 +3,19 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import os 
 import copy
-import saga
 import time
-import gridfs
-import pprint
 import pymongo
 import radical.utils     as ru
 
-from .. import utils     as rpu
 from .. import states    as rps
 
 
-#-----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 class DBSession(object):
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def __init__(self, sid, dburl, cfg, logger, connect=True):
         """ 
@@ -57,7 +52,7 @@ class DBSession(object):
 
         self._connected = time.time()
 
-        self._c = self._db[sid] # creates collection (lazily)
+        self._c = self._db[sid]  # creates collection (lazily)
 
         # If session exists, we assume this is a reconnect, otherwise we create
         # the session entry.
@@ -79,6 +74,7 @@ class DBSession(object):
                             'created'   : self._created,
                             'connected' : self._connected})
             self._can_remove = True
+
         else:
             docs = self._c.find({'type' : 'session', 
                                  'uid'  : sid})
@@ -93,7 +89,7 @@ class DBSession(object):
             # FIXME: get bridge addresses from DB?  If not, from where?
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def dburl(self):
@@ -103,7 +99,7 @@ class DBSession(object):
         return self._dburl
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def get_db(self):
         """
@@ -112,7 +108,7 @@ class DBSession(object):
         return self._db
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def created(self):
@@ -122,7 +118,7 @@ class DBSession(object):
         return self._created
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def connected(self):
@@ -132,7 +128,7 @@ class DBSession(object):
         return self._connected
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property 
     def closed(self): 
@@ -142,15 +138,15 @@ class DBSession(object):
         return self._closed
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def is_connected(self):
 
-        return (self._connected != None)
+        return (self._connected is not None)
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def close(self, delete=True):
         """ 
@@ -174,7 +170,7 @@ class DBSession(object):
         self._c = None
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def insert_pmgr(self, pmgr_doc):
         """ 
@@ -187,12 +183,43 @@ class DBSession(object):
         pmgr_doc['_id']  = pmgr_doc['uid']
         pmgr_doc['type'] = 'pmgr'
 
+        print '\n---------- insert %s' % pmgr_doc['uid']
+
         result = self._c.insert(pmgr_doc)
 
         # FIXME: evaluate result
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    #
+    def get_pmgrs(self, pmgr_ids=None):
+        '''
+        Get pilot manager docs
+        '''
+
+        if self.closed:
+            raise Exception('No active session.')
+
+
+        if not pmgr_ids:
+            cursor = self._c.find({'type' : 'pmgr'})
+
+        else:
+            if not isinstance(pmgr_ids, list):
+                pmgr_ids = [pmgr_ids]
+
+            cursor = self._c.find({'type' : 'pmgr', 
+                                   'uid'  : {'$in': pmgr_ids}})
+
+        # make sure we return every pmgr doc only once
+        # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
+        ret  = {doc['uid'] : doc for doc in cursor}
+        docs = ret.values()
+
+        return docs
+
+
+    # --------------------------------------------------------------------------
     #
     def insert_pilots(self, pilot_docs):
         """
@@ -225,7 +252,7 @@ class DBSession(object):
             raise RuntimeError ('pymongo error: %s' % e.details)
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def pilot_command(self, cmd, arg, pids=None):
         """
@@ -251,18 +278,20 @@ class DBSession(object):
                 res = self._c.update({'type'  : 'pilot',
                                       'uid'   : {'$in' : pids}},
                                      {'$push' : {'cmd' : cmd_spec}},
-                                     multi = True)
+                                     multi=True)
             else:
                 res = self._c.update({'type'  : 'pilot'},
                                      {'$push' : {'cmd' : cmd_spec}},
-                                     multi = True)
+                                     multi=True)
+
+            # FIXME: evaluate result
 
         except pymongo.errors.OperationFailure as e:
             self._log.exception('pymongo error: %s' % e.details)
             raise RuntimeError ('pymongo error: %s' % e.details)
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def get_pilots(self, pmgr_uid=None, pilot_ids=None):
         """
@@ -287,7 +316,7 @@ class DBSession(object):
 
         # make sure we return every pilot doc only once
         # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
-        ret = { doc['uid'] : doc for doc in cursor}
+        ret = {doc['uid'] : doc for doc in cursor}
         docs = ret.values()
 
         # for each doc, we make sure the pilot state is according to the state
@@ -298,7 +327,7 @@ class DBSession(object):
         return docs
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def get_units(self, umgr_uid, unit_ids=None):
         """
@@ -338,7 +367,7 @@ class DBSession(object):
         return docs
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def insert_umgr(self, umgr_doc):
         """ 
@@ -356,7 +385,36 @@ class DBSession(object):
         # FIXME: evaluate result
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    #
+    def get_umgrs(self, umgr_ids=None):
+        '''
+        Get unit manager docs
+        '''
+
+        if self.closed:
+            raise Exception('No active session.')
+
+
+        if not umgr_ids:
+            cursor = self._c.find({'type' : 'umgr'})
+
+        else:
+            if not isinstance(umgr_ids, list):
+                umgr_ids = [umgr_ids]
+
+            cursor = self._c.find({'type' : 'umgr', 
+                                   'uid'  : {'$in': umgr_ids}})
+
+        # make sure we return every umgr doc only once
+        # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
+        ret  = {doc['uid'] : doc for doc in cursor}
+        docs = ret.values()
+
+        return docs
+
+
+    # --------------------------------------------------------------------------
     #
     def insert_units(self, unit_docs):
         """
@@ -380,7 +438,7 @@ class DBSession(object):
 
         while True:
 
-            subset = unit_docs[cur : cur+bcs]
+            subset = unit_docs[cur : cur + bcs]
             bulk   = self._c.initialize_ordered_bulk_op()
             cur   += bcs
 
@@ -404,6 +462,7 @@ class DBSession(object):
             except pymongo.errors.OperationFailure as e:
                 self._log.exception('pymongo error: %s' % e.details)
                 raise RuntimeError( 'pymongo error: %s' % e.details)
+
 
     # --------------------------------------------------------------------------
     #

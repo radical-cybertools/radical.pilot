@@ -730,6 +730,18 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
+    def _reconnect_pmgr(self, pmgr):
+
+        self.is_valid()
+
+        if not self._dbs.get_pmgrs(pmgr_ids=pmgr.uid):
+            raise ValueError('could not reconnect to pmgr %s' % pmgr.uid)
+
+        self._pmgrs[pmgr.uid] = pmgr
+
+
+    # --------------------------------------------------------------------------
+    #
     def list_pilot_managers(self):
         """
         Lists the unique identifiers of all :class:`radical.pilot.PilotManager` 
@@ -779,6 +791,18 @@ class Session(rs.Session):
         self.is_valid()
 
         self._dbs.insert_umgr(umgr.as_dict())
+        self._umgrs[umgr.uid] = umgr
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _reconnect_umgr(self, umgr):
+
+        self.is_valid()
+
+        if not self._dbs.get_umgrs(umgr_ids=umgr.uid):
+            raise ValueError('could not reconnect to umgr %s' % umgr.uid)
+
         self._umgrs[umgr.uid] = umgr
 
 

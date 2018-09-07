@@ -4,9 +4,7 @@ __license__   = "MIT"
 
 
 import os
-import copy
 import time
-import pprint
 import threading as mt
 
 import radical.utils as ru
@@ -68,13 +66,15 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, session):
+    def __init__(self, session, uid=None):
         """
         Creates a new PilotManager and attaches is to the session.
 
         **Arguments:**
             * session [:class:`radical.pilot.Session`]:
               The session instance to use.
+            * uid (`string`):
+              ID for pilot manager, to be used for reconnect
 
         **Returns:**
             * A new `PilotManager` object [:class:`radical.pilot.PilotManager`].
@@ -100,13 +100,25 @@ class PilotManager(rpu.Component):
         assert(cfg['db_poll_sleeptime']), 'db_poll_sleeptime not configured'
 
         # initialize the base class (with no intent to fork)
-        self._uid    = ru.generate_id('pmgr')
+        if uid:
+            self._reconnect = True
+            self._uid       = uid
+        else:
+            self._reconnect = False
+            self._uid       = ru.generate_id('pmgr')
+
         cfg['owner'] = self.uid
         rpu.Component.__init__(self, cfg, session)
         self.start(spawn=False)
 
         # only now we have a logger... :/
         self._rep.info('<<create pilot manager')
+
+        if self._reconnect:
+            self._session._reconnect_pmgr(self)
+            self._reconnect_pilots()
+        else:
+            self._session._register_pmgr(self)
 
         # The output queue is used to forward submitted pilots to the
         # launching component.
@@ -127,9 +139,6 @@ class PilotManager(rpu.Component):
 
         # also listen to the state pubsub for pilot state changes
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_sub_cb)
-
-        # let session know we exist
-        self._session._register_pmgr(self)
 
         self._prof.prof('setup_done', uid=self._uid)
         self._rep.ok('>>ok\n')
@@ -547,6 +556,30 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def _reconnect_pilots(self):
+        '''
+        When reconnecting, we need to dig information about all pilots from the
+        DB for which this pmgr is responsible.
+        '''
+
+        from .compute_pilot             import ComputePilot
+        from .compute_pilot_description import ComputePilotDescription
+
+        self.is_valid()
+
+        pilot_docs = self._session._dbs.get_pilots(pmgr_uid=self.uid)
+
+        with self._pilots_lock:
+            for ud in pilot_docs:
+
+                descr = ComputePilotDescription(ud['description'])
+                pilot = ComputePilot(pmgr=self, descr=descr)
+
+                self._pilots[pilot.uid] = pilot
+
+
+    # --------------------------------------------------------------------------
+    #
     def get_pilots(self, uids=None):
         """Returns one or more compute pilots identified by their IDs.
 
@@ -557,7 +590,7 @@ class PilotManager(rpu.Component):
         **Returns:**
               * A list of :class:`radical.pilot.ComputePilot` objects.
         """
-        
+
         self.is_valid()
 
         if not uids:

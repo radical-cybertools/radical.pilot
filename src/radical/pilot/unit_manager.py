@@ -68,7 +68,7 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, session, scheduler=None):
+    def __init__(self, session, scheduler=None, uid=None):
         """
         Creates a new UnitManager and attaches it to the session.
 
@@ -77,6 +77,8 @@ class UnitManager(rpu.Component):
               The session instance to use.
             * scheduler (`string`): 
               The name of the scheduler plug-in to use.
+            * uid (`string`):
+              ID for unit manager, to be used for reconnect
 
         **Returns:**
             * A new `UnitManager` object [:class:`radical.pilot.UnitManager`].
@@ -112,14 +114,28 @@ class UnitManager(rpu.Component):
         assert(cfg['db_poll_sleeptime']), 'db_poll_sleeptime not configured'
 
         # initialize the base class (with no intent to fork)
-        self._uid    = ru.generate_id('umgr')
+        if uid:
+            self._reconnect = True
+            self._uid       = uid
+        else:
+            self._reconnect = False
+            self._uid       = ru.generate_id('umgr')
+
         cfg['owner'] = self.uid
+
+        # initialize component framework (but don't spawn a process)
         rpu.Component.__init__(self, cfg, session)
         self.start(spawn=False)
         self._log.info('started umgr %s', self._uid)
 
         # only now we have a logger... :/
         self._rep.info('<<create unit manager')
+
+        if self._reconnect:
+            self._session._reconnect_umgr(self)
+            self._reconnect_units()
+        else:
+            self._session._register_umgr(self)
 
         # The output queue is used to forward submitted units to the
         # scheduling component.
@@ -143,9 +159,6 @@ class UnitManager(rpu.Component):
 
         # also listen to the state pubsub for unit state changes
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_sub_cb)
-
-        # let session know we exist
-        self._session._register_umgr(self)
 
         self._prof.prof('setup_done', uid=self._uid)
         self._rep.ok('>>ok\n')
@@ -750,6 +763,30 @@ class UnitManager(rpu.Component):
 
         if ret_list: return units
         else       : return units[0]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _reconnect_units(self):
+        '''
+        When reconnecting, we need to dig information about all units from the
+        DB for which this umgr is responsible.
+        '''
+
+        from .compute_unit             import ComputeUnit
+        from .compute_unit_description import ComputeUnitDescription
+
+        self.is_valid()
+
+        unit_docs = self._session._dbs.get_units(umgr_uid=self.uid)
+
+        with self._units_lock:
+            for ud in unit_docs:
+
+                descr = ComputeUnitDescription(ud['description'])
+                unit  = ComputeUnit(umgr=self, descr=descr)
+
+                self._units[unit.uid] = unit
 
 
     # --------------------------------------------------------------------------
