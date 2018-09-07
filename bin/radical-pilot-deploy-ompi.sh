@@ -245,6 +245,7 @@ cfg="$OMPI_SOURCE/ompi/configure
      --disable-debug
      --enable-static
      --enable-orterun-prefix-by-default
+     --disable-pmix-dstore
 "
 
 $cfg          2>&1 | log 'cfg ' || exit
