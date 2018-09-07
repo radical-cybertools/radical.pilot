@@ -30,8 +30,6 @@ log(){
 
 
 export OMPI_DIR=$HOME/radical/ompi/                          # target location for install
-export OMPI_DIR=/lustre/atlas2/csc230/world-shared/openmpi/  # titan
-export OMPI_DIR=/projects/sciteam/bamm/merzky/openmpi/       # bw
 export OMPI_COMMIT=a3ac67be0d
 export OMPI_COMMIT=539f71d                                   # OpenMPI commit to install
 export OMPI_COMMIT=master
@@ -79,8 +77,11 @@ export OMPI_INSTALLED=$OMPI_DIR/installed
 
 echo $OMPI_DIR/$OMPI_LABEL
 
-if $(hostname -f | grep titan)
+if (hostname -f | grep titan)
 then
+    export OMPI_DIR=/lustre/atlas2/csc230/world-shared/openmpi/
+    export OMPI_COMMIT=539f71d  # last functional commit on titan
+
     module load   python
     module load   python_pip
     module load   python_virtualenv
@@ -109,14 +110,16 @@ then
     # ./config CRAY-XE-gnu --charm-base ../charm-openmpi/ --charm-arch -linux-x86_64-mpicxx --fftw-prefix /lustre/atlas2/csc230/world-shared/openmpi/applications/namd/fftw-2.1.5/install --with-tcl
     echo "configured for Titan"
 
-else
-# elif (hostname | grep h2o) 
-# then
+elif (hostname | grep h2o) 
+then
     if test -z "$BWPY_VERSION"
     then
         echo "bwpy module not loaded"
         exit -1
     fi
+
+    export OMPI_DIR=/projects/sciteam/bamm/merzky/openmpi/
+
     module unload cray-mpich  || true
     module unload PrgEnv-cray || true
     module load   PrgEnv-gnu  || true
@@ -184,15 +187,15 @@ fi
 # ------------------------------------------------------------------------------
 echo "install ompi @$OMPI_COMMIT"
 cd $OMPI_SOURCE
-## if ! test -d ompi
-## then
-##     git clone https://github.com/open-mpi/ompi.git 2>&1 | log 'git ' || exit
-## fi
+if ! test -d ompi
+then
+    git clone https://github.com/open-mpi/ompi.git 2>&1 | log 'git ' || exit
+fi
 cd ompi
 
-## git checkout master        
-## git pull                          2>&1 | log 'pull' || exit
-## git checkout $OMPI_COMMIT         2>&1 | log 'comm' || exit
+git checkout master        
+git pull                          2>&1 | log 'pull' || exit
+git checkout $OMPI_COMMIT         2>&1 | log 'comm' || exit
 make distclean                    2>&1 | log 'clr '
 test -f configure || ./autogen.pl 2>&1 | log 'agen' || exit
 
@@ -208,11 +211,10 @@ echo "OMPI_SOURCE   : $OMPI_SOURCE"
 echo "OMPI_BUILD    : $OMPI_BUILD"
 echo "OMPI_INSTALLED: $OMPI_INSTALLED"
 echo "OMPI_LABEL    : $OMPI_LABEL"
-# echo "modules       :"
-#   module list 2>&1 | sort
 
-which aclocal
-aclocal --version
+echo "modules       :"  | log 'mods'
+module list 2>&1 | sort | log 'mods'
+
 echo $PATH
 echo "========================================="
 
