@@ -196,15 +196,15 @@ fi
 # ------------------------------------------------------------------------------
 echo "install ompi @$OMPI_COMMIT"
 cd $OMPI_SOURCE
-## if ! test -d ompi
-## then
-##     git clone https://github.com/open-mpi/ompi.git 2>&1 | log 'git ' || exit
-## fi
+if ! test -d ompi
+then
+    git clone https://github.com/open-mpi/ompi.git 2>&1 | log 'git ' || exit
+fi
 cd ompi
 
-## git checkout master        
-## git pull                          2>&1 | log 'pull' || exit
-## git checkout $OMPI_COMMIT         2>&1 | log 'comm' || exit
+git checkout master        
+git pull                          2>&1 | log 'pull' || exit
+git checkout $OMPI_COMMIT         2>&1 | log 'comm' || exit
 make distclean                    2>&1 | log 'clr '
 test -f configure || ./autogen.pl 2>&1 | log 'agen' || exit
 
@@ -214,19 +214,18 @@ cd $OMPI_BUILD
 export CFLAGS=-O3
 export CXXFLAGS=-O3
 export FCFLAGS="-ffree-line-length-none"
-echo "========================================="
+echo "-----------------------------------------"
 echo "OMPI_DIR      : $OMPI_DIR"
 echo "OMPI_SOURCE   : $OMPI_SOURCE"
 echo "OMPI_BUILD    : $OMPI_BUILD"
 echo "OMPI_INSTALLED: $OMPI_INSTALLED"
 echo "OMPI_LABEL    : $OMPI_LABEL"
-# echo "modules       :"
-#   module list 2>&1 | sort
 
-which aclocal
-aclocal --version
+echo "modules       :"  | log 'mods'
+module list 2>&1 | sort | log 'mods'
+
 echo $PATH
-echo "========================================="
+echo "-----------------------------------------"
 
 # titan
 dummy="
