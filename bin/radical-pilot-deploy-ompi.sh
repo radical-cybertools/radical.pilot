@@ -16,33 +16,82 @@
 # Thanks to Mark Santcroos to provide the input for this installation
 # procedure!
 
-LOG=`pwd`/ompi.log
-log(){
-    msg=$1
-    echo -n "$msg : "
-    while read in
-    do
-        echo $in >> $LOG
-        echo $in | sed -e 's/[^\n]//g' | sed -e 's/.*/./g' | xargs echo -n
-    done
-    echo
-}
+# export OMPI_COMMIT=a3ac67be0d
+# export OMPI_COMMIT=539f71d     # last working on titan
+# export OMPI_COMMIT=master
+# export OMPI_COMMIT=64e838c1ac
+# export OMPI_COMMIT=7839dc91a8
+# export OMPI_COMMIT=a76a61b2c9
+# export OMPI_COMMIT=d9b2c94
+# export OMPI_COMMIT=47bf0d6f9d
+# export OMPI_COMMIT=e88767866e
+# export OMPI_COMMIT=51f3fbdb3e  # Fix cmd line passing of DVM URI   Oct 6 2017
+# export OMPI_COMMIT=04ec013da9  # 04.03.2018
+# export OMPI_COMMIT=e9f378e851
+
+if (hostname -f | grep titan)
+then
+    echo "configure for Titan"
+
+    export OMPI_DIR=/lustre/atlas2/csc230/world-shared/openmpi/
+    export OMPI_COMMIT=539f71d # last working on titan
+
+    module load   python
+    module load   python_pip
+    module load   python_virtualenv
+
+    # for openmpi build
+    module unload PrgEnv-pgi || true
+    module load   PrgEnv-gnu || true
+    module unload cray-mpich || true
+#   module load   torque
+    module load   pmi
+    # ./configure --prefix=/lustre/atlas2/csc230/world-shared/openmpi/src/ompi../../install/test/ --enable-debug --enable-timing --enable-heterogeneous --enable-mpi-cxx --enable-install-libpmix --enable-pmix-timing --with-pmix=internal --with-ugni --with-cray-pmi --with-alps=yes --with-tm 
+  
+    # load what was installed above
+  # module use --append /lustre/atlas2/csc230/world-shared/openmpi/modules
+  # module load openmpi/test
+
+    # for charm build
+  # module load   cudatoolkit   # problems with UCL workload?
+    module load   cmake
+   ## ./build charm++ mpi-linux-x86_64 mpicxx smp omp pthreads -j16
+    # ./build charm++ mpi-linux-x86_64 mpicxx -j16
+
+    # for namd build
+    module load   rca
+   ## ./config CRAY-XE-gnu --charm-base ../charm-openmpi/ --charm-arch mpi-linux-x86_64-omp-pthreads-smp-mpicxx --fftw-prefix /lustre/atlas2/csc230/world-shared/openmpi/applications/namd/namd-openmpi/../fftw-2.1.5/install --with-tcl
+    # ./config CRAY-XE-gnu --charm-base ../charm-openmpi/ --charm-arch -linux-x86_64-mpicxx --fftw-prefix /lustre/atlas2/csc230/world-shared/openmpi/applications/namd/fftw-2.1.5/install --with-tcl
 
 
-export OMPI_DIR=$HOME/radical/ompi/                          # target location for install
-export OMPI_COMMIT=a3ac67be0d
-export OMPI_COMMIT=539f71d                                   # OpenMPI commit to install
-export OMPI_COMMIT=master
-export OMPI_COMMIT=64e838c1ac
-export OMPI_COMMIT=7839dc91a8
-export OMPI_COMMIT=a76a61b2c9
-export OMPI_COMMIT=d9b2c94
-export OMPI_COMMIT=47bf0d6f9d
-export OMPI_COMMIT=e88767866e
-export OMPI_COMMIT=51f3fbdb3e  # Fix cmd line passing of DVM URI   Oct 6 2017
-export OMPI_COMMIT=04ec013da9  # 04.03.2018
+elif (hostname | grep h2o) 
+then
+    echo "configure for BW"
+
+    export OMPI_DIR=/projects/sciteam/bamm/merzky/openmpi/
+    export OMPI_COMMIT=539f71d # last working on titan
+
+    if test -z "$BWPY_VERSION"
+    then
+        echo "bwpy module not loaded"
+        exit -1
+    fi
+
+    module unload cray-mpich  || true
+    module unload PrgEnv-cray || true
+    module load   PrgEnv-gnu  || true
+    module load   torque
+    module load   cmake
+
+else
+    echo 'configure for localhost'
+    export OMPI_DIR=$HOME/radical/ompi/
+    export OMPI_COMMIT=HEAD
+fi
+
+
+
 export OMPI_LABEL=test
-export OMPI_COMMIT=e9f378e851
 export OMPI_LABEL=$(date '+%Y_%m_%d'_${OMPI_COMMIT}) # module flag for installed version
 export MAKEFLAGS=-j32                                # speed up build on multicore machines
 
@@ -51,10 +100,25 @@ then
     export OMPI_DIR="$1"
 fi
 
-LOG="$OMPI_DIR/ompi.log"
-echo 
+LOG="$OMPI_DIR/ompi.$OMPI_LABEL.deploy.log"
+rm -f "$LOG"
+
+echo "------------------------------"
 echo "ompi dir: $OMPI_DIR"
+echo "ompi log: $LOG"
 echo
+
+log(){
+    msg=$1
+    printf "%-10s : " "$msg"
+    while read in
+    do
+        echo "$in" >> "$LOG"
+        echo "$in" | sed -e 's/[^\n]//g' | sed -e 's/.*/./g' | xargs echo -n
+    done
+    echo
+}
+
 
 # The environments below are only important during build time
 # and can generally point anywhere on the filesystem.
@@ -76,61 +140,6 @@ export OMPI_MODULE=$OMPI_MODULE_BASE/openmpi
 export OMPI_INSTALLED=$OMPI_DIR/installed
 
 echo $OMPI_DIR/$OMPI_LABEL
-
-if (hostname -f | grep titan)
-then
-    export OMPI_DIR=/lustre/atlas2/csc230/world-shared/openmpi/
-    export OMPI_COMMIT=539f71d  # last functional commit on titan
-
-    module load   python
-    module load   python_pip
-    module load   python_virtualenv
-
-    # for openmpi build
-    module unload PrgEnv-pgi || true
-    module load   PrgEnv-gnu || true
-    module unload cray-mpich || true
-    module load   torque
-    module load   pmi
-    # ./configure --prefix=/lustre/atlas2/csc230/world-shared/openmpi/src/ompi../../install/test/ --enable-debug --enable-timing --enable-heterogeneous --enable-mpi-cxx --enable-install-libpmix --enable-pmix-timing --with-pmix=internal --with-ugni --with-cray-pmi --with-alps=yes --with-tm 
-  
-    # load what was installed above
-  # module use --append /lustre/atlas2/csc230/world-shared/openmpi/modules
-  # module load openmpi/test
-
-    # for charm build
-  # module load   cudatoolkit   # problems with UCL workload?
-    module load   cmake
-   ## ./build charm++ mpi-linux-x86_64 mpicxx smp omp pthreads -j16
-    # ./build charm++ mpi-linux-x86_64 mpicxx -j16
-
-    # for namd build
-    module load   rca
-   ## ./config CRAY-XE-gnu --charm-base ../charm-openmpi/ --charm-arch mpi-linux-x86_64-omp-pthreads-smp-mpicxx --fftw-prefix /lustre/atlas2/csc230/world-shared/openmpi/applications/namd/namd-openmpi/../fftw-2.1.5/install --with-tcl
-    # ./config CRAY-XE-gnu --charm-base ../charm-openmpi/ --charm-arch -linux-x86_64-mpicxx --fftw-prefix /lustre/atlas2/csc230/world-shared/openmpi/applications/namd/fftw-2.1.5/install --with-tcl
-    echo "configured for Titan"
-
-elif (hostname | grep h2o) 
-then
-    if test -z "$BWPY_VERSION"
-    then
-        echo "bwpy module not loaded"
-        exit -1
-    fi
-
-    export OMPI_DIR=/projects/sciteam/bamm/merzky/openmpi/
-
-    module unload cray-mpich  || true
-    module unload PrgEnv-cray || true
-    module load   PrgEnv-gnu  || true
-    module load   torque
-    module load   cmake
-    echo "configured for BW"
-# else
-    # echo 'unknown system'
-    # exit
-fi
-
 
 mkdir -p $OMPI_DOWNLOAD
 mkdir -p $OMPI_SOURCE
@@ -205,7 +214,7 @@ cd $OMPI_BUILD
 export CFLAGS=-O3
 export CXXFLAGS=-O3
 export FCFLAGS="-ffree-line-length-none"
-echo "========================================="
+echo "-----------------------------------------"
 echo "OMPI_DIR      : $OMPI_DIR"
 echo "OMPI_SOURCE   : $OMPI_SOURCE"
 echo "OMPI_BUILD    : $OMPI_BUILD"
@@ -216,7 +225,7 @@ echo "modules       :"  | log 'mods'
 module list 2>&1 | sort | log 'mods'
 
 echo $PATH
-echo "========================================="
+echo "-----------------------------------------"
 
 # titan
 dummy="
