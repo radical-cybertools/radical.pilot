@@ -63,6 +63,9 @@ then
    ## ./config CRAY-XE-gnu --charm-base ../charm-openmpi/ --charm-arch mpi-linux-x86_64-omp-pthreads-smp-mpicxx --fftw-prefix /lustre/atlas2/csc230/world-shared/openmpi/applications/namd/namd-openmpi/../fftw-2.1.5/install --with-tcl
     # ./config CRAY-XE-gnu --charm-base ../charm-openmpi/ --charm-arch -linux-x86_64-mpicxx --fftw-prefix /lustre/atlas2/csc230/world-shared/openmpi/applications/namd/fftw-2.1.5/install --with-tcl
 
+    echo "modules       :"  | log 'mods'
+    module list 2>&1 | sort | log 'mods'
+
 
 elif (hostname | grep h2o) 
 then
@@ -83,10 +86,28 @@ then
     module load   torque
     module load   cmake
 
+    echo "modules       :"  | log 'mods'
+    module list 2>&1 | sort | log 'mods'
+
+
 else
     echo 'configure for localhost'
     export OMPI_DIR=$HOME/radical/ompi/
-    export OMPI_COMMIT=HEAD
+  # export OMPI_COMMIT=HEAD
+  # export OMPI_COMMIT=a3ac67be0d
+    export OMPI_COMMIT=539f71d     # last working on titan
+  # export OMPI_COMMIT=master
+  # export OMPI_COMMIT=64e838c1ac
+  # export OMPI_COMMIT=7839dc91a8
+  # export OMPI_COMMIT=a76a61b2c9
+  # export OMPI_COMMIT=d9b2c94
+  # export OMPI_COMMIT=47bf0d6f9d
+  # export OMPI_COMMIT=e88767866e
+  # export OMPI_COMMIT=51f3fbdb3e  # Fix cmd line passing of DVM URI   Oct 6 2017
+  # export OMPI_COMMIT=04ec013da9  # 04.03.2018
+  # export OMPI_COMMIT=e9f378e851
+
+
 fi
 
 
@@ -178,10 +199,10 @@ done
 # libffi documentation needs texi2html which is not commonly available, so we
 # disable documentation.
 
-echo "install libffi"
 cd $OMPI_SOURCE
 if ! test -d libffi
 then
+    echo "install libffi"
     git clone https://github.com/libffi/libffi.git \
                  2>&1 | log 'git ' || exit
     cd libffi
@@ -202,11 +223,11 @@ then
 fi
 cd ompi
 
-git checkout master        
+git checkout master               2>&1 | log 'cout' || exit
 git pull                          2>&1 | log 'pull' || exit
 git checkout $OMPI_COMMIT         2>&1 | log 'comm' || exit
 make distclean                    2>&1 | log 'clr '
-test -f configure || ./autogen.pl 2>&1 | log 'agen' || exit
+./autogen.pl                      2>&1 | log 'agen' || exit
 
 export OMPI_BUILD=$OMPI_DIR/build/$OMPI_LABEL
 mkdir -p $OMPI_BUILD
@@ -220,9 +241,6 @@ echo "OMPI_SOURCE   : $OMPI_SOURCE"
 echo "OMPI_BUILD    : $OMPI_BUILD"
 echo "OMPI_INSTALLED: $OMPI_INSTALLED"
 echo "OMPI_LABEL    : $OMPI_LABEL"
-
-echo "modules       :"  | log 'mods'
-module list 2>&1 | sort | log 'mods'
 
 echo $PATH
 echo "-----------------------------------------"
@@ -257,6 +275,7 @@ cfg="$OMPI_SOURCE/ompi/configure
      --disable-pmix-dstore
 "
 
+echo "$cfg"   2>&1 | log 'cfg'
 $cfg          2>&1 | log 'cfg ' || exit
 make -j 32    2>&1 | log 'make' || exit
 make install  2>&1 | log 'inst' || exit
@@ -284,9 +303,9 @@ module-whatis "Dynamic build of Open MPI from git."
 set version $OMPI_LABEL
 
 prepend-path    PATH            $OMPI_INSTALLED/$OMPI_LABEL/bin
-prepend-path    LD_LIBRARY_PATH $OMPI_INSTALLED/$OMPI_LABEL/lib
 prepend-path    MANPATH         $OMPI_INSTALLED/$OMPI_LABEL/share/man
-prepend-path    PKG_CONFIG_PATH $OMPI_INSTALLED/$OMPI_LABEL/share/pkgconfig
+prepend-path    LD_LIBRARY_PATH $OMPI_INSTALLED/$OMPI_LABEL/lib
+prepend-path    PKG_CONFIG_PATH $OMPI_INSTALLED/$OMPI_LABEL/lib/pkgconfig
 
 setenv          OMPI_MCA_timer_require_monotonic false
 
@@ -294,9 +313,9 @@ EOT
 
 cat <<EOT > $OMPI_INSTALLED/$OMPI_LABEL/etc/ompi.sh
 export PATH=\$PATH:$OMPI_INSTALLED/$OMPI_LABEL/bin
-export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:$OMPI_INSTALLED/$OMPI_LABEL/lib
 export MANPATH=\$MANPATH:$OMPI_INSTALLED/$OMPI_LABEL/share/man
-export PKG_CONFIG_PATH=\$PKG_CONFIG_PATH:$OMPI_INSTALLED/$OMPI_LABEL/share/pkgconfig
+export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:$OMPI_INSTALLED/$OMPI_LABEL/lib
+export PKG_CONFIG_PATH=\$PKG_CONFIG_PATH:$OMPI_INSTALLED/$OMPI_LABEL/lib/pkgconfig
 export OMPI_MCA_timer_require_monotonic=false
 EOT
 echo
