@@ -18,7 +18,7 @@ name     = 'radical.pilot'
 mod_root = 'src/radical/pilot/'
 
 try:
-    from setuptools import setup, Command, find_packages
+    from setuptools import setup, Command, find_packages, Extension
 except ImportError as e:
     print("%s needs setuptools to install" % name)
     sys.exit(1)
@@ -315,6 +315,10 @@ setup_args = {
     # sys.prefix/share/$name
     # It needs the MANIFEST.in entries to work.
     'data_files'         : makeDataFiles('share/%s/examples/' % name, 'examples'),
+    # build a thin C wrapper around ompi for task submission
+    'ext_modules'        : [Extension('radical.pilot.utils.ompi',
+                                 ['src/radical/pilot/utils/ompi.c'])
+                           ]
 }
 
 # ------------------------------------------------------------------------------
