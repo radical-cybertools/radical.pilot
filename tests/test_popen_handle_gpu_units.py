@@ -19,11 +19,11 @@ session_id = 'rp.session.test.cuda'
 
 
 
-class TestStagingInputComponent(unittest.TestCase):
+class TestGPUunitsComponent(unittest.TestCase):
 
 
     def setUp(self):
-        self._session = rp.Session()
+        self._session = rp.Session(uid=session_id)
         # Unit configuration
         self.unit_gpu = dict()
         self.unit_gpu['description'] = {"arguments": [],
@@ -50,7 +50,7 @@ class TestStagingInputComponent(unittest.TestCase):
                                         "stdout": None
                                        }
         self.unit_gpu['slots'] = {"cores_per_node": 7, 
-                                  "gpus_per_node": 1, 
+                                  "gpus_per_node": 2, 
                                   "lm_info": {"version_info": {"FORK": {"version": "0.42", 
                                                                         "version_detail": "There is no spoon"}}}, 
                                   "nodes": [["localhost", "localhost_0", [[0]], [[0]]]]
@@ -91,6 +91,8 @@ class TestStagingInputComponent(unittest.TestCase):
     def tearDown(self):
         
         self._session.close()
+        shutil.rmtree(session_id)
+
 
 
     @mock.patch.object(Popen, '__init__', return_value=None)
@@ -118,7 +120,7 @@ class TestStagingInputComponent(unittest.TestCase):
         component._handle_unit(self.unit_gpu)
 
         # Verify the actionables were done...
-        self.assertTrue(self.unit_gpu['description']['environment'].get('CUDA_VISIBLE_DEVICES',None) == 0)
+        self.assertTrue(self.unit_gpu['description']['environment'].get('CUDA_VISIBLE_DEVICES') == '0')
 
     @mock.patch.object(Popen, '__init__', return_value=None)
     @mock.patch.object(Popen, 'advance')
@@ -153,5 +155,5 @@ class TestStagingInputComponent(unittest.TestCase):
 #
 if __name__ == '__main__':
 
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestStagingInputComponent)
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestGPUunitsComponent)
     unittest.TextTestRunner(verbosity=2).run(suite)
