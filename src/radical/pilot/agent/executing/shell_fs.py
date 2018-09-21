@@ -34,6 +34,7 @@ class ShellFS(AgentExecutingComponent):
         from .... import pilot as rp
 
         self._pwd = os.getcwd() 
+        self._tmp = self._pwd   # keep temporary files in $PWD for now (slow)
 
         self.register_input(rps.AGENT_EXECUTING_PENDING,
                             rpc.AGENT_EXECUTING_QUEUE, self.work)
@@ -126,8 +127,8 @@ class ShellFS(AgentExecutingComponent):
         self.gtod = "%s/gtod" % self._pwd
 
         # create line buffered fifo's to communicate with the shell executor
-        self._fifo_cmd_name = "%s/%s.cmd.pipe" % (self._pwd, self._uid)
-        self._fifo_inf_name = "%s/%s.inf.pipe" % (self._pwd, self._uid)
+        self._fifo_cmd_name = "%s/%s.cmd.pipe" % (self._tmp, self._uid)
+        self._fifo_inf_name = "%s/%s.inf.pipe" % (self._tmp, self._uid)
 
         os.mkfifo(self._fifo_cmd_name)
         os.mkfifo(self._fifo_inf_name)
@@ -143,7 +144,9 @@ class ShellFS(AgentExecutingComponent):
 
         # start the shell executor
         sh_exe   = "%s/shell_spawner_fs.sh" % os.path.dirname(__file__)
-        sh_cmd   = "%s %s %s" % (sh_exe, self._pwd, self.uid)
+        sh_cmd   = "%s %s %s %s" % (sh_exe, self._pwd, self._tmp, self.uid)
+                                 # script   base       work       sid
+        self._log.debug('start shell executor [%s]', sh_cmd)
         self._sh = sp.Popen(sh_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
 
 
@@ -368,7 +371,7 @@ prof(){
 
         cmd, hop_cmd  = launcher.construct_command(cu, '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"')
 
-        script  = '\nset -x\n%s\n' % env
+        script  = '\n%s\n' % env
         script += 'prof cu_start\n'
 
         if hop_cmd :
