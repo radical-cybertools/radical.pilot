@@ -71,10 +71,11 @@ log(){
 # ------------------------------------------------------------------------------
 #
 prof(){
-    test -z "$RP_GTOD" && return
+  # test -z "$RP_GTOD" && return
     uid=$1
     evt=$2
-    now=$($RP_GTOD)
+  # now=$($RP_GTOD)
+    now=$($BASE/gtod)
     \printf "$now,$evt,'shell_spawner,MainThread,$uid,AGENT_EXECUTING,\n" \
         >> "$BASE/$uid/$uid.prof"
 }

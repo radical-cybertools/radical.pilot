@@ -145,12 +145,18 @@ class Hombre(AgentSchedulingComponent):
 
             # how many CUs fit on a single node?
             # NOTE: this relies on integer divide being floored
-            if self._oversubscribe:
-                units_per_node = min(self.cpn / cores_needed, 
-                                     self.gpn / gpus_needed )
+            if gpus_needed:
+                if self._oversubscribe:
+                    units_per_node = min(self.cpn / cores_needed, 
+                                         self.gpn / gpus_needed )
+                else:
+                    units_per_node = min(self.cpn / (cores_needed + gpus_needed), 
+                                         self.gpn / (gpus_needed               ))
             else:
-                units_per_node = min(self.cpn / (cores_needed + gpus_needed), 
-                                     self.gpn / (gpus_needed               ))
+                if self._oversubscribe:
+                    units_per_node = self.cpn / cores_needed
+                else:
+                    units_per_node = self.cpn / (cores_needed + gpus_needed)
 
             assert(units_per_node), 'Non-mpi unit does not fit onto single node'
           # print 'upn: %d' % units_per_node

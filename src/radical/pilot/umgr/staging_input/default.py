@@ -14,6 +14,7 @@ import radical.utils as ru
 
 from ...   import states    as rps
 from ...   import constants as rpc
+from ...   import utils     as rpu
 
 from .base import UMGRStagingInputComponent
 
@@ -194,7 +195,10 @@ class Default(UMGRStagingInputComponent):
             session_sbox = self._session._get_session_sandbox(pilot)
             unit_sboxes  = units_by_pid[pid]
 
-            if len(unit_sboxes) >= UNIT_BULK_MKDIR_THRESHOLD:
+          # if len(unit_sboxes) >= UNIT_BULK_MKDIR_THRESHOLD:
+            if True:
+
+                self._log.debug('=== tar %d sboxes', len(unit_sboxes))
 
                 # no matter the bulk mechanism, we need a SAGA handle to the
                 # remote FS
@@ -227,17 +231,7 @@ class Default(UMGRStagingInputComponent):
                     tar_tgt  = '%s/%s'     % (tmp_dir, tar_name)
                     tar_url  = ru.Url('file://localhost/%s' % tar_tgt)
 
-                    for sbox in unit_sboxes:
-                        os.makedirs('%s/%s' % (tmp_dir, ru.Url(sbox).path))
-
-                    cmd = "cd %s && tar zchf %s *" % (tmp_dir, tar_tgt)
-                    out, err, ret = ru.sh_callout(cmd, shell=True)
-
-                    self._log.debug('tar : %s', cmd)
-                    self._log.debug('tar : %s\n---\n%s\n---\n%s', out, err, ret)
-
-                    if ret:
-                        raise RuntimeError('failed callout %s: %s' % (cmd, err))
+                    rpu.create_tar(tar_tgt, unit_sboxes)
 
                     tar_rem_path = "%s/%s" % (str(session_sbox), tar_name)
 
@@ -245,7 +239,7 @@ class Default(UMGRStagingInputComponent):
                     self._log.debug('copy: %s -> %s', tar_url, tar_rem_path)
                     saga_dir.copy(tar_url, tar_rem_path, flags=rs.filesystem.CREATE_PARENTS)
 
-                  # ru.sh_callout('rm -r %s' % tmp_path)
+                  # ru.sh_callout('rm -r %s &' % tmp_path, shell=True)
 
                     # get a job service handle to the target resource and run
                     # the untar command.  Use the hop to skip the batch system
