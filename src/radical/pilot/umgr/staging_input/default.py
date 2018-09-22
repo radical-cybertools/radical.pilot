@@ -4,7 +4,6 @@ __license__   = "MIT"
 
 
 import os
-import pprint
 import tempfile
 import threading     as mt
 import tarfile
@@ -27,7 +26,7 @@ from ...staging_directives import complete_url
 #   saga: use SAGA bulk ops
 #   tar : unpack a locally created tar which contains all sandboxes
 
-UNIT_BULK_MKDIR_THRESHOLD = 128
+UNIT_BULK_MKDIR_THRESHOLD = 16
 UNIT_BULK_MKDIR_MECHANISM = 'tar'
 
 
@@ -168,21 +167,21 @@ class Default(UMGRStagingInputComponent):
         # done anyways.
         #
         # Caveat: we can actually only (reasonably) do this if we know some
-        # details about the pilot, because otherwise we'd have to much guessing
+        # details about the pilot, because otherwise we'd have too much guessing
         # to do about the pilot configuration (sandbox, access schema, etc), so
         # we only attempt this optimization for units scheduled to pilots for
         # which we learned those details.
-        units_by_pid = dict()
+        unit_sboxes_by_pid = dict()
         for unit in no_staging_units:
             sbox = unit['unit_sandbox']
             pid  = unit['pilot']
-            if pid not in units_by_pid:
-                units_by_pid[pid] = list()
-            units_by_pid[pid].append(sbox)
+            if pid not in unit_sboxes_by_pid:
+                unit_sboxes_by_pid[pid] = list()
+            unit_sboxes_by_pid[pid].append(sbox)
 
         # now trigger the bulk mkdir for all filesystems which have more than
         # a certain units tohandle in this bulk:
-        for pid in units_by_pid:
+        for pid in unit_sboxes_by_pid:
 
             with self._pilots_lock:
                 pilot = self._pilots.get(pid)
@@ -193,10 +192,9 @@ class Default(UMGRStagingInputComponent):
                 continue
 
             session_sbox = self._session._get_session_sandbox(pilot)
-            unit_sboxes  = units_by_pid[pid]
+            unit_sboxes  = unit_sboxes_by_pid[pid]
 
-          # if len(unit_sboxes) >= UNIT_BULK_MKDIR_THRESHOLD:
-            if True:
+            if len(unit_sboxes) >= UNIT_BULK_MKDIR_THRESHOLD:
 
                 self._log.debug('=== tar %d sboxes', len(unit_sboxes))
 
@@ -227,9 +225,20 @@ class Default(UMGRStagingInputComponent):
 
                     tmp_path = tempfile.mkdtemp(prefix='rp_agent_tar_dir')
                     tmp_dir  = os.path.abspath(tmp_path)
-                    tar_name = '%s.%s.tgz' % (self._session.uid, self.uid)
+                    tar_name = '%s.%s.tar' % (self._session.uid, self.uid)
                     tar_tgt  = '%s/%s'     % (tmp_dir, tar_name)
                     tar_url  = ru.Url('file://localhost/%s' % tar_tgt)
+
+                    # we want pathnames which are relative to the session
+                    # sandbox.  Ignore all other sandboxes - the agent will have
+                    # to create those.
+                    root = session_sbox.path
+                    rlen = len(root)
+                    rels = list()
+                    for path in unit_sboxes:
+                        if path.startswith(root):
+                            rels.append(path[rlen+1:])
+
 
                     rpu.create_tar(tar_tgt, unit_sboxes)
 
@@ -238,8 +247,6 @@ class Default(UMGRStagingInputComponent):
                     self._log.debug('sbox: %s [%s]', session_sbox, type(session_sbox))
                     self._log.debug('copy: %s -> %s', tar_url, tar_rem_path)
                     saga_dir.copy(tar_url, tar_rem_path, flags=rs.filesystem.CREATE_PARENTS)
-
-                  # ru.sh_callout('rm -r %s &' % tmp_path, shell=True)
 
                     # get a job service handle to the target resource and run
                     # the untar command.  Use the hop to skip the batch system
@@ -252,7 +259,7 @@ class Default(UMGRStagingInputComponent):
                         js_tmp = rs.job.Service(js_url, session=self._session)
                         self._js_cache[js_url] = js_tmp
 
-                    cmd = "tar zmxvf %s/%s -C /" % (session_sbox.path, tar_name)
+                    cmd = "tar xvf %s/%s -C /" % (session_sbox.path, tar_name)
                     j   = js_tmp.run_job(cmd)
                     j.wait()
                     self._log.debug('untar : %s', cmd)
