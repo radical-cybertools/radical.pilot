@@ -232,15 +232,14 @@ class Default(UMGRStagingInputComponent):
                     # we want pathnames which are relative to the session
                     # sandbox.  Ignore all other sandboxes - the agent will have
                     # to create those.
-                    root = session_sbox.path
+                    root = str(session_sbox)
                     rlen = len(root)
                     rels = list()
                     for path in unit_sboxes:
                         if path.startswith(root):
                             rels.append(path[rlen+1:])
 
-
-                    rpu.create_tar(tar_tgt, unit_sboxes)
+                    rpu.create_tar(tar_tgt, rels)
 
                     tar_rem_path = "%s/%s" % (str(session_sbox), tar_name)
 
