@@ -60,8 +60,8 @@ if __name__ == '__main__':
 
             for s in range(S):
 
-                U = S * 8
-                T = 10.0 / float(S)
+                U = S
+                T = 10.0 / float(p + 1)
 
                 report.info('create %d units for pipeline %s:%d\n\t' % (U, p, s))
                 for u in range(U):
