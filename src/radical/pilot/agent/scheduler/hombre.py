@@ -101,6 +101,8 @@ class Hombre(AgentSchedulingComponent):
         #       resources into suitable static slots.
         self._configured = False
 
+        self.free = list()     # declare for early debug output
+
 
     # --------------------------------------------------------------------------
     #
@@ -159,7 +161,7 @@ class Hombre(AgentSchedulingComponent):
                     units_per_node = self.cpn / (cores_needed + gpus_needed)
 
             assert(units_per_node), 'Non-mpi unit does not fit onto single node'
-          # print 'upn: %d' % units_per_node
+            self._log.debug('upn: %d', units_per_node)
 
             for node in self.nodes:
 
@@ -178,7 +180,6 @@ class Hombre(AgentSchedulingComponent):
                     for _ in range(cud['cpu_processes']):
                         tmp = list()
                         for _ in range(cud['cpu_threads']):
-                          # print 'cpu %d' % core_idx,
                             tmp.append(core_idx)
                             core_idx += 1
                         core_map.append(tmp)
@@ -190,7 +191,6 @@ class Hombre(AgentSchedulingComponent):
                     for _ in range(cud['gpu_processes']):
                         tmp = list()
                         for _ in range(cud['gpu_threads']):
-                          # print 'gpu %d' % gpu_idx
                             tmp.append(gpu_idx)
                             gpu_idx += 1
                         gpu_map.append(tmp)
@@ -201,16 +201,10 @@ class Hombre(AgentSchedulingComponent):
                              'lm_info'       : self._lrms_lm_info
                              }
                     self.free.append(slots)
-                  # print '-->'
-                  # pprint.pprint(slots)
-                  # print
+                  # self._log.debug('--> %s', slots['nodes'])
 
                 assert(core_idx <= self.cpn), 'inconsistent scheduler state'
                 assert(gpu_idx  <= self.gpn), 'inconsistent scheduler state'
-
-          # print 
-          # print 'free:'
-          # pprint.pprint(self.free)
 
 
         # ----------------------------------------------------------------------
@@ -234,7 +228,7 @@ class Hombre(AgentSchedulingComponent):
                 core_idx  = 0
                 gpu_idx   = 0
 
-                print 'reset idxs'
+              # self._log.debug('reset idxs')
 
                 # allocate chunks for as long as possible
                 while True:
@@ -272,19 +266,19 @@ class Hombre(AgentSchedulingComponent):
                                  'lm_info'       : self._lrms_lm_info
                                  }
                         self.free.append(slots)
-                        print 'got ', slots
+                      # self._log.debug('got ', slots)
 
                         core_map = list()
                         gpu_map  = list()
 
                     else:
-                        print 'enough'
+                      # self._log.debug('enough')
                         # no more slots on this node - go to next
                         break
 
-        print 
-        print 'free:'
-        pprint.pprint(self.free)
+        self._log.debug('free:')
+        self._log.debug(pprint.pformat([s['nodes'] for s in self.free]))
+      # self._log.debug(' = initial  [%d]', len(self.free))
 
         self._configured = True
 
@@ -297,6 +291,7 @@ class Hombre(AgentSchedulingComponent):
         a unit needs to be mapped to a set of cores / gpus.
         '''
 
+      # self._log.debug('=> allocate [%d]', len(self.free))
         if not self._configured:
             self._delayed_configure(cud)
 
@@ -305,7 +300,15 @@ class Hombre(AgentSchedulingComponent):
             if cud[k] != v:
                 raise ValueError('hetbre?  %d != %d' % (v, cud[k]))
 
+      # self._log.debug('find new slot')
         slots = self._find_slots(cud)
+        if slots:
+            self._log.debug('allocate slot %s', slots['nodes'])
+        else:
+            self._log.debug('allocate slot %s', slots)
+
+      # self._log.debug('<= allocate [%d]', len(self.free))
+
 
         return slots
 
@@ -319,9 +322,11 @@ class Hombre(AgentSchedulingComponent):
         `_allocate_slots()`.
         '''
 
+      # self._log.debug('=> release  [%d]', len(self.free))
+        self._log.debug('release  slot %s', slots['nodes'])
         with self.lock:
-            for slot in slots:
-                self.free.append(slots)
+             self.free.append(slots)
+      # self._log.debug('<= release  [%d]', len(self.free))
 
 
     # --------------------------------------------------------------------------

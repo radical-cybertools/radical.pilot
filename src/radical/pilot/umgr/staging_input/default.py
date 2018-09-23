@@ -258,7 +258,8 @@ class Default(UMGRStagingInputComponent):
                         js_tmp = rs.job.Service(js_url, session=self._session)
                         self._js_cache[js_url] = js_tmp
 
-                    cmd = "tar xvf %s/%s -C /" % (session_sbox.path, tar_name)
+                    cmd = "tar xvf %s/%s -C %s" % (session_sbox.path, tar_name,
+                                                   session_sbox.path)
                     j   = js_tmp.run_job(cmd)
                     j.wait()
                     self._log.debug('untar : %s', cmd)

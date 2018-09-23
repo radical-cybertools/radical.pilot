@@ -16,6 +16,9 @@ N = 2
 N = 1024 * 64
 N = 1024 * 2
 
+P = 16
+U = 33
+
 # ------------------------------------------------------------------------------
 #
 # READ the RADICAL-Pilot documentation: http://radicalpilot.readthedocs.org/
@@ -65,7 +68,7 @@ if __name__ == '__main__':
                    'queue'         : config[resource]['queue'],
                    'access_schema' : config[resource]['schema'],
                  # 'cores'         : N/128 + 16
-                   'cores'         : 16*4 + 16
+                   'cores'         : P + 16
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
@@ -81,11 +84,10 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = N  # number of units to run
-        report.info('create %d unit description(s)\n\t' % n)
+        report.info('create %d unit description(s)\n\t' % U)
 
         cuds = list()
-        for i in range(0, n):
+        for i in range(0, U):
 
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
