@@ -120,22 +120,12 @@ class Continuous(AgentSchedulingComponent):
 
         # * scattered:
         #   This is the continuous scheduler, because it attempts to allocate
-        #   a *continuous* set of cores/nodes for a unit.  It does, however,
+        #   a *continuous* set of cores/nodes for a unit.  It does, hoewver,
         #   also allow to scatter the allocation over discontinuous nodes if
         #   this option is set.  This implementation is not optimized for the
         #   scattered mode!  The default is 'False'.
         #
         self._scattered     = self._cfg.get('scattered',     False)
-
-
-        # * cross_socket_threads:
-        # We now capture the knowledge of sockets on nodes and the relationship
-        # of cores to sockets and gpus to sockets. We want to ensure that cpu
-        # threads belonging to a single process do not cross sockets if the
-        # system does not allow it. The default is True, based on discussions
-        # in the Summit meeting, and will be set to False for Summit in the
-        # resource config.
-        self._cross_socket_threads = self._cfg.get('cross_socket_threads', True)
 
         # NOTE:  for non-oversubscribing mode, we reserve a number of cores
         #        for the GPU processes - even if those GPUs are not used by
@@ -152,20 +142,13 @@ class Continuous(AgentSchedulingComponent):
             # recreate the nodelist.
             self.nodes = []
             for node, node_uid in self._lrms_node_list:
-                node_entry = {
-                                'name': node,
-                                'uid': node_uid,
-                                'sockets': list(),
-                                'lfs': self._lrms_lfs_per_node
-                            }
-                for socket in self._sockets_per_node:
-                    node_entry['sockets'].append({
-                        'cores': [rpc.FREE] * self._lrms_cores_per_socket,
-                        'gpus': [rpc.FREE] * self._lrms_gpus_per_socket
-                    })
-
-                self.nodes.append(node_entry)
-
+                self.nodes.append({
+                    'name': node,
+                    'uid': node_uid,
+                    'cores': [rpc.FREE] * self._lrms_cores_per_node,
+                    'gpus': [rpc.FREE] * self._lrms_gpus_per_node,
+                    'lfs': self._lrms_lfs_per_node
+                })
 
 
     def _try_allocation(self, unit):
@@ -181,14 +164,14 @@ class Continuous(AgentSchedulingComponent):
             unit['slots'] = self._allocate_slot(unit['description'])
 
         if unit['slots']:
-
+            
             unit_uid = unit['uid']
             node_uids = []
             for node in unit['slots']['nodes']:
                 node_uids.append(node['uid'])
 
             self._tag_history[unit_uid] = node_uids
-
+            
         # the lock is freed here
         if not unit['slots']:
 
@@ -280,11 +263,8 @@ class Continuous(AgentSchedulingComponent):
 
         # first count the number of free cores, gpus, and local file storage.
         # This is way quicker than actually finding the core IDs.
-        free_cores = 0
-        free_gpus = 0
-        for socket in node['socket']:
-            free_cores += socket['cores'].count(rpc.FREE)
-            free_gpus += socket['gpus'].count(rpc.FREE)
+        free_cores = node['cores'].count(rpc.FREE)
+        free_gpus = node['gpus'].count(rpc.FREE)
         free_lfs = node['lfs']['size']
 
         alloc_lfs = alloc_cores = alloc_gpus = 0
@@ -339,32 +319,22 @@ class Continuous(AgentSchedulingComponent):
         if requested_gpus:
             alloc_gpus = num_procs * gpu_chunk
 
-        # now dig out the core IDs.
-        for socket in node['sockets']:
-            for idx, state in enumerate(socket['cores']):
-
-                # break if we have enough cores, else continue to pick FREE ones
-                if alloc_cores == len(cores):
-                    break
-                if state == rpc.FREE:
-                    cores.append(idx)
+        # now dig out the core and gpu IDs.
+        for idx, state in enumerate(node['cores']):
 
             # break if we have enough cores, else continue to pick FREE ones
             if alloc_cores == len(cores):
                 break
+            if state == rpc.FREE:
+                cores.append(idx)
 
-        # now dig out the GPU IDs.
-        for socket in node['sockets']:
-            for idx, state in enumerate(socket['gpus']):
+        for idx, state in enumerate(node['gpus']):
 
-                # break if we have enough gpus, else continue to pick FREE ones
-                if alloc_gpus == len(gpus):
-                    break
-                if state == rpc.FREE:
-                    gpus.append(idx)
             # break if we have enough gpus, else continue to pick FREE ones
             if alloc_gpus == len(gpus):
                 break
+            if state == rpc.FREE:
+                gpus.append(idx)
 
         return cores, gpus, alloc_lfs
 
@@ -432,26 +402,18 @@ class Continuous(AgentSchedulingComponent):
         # cores needed for all threads and processes
         requested_cores = requested_procs * threads_per_proc
 
-        if not self._cross_socket_threads:
-            if threads_per_proc > self._lrms_cores_per_socket:
-                raise ValueError('Number of threads greater than that available on a socket')
+        # make sure that the requested allocation fits on a single node
+        if requested_cores > self._lrms_cores_per_node or \
+                requested_gpus > self._lrms_gpus_per_node or \
+                requested_lfs > self._lrms_lfs_per_node['size']:
 
-        cores_per_node = self._lrms_cores_per_socket * self._lrms_sockets_per_node
-        gpus_per_node = self._lrms_gpus_per_socket * self._lrms_sockets_per_node
-        lfs_per_node = self._lrms_lfs_per_node['size']
-
-        # make sure that the requested allocation fits within the resources
-        if requested_cores > cores_per_node or \
-            requested_gpus > gpus_per_node or \
-            requested_lfs > lfs_per_node:
-
-            txt = 'Non-mpi unit does not fit onto available resources \n'
+            txt = 'Non-mpi unit does not fit onto single node. \n'
             txt += 'requested cores=%s; available cores=%s \n' % (
-                requested_cores, cores_per_node)
+                requested_cores, self._lrms_cores_per_node)
             txt += 'requested gpus=%s; available gpus=%s \n' % (
-                requested_gpus, gpus_per_node)
+                requested_gpus, self._lrms_gpus_per_node)
             txt += 'requested lfs=%s; available lfs=%s' % (
-                requested_lfs, lfs_per_node)
+                requested_lfs, self._lrms_lfs_per_node['size'])
 
             raise ValueError(txt)
 
@@ -493,7 +455,7 @@ class Continuous(AgentSchedulingComponent):
 
         # If we did not find any node to host this request, return `None`
         if not cores and not gpus and not lfs:
-            return None
+            return None        
 
         # We have to communicate to the launcher where exactly processes are to
         # be placed, and what cores are reserved for application threads.  See
@@ -513,8 +475,8 @@ class Continuous(AgentSchedulingComponent):
                             'core_map': core_map,
                             'gpu_map': gpu_map,
                             'lfs': {'size': lfs, 'path': self._lrms_lfs_per_node['path']}}],
-                 'cores_per_node': cores_per_node,
-                 'gpus_per_node': gpus_per_node,
+                 'cores_per_node': self._lrms_cores_per_node,
+                 'gpus_per_node': self._lrms_gpus_per_node,
                  'lfs_per_node': self._lrms_lfs_per_node,
                  'lm_info': self._lrms_lm_info
                  }
@@ -580,17 +542,14 @@ class Continuous(AgentSchedulingComponent):
         # allocation are not favorable.  We thus raise an exception for
         # requested_cores > cores_per_node on impossible full-node-chunking
 
-        # cores_per_node = self._lrms_cores_per_node
-        # gpus_per_node = self._lrms_gpus_per_node
-        # lfs_per_node = self._lrms_lfs_per_node
-
-        cores_per_node = self._lrms_cores_per_socket * self._lrms_sockets_per_node
-        gpus_per_node = self._lrms_gpus_per_socket * self._lrms_sockets_per_node
+        cores_per_node = self._lrms_cores_per_node
+        gpus_per_node = self._lrms_gpus_per_node
         lfs_per_node = self._lrms_lfs_per_node
 
-        if not self._cross_socket_threads:
-            if threads_per_proc > self._lrms_cores_per_socket:
-                raise ValueError('Number of threads greater than that available on a socket')
+        if requested_cores > cores_per_node and \
+                cores_per_node % threads_per_proc and \
+                self._scattered is False:
+            raise ValueError('cannot allocate under given constrains')
 
         # we always fail when too many threads are requested
         if threads_per_proc > cores_per_node:
@@ -598,13 +557,6 @@ class Continuous(AgentSchedulingComponent):
 
         if requested_lfs_per_process > lfs_per_node['size']:
             raise ValueError('Not enough LFS for the MPI-process')
-
-        if requested_cores > cores_per_node and \
-                cores_per_node % threads_per_proc and \
-                self._scattered is False:
-            raise ValueError('cannot allocate under given constrains')
-
-
 
         # set conditions to find the first matching node
         is_first = True
@@ -682,7 +634,7 @@ class Continuous(AgentSchedulingComponent):
                     slots['nodes'] = list()
 
                 # try next node
-                continue
+                continue          
 
             # we found something - add to the existing allocation, switch gears
             # (not first anymore), and try to find more if needed
