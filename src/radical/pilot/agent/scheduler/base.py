@@ -20,6 +20,7 @@ from ... import constants as rpc
 #
 SCHEDULER_NAME_CONTINUOUS = "CONTINUOUS"
 SCHEDULER_NAME_CONTINUOUS_FIFO = "CONTINUOUS_FIFO"
+SCHEDULER_NAME_CONTINUOUS_SUMMIT="CONTINUOUS_SUMMIT"
 SCHEDULER_NAME_HOMBRE = "HOMBRE"
 SCHEDULER_NAME_SCATTERED = "SCATTERED"
 SCHEDULER_NAME_SPARK = "SPARK"
@@ -255,11 +256,10 @@ class AgentSchedulingComponent(rpu.Component):
         self._lrms_info = self._cfg['lrms_info']
         self._lrms_lm_info = self._cfg['lrms_info']['lm_info']
         self._lrms_node_list = self._cfg['lrms_info']['node_list']
-        self._lrms_sockets_per_node = self._cfg['lrms_info']['sockets_per_node']
-        self._lrms_cores_per_socket = self._cfg['lrms_info']['cores_per_socket']
-        self._lrms_gpus_per_socket = self._cfg['lrms_info']['gpus_per_socket']
+        self._lrms_cores_per_node = self._cfg['lrms_info']['cores_per_node']
+        self._lrms_gpus_per_node = self._cfg['lrms_info']['gpus_per_node']
         # Dict containing the size and path
-        self._lrms_lfs_per_node = self._cfg['lrms_info']['lfs_per_node']
+        self._lrms_lfs_per_node = self._cfg['lrms_info']['lfs_per_node']   
 
         if not self._lrms_node_list:
             raise RuntimeError("LRMS %s didn't _configure node_list."
@@ -280,21 +280,16 @@ class AgentSchedulingComponent(rpu.Component):
 
         # initialize the node list to be used by the scheduler.  A scheduler
         # instance may decide to overwrite or extend this structure.
+
         self.nodes = []
         for node, node_uid in self._lrms_node_list:
-            node_entry = {
+            self.nodes.append({
                 'name': node,
                 'uid': node_uid,
-                'sockets': list(),
+                'cores': [rpc.FREE] * self._lrms_cores_per_node,
+                'gpus': [rpc.FREE] * self._lrms_gpus_per_node,
                 'lfs': self._lrms_lfs_per_node
-            }
-            for socket in self._sockets_per_node:
-                node_entry['sockets'].append({
-                    'cores': [rpc.FREE] * self._lrms_cores_per_socket,
-                    'gpus': [rpc.FREE] * self._lrms_gpus_per_socket
-                })
-
-            self.nodes.append(node_entry)
+            })
 
         # configure the scheduler instance
         self._configure()
@@ -315,6 +310,7 @@ class AgentSchedulingComponent(rpu.Component):
         name = cfg['scheduler']
 
         from .continuous_fifo import ContinuousFifo
+        from .continuous_summit import ContinuousSummit
         from .continuous import Continuous
         from .scattered import Scattered
         from .hombre import Hombre
@@ -325,6 +321,7 @@ class AgentSchedulingComponent(rpu.Component):
         try:
             impl = {
                 SCHEDULER_NAME_CONTINUOUS_FIFO: ContinuousFifo,
+                SCHEDULER_NAME_CONTINUOUS_SUMMIT: ContinuousSummit,
                 SCHEDULER_NAME_CONTINUOUS: Continuous,
                 SCHEDULER_NAME_SCATTERED: Scattered,
                 SCHEDULER_NAME_HOMBRE: Hombre,
