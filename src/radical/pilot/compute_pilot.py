@@ -185,6 +185,7 @@ class ComputePilot(object):
         self._pilot_dict = copy.deepcopy(pilot_dict)
 
         # invoke pilot specific callbacks
+        # FIXME: this iteration needs to be thread-locked!
         for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
 
             cb      = cb_val['cb']

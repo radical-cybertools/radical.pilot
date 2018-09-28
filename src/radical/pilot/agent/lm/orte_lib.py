@@ -276,8 +276,9 @@ class ORTELib(LaunchMethod):
         depth = list(depths)[0]
 
         # FIXME: is this binding correct?
-        if depth > 1: map_flag = '--bind-to none --map-by ppr:%d:core' % depth
-        else        : map_flag = '--bind-to none'
+      # if depth > 1: map_flag = '--bind-to none --map-by ppr:%d:core' % depth
+      # else        : map_flag = '--bind-to none'
+        map_flag = '--bind-to none'
 
         # remove trailing ','
         hosts_string = hosts_string.rstrip(',')

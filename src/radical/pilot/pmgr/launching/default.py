@@ -1026,7 +1026,7 @@ class Default(PMGRLaunchingComponent):
         if gpus_per_node:
             gpus_per_node = int(gpus_per_node)
             number_gpus   = int(gpus_per_node
-                           * math.ceil(float(number_gpus) / gpus_per_node))
+                          * math.ceil(float(number_gpus) / gpus_per_node))
 
         # set mandatory args
         bootstrap_args  = ""
