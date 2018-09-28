@@ -81,9 +81,9 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits. 
         # Each compute unit runs a MPI test application.
 
-        n = 2   # number of units to run
-        t_num = 1  # number of threads   (OpenMP)
-        p_num = 3  # number of processes (MPI)
+        n     = 2  # number of units to run
+        t_num = 2  # number of threads   (OpenMP)
+        p_num = 2  # number of processes (MPI)
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -92,11 +92,12 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable     = '/bin/sh'
-            cud.arguments      = ['09_mpi_units.sh']
-            cud.input_staging  = ['%s/09_mpi_units.sh' % PWD]
-            cud.cores          = 3
-            cud.mpi            = True
+            cud.executable       = '/bin/sh'
+            cud.arguments        = ['09_mpi_units.sh']
+            cud.input_staging    = ['%s/09_mpi_units.sh' % PWD]
+            cud.cpu_processes    = p_num
+            cud.cpu_threads      = t_num
+            cud.cpu_process_type = rp.MPI
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -121,7 +122,7 @@ if __name__ == '__main__':
                     ranks.append(rank)
             for p in range(p_num):
                 for t in range(t_num):
-                    rank = '%d:%d/1' % (p, t)
+                    rank = '%d:%d/%d' % (p, t, t_num)
                     assert(rank in ranks), 'missing rank %s' % rank
 
 

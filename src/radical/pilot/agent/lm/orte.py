@@ -249,6 +249,7 @@ class ORTE(LaunchMethod):
         # Construct the hosts_string, env vars
         hosts_string = ''
         depths       = set()
+        rank_flags   = list()
         for node in slots['nodes']:
 
             # On some Crays, like on ARCHER, the hostname is "archer_N".  In
@@ -265,6 +266,10 @@ class ORTE(LaunchMethod):
             for gpu_slot in node[3]: hosts_string += '%s,' % node_id
             for cpu_slot in node[2]: depths.add(len(cpu_slot))
 
+            for cpu_slot in node[2]:
+                rank_flags.append('-np 1 -H %s' % node_id)
+
+
         assert(len(depths) == 1), depths
         depth = list(depths)[0]
 
@@ -272,6 +277,7 @@ class ORTE(LaunchMethod):
       # if depth > 1: map_flag = '--bind-to none --map-by ppr:%d:core' % depth
       # else        : map_flag = '--bind-to none'
         map_flag = '--bind-to none'
+
 
         # remove trailing ','
         hosts_string = hosts_string.rstrip(',')
@@ -292,8 +298,15 @@ class ORTE(LaunchMethod):
         else       : np_flag = '-np 1'
 
         command = '%s %s --hnp "%s" %s %s -host %s %s %s' % (
-                  self.launch_command, debug_string, dvm_uri, np_flag,
-                  map_flag, hosts_string, env_string, task_command)
+                  self.launch_command, debug_string, dvm_uri, 
+                  map_flag, env_string)
+        
+        first_rank = True
+        for rank in rank_flags:
+            if not first_rank:
+                command   += ' : '
+                first_rank = False
+            command += '%s %s' % (rank, task_command)
 
         return command, None
 
