@@ -14,6 +14,9 @@ RADICAL-Pilot requires the following packages:
 * virtualenv >= 1.11
 * pip == 1.4.1
 
+or
+* Anaconda Python 2.7
+
 If you plan to use RADICAL-Pilot on remote machines, you would also require to
 setup a password-less ssh login to the particular machine. 
 (`help <http://www.debian-administration.org/article/152/Password-less_logins_with_OpenSSH>`_)
@@ -31,25 +34,24 @@ support and authentication to increased the security of RADICAL-Pilot.
 Installation
 ============
 
-To install RADICAL-Pilot in a virtual environment, open a terminal and run:
+RADICAL-Pilot is distributed via PyPi and Conda-Forge. To install RADICAL-Pilot
+to a virtual environment do:
 
-If your shell is BASH,
-
+via PyPi
+-----------------
 .. code-block:: bash
 
     virtualenv --system-site-packages $HOME/ve
     source $HOME/ve/bin/activate
     pip install radical.pilot
 
+via Conda-Forge
+-----------------
+.. code-block:: bash
 
-If your shell is CSH,
-
-.. code-block:: csh
-
-    virtualenv --system-site-packages $HOME/ve
-    source $HOME/ve/bin/activate.csh
-    pip install radical.pilot    
-    rehash
+    conda create -n ve -y python=2.7
+    source activate ve
+    conda install radical.pilot -c conda-forge
 
 For a quick sanity check, to make sure that the the packages have been installed
 properly, run:
@@ -57,7 +59,7 @@ properly, run:
 .. code-block:: bash
 
     $ radicalpilot-version
-    0.36
+    0.50.8
 
 The exact output will obviously depend on the exact version of RP which got
 installed.
