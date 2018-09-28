@@ -923,8 +923,14 @@ virtenv_create()
 
         if test "$virtenv_dist" = "1.9"
         then
+            flags='-1 -k -L -O'
+            if (hostname -f | grep -e '^smic' > /dev/null)
+            then
+                flags='-k -L -O'
+            fi
+
             run_cmd "Download virtualenv tgz" \
-                    "curl -k -L -O '$VIRTENV_TGZ_URL'"
+                    "curl $flags '$VIRTENV_TGZ_URL'"
 
             if ! test "$?" = 0
             then

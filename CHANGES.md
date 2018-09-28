@@ -5,6 +5,61 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.50.8  Release                                                       2018-09-28
+--------------------------------------------------------------------------------
+
+  - fix examples
+  - fix issue #1715 (#1716) 
+  - remove Stampede's resource configs. issue #1711
+  - supermic does not like `curl -1` (#1723) 
+
+
+0.50.8  Release                                                       2018-08-03
+--------------------------------------------------------------------------------
+
+  - make sure that CUD values are not None (#1688)
+  - don't limit pymongo version anymore (#1687) 
+
+
+0.50.7  Release                                                       2018-08-01
+--------------------------------------------------------------------------------
+
+  - fix bwpy handling
+
+
+0.50.6  Release                                                       2018-07-31
+--------------------------------------------------------------------------------
+
+  - fix curl tssl negotiation problem (#1683)
+
+
+0.50.5  Release                                                       2018-07-30
+--------------------------------------------------------------------------------
+
+  - fix default values for process and thread types (#1681) 
+  - fix outdated links in ompi deploy script 
+  - fix/issue 1671 (#1680) 
+  - fix scheduler config checks (#1677) 
+
+
+0.50.4  Release                                                       2018-07-13
+--------------------------------------------------------------------------------
+
+  - set oversubscribe default to True
+
+
+0.50.3  Release                                                       2018-07-11
+--------------------------------------------------------------------------------
+
+  - disable rcfg expnsion
+
+
+0.50.2  Release                                                       2018-07-08
+--------------------------------------------------------------------------------
+
+  - fix relative tarball unpack paths
+
+
 0.50.1  Release                                                       2018-07-05
 --------------------------------------------------------------------------------
 
