@@ -297,16 +297,18 @@ class ORTE(LaunchMethod):
         if task_mpi: np_flag = '-np %s' % task_cores
         else       : np_flag = '-np 1'
 
-        command = '%s %s --hnp "%s" %s %s -host %s %s %s' % (
+        self._log.debu('=== %s %s --hnp "%s" %s %s', 
                   self.launch_command, debug_string, dvm_uri, 
                   map_flag, env_string)
         
-        first_rank = True
+        command = '%s %s --hnp "%s" %s %s' % (
+                  self.launch_command, debug_string, dvm_uri, 
+                  map_flag, env_string)
+        
+        rank_sep = ''
         for rank in rank_flags:
-            if not first_rank:
-                command   += ' : '
-                first_rank = False
-            command += '%s %s' % (rank, task_command)
+            command  += '%s %s %s' % (rank_sep, rank, task_command)
+            rank_sep  = ' : '
 
         return command, None
 
