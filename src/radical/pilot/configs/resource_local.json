@@ -111,7 +111,7 @@
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda",
         "cores_per_node"              : 8,
-        "gpus_per_node"               : 1
+        "gpus_per_node"               : 2
     },
 
     "localhost_spark": {
