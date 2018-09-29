@@ -11,7 +11,7 @@
 # (`examples/09_mpi_units.py`) will have to check if the correct set of ID pairs
 # is found.
 
-GPU_IDS=$(lspci | grep ' VGA ' | cut -d" " -f 1)
+GPU_IDS=$(which lspci >/dev/null 2>&1 && lspci | grep ' VGA ' | cut -d" " -f 1)
 GPU_NUM=$(echo "$GPU_IDS" | wc -w)
 CPU_NUM=$(cat /proc/cpuinfo | grep processor | wc -l)
 for GPU_ID in $GPU_IDS
