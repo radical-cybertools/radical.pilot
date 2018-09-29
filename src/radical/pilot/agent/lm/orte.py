@@ -266,8 +266,7 @@ class ORTE(LaunchMethod):
             for gpu_slot in node[3]: hosts_string += '%s,' % node_id
             for cpu_slot in node[2]: depths.add(len(cpu_slot))
 
-            for cpu_slot in node[2]:
-                rank_flags.append('-np 1 -H %s' % node_id)
+            rank_flags.append('-np %d -H %s' % (len(node[2]), node_id))
 
 
         assert(len(depths) == 1), depths
@@ -297,18 +296,17 @@ class ORTE(LaunchMethod):
         if task_mpi: np_flag = '-np %s' % task_cores
         else       : np_flag = '-np 1'
 
-        self._log.debu('=== %s %s --hnp "%s" %s %s', 
+        self._log.debug('=== %s %s --hnp "%s" %s %s', 
                   self.launch_command, debug_string, dvm_uri, 
                   map_flag, env_string)
         
-        command = '%s %s --hnp "%s" %s %s' % (
-                  self.launch_command, debug_string, dvm_uri, 
-                  map_flag, env_string)
+        command = '%s %s --hnp "%s" %s' % (
+                  self.launch_command, debug_string, dvm_uri, map_flag)
         
-        rank_sep = ''
+        rank_sep = '\\\n\t  '
         for rank in rank_flags:
-            command  += '%s %s %s' % (rank_sep, rank, task_command)
-            rank_sep  = ' : '
+            command  += '%s %s %s %s' % (rank_sep, rank, env_string, task_command)
+            rank_sep  = '\\\n\t: '
 
         return command, None
 

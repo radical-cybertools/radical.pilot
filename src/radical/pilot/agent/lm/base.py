@@ -44,6 +44,7 @@ class LaunchMethod(object):
         'LD_LIBRARY_PATH',
         'PATH',
         'PYTHONPATH',
+        'OMP_NUM_THREADS',
     ]
 
     MPI_FLAVOR_OMPI    = 'OMPI'
