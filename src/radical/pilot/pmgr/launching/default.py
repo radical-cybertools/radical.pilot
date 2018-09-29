@@ -814,10 +814,6 @@ class Default(PMGRLaunchingComponent):
         mandatory_args          = rcfg.get('mandatory_args', [])
         saga_jd_supplement      = rcfg.get('saga_jd_supplement', {})
 
-        import pprint
-        self._log.debug(cores_per_node)
-        self._log.debug(pprint.pformat(rcfg))
-
         # make sure that mandatory args are known
         for ma in mandatory_args:
             if pilot['description'].get(ma) is None:

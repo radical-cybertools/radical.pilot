@@ -1054,7 +1054,7 @@ virtenv_create()
     for dep in $VIRTENV_RADICAL_DEPS
     do
         # NOTE: we have to make sure not to use wheels on titan
-        hostname | grep titan 2&>1 >/dev/null
+        hostname | grep titan  >/dev/null 2&>1
         if test "$?" = 1
         then
             # this is titan
